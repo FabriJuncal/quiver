@@ -1,0 +1,51 @@
+# {{PROJECT_NAME}} - Spec Status
+
+**Spec:** [Nombre del spec]
+**Última actualización:** {{FECHA}}
+
+---
+
+## Estado del Spec
+
+| Slice | Título | Estado | PR | Horas est. | Horas reales |
+|-------|--------|--------|----|------------|--------------|
+| slice-01 | [Nombre] | ⏳ Pendiente | - | 0 | - |
+| slice-02 | [Nombre] | ⏳ Pendiente | - | 0 | - |
+
+### Leyenda
+
+- ✅ **Completado** — PR mergeado, evidencia capturada
+- ⚠️ **En progreso** — Worktree activo
+- 🔴 **Bloqueado** — No puede avanzar, ver Bloqueantes
+- ⏳ **Pendiente** — No iniciado
+
+---
+
+## Progreso
+
+**Slices completados:** 0 / [total]
+**Horas estimadas:** 0
+**Horas reales:** 0
+
+---
+
+## Bloqueantes Activos
+
+| Slice | Bloqueante | Desde | Acción requerida |
+|-------|-----------|-------|------------------|
+| - | - | - | - |
+
+---
+
+## Definition of Done del Spec
+
+Este spec se considera cerrado cuando:
+
+- [ ] Todos los slices están en status `completed`
+- [ ] `EVIDENCE_REPORT.md` tiene evidencia de cada slice
+- [ ] No hay slices en estado `blocked` o `in_progress`
+- [ ] PR base documental mergeado a `main`
+
+---
+
+**Fin del status**

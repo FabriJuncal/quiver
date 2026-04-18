@@ -1,0 +1,217 @@
+# {{PROJECT_NAME}} - Contexto del Proyecto
+
+**Fecha:** {{FECHA}}
+**Estado:** {{ESTADO}}
+
+---
+
+## 🎯 ¿Qué es {{PROJECT_NAME}}?
+
+[Descripción de 2-3 oraciones sobre qué es el proyecto]
+
+### Propuesta de Valor
+
+> "[Tagline del proyecto]"
+
+**Problema que resuelve:**
+- [Problema 1]
+- [Problema 2]
+
+**Solución:**
+- [Solución 1]
+- [Solución 2]
+
+---
+
+## 👥 Target
+
+**Usuario principal:** [Descripción del usuario target]
+
+**Perfil:**
+- [Característica 1]
+- [Característica 2]
+- [Característica 3]
+
+**No es para:**
+- [Usuario no target 1]
+- [Usuario no target 2]
+
+---
+
+## 💰 Modelo de Negocio (Opcional)
+
+| Plan | Precio | Límite | Target |
+|------|--------|--------|--------|
+| **Free** | $0/mes | [Límite] | Testing |
+| **Starter** | $[X]/mes | [Límite] | [Target] |
+| **Pro** | $[X]/mes | [Límite] | [Target] |
+
+---
+
+## 🏗️ Arquitectura Técnica
+
+### Stack Tecnológico
+
+```
+Frontend:
+├── [Framework]
+├── [Lenguaje]
+└── [UI Library]
+
+Backend:
+├── [Framework]
+├── [Database]
+└── [Deploy]
+```
+
+### Estructura de Directorios
+
+```
+{{PROJECT_SLUG}}/
+├── 📁 app/                    # [Descripción]
+├── 📁 components/             # [Descripción]
+├── 📁 lib/                    # [Descripción]
+├── 📁 hooks/                  # [Descripción]
+├── 📁 docs/                   # Documentación
+└── 📁 specs/                  # Especificaciones
+```
+
+---
+
+## 🔑 Features Principales
+
+### Lo que SÍ hace
+
+1. ✅ **[Feature 1]** - [Descripción]
+2. ✅ **[Feature 2]** - [Descripción]
+3. ✅ **[Feature 3]** - [Descripción]
+
+### Lo que NO hace (todavía)
+
+1. ❌ **[Feature excluido 1]** - [Razón]
+2. ❌ **[Feature excluido 2]** - [Razón]
+
+---
+
+## 📊 Estado Actual
+
+**Progreso:** {{X}}% {{FASE}} completo
+
+### Slices Completados
+
+| Slice | Título | Estado | Progreso |
+|-------|--------|--------|----------|
+| **01** | [Nombre] | ✅ | 100% |
+| **02** | [Nombre] | ✅ | 100% |
+
+### Próximos Pasos
+
+1. [ ] **[Tarea 1]** - [Descripción]
+2. [ ] **[Tarea 2]** - [Descripción]
+
+---
+
+## 🎨 Diseño UX/UI (Opcional)
+
+### Principios de Diseño
+
+1. **[Principio 1]** - [Descripción]
+2. **[Principio 2]** - [Descripción]
+
+### Identidad Visual
+
+```
+Colores:
+├── Primary: [Color]
+├── Secondary: [Color]
+└── Accent: [Color]
+
+Fonts:
+├── [Font 1] (body)
+└── [Font 2] (display)
+```
+
+---
+
+## 🔐 Seguridad y Privacidad
+
+### Privacidad
+
+**NO guardamos:**
+- [Dato sensible 1]
+- [Dato sensible 2]
+
+**SÍ guardamos:**
+- [Dato 1]
+- [Dato 2]
+
+### Seguridad
+
+- [Medida de seguridad 1]
+- [Medida de seguridad 2]
+
+---
+
+## 📈 Métricas de Éxito
+
+| Métrica | Target | Cuándo medir |
+|---------|--------|--------------|
+| **[Métrica 1]** | [Target] | [Cuándo] |
+| **[Métrica 2]** | [Target] | [Cuándo] |
+
+---
+
+## 🗺️ Mapa Mental del Código
+
+```
+{{PROJECT_SLUG}}/
+├── 📁 app/                    # [Descripción]
+│   ├── (auth)/               # [Descripción]
+│   ├── (app)/                # [Descripción]
+│   └── api/                  # [Descripción]
+│
+├── 📁 components/             # [Descripción]
+│   ├── ui/                   # [Descripción]
+│   └── [feature]/            # [Descripción]
+│
+├── 📁 lib/                    # [Descripción]
+│   ├── [modulo1]/            # [Descripción]
+│   └── [modulo2]/            # [Descripción]
+│
+└── 📁 docs/                   # 📚 DOCUMENTACIÓN
+    ├── INDEX.md              ← Empezar aquí
+    ├── CONTEXTO.md           ← Este archivo
+    └── ...
+```
+
+---
+
+## 🔄 Flujo de Datos Principal
+
+```
+[Usuario] → [Paso 1] → [Paso 2] → [Paso 3] → [Resultado]
+```
+
+---
+
+## ❓ FAQ
+
+### ¿Cómo empiezo a usar {{PROJECT_NAME}}?
+
+1. [Paso 1]
+2. [Paso 2]
+3. [Paso 3]
+
+### ¿Dónde está la documentación de API?
+
+[Link a documentación de API]
+
+### ¿Cómo contribuyo?
+
+[Link a guía de contribución]
+
+---
+
+**Fin del contexto**
+
+**Próximo paso:** Leer [INDEX.md](./INDEX.md) para navegar la documentación

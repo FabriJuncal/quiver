@@ -1,0 +1,85 @@
+# {{PROJECT_NAME}} Status
+
+**Última actualización:** {{FECHA}}
+**Próxima actualización:** {{FECHA_PROXIMA}}
+
+---
+
+## Estado General
+
+**Progreso:** {{X}}% {{FASE}} completo
+**Próximo hito:** [Descripción del próximo hito]
+**Launch:** {{FECHA_LAUNCH}}
+
+---
+
+## Slices/Tareas
+
+| Slice | Título | Estado | Progreso | Spec |
+|-------|--------|--------|----------|------|
+| **01** | [Nombre] | ✅ Completado | 100% | [spec](../specs/{{PROJECT_SLUG}}/slices/slice-01/slice.json) |
+| **02** | [Nombre] | ⚠️ En progreso | 95% | [spec](../specs/{{PROJECT_SLUG}}/slices/slice-02/slice.json) |
+| **03** | [Nombre] | ❌ Pendiente | 0% | [spec](../specs/{{PROJECT_SLUG}}/slices/slice-03/slice.json) |
+
+### Leyenda de Estados
+
+- ✅ **Completado** - 100% completo, tests pasando
+- ⚠️ **En progreso** - En implementación, >0% y <100%
+- ❌ **Pendiente** - 0% completo, no iniciado
+
+---
+
+## Próximo Hito
+
+### [Nombre del Hito]
+
+**Pendiente:**
+- [ ] [Tarea 1]
+- [ ] [Tarea 2]
+- [ ] [Tarea 3]
+
+**Tiempo estimado:** [X] horas/días
+**Prioridad:** [ALTA/MEDIA/BAJA]
+
+---
+
+## Timeline
+
+| Semana | Foco | Estado | Fecha |
+|--------|------|--------|-------|
+| Semana 1 | [Foco] | ✅ Completado | [Fecha] |
+| Semana 2 | [Foco] | ⚠️ En progreso | [Fecha] |
+| Semana 3 | [Foco] | ⏳ Pendiente | [Fecha] |
+| Semana 4 | [Foco] | ⏳ Pendiente | [Fecha] |
+
+---
+
+## Métricas
+
+| Métrica | Target | Actual | Estado |
+|---------|--------|--------|--------|
+| **Slices completados** | [X] | [Y]/[X] | [X]% |
+| **Tests pass rate** | >90% | ~[X]% | ✅/⚠️ |
+| **Documentation updated** | 100% | ~[X]% | ✅/⚠️ |
+| **Review issues** | <3 por PR | ~[X] por PR | ✅/⚠️ |
+
+---
+
+## Bloqueantes
+
+| Bloqueante | Impacto | Solución | ETA |
+|------------|---------|----------|-----|
+| [Nombre] | Alto/Medio/Bajo | [Acción] | [Tiempo] |
+
+---
+
+## Enlaces Útiles
+
+- **Spec del proyecto:** [specs/{{PROJECT_SLUG}}/SPEC.md](../specs/{{PROJECT_SLUG}}/SPEC.md)
+- **Workflow:** [docs/WORKFLOW.md](./WORKFLOW.md)
+- **IA Config:** [docs/ai/](./ai/) (si aplica)
+- **API Docs:** [docs/api/](./api/) (si aplica)
+
+---
+
+**Fin del status**

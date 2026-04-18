@@ -1,0 +1,223 @@
+# Workflow Multi-Agente
+
+**Fecha:** {{FECHA}}
+**Proposito:** Estandarizar cuándo y cómo trabajar con múltiples agentes en este proyecto
+**Audiencia:** IA agents y humanos que coordinan trabajo paralelo
+
+---
+
+## Objetivo
+
+Este documento define las buenas prácticas mínimas para usar varios agentes sin perder trazabilidad, sin pisarse entre sí y sin convertir la coordinación en el problema principal.
+
+No reemplaza:
+
+- [Workflow](./WORKFLOW.md)
+- [Documentation Guide](./DOCUMENTATION_GUIDE.md)
+
+Los complementa cuando una tarea requiere trabajo paralelo.
+
+---
+
+## Principio Rector
+
+**Más agentes no implica más velocidad.**
+
+Usar multi-agente solo cuando el trabajo pueda particionarse con bajo acoplamiento, ownership claro y consolidación simple.
+
+Si la coordinación cuesta más que la ejecución, no corresponde paralelizar.
+
+---
+
+## Cuándo Sí Usarlo
+
+Usar multi-agente cuando se cumplan varias de estas condiciones:
+
+- hay exploración de muchos archivos
+- hay búsquedas paralelas independientes
+- existen subtareas con write sets distintos
+- el trabajo puede dividirse por módulo, capa o slice sin superposición fuerte
+- hace falta juntar evidencia en paralelo
+- un agente principal puede seguir avanzando mientras los demás trabajan
+
+---
+
+## Cuándo No Usarlo
+
+No usar multi-agente cuando:
+
+- la tarea toca pocos archivos y ya está clara
+- hay un único archivo central que todos tendrían que tocar
+- el trabajo depende de una misma sesión mutable o de un mismo recurso compartido
+- el siguiente paso del principal depende del resultado inmediato de un worker
+- la tarea requiere coordinación fina continua
+
+---
+
+## Preflight Obligatorio
+
+Antes de lanzar agentes, el principal debe dejar resuelto:
+
+1. objetivo exacto
+2. criterio de partición
+3. ownership por archivo o dominio
+4. artefactos de salida esperados
+5. regla de merge o consolidación
+6. recursos compartidos sensibles
+7. criterio de `pass/fail/blocked` si aplica
+
+Si no podés escribir eso en pocas líneas, todavía no está listo para paralelizar.
+
+---
+
+## Ownership
+
+Regla principal:
+
+**cada worker debe tener ownership exclusivo de write set o de output set.**
+
+Si dos workers necesitan el mismo archivo, ese archivo debe quedar en manos del principal o de un solo worker.
+
+---
+
+## Coordinacion con Agentes Externos
+
+El principal puede coordinar y consolidar trabajo de agentes externos, pero no debe asumir que controla su ciclo de vida o su consola.
+
+Regla operativa:
+
+- el operador o coordinador lanza y mantiene esos agentes
+- el principal define prompts, ownership y criterio de salida
+- la consolidacion se hace solo sobre entregas efectivas, no sobre expectativas de ejecucion
+
+Si un agente externo no devuelve una entrega util, se considera **no entregado**.
+
+---
+
+## Multi-Agente con Specs y Slices
+
+Si la tarea es sustantiva:
+
+- primero debe existir un spec
+- después debe existir el slice activo
+- recién entonces conviene paralelizar
+
+Secuencia recomendada:
+
+1. triage
+2. planning
+3. PR base de documentación
+4. merge a `develop`
+5. recién ahí worktrees por slice
+
+Reglas:
+
+- un slice puede ejecutarse con varios agentes si el scope interno está bien partido
+- varios slices pueden correr en paralelo solo si no se pisan
+- la documentación del slice se actualiza de forma centralizada
+- los `slice-00` en specs distintos suelen ser buenos candidatos para paralelo
+- los `slice-XX-revalidation` van al final
+- la documentación global se consolida una sola vez
+- el bootstrap de rama/worktree se hace de forma centralizada antes de delegar
+- por default, el coordinador u operador crea los worktrees y luego asigna cada `cwd`
+- un worker no crea ramas o worktrees compartidos salvo instruccion explicita del coordinador
+
+No correr en paralelo desde varios branches:
+
+- status globales
+- índices globales equivalentes
+
+---
+
+## Heuristica por Tipo de Modelo
+
+La estrategia de paralelo no define solo cuántos agentes abrir.
+Tambien define qué clase de modelo conviene asignar a cada tramo.
+
+### Bootstrap Centralizado
+
+Regla operativa por default:
+
+- el coordinador u operador crea primero los worktrees con `start-slice.sh`
+- cada worker recibe el `slice.json` y el `cwd` ya preparado
+- los workers no bootstrapean ramas/worktrees salvo delegacion explicita
+
+Motivo:
+
+- evita carreras o duplicacion de bootstrap
+- evita que dos agentes creen la misma rama
+- reduce contexto desperdiciado en setup
+- deja mas control sobre paths, ownership y orden de ejecucion
+
+### Modelo Economico
+
+Conviene usarlo para trabajo mecanico, de bajo riesgo o de baja ambiguedad:
+
+- bootstrap centralizado de rama/worktree desde `slice.json`
+- `slice-00` de baseline o auditoria
+- relevamiento documental
+- evidencia simple
+- actualizacion local del spec cuando no hay decisiones complejas
+
+### Modelo Fuerte
+
+Conviene usarlo para trabajo ambiguo, de integracion o de alto impacto:
+
+- triage y decision de contenedor
+- splitting de specs y slices
+- bugs de runtime o de inyeccion de dependencias
+- feature flags, navegacion o contratos ambiguos
+- cambios cross-module
+- refactors delicados
+- cierre tecnico final antes del PR
+
+### Regla de Escalado
+
+Escalar de modelo economico a modelo fuerte cuando:
+
+- aparece un error de runtime o DI no trivial
+- el slice toca mas de un modulo
+- el write set empieza a crecer sin control
+- hay contratos, feature flags o efectos colaterales ambiguos
+- la validacion muestra una regresion que no estaba prevista
+
+---
+
+## Criterio de Entrega Valida
+
+Una entrega de worker se considera valida solo si incluye, como minimo:
+
+- cambios implementados o hallazgos concretos
+- archivos tocados o revisados
+- validacion realizada
+- evidencia concreta
+- riesgos o bloqueos abiertos
+
+No cuenta como entrega valida:
+
+- una respuesta meta sobre el proceso
+- una recomendacion generica sin trabajo verificable
+- una nota de coordinacion sin cambios ni evidencia
+
+Si la entrega no cumple este contrato:
+
+- el slice queda `no entregado`
+- no habilita el siguiente slice
+- el coordinador decide si se reintenta, se corrige el prompt o se escala
+
+---
+
+## Anti-Patrones
+
+Evitar:
+
+- lanzar agentes “por las dudas”
+- partir por cantidad de trabajo sin mirar acoplamiento
+- dejar que varios workers muten el mismo estado
+- pedirle a un worker que resuelva el próximo bloqueo inmediato del principal
+- mezclar auditoría y fix en la misma corrida sin recorte
+- reescribir localmente el trabajo ya delegado
+
+---
+
+**Fin del workflow multi-agente**

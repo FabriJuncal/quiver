@@ -1,0 +1,116 @@
+# {{PROJECT_NAME}}
+
+**Fecha:** {{FECHA}}
+**Estado:** {{ESTADO}}
+
+---
+
+## Objetivo
+
+[Objetivo general del proyecto en 1-2 oraciones]
+
+---
+
+## Alcance
+
+### Incluye (Fase 1 - MVP)
+
+- ✅ [Feature 1] - [Descripción breve]
+- ✅ [Feature 2] - [Descripción breve]
+- ✅ [Feature 3] - [Descripción breve]
+
+### Excluye (Fase 2 - Post-MVP)
+
+- ❌ [Feature excluido 1] - [Razón de exclusión]
+- ❌ [Feature excluido 2] - [Razón de exclusión]
+
+---
+
+## Timeline
+
+| Fase | Descripción | Fecha Estimada |
+|------|-------------|----------------|
+| **Fase 1** | [Descripción] | {{FECHA}} |
+| **Fase 2** | [Descripción] | {{FECHA}} |
+| **Fase 3** | [Descripción] | {{FECHA}} |
+
+---
+
+## Slices
+
+| Slice | Título | Estado | Spec |
+|-------|--------|--------|------|
+| **01** | [Nombre] | ⏳ Pendiente | [slice-01](./slices/slice-01/slice.json) |
+| **02** | [Nombre] | ⏳ Pendiente | [slice-02](./slices/slice-02/slice.json) |
+| **03** | [Nombre] | ⏳ Pendiente | [slice-03](./slices/slice-03/slice.json) |
+
+---
+
+## Arquitectura
+
+### Stack Tecnológico
+
+```
+[Stack tecnológico del proyecto]
+```
+
+### Estructura de Directorios
+
+```
+{{PROJECT_SLUG}}/
+├── app/
+├── components/
+├── lib/
+└── docs/
+```
+
+---
+
+## Métricas de Éxito
+
+| Métrica | Target | Cuándo medir |
+|---------|--------|--------------|
+| **[Métrica 1]** | [Target] | [Cuándo] |
+| **[Métrica 2]** | [Target] | [Cuándo] |
+
+---
+
+## Supuestos
+
+- [Supuesto 1]
+- [Supuesto 2]
+- [Supuesto 3]
+
+---
+
+## Dependencias
+
+- [Dependencia 1]
+- [Dependencia 2]
+
+---
+
+## Riesgos
+
+| Riesgo | Impacto | Mitigación |
+|--------|---------|------------|
+| [Riesgo 1] | Alto/Medio/Bajo | [Mitigación] |
+| [Riesgo 2] | Alto/Medio/Bajo | [Mitigación] |
+
+---
+
+## Definition of Done
+
+Este spec se considera cerrado cuando:
+
+- [ ] Todos los slices están en `status: completed`
+- [ ] Ningún slice en `status: blocked` o `in_progress`
+- [ ] `EVIDENCE_REPORT.md` tiene evidencia de cada slice
+- [ ] `STATUS.md` del spec refleja 100% completado
+- [ ] PR base documental mergeado a `main`
+
+---
+
+**Fin del SPEC**
+
+**Próximo:** Crear directorios de slice en `slices/<slice-id>/`

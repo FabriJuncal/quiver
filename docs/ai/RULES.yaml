@@ -1,0 +1,321 @@
+# Reglas de Comportamiento de IA
+
+**version:** 1.0.0  
+**last_updated:** 2026-03-13  
+**next_review:** 2026-03-20
+
+---
+
+## planning
+
+### Cuándo planificar (auto-trigger)
+
+```yaml
+auto_trigger_if:
+  - files_to_change > 5
+  - includes_architecture_decision: true
+  - includes_db_migration: true
+  - estimated_complexity > 7/10
+  - first_time_doing_this_task: true
+
+skip_if:
+  - files_to_change <= 2
+  - similar_task_done_before: true
+  - user_explicitly_said: "no plan needed"
+```
+
+### Formato de plan
+
+```yaml
+# tasks/plan-YYYY-MM-DD-task-name.yaml
+task: "Descripción de la tarea"
+complexity: 5/10
+estimated_time: 2-3h
+
+steps:
+  - id: 1
+    description: "Paso 1"
+    files: ["archivo1.ts"]
+    estimated_time: 30m
+    
+  - id: 2
+    description: "Paso 2"
+    files: ["archivo2.ts"]
+    depends_on: [1]
+    estimated_time: 45m
+
+verification:
+  - "npm run build pasa sin errores"
+  - "Tests E2E pasan"
+```
+
+---
+
+## review
+
+### Pre-PR Checklist (automática)
+
+```yaml
+auto_check:
+  tests_pass: true
+  lint_pass: true
+  type_check_pass: true
+  no_console_log: true
+  no_todo_comments: true
+  no_debugger: true
+
+manual_review_required_if:
+  - files_changed > 10
+  - includes_security_changes: true
+  - includes_db_migrations: true
+  - includes_api_changes: true
+```
+
+### Criterios de review
+
+```yaml
+review_criteria:
+  - "¿Hay tests para cambios funcionales?"
+  - "¿El código es legible sin comentarios?"
+  - "¿Seguimos patrones existentes?"
+  - "¿Hay efectos secundarios no obvios?"
+  - "¿No hay secrets en el código?"
+```
+
+### Prompt de review (no confrontacional)
+
+```
+Revisá este cambio con los criterios del review checklist.
+
+Si encontrás problemas, listalos con:
+1. Archivo + línea
+2. Problema específico
+3. Solución sugerida
+
+Implementá solo los fixes aprobados.
+```
+
+---
+
+## subagents
+
+### Cuándo usar subagentes
+
+```yaml
+use_if:
+  - exploration_files > 20
+  - parallel_searches > 3
+  - independent_tasks > 2
+
+max_concurrent: 5
+timeout_per_agent: 5m
+```
+
+### Cuándo NO usar subagentes
+
+```yaml
+do_not_use_if:
+  - files_to_explore <= 10
+  - task_requires_coordination: true
+  - context_window_is_clean: true
+```
+
+### Formato de delegación
+
+```yaml
+subagent:
+  task: "Explorar estructura de componentes React"
+  scope: "components/**/*.tsx"
+  max_files: 20
+  output: "test-results/component-structure.md"
+  timeout: 5m
+```
+
+### Coordinación de subagentes
+
+1. Subagente escribe resultado en archivo temporal
+2. Agente principal lee y consolida
+3. Archivos temporales se eliminan después
+
+---
+
+## commits
+
+### Formato de mensaje
+
+```
+tipo(modulo): descripción [TICKET]
+
+- Cambio 1
+- Cambio 2
+
+Refs: #TICKET
+```
+
+### Reglas de commit
+
+```yaml
+max_files_per_commit: 5
+atomic_commits: true
+no_wip_commits: false  # WIP commits OK en feature branches
+
+commit_types:
+  feat: Nueva funcionalidad
+  fix: Corrección de bug
+  refactor: Refactor sin cambio funcional
+  test: Tests nuevos o modificados
+  docs: Documentación
+  chore: Tareas de mantenimiento
+```
+
+---
+
+## documentation
+
+### Cuándo actualizar documentación
+
+```yaml
+update_if:
+  - api_endpoint_created: true
+  - api_endpoint_changed: true
+  - new_feature: true
+  - behavior_changed: true
+  - spec_changed: true
+```
+
+### Archivos a actualizar
+
+```yaml
+files:
+  - "docs/api/*/README.md"
+  - "docs/INDEX.md"
+  - "specs/[spec]/slices/[slice-id]/slice.json"
+  - "specs/[spec]/slices/[slice-id]/pr.md"
+```
+
+### Checklist de documentación por feature
+
+```yaml
+checklist:
+  - "Endpoint documentado en docs/api/[modulo]/README.md"
+  - "Spec actualizado en specs/[spec]/slices/[slice-id]/slice.json"
+  - "INDEX.md actualizado (si hay nuevos archivos)"
+  - "pr.md actualizado en el directorio del slice"
+```
+
+---
+
+## testing
+
+### Tests obligatorios
+
+```yaml
+required_tests:
+  - e2e: "Para flujos completos (registro → dashboard)"
+  - integration: "Para endpoints de API"
+  - unit: "Para funciones complejas (cálculo de costos)"
+```
+
+### Evidencia de testing
+
+```yaml
+evidence:
+  screenshots: "test-results/screenshots/"
+  logs: "test-results/logs/"
+  reports: "test-results/SLICE-XX-EVIDENCE-REPORT.md"
+```
+
+### Comandos de testing
+
+```yaml
+commands:
+  test_e2e: "npm run test:e2e"
+  test_e2e_ui: "npm run test:e2e:ui"
+  test_e2e_report: "npm run test:e2e:report"
+  lint: "npm run lint"
+  type_check: "npx tsc --noEmit"
+  build: "npm run build"
+```
+
+---
+
+## privacy
+
+### Datos sensibles
+
+```yaml
+never_log:
+  - api_keys
+  - passwords
+  - tokens
+  - datos_personales_usuarios
+
+always_mask:
+  - api_keys: "••••" + last_4_chars
+  - emails: "j***@***.com"
+```
+
+---
+
+## code_quality
+
+### Estándares de código
+
+```yaml
+naming:
+  variables: camelCase
+  constants: UPPER_SNAKE_CASE
+  files: kebab-case
+  components: PascalCase
+
+structure:
+  max_lines_per_function: 50
+  max_lines_per_file: 500
+  max_parameters: 3
+```
+
+### Anti-patrones
+
+```yaml
+avoid:
+  - console.log_en_produccion
+  - any_type_en_typescript
+  - comentarios_que_explican_que_hace_el_codigo
+  - magic_numbers_sin_constante
+  - funciones_con_mas_de_3_parametros
+```
+
+---
+
+## workflow
+
+### Flujo de trabajo estándar
+
+```yaml
+workflow:
+  1_recibir_tarea: "Leer spec del slice"
+  2_entender_contexto: "Leer docs/CONTEXTO.md si es necesario"
+  3_planificar: "Crear plan si es requerido (ver planning)"
+  4_implementar: "Seguir plan, paso por paso"
+  5_testear: "Tests + evidencia"
+  6_documentar: "Actualizar docs"
+  7_crear_pr: "Seguir GITFLOW_PR_GUIDE.md"
+  8_archivar: "PR documentado en specs/[spec]/slices/[slice-id]/pr.md"
+```
+
+### Comandos disponibles
+
+```yaml
+commands:
+  "/plan": "Crear plan para tarea"
+  "/review": "Review automático"
+  "/techdebt": "Scan de deuda técnica"
+  "/context": "Mostrar contexto actual"
+  "/lessons": "Mostrar lessons learned"
+```
+
+---
+
+## Fin del documento
+
+**Próximo:** Leer `.ai/PRINCIPLES.md` para principios fundamentales

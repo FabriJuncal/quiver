@@ -1,0 +1,53 @@
+# {{PROJECT_NAME}} - Evidence Report
+
+**Spec:** [Nombre del spec]
+**Última actualización:** {{FECHA}}
+**Estado:** En progreso
+
+---
+
+## Resumen
+
+| Slice | Acceptance Criteria | Estado | Evidencia |
+|-------|---------------------|--------|-----------|
+| slice-01 | [Total criterios] | ⏳ Pendiente | - |
+| slice-02 | [Total criterios] | ⏳ Pendiente | - |
+
+---
+
+## Evidencia por Slice
+
+<!--
+  Completar esta sección a medida que se cierra cada slice.
+  Formato por slice:
+
+  ### slice-XX — [Título]
+
+  **PR:** #[número] | **Merged:** YYYY-MM-DD
+
+  #### Acceptance Criteria
+
+  | # | Criterio | Estado | Evidencia |
+  |---|---------|--------|-----------|
+  | 1 | [criterio del slice.json] | ✅ | [descripción o link] |
+  | 2 | [criterio del slice.json] | ✅ | [descripción o link] |
+
+  #### Testing
+
+  | Tipo | Comando / Descripción | Resultado |
+  |------|-----------------------|-----------|
+  | Unit | `npm test` | ✅ PASS |
+  | Manual | [descripción del paso manual] | ✅ OK |
+
+  #### Capturas / Logs
+
+  - `test-results/[slice-id]/` — [descripción]
+
+  ---
+-->
+
+_Sin evidencia registrada aún._
+
+---
+
+**Fin del reporte**

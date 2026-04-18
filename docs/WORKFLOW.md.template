@@ -1,0 +1,415 @@
+# Workflow de Implementacion
+
+**Fecha:** {{FECHA}}
+**Proposito:** Definir el flujo canonico de trabajo desde requerimiento hasta
+merge para humanos y modelos de IA
+
+---
+
+## Objetivo
+
+Este documento es la fuente canonica del proceso del proyecto.
+
+Define:
+
+- como pasar de requerimientos a plan
+- como decidir si se crea un spec nuevo o se reutiliza uno existente
+- como cortar el trabajo en slices
+- cuando abrir ramas y worktrees
+- como validar, evidenciar, abrir PRs y consolidar estado
+
+Otros documentos:
+
+- [GITFLOW.md](./GITFLOW.md)
+- [GITFLOW_PR_GUIDE.md](./GITFLOW_PR_GUIDE.md)
+- [MULTI_AGENT_WORKFLOW.md](./MULTI_AGENT_WORKFLOW.md)
+
+---
+
+## Dos Tracks
+
+El workflow esta dividido en dos tracks con responsabilidades distintas y
+un gate formal entre ellos.
+
+```
+TRACK 1: PLANNING (SDD-driven)        TRACK 2: EJECUCION (WDD-driven)
+Owner: planner (humano o IA)          Owner: implementer (IA o developer)
+─────────────────────────────         ─────────────────────────────────────
+Fase 0. Triage                        Fase 3. Bootstrap (start-slice.sh)
+Fase 1. Planning                      Fase 4. Implementacion
+Fase 2. PR Base Documental            Fase 5. Validacion
+                                      Fase 6. Evidencia
+              │                       Fase 7. Correccion y Revalidacion
+              ▼                       Fase 8. PR del Slice
+   ┌─────────────────────┐            Fase 9. Cierre y Consolidacion
+   │  GATE: Definition   │
+   │    of Ready         │
+   └─────────────────────┘
+              │
+              ▼
+         Track 2
+```
+
+**Regla:** ningun slice pasa al Track 2 sin haber pasado el gate.
+
+---
+
+## Principios Fundamentales
+
+1. **La IA no ejecuta cambios sustantivos sin slice especifico**
+2. **1 slice = 1 rama = 1 worktree = 1 PR**
+3. **El spec planifica; el slice ejecuta**
+4. **El planning y la ejecucion tienen owners distintos**
+5. **Ningun slice pasa a ejecucion sin status `ready`**
+6. **Primero se mergea el PR base de documentacion; despues se ejecutan slices**
+7. **Sin validacion y evidencia, el slice no se considera resuelto**
+8. **Los status globales se consolidan, no se editan en paralelo desde varios branches**
+9. **El merge es responsabilidad exclusiva del humano — la IA abre el PR y no toca mas la rama**
+
+---
+
+## Track 1: Planning
+
+**Owner:** planner (humano o IA de planning)
+**Objetivo:** producir un spec ejecutable antes de que el implementer empiece
+
+### Fase 0. Triage
+
+Antes de escribir codigo o abrir worktrees, decidir el contenedor correcto:
+
+1. ¿el requerimiento entra en un spec existente?
+2. ¿requiere un spec nuevo?
+3. ¿alcanza con agregar un slice a un spec ya abierto?
+4. ¿es un fix operativo o una iniciativa funcional?
+
+Salida minima:
+
+- dominio afectado
+- prioridad inicial
+- decision de contenedor
+
+### Fase 1. Planning
+
+1. relevar requerimientos
+2. armar plan
+3. crear o actualizar spec(s)
+4. crear slices con `status: draft`
+5. definir estrategia de ejecucion (paralelo vs serial)
+6. revisar que cada slice tenga `acceptance`, `files` y `ticket`
+7. marcar cada slice como `status: ready` cuando este especificado
+
+Artefactos esperados:
+
+- `SPEC.md` con `## Definition of Done` completo
+- `STATUS.md` del spec
+- `EVIDENCE_REPORT.md` del spec (vacio, listo para llenarse)
+- `slices/<slice-id>/slice.json` con `status: ready`
+
+### Fase 2. PR Base de Documentacion
+
+Cuando el plan y los slices ya estan definidos, se crea un PR base solo con:
+
+- specs y slices
+- docs de workflow o proceso
+- status operativos globales si hace falta
+
+Regla: ese PR debe mergearse a `develop` antes de abrir worktrees de ejecucion.
+
+---
+
+## Gate: Definition of Ready
+
+Este gate es la frontera entre los dos tracks.
+**Un slice no puede pasar al Track 2 sin pasar este gate.**
+
+### Criterios
+
+| Criterio | Como se verifica |
+|----------|-----------------|
+| `status: ready` | `slice.json.status === "ready"` |
+| Acceptance criteria declarados | `acceptance` no vacio, sin placeholders |
+| Archivos declarados | `files` no vacio |
+| Metadata git completa | `ticket`, `git.branch_name` presentes |
+| PR base documental mergeado | slice existe en `origin/develop` |
+| Sin overlap activo con otros slices | sin worktrees activos que pisen los mismos archivos |
+
+### Comando
+
+```bash
+npm run check:slice -- specs/{{PROJECT_SLUG}}/slices/<slice-id>/slice.json --gate ready
+```
+
+Si el gate falla, el slice vuelve al Track 1 para ser completado.
+
+---
+
+## Track 2: Ejecucion
+
+**Owner:** implementer (IA o developer)
+**Objetivo:** ejecutar el slice con fidelidad al contrato del spec
+
+### Fase 3. Bootstrap
+
+```bash
+npm run start:slice -- specs/{{PROJECT_SLUG}}/slices/<slice-id>/slice.json
+```
+
+Esto crea la rama y el worktree. Leer `WORKTREE_CONTEXT.md` antes de empezar.
+
+Actualizar `slice.json`:
+
+```json
+{ "status": "in_progress", "started_at": "YYYY-MM-DDTHH:MM:SSZ" }
+```
+
+### Fase 4. Implementacion
+
+1. implementar solo el alcance declarado en `must` y `acceptance`
+2. no tocar archivos fuera de `files` (ver `check-scope.sh`)
+3. mantener alineados los documentos locales del spec
+
+### Fase 5. Validacion
+
+1. validar funcionalmente cada criterio de `acceptance`
+2. correr tests declarados en `tests`
+3. verificar manualmente si hace falta
+
+Gate:
+
+```bash
+npm run check:slice -- specs/{{PROJECT_SLUG}}/slices/<slice-id>/slice.json --gate validation
+```
+
+### Fase 6. Evidencia
+
+La evidencia es un paso separado de la validacion.
+Llenar `EVIDENCE_REPORT.md` con:
+
+- resultado de cada acceptance criterion
+- evidencia de testing (comandos, capturas, logs)
+- referencias a `test-results/`
+
+### Fase 7. Correccion y Revalidacion
+
+Si aparecen hallazgos:
+
+1. corregir
+2. volver a fase 5
+3. actualizar evidencia
+
+### Fase 8. PR del Slice
+
+1. actualizar `pr.md`
+2. hacer commit(s)
+3. push de la rama
+4. abrir PR
+5. actualizar `slice.json` a `status: under_review`
+
+Reglas:
+
+- un PR por slice; `pr.md` junto al slice es la fuente de verdad del cuerpo del PR
+- **el merge es responsabilidad exclusiva del humano** — el agente de IA abre
+  el PR listo para revisar y no vuelve a tocar la rama; el humano revisa,
+  aprueba y hace merge
+
+Gate (incluye check-scope automaticamente):
+
+```bash
+npm run check:pr -- specs/{{PROJECT_SLUG}}/slices/<slice-id>/slice.json
+```
+
+### Fase 9. Cierre y Consolidacion
+
+1. actualizar `slice.json` a `status: completed`, `completed_at`
+2. consolidar `STATUS.md` del spec
+3. si todos los slices completados: verificar `## Definition of Done` en `SPEC.md`
+4. borrar rama y worktree si corresponde
+5. cerrar el ticket o moverlo de estado
+
+---
+
+## Estrategia de Paralelizacion
+
+Regla canonica:
+
+- **1 slice = 1 rama = 1 worktree = 1 PR**
+
+Se puede paralelizar solo si:
+
+- los slices no comparten archivos de codigo
+- no comparten la documentacion central del mismo spec
+- no dependen del resultado intermedio del otro slice
+- hay ownership claro
+
+Antes de abrir una ola de implementacion:
+
+- revisar el campo `files` de cada `slice.json`
+- detectar overlap real de write set
+- serializar cualquier par de slices que comparta archivos
+
+Si dos slices comparten paths, no deben lanzarse en paralelo.
+
+Candidatos naturales:
+
+- `slice-00` de baseline o auditoria en specs distintos
+- slices de implementacion en specs distintos que no pisan archivos
+
+Se debe serializar cuando:
+
+- dos slices tocan el mismo archivo
+- dos slices del mismo spec necesitan editar al mismo tiempo `SPEC.md`, `STATUS.md` o `EVIDENCE_REPORT.md`
+- un slice de revalidacion depende de implementaciones todavia abiertas
+
+Documentacion global que no conviene tocar en paralelo:
+
+- status globales
+- indices o resumentes globales equivalentes
+
+---
+
+## Politica de Worktrees de Baseline
+
+Cuando un `slice-00` de baseline o auditoria queda cerrado:
+
+- su worktree pasa a estado **congelado**
+- se puede usar como referencia o lectura
+- no se deben seguir implementando fixes ahi
+
+Regla operativa:
+
+- toda implementacion nueva va a worktrees de `slice-01`, `slice-02`, etc.
+- el worktree baseline se mantiene hasta que la primera ola de implementacion este estable
+- despues puede limpiarse si ya no hace falta para contraste o evidencia
+
+No mezclar baseline e implementacion en el mismo worktree una vez congelado el `slice-00`.
+
+---
+
+## Regla de Actualizacion de Estado
+
+Separar siempre dos niveles:
+
+### Estado local del slice/spec
+
+Se puede actualizar durante la ejecucion del slice:
+
+- `slice.json`
+- `STATUS.md` del spec
+- `EVIDENCE_REPORT.md` del spec
+
+### Estado global
+
+Se consolida despues, una sola vez.
+
+No mezclar ambos niveles en paralelo.
+
+---
+
+## Ciclo de Vida del Worktree
+
+Todo worktree debe estar en uno de estos estados:
+
+1. `activo`
+   - se esta implementando, validando o cerrando el slice
+   - no se borra
+2. `congelado`
+   - aplica normalmente a `slice-00`
+   - queda solo lectura y sirve de referencia
+3. `cerrado`
+   - el PR ya fue mergeado, rechazado o abandonado
+   - se elimina worktree y rama local
+
+Reglas operativas:
+
+- `slice-00` no se elimina al cerrar el baseline
+- `slice-00` pasa a `congelado`
+- un `slice-00` se puede eliminar cuando la primera ola de implementacion del spec ya esta estable o mergeada y no hace falta mas como evidencia
+- `slice-01+` se elimina cuando el PR fue mergeado, rechazado o reemplazado y `develop` local ya fue actualizado
+- si un slice queda pausado pero sigue vigente, el worktree se mantiene
+- si un slice se descarta o se recrea desde cero, el worktree anterior se cierra
+
+Comandos estandar:
+
+```bash
+git worktree remove /ruta/al/worktree
+git branch -d nombre-de-rama
+```
+
+Si hace falta forzar el cierre:
+
+```bash
+git worktree remove --force /ruta/al/worktree
+git branch -D nombre-de-rama
+```
+
+Comandos recomendados para aplicar la politica:
+
+```bash
+npm run cleanup:slice -- specs-fix/<spec>/slices/<slice-id>/slice.json
+```
+
+Si el slice se descarta o se reemplaza:
+
+```bash
+npm run cleanup:slice -- specs-fix/<spec>/slices/<slice-id>/slice.json --discard --force
+```
+
+---
+
+## Antipatrones
+
+Evitar:
+
+- **pasar un slice al Track 2 con `status: draft`** — el gate de Definition of Ready existe para esto
+- **mezclar roles de planner e implementer en el mismo contexto** — el planner define el contrato, el implementer lo ejecuta
+- abrir worktrees de ejecucion antes de mergear la documentacion base
+- crear specs nuevos sin decidir antes si ya existe un contenedor adecuado
+- actualizar status globales desde varios branches a la vez
+- ejecutar varios slices del mismo spec sin revisar overlap de archivos
+- generar PRs por spec cuando el trabajo real esta cortado por slice
+- considerar validado un slice sin evidencia util
+- **tocar archivos fuera de `slice.json.files`** — es scope creep silencioso
+- **hacer merge desde la IA** — el merge siempre lo hace el humano
+
+---
+
+## Checklist Rapido
+
+### Track 1: Planning (antes del gate)
+
+- [ ] Se hizo triage y se decidio el contenedor
+- [ ] `SPEC.md` creado con `## Definition of Done`
+- [ ] `STATUS.md` y `EVIDENCE_REPORT.md` del spec creados
+- [ ] Cada slice tiene `acceptance`, `files` y `ticket` completos
+- [ ] Cada slice esta en `status: ready`
+- [ ] Existe estrategia de paralelo/serializacion
+- [ ] Se reviso overlap de `files` contra otros slices de la misma ola
+
+### Gate: Definition of Ready
+
+- [ ] Paso `npm run check:slice -- <slice.json> --gate ready`
+- [ ] PR base documental mergeado a `develop`
+
+### Track 2: Ejecucion (por slice)
+
+- [ ] `slice.json` actualizado a `status: in_progress` y `started_at`
+- [ ] Implementacion dentro del scope declarado en `files`
+- [ ] Paso `npm run check:slice -- <slice.json> --gate validation`
+- [ ] `EVIDENCE_REPORT.md` del spec actualizado
+- [ ] `pr.md` actualizado
+- [ ] Paso `npm run check:pr -- <slice.json>` (incluye check-scope)
+- [ ] PR abierto en GitHub con cuerpo copiado de `pr.md`
+- [ ] `slice.json` actualizado a `status: under_review`
+- [ ] IA no toca mas la rama — el humano revisa, aprueba y mergea
+
+### Despues del merge
+
+- [ ] `slice.json` actualizado a `status: completed` y `completed_at`
+- [ ] `STATUS.md` del spec consolidado
+- [ ] Si todos los slices completados: verificar `## Definition of Done` en `SPEC.md`
+- [ ] `develop` local actualizado antes del cleanup
+- [ ] Worktree marcado como `congelado` o `cerrado` segun politica
+
+---
+
+**Fin del workflow**

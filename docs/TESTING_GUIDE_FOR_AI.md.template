@@ -1,0 +1,686 @@
+# Testing Guide for AI - Template
+
+**Fecha:** [YYYY-MM-DD]  
+**Propósito:** Establecer el proceso de testing que la IA debe seguir al implementar cada slice  
+**Audiencia:** IA (Agentes de código) y desarrolladores humanos
+
+---
+
+## 📋 Objetivo
+
+Esta guía establece el **proceso estándar de testing** que la IA debe ejecutar cada vez que se le indique implementar un slice. Asegura que:
+
+1. ✅ Los cambios funcionen correctamente
+2. ✅ No haya regresiones
+3. ✅ Las evidencias queden capturadas
+4. ✅ El progreso sea verificable
+5. ✅ Los errores se documenten y fixeen
+
+---
+
+## 🔄 Flujo de Testing por Slice
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│ 1. ANTES DE IMPLEMENTAR                                     │
+│    - Leer SPEC del slice                                    │
+│    - Identificar tests requeridos                           │
+│    - Verificar estado actual                                │
+└─────────────────────────────────────────────────────────────┘
+                           ↓
+┌─────────────────────────────────────────────────────────────┐
+│ 2. DURANTE IMPLEMENTACIÓN                                   │
+│    - Implementar cambios                                    │
+│    - Verificar con grep/lint                                │
+│    - Capturar evidencias intermedias                        │
+└─────────────────────────────────────────────────────────────┘
+                           ↓
+┌─────────────────────────────────────────────────────────────┐
+│ 3. DESPUÉS DE IMPLEMENTAR                                   │
+│    - Ejecutar smoke test                                    │
+│    - Ejecutar tests específicos del slice                   │
+│    - Capturar screenshots                                   │
+│    - Identificar errores/fallos                             │
+└─────────────────────────────────────────────────────────────┘
+                           ↓
+┌─────────────────────────────────────────────────────────────┐
+│ 4. SI HAY ERRORES → GENERAR SPECS-FIX                       │
+│    - Documentar error encontrado                            │
+│    - Crear spec-fix con slice para el bug                   │
+│    - Priorizar según severidad                              │
+└─────────────────────────────────────────────────────────────┘
+                           ↓
+┌─────────────────────────────────────────────────────────────┐
+│ 5. ACTUALIZAR DOCUMENTACIÓN                                 │
+│    - STATUS.md con progreso                                 │
+│    - Evidencias en test-results/                            │
+│    - Specs-fix creados en specs-fix/                        │
+└─────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 📝 Paso 1: Antes de Implementar
+
+### 1.1 Leer SPEC del Slice
+
+```bash
+# Leer el SPEC del slice
+cat specs-fix/[proyecto]/slices/slice-XX-*.json
+```
+
+**Qué buscar:**
+- `tests` → Lista de tests a ejecutar
+- `acceptance` → Criterios de aceptación
+- `verification_commands` → Comandos de verificación
+
+### 1.2 Identificar Tests Requeridos
+
+Ejemplo desde `slice-XX-*.json`:
+
+```json
+{
+  "tests": [
+    "tests/e2e/modules/[modulo]/[test].test.ts → test '[Nombre]'",
+    "tests/e2e/modules/[modulo]/smoke-test.test.ts"
+  ],
+  "verification_commands": [
+    "grep -r 'patrón' [archivos]"
+  ]
+}
+```
+
+### 1.3 Verificar Estado Actual
+
+```bash
+# Ejecutar smoke test primero
+npm run test:e2e -- tests/e2e/modules/[modulo]/smoke-test.test.ts --reporter=list
+
+# Verificar estado del código antes de cambios
+git status
+git diff
+```
+
+---
+
+## 🛠️ Paso 2: Durante Implementación
+
+### 2.1 Implementar Cambios
+
+Seguir los `implementation_steps` del SPEC.
+
+### 2.2 Verificación Intermedia
+
+Después de cada archivo modificado:
+
+```bash
+# Verificar que no hay errores de sintaxis
+npx tsc --noEmit
+
+# Verificar eliminación de código específico
+grep -r 'patrón-a-eliminar' [archivos-modificados]
+# Debe retornar 0 resultados
+```
+
+### 2.3 Capturar Evidencias Intermedias
+
+```bash
+# Crear directorio de evidencias
+mkdir -p test-results/screenshots/[slice-id]/
+
+# Capturar cambios importantes
+git diff > test-results/screenshots/[slice-id]/changes.diff
+```
+
+---
+
+## ✅ Paso 3: Después de Implementar
+
+### 3.1 Ejecutar Smoke Test
+
+**Propósito:** Verificar que el servidor responde y no hay errores críticos.
+
+```bash
+# Ejecutar smoke test
+npm run test:e2e -- tests/e2e/modules/[modulo]/smoke-test.test.ts --reporter=list
+
+# Verificar que pasa
+# ✅ Debe mostrar "X passed"
+```
+
+### 3.2 Ejecutar Tests Específicos del Slice
+
+**Propósito:** Verificar que los cambios funcionan correctamente.
+
+```bash
+# Ejecutar tests del slice
+npm run test:e2e -- tests/e2e/modules/[modulo]/[test-especifico].test.ts --reporter=list
+```
+
+### 3.3 Capturar Screenshots
+
+**Propósito:** Evidencia visual del comportamiento.
+
+```bash
+# Los screenshots se capturan automáticamente en:
+test-results/screenshots/[slice-id]/
+
+# O manualmente si es necesario
+mkdir -p test-results/screenshots/[slice-id]/
+```
+
+### 3.4 Ejecutar Comandos de Verificación
+
+**Propósito:** Verificar que los cambios se aplicaron correctamente.
+
+```bash
+# Comandos desde verification_commands
+grep -r 'patrón-a-verificar' [archivos]
+# Debe retornar: 0 resultados
+```
+
+### 3.5 Generar Reporte de Evidencias
+
+Crear archivo `test-results/screenshots/[slice-id]/EVIDENCE_REPORT.md`:
+
+```markdown
+# [Slice ID] - Evidence Report
+
+**Fecha:** YYYY-MM-DD
+**Estado:** ✅ COMPLETADO
+
+## Cambios Realizados
+
+[Lista de archivos modificados]
+
+## Verificación
+
+```bash
+# Comandos ejecutados
+grep -r 'patrón' ...
+# Resultado: 0 coincidencias
+```
+
+## Tests Ejecutados
+
+- [ ] smoke-test.test.ts → ✅ Pass
+- [ ] [test-especifico].test.ts → ✅ Pass
+
+## Screenshots
+
+- [Screenshot 1](./screenshot-1.png)
+- [Screenshot 2](./screenshot-2.png)
+
+## Conclusión
+
+[Descripción breve del resultado]
+```
+
+---
+
+## 🐛 Paso 4: Generar Specs-Fix para Errores Encontrados
+
+### ¿Cuándo Generar un Spec-Fix?
+
+Generar un spec-fix **cuando se encuentra un error durante el testing**:
+
+1. **Tests fallan** después de implementar cambios
+2. **Errores de TypeScript** aparecen
+3. **Regresiones** detectadas en otros tests
+4. **Comportamiento inesperado** en la aplicación
+5. **Bugs nuevos** descubiertos durante QA
+
+### Proceso de Generación de Spec-Fix
+
+#### 4.1 Documentar el Error
+
+Crear archivo `docs/BUGS_FOUND/[slice-id]-[bug-name].md`:
+
+```markdown
+# Bug [ID]: [Título Descriptivo]
+
+**Fecha:** YYYY-MM-DD  
+**Descubierto en:** Slice XX - [Título]  
+**Severidad:** 🔴 ALTA / 🟠 MEDIA / 🟡 BAJA
+
+## Descripción
+
+[Descripción clara y concisa del bug]
+
+## Pasos para Reproducir
+
+1. [Paso 1]
+2. [Paso 2]
+3. [Paso 3]
+
+## Comportamiento Esperado
+
+[Qué debería pasar]
+
+## Comportamiento Actual
+
+[Qué está pasando]
+
+## Evidencias
+
+```bash
+# Comandos que muestran el error
+npm run test:e2e -- [test].test.ts
+# Error: [mensaje de error]
+```
+
+## Impacto
+
+- **Funcionalidad:** [Qué funcionalidad afecta]
+- **Usuarios:** [Cuántos usuarios afecta]
+- **Severidad:** [ALTA/MEDIA/BAJA]
+
+## Posible Solución
+
+[Descripción de alto nivel de cómo fixear]
+
+## Archivos Sospechosos
+
+- `archivo1.ts` - [razón]
+- `archivo2.ts` - [razón]
+
+## Referencias
+
+- Test fallido: `tests/e2e/modules/[modulo]/[test].test.ts`
+- Logs: `test-results/[slice-id]/error-context.md`
+```
+
+#### 4.2 Crear Spec-Fix
+
+Crear estructura en `specs-fix/[proyecto-fix]/`:
+
+```bash
+# Crear directorio del fix
+mkdir -p specs-fix/[proyecto-fix]/slices
+
+# Crear SPEC.md
+cat > specs-fix/[proyecto-fix]/SPEC.md << 'EOF'
+# SPEC: Fix para [Bug Name]
+
+**ID:** `FIX-XXX`  
+**Título:** [Título descriptivo]  
+**Fecha:** YYYY-MM-DD  
+**Prioridad:** 🔴 ALTA / 🟠 ALTA / 🟡 MEDIA  
+**Estado:** Pendiente
+
+## 📋 Descripción
+
+[Descripción del bug y por qué necesita fix]
+
+## 🎯 Objetivos
+
+- [ ] Fixear [bug específico]
+- [ ] Tests pasan
+- [ ] Sin regresiones
+
+## 🗂️ Slices
+
+| Slice | Título | Prioridad | Tiempo |
+|-------|--------|-----------|--------|
+| **slice-01** | [Título] | 🔴 | Xh |
+
+## ✅ Criterios de Aceptación
+
+- [ ] [Criterio 1]
+- [ ] [Criterio 2]
+EOF
+
+# Crear slice específico
+cat > specs-fix/[proyecto-fix]/slices/slice-01-[name].json << 'EOF'
+{
+  "slice_id": "slice-01-fix-[bug-name]",
+  "title": "[Título del Fix]",
+  "objective": "[Objetivo claro y medible]",
+  "priority": "CRITICAL",
+  "estimated_hours": 4,
+  "files": [
+    "archivo1.ts",
+    "archivo2.ts"
+  ],
+  "must": [
+    "Fixear [bug específico]",
+    "Tests pasan",
+    "Sin regresiones"
+  ],
+  "not_included": [
+    "Cambios no relacionados"
+  ],
+  "acceptance": [
+    "Criterio 1",
+    "Criterio 2"
+  ],
+  "tests": [
+    "tests/e2e/modules/[modulo]/[test].test.ts"
+  ],
+  "documentation": [
+    "specs-fix/[proyecto]/STATUS.md"
+  ],
+  "implementation_steps": [
+    {
+      "step": 1,
+      "file": "archivo1.ts",
+      "action": "[Acción específica]",
+      "details": "[Detalles]"
+    }
+  ],
+  "verification_commands": [
+    "npm run test:e2e -- tests/e2e/modules/[modulo]/[test].test.ts"
+  ]
+}
+EOF
+```
+
+#### 4.3 Actualizar STATUS.md del Proyecto Original
+
+```markdown
+## 🚨 Bugs Encontrados
+
+| Bug | Severidad | Spec-Fix | Estado |
+|-----|-----------|----------|--------|
+| [Bug Name] | 🔴 ALTA | `specs-fix/[proyecto-fix]/` | ⏳ Pendiente |
+
+## 📝 Notas
+
+- Bug detectado durante testing del Slice XX
+- Spec-fix creado en `specs-fix/[proyecto-fix]/`
+- Prioridad: [CRÍTICA/ALTA/MEDIA/BAJA]
+```
+
+---
+
+## 📝 Paso 5: Actualizar Documentación
+
+### 5.1 Actualizar STATUS.md
+
+```markdown
+### Slice XX: [Título]
+
+**Estado:** ✅ COMPLETADO
+**Fecha de completado:** YYYY-MM-DD
+
+**Archivos modificados:**
+- ✅ `archivo1.ts` - Descripción del cambio
+- ✅ `archivo2.ts` - Descripción del cambio
+
+**Criterios de Aceptación:**
+- ✅ Criterio 1
+- ✅ Criterio 2
+
+**Verificación:**
+```bash
+✓ grep -r 'patrón' archivos
+  → 0 resultados
+```
+
+**Tests:**
+- ✅ smoke-test.test.ts → Pass
+- ✅ [test-especifico].test.ts → Pass
+
+**Evidencias:**
+- Reporte: `test-results/screenshots/[slice-id]/EVIDENCE_REPORT.md`
+```
+
+### 5.2 Actualizar README.md (si corresponde)
+
+```markdown
+## 📊 Progreso Actual
+
+```
+Slice 01: [██████████] 100% ✅ COMPLETADO
+Slice 02: [          ] 0%
+Total: 20% completado
+```
+```
+
+---
+
+## 🎯 Template para IA
+
+Cuando se le indique a la IA **"Ejecutar Slice XX"**, debe seguir este template:
+
+### Template de Comandos
+
+```bash
+# ============================================
+# SLICE XX: [Título]
+# ============================================
+
+# 1. Leer SPEC
+cat specs-fix/[proyecto]/slices/slice-XX-*.json
+
+# 2. Verificar estado actual
+git status
+npm run test:e2e -- tests/e2e/modules/[modulo]/smoke-test.test.ts --reporter=list
+
+# 3. Implementar cambios
+# [Seguir implementation_steps del SPEC]
+
+# 4. Verificar implementación
+grep -r 'patrón-a-eliminar' [archivos]
+# → 0 resultados
+
+# 5. Ejecutar tests
+npm run test:e2e -- tests/e2e/modules/[modulo]/[test].test.ts --reporter=list
+
+# 6. ¿Tests pasaron?
+# ✅ SÍ → Continuar a Paso 7
+# ❌ NO → Generar Spec-Fix (ver abajo)
+
+# 7. Capturar evidencias
+mkdir -p test-results/screenshots/[slice-id]/
+
+# 8. Generar reporte
+cat > test-results/screenshots/[slice-id]/EVIDENCE_REPORT.md << 'EOF'
+# Evidence Report
+...
+EOF
+
+# 9. Actualizar STATUS.md
+# [Editar STATUS.md con resultados]
+
+# ============================================
+# SLICE XX COMPLETADO
+# ============================================
+```
+
+### Template para Cuando Hay Error
+
+```bash
+# ============================================
+# DETECCIÓN DE ERROR
+# ============================================
+
+# 1. Identificar error
+# [Test falló o error detectado]
+
+# 2. Documentar bug
+mkdir -p docs/BUGS_FOUND/
+cat > docs/BUGS_FOUND/[slice]-[bug-name].md << 'EOF'
+# Bug [ID]: [Título]
+...
+EOF
+
+# 3. Crear spec-fix
+mkdir -p specs-fix/[proyecto-fix]/slices
+cat > specs-fix/[proyecto-fix]/SPEC.md << 'EOF'
+# SPEC: Fix para [Bug]
+...
+EOF
+
+cat > specs-fix/[proyecto-fix]/slices/slice-01-[name].json << 'EOF'
+{
+  "slice_id": "slice-01-fix-[name]",
+  ...
+}
+EOF
+
+# 4. Actualizar STATUS.md original
+# [Agregar sección de bugs encontrados]
+
+# 5. Preguntar al usuario
+echo "❌ Error encontrado durante testing"
+echo "📝 Spec-fix creado en specs-fix/[proyecto-fix]/"
+echo "¿Querés implementar el fix ahora o continuar con el próximo slice?"
+
+# ============================================
+# ERROR DOCUMENTADO
+# ============================================
+```
+
+---
+
+## ⚠️ Errores Comunes a Evitar
+
+### 1. No Ejecutar Smoke Test Primero
+
+```bash
+# ❌ INCORRECTO: Ejecutar tests específicos sin verificar servidor
+npm run test:e2e -- tests/e2e/modules/[modulo]/[test].test.ts
+
+# ✅ CORRECTO: Smoke test primero
+npm run test:e2e -- tests/e2e/modules/[modulo]/smoke-test.test.ts
+npm run test:e2e -- tests/e2e/modules/[modulo]/[test].test.ts
+```
+
+### 2. No Capturar Evidencias
+
+```bash
+# ❌ INCORRECTO: Solo implementar
+# [Implementación sin capturar nada]
+
+# ✅ CORRECTO: Capturar evidencias
+mkdir -p test-results/screenshots/[slice-id]/
+git diff > test-results/screenshots/[slice-id]/changes.diff
+```
+
+### 3. No Actualizar STATUS.md
+
+```bash
+# ❌ INCORRECTO: Implementar y no documentar
+# [Implementación sin actualizar STATUS.md]
+
+# ✅ CORRECTO: Actualizar documentación
+# [Editar STATUS.md con estado completado]
+```
+
+### 4. No Verificar con Grep
+
+```bash
+# ❌ INCORRECTO: Asumir que está eliminado
+# [Sin verificación]
+
+# ✅ CORRECTO: Verificar explícitamente
+grep -r 'mock' [archivos]
+# → 0 resultados
+```
+
+### 5. No Generar Spec-Fix para Errores
+
+```bash
+# ❌ INCORRECTO: Ignorar error o fixear sin documentar
+# [Test falla pero se continúa sin más]
+
+# ✅ CORRECTO: Generar spec-fix
+mkdir -p docs/BUGS_FOUND/
+mkdir -p specs-fix/[proyecto-fix]/slices
+# [Documentar bug y crear spec-fix]
+```
+
+---
+
+## 🎯 Checklist para IA
+
+Cada vez que la IA ejecute un slice, debe completar esta checklist:
+
+```markdown
+## Testing Checklist - Slice XX
+
+### Antes de Implementar
+- [ ] SPEC leído
+- [ ] Tests identificados
+- [ ] Estado actual verificado
+
+### Durante Implementación
+- [ ] Cambios implementados
+- [ ] Verificación con grep
+- [ ] Evidencias intermedias capturadas
+
+### Después de Implementar
+- [ ] Smoke test ejecutado ✅
+- [ ] Tests específicos ejecutados ✅
+- [ ] ¿Tests pasaron?
+  - ✅ SÍ → Continuar a Documentación (Paso 5)
+  - ❌ NO → Generar Spec-Fix (Paso 4)
+
+### Si Tests Fallaron (Generar Spec-Fix)
+- [ ] Bug documentado en `docs/BUGS_FOUND/`
+- [ ] Spec-fix creado en `specs-fix/[proyecto-fix]/`
+- [ ] STATUS.md actualizado con bug
+- [ ] Usuario notificado del error
+- [ ] ¿Fixear ahora?
+  - ✅ SÍ → Ejecutar spec-fix
+  - ⏸️ NO → Continuar, fixear después
+
+### Documentación
+- [ ] STATUS.md actualizado ✅
+- [ ] README.md actualizado (si corresponde)
+- [ ] Evidencias en test-results/ ✅
+- [ ] Specs-fix creados (si hubo errores) ✅
+
+### Verificación Final
+- [ ] grep 'patrón' → 0 resultados ✅
+- [ ] Tests passing → 100% ✅
+- [ ] Sin errores de TypeScript ✅
+```
+
+---
+
+## 📊 Métricas de Éxito
+
+| Métrica | Target | Cómo Medir |
+|---------|--------|------------|
+| **Smoke Test** | ✅ Pass | `npm run test:e2e -- smoke-test.test.ts` |
+| **Tests Específicos** | ✅ Pass | `npm run test:e2e -- [test].test.ts` |
+| **Código Mock** | 0 líneas | `grep -r 'mock' [archivos]` |
+| **Evidencias** | ✅ Generadas | `ls test-results/screenshots/[slice-id]/` |
+| **Documentación** | ✅ Actualizada | `cat STATUS.md` |
+| **Bugs Documentados** | 100% | `ls docs/BUGS_FOUND/` |
+| **Specs-Fix Creados** | 100% | `ls specs-fix/[proyecto-fix]/` |
+
+---
+
+## 🔗 Referencias
+
+| Documento | Ubicación |
+|-----------|-----------|
+| **SPEC Template** | `specs-fix/[proyecto]/slices/slice-XX-*.json` |
+| **STATUS Template** | `specs-fix/[proyecto]/STATUS.md` |
+| **Evidencias** | `test-results/screenshots/[slice-id]/` |
+| **Tests** | `tests/e2e/modules/[modulo]/` |
+| **Bugs Found** | `docs/BUGS_FOUND/` |
+| **Specs-Fix** | `specs-fix/[proyecto-fix]/` |
+
+---
+
+## 📝 Conclusión
+
+Esta guía asegura que **cada slice se implemente con el mismo estándar de calidad**:
+
+1. ✅ Tests ejecutados consistentemente
+2. ✅ Evidencias capturadas
+3. ✅ Documentación actualizada
+4. ✅ Progreso verificable
+5. ✅ Errores documentados y fixeados
+
+**La IA debe seguir esta guía cada vez que se le indique ejecutar un slice.**
+
+---
+
+**Fin de la guía**
+
+**Próximo:** Seguir esta guía para el próximo slice
