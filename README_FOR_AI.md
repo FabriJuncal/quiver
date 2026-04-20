@@ -23,13 +23,13 @@ Important: slice numbering resets inside each spec. `slice-01` is the first slic
 3. Tell the user to edit:
    - `docs/CONTEXTO.md`
    - `docs/STATUS.md`
-   - `specs/[project-name]/SPEC.md`
+   - `specs/{{PROJECT_SLUG}}/SPEC.md`
 
 ## What the Script Creates
 
 - `docs/`
 - `docs/ai/`
-- `specs/[project-name]/`
+- `specs/{{PROJECT_SLUG}}/`
 - `tools/scripts/`
 - `docs/SEARCH.md`
 - a merged or copied `package.json` with the required npm scripts
@@ -53,7 +53,7 @@ After initialization, the user should:
 
 1. Fill in `docs/CONTEXTO.md`
 2. Fill in `docs/STATUS.md`
-3. Create the first slice in `specs/[project-name]/slices/[slice-id]/`
+3. Create the first slice in `specs/{{PROJECT_SLUG}}/slices/[slice-id]/`
 4. Add `ticket` and `git.*`
 5. Run `tools/scripts/start-slice.sh <slice.json>`
 6. Make one commit per slice

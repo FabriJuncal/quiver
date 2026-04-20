@@ -34,7 +34,7 @@
 cd ../.worktrees/[repo-name]/[sanitized-branch-name]
 
 # Or create the worktree from scratch
-npm run start:slice -- specs/[project-slug]/slices/[slice-id]/slice.json
+npm run start:slice -- specs/{{PROJECT_SLUG}}/slices/[slice-id]/slice.json
 ```
 
 ### Run the Project
@@ -72,10 +72,10 @@ npm run start:slice -- specs/[project-slug]/slices/[slice-id]/slice.json
 
 ```bash
 # Slice validation gate
-npm run check:slice -- specs/[project-slug]/slices/[slice-id]/slice.json --gate validation
+npm run check:slice -- specs/{{PROJECT_SLUG}}/slices/[slice-id]/slice.json --gate validation
 
 # PR gate
-npm run check:pr -- specs/[project-slug]/slices/[slice-id]/slice.json
+npm run check:pr -- specs/{{PROJECT_SLUG}}/slices/[slice-id]/slice.json
 
 # Whitespace and conflicts
 git diff --check
