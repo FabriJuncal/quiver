@@ -1,0 +1,60 @@
+{
+  "slice_id": "slice-01-legal-integrity",
+  "ticket": "QUIVER-01",
+  "type": "bugfix",
+  "title": "Legal + Integrity",
+  "objective": "Agregar LICENSE MIT, corregir referencias rotas, eliminar archivos huérfanos y arreglar bugs en init-docs.sh.",
+  "description": "Bloqueadores críticos pre-publicación: sin LICENSE el repo no es adoptable. Las referencias rotas (./GITFLOW.md, MIGRATION_SUMMARY.md) dañan credibilidad. slice-template.json está huérfano. init-docs.sh no copia TESTING_GUIDE_FOR_AI y usa date -v+7d (macOS-only).",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "develop",
+    "branch_slug": "legal-integrity",
+    "branch_name": "feature/QUIVER-01-legal-integrity"
+  },
+  "must": [
+    "Crear LICENSE con texto MIT y año/autor correctos",
+    "Eliminar referencia a ./GITFLOW.md en WORKFLOW.md.template:23",
+    "Eliminar referencia a MIGRATION_SUMMARY.md en README_FOR_AI.md:377",
+    "Eliminar specs/[project-name]/slices/slice-template.json (huérfano)",
+    "Renombrar specs/[project-name]/slices/pr-template.md → pr.md.template y actualizar init-docs.sh",
+    "Agregar copy_template para TESTING_GUIDE_FOR_AI.md.template en init-docs.sh",
+    "Reemplazar date -v+7d por equivalente portable vía Node en init-docs.sh"
+  ],
+  "not_included": [
+    "CONTRIBUTING, CoC, SECURITY — van en slice-05",
+    "Traducción a inglés — va en slice-03",
+    "package.json — va en slice-02"
+  ],
+  "acceptance": [
+    "LICENSE existe en raíz con texto MIT válido",
+    "init-docs.sh corre en macOS y Linux sin diferencia en placeholder de fechas",
+    "init-docs.sh copia docs/TESTING_GUIDE_FOR_AI.md.template al ejecutar",
+    "Ningún archivo en el repo referencia GITFLOW.md o MIGRATION_SUMMARY.md",
+    "specs/[project-name]/slices/ contiene solo slice-template/ (carpeta) y pr.md.template"
+  ],
+  "files": [
+    "LICENSE",
+    "README_FOR_AI.md",
+    "docs/WORKFLOW.md.template",
+    "specs/[project-name]/slices/pr-template.md",
+    "specs/[project-name]/slices/pr.md.template",
+    "scripts/init-docs.sh"
+  ],
+  "tests": [],
+  "documentation": [
+    "specs/quiver-v01/slices/slice-01-legal-integrity/pr.md",
+    "specs/quiver-v01/STATUS.md"
+  ],
+  "dependencies": [],
+  "assumptions": [
+    "El autor/copyright del LICENSE es FabriJuncal / Fabri Juncal",
+    "Node está disponible en el entorno de ejecución de init-docs.sh"
+  ],
+  "estimated_hours": 2,
+  "actual_hours": 0,
+  "status": "ready",
+  "blocked_reason": null,
+  "ready_at": "2026-04-20T00:00:00Z",
+  "started_at": null,
+  "completed_at": null
+}
