@@ -10,7 +10,7 @@ Uso:
 Valida que un slice este listo para abrir PR:
 - gate de validacion del slice
 - pr.md con secciones obligatorias
-- secciones detalladas de "Cómo Probar"
+- detailed testing steps
 - rollback explicito
 - branch del slice limpio y con diferencias contra develop
 EOF
@@ -97,37 +97,37 @@ fi
 pass "La rama tiene commits propios contra origin/develop."
 
 for heading in \
-  "## Titulo" \
-  "## Resumen" \
-  "## Alcance" \
-  "## Archivos" \
-  "## Cómo Probar (DETALLADO - OBLIGATORIO)" \
-  "## Evidencia" \
+  "## Title" \
+  "## Summary" \
+  "## Scope" \
+  "## Files" \
+  "## How to Test (DETAILED - REQUIRED)" \
+  "## Evidence" \
   "## Rollback" \
-  "## Riesgos / Notas"
+  "## Risks / Notes"
 do
   grep -Fxq "$heading" "$pr_abs" || fail "Falta la seccion obligatoria '$heading' en pr.md."
 done
 pass "pr.md contiene las secciones obligatorias."
 
 for subheading in \
-  "### Entorno Requerido" \
-  "### Acceso al Worktree" \
-  "### Levantar el Proyecto" \
-  "### Casos de Uso" \
-  "### Verificación Técnica"
+  "### Required Environment" \
+  "### Worktree Access" \
+  "### Run the Project" \
+  "### Use Cases" \
+  "### Technical Verification"
 do
-  grep -Fxq "$subheading" "$pr_abs" || fail "Falta la subseccion '$subheading' dentro de Cómo Probar."
+  grep -Fxq "$subheading" "$pr_abs" || fail "Falta la subseccion '$subheading' dentro de How to Test."
 done
-pass "Cómo Probar incluye entorno, acceso al worktree, arranque, casos de uso y verificación técnica."
+pass "How to Test incluye entorno, acceso al worktree, arranque, casos de uso y verificación técnica."
 
-grep -Eq '#### Caso [0-9]+:' "$pr_abs" || fail "Cómo Probar debe tener al menos un caso de uso documentado (#### Caso 1: ...)."
+grep -Eq '#### Case [0-9]+:' "$pr_abs" || fail "How to Test debe tener al menos un caso de uso documentado (#### Case 1: ...)."
 pass "Al menos un caso de uso documentado."
 
 grep -Eq 'git revert ' "$pr_abs" || fail "Rollback debe incluir al menos un comando git revert."
 pass "Rollback incluye comando git revert."
 
-grep -Eiq '^\s*-\s*`manual review`$|^\s*-\s*`revisión manual`$|^\s*-\s*`probar en la pantalla`$|^\s*-\s*`validar visualmente`$' "$pr_abs" && fail "Cómo Probar no puede apoyarse solo en frases genericas."
+grep -Eiq '^\s*-\s*`manual review`$|^\s*-\s*`visual check`$|^\s*-\s*`screen test`$|^\s*-\s*`visual validation`$' "$pr_abs" && fail "How to Test cannot rely only on generic phrases."
 
 node -e "JSON.parse(require('fs').readFileSync(process.argv[1], 'utf8'))" "$slice_abs" >/dev/null
 pass "slice.json parsea correctamente."
