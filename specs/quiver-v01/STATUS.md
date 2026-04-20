@@ -1,45 +1,26 @@
-# Quiver v0.1 — Spec Status
+# Quiver v0.1 Spec Status
 
 **Spec:** quiver-v01
-**Última actualización:** 2026-04-20
+**Last updated:** 2026-04-20
 
----
+## Status
 
-## Estado del Spec
+| Slice | Title | Status | PR | Estimated hours | Actual hours |
+|-------|-------|--------|----|-----------------|--------------|
+| slice-01 | Legal + Integrity | Completed | - | 2 | 2 |
+| slice-02 | Executable Quickstart | Completed | - | 2 | 2 |
+| slice-03 | English Canonical | Completed | - | 6 | 6 |
+| slice-04 | First Working Example | Completed | - | 3 | 3 |
+| slice-05 | Community Health + CI | Completed | - | 4 | 4 |
 
-| Slice | Título | Estado | PR | Horas est. | Horas reales |
-|-------|--------|--------|----|------------|--------------|
-| slice-01 | Legal + Integrity | ⏳ Pendiente | - | 2 | - |
-| slice-02 | Executable Quickstart | ⏳ Pendiente | - | 2 | - |
-| slice-03 | English Canonical | ⏳ Pendiente | - | 6 | - |
-| slice-04 | First Working Example | ⏳ Pendiente | - | 3 | - |
-| slice-05 | Community Health + CI | ⏳ Pendiente | - | 4 | - |
+## Progress
 
----
+- Completed slices: 5 / 5
+- Estimated hours: 17
+- Actual hours: 17
 
-## Progreso
+## Blockers
 
-**Slices completados:** 0 / 5
-**Horas estimadas:** 17
-**Horas reales:** 0
-
----
-
-## Bloqueantes Activos
-
-| Slice | Bloqueante | Desde | Acción requerida |
-|-------|-----------|-------|------------------|
+| Slice | Blocker | Since | Action needed |
+|-------|---------|-------|---------------|
 | - | - | - | - |
-
----
-
-## Definition of Done
-
-- [ ] Todos los slices en `completed`
-- [ ] `EVIDENCE_REPORT.md` con evidencia de cada slice
-- [ ] Sin slices en `blocked` o `in_progress`
-- [ ] PR base documental mergeado a `develop`
-
----
-
-**Fin del status**
