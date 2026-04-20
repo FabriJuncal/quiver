@@ -24,6 +24,16 @@ The slice bootstrap flow now prefers canonical paths and can bootstrap from a lo
 - Slice lifecycle scripts
 - AI guidance files
 - A portable MIT license
+- Default OSS baseline files when they are missing:
+  - `CONTRIBUTING.md`
+  - `CODE_OF_CONDUCT.md`
+  - `SECURITY.md`
+  - `CHANGELOG.md`
+  - `ROADMAP.md`
+  - `.github/pull_request_template.md`
+  - `.github/ISSUE_TEMPLATE/bug_report.md`
+  - `.github/ISSUE_TEMPLATE/feature_request.md`
+  - `.github/workflows/ci.yml`
 
 ## Required Files in a Generated Project
 
@@ -33,6 +43,21 @@ The slice bootstrap flow now prefers canonical paths and can bootstrap from a lo
 - `docs/TESTING_GUIDE_FOR_AI.md`
 - `docs/ai/PRINCIPLES.md`
 - `docs/ai/RULES.yaml`
+
+## Default Generated Files
+
+These are copied by `init-docs.sh` when they are missing in the target repo:
+
+- `LICENSE`
+- `CONTRIBUTING.md`
+- `CODE_OF_CONDUCT.md`
+- `SECURITY.md`
+- `CHANGELOG.md`
+- `ROADMAP.md`
+- `.github/pull_request_template.md`
+- `.github/ISSUE_TEMPLATE/bug_report.md`
+- `.github/ISSUE_TEMPLATE/feature_request.md`
+- `.github/workflows/ci.yml`
 
 ## Optional Files
 
