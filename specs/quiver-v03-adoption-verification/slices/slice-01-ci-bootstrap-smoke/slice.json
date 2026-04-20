@@ -1,0 +1,56 @@
+{
+  "slice_id": "slice-01-ci-bootstrap-smoke",
+  "ticket": "QUIVER-01",
+  "type": "feature",
+  "title": "CI Bootstrap Smoke",
+  "objective": "Extend CI so every change proves that `init-docs.sh` can initialize a fresh target repo on the supported OS matrix.",
+  "description": "The current CI only runs `shellcheck` and parses a couple of JSON files. It does not exercise the actual bootstrap path. This slice adds a generated-project smoke test so regressions in initialization are caught before a release reaches adopters.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "develop",
+    "branch_slug": "ci-bootstrap-smoke",
+    "branch_name": "feature/QUIVER-01-ci-bootstrap-smoke"
+  },
+  "must": [
+    "Extend the GitHub Actions workflow with a smoke test that creates a temporary target repo and runs `init-docs.sh` end to end",
+    "Run the smoke test on the supported OS matrix for Quiver bootstrap compatibility",
+    "Assert the generated project has the expected scripts, docs, specs, and workflow assets after initialization"
+  ],
+  "not_included": [
+    "Package distribution or installer work",
+    "Fixture coverage for every gate script",
+    "Hosted docs or tutorial content"
+  ],
+  "acceptance": [
+    "CI fails if `init-docs.sh` breaks on either supported operating system",
+    "The smoke test asserts that the generated project contains the expected baseline assets and npm scripts",
+    "The smoke test can be run locally by a maintainer without relying on GitHub-only features"
+  ],
+  "files": [
+    ".github/workflows/ci.yml",
+    "scripts/init-docs.sh",
+    "scripts/ci/smoke-init-docs.sh"
+  ],
+  "tests": [
+    "GitHub Actions OS matrix bootstrap smoke test",
+    "Local smoke test for generated project initialization"
+  ],
+  "documentation": [
+    "specs/quiver-v03-adoption-verification/SPEC.md",
+    "specs/quiver-v03-adoption-verification/STATUS.md"
+  ],
+  "dependencies": [
+    "quiver-v02-bootstrap-hardening"
+  ],
+  "assumptions": [
+    "The supported bootstrap matrix is macOS and Linux",
+    "CI can create temporary git repos during workflow execution"
+  ],
+  "estimated_hours": 4,
+  "actual_hours": 0,
+  "status": "ready",
+  "blocked_reason": null,
+  "ready_at": "2026-04-20T00:00:00Z",
+  "started_at": null,
+  "completed_at": null
+}
