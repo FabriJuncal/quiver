@@ -12,6 +12,7 @@ This document is the canonical implementation workflow for the project.
 - Slice numbering is local to each spec. Every spec starts at `slice-01`.
 - The spec defines the plan; the slice defines the execution.
 - No slice should enter execution until it is `ready`.
+- The documentation PR establishes the workflow files before the first slice executes.
 
 ## Planning
 
@@ -19,11 +20,13 @@ This document is the canonical implementation workflow for the project.
 2. Decide whether to create a new spec or reuse an existing one.
 3. Split the work into slices.
 4. Mark each slice `ready` before execution.
+5. Open and merge the documentation PR before running the first slice bootstrap.
 
 ## Execution
 
 1. Bootstrap the slice with `start-slice.sh`.
    - The bootstrap step should work with canonical paths and a local base branch when `origin` is absent.
+   - Draft slices require `--allow-draft`; otherwise `start-slice.sh` exits before execution.
 2. Implement only what the slice declares.
 3. Make one commit for that slice.
 4. Validate with `check-slice-readiness.sh`.

@@ -5,7 +5,7 @@ set -euo pipefail
 usage() {
   cat <<'EOF'
 Uso:
-  bash tools/scripts/start-slice.sh <ruta-al-slice.json>
+  bash tools/scripts/start-slice.sh [--allow-draft] <ruta-al-slice.json>
 
 Lee la metadata git del slice, valida la rama declarada y crea un worktree
 afuera de la raiz trackeada del repo.
@@ -13,6 +13,7 @@ afuera de la raiz trackeada del repo.
 Variables opcionales:
   SLICE_WORKTREES_DIR  Directorio base para los worktrees.
                        Default: <repo-parent>/.worktrees/<repo-name>
+  --allow-draft        Permite bootstraps intencionales de slices en draft.
 EOF
 }
 
@@ -71,6 +72,17 @@ resolve_base_ref() {
   return 1
 }
 
+slice_alias() {
+  node - "$1" <<'NODE'
+const ticket = String(process.argv[2] || '').trim();
+const parts = ticket.split('-').filter(Boolean);
+const prefix = (parts[0] || 'GEN').replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+const suffix = (parts[parts.length - 1] || '00').replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+const short = prefix.length <= 3 ? prefix : prefix.slice(0, 3);
+process.stdout.write(`${short || 'GEN'}-${suffix || '00'}`);
+NODE
+}
+
 write_worktree_context() {
   local target_worktree="$1"
   local target_branch="$2"
@@ -87,10 +99,10 @@ const slice = JSON.parse(fs.readFileSync(slicePath, 'utf8'));
 
 function toAlias(ticket) {
   const parts = String(ticket || '').split('-').filter(Boolean);
-  const domain = (parts[1] || 'GEN').toUpperCase();
-  const suffix = (parts[parts.length - 1] || '00').toUpperCase();
-  const short = domain.length <= 3 ? domain : domain.slice(0, 3);
-  return `${short}-${suffix}`;
+  const prefix = (parts[0] || 'GEN').replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+  const suffix = (parts[parts.length - 1] || '00').replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+  const short = prefix.length <= 3 ? prefix : prefix.slice(0, 3);
+  return `${short || 'GEN'}-${suffix || '00'}`;
 }
 
 function listBlock(items) {
@@ -161,12 +173,26 @@ refresh_active_slices_board() {
   fi
 }
 
-if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
-  usage
-  exit 0
-fi
+allow_draft="0"
+args=()
+for arg in "$@"; do
+  case "$arg" in
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    --allow-draft)
+      allow_draft="1"
+      ;;
+    *)
+      args+=("$arg")
+      ;;
+  esac
+done
 
-if [[ $# -ne 1 ]]; then
+[[ "${ALLOW_DRAFT_SLICE:-}" == "1" ]] && allow_draft="1"
+
+if [[ ${#args[@]} -ne 1 ]]; then
   usage
   exit 1
 fi
@@ -181,7 +207,7 @@ if ! command -v node >/dev/null 2>&1; then
   exit 1
 fi
 
-slice_input="$1"
+slice_input="${args[0]}"
 repo_root="$(canonicalize_dir "$(git rev-parse --show-toplevel)")"
 
 if [[ ! -f "$slice_input" ]]; then
@@ -304,8 +330,13 @@ if [[ "$slice_status" == "completed" ]]; then
   echo "WARN: el slice ya figura como completed. Si realmente corresponde reejecutarlo, cambia el status a in_progress."
 fi
 
+if [[ "$slice_status" == "draft" && "$allow_draft" != "1" ]]; then
+  echo "Error: el slice esta en estado 'draft'. Marca el slice como 'ready' o usa --allow-draft para un bootstrap intencional." >&2
+  exit 1
+fi
+
 if [[ "$slice_status" == "draft" ]]; then
-  echo "WARN: el slice esta en estado 'draft'. Considera marcarlo como 'ready' en slice.json antes de ejecutar."
+  echo "WARN: bootstrap intencional para un slice en draft."
 fi
 
 repo_name="$(basename "$repo_root")"
@@ -348,9 +379,9 @@ fi
 if [[ -n "$existing_worktree_path" ]]; then
   write_worktree_context "$existing_worktree_path" "$branch_name"
   refresh_active_slices_board
-  cat <<EOF
+cat <<EOF
 La rama ya tiene un worktree asociado.
-Alias: $(printf '%s\n' "$ticket" | awk -F- '{ domain=toupper($2); suffix=toupper($NF); short=length(domain)<=3?domain:substr(domain,1,3); print short "-" suffix }')
+Alias: $(slice_alias "$ticket")
 Spec: $spec_slug
 Slice: $slice_id
 Ticket: $ticket
@@ -385,7 +416,7 @@ refresh_active_slices_board
 
 cat <<EOF
 Slice listo para trabajar.
-Alias: $(printf '%s\n' "$ticket" | awk -F- '{ domain=toupper($2); suffix=toupper($NF); short=length(domain)<=3?domain:substr(domain,1,3); print short "-" suffix }')
+Alias: $(slice_alias "$ticket")
 Spec: $spec_slug
 Slice: $slice_id
 Ticket: $ticket

@@ -11,7 +11,7 @@
 | slice-01 | 4 | Completed | Canonical path handling, local-base fallback, and worktree creation verified in smoke tests |
 | slice-02 | 3 | Completed | Default generated baseline files copied by `init-docs.sh` and preserved when pre-existing |
 | slice-03 | 3 | Completed | Generated docs and slice templates no longer retain project-scoped placeholders |
-| slice-04 | 3 | Ready | - |
+| slice-04 | 3 | Completed | Draft gate and alias readability verified in smoke tests |
 
 ## Evidence by Slice
 
@@ -23,3 +23,5 @@
 - Fresh init smoke test created `LICENSE`, `.github/pull_request_template.md`, `.github/ISSUE_TEMPLATE/*`, and `.github/workflows/ci.yml`
 - Existing-file smoke test preserved pre-existing baseline files and reported skips instead of overwriting
 - Fresh init smoke test found no unresolved `[project]`, `[project-name]`, or `[project-slug]` tokens in generated `docs/` or `specs/placeholder-project/`
+- `start-slice.sh` now rejects `draft` slices unless `--allow-draft` or `ALLOW_DRAFT_SLICE=1` is provided
+- Alias output now uses the ticket prefix, producing stable labels such as `QUI-04` and `DEM-001`

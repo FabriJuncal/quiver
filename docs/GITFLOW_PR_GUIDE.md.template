@@ -13,6 +13,7 @@ This guide explains how to open and review spec PRs without breaking the canonic
 - One spec = one PR
 - Slice numbers reset per spec. `slice-01` is the first slice in each spec.
 - Do not commit directly to `develop`
+- Open and merge the documentation PR before the first slice starts execution
 - Do not open the spec PR before the documentation PR is merged
 
 ## Required PR Headings
