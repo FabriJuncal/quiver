@@ -3,8 +3,8 @@
   "ticket": "QUIVER-01",
   "type": "bugfix",
   "title": "Legal + Integrity",
-  "objective": "Agregar LICENSE MIT, corregir referencias rotas, eliminar archivos huérfanos y arreglar bugs en init-docs.sh.",
-  "description": "Bloqueadores críticos pre-publicación: sin LICENSE el repo no es adoptable. Las referencias rotas (./GITFLOW.md, MIGRATION_SUMMARY.md) dañan credibilidad. slice-template.json está huérfano. init-docs.sh no copia TESTING_GUIDE_FOR_AI y usa date -v+7d (macOS-only).",
+  "objective": "Add the MIT license, fix broken references, remove orphan files, and fix bugs in `init-docs.sh`.",
+  "description": "Critical pre-publication blockers: without a license the repo is not adoptable. Broken workflow and migration references damage credibility. An orphan template file exists. `init-docs.sh` does not copy `TESTING_GUIDE_FOR_AI.md.template` and uses a macOS-only date flag.",
   "git": {
     "branch_type": "feature",
     "base_branch": "develop",
@@ -12,13 +12,12 @@
     "branch_name": "feature/QUIVER-01-legal-integrity"
   },
   "must": [
-    "Crear LICENSE con texto MIT y año/autor correctos",
-    "Eliminar referencia a ./GITFLOW.md en WORKFLOW.md.template:23",
-    "Eliminar referencia a MIGRATION_SUMMARY.md en README_FOR_AI.md:377",
-    "Eliminar specs/[project-name]/slices/slice-template.json (huérfano)",
-    "Renombrar specs/[project-name]/slices/pr-template.md → pr.md.template y actualizar init-docs.sh",
-    "Agregar copy_template para TESTING_GUIDE_FOR_AI.md.template en init-docs.sh",
-    "Reemplazar date -v+7d por equivalente portable vía Node en init-docs.sh"
+    "Create a MIT license with the correct year and author",
+    "Remove broken workflow and migration references from the docs",
+    "Remove the orphan slice template file",
+    "Rename the slice PR template and update init-docs.sh",
+    "Add a copy step for TESTING_GUIDE_FOR_AI.md.template in init-docs.sh",
+    "Replace the macOS-only date flag with a portable Node-based equivalent in init-docs.sh"
   ],
   "not_included": [
     "CONTRIBUTING, CoC, SECURITY — van en slice-05",
@@ -29,14 +28,13 @@
     "LICENSE existe en raíz con texto MIT válido",
     "init-docs.sh corre en macOS y Linux sin diferencia en placeholder de fechas",
     "init-docs.sh copia docs/TESTING_GUIDE_FOR_AI.md.template al ejecutar",
-    "Ningún archivo en el repo referencia GITFLOW.md o MIGRATION_SUMMARY.md",
+    "No file in the repo references the broken workflow or migration docs",
     "specs/[project-name]/slices/ contiene solo slice-template/ (carpeta) y pr.md.template"
   ],
   "files": [
     "LICENSE",
     "README_FOR_AI.md",
     "docs/WORKFLOW.md.template",
-    "specs/[project-name]/slices/pr-template.md",
     "specs/[project-name]/slices/pr.md.template",
     "scripts/init-docs.sh"
   ],
@@ -51,10 +49,10 @@
     "Node está disponible en el entorno de ejecución de init-docs.sh"
   ],
   "estimated_hours": 2,
-  "actual_hours": 0,
-  "status": "ready",
+  "actual_hours": 2,
+  "status": "completed",
   "blocked_reason": null,
   "ready_at": "2026-04-20T00:00:00Z",
-  "started_at": null,
-  "completed_at": null
+  "started_at": "2026-04-20T00:00:00Z",
+  "completed_at": "2026-04-20T00:00:00Z"
 }
