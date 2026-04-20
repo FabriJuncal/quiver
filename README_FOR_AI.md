@@ -47,6 +47,8 @@ After initialization, the user should:
 7. Open one PR per spec
 8. Validate the slice and the final PR with the workflow gates
 
+Bootstrap note: `start-slice.sh` should resolve paths canonically and prefer a local `develop` or `main` base branch before reaching for `origin`.
+
 ## Optional Files
 
 - `docs/MOCK_DATA_GUIDE.md` if the project uses mock data
