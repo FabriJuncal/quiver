@@ -20,6 +20,7 @@ append_unique_line() {
   local file_path="$1"
   local line="$2"
 
+  mkdir -p "$(dirname "$file_path")"
   touch "$file_path"
 
   if ! grep -Fxq "$line" "$file_path"; then
@@ -31,16 +32,52 @@ ensure_local_exclude() {
   local workdir="$1"
   local pattern="$2"
   local exclude_path
+  local git_dir
 
-  exclude_path="$(git -C "$workdir" rev-parse --git-path info/exclude)"
+  git_dir="$(git -C "$workdir" rev-parse --absolute-git-dir)"
+  exclude_path="$git_dir/info/exclude"
   append_unique_line "$exclude_path" "$pattern"
+}
+
+canonicalize_dir() {
+  local dir_path="$1"
+  (cd "$dir_path" && pwd -P)
+}
+
+resolve_base_ref() {
+  local base_branch="$1"
+
+  if git show-ref --verify --quiet "refs/heads/$base_branch"; then
+    printf '%s\n' "$base_branch"
+    return 0
+  fi
+
+  if git show-ref --verify --quiet "refs/remotes/origin/$base_branch"; then
+    printf '%s\n' "origin/$base_branch"
+    return 0
+  fi
+
+  if git ls-remote --exit-code --heads origin "$base_branch" >/dev/null 2>&1; then
+    if git fetch origin "$base_branch:refs/remotes/origin/$base_branch" >/dev/null 2>&1; then
+      printf '%s\n' "origin/$base_branch"
+      return 0
+    fi
+
+    echo "Error: origin existe pero no se pudo actualizar '$base_branch'. Revisa conectividad o crea la rama local '$base_branch' antes de correr start-slice.sh." >&2
+    return 1
+  fi
+
+  echo "Error: no se encontró '$base_branch' como rama local ni como ref remota 'origin/$base_branch'. Crea la rama base localmente o configura origin antes de correr start-slice.sh." >&2
+  return 1
 }
 
 write_worktree_context() {
   local target_worktree="$1"
   local target_branch="$2"
 
-  ensure_local_exclude "$target_worktree" "WORKTREE_CONTEXT.md"
+  if [[ "$target_worktree" != "$repo_root" ]]; then
+    ensure_local_exclude "$target_worktree" "WORKTREE_CONTEXT.md"
+  fi
 
   node - "$slice_abs" "$target_worktree" "$target_branch" "$spec_family" "$spec_slug" <<'NODE' > "$target_worktree/WORKTREE_CONTEXT.md"
 const fs = require('fs');
@@ -145,14 +182,14 @@ if ! command -v node >/dev/null 2>&1; then
 fi
 
 slice_input="$1"
-repo_root="$(git rev-parse --show-toplevel)"
+repo_root="$(canonicalize_dir "$(git rev-parse --show-toplevel)")"
 
 if [[ ! -f "$slice_input" ]]; then
   echo "Error: no existe el slice '$slice_input'." >&2
   exit 1
 fi
 
-slice_abs="$(cd "$(dirname "$slice_input")" && pwd)/$(basename "$slice_input")"
+slice_abs="$(canonicalize_dir "$(dirname "$slice_input")")/$(basename "$slice_input")"
 slice_rel="${slice_abs#$repo_root/}"
 
 case "$slice_rel" in
@@ -277,12 +314,36 @@ worktrees_root="${SLICE_WORKTREES_DIR:-$repo_parent/.worktrees/$repo_name}"
 safe_branch_name="$(printf '%s' "$branch_name" | sed 's#[^A-Za-z0-9._-]#-#g')"
 worktree_path="$worktrees_root/$safe_branch_name"
 
+git worktree prune >/dev/null 2>&1 || true
+
 existing_worktree_path="$(
-  git worktree list --porcelain | awk -v branch="refs/heads/$branch_name" '
-    $1 == "worktree" { path = $2 }
-    $1 == "branch" && $2 == branch { print path }
-  '
+  node - "$branch_name" <<'NODE'
+const cp = require('child_process');
+
+const branchRef = `refs/heads/${process.argv[2]}`;
+const text = cp.execSync('git worktree list --porcelain', {
+  encoding: 'utf8',
+  stdio: ['ignore', 'pipe', 'pipe']
+});
+
+let currentPath = '';
+for (const line of text.trim().split('\n')) {
+  if (line.startsWith('worktree ')) {
+    currentPath = line.slice('worktree '.length);
+    continue;
+  }
+
+  if (line === `branch ${branchRef}`) {
+    process.stdout.write(currentPath);
+    break;
+  }
+}
+NODE
 )"
+
+if [[ -n "$existing_worktree_path" && ! -d "$existing_worktree_path" ]]; then
+  existing_worktree_path=""
+fi
 
 if [[ -n "$existing_worktree_path" ]]; then
   write_worktree_context "$existing_worktree_path" "$branch_name"
@@ -315,8 +376,8 @@ elif git ls-remote --exit-code --heads origin "$branch_name" >/dev/null 2>&1; th
   git fetch origin "$branch_name:$branch_name" >/dev/null 2>&1
   git worktree add "$worktree_path" "$branch_name"
 else
-  git fetch origin "$base_branch" >/dev/null 2>&1
-  git worktree add -b "$branch_name" "$worktree_path" "origin/$base_branch"
+  base_ref="$(resolve_base_ref "$base_branch")"
+  git worktree add -b "$branch_name" "$worktree_path" "$base_ref"
 fi
 
 write_worktree_context "$worktree_path" "$branch_name"

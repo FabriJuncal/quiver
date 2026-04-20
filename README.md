@@ -4,6 +4,8 @@ Quiver is a documentation-first starter for projects that use specs, slices, and
 
 Slice numbering is local to each spec: every new spec starts at `slice-01`.
 
+The slice bootstrap flow now prefers canonical paths and can bootstrap from a local base branch when `origin` is unavailable.
+
 ## Quick Start
 
 1. Copy this folder as `docs-template/` into the root of the target project.

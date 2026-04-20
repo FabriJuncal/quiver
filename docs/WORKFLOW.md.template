@@ -23,6 +23,7 @@ This document is the canonical implementation workflow for the project.
 ## Execution
 
 1. Bootstrap the slice with `start-slice.sh`.
+   - The bootstrap step should work with canonical paths and a local base branch when `origin` is absent.
 2. Implement only what the slice declares.
 3. Make one commit for that slice.
 4. Validate with `check-slice-readiness.sh`.
