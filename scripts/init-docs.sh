@@ -113,6 +113,26 @@ copy_template_keep_name() {
     fi
 }
 
+copy_file_if_missing() {
+    local src="$1"
+    local dest="$2"
+
+    mkdir -p "$(dirname "$dest")"
+
+    if [ -f "$dest" ]; then
+        print_info "Saltado: $dest ya existe"
+        return 0
+    fi
+
+    if [ ! -f "$src" ]; then
+        print_warning "No se encontró $src; se omite $dest"
+        return 0
+    fi
+
+    cp "$src" "$dest"
+    print_success "Creado: $dest"
+}
+
 # Copiar templates de docs/
 copy_template "docs-template/docs/INDEX.md.template" "docs/INDEX.md"
 copy_template "docs-template/docs/CONTEXTO.md.template" "docs/CONTEXTO.md"
@@ -161,6 +181,18 @@ print_success "Creado: specs/$PROJECT_SLUG/slices/slice-template/slice.json"
 
 # Copiar template de PR del slice
 copy_template_keep_name "docs-template/specs/[project-name]/slices/pr.md.template" "specs/$PROJECT_SLUG/slices/slice-template/pr.md.template"
+
+# Copiar baseline legal y OSS cuando faltan
+copy_file_if_missing "docs-template/LICENSE" "LICENSE"
+copy_file_if_missing "docs-template/CONTRIBUTING.md" "CONTRIBUTING.md"
+copy_file_if_missing "docs-template/CODE_OF_CONDUCT.md" "CODE_OF_CONDUCT.md"
+copy_file_if_missing "docs-template/SECURITY.md" "SECURITY.md"
+copy_file_if_missing "docs-template/CHANGELOG.md" "CHANGELOG.md"
+copy_file_if_missing "docs-template/ROADMAP.md" "ROADMAP.md"
+copy_file_if_missing "docs-template/.github/pull_request_template.md" ".github/pull_request_template.md"
+copy_file_if_missing "docs-template/.github/ISSUE_TEMPLATE/bug_report.md" ".github/ISSUE_TEMPLATE/bug_report.md"
+copy_file_if_missing "docs-template/.github/ISSUE_TEMPLATE/feature_request.md" ".github/ISSUE_TEMPLATE/feature_request.md"
+copy_file_if_missing "docs-template/.github/workflows/ci.yml" ".github/workflows/ci.yml"
 
 # Sincronizar package.json del host
 sync_package_json() {

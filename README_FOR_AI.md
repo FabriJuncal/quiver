@@ -33,6 +33,19 @@ Important: slice numbering resets inside each spec. `slice-01` is the first slic
 - `tools/scripts/`
 - `docs/SEARCH.md`
 - a merged or copied `package.json` with the required npm scripts
+- the default OSS baseline when those files are missing:
+  - `LICENSE`
+  - `CONTRIBUTING.md`
+  - `CODE_OF_CONDUCT.md`
+  - `SECURITY.md`
+  - `CHANGELOG.md`
+  - `ROADMAP.md`
+  - `.github/pull_request_template.md`
+  - `.github/ISSUE_TEMPLATE/bug_report.md`
+  - `.github/ISSUE_TEMPLATE/feature_request.md`
+  - `.github/workflows/ci.yml`
+
+`init-docs.sh` preserves any existing target files and reports skipped copies instead of overwriting them.
 
 ## Required Follow-Up
 
