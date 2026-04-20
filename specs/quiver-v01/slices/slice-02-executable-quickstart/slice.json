@@ -41,10 +41,10 @@
     "Los paths de scripts en package.template.json usan tools/scripts/ como los copia init-docs.sh"
   ],
   "estimated_hours": 2,
-  "actual_hours": 0,
-  "status": "ready",
+  "actual_hours": 2,
+  "status": "completed",
   "blocked_reason": null,
   "ready_at": "2026-04-20T00:00:00Z",
-  "started_at": null,
-  "completed_at": null
+  "started_at": "2026-04-20T00:00:00Z",
+  "completed_at": "2026-04-20T00:00:00Z"
 }
