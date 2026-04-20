@@ -80,6 +80,9 @@ copy_template() {
         # Copiar y reemplazar placeholders
         sed -e "s/{{PROJECT_NAME}}/$PROJECT_NAME/g" \
             -e "s/{{PROJECT_SLUG}}/$PROJECT_SLUG/g" \
+            -e "s/\[project\]/$PROJECT_SLUG/g" \
+            -e "s/\[project-name\]/$PROJECT_SLUG/g" \
+            -e "s/\[project-slug\]/$PROJECT_SLUG/g" \
             -e "s/{{FECHA}}/$CURRENT_DATE/g" \
             -e "s/{{FECHA_PROXIMA}}/$DATE_PLUS_7/g" \
             -e "s/{{FECHA_PROXIMA_MES}}/$DATE_PLUS_30/g" \
@@ -100,6 +103,9 @@ copy_template_keep_name() {
     if [ -f "$src" ]; then
         sed -e "s/{{PROJECT_NAME}}/$PROJECT_NAME/g" \
             -e "s/{{PROJECT_SLUG}}/$PROJECT_SLUG/g" \
+            -e "s/\[project\]/$PROJECT_SLUG/g" \
+            -e "s/\[project-name\]/$PROJECT_SLUG/g" \
+            -e "s/\[project-slug\]/$PROJECT_SLUG/g" \
             -e "s/{{FECHA}}/$CURRENT_DATE/g" \
             -e "s/{{FECHA_PROXIMA}}/$DATE_PLUS_7/g" \
             -e "s/{{FECHA_PROXIMA_MES}}/$DATE_PLUS_30/g" \
@@ -176,7 +182,7 @@ copy_template "docs-template/specs/[project-name]/STATUS.md.template" "specs/$PR
 copy_template "docs-template/specs/[project-name]/EVIDENCE_REPORT.md.template" "specs/$PROJECT_SLUG/EVIDENCE_REPORT.md"
 
 # Copiar template de slice
-cp "docs-template/specs/[project-name]/slices/slice-template/slice.json" "specs/$PROJECT_SLUG/slices/slice-template/slice.json"
+copy_template_keep_name "docs-template/specs/[project-name]/slices/slice-template/slice.json" "specs/$PROJECT_SLUG/slices/slice-template/slice.json"
 print_success "Creado: specs/$PROJECT_SLUG/slices/slice-template/slice.json"
 
 # Copiar template de PR del slice

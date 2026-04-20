@@ -51,7 +51,7 @@
   "documentation": [
     "docs/api/module/README.md",
     "docs/STATUS.md",
-    "specs/[project]/slices/[slice-id]/pr.md"
+    "specs/{{PROJECT_SLUG}}/slices/[slice-id]/pr.md"
   ],
   "dependencies": [
     "slice-XX-previous (if any)"

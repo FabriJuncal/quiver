@@ -15,7 +15,7 @@ The slice bootstrap flow now prefers canonical paths and can bootstrap from a lo
 ./docs-template/scripts/init-docs.sh "Project Name"
 ```
 
-3. Edit the generated docs in `docs/` and the project spec in `specs/[project-name]/`.
+3. Edit the generated docs in `docs/` and the project spec in `specs/{{PROJECT_SLUG}}/`.
 
 ## What You Get
 
