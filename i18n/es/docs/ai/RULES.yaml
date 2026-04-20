@@ -1,0 +1,7 @@
+version: 1.0.0
+last_updated: 2026-03-13
+
+planning:
+  auto_trigger_if:
+    - files_to_change > 5
+

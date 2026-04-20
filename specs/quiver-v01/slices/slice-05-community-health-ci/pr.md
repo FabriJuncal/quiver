@@ -1,21 +1,25 @@
 # PR - QUIVER-05 - Community Health + CI
 
-## Titulo
+## Title
 
 chore: add community health files and GitHub Actions CI
 
-## Resumen
+## Summary
 
-Agrega los archivos mínimos de salud comunitaria OSS (CONTRIBUTING, CoC, SECURITY, CHANGELOG, ROADMAP) y un CI básico con shellcheck + validación JSON para los templates de slices.
+Adds the core open-source community health files and a CI workflow that validates shell scripts and JSON templates.
 
-## Alcance
+## Scope
 
-- CONTRIBUTING, CODE_OF_CONDUCT, SECURITY, CHANGELOG, ROADMAP en raíz
-- .github/ISSUE_TEMPLATE/ (bug + feature)
-- .github/pull_request_template.md
-- .github/workflows/ci.yml (shellcheck + JSON validation)
+- `CONTRIBUTING.md`
+- `CODE_OF_CONDUCT.md`
+- `SECURITY.md`
+- `CHANGELOG.md`
+- `ROADMAP.md`
+- `.github/ISSUE_TEMPLATE/`
+- `.github/pull_request_template.md`
+- `.github/workflows/ci.yml`
 
-## Archivos
+## Files
 
 - `CONTRIBUTING.md`
 - `CODE_OF_CONDUCT.md`
@@ -27,67 +31,62 @@ Agrega los archivos mínimos de salud comunitaria OSS (CONTRIBUTING, CoC, SECURI
 - `.github/pull_request_template.md`
 - `.github/workflows/ci.yml`
 
-## Cómo Probar (DETALLADO - OBLIGATORIO)
+## How to Test (DETAILED - REQUIRED)
 
-### Entorno Requerido
+### Required Environment
 
-- bash, node ≥14, git
-- GitHub Actions (automático al hacer push)
+- bash
+- node
+- GitHub Actions
 
-### Acceso al Worktree
-
-```bash
-npm run start:slice -- specs/quiver-v01/slices/slice-05-community-health-ci/slice.json
-```
-
-### Levantar el Proyecto
+### Worktree Access
 
 ```bash
-# No aplica
+npm run start-slice -- specs/quiver-v01/slices/slice-05-community-health-ci/slice.json
 ```
 
-### Casos de Uso
+### Run the Project
 
-#### Caso 1: Verificar CI en GitHub Actions
+```bash
+# Not applicable
+```
 
-1. Hacer push del branch a origin
-2. Abrir GitHub → Actions
-3. Verificar que el workflow `ci.yml` corre y pasa
+### Use Cases
 
-**Resultado esperado:** CI verde con shellcheck y JSON validation pasando.
+#### Case 1: CI runs on GitHub Actions
 
----
+1. Push the branch
+2. Open GitHub Actions
+3. Confirm the workflow passes
 
-#### Caso 2: Verificar community health en GitHub
+**Expected result:** CI is green.
 
-1. Abrir el repo en GitHub
-2. Ir a Insights → Community Standards
-3. Verificar que los indicadores están en verde
+#### Case 2: Community health is visible
 
-**Resultado esperado:** README, License, Contributing, CoC, Security policy — todos presentes.
+1. Open the repository on GitHub
+2. Check the community health indicators
 
----
+**Expected result:** License, contributing, code of conduct, and security policy are present.
 
-### Verificación Técnica
+### Technical Verification
 
 ```bash
 npm run check:slice -- specs/quiver-v01/slices/slice-05-community-health-ci/slice.json --gate validation
 npm run check:pr -- specs/quiver-v01/slices/slice-05-community-health-ci/slice.json
 shellcheck scripts/*.sh
-node -e "['specs/[project-name]/slices/slice-template/slice.json'].forEach(f => JSON.parse(require('fs').readFileSync(f,'utf8')))" && echo "templates valid"
+node -e "JSON.parse(require('fs').readFileSync('specs/[project-name]/slices/slice-template/slice.json','utf8'))" && echo "templates valid"
 ```
 
-## Evidencia
+## Evidence
 
-- [ ] Screenshot de GitHub Actions CI verde
-- [ ] Screenshot de Community Standards en verde
+- CI workflow run
+- Community standards status
 
 ## Rollback
 
 1. `git revert <commit-hash>`
-2. Verificar que CI workflow desaparece de Actions
+2. Confirm the workflow file is removed or reverted
 
-## Riesgos / Notas
+## Risks / Notes
 
-- CHANGELOG.md debe incluir entrada para v0.1.0 que liste los cambios de los 5 slices de este spec.
-- CI con shellcheck puede fallar si hay warnings en scripts existentes — corregirlos en este mismo PR.
+- `CHANGELOG.md` must include v0.1.0.

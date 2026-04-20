@@ -1,22 +1,22 @@
 # PR - QUIVER-01 - Legal + Integrity
 
-## Titulo
+## Title
 
-chore: add LICENSE, fix broken refs, clean orphans, fix init-docs.sh bugs
+chore: add MIT license, fix broken refs, clean orphans, and fix init-docs.sh
 
-## Resumen
+## Summary
 
-Agrega LICENSE MIT, elimina referencias rotas (./GITFLOW.md, MIGRATION_SUMMARY.md), borra slice-template.json huérfano, renombra pr-template.md → pr.md.template y corrige dos bugs en init-docs.sh (TESTING_GUIDE no copiado, date macOS-only).
+Adds the MIT license, removes broken references, deletes the orphan template file, renames the slice PR template, and fixes the `init-docs.sh` date and copy logic.
 
-## Alcance
+## Scope
 
-- LICENSE MIT creado
-- Referencias rotas eliminadas
-- slice-template.json huérfano borrado
-- pr-template.md → pr.md.template (+ init-docs.sh actualizado)
-- init-docs.sh: copy TESTING_GUIDE + date portable vía Node
+- MIT license added
+- Broken references removed
+- Orphan slice template removed
+- PR template renamed to `pr.md.template`
+- `init-docs.sh` copies `TESTING_GUIDE_FOR_AI.md.template` and uses portable dates
 
-## Archivos
+## Files
 
 - `LICENSE`
 - `README_FOR_AI.md`
@@ -24,47 +24,44 @@ Agrega LICENSE MIT, elimina referencias rotas (./GITFLOW.md, MIGRATION_SUMMARY.m
 - `specs/[project-name]/slices/pr.md.template`
 - `scripts/init-docs.sh`
 
-## Cómo Probar (DETALLADO - OBLIGATORIO)
+## How to Test (DETAILED - REQUIRED)
 
-### Entorno Requerido
+### Required Environment
 
-- bash, node (cualquier versión ≥14), git
-- macOS o Linux
+- bash
+- node
+- macOS or Linux
 
-### Acceso al Worktree
+### Worktree Access
 
 ```bash
 npm run start:slice -- specs/quiver-v01/slices/slice-01-legal-integrity/slice.json
 ```
 
-### Levantar el Proyecto
+### Run the Project
 
 ```bash
-# No aplica — framework de documentación, sin servidor
+# Not applicable
 ```
 
-### Casos de Uso
+### Use Cases
 
-#### Caso 1: Verificar LICENSE
+#### Case 1: Verify the license
 
-1. `cat LICENSE`
-2. Verificar que contiene texto MIT con año 2026 y autor correcto.
+1. Open `LICENSE`
+2. Confirm it contains the MIT text and the 2026 copyright
 
-**Resultado esperado:** LICENSE con texto MIT válido.
+**Expected result:** The root license file is valid MIT text.
 
----
+#### Case 2: Verify portable dates
 
-#### Caso 2: Verificar init-docs.sh en Linux/macOS
+1. Run `bash scripts/init-docs.sh "Test Project"` in a clean directory with `docs-template/`
+2. Confirm `docs/TESTING_GUIDE_FOR_AI.md` is created
+3. Confirm the future date placeholders are replaced with real dates
 
-1. Ejecutar `bash scripts/init-docs.sh "Test Project"` en un directorio vacío
-2. Verificar que se crea `docs/TESTING_GUIDE_FOR_AI.md`
-3. Verificar que los placeholders de fecha `{{FECHA_PROXIMA}}` tienen fecha real (no igual a `{{FECHA}}`)
+**Expected result:** The script works on macOS and Linux.
 
-**Resultado esperado:** TESTING_GUIDE copiado; fechas +7d y +30d correctas en ambos OS.
-
----
-
-### Verificación Técnica
+### Technical Verification
 
 ```bash
 npm run check:slice -- specs/quiver-v01/slices/slice-01-legal-integrity/slice.json --gate validation
@@ -72,16 +69,16 @@ npm run check:pr -- specs/quiver-v01/slices/slice-01-legal-integrity/slice.json
 grep -r "GITFLOW\|MIGRATION_SUMMARY" . --include="*.md" --include="*.sh" | grep -v ".git"
 ```
 
-## Evidencia
+## Evidence
 
-- [ ] Screenshot o output de init-docs.sh en Linux
-- [ ] `cat LICENSE` output
+- License file contents
+- `init-docs.sh` output on a clean directory
 
 ## Rollback
 
 1. `git revert <commit-hash>`
-2. Verificar que LICENSE desaparece y refs vuelven
+2. Confirm the license and script changes are gone
 
-## Riesgos / Notas
+## Risks / Notes
 
-- La portabilidad de date vía Node asume node en PATH. Documentar como prerequisito si no estaba antes.
+- The script assumes `node` is available in PATH.

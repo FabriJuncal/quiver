@@ -1,86 +1,84 @@
 # PR - QUIVER-03 - English Canonical
 
-## Titulo
+## Title
 
-docs: translate all documentation to English; move Spanish to i18n/es/
+docs: translate the template documentation to English and move Spanish copies to `i18n/es/`
 
-## Resumen
+## Summary
 
-Traduce toda la documentación del framework al inglés como idioma canónico. Actualiza los headings obligatorios en check-pr-readiness.sh. El español se preserva en i18n/es/ para usuarios hispanohablantes.
+Makes English the canonical language for the documentation templates and updates the PR gate so English `pr.md` files pass.
 
-## Alcance
+## Scope
 
-- Todos los .md y .md.template en inglés
-- check-pr-readiness.sh con headings en inglés
-- i18n/es/ con copias en español
-- Excluye comentarios internos de scripts bash
+- Root docs translated to English
+- Template docs translated to English
+- PR readiness gate headings updated to English
+- Spanish copies preserved in `i18n/es/`
 
-## Archivos
+## Files
 
-- `README.md`, `README_FOR_AI.md`, `TEMPLATE.md`
-- `docs/*.md.template`, `docs/ai/PRINCIPLES.md`, `docs/ai/RULES.yaml`
+- `README.md`
+- `README_FOR_AI.md`
+- `TEMPLATE.md`
+- `docs/*.template`
+- `docs/ai/PRINCIPLES.md`
+- `docs/ai/RULES.yaml`
 - `scripts/check-pr-readiness.sh`
-- `specs/[project-name]/slices/pr.md.template`
-- `i18n/es/` (nuevo)
 
-## Cómo Probar (DETALLADO - OBLIGATORIO)
+## How to Test (DETAILED - REQUIRED)
 
-### Entorno Requerido
+### Required Environment
 
-- bash, node ≥14, git
+- bash
+- node
+- macOS or Linux
 
-### Acceso al Worktree
-
-```bash
-npm run start:slice -- specs/quiver-v01/slices/slice-03-english-canonical/slice.json
-```
-
-### Levantar el Proyecto
+### Worktree Access
 
 ```bash
-# No aplica
+npm run start-slice -- specs/quiver-v01/slices/slice-03-english-canonical/slice.json
 ```
 
-### Casos de Uso
+### Run the Project
 
-#### Caso 1: Gate con pr.md en inglés
+```bash
+# Not applicable
+```
 
-1. Crear un pr.md con headings en inglés (ej: `## How to Test (DETAILED - REQUIRED)`)
-2. Ejecutar `npm run check:pr -- <slice.json>`
-3. Verificar que el gate pasa sin errores
+### Use Cases
 
-**Resultado esperado:** PASS en todos los checks de headings.
+#### Case 1: PR gate with English headings
 
----
+1. Create a `pr.md` that uses English headings
+2. Run `npm run check:pr -- <slice.json>`
 
-#### Caso 2: Verificar i18n/es/
+**Expected result:** The PR gate passes.
 
-1. `ls i18n/es/`
-2. Verificar que existen al menos README.md, WORKFLOW.md y CONTRIBUTING.md en español
+#### Case 2: Spanish copies available
 
-**Resultado esperado:** archivos en español intactos en i18n/es/.
+1. Open `i18n/es/`
+2. Confirm the translated docs are present
 
----
+**Expected result:** Spanish copies are available for reference.
 
-### Verificación Técnica
+### Technical Verification
 
 ```bash
 npm run check:slice -- specs/quiver-v01/slices/slice-03-english-canonical/slice.json --gate validation
 npm run check:pr -- specs/quiver-v01/slices/slice-03-english-canonical/slice.json
-grep -c "Cómo Probar" scripts/check-pr-readiness.sh  # debe ser 0
+grep -c "How to Test" scripts/check-pr-readiness.sh
 ```
 
-## Evidencia
+## Evidence
 
-- [ ] Output de check-pr-readiness.sh con pr.md en inglés
-- [ ] `ls i18n/es/` output
+- `check-pr-readiness.sh` output
+- `i18n/es/` listing
 
 ## Rollback
 
 1. `git revert <commit-hash>`
-2. Verificar que check-pr-readiness.sh vuelve a headings en español
+2. Confirm the gate headings return to the previous state
 
-## Riesgos / Notas
+## Risks / Notes
 
-- PRs 01 y 02 fueron mergeados con pr.md en español — no necesitan actualizarse (ya merged).
-- Después de este merge, todos los nuevos pr.md deben usar headings en inglés.
+- The translated docs must stay aligned with the generated templates.

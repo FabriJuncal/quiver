@@ -1,79 +1,24 @@
 # Lessons Learned
 
-**Última actualización:** {{FECHA}}
-**Propósito:** Aprendizaje acumulativo para evitar repetir errores
+**Last updated:** {{FECHA}}
 
----
+## [Lesson Title]
 
-## {{FECHA}}: [Título del Lesson]
+### Context
 
-### Contexto
-[Descripción del contexto en el que se aprendió la lección]
+[What happened]
 
-### Qué funcionó ✅
-- [Lo que funcionó bien]
-- [Otra cosa que funcionó]
+### What Worked
 
-### Qué no funcionó ❌
-- [Lo que no funcionó]
-- [Otro problema]
+- [Item 1]
+- [Item 2]
 
-### Reglas para próxima vez
-- [ ] [Regla 1]
-- [ ] [Regla 2]
-- [ ] [Regla 3]
+### What Did Not Work
 
----
+- [Item 1]
+- [Item 2]
 
-## Patrones Detectados
+### Next Time
 
-### Patrones a Repetir ✅
-
-1. **[Nombre del patrón]**
-   - [Descripción]
-   - [Cuándo usar]
-
-2. **[Nombre del patrón]**
-   - [Descripción]
-   - [Cuándo usar]
-
-### Anti-patrones a Evitar ❌
-
-1. **[Nombre del anti-patrón]**
-   - [Descripción]
-   - [Por qué evitar]
-
-2. **[Nombre del anti-patrón]**
-   - [Descripción]
-   - [Por qué evitar]
-
----
-
-## Reglas Actualizadas
-
-### Nuevas Reglas (agregadas {{FECHA}})
-
-```yaml
-# Agregar reglas aquí
-categoria:
-  - "Regla 1"
-  - "Regla 2"
-```
-
----
-
-## Próximas Revisiones
-
-### Revisar en 1 semana ({{FECHA_PROXIMA}})
-- [ ] [Pregunta de revisión 1]
-- [ ] [Pregunta de revisión 2]
-
-### Revisar en 1 mes ({{FECHA_PROXIMA_MES}})
-- [ ] [Pregunta de revisión mensual 1]
-- [ ] [Pregunta de revisión mensual 2]
-
----
-
-**Fin del documento**
-
-**Próximo:** Actualizar después de cada slice completado
+- [Rule 1]
+- [Rule 2]

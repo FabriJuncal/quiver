@@ -40,6 +40,9 @@ fi
 PROJECT_NAME="$1"
 PROJECT_SLUG=$(echo "$PROJECT_NAME" | tr '[:upper:]' '[:lower:]' | tr ' ' '-' | tr -cd '[:alnum:]-')
 CURRENT_DATE=$(date +%Y-%m-%d)
+DATE_PLUS_7=$(node -e 'const d = new Date(); d.setDate(d.getDate() + 7); const p = (n) => String(n).padStart(2, "0"); console.log(`${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`);')
+DATE_PLUS_30=$(node -e 'const d = new Date(); d.setDate(d.getDate() + 30); const p = (n) => String(n).padStart(2, "0"); console.log(`${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`);')
+DATE_PLUS_35=$(node -e 'const d = new Date(); d.setDate(d.getDate() + 35); const p = (n) => String(n).padStart(2, "0"); console.log(`${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`);')
 
 print_info "Inicializando documentación para: $PROJECT_NAME"
 print_info "Project slug: $PROJECT_SLUG"
@@ -78,14 +81,34 @@ copy_template() {
         sed -e "s/{{PROJECT_NAME}}/$PROJECT_NAME/g" \
             -e "s/{{PROJECT_SLUG}}/$PROJECT_SLUG/g" \
             -e "s/{{FECHA}}/$CURRENT_DATE/g" \
-            -e "s/{{FECHA_PROXIMA}}/$(date -v+7d +%Y-%m-%d 2>/dev/null || date +%Y-%m-%d)/g" \
-            -e "s/{{FECHA_PROXIMA_MES}}/$(date -v+30d +%Y-%m-%d 2>/dev/null || date +%Y-%m-%d)/g" \
-            -e "s/{{FECHA_LAUNCH}}/$(date -v+35d +%Y-%m-%d 2>/dev/null || date +%Y-%m-%d)/g" \
+            -e "s/{{FECHA_PROXIMA}}/$DATE_PLUS_7/g" \
+            -e "s/{{FECHA_PROXIMA_MES}}/$DATE_PLUS_30/g" \
+            -e "s/{{FECHA_LAUNCH}}/$DATE_PLUS_35/g" \
             -e "s/{{ESTADO}}/En planificación/g" \
             -e "s/{{FASE}}/Fase 1/g" \
             -e "s/{{X}}%/0%/g" \
             "$src" > "$dest"
         
+        print_success "Creado: $dest"
+    fi
+}
+
+copy_template_keep_name() {
+    local src="$1"
+    local dest="$2"
+
+    if [ -f "$src" ]; then
+        sed -e "s/{{PROJECT_NAME}}/$PROJECT_NAME/g" \
+            -e "s/{{PROJECT_SLUG}}/$PROJECT_SLUG/g" \
+            -e "s/{{FECHA}}/$CURRENT_DATE/g" \
+            -e "s/{{FECHA_PROXIMA}}/$DATE_PLUS_7/g" \
+            -e "s/{{FECHA_PROXIMA_MES}}/$DATE_PLUS_30/g" \
+            -e "s/{{FECHA_LAUNCH}}/$DATE_PLUS_35/g" \
+            -e "s/{{ESTADO}}/En planificación/g" \
+            -e "s/{{FASE}}/Fase 1/g" \
+            -e "s/{{X}}%/0%/g" \
+            "$src" > "$dest"
+
         print_success "Creado: $dest"
     fi
 }
@@ -100,6 +123,7 @@ copy_template "docs-template/docs/MOCK_DATA_GUIDE.md.template" "docs/MOCK_DATA_G
 copy_template "docs-template/docs/UI_STANDARDS.md.template" "docs/UI_STANDARDS.md"
 copy_template "docs-template/docs/GITFLOW_PR_GUIDE.md.template" "docs/GITFLOW_PR_GUIDE.md"
 copy_template "docs-template/docs/DOCUMENTATION_GUIDE.md.template" "docs/DOCUMENTATION_GUIDE.md"
+copy_template "docs-template/docs/TESTING_GUIDE_FOR_AI.md.template" "docs/TESTING_GUIDE_FOR_AI.md"
 
 # Copiar archivos que no son templates
 if [ -f "docs-template/docs/UI_STANDARDS.md" ]; then
@@ -136,7 +160,43 @@ cp "docs-template/specs/[project-name]/slices/slice-template/slice.json" "specs/
 print_success "Creado: specs/$PROJECT_SLUG/slices/slice-template/slice.json"
 
 # Copiar template de PR del slice
-copy_template "docs-template/specs/[project-name]/slices/pr-template.md" "specs/$PROJECT_SLUG/slices/slice-template/pr.md"
+copy_template_keep_name "docs-template/specs/[project-name]/slices/pr.md.template" "specs/$PROJECT_SLUG/slices/slice-template/pr.md.template"
+
+# Sincronizar package.json del host
+sync_package_json() {
+    local package_template="docs-template/package.template.json"
+    local package_json="package.json"
+
+    if [ ! -f "$package_template" ]; then
+        print_warning "No se encontró package.template.json; se omite la sincronización de package.json"
+        return 0
+    fi
+
+    if [ ! -f "$package_json" ]; then
+        cp "$package_template" "$package_json"
+        print_success "Creado: $package_json"
+        return 0
+    fi
+
+    node - "$package_json" "$package_template" <<'NODE'
+const fs = require('fs');
+
+const [packagePath, templatePath] = process.argv.slice(2);
+const existing = JSON.parse(fs.readFileSync(packagePath, 'utf8'));
+const template = JSON.parse(fs.readFileSync(templatePath, 'utf8'));
+
+existing.scripts = {
+  ...(existing.scripts || {}),
+  ...(template.scripts || {})
+};
+
+fs.writeFileSync(packagePath, `${JSON.stringify(existing, null, 2)}\n`);
+NODE
+
+    print_success "Actualizado: $package_json (scripts mergeados)"
+}
+
+sync_package_json
 
 # Copiar bootstrap de slices a tools/scripts
 if [ -f "docs-template/scripts/start-slice.sh" ]; then

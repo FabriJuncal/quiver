@@ -1,0 +1,27 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install shellcheck
+        run: sudo apt-get update && sudo apt-get install -y shellcheck
+
+      - name: Shellcheck scripts
+        run: shellcheck scripts/*.sh
+
+      - name: Validate slice templates
+        run: |
+          node -e "JSON.parse(require('fs').readFileSync('specs/[project-name]/slices/slice-template/slice.json', 'utf8'))"
+          node -e "JSON.parse(require('fs').readFileSync('specs/quiver-v01/slices/slice-01-legal-integrity/slice.json', 'utf8'))"
+

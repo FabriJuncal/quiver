@@ -1,20 +1,21 @@
 # PR - QUIVER-04 - First Working Example
 
-## Titulo
+## Title
 
-docs: add examples/01-basic-slice end-to-end
+docs: add `examples/01-basic-slice/` end to end
 
-## Resumen
+## Summary
 
-Agrega el primer ejemplo ejecutable del framework: un caso ficticio pero realista que demuestra el flujo completo spec → slice → PR → evidencia. Agnóstico al stack tecnológico.
+Adds the first reproducible example that shows the spec → slice → PR → evidence loop in a realistic but stack-agnostic way.
 
-## Alcance
+## Scope
 
-- `examples/01-basic-slice/` con README, SPEC, EVIDENCE_REPORT y slice completo
-- El slice.json del ejemplo tiene status: completed con todos los campos llenos
-- El pr.md del ejemplo tiene formato completo en inglés
+- Example README
+- Example SPEC
+- Example evidence report
+- Example slice JSON and PR note
 
-## Archivos
+## Files
 
 - `examples/01-basic-slice/README.md`
 - `examples/01-basic-slice/SPEC.md`
@@ -22,46 +23,43 @@ Agrega el primer ejemplo ejecutable del framework: un caso ficticio pero realist
 - `examples/01-basic-slice/slices/slice-01/slice.json`
 - `examples/01-basic-slice/slices/slice-01/pr.md`
 
-## Cómo Probar (DETALLADO - OBLIGATORIO)
+## How to Test (DETAILED - REQUIRED)
 
-### Entorno Requerido
+### Required Environment
 
-- bash, node ≥14, git
+- bash
+- node
+- macOS or Linux
 
-### Acceso al Worktree
-
-```bash
-npm run start:slice -- specs/quiver-v01/slices/slice-04-first-example/slice.json
-```
-
-### Levantar el Proyecto
+### Worktree Access
 
 ```bash
-# No aplica
+npm run start-slice -- specs/quiver-v01/slices/slice-04-first-example/slice.json
 ```
 
-### Casos de Uso
+### Run the Project
 
-#### Caso 1: Leer el ejemplo como nuevo usuario
+```bash
+# Not applicable
+```
 
-1. Abrir `examples/01-basic-slice/README.md`
-2. Seguir las instrucciones sin leer ningún otro archivo primero
-3. Verificar que el flujo completo se entiende en <5 minutos
+### Use Cases
 
-**Resultado esperado:** comprensión del flujo spec → slice → PR sin ambigüedad.
+#### Case 1: Read the example as a new user
 
----
+1. Open `examples/01-basic-slice/README.md`
+2. Follow the steps without reading anything else first
 
-#### Caso 2: Validar el slice.json del ejemplo
+**Expected result:** The workflow is understandable in under five minutes.
 
-1. `node -e "JSON.parse(require('fs').readFileSync('examples/01-basic-slice/slices/slice-01/slice.json', 'utf8'))" && echo "valid"`
-2. Verificar que status es "completed" y tiene started_at, completed_at, actual_hours
+#### Case 2: Validate the example slice JSON
 
-**Resultado esperado:** JSON válido, campos de trazabilidad presentes.
+1. Parse `examples/01-basic-slice/slices/slice-01/slice.json`
+2. Confirm `status`, `actual_hours`, `started_at`, and `completed_at` are present
 
----
+**Expected result:** The JSON is valid and complete.
 
-### Verificación Técnica
+### Technical Verification
 
 ```bash
 npm run check:slice -- specs/quiver-v01/slices/slice-04-first-example/slice.json --gate validation
@@ -69,16 +67,16 @@ npm run check:pr -- specs/quiver-v01/slices/slice-04-first-example/slice.json
 node -e "JSON.parse(require('fs').readFileSync('examples/01-basic-slice/slices/slice-01/slice.json','utf8'))" && echo "example slice.json valid"
 ```
 
-## Evidencia
+## Evidence
 
-- [ ] Screenshot o lectura del README del ejemplo
-- [ ] Output de validación JSON del slice
+- Example README content
+- JSON validation output
 
 ## Rollback
 
 1. `git revert <commit-hash>`
-2. Verificar que directorio examples/ desaparece
+2. Remove the `examples/` directory if needed
 
-## Riesgos / Notas
+## Risks / Notes
 
-- El ejemplo debe depender de slice-03 completado para usar headings en inglés.
+- The example should stay stack-agnostic.

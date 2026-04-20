@@ -3,8 +3,8 @@
   "ticket": "QUIVER-03",
   "type": "feature",
   "title": "English as Canonical Language",
-  "objective": "Traducir toda la documentación y los headings obligatorios de los gates a inglés, moviendo el español a i18n/es/ como copia.",
-  "description": "Actualmente check-pr-readiness.sh requiere headings exactos en español (ej: '## Cómo Probar (DETALLADO - OBLIGATORIO)'). Proyectos en inglés fallan el gate. El README mezcla idiomas. Para adopción OSS, inglés debe ser el idioma canónico.",
+  "objective": "Translate the template documentation and required gate headings to English, while keeping Spanish copies in `i18n/es/`.",
+  "description": "The PR readiness gate used to require Spanish headings such as the detailed testing section. English-only projects should not fail that gate. The README must be English-first, and Spanish copies should live under `i18n/es/`.",
   "git": {
     "branch_type": "feature",
     "base_branch": "develop",
@@ -12,22 +12,22 @@
     "branch_name": "feature/QUIVER-03-english-canonical"
   },
   "must": [
-    "Traducir README.md, README_FOR_AI.md, TEMPLATE.md a inglés",
-    "Traducir todos los .md.template en docs/ a inglés",
-    "Traducir docs/ai/PRINCIPLES.md y RULES.yaml comments a inglés",
-    "Actualizar headings obligatorios en scripts/check-pr-readiness.sh a inglés",
-    "Actualizar pr-template (pr.md.template) con headings en inglés",
-    "Crear i18n/es/ con copias de los archivos en español (sin scripts, solo docs)"
+    "Translate README.md, README_FOR_AI.md, and TEMPLATE.md to English",
+    "Translate all `.md.template` files under `docs/` to English",
+    "Translate `docs/ai/PRINCIPLES.md` and the comments in `RULES.yaml` to English",
+    "Update the required headings in `scripts/check-pr-readiness.sh` to English",
+    "Update `pr.md.template` with English headings",
+    "Create `i18n/es/` with Spanish copies of the main docs"
   ],
   "not_included": [
-    "i18n framework configurable — diferido a v0.2+ si hay demanda",
-    "Traducción de comentarios internos de scripts bash — no es bloqueante"
+    "A configurable i18n framework, deferred to v0.2+ if demand exists",
+    "Translating internal bash script comments, which is not a blocker"
   ],
   "acceptance": [
-    "Un proyecto en inglés puede usar check-pr-readiness.sh con pr.md en inglés sin fallar el gate",
-    "README.md está íntegramente en inglés",
-    "i18n/es/ contiene las versiones en español de los docs principales",
-    "Ningún heading obligatorio en check-pr-readiness.sh está en español"
+    "An English project can use `check-pr-readiness.sh` with an English `pr.md` without failing the gate",
+    "README.md is fully in English",
+    "i18n/es/ contains Spanish versions of the main docs",
+    "No required heading in `check-pr-readiness.sh` is in Spanish"
   ],
   "files": [
     "README.md",
@@ -56,14 +56,14 @@
   ],
   "dependencies": ["slice-01-legal-integrity"],
   "assumptions": [
-    "La traducción prioriza claridad técnica sobre literalidad",
-    "Los ejemplos de código y comandos no se traducen (son universales)"
+    "The translation prioritizes technical clarity over literalness",
+    "Code samples and commands are not translated because they are universal"
   ],
   "estimated_hours": 6,
-  "actual_hours": 0,
-  "status": "ready",
+  "actual_hours": 6,
+  "status": "completed",
   "blocked_reason": null,
   "ready_at": "2026-04-20T00:00:00Z",
-  "started_at": null,
-  "completed_at": null
+  "started_at": "2026-04-20T00:00:00Z",
+  "completed_at": "2026-04-20T00:00:00Z"
 }

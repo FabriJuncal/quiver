@@ -1,82 +1,80 @@
 # PR - QUIVER-02 - Executable Quickstart
 
-## Titulo
+## Title
 
-feat: add package.template.json and wire npm scripts in init-docs.sh
+feat: add `package.template.json` and wire npm scripts in `init-docs.sh`
 
-## Resumen
+## Summary
 
-Crea package.template.json con los 4 scripts npm requeridos por el WORKFLOW. init-docs.sh ahora lo instala en el host (merge si existe package.json, copia si no). El usuario puede ejecutar npm run check:slice inmediatamente después del init.
+Adds the npm script template and teaches `init-docs.sh` how to create or merge `package.json` so new projects can run the slice workflow immediately.
 
-## Alcance
+## Scope
 
-- `package.template.json` creado con `check:slice`, `check:pr`, `start:slice`, `cleanup:slice`
-- `init-docs.sh` mergea o copia package.template.json al host
-- `README.md` quickstart actualizado con los comandos npm
+- `package.template.json` created with the required scripts
+- `init-docs.sh` copies or merges `package.json`
+- `README.md` updated with the quick start flow
 
-## Archivos
+## Files
 
 - `package.template.json`
 - `scripts/init-docs.sh`
 - `README.md`
 
-## Cómo Probar (DETALLADO - OBLIGATORIO)
+## How to Test (DETAILED - REQUIRED)
 
-### Entorno Requerido
+### Required Environment
 
-- bash, node ≥14, git
+- bash
+- node
+- macOS or Linux
 
-### Acceso al Worktree
+### Worktree Access
 
 ```bash
 npm run start:slice -- specs/quiver-v01/slices/slice-02-executable-quickstart/slice.json
 ```
 
-### Levantar el Proyecto
+### Run the Project
 
 ```bash
-# No aplica
+# Not applicable
 ```
 
-### Casos de Uso
+### Use Cases
 
-#### Caso 1: Host sin package.json existente
+#### Case 1: No existing package.json
 
-1. Crear directorio vacío con docs-template/ clonado
-2. Ejecutar `bash scripts/init-docs.sh "My Project"`
-3. Verificar que se crea `package.json` con los 4 scripts
+1. Start from a clean project root with `docs-template/`
+2. Run `bash scripts/init-docs.sh "My Project"`
+3. Open the generated `package.json`
 
-**Resultado esperado:** package.json con check:slice, check:pr, start:slice, cleanup:slice apuntando a tools/scripts/.
+**Expected result:** The four required scripts are present.
 
----
+#### Case 2: Existing package.json
 
-#### Caso 2: Host con package.json existente
+1. Create a project with an existing `package.json`
+2. Run `bash scripts/init-docs.sh "My Project"`
+3. Re-open `package.json`
 
-1. Crear directorio con package.json que tiene scripts propios
-2. Ejecutar `bash scripts/init-docs.sh "My Project"`
-3. Verificar que scripts propios siguen intactos y los 4 nuevos fueron agregados
+**Expected result:** Existing scripts remain and the four required scripts are added.
 
-**Resultado esperado:** package.json mergeado sin perder scripts existentes.
-
----
-
-### Verificación Técnica
+### Technical Verification
 
 ```bash
 npm run check:slice -- specs/quiver-v01/slices/slice-02-executable-quickstart/slice.json --gate validation
 npm run check:pr -- specs/quiver-v01/slices/slice-02-executable-quickstart/slice.json
 ```
 
-## Evidencia
+## Evidence
 
-- [ ] Output de init-docs.sh en ambos casos (con y sin package.json previo)
-- [ ] `cat package.json` del host resultante
+- Resulting `package.json`
+- `init-docs.sh` output in both scenarios
 
 ## Rollback
 
 1. `git revert <commit-hash>`
-2. Verificar que init-docs.sh ya no toca package.json
+2. Confirm `init-docs.sh` no longer touches `package.json`
 
-## Riesgos / Notas
+## Risks / Notes
 
-- El merge de package.json usa Node. Si el host no tiene node instalado aún, init-docs.sh debe degradar a advertencia en vez de error.
+- The merge step requires `node`.
