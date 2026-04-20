@@ -1,0 +1,53 @@
+{
+  "slice_id": "slice-01-onboarding-flow",
+  "ticket": "EXAMPLE-01",
+  "type": "feature",
+  "title": "Onboarding Flow Documentation",
+  "objective": "Document a fictional onboarding flow as a completed slice example.",
+  "description": "This slice exists only to show how a completed slice should be written in a real project.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "develop",
+    "branch_slug": "onboarding-flow-documentation",
+    "branch_name": "feature/EXAMPLE-01-onboarding-flow-documentation"
+  },
+  "must": [
+    "Document the onboarding flow",
+    "Provide a complete PR note",
+    "Record evidence"
+  ],
+  "not_included": [
+    "Production code",
+    "Framework-specific implementation"
+  ],
+  "acceptance": [
+    "The example README is understandable in under five minutes",
+    "The slice JSON parses successfully",
+    "The PR note uses the required headings"
+  ],
+  "files": [
+    "examples/01-basic-slice/README.md",
+    "examples/01-basic-slice/SPEC.md",
+    "examples/01-basic-slice/EVIDENCE_REPORT.md",
+    "examples/01-basic-slice/slices/slice-01/slice.json",
+    "examples/01-basic-slice/slices/slice-01/pr.md"
+  ],
+  "tests": [
+    "node -e \"JSON.parse(require('fs').readFileSync('examples/01-basic-slice/slices/slice-01/slice.json', 'utf8'))\""
+  ],
+  "documentation": [
+    "examples/01-basic-slice/README.md",
+    "examples/01-basic-slice/EVIDENCE_REPORT.md"
+  ],
+  "dependencies": [],
+  "assumptions": [
+    "The example remains stack-agnostic"
+  ],
+  "estimated_hours": 1,
+  "actual_hours": 1,
+  "status": "completed",
+  "blocked_reason": null,
+  "ready_at": "2026-04-20T00:00:00Z",
+  "started_at": "2026-04-20T00:00:00Z",
+  "completed_at": "2026-04-20T00:00:00Z"
+}
