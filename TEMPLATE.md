@@ -2,6 +2,8 @@
 
 Use this guide to adapt the template to a specific project.
 
+Slice numbering is local to each spec. Do not continue numbers across specs.
+
 ## Setup
 
 1. Run:

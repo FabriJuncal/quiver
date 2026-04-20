@@ -1,0 +1,61 @@
+{
+  "slice_id": "slice-04-workflow-guardrails-alignment",
+  "ticket": "QUIVER-04",
+  "type": "feature",
+  "title": "Workflow Guardrails Alignment",
+  "objective": "Align scripts and docs on when a slice is allowed to start, how the documentation PR precedes the spec PR, and how slice aliases are derived.",
+  "description": "The current workflow says no slice should enter execution until it is `ready`, but `start-slice.sh` still allows `draft` slices. The docs also assume a documentation-PR-before-spec-PR order and a branch strategy that are not surfaced consistently at the point of use. This slice makes the workflow contract explicit and enforceable.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "develop",
+    "branch_slug": "workflow-guardrails-alignment",
+    "branch_name": "feature/QUIVER-04-workflow-guardrails-alignment"
+  },
+  "must": [
+    "Make `start-slice.sh` require `status=ready` by default, or provide an explicit escape hatch for intentional draft bootstraps",
+    "Align the onboarding docs with the actual order of operations: documentation PR first, then slice execution, then spec PR",
+    "Make alias generation deterministic and human-readable for both tickets such as `QUIVER-01` and simpler tickets such as `DEM-001`",
+    "Keep `WORKTREE_CONTEXT.md` and `ACTIVE_SLICES.md` consistent with the final alias and status model"
+  ],
+  "not_included": [
+    "CI smoke test coverage",
+    "One-command installation",
+    "Docs site or external tutorials"
+  ],
+  "acceptance": [
+    "A `draft` slice does not silently enter execution through `start-slice.sh` without an explicit override",
+    "README, AI docs, and generated workflow docs describe the same execution order and branch assumptions",
+    "Alias output in worktree-related artifacts is readable and stable for both framework tickets and generic team tickets"
+  ],
+  "files": [
+    "scripts/start-slice.sh",
+    "scripts/refresh-active-slices.sh",
+    "README.md",
+    "README_FOR_AI.md",
+    "docs/WORKFLOW.md.template",
+    "docs/GITFLOW_PR_GUIDE.md.template"
+  ],
+  "tests": [
+    "Ready-gate smoke test for `start-slice.sh`",
+    "Alias generation snapshot for representative ticket formats"
+  ],
+  "documentation": [
+    "specs/quiver-v02-bootstrap-hardening/SPEC.md",
+    "specs/quiver-v02-bootstrap-hardening/STATUS.md"
+  ],
+  "dependencies": [
+    "slice-01-path-remote-safety",
+    "slice-03-placeholder-rendering-cleanup"
+  ],
+  "assumptions": [
+    "The ready gate should be enforced at the bootstrap entrypoint, not only in a separate validation command",
+    "The documentation PR continues to be the source of truth before slice execution starts"
+  ],
+  "estimated_hours": 3,
+  "actual_hours": 0,
+  "status": "ready",
+  "blocked_reason": null,
+  "ready_at": "2026-04-20T00:00:00Z",
+  "started_at": null,
+  "completed_at": null
+}

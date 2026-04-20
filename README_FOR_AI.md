@@ -2,6 +2,8 @@
 
 Use this guide when initializing a new project from the template or when explaining the workflow to another agent.
 
+Important: slice numbering resets inside each spec. `slice-01` is the first slice of that spec, not a global repo counter.
+
 ## Core Rules
 
 - Never customize `docs-template/` for a specific project.
