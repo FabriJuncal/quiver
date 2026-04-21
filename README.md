@@ -27,12 +27,34 @@ npx create-quiver --name "Project Name" --dir ./target-repo
 
 Run the command from the target repo directory to install in-place, or pass `--dir` to scaffold a new directory.
 
+### Validate the scaffold
+
+After installation, run:
+
+```bash
+npx create-quiver doctor --dir ./target-repo
+```
+
+The doctor checks the generated project contract and prints the next slice workflow steps.
+
+### Release flow
+
+Maintainers can validate and document a release with:
+
+```bash
+bash scripts/release-quiver.sh
+```
+
+Pass `--publish` when you want the script to bump the version, publish the package, and push tags.
+
 ## What You Get
 
 - Project documentation templates
 - Spec and slice templates
 - Slice lifecycle scripts
 - `create-quiver` CLI entrypoint
+- post-init doctor validation
+- release helper script
 - AI guidance files
 - A portable MIT license
 - Default OSS baseline files when they are missing:

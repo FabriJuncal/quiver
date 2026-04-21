@@ -10,17 +10,19 @@ function formatError(message) {
 function printUsage() {
   console.log(`Usage:
   npx create-quiver [options]
+  npx create-quiver doctor [options]
 
 Options:
   -n, --name <project-name>   Project name to generate
-  -d, --dir <target-dir>      Target directory to scaffold into
+  -d, --dir <target-dir>      Target directory to scaffold into or inspect
   -y, --yes                   Skip prompts and use the provided inputs
   -h, --help                  Show this help message
 
 Examples:
   npx create-quiver --name "My Project"
   npx create-quiver --name "My Project" --dir ./my-project
-  node bin/create-quiver.js --name "My Project" --dir ./my-project
+  npx create-quiver doctor --dir ./my-project
+  node bin/create-quiver.js doctor --dir ./my-project
 `);
 }
 
@@ -28,14 +30,21 @@ function parseArgs(argv) {
   const result = {
     help: false,
     force: false,
+    mode: 'init',
     projectName: '',
     targetDir: '.',
   };
 
+  const args = [...argv];
+  if (args[0] === 'doctor') {
+    result.mode = 'doctor';
+    args.shift();
+  }
+
   const positional = [];
 
-  for (let index = 0; index < argv.length; index += 1) {
-    const arg = argv[index];
+  for (let index = 0; index < args.length; index += 1) {
+    const arg = args[index];
 
     if (arg === '-h' || arg === '--help') {
       result.help = true;
@@ -47,8 +56,13 @@ function parseArgs(argv) {
       continue;
     }
 
+    if (arg === '--doctor') {
+      result.mode = 'doctor';
+      continue;
+    }
+
     if (arg === '-n' || arg === '--name' || arg === '--project-name') {
-      const value = argv[++index];
+      const value = args[++index];
       if (!value) {
         throw new Error(formatError('missing value for --name'));
       }
@@ -57,7 +71,7 @@ function parseArgs(argv) {
     }
 
     if (arg === '-d' || arg === '--dir' || arg === '--target') {
-      const value = argv[++index];
+      const value = args[++index];
       if (!value) {
         throw new Error(formatError('missing value for --dir'));
       }
@@ -72,12 +86,18 @@ function parseArgs(argv) {
     positional.push(arg);
   }
 
-  if (!result.projectName && positional.length > 0) {
-    result.projectName = positional.shift();
-  }
+  if (result.mode === 'init') {
+    if (!result.projectName && positional.length > 0) {
+      result.projectName = positional.shift();
+    }
 
-  if (positional.length > 0) {
-    result.targetDir = positional.shift();
+    if (positional.length > 0) {
+      result.targetDir = positional.shift();
+    }
+  } else {
+    if (positional.length > 0) {
+      result.targetDir = positional.shift();
+    }
   }
 
   if (positional.length > 0) {
@@ -155,7 +175,113 @@ function runInitDocs(repoRoot, projectName) {
   });
 }
 
-function printNextSteps(targetDir, projectName) {
+function listGeneratedSpecDirs(projectRoot) {
+  const specsDir = path.join(projectRoot, 'specs');
+
+  if (!fs.existsSync(specsDir)) {
+    return [];
+  }
+
+  return fs.readdirSync(specsDir, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => entry.name)
+    .filter((entry) => entry !== '[project-name]' && !entry.startsWith('quiver-'));
+}
+
+function assertFilesExist(root, relativePaths) {
+  return relativePaths.filter((relativePath) => !fs.existsSync(path.join(root, relativePath)));
+}
+
+function assertExecutablesExist(root, relativePaths) {
+  return relativePaths.filter((relativePath) => {
+    const absolutePath = path.join(root, relativePath);
+
+    if (!fs.existsSync(absolutePath)) {
+      return true;
+    }
+
+    const mode = fs.statSync(absolutePath).mode;
+    return (mode & 0o111) === 0;
+  });
+}
+
+function loadPackageJson(projectRoot) {
+  const packageJsonPath = path.join(projectRoot, 'package.json');
+
+  if (!fs.existsSync(packageJsonPath)) {
+    throw new Error(formatError(`missing package.json in ${projectRoot}`));
+  }
+
+  return JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
+}
+
+function runDoctor(targetDir) {
+  const projectRoot = path.resolve(process.cwd(), targetDir);
+
+  if (!fs.existsSync(projectRoot)) {
+    throw new Error(formatError(`target directory does not exist: ${projectRoot}`));
+  }
+
+  const generatedSpecs = listGeneratedSpecDirs(projectRoot);
+  if (generatedSpecs.length !== 1) {
+    throw new Error(formatError(`expected exactly one generated spec directory, found ${generatedSpecs.length || 0}`));
+  }
+
+  const projectSlug = generatedSpecs[0];
+  const requiredFiles = [
+    'README.md',
+    'docs/INDEX.md',
+    'docs/CONTEXTO.md',
+    'docs/WORKFLOW.md',
+    'docs/SUPPORT_MATRIX.md',
+    'docs/TROUBLESHOOTING.md',
+    'docs/TESTING_GUIDE_FOR_AI.md',
+    'docs/ai/PRINCIPLES.md',
+    'docs/ai/RULES.yaml',
+    'docs/ai/LESSONS.md',
+    `specs/${projectSlug}/SPEC.md`,
+    `specs/${projectSlug}/STATUS.md`,
+    `specs/${projectSlug}/EVIDENCE_REPORT.md`,
+    'package.json',
+    '.github/pull_request_template.md',
+    '.github/ISSUE_TEMPLATE/bug_report.md',
+    '.github/ISSUE_TEMPLATE/feature_request.md',
+    '.github/workflows/ci.yml',
+  ];
+
+  const requiredExecutables = [
+    'tools/scripts/start-slice.sh',
+    'tools/scripts/check-slice-readiness.sh',
+    'tools/scripts/check-pr-readiness.sh',
+    'tools/scripts/cleanup-slice.sh',
+    'tools/scripts/check-scope.sh',
+  ];
+
+  const missingFiles = assertFilesExist(projectRoot, requiredFiles);
+  const nonExecutableScripts = assertExecutablesExist(projectRoot, requiredExecutables);
+  const pkg = loadPackageJson(projectRoot);
+  const requiredScripts = ['check:slice', 'check:pr', 'start:slice', 'cleanup:slice'];
+  const missingScripts = requiredScripts.filter((name) => typeof pkg.scripts?.[name] !== 'string');
+
+  const problems = [
+    ...missingFiles.map((file) => `missing file: ${file}`),
+    ...nonExecutableScripts.map((file) => `missing executable bit: ${file}`),
+    ...missingScripts.map((name) => `missing package.json script: ${name}`),
+  ];
+
+  if (problems.length > 0) {
+    throw new Error(formatError(`doctor failed:\n- ${problems.join('\n- ')}`));
+  }
+
+  console.log(`Quiver doctor passed for ${projectRoot}`);
+  console.log(`Generated project slug: ${projectSlug}`);
+  console.log('Next steps:');
+  console.log(`- Run ${path.join(projectRoot, 'tools', 'scripts', 'start-slice.sh')} ${path.join(projectRoot, 'specs', projectSlug, 'slices', 'slice-template', 'slice.json')}`);
+  console.log(`- Validate a slice with ${path.join(projectRoot, 'tools', 'scripts', 'check-slice-readiness.sh')}`);
+  console.log(`- Validate the PR gate with ${path.join(projectRoot, 'tools', 'scripts', 'check-pr-readiness.sh')}`);
+}
+
+function printInitNextSteps(targetDir, projectName) {
   const projectSlug = toProjectSlug(projectName);
 
   console.log('');
@@ -174,6 +300,11 @@ async function run(argv) {
     return;
   }
 
+  if (args.mode === 'doctor') {
+    runDoctor(args.targetDir);
+    return;
+  }
+
   const packageRoot = path.resolve(__dirname, '../..');
   const targetDir = path.resolve(process.cwd(), args.targetDir);
   const projectName = args.projectName || path.basename(targetDir) || 'Quiver Project';
@@ -187,7 +318,7 @@ async function run(argv) {
     runInitDocs(targetDir, projectName);
 
     console.log(`Installed Quiver into ${targetDir}`);
-    printNextSteps(targetDir, projectName);
+    printInitNextSteps(targetDir, projectName);
   } finally {
     fs.rmSync(tempRoot, { recursive: true, force: true });
   }

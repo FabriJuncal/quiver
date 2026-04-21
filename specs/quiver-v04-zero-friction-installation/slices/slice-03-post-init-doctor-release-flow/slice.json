@@ -27,10 +27,14 @@
     "CI proves the installer surface is still usable before a release is cut"
   ],
   "files": [
-    "bin/create-quiver.js",
-    "scripts/release-quiver.sh",
+    "package.json",
     "README.md",
+    "README_FOR_AI.md",
     "CHANGELOG.md",
+    "src/create-quiver/index.js",
+    "scripts/ci/smoke-create-quiver.sh",
+    "scripts/release-quiver.sh",
+    "scripts/package-quiver.sh",
     ".github/workflows/ci.yml"
   ],
   "tests": [
@@ -50,10 +54,10 @@
     "The post-init doctor should validate the same contract enforced by Quiver's workflow scripts"
   ],
   "estimated_hours": 3,
-  "actual_hours": 0,
-  "status": "ready",
+  "actual_hours": 3,
+  "status": "completed",
   "blocked_reason": null,
   "ready_at": "2026-04-20T00:00:00Z",
-  "started_at": null,
-  "completed_at": null
+  "started_at": "2026-04-21T00:00:00Z",
+  "completed_at": "2026-04-21T00:00:00Z"
 }
