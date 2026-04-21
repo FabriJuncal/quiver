@@ -30,7 +30,7 @@ Replace manual template copying with a versioned one-command install path that s
 | Slice | Title | Status |
 |-------|-------|--------|
 | 01 | Package Distribution Contract | Completed |
-| 02 | `create-quiver` CLI | Ready |
+| 02 | `create-quiver` CLI | Completed |
 | 03 | Post-Init Doctor + Release Flow | Ready |
 
 ## Definition of Done

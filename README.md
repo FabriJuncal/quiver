@@ -6,6 +6,7 @@ Slice numbering is local to each spec: every new spec starts at `slice-01`.
 
 The slice bootstrap flow now prefers canonical paths and can bootstrap from a local base branch when `origin` is unavailable.
 The project also ships a support matrix and troubleshooting guide so first-time adopters can self-serve common issues.
+The installer surface is `create-quiver`, which packages the template and bootstraps it into a target repo.
 
 ## Quick Start
 
@@ -18,11 +19,20 @@ The project also ships a support matrix and troubleshooting guide so first-time 
 
 3. Edit the generated docs in `docs/` and the project spec in `specs/{{PROJECT_SLUG}}/`.
 
+To bootstrap a project without copying folders manually:
+
+```bash
+npx create-quiver --name "Project Name" --dir ./target-repo
+```
+
+Run the command from the target repo directory to install in-place, or pass `--dir` to scaffold a new directory.
+
 ## What You Get
 
 - Project documentation templates
 - Spec and slice templates
 - Slice lifecycle scripts
+- `create-quiver` CLI entrypoint
 - AI guidance files
 - A portable MIT license
 - Default OSS baseline files when they are missing:

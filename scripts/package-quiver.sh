@@ -54,6 +54,8 @@ require_absent() {
 
 required_paths=(
   "package/package.json"
+  "package/bin/create-quiver.js"
+  "package/src/create-quiver/index.js"
   "package/README.md"
   "package/README_FOR_AI.md"
   "package/TEMPLATE.md"
