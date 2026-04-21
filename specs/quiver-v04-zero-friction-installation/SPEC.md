@@ -1,6 +1,6 @@
 # Quiver v0.4 - Zero-Friction Installation
 
-**Date:** 2026-04-20
+**Date:** 2026-04-21
 **Status:** Ready
 
 Slice numbering resets here: this spec starts at `slice-01` and does not continue any previous spec's numbering.
@@ -29,7 +29,7 @@ Replace manual template copying with a versioned one-command install path that s
 
 | Slice | Title | Status |
 |-------|-------|--------|
-| 01 | Package Distribution Contract | Ready |
+| 01 | Package Distribution Contract | Completed |
 | 02 | `create-quiver` CLI | Ready |
 | 03 | Post-Init Doctor + Release Flow | Ready |
 

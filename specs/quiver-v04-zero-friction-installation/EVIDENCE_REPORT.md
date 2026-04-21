@@ -1,17 +1,19 @@
 # Quiver v0.4 Evidence Report
 
 **Spec:** quiver-v04-zero-friction-installation
-**Last updated:** 2026-04-20
-**Status:** Planned
+**Last updated:** 2026-04-21
+**Status:** In progress
 
 ## Summary
 
 | Slice | Acceptance criteria | Status | Evidence |
 |-------|---------------------|--------|----------|
-| slice-01 | 3 | Ready | - |
+| slice-01 | 3 | Completed | Local `npm pack` smoke passed via `bash scripts/package-quiver.sh` with repo-local npm cache |
 | slice-02 | 3 | Ready | - |
 | slice-03 | 3 | Ready | - |
 
 ## Evidence by Slice
 
-_No evidence recorded yet._
+- `bash -n scripts/package-quiver.sh`
+- `git diff --check`
+- `bash scripts/package-quiver.sh`

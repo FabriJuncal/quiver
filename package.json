@@ -1,0 +1,14 @@
+{
+  "name": "quiver-template",
+  "version": "0.4.0",
+  "private": false,
+  "description": "Quiver distribution contract for the template package",
+  "license": "MIT",
+  "scripts": {
+    "check:slice": "bash tools/scripts/check-slice-readiness.sh",
+    "check:pr": "bash tools/scripts/check-pr-readiness.sh",
+    "start:slice": "bash tools/scripts/start-slice.sh",
+    "cleanup:slice": "bash tools/scripts/cleanup-slice.sh",
+    "package:quiver": "bash scripts/package-quiver.sh"
+  }
+}

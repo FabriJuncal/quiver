@@ -1,0 +1,13 @@
+# Repo-only files and local development noise
+.git
+.worktrees
+.DS_Store
+WORKTREE_CONTEXT.md
+tests
+examples
+specs/quiver-v01
+specs/quiver-v02-bootstrap-hardening
+specs/quiver-v03-adoption-verification
+specs/quiver-v04-zero-friction-installation
+scripts/ci
+package-lock.json
