@@ -59,6 +59,7 @@ required_paths=(
   "package/README.md"
   "package/README_FOR_AI.md"
   "package/docs/AI_CONTEXT.md.template"
+  "package/docs/AI_ONBOARDING_PROMPT.md.template"
   "package/TEMPLATE.md"
   "package/LICENSE"
   "package/CONTRIBUTING.md"

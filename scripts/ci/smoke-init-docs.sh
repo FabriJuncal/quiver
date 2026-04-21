@@ -50,6 +50,7 @@ required_files=(
   "ROADMAP.md"
   "docs/INDEX.md"
   "docs/AI_CONTEXT.md"
+  "docs/AI_ONBOARDING_PROMPT.md"
   "docs/CONTEXTO.md"
   "docs/WORKFLOW.md"
   "docs/SUPPORT_MATRIX.md"
@@ -89,6 +90,9 @@ done
 
 assert_contains "docs/AI_CONTEXT.md" "AI Context Pack"
 assert_contains "docs/AI_CONTEXT.md" "Read First"
+assert_contains "docs/AI_ONBOARDING_PROMPT.md" "AI Onboarding Prompt"
+assert_contains "docs/AI_ONBOARDING_PROMPT.md" "docs/PROJECT_SCAN.json"
+assert_contains "docs/AI_ONBOARDING_PROMPT.md" "Do not modify product source code"
 
 required_scripts=(
   "tools/scripts/start-slice.sh"

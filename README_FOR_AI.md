@@ -7,6 +7,7 @@ The canonical installer entrypoint is `npx create-quiver`.
 The post-init contract is validated with `npx create-quiver doctor --dir <project>`.
 Maintain release notes and package publishing with `scripts/release-quiver.sh`.
 The primary generated project context for agents is `docs/AI_CONTEXT.md`.
+The onboarding prompt generated for analyzed projects is `docs/AI_ONBOARDING_PROMPT.md`.
 
 ## Core Rules
 
@@ -15,6 +16,7 @@ The primary generated project context for agents is `docs/AI_CONTEXT.md`.
 - Treat `docs-template/` as generic and `docs/` as generated project-specific output.
 - Not every project needs every optional file.
 - The AI context pack lives in `docs/AI_CONTEXT.md`; `docs/CONTEXTO.md` is the broader project overview.
+- The onboarding prompt lives in `docs/AI_ONBOARDING_PROMPT.md` and should reference the analyzer outputs.
 - The support contract lives in `docs/SUPPORT_MATRIX.md` and `docs/TROUBLESHOOTING.md`.
 
 ## Initialization Flow
@@ -28,6 +30,7 @@ The primary generated project context for agents is `docs/AI_CONTEXT.md`.
 
 3. Tell the user to edit:
   - `docs/AI_CONTEXT.md`
+  - `docs/AI_ONBOARDING_PROMPT.md`
   - `docs/CONTEXTO.md`
   - `docs/STATUS.md`
   - `docs/SUPPORT_MATRIX.md`
@@ -39,6 +42,7 @@ The primary generated project context for agents is `docs/AI_CONTEXT.md`.
 - `docs/`
 - `docs/ai/`
 - `docs/AI_CONTEXT.md`
+- `docs/AI_ONBOARDING_PROMPT.md`
 - `specs/{{PROJECT_SLUG}}/`
 - `tools/scripts/`
 - `docs/SEARCH.md`
@@ -64,15 +68,16 @@ The primary generated project context for agents is `docs/AI_CONTEXT.md`.
 After initialization, the user should:
 
 1. Fill in `docs/AI_CONTEXT.md`
-2. Fill in `docs/CONTEXTO.md`
-3. Fill in `docs/STATUS.md`
-4. Open and merge the documentation PR that establishes the workflow files
-5. Create the first slice in `specs/{{PROJECT_SLUG}}/slices/[slice-id]/`
-6. Add `ticket` and `git.*`
-7. Run `tools/scripts/start-slice.sh [--allow-draft] <slice.json>`
-8. Make one commit per slice
-9. Open one PR per spec
-10. Validate the slice and the final PR with the workflow gates
+2. Fill in `docs/AI_ONBOARDING_PROMPT.md`
+3. Fill in `docs/CONTEXTO.md`
+4. Fill in `docs/STATUS.md`
+5. Open and merge the documentation PR that establishes the workflow files
+6. Create the first slice in `specs/{{PROJECT_SLUG}}/slices/[slice-id]/`
+7. Add `ticket` and `git.*`
+8. Run `tools/scripts/start-slice.sh [--allow-draft] <slice.json>`
+9. Make one commit per slice
+10. Open one PR per spec
+11. Validate the slice and the final PR with the workflow gates
 
 Bootstrap note: `start-slice.sh` should resolve paths canonically, prefer a local `develop` or `main` base branch before reaching for `origin`, and reject `draft` slices unless `--allow-draft` is passed intentionally.
 
@@ -83,6 +88,7 @@ Bootstrap note: `start-slice.sh` should resolve paths canonically, prefer a loca
 - `docs/GITFLOW_PR_GUIDE.md` if the team wants a stricter branch workflow
 - `docs/SUPPORT_MATRIX.md` and `docs/TROUBLESHOOTING.md` for first-run support
 - `docs/ai/LESSONS.md` after each slice
+- `docs/AI_ONBOARDING_PROMPT.md` after analysis
 
 ## Good Defaults
 
