@@ -33,8 +33,10 @@ This file is the first stop for any AI agent working in this project. It compres
 ## Common Commands
 
 ```bash
-npx create-quiver --name "Project Name" --dir ./target-repo
-npx create-quiver doctor --dir ./target-repo
+cd /path/to/project
+npx create-quiver --name "Project Name"
+npx create-quiver analyze --dir .
+npx create-quiver doctor --dir .
 bash tools/scripts/start-slice.sh <slice.json>
 bash tools/scripts/check-slice-readiness.sh <slice.json>
 bash tools/scripts/check-pr-readiness.sh <slice.json>

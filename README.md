@@ -10,19 +10,23 @@ Use this flow when adopting Quiver in an existing project or starting a new one.
 
 ### 1. Install Quiver
 
-Create or update a project:
+Run Quiver from the project where the workflow will live:
 
 ```bash
-npx create-quiver --name "Project Name" --dir ./target-repo
-```
-
-To install into the current directory:
-
-```bash
+cd /path/to/your-project
 npx create-quiver --name "Project Name"
 ```
 
-If your target path contains spaces, quote the directory explicitly:
+Do not install Quiver globally. Running it with `npx` from the project root keeps the generated docs, specs, and scripts in the right repository.
+
+If your team wants to pin the Quiver version in the project, install it as a devDependency:
+
+```bash
+npm install --save-dev create-quiver
+npx create-quiver --name "Project Name"
+```
+
+To initialize a different directory from outside the project, pass `--dir` explicitly. Quote paths that contain spaces:
 
 ```bash
 npx create-quiver --name "Project Name" --dir "/Users/me/My Project"

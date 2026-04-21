@@ -5,7 +5,8 @@ Use this guide when initializing a new project from the template or when explain
 The first AI job in a generated project is context preparation, not product implementation.
 
 Important: slice numbering resets inside each spec. `slice-01` is the first slice of that spec, not a global repo counter.
-The canonical installer entrypoint is `npx create-quiver`.
+The canonical installer entrypoint is `npx create-quiver` run from the target project root.
+Do not recommend global installation; use `npx` or a project-local devDependency when the team needs a pinned version.
 The post-init contract is validated with `npx create-quiver doctor --dir <project>`.
 Maintain release notes and package publishing with `scripts/release-quiver.sh`.
 The primary generated project context for agents is `docs/AI_CONTEXT.md`.
