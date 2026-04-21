@@ -55,11 +55,14 @@ release_target="$temp_root/release-project"
 installer_root="$temp_root/installer"
 
 node "$cli" --name "Smoke Project" --dir "$new_target" >/dev/null
+node "$cli" analyze --dir "$new_target" >/dev/null
 node "$cli" doctor --dir "$new_target" >/dev/null
 
 assert_file "$new_target/README.md"
 assert_file "$new_target/docs/INDEX.md"
 assert_file "$new_target/docs/AI_CONTEXT.md"
+assert_file "$new_target/docs/PROJECT_SCAN.json"
+assert_file "$new_target/docs/PROJECT_MAP.md"
 assert_file "$new_target/docs/SUPPORT_MATRIX.md"
 assert_file "$new_target/docs/TROUBLESHOOTING.md"
 assert_file "$new_target/tools/scripts/start-slice.sh"
@@ -73,17 +76,25 @@ done
 
 assert_contains "$new_target/docs/AI_CONTEXT.md" "AI Context Pack"
 assert_contains "$new_target/docs/AI_CONTEXT.md" "Read First"
+assert_contains "$new_target/docs/PROJECT_MAP.md" "Project Map"
+assert_contains "$new_target/docs/PROJECT_MAP.md" "## Stack"
+assert_contains "$new_target/docs/PROJECT_MAP.md" "## Commands"
+
+node -e 'const fs = require("fs"); const data = JSON.parse(fs.readFileSync(process.argv[1], "utf8")); if (!data.project || !data.stack || !data.commands || !data.structure || !data.ci || !data.docs || !Array.isArray(data.risks) || !Array.isArray(data.skipped_paths)) { throw new Error("invalid project scan shape"); }' "$new_target/docs/PROJECT_SCAN.json"
 
 mkdir -p "$existing_target"
 printf 'keep me\n' > "$existing_target/keep.txt"
 
 node "$cli" --name "Existing Repo" --dir "$existing_target" >/dev/null
+node "$cli" analyze --dir "$existing_target" >/dev/null
 node "$cli" doctor --dir "$existing_target" >/dev/null
 
 assert_file "$existing_target/keep.txt"
 assert_file "$existing_target/README.md"
 assert_file "$existing_target/docs/INDEX.md"
 assert_file "$existing_target/docs/AI_CONTEXT.md"
+assert_file "$existing_target/docs/PROJECT_SCAN.json"
+assert_file "$existing_target/docs/PROJECT_MAP.md"
 assert_file "$existing_target/docs/SUPPORT_MATRIX.md"
 assert_file "$existing_target/docs/TROUBLESHOOTING.md"
 
@@ -93,8 +104,11 @@ mkdir -p "$installer_root"
 npm_config_cache="$temp_root/npm-cache" npm install --prefix "$installer_root" "$tarball_path" --ignore-scripts --no-audit --no-fund >/dev/null
 
 node "$installer_root/node_modules/create-quiver/bin/create-quiver.js" --name "Packaged Project" --dir "$release_target" >/dev/null
+node "$installer_root/node_modules/create-quiver/bin/create-quiver.js" analyze --dir "$release_target" >/dev/null
 node "$installer_root/node_modules/create-quiver/bin/create-quiver.js" doctor --dir "$release_target" >/dev/null
 
 assert_file "$release_target/docs/AI_CONTEXT.md"
+assert_file "$release_target/docs/PROJECT_SCAN.json"
+assert_file "$release_target/docs/PROJECT_MAP.md"
 
 printf 'create-quiver smoke test passed\n'
