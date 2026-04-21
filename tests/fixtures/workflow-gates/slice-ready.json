@@ -53,10 +53,10 @@
     "The gate scripts remain shell-entrypoint tools rather than being rewritten into another runtime"
   ],
   "estimated_hours": 5,
-  "actual_hours": 5,
-  "status": "completed",
+  "actual_hours": 0,
+  "status": "ready",
   "blocked_reason": null,
   "ready_at": "2026-04-20T00:00:00Z",
-  "started_at": "2026-04-20T00:00:00Z",
-  "completed_at": "2026-04-20T00:00:00Z"
+  "started_at": null,
+  "completed_at": null
 }
