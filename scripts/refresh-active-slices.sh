@@ -92,10 +92,10 @@ function parseWorktrees(text) {
 
 function toAlias(ticket) {
   const parts = String(ticket || '').split('-').filter(Boolean);
-  const domain = (parts[1] || 'GEN').toUpperCase();
-  const suffix = (parts[parts.length - 1] || '00').toUpperCase();
-  const short = domain.length <= 3 ? domain : domain.slice(0, 3);
-  return `${short}-${suffix}`;
+  const prefix = (parts[0] || 'GEN').replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+  const suffix = (parts[parts.length - 1] || '00').replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+  const short = prefix.length <= 3 ? prefix : prefix.slice(0, 3);
+  return `${short || 'GEN'}-${suffix || '00'}`;
 }
 
 function mdEscape(value) {

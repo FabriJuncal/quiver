@@ -53,14 +53,15 @@ After initialization, the user should:
 
 1. Fill in `docs/CONTEXTO.md`
 2. Fill in `docs/STATUS.md`
-3. Create the first slice in `specs/{{PROJECT_SLUG}}/slices/[slice-id]/`
-4. Add `ticket` and `git.*`
-5. Run `tools/scripts/start-slice.sh <slice.json>`
-6. Make one commit per slice
-7. Open one PR per spec
-8. Validate the slice and the final PR with the workflow gates
+3. Open and merge the documentation PR that establishes the workflow files
+4. Create the first slice in `specs/{{PROJECT_SLUG}}/slices/[slice-id]/`
+5. Add `ticket` and `git.*`
+6. Run `tools/scripts/start-slice.sh [--allow-draft] <slice.json>`
+7. Make one commit per slice
+8. Open one PR per spec
+9. Validate the slice and the final PR with the workflow gates
 
-Bootstrap note: `start-slice.sh` should resolve paths canonically and prefer a local `develop` or `main` base branch before reaching for `origin`.
+Bootstrap note: `start-slice.sh` should resolve paths canonically, prefer a local `develop` or `main` base branch before reaching for `origin`, and reject `draft` slices unless `--allow-draft` is passed intentionally.
 
 ## Optional Files
 

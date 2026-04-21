@@ -12,13 +12,13 @@ Slice numbering is local to this spec. The first slice is `slice-01`.
 | slice-01 | Canonical Paths + Remote-Safe Bootstrap | Completed | - | 3 | 3 |
 | slice-02 | Generated Project Contract | Completed | - | 4 | 4 |
 | slice-03 | Placeholder Rendering Cleanup | Completed | - | 3 | 3 |
-| slice-04 | Workflow Guardrails Alignment | Ready | - | 3 | 0 |
+| slice-04 | Workflow Guardrails Alignment | Completed | - | 3 | 3 |
 
 ## Progress
 
-- Completed slices: 3 / 4
+- Completed slices: 4 / 4
 - Estimated hours: 13
-- Actual hours: 10
+- Actual hours: 13
 
 ## Blockers
 
