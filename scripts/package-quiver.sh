@@ -89,6 +89,7 @@ required_paths=(
   "package/scripts/check-pr-readiness.sh"
   "package/scripts/check-scope.sh"
   "package/scripts/cleanup-slice.sh"
+  "package/scripts/release-quiver.sh"
   "package/scripts/refresh-active-slices.sh"
   "package/scripts/migrate-project.sh"
   "package/scripts/package-quiver.sh"

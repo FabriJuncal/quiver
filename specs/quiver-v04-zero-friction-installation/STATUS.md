@@ -11,13 +11,13 @@ Slice numbering is local to this spec. The first slice is `slice-01`.
 |-------|-------|--------|----|-----------------|--------------|
 | slice-01 | Package Distribution Contract | Completed | - | 3 | 3 |
 | slice-02 | `create-quiver` CLI | Completed | - | 6 | 6 |
-| slice-03 | Post-Init Doctor + Release Flow | Ready | - | 3 | 0 |
+| slice-03 | Post-Init Doctor + Release Flow | Completed | - | 3 | 3 |
 
 ## Progress
 
-- Completed slices: 2 / 3
+- Completed slices: 3 / 3
 - Estimated hours: 12
-- Actual hours: 9
+- Actual hours: 12
 
 ## Blockers
 

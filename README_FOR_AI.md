@@ -4,6 +4,8 @@ Use this guide when initializing a new project from the template or when explain
 
 Important: slice numbering resets inside each spec. `slice-01` is the first slice of that spec, not a global repo counter.
 The canonical installer entrypoint is `npx create-quiver`.
+The post-init contract is validated with `npx create-quiver doctor --dir <project>`.
+Maintain release notes and package publishing with `scripts/release-quiver.sh`.
 
 ## Core Rules
 

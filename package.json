@@ -13,6 +13,7 @@
     "start:slice": "bash tools/scripts/start-slice.sh",
     "cleanup:slice": "bash tools/scripts/cleanup-slice.sh",
     "package:quiver": "bash scripts/package-quiver.sh",
-    "smoke:create-quiver": "bash scripts/ci/smoke-create-quiver.sh"
+    "smoke:create-quiver": "bash scripts/ci/smoke-create-quiver.sh",
+    "release:quiver": "bash scripts/release-quiver.sh"
   }
 }
