@@ -2,17 +2,19 @@
 
 **Spec:** quiver-v06-release-readiness
 **Last updated:** 2026-04-21
-**Status:** Planned
+**Status:** Completed
 
 ## Summary
 
 | Slice | Acceptance criteria | Status | Evidence |
 |-------|---------------------|--------|----------|
-| slice-01 | 6 | Ready | Release plan documented; no implementation or publish executed yet |
+| slice-01 | 6 | Completed | Release helper now supports `--publish-current`, changelog has `0.4.0`, and README documents the exact preflight and publish steps |
 
 ## Evidence by Slice
 
-_No release-readiness implementation evidence recorded yet._
+- `bash -n scripts/release-quiver.sh`
+- `git diff --check`
+- `node -e "const fs=require('fs'); JSON.parse(fs.readFileSync('specs/quiver-v06-release-readiness/slices/slice-01-first-npm-release-readiness/slice.json','utf8'))"`
 
 ## Preflight Notes
 

@@ -4,10 +4,11 @@ set -euo pipefail
 
 release_type="patch"
 publish="false"
+publish_current="false"
 
 usage() {
   cat <<'EOF'
-Usage: scripts/release-quiver.sh [patch|minor|major|x.y.z] [--publish]
+Usage: scripts/release-quiver.sh [patch|minor|major|x.y.z] [--publish | --publish-current]
 
 By default the script performs a release dry run:
   - validates the installer smoke
@@ -15,12 +16,18 @@ By default the script performs a release dry run:
   - prints the versioning and publish commands to run next
 
 Pass --publish to run npm version and npm publish after the smoke checks pass.
+Pass --publish-current to publish the current package version without forcing a patch bump.
 EOF
 }
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --publish)
+      publish="true"
+      shift
+      ;;
+    --publish-current)
+      publish_current="true"
       publish="true"
       shift
       ;;
@@ -49,9 +56,19 @@ bash scripts/package-quiver.sh
 if [[ "$publish" == "false" ]]; then
   echo "Release dry run passed."
   echo "Next commands:"
-  echo "  npm version $release_type -m \"chore(release): %s\""
-  echo "  npm publish --access public"
+  if [[ "$publish_current" == "true" ]]; then
+    echo "  npm publish --access public"
+  else
+    echo "  npm version $release_type -m \"chore(release): %s\""
+    echo "  npm publish --access public"
+  fi
   echo "  git push origin HEAD --tags"
+  exit 0
+fi
+
+if [[ "$publish_current" == "true" ]]; then
+  npm publish --access public
+  git push origin HEAD --tags
   exit 0
 fi
 

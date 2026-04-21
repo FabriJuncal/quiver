@@ -77,29 +77,33 @@ Read `README_FOR_AI.md` before working in this repository or in a generated proj
 
 ## For Maintainers
 
-Package smoke:
+Release preflight:
 
 ```bash
+npm whoami
+npm view create-quiver version
 npm run package:quiver
-```
-
-Installer smoke:
-
-```bash
 npm run smoke:create-quiver
-```
-
-Release dry run:
-
-```bash
 npm run release:quiver
 ```
 
-Publishing requires an explicit release command:
+Current-version publish:
 
 ```bash
-bash scripts/release-quiver.sh --publish
+bash scripts/release-quiver.sh --publish-current
 ```
+
+Versioned publish:
+
+```bash
+bash scripts/release-quiver.sh patch --publish
+```
+
+The release helper stays explicit on purpose: `--publish-current` publishes the current version, and `--publish` follows a normal version bump flow.
+
+If `npm whoami` or `npm view create-quiver version` fails, fix npm auth or registry reachability before publishing.
+
+For a first release, prefer `--publish-current` so the published package stays at `0.4.0`.
 
 ## References
 
