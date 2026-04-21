@@ -15,6 +15,7 @@ This document is the canonical implementation workflow for the project.
 - The documentation PR establishes the workflow files before the first slice executes.
 - The support matrix defines the supported OS, git, node, and remote modes.
 - The troubleshooting guide explains the first-run recovery paths for common bootstrap failures.
+- The AI onboarding prompt generated after analysis is the handoff for agents that need project context before editing.
 
 ## Planning
 
@@ -24,6 +25,7 @@ This document is the canonical implementation workflow for the project.
 4. Mark each slice `ready` before execution.
 5. Open and merge the documentation PR before running the first slice bootstrap.
 6. Read the AI context pack, support matrix, and troubleshooting guide before the first slice if the environment is new or uncertain.
+7. If the project was analyzed, read `AI_ONBOARDING_PROMPT.md` before making documentation updates.
 
 ## Execution
 
@@ -52,6 +54,7 @@ Use multiple agents only when the write sets do not overlap and the coordination
 
 - `GITFLOW_PR_GUIDE.md`
 - `AI_CONTEXT.md`
+- `AI_ONBOARDING_PROMPT.md`
 - `SUPPORT_MATRIX.md`
 - `TROUBLESHOOTING.md`
 - `MULTI_AGENT_WORKFLOW.md`

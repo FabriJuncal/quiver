@@ -142,6 +142,7 @@ copy_file_if_missing() {
 # Copiar templates de docs/
 copy_template "docs-template/docs/INDEX.md.template" "docs/INDEX.md"
 copy_template "docs-template/docs/AI_CONTEXT.md.template" "docs/AI_CONTEXT.md"
+copy_template "docs-template/docs/AI_ONBOARDING_PROMPT.md.template" "docs/AI_ONBOARDING_PROMPT.md"
 copy_template "docs-template/docs/CONTEXTO.md.template" "docs/CONTEXTO.md"
 copy_template "docs-template/docs/STATUS.md.template" "docs/STATUS.md"
 copy_template "docs-template/docs/WORKFLOW.md.template" "docs/WORKFLOW.md"

@@ -6,6 +6,7 @@
 
 - **Context** - `./CONTEXTO.md`
 - **AI Context** - `./AI_CONTEXT.md`
+- **AI Onboarding Prompt** - `./AI_ONBOARDING_PROMPT.md`
 - **Workflow** - `./WORKFLOW.md`
 - **Support Matrix** - `./SUPPORT_MATRIX.md`
 - **Troubleshooting** - `./TROUBLESHOOTING.md`
@@ -30,6 +31,7 @@
 docs/
 ├── INDEX.md
 ├── AI_CONTEXT.md
+├── AI_ONBOARDING_PROMPT.md
 ├── CONTEXTO.md
 ├── STATUS.md
 ├── WORKFLOW.md

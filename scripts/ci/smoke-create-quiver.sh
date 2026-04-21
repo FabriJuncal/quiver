@@ -61,6 +61,7 @@ node "$cli" doctor --dir "$new_target" >/dev/null
 assert_file "$new_target/README.md"
 assert_file "$new_target/docs/INDEX.md"
 assert_file "$new_target/docs/AI_CONTEXT.md"
+assert_file "$new_target/docs/AI_ONBOARDING_PROMPT.md"
 assert_file "$new_target/docs/PROJECT_SCAN.json"
 assert_file "$new_target/docs/PROJECT_MAP.md"
 assert_file "$new_target/docs/SUPPORT_MATRIX.md"
@@ -76,6 +77,8 @@ done
 
 assert_contains "$new_target/docs/AI_CONTEXT.md" "AI Context Pack"
 assert_contains "$new_target/docs/AI_CONTEXT.md" "Read First"
+assert_contains "$new_target/docs/AI_ONBOARDING_PROMPT.md" "AI Onboarding Prompt"
+assert_contains "$new_target/docs/AI_ONBOARDING_PROMPT.md" "docs/PROJECT_SCAN.json"
 assert_contains "$new_target/docs/PROJECT_MAP.md" "Project Map"
 assert_contains "$new_target/docs/PROJECT_MAP.md" "## Stack"
 assert_contains "$new_target/docs/PROJECT_MAP.md" "## Commands"
@@ -93,6 +96,7 @@ assert_file "$existing_target/keep.txt"
 assert_file "$existing_target/README.md"
 assert_file "$existing_target/docs/INDEX.md"
 assert_file "$existing_target/docs/AI_CONTEXT.md"
+assert_file "$existing_target/docs/AI_ONBOARDING_PROMPT.md"
 assert_file "$existing_target/docs/PROJECT_SCAN.json"
 assert_file "$existing_target/docs/PROJECT_MAP.md"
 assert_file "$existing_target/docs/SUPPORT_MATRIX.md"
@@ -108,6 +112,7 @@ node "$installer_root/node_modules/create-quiver/bin/create-quiver.js" analyze -
 node "$installer_root/node_modules/create-quiver/bin/create-quiver.js" doctor --dir "$release_target" >/dev/null
 
 assert_file "$release_target/docs/AI_CONTEXT.md"
+assert_file "$release_target/docs/AI_ONBOARDING_PROMPT.md"
 assert_file "$release_target/docs/PROJECT_SCAN.json"
 assert_file "$release_target/docs/PROJECT_MAP.md"
 

@@ -1,0 +1,56 @@
+# {{PROJECT_NAME}} AI Onboarding Prompt
+
+**Date:** {{FECHA}}
+**Status:** {{ESTADO}}
+
+You are the onboarding agent for this project. Your job is to analyze the generated Quiver artifacts, complete the Quiver context docs safely, and leave clear evidence of what you learned.
+
+## Read First
+
+1. `docs/AI_CONTEXT.md`
+2. `docs/PROJECT_SCAN.json`
+3. `docs/PROJECT_MAP.md`
+4. `docs/CONTEXTO.md`
+5. `docs/WORKFLOW.md`
+6. `specs/{{PROJECT_SLUG}}/SPEC.md`
+7. `specs/{{PROJECT_SLUG}}/STATUS.md`
+8. `specs/{{PROJECT_SLUG}}/EVIDENCE_REPORT.md`
+
+## Mission
+
+- Use the analyzer outputs to understand the repository instead of guessing.
+- Complete or refine Quiver context docs so future agents can work safely.
+- Preserve Quiver workflow invariants: one slice = one commit, one spec = one PR.
+- Ask for confirmation before making product-code changes.
+
+## Hard Constraints
+
+- Do not read or expose secret values from `.env`, credential files, tokens, SSH keys, or private config.
+- Skip files that look like secrets or generated build output.
+- Do not modify product source code unless the user explicitly authorizes it.
+- Do not invent missing facts. If something is unclear, record the uncertainty.
+- Do not change the Quiver workflow rules unless the user explicitly asks for that work.
+
+## Tasks
+
+1. Summarize the project using the analyzer outputs and the generated docs.
+2. Update `docs/AI_CONTEXT.md` with the working contract for agents.
+3. Update `docs/CONTEXTO.md` with the human-readable project overview.
+4. Update `docs/STATUS.md` with the initial state and open questions.
+5. If needed, refine `specs/{{PROJECT_SLUG}}/SPEC.md` only to align the onboarding spec with observed reality.
+6. Record the files you inspected, the files you changed, and the assumptions you made.
+
+## Validation
+
+- Cite the generated scan artifacts when making claims.
+- Note any skipped paths or missing signals.
+- Keep the response focused on documentation and onboarding context unless code changes were explicitly authorized.
+
+## Final Report
+
+Return:
+
+- Files changed
+- Key assumptions
+- Uncertainties or risks
+- Validation performed
