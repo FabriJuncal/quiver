@@ -23,7 +23,7 @@ This document is the canonical implementation workflow for the project.
 3. Split the work into slices.
 4. Mark each slice `ready` before execution.
 5. Open and merge the documentation PR before running the first slice bootstrap.
-6. Read the support matrix and troubleshooting guide before the first slice if the environment is new or uncertain.
+6. Read the AI context pack, support matrix, and troubleshooting guide before the first slice if the environment is new or uncertain.
 
 ## Execution
 
@@ -40,6 +40,7 @@ This document is the canonical implementation workflow for the project.
 ## Support Contract
 
 - Support Matrix (`SUPPORT_MATRIX.md`) documents what is supported.
+- AI Context Pack (`AI_CONTEXT.md`) gives the agent-first project snapshot.
 - Troubleshooting (`TROUBLESHOOTING.md`) documents how to recover when the first run fails.
 - Keep both files linked from the root README and this workflow doc.
 
@@ -50,6 +51,7 @@ Use multiple agents only when the write sets do not overlap and the coordination
 ## References
 
 - `GITFLOW_PR_GUIDE.md`
+- `AI_CONTEXT.md`
 - `SUPPORT_MATRIX.md`
 - `TROUBLESHOOTING.md`
 - `MULTI_AGENT_WORKFLOW.md`

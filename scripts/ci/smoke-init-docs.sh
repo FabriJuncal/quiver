@@ -49,6 +49,7 @@ required_files=(
   "CHANGELOG.md"
   "ROADMAP.md"
   "docs/INDEX.md"
+  "docs/AI_CONTEXT.md"
   "docs/CONTEXTO.md"
   "docs/WORKFLOW.md"
   "docs/SUPPORT_MATRIX.md"
@@ -85,6 +86,9 @@ for file in README.md docs/INDEX.md docs/WORKFLOW.md docs/SEARCH.md; do
   assert_contains "$file" "Support Matrix"
   assert_contains "$file" "Troubleshooting"
 done
+
+assert_contains "docs/AI_CONTEXT.md" "AI Context Pack"
+assert_contains "docs/AI_CONTEXT.md" "Read First"
 
 required_scripts=(
   "tools/scripts/start-slice.sh"

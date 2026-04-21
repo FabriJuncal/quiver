@@ -141,6 +141,7 @@ copy_file_if_missing() {
 
 # Copiar templates de docs/
 copy_template "docs-template/docs/INDEX.md.template" "docs/INDEX.md"
+copy_template "docs-template/docs/AI_CONTEXT.md.template" "docs/AI_CONTEXT.md"
 copy_template "docs-template/docs/CONTEXTO.md.template" "docs/CONTEXTO.md"
 copy_template "docs-template/docs/STATUS.md.template" "docs/STATUS.md"
 copy_template "docs-template/docs/WORKFLOW.md.template" "docs/WORKFLOW.md"
@@ -283,6 +284,14 @@ cat > "docs/SEARCH.md" << EOF
 
 ---
 
+## AI Context
+
+- **Agent context pack:** \`docs/AI_CONTEXT.md\`
+- **Project overview:** \`docs/CONTEXTO.md\`
+- **Workflow:** \`docs/WORKFLOW.md\`
+
+---
+
 ## Autenticación
 
 - **Spec:** \`../specs/$PROJECT_SLUG/slices/slice-01/slice.json\`
@@ -335,6 +344,7 @@ npm run dev
 
 ## Documentation
 
+- [AI Context](./docs/AI_CONTEXT.md) - Contexto resumido para IA
 - [Contexto](./docs/CONTEXTO.md) - Qué es $PROJECT_NAME
 - [Workflow](./docs/WORKFLOW.md) - Cómo implementar
 - [Support Matrix](./docs/SUPPORT_MATRIX.md) - Qué entornos están soportados
@@ -357,10 +367,11 @@ echo "   docs/archive/            ← Histórico (vacío)"
 echo "   specs/$PROJECT_SLUG/     ← Especificaciones del proyecto"
 echo ""
 echo "📝 Próximos pasos:"
-echo "   1. Editar docs/CONTEXTO.md con la información de tu proyecto"
-echo "   2. Editar docs/STATUS.md con el estado actual"
-echo "   3. Crear el primer directorio de slice en specs/$PROJECT_SLUG/slices/[slice-id]/"
-echo "   4. Actualizar docs/SEARCH.md con temas específicos"
+echo "   1. Editar docs/AI_CONTEXT.md con el contexto resumido para IA"
+echo "   2. Editar docs/CONTEXTO.md con la información de tu proyecto"
+echo "   3. Editar docs/STATUS.md con el estado actual"
+echo "   4. Crear el primer directorio de slice en specs/$PROJECT_SLUG/slices/[slice-id]/"
+echo "   5. Actualizar docs/SEARCH.md con temas específicos"
 echo ""
 echo "📖 Más información:"
 echo "   - Ver docs-template/TEMPLATE.md para guía de personalización"

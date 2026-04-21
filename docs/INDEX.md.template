@@ -5,6 +5,7 @@
 ## Start Here
 
 - **Context** - `./CONTEXTO.md`
+- **AI Context** - `./AI_CONTEXT.md`
 - **Workflow** - `./WORKFLOW.md`
 - **Support Matrix** - `./SUPPORT_MATRIX.md`
 - **Troubleshooting** - `./TROUBLESHOOTING.md`
@@ -28,6 +29,7 @@
 ```text
 docs/
 ├── INDEX.md
+├── AI_CONTEXT.md
 ├── CONTEXTO.md
 ├── STATUS.md
 ├── WORKFLOW.md

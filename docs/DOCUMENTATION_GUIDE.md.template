@@ -6,13 +6,14 @@
 ## Reading Order
 
 1. `docs/INDEX.md`
-2. `docs/CONTEXTO.md`
-3. `docs/STATUS.md`
-4. `docs/WORKFLOW.md`
-5. `docs/SUPPORT_MATRIX.md`
-6. `docs/TROUBLESHOOTING.md`
-7. `specs/{{PROJECT_SLUG}}/SPEC.md`
-8. `specs/{{PROJECT_SLUG}}/slices/[slice-id]/slice.json`
+2. `docs/AI_CONTEXT.md`
+3. `docs/CONTEXTO.md`
+4. `docs/STATUS.md`
+5. `docs/WORKFLOW.md`
+6. `docs/SUPPORT_MATRIX.md`
+7. `docs/TROUBLESHOOTING.md`
+8. `specs/{{PROJECT_SLUG}}/SPEC.md`
+9. `specs/{{PROJECT_SLUG}}/slices/[slice-id]/slice.json`
 
 ## Update Rules
 
@@ -23,6 +24,7 @@
 ## Where Things Go
 
 - Project overview: `docs/CONTEXTO.md`
+- Agent context pack: `docs/AI_CONTEXT.md`
 - Progress: `docs/STATUS.md`
 - Implementation workflow: `docs/WORKFLOW.md`
 - Support contract: `docs/SUPPORT_MATRIX.md`

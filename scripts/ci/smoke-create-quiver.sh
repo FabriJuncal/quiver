@@ -59,6 +59,7 @@ node "$cli" doctor --dir "$new_target" >/dev/null
 
 assert_file "$new_target/README.md"
 assert_file "$new_target/docs/INDEX.md"
+assert_file "$new_target/docs/AI_CONTEXT.md"
 assert_file "$new_target/docs/SUPPORT_MATRIX.md"
 assert_file "$new_target/docs/TROUBLESHOOTING.md"
 assert_file "$new_target/tools/scripts/start-slice.sh"
@@ -70,6 +71,9 @@ for file in "$new_target/README.md" "$new_target/docs/INDEX.md" "$new_target/doc
   assert_contains "$file" "Troubleshooting"
 done
 
+assert_contains "$new_target/docs/AI_CONTEXT.md" "AI Context Pack"
+assert_contains "$new_target/docs/AI_CONTEXT.md" "Read First"
+
 mkdir -p "$existing_target"
 printf 'keep me\n' > "$existing_target/keep.txt"
 
@@ -79,6 +83,7 @@ node "$cli" doctor --dir "$existing_target" >/dev/null
 assert_file "$existing_target/keep.txt"
 assert_file "$existing_target/README.md"
 assert_file "$existing_target/docs/INDEX.md"
+assert_file "$existing_target/docs/AI_CONTEXT.md"
 assert_file "$existing_target/docs/SUPPORT_MATRIX.md"
 assert_file "$existing_target/docs/TROUBLESHOOTING.md"
 
@@ -89,5 +94,7 @@ npm_config_cache="$temp_root/npm-cache" npm install --prefix "$installer_root" "
 
 node "$installer_root/node_modules/create-quiver/bin/create-quiver.js" --name "Packaged Project" --dir "$release_target" >/dev/null
 node "$installer_root/node_modules/create-quiver/bin/create-quiver.js" doctor --dir "$release_target" >/dev/null
+
+assert_file "$release_target/docs/AI_CONTEXT.md"
 
 printf 'create-quiver smoke test passed\n'

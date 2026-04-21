@@ -6,6 +6,7 @@ Important: slice numbering resets inside each spec. `slice-01` is the first slic
 The canonical installer entrypoint is `npx create-quiver`.
 The post-init contract is validated with `npx create-quiver doctor --dir <project>`.
 Maintain release notes and package publishing with `scripts/release-quiver.sh`.
+The primary generated project context for agents is `docs/AI_CONTEXT.md`.
 
 ## Core Rules
 
@@ -13,6 +14,7 @@ Maintain release notes and package publishing with `scripts/release-quiver.sh`.
 - Always use `init-docs.sh` instead of copying files by hand.
 - Treat `docs-template/` as generic and `docs/` as generated project-specific output.
 - Not every project needs every optional file.
+- The AI context pack lives in `docs/AI_CONTEXT.md`; `docs/CONTEXTO.md` is the broader project overview.
 - The support contract lives in `docs/SUPPORT_MATRIX.md` and `docs/TROUBLESHOOTING.md`.
 
 ## Initialization Flow
@@ -25,6 +27,7 @@ Maintain release notes and package publishing with `scripts/release-quiver.sh`.
 ```
 
 3. Tell the user to edit:
+  - `docs/AI_CONTEXT.md`
   - `docs/CONTEXTO.md`
   - `docs/STATUS.md`
   - `docs/SUPPORT_MATRIX.md`
@@ -35,6 +38,7 @@ Maintain release notes and package publishing with `scripts/release-quiver.sh`.
 
 - `docs/`
 - `docs/ai/`
+- `docs/AI_CONTEXT.md`
 - `specs/{{PROJECT_SLUG}}/`
 - `tools/scripts/`
 - `docs/SEARCH.md`
@@ -59,15 +63,16 @@ Maintain release notes and package publishing with `scripts/release-quiver.sh`.
 
 After initialization, the user should:
 
-1. Fill in `docs/CONTEXTO.md`
-2. Fill in `docs/STATUS.md`
-3. Open and merge the documentation PR that establishes the workflow files
-4. Create the first slice in `specs/{{PROJECT_SLUG}}/slices/[slice-id]/`
-5. Add `ticket` and `git.*`
-6. Run `tools/scripts/start-slice.sh [--allow-draft] <slice.json>`
-7. Make one commit per slice
-8. Open one PR per spec
-9. Validate the slice and the final PR with the workflow gates
+1. Fill in `docs/AI_CONTEXT.md`
+2. Fill in `docs/CONTEXTO.md`
+3. Fill in `docs/STATUS.md`
+4. Open and merge the documentation PR that establishes the workflow files
+5. Create the first slice in `specs/{{PROJECT_SLUG}}/slices/[slice-id]/`
+6. Add `ticket` and `git.*`
+7. Run `tools/scripts/start-slice.sh [--allow-draft] <slice.json>`
+8. Make one commit per slice
+9. Open one PR per spec
+10. Validate the slice and the final PR with the workflow gates
 
 Bootstrap note: `start-slice.sh` should resolve paths canonically, prefer a local `develop` or `main` base branch before reaching for `origin`, and reject `draft` slices unless `--allow-draft` is passed intentionally.
 
