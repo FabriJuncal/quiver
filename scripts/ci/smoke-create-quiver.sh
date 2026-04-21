@@ -55,6 +55,18 @@ release_target="$temp_root/release-project"
 installer_root="$temp_root/installer"
 
 node "$cli" --name "Smoke Project" --dir "$new_target" >/dev/null
+doctor_before_analyze="$(node "$cli" doctor --dir "$new_target")"
+
+if [[ "$doctor_before_analyze" != *"npx create-quiver analyze --dir ."* ]]; then
+  echo "Doctor output did not recommend analyze first" >&2
+  exit 1
+fi
+
+if [[ "$doctor_before_analyze" == *"Run "* ]]; then
+  echo "Doctor output still contains the word Run" >&2
+  exit 1
+fi
+
 node "$cli" analyze --dir "$new_target" >/dev/null
 node "$cli" doctor --dir "$new_target" >/dev/null
 

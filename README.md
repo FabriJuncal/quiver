@@ -18,6 +18,12 @@ To install into the current directory, omit `--dir`:
 npx create-quiver --name "Project Name"
 ```
 
+If your target path contains spaces, quote the directory explicitly:
+
+```bash
+npx create-quiver --name "Project Name" --dir "/Users/me/My Project"
+```
+
 ## Requirements
 
 - Node.js and npm for the installer
@@ -28,24 +34,28 @@ See the generated `docs/SUPPORT_MATRIX.md` for the detailed support contract.
 
 ## Validate
 
-After installation, run the doctor:
+After installation, analyze the project and then run the doctor:
 
 ```bash
+npx create-quiver analyze --dir ./target-repo
 npx create-quiver doctor --dir ./target-repo
 ```
 
-The doctor checks the generated project contract and prints the next workflow steps.
+If you are working in the current directory, use `--dir .`.
+
+The doctor checks the generated project contract and prints the next workflow steps. If the scan artifacts are missing, it recommends `npx create-quiver analyze --dir .` first.
 
 ## First Slice Workflow
 
 After the scaffold is valid:
 
-1. Fill in `docs/CONTEXTO.md` and `docs/STATUS.md`.
-2. Define the project spec in `specs/<project-slug>/SPEC.md`.
-3. Create the first slice from `specs/<project-slug>/slices/slice-template/slice.json`.
-4. Start work with `tools/scripts/start-slice.sh <slice.json>`.
-5. Make one commit per slice.
-6. Open one PR per spec.
+1. Fill in `docs/AI_CONTEXT.md` and `docs/AI_ONBOARDING_PROMPT.md` after running analysis.
+2. Fill in `docs/CONTEXTO.md` and `docs/STATUS.md`.
+3. Define the project spec in `specs/<project-slug>/SPEC.md`.
+4. Create the first slice from `specs/<project-slug>/slices/slice-template/slice.json`.
+5. Start work with `tools/scripts/start-slice.sh <slice.json>`.
+6. Make one commit per slice.
+7. Open one PR per spec.
 
 Slice numbering is local to each spec: every new spec starts at `slice-01`.
 
@@ -70,10 +80,11 @@ Use the manual flow only when developing Quiver locally or testing a template ch
 ```
 
 The CLI path is the supported adoption path for users.
+For analyzed projects, the agent handoff prompt lives at `docs/AI_ONBOARDING_PROMPT.md` in the generated project.
 
 ## For AI Agents
 
-Read `README_FOR_AI.md` before working in this repository or in a generated project. In generated projects, `docs/AI_CONTEXT.md` is the first agent context file to read, followed by `docs/CONTEXTO.md` and `docs/WORKFLOW.md`.
+Read `README_FOR_AI.md` before working in this repository or in a generated project. In generated projects, `docs/AI_CONTEXT.md` is the first agent context file to read, followed by `docs/AI_ONBOARDING_PROMPT.md`, `docs/CONTEXTO.md`, and `docs/WORKFLOW.md`.
 
 ## For Maintainers
 

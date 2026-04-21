@@ -1,7 +1,7 @@
 # Quiver v0.8 - Agent Onboarding Analysis
 
 **Date:** 2026-04-21
-**Status:** In progress
+**Status:** Completed
 
 Slice numbering resets here: this spec starts at `slice-01` and does not continue any previous spec's numbering.
 
@@ -41,7 +41,7 @@ Make Quiver adoption plug-and-play after installation by adding a deterministic 
 |-------|-------|--------|------|
 | 01 | Project Scan Command | Completed | [slice-01](./slices/slice-01-project-scan-command/slice.json) |
 | 02 | AI Onboarding Prompt | Completed | [slice-02-ai-onboarding-prompt/slice.json](./slices/slice-02-ai-onboarding-prompt/slice.json) |
-| 03 | Doctor and README Adoption Flow | Pending | [slice-03-doctor-readme-adoption-flow/slice.json](./slices/slice-03-doctor-readme-adoption-flow/slice.json) |
+| 03 | Doctor and README Adoption Flow | Completed | [slice-03-doctor-readme-adoption-flow/slice.json](./slices/slice-03-doctor-readme-adoption-flow/slice.json) |
 
 ## Definition of Done
 
