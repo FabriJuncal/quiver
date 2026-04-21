@@ -1,127 +1,113 @@
-# Quiver Docs Template
+# Quiver
 
-Quiver is a documentation-first starter for projects that use specs, slices, and AI-assisted implementation.
+Quiver is a CLI-first documentation workflow for projects that use specs, slices, and AI-assisted implementation.
 
-Slice numbering is local to each spec: every new spec starts at `slice-01`.
-
-The slice bootstrap flow now prefers canonical paths and can bootstrap from a local base branch when `origin` is unavailable.
-The project also ships a support matrix and troubleshooting guide so first-time adopters can self-serve common issues.
-The installer surface is `create-quiver`, which packages the template and bootstraps it into a target repo.
+It gives a project a repeatable structure for planning work, starting focused implementation slices, validating readiness, and keeping human and AI contributors aligned.
 
 ## Quick Start
 
-1. Copy this folder as `docs-template/` into the root of the target project.
-2. Run:
-
-```bash
-./docs-template/scripts/init-docs.sh "Project Name"
-```
-
-3. Edit the generated docs in `docs/` and the project spec in `specs/{{PROJECT_SLUG}}/`.
-
-To bootstrap a project without copying folders manually:
+Create or update a project with the installer:
 
 ```bash
 npx create-quiver --name "Project Name" --dir ./target-repo
 ```
 
-Run the command from the target repo directory to install in-place, or pass `--dir` to scaffold a new directory.
+To install into the current directory, omit `--dir`:
 
-### Validate the scaffold
+```bash
+npx create-quiver --name "Project Name"
+```
 
-After installation, run:
+## Requirements
+
+- Node.js and npm for the installer
+- Git for slice branches, worktrees, and PR workflow checks
+- macOS or Linux as the primary supported shell environment
+
+See the generated `docs/SUPPORT_MATRIX.md` for the detailed support contract.
+
+## Validate
+
+After installation, run the doctor:
 
 ```bash
 npx create-quiver doctor --dir ./target-repo
 ```
 
-The doctor checks the generated project contract and prints the next slice workflow steps.
+The doctor checks the generated project contract and prints the next workflow steps.
 
-### Release flow
+## First Slice Workflow
 
-Maintainers can validate and document a release with:
+After the scaffold is valid:
+
+1. Fill in `docs/CONTEXTO.md` and `docs/STATUS.md`.
+2. Define the project spec in `specs/<project-slug>/SPEC.md`.
+3. Create the first slice from `specs/<project-slug>/slices/slice-template/slice.json`.
+4. Start work with `tools/scripts/start-slice.sh <slice.json>`.
+5. Make one commit per slice.
+6. Open one PR per spec.
+
+Slice numbering is local to each spec: every new spec starts at `slice-01`.
+
+## What Gets Generated
+
+Quiver generates a project-local workflow under:
+
+- `docs/` for project context, workflow, support, troubleshooting, and AI guidance
+- `specs/<project-slug>/` for the project spec, status, evidence, and slice contracts
+- `tools/scripts/` for slice lifecycle and readiness gates
+- `.github/` for default PR, issue, and CI templates
+- `package.json` scripts for the workflow commands
+
+For the detailed support contract, read `docs/SUPPORT_MATRIX.md` in the generated project. For recovery paths, read `docs/TROUBLESHOOTING.md`.
+
+## Manual Template Use
+
+Use the manual flow only when developing Quiver locally or testing a template checkout. From a target project where this repository was copied as `docs-template/`, run:
 
 ```bash
-bash scripts/release-quiver.sh
+./docs-template/scripts/init-docs.sh "Project Name"
 ```
 
-Pass `--publish` when you want the script to bump the version, publish the package, and push tags.
-
-## What You Get
-
-- Project documentation templates
-- Spec and slice templates
-- Slice lifecycle scripts
-- `create-quiver` CLI entrypoint
-- post-init doctor validation
-- release helper script
-- AI guidance files
-- A portable MIT license
-- Default OSS baseline files when they are missing:
-  - `CONTRIBUTING.md`
-  - `CODE_OF_CONDUCT.md`
-  - `SECURITY.md`
-  - `CHANGELOG.md`
-  - `ROADMAP.md`
-  - `docs/SUPPORT_MATRIX.md`
-  - `docs/TROUBLESHOOTING.md`
-  - `.github/pull_request_template.md`
-  - `.github/ISSUE_TEMPLATE/bug_report.md`
-  - `.github/ISSUE_TEMPLATE/feature_request.md`
-  - `.github/workflows/ci.yml`
-
-## Required Files in a Generated Project
-
-- `docs/INDEX.md`
-- `docs/CONTEXTO.md`
-- `docs/WORKFLOW.md`
-- `docs/SUPPORT_MATRIX.md`
-- `docs/TROUBLESHOOTING.md`
-- `docs/TESTING_GUIDE_FOR_AI.md`
-- `docs/ai/PRINCIPLES.md`
-- `docs/ai/RULES.yaml`
-
-## Default Generated Files
-
-These are copied by `init-docs.sh` when they are missing in the target repo:
-
-- `LICENSE`
-- `CONTRIBUTING.md`
-- `CODE_OF_CONDUCT.md`
-- `SECURITY.md`
-- `CHANGELOG.md`
-- `ROADMAP.md`
-- `docs/SUPPORT_MATRIX.md`
-- `docs/TROUBLESHOOTING.md`
-- `.github/pull_request_template.md`
-- `.github/ISSUE_TEMPLATE/bug_report.md`
-- `.github/ISSUE_TEMPLATE/feature_request.md`
-- `.github/workflows/ci.yml`
-
-## Optional Files
-
-- `docs/STATUS.md`
-- `docs/ai/LESSONS.md`
-- `docs/MOCK_DATA_GUIDE.md`
-- `docs/UI_STANDARDS.md`
-- `docs/api/`
+The CLI path is the supported adoption path for users.
 
 ## For AI Agents
 
-Read `README_FOR_AI.md` first. It explains initialization, generic vs project-specific files, and how to work with slices safely.
+Read `README_FOR_AI.md` before working in this repository or in a generated project. It explains the generic template boundary, the generated project boundary, and the slice workflow rules.
 
-## For Humans
+## For Maintainers
 
-Recommended reading order:
+Package smoke:
 
-1. `docs/ai/PRINCIPLES.md`
-2. `docs/ai/RULES.yaml`
-3. `docs/CONTEXTO.md`
-4. `docs/STATUS.md`
-5. `docs/WORKFLOW.md`
-6. `docs/SUPPORT_MATRIX.md`
-7. `docs/TROUBLESHOOTING.md`
-8. `docs/TESTING_GUIDE_FOR_AI.md`
+```bash
+npm run package:quiver
+```
+
+Installer smoke:
+
+```bash
+npm run smoke:create-quiver
+```
+
+Release dry run:
+
+```bash
+npm run release:quiver
+```
+
+Publishing requires an explicit release command:
+
+```bash
+bash scripts/release-quiver.sh --publish
+```
+
+## References
+
+- [AI guide](./README_FOR_AI.md)
+- [Support matrix template](./docs/SUPPORT_MATRIX.md.template)
+- [Troubleshooting template](./docs/TROUBLESHOOTING.md.template)
+- [Changelog](./CHANGELOG.md)
+- [Roadmap](./ROADMAP.md)
 
 ## License
 

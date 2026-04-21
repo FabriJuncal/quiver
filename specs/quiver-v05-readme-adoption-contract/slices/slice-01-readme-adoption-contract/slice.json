@@ -1,0 +1,68 @@
+{
+  "slice_id": "slice-01-readme-adoption-contract",
+  "ticket": "QUIVER-01",
+  "type": "docs",
+  "title": "README Adoption Contract",
+  "objective": "Rewrite the root README so it presents Quiver as a CLI-first adoption workflow rather than a manual docs-template copy.",
+  "description": "The existing README mixes the historical manual template flow with the newer create-quiver installer. This slice makes the README a concise adoption contract for users and maintainers without changing runtime behavior.",
+  "git": {
+    "branch_type": "docs",
+    "base_branch": "develop",
+    "branch_slug": "readme-adoption-contract",
+    "branch_name": "docs/QUIVER-01-readme-adoption-contract"
+  },
+  "must": [
+    "Make `npx create-quiver` the primary quick-start path",
+    "Document `create-quiver doctor` immediately after installation",
+    "Explain the first slice workflow at a high level",
+    "Move release guidance into a maintainer-focused section",
+    "Keep manual `docs-template/` use as a fallback or local development path",
+    "Avoid long duplicated file inventories in the root README"
+  ],
+  "not_included": [
+    "Changes to CLI behavior",
+    "Changes to generated project templates",
+    "Hosted docs or website work"
+  ],
+  "acceptance": [
+    "A new reader can install, validate, and begin slice work from the README alone",
+    "The README's commands match the current CLI help and package scripts",
+    "Manual copy instructions no longer appear before the CLI quick start",
+    "Maintainer release instructions are separated from user onboarding",
+    "The README links to AI, support, and troubleshooting docs instead of duplicating their full contents",
+    "The change is limited to README and spec traceability files"
+  ],
+  "files": [
+    "README.md",
+    "specs/quiver-v05-readme-adoption-contract/SPEC.md",
+    "specs/quiver-v05-readme-adoption-contract/STATUS.md",
+    "specs/quiver-v05-readme-adoption-contract/EVIDENCE_REPORT.md",
+    "specs/quiver-v05-readme-adoption-contract/slices/slice-01-readme-adoption-contract/slice.json"
+  ],
+  "tests": [
+    "CLI help command check",
+    "release helper help command check",
+    "package.json script existence check",
+    "README target link existence check",
+    "git diff whitespace check"
+  ],
+  "documentation": [
+    "specs/quiver-v05-readme-adoption-contract/SPEC.md",
+    "specs/quiver-v05-readme-adoption-contract/STATUS.md",
+    "specs/quiver-v05-readme-adoption-contract/EVIDENCE_REPORT.md"
+  ],
+  "dependencies": [
+    "quiver-v04-zero-friction-installation"
+  ],
+  "assumptions": [
+    "The README should stay concise and point to detailed generated docs",
+    "The canonical install path is the npm CLI entrypoint"
+  ],
+  "estimated_hours": 2,
+  "actual_hours": 2,
+  "status": "completed",
+  "blocked_reason": null,
+  "ready_at": "2026-04-21T00:00:00Z",
+  "started_at": "2026-04-21T00:00:00Z",
+  "completed_at": "2026-04-21T00:00:00Z"
+}
