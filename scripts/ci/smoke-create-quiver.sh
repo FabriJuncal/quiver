@@ -68,7 +68,12 @@ if [[ "$doctor_before_analyze" == *"Run "* ]]; then
 fi
 
 node "$cli" analyze --dir "$new_target" >/dev/null
-node "$cli" doctor --dir "$new_target" >/dev/null
+doctor_after_analyze="$(node "$cli" doctor --dir "$new_target")"
+
+if [[ "$doctor_after_analyze" != *"Read docs/AI_ONBOARDING_PROMPT.md and execute it."* ]]; then
+  echo "Doctor output did not point to the AI onboarding prompt after analyze" >&2
+  exit 1
+fi
 
 assert_file "$new_target/README.md"
 assert_file "$new_target/docs/INDEX.md"
@@ -121,7 +126,12 @@ npm_config_cache="$temp_root/npm-cache" npm install --prefix "$installer_root" "
 
 node "$installer_root/node_modules/create-quiver/bin/create-quiver.js" --name "Packaged Project" --dir "$release_target" >/dev/null
 node "$installer_root/node_modules/create-quiver/bin/create-quiver.js" analyze --dir "$release_target" >/dev/null
-node "$installer_root/node_modules/create-quiver/bin/create-quiver.js" doctor --dir "$release_target" >/dev/null
+release_doctor_output="$(node "$installer_root/node_modules/create-quiver/bin/create-quiver.js" doctor --dir "$release_target")"
+
+if [[ "$release_doctor_output" != *"Read docs/AI_ONBOARDING_PROMPT.md and execute it."* ]]; then
+  echo "Packaged doctor output did not point to the AI onboarding prompt after analyze" >&2
+  exit 1
+fi
 
 assert_file "$release_target/docs/AI_CONTEXT.md"
 assert_file "$release_target/docs/AI_ONBOARDING_PROMPT.md"

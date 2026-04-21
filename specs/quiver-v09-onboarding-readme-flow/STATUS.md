@@ -10,13 +10,13 @@ Slice numbering is local to this spec. The first slice is `slice-01`.
 | Slice | Title | Status | PR | Estimated hours | Actual hours |
 |-------|-------|--------|----|-----------------|--------------|
 | slice-01 | Developer README Onboarding Flow | Completed | - | 2 | 2 |
-| slice-02 | AI Handoff and Doctor Guidance | Pending | - | 2 | - |
+| slice-02 | AI Handoff and Doctor Guidance | Completed | - | 2 | 2 |
 
 ## Progress
 
-- Completed slices: 1 / 2
+- Completed slices: 2 / 2
 - Estimated hours: 4
-- Actual hours: 2
+- Actual hours: 4
 
 ## Blockers
 

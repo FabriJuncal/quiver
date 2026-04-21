@@ -1,7 +1,7 @@
 # Quiver v0.9 - Onboarding README Flow
 
 **Date:** 2026-04-21
-**Status:** In progress
+**Status:** Completed
 
 Slice numbering resets here: this spec starts at `slice-01` and does not continue any previous spec's numbering.
 
@@ -32,7 +32,7 @@ Make the README and generated onboarding docs explain the full developer and AI 
 | Slice | Title | Status | Spec |
 |-------|-------|--------|------|
 | 01 | Developer README Onboarding Flow | Completed | [slice-01](./slices/slice-01-developer-readme-onboarding-flow/slice.json) |
-| 02 | AI Handoff and Doctor Guidance | Pending | [slice-02-ai-handoff-doctor-guidance/slice.json](./slices/slice-02-ai-handoff-doctor-guidance/slice.json) |
+| 02 | AI Handoff and Doctor Guidance | Completed | [slice-02-ai-handoff-doctor-guidance/slice.json](./slices/slice-02-ai-handoff-doctor-guidance/slice.json) |
 
 ## Definition of Done
 

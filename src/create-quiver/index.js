@@ -821,6 +821,8 @@ function runDoctor(targetDir) {
   const requiredFiles = [
     'README.md',
     'docs/INDEX.md',
+    'docs/AI_CONTEXT.md',
+    'docs/AI_ONBOARDING_PROMPT.md',
     'docs/CONTEXTO.md',
     'docs/WORKFLOW.md',
     'docs/SUPPORT_MATRIX.md',
@@ -870,6 +872,8 @@ function runDoctor(targetDir) {
   console.log('Next steps:');
   if (!hasScanArtifacts) {
     console.log('- Analyze the project first: npx create-quiver analyze --dir .');
+  } else {
+    console.log('- Ask your AI agent: Read docs/AI_ONBOARDING_PROMPT.md and execute it.');
   }
   console.log(`- Start a slice: bash tools/scripts/start-slice.sh specs/${projectSlug}/slices/slice-template/slice.json`);
   console.log('- Validate a slice: bash tools/scripts/check-slice-readiness.sh');

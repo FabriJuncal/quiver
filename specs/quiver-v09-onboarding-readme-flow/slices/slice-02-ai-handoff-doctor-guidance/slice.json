@@ -62,10 +62,10 @@
     "The same branch can hold both slice commits for one spec PR"
   ],
   "estimated_hours": 2,
-  "actual_hours": 0,
-  "status": "draft",
+  "actual_hours": 2,
+  "status": "completed",
   "blocked_reason": null,
-  "ready_at": null,
-  "started_at": null,
-  "completed_at": null
+  "ready_at": "2026-04-21T00:00:00Z",
+  "started_at": "2026-04-21T00:00:00Z",
+  "completed_at": "2026-04-21T00:00:00Z"
 }
