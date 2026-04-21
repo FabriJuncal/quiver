@@ -8,10 +8,12 @@
 
 | Slice | Acceptance criteria | Status | Evidence |
 |-------|---------------------|--------|----------|
-| slice-01 | 3 | Ready | - |
+| slice-01 | 3 | Completed | Local smoke script passed and CI now runs the bootstrap smoke on Linux and macOS |
 | slice-02 | 3 | Ready | - |
 | slice-03 | 3 | Ready | - |
 
 ## Evidence by Slice
 
-_No evidence recorded yet._
+- `bash scripts/ci/smoke-init-docs.sh "Smoke Project"`
+- `bash -n scripts/ci/smoke-init-docs.sh`
+- `.github/workflows/ci.yml` now runs the smoke on `ubuntu-latest` and `macos-latest`
