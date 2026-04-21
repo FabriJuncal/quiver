@@ -1,0 +1,56 @@
+# {{PROJECT_NAME}} AI Context Pack
+
+**Date:** {{FECHA}}
+**Status:** {{ESTADO}}
+
+This file is the first stop for any AI agent working in this project. It compresses the working contract into one place and points to the canonical docs when deeper context is required.
+
+## What This Project Is
+
+[Short project summary.]
+
+## Read First
+
+1. `docs/INDEX.md`
+2. `docs/AI_CONTEXT.md`
+3. `docs/CONTEXTO.md`
+4. `docs/WORKFLOW.md`
+5. `docs/SUPPORT_MATRIX.md`
+6. `docs/TROUBLESHOOTING.md`
+7. `specs/{{PROJECT_SLUG}}/SPEC.md`
+8. `specs/{{PROJECT_SLUG}}/slices/[slice-id]/slice.json`
+
+## Critical Rules
+
+- One slice maps to one commit.
+- One spec maps to one PR.
+- Slice numbering resets inside each spec.
+- Do not invent files that the bootstrap did not generate.
+- Use canonical paths when a path matters.
+- Never overwrite user-authored content without checking whether the file is meant to be preserved.
+- If a command or path is ambiguous, prefer the local project root and the generated docs.
+
+## Common Commands
+
+```bash
+npx create-quiver --name "Project Name" --dir ./target-repo
+npx create-quiver doctor --dir ./target-repo
+bash tools/scripts/start-slice.sh <slice.json>
+bash tools/scripts/check-slice-readiness.sh <slice.json>
+bash tools/scripts/check-pr-readiness.sh <slice.json>
+```
+
+## What To Update After A Slice
+
+- `specs/{{PROJECT_SLUG}}/STATUS.md`
+- `specs/{{PROJECT_SLUG}}/EVIDENCE_REPORT.md`
+- the slice JSON and optional slice PR note
+- any docs whose behavior changed
+
+## If You Need More Context
+
+Read `docs/CONTEXTO.md` for the human project overview and `docs/WORKFLOW.md` for the execution contract.
+
+## If The Environment Fails
+
+Use `docs/TROUBLESHOOTING.md` before changing the workflow itself.

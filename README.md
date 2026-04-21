@@ -73,7 +73,7 @@ The CLI path is the supported adoption path for users.
 
 ## For AI Agents
 
-Read `README_FOR_AI.md` before working in this repository or in a generated project. It explains the generic template boundary, the generated project boundary, and the slice workflow rules.
+Read `README_FOR_AI.md` before working in this repository or in a generated project. In generated projects, `docs/AI_CONTEXT.md` is the first agent context file to read, followed by `docs/CONTEXTO.md` and `docs/WORKFLOW.md`.
 
 ## For Maintainers
 
@@ -108,6 +108,7 @@ For a first release, prefer `--publish-current` so the published package stays a
 ## References
 
 - [AI guide](./README_FOR_AI.md)
+- [AI context template](./docs/AI_CONTEXT.md.template)
 - [Support matrix template](./docs/SUPPORT_MATRIX.md.template)
 - [Troubleshooting template](./docs/TROUBLESHOOTING.md.template)
 - [Changelog](./CHANGELOG.md)
