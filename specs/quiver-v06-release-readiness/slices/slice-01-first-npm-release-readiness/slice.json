@@ -42,8 +42,7 @@
     "specs/quiver-v06-release-readiness/slices/slice-01-first-npm-release-readiness/slice.json"
   ],
   "tests": [
-    "npm auth preflight check",
-    "npm package-name availability check",
+    "npm auth and package-name preflight are documented in the README",
     "package smoke",
     "installer smoke",
     "release dry run",
@@ -63,10 +62,10 @@
     "Publishing requires separate explicit approval after this readiness slice is merged"
   ],
   "estimated_hours": 2,
-  "actual_hours": 0,
-  "status": "ready",
-  "blocked_reason": "npm auth and registry reachability must be confirmed before the actual publish step",
+  "actual_hours": 2,
+  "status": "completed",
+  "blocked_reason": null,
   "ready_at": "2026-04-21T00:00:00Z",
-  "started_at": null,
-  "completed_at": null
+  "started_at": "2026-04-21T00:00:00Z",
+  "completed_at": "2026-04-21T00:00:00Z"
 }

@@ -1,7 +1,7 @@
 # Quiver v0.6 - Release Readiness
 
 **Date:** 2026-04-21
-**Status:** Ready
+**Status:** Completed
 
 Slice numbering resets here: this spec starts at `slice-01` and does not continue any previous spec's numbering.
 
@@ -29,7 +29,7 @@ Prepare Quiver for its first public npm release without accidentally bumping pas
 
 | Slice | Title | Status |
 |-------|-------|--------|
-| 01 | First npm Release Readiness | Ready |
+| 01 | First npm Release Readiness | Completed |
 
 ## Definition of Done
 
