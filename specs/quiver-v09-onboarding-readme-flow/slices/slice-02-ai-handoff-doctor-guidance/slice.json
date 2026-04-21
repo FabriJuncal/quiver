@@ -1,0 +1,71 @@
+{
+  "slice_id": "slice-02-ai-handoff-doctor-guidance",
+  "ticket": "QUIVER-02",
+  "type": "docs",
+  "title": "AI Handoff and Doctor Guidance",
+  "objective": "Align AI-facing guidance and doctor output with the README onboarding flow so the CLI tells users when to run the generated prompt.",
+  "description": "Once README onboarding is clear, the CLI and AI guide should reinforce the same handoff: analyze the project, validate the generated contract, then ask the AI agent to execute `docs/AI_ONBOARDING_PROMPT.md` before creating slices.",
+  "git": {
+    "branch_type": "docs",
+    "base_branch": "main",
+    "branch_slug": "onboarding-readme-flow",
+    "branch_name": "docs/QUIVER-09-onboarding-readme-flow"
+  },
+  "must": [
+    "Update `doctor` output to point to `docs/AI_ONBOARDING_PROMPT.md` after scan artifacts exist",
+    "Update `README_FOR_AI.md` so agents understand onboarding means preparing context before feature work",
+    "Extend create-quiver smoke coverage for the new doctor handoff guidance",
+    "Run package smoke to confirm the published template still includes the onboarding artifacts",
+    "Close the spec evidence and status files"
+  ],
+  "not_included": [
+    "Changing generated prompt content beyond references needed for consistency",
+    "Changing analyzer output shape",
+    "Changing release publishing behavior",
+    "Opening multiple PRs for this spec"
+  ],
+  "acceptance": [
+    "After `analyze`, `doctor` tells the developer to run `docs/AI_ONBOARDING_PROMPT.md` with their AI agent",
+    "`README_FOR_AI.md` says the initial AI job is context preparation, not product implementation",
+    "Smoke tests verify the new doctor output",
+    "Package smoke still passes",
+    "The spec status and evidence show both slices completed"
+  ],
+  "files": [
+    "README_FOR_AI.md",
+    "src/create-quiver/index.js",
+    "scripts/ci/smoke-create-quiver.sh",
+    "scripts/package-quiver.sh",
+    "specs/quiver-v09-onboarding-readme-flow/SPEC.md",
+    "specs/quiver-v09-onboarding-readme-flow/STATUS.md",
+    "specs/quiver-v09-onboarding-readme-flow/EVIDENCE_REPORT.md",
+    "specs/quiver-v09-onboarding-readme-flow/slices/slice-02-ai-handoff-doctor-guidance/slice.json"
+  ],
+  "tests": [
+    "node -c src/create-quiver/index.js",
+    "bash scripts/ci/smoke-create-quiver.sh",
+    "bash scripts/package-quiver.sh",
+    "git diff --check"
+  ],
+  "documentation": [
+    "README_FOR_AI.md",
+    "specs/quiver-v09-onboarding-readme-flow/SPEC.md",
+    "specs/quiver-v09-onboarding-readme-flow/STATUS.md",
+    "specs/quiver-v09-onboarding-readme-flow/EVIDENCE_REPORT.md"
+  ],
+  "dependencies": [
+    "slice-01-developer-readme-onboarding-flow"
+  ],
+  "assumptions": [
+    "Doctor should guide next steps but not execute the AI prompt automatically",
+    "The generated prompt remains provider-neutral",
+    "The same branch can hold both slice commits for one spec PR"
+  ],
+  "estimated_hours": 2,
+  "actual_hours": 2,
+  "status": "completed",
+  "blocked_reason": null,
+  "ready_at": "2026-04-21T00:00:00Z",
+  "started_at": "2026-04-21T00:00:00Z",
+  "completed_at": "2026-04-21T00:00:00Z"
+}

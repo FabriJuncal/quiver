@@ -90,6 +90,8 @@ done
 
 assert_contains "README.md" "npx create-quiver analyze --dir ."
 assert_contains "README.md" "AI Onboarding Prompt"
+assert_contains "README.md" "Read docs/AI_ONBOARDING_PROMPT.md and execute it."
+assert_contains "README.md" "Context docs were reviewed before the first slice"
 
 assert_contains "docs/AI_CONTEXT.md" "AI Context Pack"
 assert_contains "docs/AI_CONTEXT.md" "Read First"

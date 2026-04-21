@@ -2,6 +2,8 @@
 
 Use this guide when initializing a new project from the template or when explaining the workflow to another agent.
 
+The first AI job in a generated project is context preparation, not product implementation.
+
 Important: slice numbering resets inside each spec. `slice-01` is the first slice of that spec, not a global repo counter.
 The canonical installer entrypoint is `npx create-quiver`.
 The post-init contract is validated with `npx create-quiver doctor --dir <project>`.
@@ -17,6 +19,7 @@ If a generated project has been analyzed, the exact agent handoff prompt is `doc
 - Not every project needs every optional file.
 - The AI context pack lives in `docs/AI_CONTEXT.md`; `docs/CONTEXTO.md` is the broader project overview.
 - The onboarding prompt lives in `docs/AI_ONBOARDING_PROMPT.md` and should reference the analyzer outputs.
+- Initial onboarding should complete context docs and report assumptions before any feature work starts.
 - The support contract lives in `docs/SUPPORT_MATRIX.md` and `docs/TROUBLESHOOTING.md`.
 
 ## Initialization Flow
@@ -71,13 +74,16 @@ After initialization, the user should:
 2. Fill in `docs/AI_ONBOARDING_PROMPT.md`
 3. Fill in `docs/CONTEXTO.md`
 4. Fill in `docs/STATUS.md`
-5. Open and merge the documentation PR that establishes the workflow files
-6. Create the first slice in `specs/{{PROJECT_SLUG}}/slices/[slice-id]/`
-7. Add `ticket` and `git.*`
-8. Run `tools/scripts/start-slice.sh [--allow-draft] <slice.json>`
-9. Make one commit per slice
-10. Open one PR per spec
-11. Validate the slice and the final PR with the workflow gates
+5. Run `npx create-quiver analyze --dir <project>` if scan artifacts are missing
+6. Ask the AI agent to execute `docs/AI_ONBOARDING_PROMPT.md`
+7. Review context docs before creating the first implementation slice
+8. Open and merge the documentation PR that establishes the workflow files
+9. Create the first slice in `specs/{{PROJECT_SLUG}}/slices/[slice-id]/`
+10. Add `ticket` and `git.*`
+11. Run `tools/scripts/start-slice.sh [--allow-draft] <slice.json>`
+12. Make one commit per slice
+13. Open one PR per spec
+14. Validate the slice and the final PR with the workflow gates
 
 Bootstrap note: `start-slice.sh` should resolve paths canonically, prefer a local `develop` or `main` base branch before reaching for `origin`, and reject `draft` slices unless `--allow-draft` is passed intentionally.
 

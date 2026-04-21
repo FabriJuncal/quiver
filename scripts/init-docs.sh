@@ -335,18 +335,37 @@ if [ ! -f "README.md" ]; then
 npm install
 npx create-quiver analyze --dir .
 npx create-quiver doctor --dir .
-npm run dev
 \`\`\`
 
 If your project path contains spaces, quote it explicitly when using \`--dir\`.
+
+## AI Context Onboarding
+
+After analysis and doctor validation, open your AI agent in this project and run:
+
+\`\`\`text
+Read docs/AI_ONBOARDING_PROMPT.md and execute it.
+Do not modify product code unless I explicitly authorize it.
+Prepare the project context docs and report assumptions, risks, and files changed.
+\`\`\`
+
+Review the AI changes to docs/AI_CONTEXT.md, docs/CONTEXTO.md, docs/STATUS.md, and specs/$PROJECT_SLUG/SPEC.md before starting implementation work.
+
+## First Slice Workflow
+
+1. Review or refine specs/$PROJECT_SLUG/SPEC.md.
+2. Create the first slice from specs/$PROJECT_SLUG/slices/slice-template/slice.json.
+3. Start work with tools/scripts/start-slice.sh <slice.json>.
+4. Make one commit per slice.
+5. Open one PR per spec.
 
 ## Verification Checklist
 
 - [ ] npm install completes
 - [ ] npx create-quiver analyze --dir . completes
 - [ ] npx create-quiver doctor --dir . completes
-- [ ] npm run dev starts
-- [ ] App opens at http://localhost:3000
+- [ ] AI agent executed docs/AI_ONBOARDING_PROMPT.md
+- [ ] Context docs were reviewed before the first slice
 
 ## Documentation
 

@@ -4,15 +4,19 @@ Quiver is a CLI-first documentation workflow for projects that use specs, slices
 
 It gives a project a repeatable structure for planning work, starting focused implementation slices, validating readiness, and keeping human and AI contributors aligned.
 
-## Quick Start
+## Developer Onboarding Flow
 
-Create or update a project with the installer:
+Use this flow when adopting Quiver in an existing project or starting a new one.
+
+### 1. Install Quiver
+
+Create or update a project:
 
 ```bash
 npx create-quiver --name "Project Name" --dir ./target-repo
 ```
 
-To install into the current directory, omit `--dir`:
+To install into the current directory:
 
 ```bash
 npx create-quiver --name "Project Name"
@@ -24,17 +28,9 @@ If your target path contains spaces, quote the directory explicitly:
 npx create-quiver --name "Project Name" --dir "/Users/me/My Project"
 ```
 
-## Requirements
+### 2. Analyze And Validate
 
-- Node.js and npm for the installer
-- Git for slice branches, worktrees, and PR workflow checks
-- macOS or Linux as the primary supported shell environment
-
-See the generated `docs/SUPPORT_MATRIX.md` for the detailed support contract.
-
-## Validate
-
-After installation, analyze the project and then run the doctor:
+Run the local analyzer and then validate the generated contract:
 
 ```bash
 npx create-quiver analyze --dir ./target-repo
@@ -43,27 +39,49 @@ npx create-quiver doctor --dir ./target-repo
 
 If you are working in the current directory, use `--dir .`.
 
+The analyzer creates `docs/PROJECT_SCAN.json` and `docs/PROJECT_MAP.md`. These files give the AI agent a deterministic project map before it edits context docs.
+
 The doctor checks the generated project contract and prints the next workflow steps. If the scan artifacts are missing, it recommends `npx create-quiver analyze --dir .` first.
 
-## First Slice Workflow
+### 3. Ask The AI To Prepare Context
 
-After the scaffold is valid:
+Open your AI agent in the target project and run this short handoff:
 
-1. Fill in `docs/AI_CONTEXT.md` and `docs/AI_ONBOARDING_PROMPT.md` after running analysis.
-2. Fill in `docs/CONTEXTO.md` and `docs/STATUS.md`.
-3. Define the project spec in `specs/<project-slug>/SPEC.md`.
-4. Create the first slice from `specs/<project-slug>/slices/slice-template/slice.json`.
-5. Start work with `tools/scripts/start-slice.sh <slice.json>`.
-6. Make one commit per slice.
-7. Open one PR per spec.
+```text
+Read docs/AI_ONBOARDING_PROMPT.md and execute it.
+Do not modify product code unless I explicitly authorize it.
+Prepare the project context docs and report assumptions, risks, and files changed.
+```
+
+The AI should use the scan artifacts to prepare `docs/AI_CONTEXT.md`, `docs/CONTEXTO.md`, `docs/STATUS.md`, and the initial project spec. The developer should review those documentation changes before implementation work starts.
+
+### 4. Start The First Slice
+
+After the context docs are reviewed:
+
+1. Define or refine `specs/<project-slug>/SPEC.md`.
+2. Create the first slice from `specs/<project-slug>/slices/slice-template/slice.json`.
+3. Start work with `tools/scripts/start-slice.sh <slice.json>`.
+4. Make one commit per slice.
+5. Open one PR per spec.
 
 Slice numbering is local to each spec: every new spec starts at `slice-01`.
+
+## Requirements
+
+- Node.js and npm for the installer
+- Git for slice branches, worktrees, and PR workflow checks
+- macOS or Linux as the primary supported shell environment
+
+See the generated `docs/SUPPORT_MATRIX.md` for the detailed support contract.
 
 ## What Gets Generated
 
 Quiver generates a project-local workflow under:
 
 - `docs/` for project context, workflow, support, troubleshooting, and AI guidance
+- `docs/PROJECT_SCAN.json` and `docs/PROJECT_MAP.md` after `create-quiver analyze`
+- `docs/AI_ONBOARDING_PROMPT.md` as the generated handoff prompt for the AI agent
 - `specs/<project-slug>/` for the project spec, status, evidence, and slice contracts
 - `tools/scripts/` for slice lifecycle and readiness gates
 - `.github/` for default PR, issue, and CI templates
