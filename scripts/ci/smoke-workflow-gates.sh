@@ -216,6 +216,8 @@ NODE
   git -C "$failure_repo" checkout feature/QUIVER-02-workflow-gate-fixtures >/dev/null
   git -C "$failure_repo" reset --hard >/dev/null
   git -C "$failure_repo" clean -fd >/dev/null
+  git -C "$failure_repo" branch develop HEAD >/dev/null 2>&1 || true
+  git -C "$failure_repo" update-ref refs/remotes/origin/develop HEAD
   cp "$fixture_root/pr-bad.md" "$failure_repo/$pr_rel"
   git -C "$failure_repo" add "$pr_rel"
   git -C "$failure_repo" commit -m "test: malformed pr fixture" >/dev/null
@@ -238,6 +240,7 @@ run_check_scope() {
   happy_repo="$(cd "$happy_repo" && pwd -P)"
   git -C "$happy_repo" config user.name "Quiver Smoke"
   git -C "$happy_repo" config user.email "smoke@example.com"
+  git -C "$happy_repo" update-ref refs/remotes/origin/develop HEAD^
   output="$(cd "$happy_repo" && bash scripts/check-scope.sh "$slice_rel")"
   assert_contains "$output" "PASS: Todos los archivos tocados"
   pass "check-scope passes on the happy path"
@@ -246,6 +249,7 @@ run_check_scope() {
   failure_repo="$(cd "$failure_repo" && pwd -P)"
   git -C "$failure_repo" config user.name "Quiver Smoke"
   git -C "$failure_repo" config user.email "smoke@example.com"
+  git -C "$failure_repo" update-ref refs/remotes/origin/develop HEAD^
   mkdir -p "$failure_repo/scripts/ci"
   printf 'out of scope\n' > "$failure_repo/scripts/ci/out-of-scope.txt"
   git -C "$failure_repo" add scripts/ci/out-of-scope.txt
@@ -269,7 +273,7 @@ main() {
   run_start_slice_no_remote "$scope_repo"
   run_check_slice_ready "$gate_repo"
   run_check_pr_readiness "$gate_repo"
-  run_check_scope "$scope_repo"
+  run_check_scope "$gate_repo"
 
   printf 'workflow gate fixture suite passed\n'
 }
