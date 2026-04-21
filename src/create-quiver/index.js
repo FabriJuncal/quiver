@@ -852,6 +852,8 @@ function runDoctor(targetDir) {
   const pkg = loadPackageJson(projectRoot);
   const requiredScripts = ['check:slice', 'check:pr', 'start:slice', 'cleanup:slice'];
   const missingScripts = requiredScripts.filter((name) => typeof pkg.scripts?.[name] !== 'string');
+  const hasScanArtifacts = fs.existsSync(path.join(projectRoot, 'docs', 'PROJECT_SCAN.json'))
+    && fs.existsSync(path.join(projectRoot, 'docs', 'PROJECT_MAP.md'));
 
   const problems = [
     ...missingFiles.map((file) => `missing file: ${file}`),
@@ -866,9 +868,12 @@ function runDoctor(targetDir) {
   console.log(`Quiver doctor passed for ${projectRoot}`);
   console.log(`Generated project slug: ${projectSlug}`);
   console.log('Next steps:');
-  console.log(`- Run ${path.join(projectRoot, 'tools', 'scripts', 'start-slice.sh')} ${path.join(projectRoot, 'specs', projectSlug, 'slices', 'slice-template', 'slice.json')}`);
-  console.log(`- Validate a slice with ${path.join(projectRoot, 'tools', 'scripts', 'check-slice-readiness.sh')}`);
-  console.log(`- Validate the PR gate with ${path.join(projectRoot, 'tools', 'scripts', 'check-pr-readiness.sh')}`);
+  if (!hasScanArtifacts) {
+    console.log('- Analyze the project first: npx create-quiver analyze --dir .');
+  }
+  console.log(`- Start a slice: bash tools/scripts/start-slice.sh specs/${projectSlug}/slices/slice-template/slice.json`);
+  console.log('- Validate a slice: bash tools/scripts/check-slice-readiness.sh');
+  console.log('- Validate the PR gate: bash tools/scripts/check-pr-readiness.sh');
 }
 
 function printInitNextSteps(targetDir, projectName) {

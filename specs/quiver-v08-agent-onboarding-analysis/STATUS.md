@@ -11,13 +11,13 @@ Slice numbering is local to this spec. The first slice is `slice-01`.
 |-------|-------|--------|----|-----------------|--------------|
 | slice-01 | Project Scan Command | Completed | - | 4 | 4 |
 | slice-02 | AI Onboarding Prompt | Completed | - | 3 | 3 |
-| slice-03 | Doctor and README Adoption Flow | Pending | - | 2 | - |
+| slice-03 | Doctor and README Adoption Flow | Completed | - | 2 | 2 |
 
 ## Progress
 
-- Completed slices: 2 / 3
+- Completed slices: 3 / 3
 - Estimated hours: 9
-- Actual hours: 7
+- Actual hours: 9
 
 ## Blockers
 

@@ -7,7 +7,7 @@ The canonical installer entrypoint is `npx create-quiver`.
 The post-init contract is validated with `npx create-quiver doctor --dir <project>`.
 Maintain release notes and package publishing with `scripts/release-quiver.sh`.
 The primary generated project context for agents is `docs/AI_CONTEXT.md`.
-The onboarding prompt generated for analyzed projects is `docs/AI_ONBOARDING_PROMPT.md`.
+If a generated project has been analyzed, the exact agent handoff prompt is `docs/AI_ONBOARDING_PROMPT.md`.
 
 ## Core Rules
 

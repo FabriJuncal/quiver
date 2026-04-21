@@ -333,19 +333,25 @@ if [ ! -f "README.md" ]; then
 
 \`\`\`bash
 npm install
-cp .env.example .env.local
+npx create-quiver analyze --dir .
+npx create-quiver doctor --dir .
 npm run dev
 \`\`\`
+
+If your project path contains spaces, quote it explicitly when using \`--dir\`.
 
 ## Verification Checklist
 
 - [ ] npm install completes
+- [ ] npx create-quiver analyze --dir . completes
+- [ ] npx create-quiver doctor --dir . completes
 - [ ] npm run dev starts
 - [ ] App opens at http://localhost:3000
 
 ## Documentation
 
 - [AI Context](./docs/AI_CONTEXT.md) - Contexto resumido para IA
+- [AI Onboarding Prompt](./docs/AI_ONBOARDING_PROMPT.md) - Handoff exacto para agentes después del análisis
 - [Contexto](./docs/CONTEXTO.md) - Qué es $PROJECT_NAME
 - [Workflow](./docs/WORKFLOW.md) - Cómo implementar
 - [Support Matrix](./docs/SUPPORT_MATRIX.md) - Qué entornos están soportados
