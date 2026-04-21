@@ -331,10 +331,18 @@ if [ ! -f "README.md" ]; then
 
 ## Quick Start
 
+Run Quiver from this project root. Do not install it globally.
+
 \`\`\`bash
 npm install
 npx create-quiver analyze --dir .
 npx create-quiver doctor --dir .
+\`\`\`
+
+If this project needs a pinned Quiver version, install it as a devDependency:
+
+\`\`\`bash
+npm install --save-dev create-quiver
 \`\`\`
 
 If your project path contains spaces, quote it explicitly when using \`--dir\`.
