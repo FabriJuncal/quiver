@@ -1,0 +1,82 @@
+{
+  "slice_id": "slice-02-ai-onboarding-prompt",
+  "ticket": "QUIVER-02",
+  "type": "docs",
+  "title": "AI Onboarding Prompt",
+  "objective": "Generate an exact provider-neutral prompt that instructs an AI agent how to use Quiver scan artifacts and complete project context docs safely.",
+  "description": "The README should not carry a long prompt, but every generated project should include a precise onboarding prompt that can be pasted into Codex, ChatGPT, Claude, or another agent. This slice adds that prompt as a generated artifact tied to the analysis output.",
+  "git": {
+    "branch_type": "docs",
+    "base_branch": "main",
+    "branch_slug": "ai-onboarding-prompt",
+    "branch_name": "docs/QUIVER-02-ai-onboarding-prompt"
+  },
+  "must": [
+    "Add a generated `docs/AI_ONBOARDING_PROMPT.md` artifact or template",
+    "Make the prompt instruct the AI agent to read `docs/AI_CONTEXT.md`, `docs/PROJECT_SCAN.json`, `docs/PROJECT_MAP.md`, `docs/CONTEXTO.md`, `docs/WORKFLOW.md`, and the initial spec before editing",
+    "Constrain the prompt to documentation/context updates only unless the user explicitly authorizes product-code changes",
+    "Tell the AI agent not to read or expose secrets and to record uncertainty instead of inventing facts",
+    "Tell the AI agent to complete `docs/AI_CONTEXT.md`, `docs/CONTEXTO.md`, `docs/STATUS.md`, and the initial onboarding spec where applicable",
+    "Keep the root README concise and point to the generated prompt instead of embedding a long prompt inline"
+  ],
+  "not_included": [
+    "Provider-specific prompt variants",
+    "Automatic prompt execution from the CLI",
+    "A chat UI or hosted onboarding flow",
+    "Replacing the human review step for generated documentation",
+    "Changing the one-spec-one-PR workflow"
+  ],
+  "acceptance": [
+    "A generated project contains `docs/AI_ONBOARDING_PROMPT.md` after the onboarding flow",
+    "The prompt references the analyzer outputs from slice-01",
+    "The prompt has explicit tasks, constraints, validation requirements, and expected final report format",
+    "The prompt prevents product-code changes during onboarding unless explicitly authorized",
+    "The prompt instructs the AI agent to preserve Quiver workflow invariants",
+    "Installer/package smokes fail if the prompt artifact is missing"
+  ],
+  "files": [
+    "docs/AI_ONBOARDING_PROMPT.md.template",
+    "src/create-quiver/index.js",
+    "scripts/init-docs.sh",
+    "scripts/ci/smoke-init-docs.sh",
+    "scripts/ci/smoke-create-quiver.sh",
+    "scripts/package-quiver.sh",
+    "README.md",
+    "README_FOR_AI.md",
+    "docs/INDEX.md.template",
+    "docs/WORKFLOW.md.template",
+    "specs/quiver-v08-agent-onboarding-analysis/STATUS.md",
+    "specs/quiver-v08-agent-onboarding-analysis/EVIDENCE_REPORT.md",
+    "specs/quiver-v08-agent-onboarding-analysis/slices/slice-02-ai-onboarding-prompt/slice.json"
+  ],
+  "tests": [
+    "bash scripts/ci/smoke-init-docs.sh",
+    "bash scripts/ci/smoke-create-quiver.sh",
+    "bash scripts/package-quiver.sh",
+    "Generated prompt content check for required read order and safety constraints"
+  ],
+  "documentation": [
+    "README.md",
+    "README_FOR_AI.md",
+    "docs/INDEX.md.template",
+    "docs/WORKFLOW.md.template",
+    "specs/quiver-v08-agent-onboarding-analysis/STATUS.md",
+    "specs/quiver-v08-agent-onboarding-analysis/EVIDENCE_REPORT.md"
+  ],
+  "dependencies": [
+    "slice-01-project-scan-command",
+    "quiver-v07-ai-context-pack"
+  ],
+  "assumptions": [
+    "The prompt is more useful as a generated project file than as a long README block",
+    "The analyzer output is available before the AI prompt is run",
+    "The AI agent should fill context docs but the human owner remains responsible for review"
+  ],
+  "estimated_hours": 3,
+  "actual_hours": 0,
+  "status": "draft",
+  "blocked_reason": null,
+  "ready_at": null,
+  "started_at": null,
+  "completed_at": null
+}

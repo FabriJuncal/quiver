@@ -1,0 +1,76 @@
+{
+  "slice_id": "slice-03-doctor-readme-adoption-flow",
+  "ticket": "QUIVER-03",
+  "type": "docs",
+  "title": "Doctor and README Adoption Flow",
+  "objective": "Update Quiver's public onboarding guidance so users know exactly what to run after installation and do not confuse explanatory labels with shell commands.",
+  "description": "Current doctor output and README guidance validate generated files, but the post-install adoption path is not explicit enough. This slice updates user-facing guidance around init, analyze, doctor, and AI onboarding while keeping commands copy-paste safe.",
+  "git": {
+    "branch_type": "docs",
+    "base_branch": "main",
+    "branch_slug": "doctor-readme-adoption-flow",
+    "branch_name": "docs/QUIVER-03-doctor-readme-adoption-flow"
+  },
+  "must": [
+    "Update `doctor` next steps to show copy-pasteable commands without prefixing them with words like `Run`",
+    "Make `doctor` recommend `create-quiver analyze --dir .` when scan artifacts are missing",
+    "Update README quick start with the recommended sequence: init, analyze, doctor, run generated AI prompt",
+    "Update README_FOR_AI with the exact agent onboarding responsibility and generated prompt location",
+    "Mention path quoting guidance for directories with spaces where commands include absolute paths",
+    "Keep the README concise and avoid embedding the full long prompt inline"
+  ],
+  "not_included": [
+    "Reworking Windows shell support in this slice",
+    "Changing release publishing scripts",
+    "Adding AI-provider integrations",
+    "Changing project template semantics beyond onboarding guidance",
+    "Renaming existing Quiver commands"
+  ],
+  "acceptance": [
+    "`create-quiver doctor` output is understandable as guidance and not mistaken for a command containing `Run`",
+    "README quick start documents the full adoption path from package install to AI onboarding",
+    "README_FOR_AI points agents to `docs/AI_ONBOARDING_PROMPT.md` after analysis",
+    "Smoke tests assert the expected onboarding artifacts and doctor guidance exist",
+    "Existing init, doctor, and package workflows still pass",
+    "The release notes/evidence report record the final user-facing onboarding flow"
+  ],
+  "files": [
+    "README.md",
+    "README_FOR_AI.md",
+    "src/create-quiver/index.js",
+    "scripts/ci/smoke-create-quiver.sh",
+    "scripts/package-quiver.sh",
+    "specs/quiver-v08-agent-onboarding-analysis/STATUS.md",
+    "specs/quiver-v08-agent-onboarding-analysis/EVIDENCE_REPORT.md",
+    "specs/quiver-v08-agent-onboarding-analysis/slices/slice-03-doctor-readme-adoption-flow/slice.json"
+  ],
+  "tests": [
+    "node src/create-quiver/index.js doctor --dir <fixture>",
+    "bash scripts/ci/smoke-create-quiver.sh",
+    "bash scripts/package-quiver.sh",
+    "README command snippet check",
+    "git diff --check"
+  ],
+  "documentation": [
+    "README.md",
+    "README_FOR_AI.md",
+    "specs/quiver-v08-agent-onboarding-analysis/STATUS.md",
+    "specs/quiver-v08-agent-onboarding-analysis/EVIDENCE_REPORT.md"
+  ],
+  "dependencies": [
+    "slice-01-project-scan-command",
+    "slice-02-ai-onboarding-prompt"
+  ],
+  "assumptions": [
+    "The main adoption problem is unclear sequence, not missing package installation mechanics",
+    "Doctor should guide next steps but should not run analysis automatically without user intent",
+    "Long onboarding instructions belong in generated docs, not in the root README"
+  ],
+  "estimated_hours": 2,
+  "actual_hours": 0,
+  "status": "draft",
+  "blocked_reason": null,
+  "ready_at": null,
+  "started_at": null,
+  "completed_at": null
+}
