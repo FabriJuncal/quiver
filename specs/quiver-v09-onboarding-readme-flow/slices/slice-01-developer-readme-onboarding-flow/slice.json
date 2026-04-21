@@ -1,0 +1,69 @@
+{
+  "slice_id": "slice-01-developer-readme-onboarding-flow",
+  "ticket": "QUIVER-01",
+  "type": "docs",
+  "title": "Developer README Onboarding Flow",
+  "objective": "Rework the root README and generated project README so developers understand the full Quiver onboarding path before creating implementation slices.",
+  "description": "The current README has the required commands, but it does not clearly separate installation, project analysis, AI context preparation, human review, and first slice execution. This slice turns the README into an operational onboarding guide for developers.",
+  "git": {
+    "branch_type": "docs",
+    "base_branch": "main",
+    "branch_slug": "onboarding-readme-flow",
+    "branch_name": "docs/QUIVER-09-onboarding-readme-flow"
+  },
+  "must": [
+    "Rewrite the root README quick start into a developer onboarding flow",
+    "Explain what `create-quiver analyze --dir .` generates and why it exists",
+    "Add the exact short instruction developers should give the AI agent after analysis",
+    "Move the first-slice workflow after context preparation and human review",
+    "Update the generated project README created by `scripts/init-docs.sh` with the same flow"
+  ],
+  "not_included": [
+    "Changing `doctor` output",
+    "Changing `README_FOR_AI.md`",
+    "Adding AI-provider integrations",
+    "Changing analyzer behavior"
+  ],
+  "acceptance": [
+    "The root README describes install, analyze, doctor, AI handoff, review, and first slice in order",
+    "The generated project README tells the developer how to prepare AI context before starting a slice",
+    "The README does not embed the full long onboarding prompt",
+    "The generated README links to `docs/AI_ONBOARDING_PROMPT.md`",
+    "`bash scripts/ci/smoke-init-docs.sh` passes"
+  ],
+  "files": [
+    "README.md",
+    "scripts/init-docs.sh",
+    "scripts/ci/smoke-init-docs.sh",
+    "specs/quiver-v09-onboarding-readme-flow/SPEC.md",
+    "specs/quiver-v09-onboarding-readme-flow/STATUS.md",
+    "specs/quiver-v09-onboarding-readme-flow/EVIDENCE_REPORT.md",
+    "specs/quiver-v09-onboarding-readme-flow/slices/slice-01-developer-readme-onboarding-flow/slice.json"
+  ],
+  "tests": [
+    "bash -n scripts/init-docs.sh scripts/ci/smoke-init-docs.sh",
+    "bash scripts/ci/smoke-init-docs.sh",
+    "git diff --check"
+  ],
+  "documentation": [
+    "README.md",
+    "specs/quiver-v09-onboarding-readme-flow/SPEC.md",
+    "specs/quiver-v09-onboarding-readme-flow/STATUS.md",
+    "specs/quiver-v09-onboarding-readme-flow/EVIDENCE_REPORT.md"
+  ],
+  "dependencies": [
+    "quiver-v08-agent-onboarding-analysis"
+  ],
+  "assumptions": [
+    "The README should remain concise and point to the generated prompt instead of duplicating it",
+    "The developer owns review and approval of AI-generated context docs",
+    "Context preparation should happen before first slice execution"
+  ],
+  "estimated_hours": 2,
+  "actual_hours": 2,
+  "status": "completed",
+  "blocked_reason": null,
+  "ready_at": "2026-04-21T00:00:00Z",
+  "started_at": "2026-04-21T00:00:00Z",
+  "completed_at": "2026-04-21T00:00:00Z"
+}
