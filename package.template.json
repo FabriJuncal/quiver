@@ -1,0 +1,10 @@
+{
+  "name": "quiver-docs-template",
+  "private": true,
+  "scripts": {
+    "check:slice": "bash tools/scripts/check-slice-readiness.sh",
+    "check:pr": "bash tools/scripts/check-pr-readiness.sh",
+    "start:slice": "bash tools/scripts/start-slice.sh",
+    "cleanup:slice": "bash tools/scripts/cleanup-slice.sh"
+  }
+}

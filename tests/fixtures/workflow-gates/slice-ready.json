@@ -1,0 +1,62 @@
+{
+  "slice_id": "slice-02-workflow-gate-fixtures",
+  "ticket": "QUIVER-02",
+  "type": "feature",
+  "title": "Workflow Gate Fixtures",
+  "objective": "Add fixture-backed regression checks for the bootstrap and gate scripts that a real adopter runs after initialization.",
+  "description": "Even with an init smoke test, the framework can still regress in `start-slice.sh`, `check-slice-readiness.sh`, `check-pr-readiness.sh`, or `check-scope.sh`. This slice creates reproducible fixtures that cover the happy path and the most important failure paths, especially around `origin`, base branches, and PR-note structure.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "develop",
+    "branch_slug": "workflow-gate-fixtures",
+    "branch_name": "feature/QUIVER-02-workflow-gate-fixtures"
+  },
+  "must": [
+    "Create fixture or harness scenarios that exercise `start-slice.sh`, `check-slice-readiness.sh`, `check-pr-readiness.sh`, and `check-scope.sh`",
+    "Cover both no-remote and with-remote bootstrap modes for the generated project workflow",
+    "Add at least one intentional failure fixture per critical gate so CI proves the error contract and not only the happy path"
+  ],
+  "not_included": [
+    "Installer packaging",
+    "Cross-repo publish automation",
+    "A full docs site"
+  ],
+  "acceptance": [
+    "CI fails when a gate script regresses on a covered happy path scenario",
+    "CI also fails when an expected failure path stops producing the documented error contract",
+    "Maintainers can run the fixture harness locally to reproduce gate failures"
+  ],
+  "files": [
+    ".github/workflows/ci.yml",
+    "scripts/start-slice.sh",
+    "scripts/check-slice-readiness.sh",
+    "scripts/check-pr-readiness.sh",
+    "scripts/check-scope.sh",
+    "scripts/ci/smoke-workflow-gates.sh",
+    "tests/fixtures/workflow-gates/slice-ready.json",
+    "tests/fixtures/workflow-gates/pr-good.md",
+    "tests/fixtures/workflow-gates/pr-bad.md"
+  ],
+  "tests": [
+    "Fixture-backed workflow gate regression suite"
+  ],
+  "documentation": [
+    "specs/quiver-v03-adoption-verification/SPEC.md",
+    "specs/quiver-v03-adoption-verification/STATUS.md"
+  ],
+  "dependencies": [
+    "slice-01-ci-bootstrap-smoke",
+    "quiver-v02-bootstrap-hardening"
+  ],
+  "assumptions": [
+    "Fixture repos can live under a repo-local `tests/fixtures/` contract",
+    "The gate scripts remain shell-entrypoint tools rather than being rewritten into another runtime"
+  ],
+  "estimated_hours": 5,
+  "actual_hours": 0,
+  "status": "ready",
+  "blocked_reason": null,
+  "ready_at": "2026-04-20T00:00:00Z",
+  "started_at": null,
+  "completed_at": null
+}

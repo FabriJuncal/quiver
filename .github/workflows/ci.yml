@@ -1,0 +1,74 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install shellcheck
+        run: sudo apt-get update && sudo apt-get install -y shellcheck
+
+      - name: Shellcheck scripts
+        run: shellcheck scripts/*.sh
+
+      - name: Validate slice templates
+        run: |
+          node -e "JSON.parse(require('fs').readFileSync('specs/[project-name]/slices/slice-template/slice.json', 'utf8'))"
+          node -e "JSON.parse(require('fs').readFileSync('specs/quiver-v01/slices/slice-01-legal-integrity/slice.json', 'utf8'))"
+
+  smoke-init-docs:
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - macos-latest
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Run init-docs smoke
+        run: bash scripts/ci/smoke-init-docs.sh "Smoke Project"
+
+  smoke-workflow-gates:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Run workflow gate smoke
+        run: bash scripts/ci/smoke-workflow-gates.sh
+
+  smoke-create-quiver:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Run create-quiver smoke
+        run: bash scripts/ci/smoke-create-quiver.sh

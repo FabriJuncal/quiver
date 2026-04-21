@@ -1,0 +1,55 @@
+{
+  "slice_id": "slice-04-first-example",
+  "ticket": "QUIVER-04",
+  "type": "feature",
+  "title": "First Working Example",
+  "objective": "Crear examples/01-basic-slice/ con un caso end-to-end reproducible que demuestre el ciclo spec → slice → PR.",
+  "description": "El framework no tiene ningún ejemplo ejecutable. Sin evidencia de valor, la adopción depende de que el usuario lea todo el WORKFLOW y lo crea. Un ejemplo concreto es el 'show don't tell' mínimo.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "develop",
+    "branch_slug": "first-example",
+    "branch_name": "feature/QUIVER-04-first-example"
+  },
+  "must": [
+    "Crear examples/01-basic-slice/README.md con instrucciones para ejecutar el ejemplo",
+    "Crear examples/01-basic-slice/SPEC.md con un caso de uso ficticio pero realista",
+    "Crear examples/01-basic-slice/slices/slice-01/slice.json con status: completed y todos los campos",
+    "Crear examples/01-basic-slice/slices/slice-01/pr.md con el formato completo (incluyendo headings en inglés post slice-03)",
+    "Crear examples/01-basic-slice/EVIDENCE_REPORT.md completado"
+  ],
+  "not_included": [
+    "examples/02-bug-fix/ — v0.2+",
+    "examples/03-multi-agent/ — v0.2+"
+  ],
+  "acceptance": [
+    "Un usuario puede leer examples/01-basic-slice/README.md y entender el flujo completo en <5 min",
+    "El slice.json del ejemplo es válido (parseable, campos requeridos presentes)",
+    "El pr.md del ejemplo tiene todas las secciones obligatorias y pasaría check-pr-readiness.sh",
+    "El caso es agnóstico al stack tecnológico del usuario"
+  ],
+  "files": [
+    "examples/01-basic-slice/README.md",
+    "examples/01-basic-slice/SPEC.md",
+    "examples/01-basic-slice/EVIDENCE_REPORT.md",
+    "examples/01-basic-slice/slices/slice-01/slice.json",
+    "examples/01-basic-slice/slices/slice-01/pr.md"
+  ],
+  "tests": [],
+  "documentation": [
+    "specs/quiver-v01/slices/slice-04-first-example/pr.md",
+    "specs/quiver-v01/STATUS.md"
+  ],
+  "dependencies": ["slice-03-english-canonical"],
+  "assumptions": [
+    "El ejemplo usa headings en inglés (depende de slice-03 completado)",
+    "El proyecto ficticio del ejemplo es una web app genérica sin stack específico"
+  ],
+  "estimated_hours": 3,
+  "actual_hours": 3,
+  "status": "completed",
+  "blocked_reason": null,
+  "ready_at": "2026-04-20T00:00:00Z",
+  "started_at": "2026-04-20T00:00:00Z",
+  "completed_at": "2026-04-20T00:00:00Z"
+}

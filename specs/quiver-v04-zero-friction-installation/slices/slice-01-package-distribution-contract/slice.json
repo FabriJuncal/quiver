@@ -1,0 +1,57 @@
+{
+  "slice_id": "slice-01-package-distribution-contract",
+  "ticket": "QUIVER-01",
+  "type": "feature",
+  "title": "Package Distribution Contract",
+  "objective": "Define how Quiver ships as a versioned package so the installer can consume stable assets instead of a manual folder copy.",
+  "description": "Today Quiver is consumed by copying the repo folder as `docs-template/`. That is not a distribution contract. This slice defines the package layout, the shipped assets, and the repo-only files that must be excluded so the installer can rely on a stable payload.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "develop",
+    "branch_slug": "package-distribution-contract",
+    "branch_name": "feature/QUIVER-01-package-distribution-contract"
+  },
+  "must": [
+    "Create the root package metadata needed to build and version a distributable Quiver package",
+    "Define which template assets are shipped to consumers and which repo-only files stay out of the package",
+    "Add a pack or artifact smoke check so maintainers can verify the package contents before publishing"
+  ],
+  "not_included": [
+    "The CLI implementation itself",
+    "Hosted docs",
+    "Alternate installer channels"
+  ],
+  "acceptance": [
+    "Maintainers can build a Quiver package artifact that contains only the intended template and runtime assets",
+    "The packaged asset layout is documented and stable enough for the future CLI to consume",
+    "Repo-only files such as `.git/` data and local development noise are excluded from the published payload"
+  ],
+  "files": [
+    "package.json",
+    "package-lock.json",
+    ".npmignore",
+    "scripts/package-quiver.sh"
+  ],
+  "tests": [
+    "Package artifact smoke check"
+  ],
+  "documentation": [
+    "specs/quiver-v04-zero-friction-installation/SPEC.md",
+    "specs/quiver-v04-zero-friction-installation/STATUS.md"
+  ],
+  "dependencies": [
+    "quiver-v02-bootstrap-hardening",
+    "quiver-v03-adoption-verification"
+  ],
+  "assumptions": [
+    "The installer surface will be Node-based",
+    "The published package should remain consumable without cloning the full git repo"
+  ],
+  "estimated_hours": 3,
+  "actual_hours": 3,
+  "status": "completed",
+  "blocked_reason": null,
+  "ready_at": "2026-04-20T00:00:00Z",
+  "started_at": "2026-04-21T00:00:00Z",
+  "completed_at": "2026-04-21T00:00:00Z"
+}

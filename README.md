@@ -1,164 +1,118 @@
-# Docs Template
+# Quiver
 
-Template de documentación para proyectos de software con IA agents.
+Quiver is a CLI-first documentation workflow for projects that use specs, slices, and AI-assisted implementation.
+
+It gives a project a repeatable structure for planning work, starting focused implementation slices, validating readiness, and keeping human and AI contributors aligned.
 
 ## Quick Start
 
-### Opción 1: Usar Script de Inicialización (Recomendado)
+Create or update a project with the installer:
 
 ```bash
-# Desde la raíz de tu proyecto
-./docs-template/scripts/init-docs.sh "Nombre de Tu Proyecto"
+npx create-quiver --name "Project Name" --dir ./target-repo
 ```
 
-Esto automáticamente:
-- Crea estructura de directorios
-- Copia templates con placeholders
-- Reemplaza `{{PROJECT_NAME}}` con tu proyecto
-- Crea archivos core listos para editar
-- Copia `tools/scripts/start-slice.sh` para bootstrap de ramas/worktrees por slice
-- Copia `check-slice-readiness.sh`, `check-pr-readiness.sh` y `cleanup-slice.sh` para enforcement del workflow
-
-### Opción 2: Copiar Manualmente
+To install into the current directory, omit `--dir`:
 
 ```bash
-# Copiar templates
-cp -r docs-template/docs ../mi-proyecto/docs
-cp -r docs-template/specs ../mi-proyecto/specs
-cp -r docs-template/scripts ../mi-proyecto/scripts
-
-# Editar archivos core
-# (ver docs-template/TEMPLATE.md)
+npx create-quiver --name "Project Name"
 ```
 
-### Opción 3: Usar como Package NPM (Futuro)
+## Requirements
+
+- Node.js and npm for the installer
+- Git for slice branches, worktrees, and PR workflow checks
+- macOS or Linux as the primary supported shell environment
+
+See the generated `docs/SUPPORT_MATRIX.md` for the detailed support contract.
+
+## Validate
+
+After installation, run the doctor:
 
 ```bash
-# Próximamente
-npx create-sdd-docs@latest "Mi Proyecto"
+npx create-quiver doctor --dir ./target-repo
 ```
 
-## Estructura
+The doctor checks the generated project contract and prints the next workflow steps.
 
-```
-docs-template/
-├── README.md                  ← Este archivo
-├── TEMPLATE.md                ← Guía de personalización
-│
-├── docs/                      ← Documentación core
-│   ├── INDEX.md.template      ← Índice maestro
-│   ├── CONTEXTO.md.template   ← Contexto del proyecto
-│   ├── STATUS.md.template     ← Estado (opcional)
-│   ├── WORKFLOW.md.template   ← Workflow de implementación
-│   ├── DOCUMENTATION_GUIDE.md ← Guía de documentación
-│   ├── GITFLOW_PR_GUIDE.md    ← Git + PR guide
-│   ├── UI_STANDARDS.md        ← Estándares UI
-│   ├── MOCK_DATA_GUIDE.md     ← Guía de mock data
-│   ├── TESTING_GUIDE_FOR_AI.md.template ← Testing para IA
-│   └── ai/                    ← Configuración de IA
-│       ├── PRINCIPLES.md      ← 4 principios fundamentales
-│       ├── RULES.yaml         ← Reglas de comportamiento
-│       └── LESSONS.md.template← Aprendizaje (vacío)
-│
-├── specs/                     ← Especificaciones
-│   └── [project-name]/
-│       ├── SPEC.md.template   ← Template de especificación
-│       └── slices/
-│           └── slice-template/
-│               ├── slice.json
-│               └── pr.md.template
-│
-├── specs-fix/                 ← Fixes de bugs (se crea cuando hay errores)
-│   └── [fix-name]/
-│       ├── SPEC.md.template   ← Especificación del fix
-│       └── slices/
-│           └── slice-XX-fix-*/
-│               ├── slice.json
-│               └── pr.md
-│
-└── scripts/                   ← Scripts de utilidad
-    ├── init-docs.sh           ← Inicialización
-    ├── start-slice.sh         ← Bootstrap de rama/worktree por slice
-    ├── check-slice-readiness.sh ← Gate de ejecución/validación del slice
-    ├── check-pr-readiness.sh  ← Gate de apertura de PR
-    ├── check-scope.sh         ← Detecta archivos fuera del scope declarado en slice.json
-    ├── cleanup-slice.sh       ← Cleanup / congelado de worktrees
-    ├── refresh-active-slices.sh ← Tablero local de slices activos
-    └── migrate-project.sh     ← Migración
+## First Slice Workflow
+
+After the scaffold is valid:
+
+1. Fill in `docs/CONTEXTO.md` and `docs/STATUS.md`.
+2. Define the project spec in `specs/<project-slug>/SPEC.md`.
+3. Create the first slice from `specs/<project-slug>/slices/slice-template/slice.json`.
+4. Start work with `tools/scripts/start-slice.sh <slice.json>`.
+5. Make one commit per slice.
+6. Open one PR per spec.
+
+Slice numbering is local to each spec: every new spec starts at `slice-01`.
+
+## What Gets Generated
+
+Quiver generates a project-local workflow under:
+
+- `docs/` for project context, workflow, support, troubleshooting, and AI guidance
+- `specs/<project-slug>/` for the project spec, status, evidence, and slice contracts
+- `tools/scripts/` for slice lifecycle and readiness gates
+- `.github/` for default PR, issue, and CI templates
+- `package.json` scripts for the workflow commands
+
+For the detailed support contract, read `docs/SUPPORT_MATRIX.md` in the generated project. For recovery paths, read `docs/TROUBLESHOOTING.md`.
+
+## Manual Template Use
+
+Use the manual flow only when developing Quiver locally or testing a template checkout. From a target project where this repository was copied as `docs-template/`, run:
+
+```bash
+./docs-template/scripts/init-docs.sh "Project Name"
 ```
 
-## Archivos Obligatorios vs Opcionales
+The CLI path is the supported adoption path for users.
 
-### Obligatorios (Core)
-- `INDEX.md` - Índice maestro
-- `CONTEXTO.md` - Contexto del proyecto
-- `WORKFLOW.md` - Workflow de implementación
-- `ai/PRINCIPLES.md` - Principios de IA
-- `ai/RULES.yaml` - Reglas de IA
-- `TESTING_GUIDE_FOR_AI.md` - Guía de testing para IA
+## For AI Agents
 
-### Opcionales (Según Proyecto)
-- `STATUS.md` - Estado del proyecto (recomendado para MVP+)
-- `ai/LESSONS.md` - Lessons aprendidos (si usás IA agents)
-- `tools/` - Documentación de herramientas (Playwright, ESLint, etc.)
-- `api/` - API Reference (si tenés backend)
-- `specs-fix/` - Fixes de bugs (se crea cuando hay errores)
-- `docs/BUGS_FOUND/` - Bugs encontrados (se crea cuando hay errores)
+Read `README_FOR_AI.md` before working in this repository or in a generated project. It explains the generic template boundary, the generated project boundary, and the slice workflow rules.
 
-## Personalización
+## For Maintainers
 
-Ver **[TEMPLATE.md](./TEMPLATE.md)** para guía completa de personalización.
+Release preflight:
 
-## Uso con IA Agents
-
-Este template está diseñado para ser leído por IA agents (Qwen Code, Claude Code, Cursor).
-
-### Para IA Agents
-
-**Guía específica:** [README_FOR_AI.md](./README_FOR_AI.md)
-
-Esta guía incluye:
-- Cómo inicializar un proyecto nuevo
-- Qué archivos son genéricos vs específicos
-- Reglas críticas para IA
-- Placeholders y reemplazos
-- Ejemplos por tipo de proyecto
-- **Testing guide:** Cómo ejecutar tests y generar specs-fix para errores ⭐
-
-### Flujo de Testing para IA
-
-```
-1. Leer SPEC del slice
-   ↓
-2. Implementar cambios
-   ↓
-3. Ejecutar tests (smoke + específicos)
-   ↓
-4. ¿Tests pasaron?
-   ├─ SÍ → Actualizar documentación
-   └─ NO → Generar spec-fix
-       ├─ Documentar bug en docs/BUGS_FOUND/
-       ├─ Crear spec-fix en specs-fix/[proyecto-fix]/
-       └─ Actualizar STATUS.md
-   ↓
-5. Actualizar STATUS.md y evidencias
+```bash
+npm whoami
+npm view create-quiver version
+npm run package:quiver
+npm run smoke:create-quiver
+npm run release:quiver
 ```
 
-**Ver:** `docs/TESTING_GUIDE_FOR_AI.md.template` para guía completa de testing.
+Current-version publish:
 
-### Para Humanos
+```bash
+bash scripts/release-quiver.sh --publish-current
+```
 
-**Orden de lectura recomendado:**
-1. `docs/ai/PRINCIPLES.md` - Principios fundamentales
-2. `docs/ai/RULES.yaml` - Reglas de comportamiento
-3. `docs/CONTEXTO.md` - Contexto del proyecto
-4. `docs/STATUS.md` - Estado actual
-5. `docs/TESTING_GUIDE_FOR_AI.md` - Guía de testing ⭐
-6. `specs/[project]/slices/[slice-id]/slice.json` - Slice actual
-7. `tools/scripts/start-slice.sh specs/[project]/slices/[slice-id]/slice.json` - Crear rama + worktree del slice
-8. `tools/scripts/check-slice-readiness.sh specs/[project]/slices/[slice-id]/slice.json --gate execution` - Gate previo a ejecución
-9. `tools/scripts/check-pr-readiness.sh specs/[project]/slices/[slice-id]/slice.json` - Gate previo a PR
+Versioned publish:
 
-## Licencia
+```bash
+bash scripts/release-quiver.sh patch --publish
+```
+
+The release helper stays explicit on purpose: `--publish-current` publishes the current version, and `--publish` follows a normal version bump flow.
+
+If `npm whoami` or `npm view create-quiver version` fails, fix npm auth or registry reachability before publishing.
+
+For a first release, prefer `--publish-current` so the published package stays at `0.4.0`.
+
+## References
+
+- [AI guide](./README_FOR_AI.md)
+- [Support matrix template](./docs/SUPPORT_MATRIX.md.template)
+- [Troubleshooting template](./docs/TROUBLESHOOTING.md.template)
+- [Changelog](./CHANGELOG.md)
+- [Roadmap](./ROADMAP.md)
+
+## License
 
 MIT

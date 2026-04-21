@@ -1,0 +1,97 @@
+# PR - [TICKET] - [Slice Title]
+
+## Title
+
+[Short, clear title for the change]
+
+## Summary
+
+[Brief summary of what was implemented and why]
+
+## Scope
+
+- [Included change 1]
+- [Included change 2]
+- [Relevant exclusion, if any]
+
+## Files
+
+- `[file 1]`
+- `[file 2]`
+
+## How to Test (DETAILED - REQUIRED)
+
+### Required Environment
+
+- Node: [version, e.g. 20.x]
+- [Additional prerequisite if any]
+- [Environment variable or flag if needed]
+
+### Worktree Access
+
+```bash
+# Navigate to the slice worktree if it already exists
+cd ../.worktrees/[repo-name]/[sanitized-branch-name]
+
+# Or create the worktree from scratch
+npm run start:slice -- specs/{{PROJECT_SLUG}}/slices/[slice-id]/slice.json
+```
+
+### Run the Project
+
+```bash
+# [Project-specific start command]
+```
+
+### Use Cases
+
+#### Case 1: [Descriptive case name]
+
+**Prerequisite:** [required initial state]
+
+1. [Exact step 1]
+2. [Exact step 2]
+3. [Exact step 3]
+
+**Expected result:** [what should happen]
+
+---
+
+#### Case 2: [Descriptive case name]
+
+**Prerequisite:** [required initial state]
+
+1. [Exact step 1]
+2. [Exact step 2]
+
+**Expected result:** [what should happen]
+
+---
+
+### Technical Verification
+
+```bash
+# Slice validation gate
+npm run check:slice -- specs/{{PROJECT_SLUG}}/slices/[slice-id]/slice.json --gate validation
+
+# PR gate
+npm run check:pr -- specs/{{PROJECT_SLUG}}/slices/[slice-id]/slice.json
+
+# Whitespace and conflicts
+git diff --check
+```
+
+## Evidence
+
+- [Verifiable signal 1]
+- [Verifiable signal 2]
+
+## Rollback
+
+1. `git revert [commit-hash]`
+2. [Validate the rollback]
+3. [Document any follow-up if needed]
+
+## Risks / Notes
+
+- [Risk, limitation, or follow-up]

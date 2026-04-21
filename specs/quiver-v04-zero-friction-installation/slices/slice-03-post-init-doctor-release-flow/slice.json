@@ -1,0 +1,63 @@
+{
+  "slice_id": "slice-03-post-init-doctor-release-flow",
+  "ticket": "QUIVER-03",
+  "type": "feature",
+  "title": "Post-Init Doctor + Release Flow",
+  "objective": "Add a post-init validation path and a release contract so the installer can be published and trusted as a versioned entrypoint.",
+  "description": "A one-command installer still fails the plug-and-play bar if users cannot validate what it generated or if maintainers do not have a documented release flow. This slice adds the post-init doctor experience and the package release contract needed to ship the installer responsibly.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "develop",
+    "branch_slug": "post-init-doctor-release-flow",
+    "branch_name": "feature/QUIVER-03-post-init-doctor-release-flow"
+  },
+  "must": [
+    "Add a post-init validation command or mode that checks the generated Quiver project and reports actionable next steps",
+    "Document the release and versioning flow for publishing the installer surface",
+    "Extend CI with at least one smoke check that validates the packaged installer can be exercised before release"
+  ],
+  "not_included": [
+    "Hosted docs site",
+    "Alternative package registries",
+    "Windows-native installer packaging"
+  ],
+  "acceptance": [
+    "After installation, a user can run the documented doctor flow to confirm the scaffold is ready for slice work",
+    "Maintainers have a documented and repeatable release flow for versioning and publishing the installer",
+    "CI proves the installer surface is still usable before a release is cut"
+  ],
+  "files": [
+    "package.json",
+    "README.md",
+    "README_FOR_AI.md",
+    "CHANGELOG.md",
+    "src/create-quiver/index.js",
+    "scripts/ci/smoke-create-quiver.sh",
+    "scripts/release-quiver.sh",
+    "scripts/package-quiver.sh",
+    ".github/workflows/ci.yml"
+  ],
+  "tests": [
+    "Installer doctor smoke test",
+    "Packaged CLI smoke test in CI"
+  ],
+  "documentation": [
+    "specs/quiver-v04-zero-friction-installation/SPEC.md",
+    "specs/quiver-v04-zero-friction-installation/STATUS.md",
+    "specs/quiver-v04-zero-friction-installation/EVIDENCE_REPORT.md"
+  ],
+  "dependencies": [
+    "slice-02-create-quiver-cli"
+  ],
+  "assumptions": [
+    "The installer release flow remains npm-first",
+    "The post-init doctor should validate the same contract enforced by Quiver's workflow scripts"
+  ],
+  "estimated_hours": 3,
+  "actual_hours": 3,
+  "status": "completed",
+  "blocked_reason": null,
+  "ready_at": "2026-04-20T00:00:00Z",
+  "started_at": "2026-04-21T00:00:00Z",
+  "completed_at": "2026-04-21T00:00:00Z"
+}

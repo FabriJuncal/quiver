@@ -1,0 +1,50 @@
+{
+  "slice_id": "slice-02-executable-quickstart",
+  "ticket": "QUIVER-02",
+  "type": "feature",
+  "title": "Executable Quickstart",
+  "objective": "Que un usuario nuevo pueda ejecutar init-docs.sh y luego correr npm run check:slice sin configuración adicional.",
+  "description": "El WORKFLOW.md.template referencia npm run check:slice, check:pr, start:slice, cleanup:slice pero no existe package.json en quiver ni instrucciones para cablearlo. El usuario llega a un dead end a los 2 min del quickstart.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "develop",
+    "branch_slug": "executable-quickstart",
+    "branch_name": "feature/QUIVER-02-executable-quickstart"
+  },
+  "must": [
+    "Crear package.template.json con scripts check:slice, check:pr, start:slice, cleanup:slice apuntando a tools/scripts/",
+    "init-docs.sh detecta si existe package.json en el host y mergea los scripts; si no existe, copia package.template.json como package.json",
+    "README.md actualizado: Quickstart muestra cómo clonar quiver como docs-template/ y los scripts npm disponibles"
+  ],
+  "not_included": [
+    "CLI npx — v0.2+",
+    "Traducción del README — slice-03"
+  ],
+  "acceptance": [
+    "Ejecutar init-docs.sh en proyecto sin package.json genera package.json con los 4 scripts",
+    "Ejecutar init-docs.sh en proyecto con package.json existente agrega los scripts sin pisar el resto",
+    "README.md quickstart es ejecutable copiando los comandos en orden"
+  ],
+  "files": [
+    "package.template.json",
+    "scripts/init-docs.sh",
+    "README.md"
+  ],
+  "tests": [],
+  "documentation": [
+    "specs/quiver-v01/slices/slice-02-executable-quickstart/pr.md",
+    "specs/quiver-v01/STATUS.md"
+  ],
+  "dependencies": ["slice-01-legal-integrity"],
+  "assumptions": [
+    "node y jq (o node) disponibles para mergear JSON en init-docs.sh",
+    "Los paths de scripts en package.template.json usan tools/scripts/ como los copia init-docs.sh"
+  ],
+  "estimated_hours": 2,
+  "actual_hours": 2,
+  "status": "completed",
+  "blocked_reason": null,
+  "ready_at": "2026-04-20T00:00:00Z",
+  "started_at": "2026-04-20T00:00:00Z",
+  "completed_at": "2026-04-20T00:00:00Z"
+}

@@ -40,6 +40,9 @@ fi
 PROJECT_NAME="$1"
 PROJECT_SLUG=$(echo "$PROJECT_NAME" | tr '[:upper:]' '[:lower:]' | tr ' ' '-' | tr -cd '[:alnum:]-')
 CURRENT_DATE=$(date +%Y-%m-%d)
+DATE_PLUS_7=$(node -e 'const d = new Date(); d.setDate(d.getDate() + 7); const p = (n) => String(n).padStart(2, "0"); console.log(`${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`);')
+DATE_PLUS_30=$(node -e 'const d = new Date(); d.setDate(d.getDate() + 30); const p = (n) => String(n).padStart(2, "0"); console.log(`${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`);')
+DATE_PLUS_35=$(node -e 'const d = new Date(); d.setDate(d.getDate() + 35); const p = (n) => String(n).padStart(2, "0"); console.log(`${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`);')
 
 print_info "Inicializando documentación para: $PROJECT_NAME"
 print_info "Project slug: $PROJECT_SLUG"
@@ -77,10 +80,13 @@ copy_template() {
         # Copiar y reemplazar placeholders
         sed -e "s/{{PROJECT_NAME}}/$PROJECT_NAME/g" \
             -e "s/{{PROJECT_SLUG}}/$PROJECT_SLUG/g" \
+            -e "s/\[project\]/$PROJECT_SLUG/g" \
+            -e "s/\[project-name\]/$PROJECT_SLUG/g" \
+            -e "s/\[project-slug\]/$PROJECT_SLUG/g" \
             -e "s/{{FECHA}}/$CURRENT_DATE/g" \
-            -e "s/{{FECHA_PROXIMA}}/$(date -v+7d +%Y-%m-%d 2>/dev/null || date +%Y-%m-%d)/g" \
-            -e "s/{{FECHA_PROXIMA_MES}}/$(date -v+30d +%Y-%m-%d 2>/dev/null || date +%Y-%m-%d)/g" \
-            -e "s/{{FECHA_LAUNCH}}/$(date -v+35d +%Y-%m-%d 2>/dev/null || date +%Y-%m-%d)/g" \
+            -e "s/{{FECHA_PROXIMA}}/$DATE_PLUS_7/g" \
+            -e "s/{{FECHA_PROXIMA_MES}}/$DATE_PLUS_30/g" \
+            -e "s/{{FECHA_LAUNCH}}/$DATE_PLUS_35/g" \
             -e "s/{{ESTADO}}/En planificación/g" \
             -e "s/{{FASE}}/Fase 1/g" \
             -e "s/{{X}}%/0%/g" \
@@ -90,16 +96,62 @@ copy_template() {
     fi
 }
 
+copy_template_keep_name() {
+    local src="$1"
+    local dest="$2"
+
+    if [ -f "$src" ]; then
+        sed -e "s/{{PROJECT_NAME}}/$PROJECT_NAME/g" \
+            -e "s/{{PROJECT_SLUG}}/$PROJECT_SLUG/g" \
+            -e "s/\[project\]/$PROJECT_SLUG/g" \
+            -e "s/\[project-name\]/$PROJECT_SLUG/g" \
+            -e "s/\[project-slug\]/$PROJECT_SLUG/g" \
+            -e "s/{{FECHA}}/$CURRENT_DATE/g" \
+            -e "s/{{FECHA_PROXIMA}}/$DATE_PLUS_7/g" \
+            -e "s/{{FECHA_PROXIMA_MES}}/$DATE_PLUS_30/g" \
+            -e "s/{{FECHA_LAUNCH}}/$DATE_PLUS_35/g" \
+            -e "s/{{ESTADO}}/En planificación/g" \
+            -e "s/{{FASE}}/Fase 1/g" \
+            -e "s/{{X}}%/0%/g" \
+            "$src" > "$dest"
+
+        print_success "Creado: $dest"
+    fi
+}
+
+copy_file_if_missing() {
+    local src="$1"
+    local dest="$2"
+
+    mkdir -p "$(dirname "$dest")"
+
+    if [ -f "$dest" ]; then
+        print_info "Saltado: $dest ya existe"
+        return 0
+    fi
+
+    if [ ! -f "$src" ]; then
+        print_warning "No se encontró $src; se omite $dest"
+        return 0
+    fi
+
+    cp "$src" "$dest"
+    print_success "Creado: $dest"
+}
+
 # Copiar templates de docs/
 copy_template "docs-template/docs/INDEX.md.template" "docs/INDEX.md"
 copy_template "docs-template/docs/CONTEXTO.md.template" "docs/CONTEXTO.md"
 copy_template "docs-template/docs/STATUS.md.template" "docs/STATUS.md"
 copy_template "docs-template/docs/WORKFLOW.md.template" "docs/WORKFLOW.md"
+copy_template "docs-template/docs/SUPPORT_MATRIX.md.template" "docs/SUPPORT_MATRIX.md"
+copy_template "docs-template/docs/TROUBLESHOOTING.md.template" "docs/TROUBLESHOOTING.md"
 copy_template "docs-template/docs/MULTI_AGENT_WORKFLOW.md.template" "docs/MULTI_AGENT_WORKFLOW.md"
 copy_template "docs-template/docs/MOCK_DATA_GUIDE.md.template" "docs/MOCK_DATA_GUIDE.md"
 copy_template "docs-template/docs/UI_STANDARDS.md.template" "docs/UI_STANDARDS.md"
 copy_template "docs-template/docs/GITFLOW_PR_GUIDE.md.template" "docs/GITFLOW_PR_GUIDE.md"
 copy_template "docs-template/docs/DOCUMENTATION_GUIDE.md.template" "docs/DOCUMENTATION_GUIDE.md"
+copy_template "docs-template/docs/TESTING_GUIDE_FOR_AI.md.template" "docs/TESTING_GUIDE_FOR_AI.md"
 
 # Copiar archivos que no son templates
 if [ -f "docs-template/docs/UI_STANDARDS.md" ]; then
@@ -132,11 +184,59 @@ copy_template "docs-template/specs/[project-name]/STATUS.md.template" "specs/$PR
 copy_template "docs-template/specs/[project-name]/EVIDENCE_REPORT.md.template" "specs/$PROJECT_SLUG/EVIDENCE_REPORT.md"
 
 # Copiar template de slice
-cp "docs-template/specs/[project-name]/slices/slice-template/slice.json" "specs/$PROJECT_SLUG/slices/slice-template/slice.json"
+copy_template_keep_name "docs-template/specs/[project-name]/slices/slice-template/slice.json" "specs/$PROJECT_SLUG/slices/slice-template/slice.json"
 print_success "Creado: specs/$PROJECT_SLUG/slices/slice-template/slice.json"
 
 # Copiar template de PR del slice
-copy_template "docs-template/specs/[project-name]/slices/pr-template.md" "specs/$PROJECT_SLUG/slices/slice-template/pr.md"
+copy_template_keep_name "docs-template/specs/[project-name]/slices/pr.md.template" "specs/$PROJECT_SLUG/slices/slice-template/pr.md.template"
+
+# Copiar baseline legal y OSS cuando faltan
+copy_file_if_missing "docs-template/LICENSE" "LICENSE"
+copy_file_if_missing "docs-template/CONTRIBUTING.md" "CONTRIBUTING.md"
+copy_file_if_missing "docs-template/CODE_OF_CONDUCT.md" "CODE_OF_CONDUCT.md"
+copy_file_if_missing "docs-template/SECURITY.md" "SECURITY.md"
+copy_file_if_missing "docs-template/CHANGELOG.md" "CHANGELOG.md"
+copy_file_if_missing "docs-template/ROADMAP.md" "ROADMAP.md"
+copy_file_if_missing "docs-template/.github/pull_request_template.md" ".github/pull_request_template.md"
+copy_file_if_missing "docs-template/.github/ISSUE_TEMPLATE/bug_report.md" ".github/ISSUE_TEMPLATE/bug_report.md"
+copy_file_if_missing "docs-template/.github/ISSUE_TEMPLATE/feature_request.md" ".github/ISSUE_TEMPLATE/feature_request.md"
+copy_file_if_missing "docs-template/.github/workflows/ci.yml" ".github/workflows/ci.yml"
+
+# Sincronizar package.json del host
+sync_package_json() {
+    local package_template="docs-template/package.template.json"
+    local package_json="package.json"
+
+    if [ ! -f "$package_template" ]; then
+        print_warning "No se encontró package.template.json; se omite la sincronización de package.json"
+        return 0
+    fi
+
+    if [ ! -f "$package_json" ]; then
+        cp "$package_template" "$package_json"
+        print_success "Creado: $package_json"
+        return 0
+    fi
+
+    node - "$package_json" "$package_template" <<'NODE'
+const fs = require('fs');
+
+const [packagePath, templatePath] = process.argv.slice(2);
+const existing = JSON.parse(fs.readFileSync(packagePath, 'utf8'));
+const template = JSON.parse(fs.readFileSync(templatePath, 'utf8'));
+
+existing.scripts = {
+  ...(existing.scripts || {}),
+  ...(template.scripts || {})
+};
+
+fs.writeFileSync(packagePath, `${JSON.stringify(existing, null, 2)}\n`);
+NODE
+
+    print_success "Actualizado: $package_json (scripts mergeados)"
+}
+
+sync_package_json
 
 # Copiar bootstrap de slices a tools/scripts
 if [ -f "docs-template/scripts/start-slice.sh" ]; then
@@ -200,6 +300,11 @@ cat > "docs/SEARCH.md" << EOF
 - **Reglas:** \`docs/ai/RULES.yaml\`
 - **Lessons:** \`docs/ai/LESSONS.md\`
 
+## Soporte
+
+- **Support Matrix:** \`docs/SUPPORT_MATRIX.md\`
+- **Troubleshooting:** \`docs/TROUBLESHOOTING.md\`
+
 ---
 
 **Fin de la búsqueda**
@@ -232,6 +337,8 @@ npm run dev
 
 - [Contexto](./docs/CONTEXTO.md) - Qué es $PROJECT_NAME
 - [Workflow](./docs/WORKFLOW.md) - Cómo implementar
+- [Support Matrix](./docs/SUPPORT_MATRIX.md) - Qué entornos están soportados
+- [Troubleshooting](./docs/TROUBLESHOOTING.md) - Cómo recuperarse de fallos comunes
 - [Status](./docs/STATUS.md) - Estado del proyecto
 - [API Docs](./docs/api/) - Endpoint documentation (si aplica)
 EOF

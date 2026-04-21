@@ -1,0 +1,62 @@
+{
+  "slice_id": "slice-03-support-matrix-troubleshooting",
+  "ticket": "QUIVER-03",
+  "type": "feature",
+  "title": "Support Matrix + Troubleshooting",
+  "objective": "Document the supported bootstrap environments and the first-run recovery paths so a new adopter can self-serve common failures.",
+  "description": "A framework is not plug-and-play if the user has to reverse-engineer hidden assumptions from shell scripts. This slice creates an explicit support contract for OS, git, and node expectations, and pairs it with troubleshooting guidance linked from both the root docs and the generated project docs.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "develop",
+    "branch_slug": "support-matrix-troubleshooting",
+    "branch_name": "feature/QUIVER-03-support-matrix-troubleshooting"
+  },
+  "must": [
+    "Create a support matrix that states the supported operating systems, git expectations, node expectations, and remote modes",
+    "Add a troubleshooting guide that covers the main first-run failure cases discovered in the bootstrap and gate flows",
+    "Link the support matrix and troubleshooting guide from the root README and the generated project onboarding docs"
+  ],
+  "not_included": [
+    "Hosted docs site",
+    "Native Windows support",
+    "Installer packaging"
+  ],
+  "acceptance": [
+    "A new user can identify whether their environment is supported without reading shell scripts",
+    "The troubleshooting guide explains the recovery path for path normalization, missing base branch, remote mode, and generated-file conflict failures",
+    "The generated project includes links to the support contract from its onboarding docs"
+  ],
+  "files": [
+    "README.md",
+    "README_FOR_AI.md",
+    "TEMPLATE.md",
+    "docs/INDEX.md.template",
+    "docs/DOCUMENTATION_GUIDE.md.template",
+    "docs/SUPPORT_MATRIX.md.template",
+    "docs/TROUBLESHOOTING.md.template",
+    "docs/WORKFLOW.md.template",
+    "scripts/init-docs.sh",
+    "scripts/ci/smoke-init-docs.sh"
+  ],
+  "tests": [
+    "Link and file existence checks for the new support docs"
+  ],
+  "documentation": [
+    "specs/quiver-v03-adoption-verification/SPEC.md",
+    "specs/quiver-v03-adoption-verification/STATUS.md"
+  ],
+  "dependencies": [
+    "slice-02-workflow-gate-fixtures"
+  ],
+  "assumptions": [
+    "The supported bootstrap contract remains macOS and Linux first",
+    "Troubleshooting guidance should track the smoke-tested flows rather than speculative scenarios"
+  ],
+  "estimated_hours": 2,
+  "actual_hours": 2,
+  "status": "completed",
+  "blocked_reason": null,
+  "ready_at": "2026-04-20T00:00:00Z",
+  "started_at": "2026-04-20T00:00:00Z",
+  "completed_at": "2026-04-20T00:00:00Z"
+}

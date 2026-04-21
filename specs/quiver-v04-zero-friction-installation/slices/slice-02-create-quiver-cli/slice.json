@@ -1,0 +1,61 @@
+{
+  "slice_id": "slice-02-create-quiver-cli",
+  "ticket": "QUIVER-02",
+  "type": "feature",
+  "title": "`create-quiver` CLI",
+  "objective": "Ship a one-command CLI that scaffolds Quiver into a target repo and replaces the current manual `docs-template/` folder copy.",
+  "description": "The manual copy step is the clearest sign that Quiver is not yet plug-and-play. This slice implements the first official installer surface, so a user can bootstrap Quiver into either an existing repo or a new target directory without reverse-engineering the template layout.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "develop",
+    "branch_slug": "create-quiver-cli",
+    "branch_name": "feature/QUIVER-02-create-quiver-cli"
+  },
+  "must": [
+    "Implement a `create-quiver` CLI entrypoint that can scaffold into a target directory or the current repo",
+    "Support passing the project name non-interactively and running the initialization flow after copying the packaged assets",
+    "Print clear next steps that point the user to the generated docs and the first slice workflow"
+  ],
+  "not_included": [
+    "Alternate installer channels such as Homebrew",
+    "A hosted docs site",
+    "Advanced schema-driven editor tooling"
+  ],
+  "acceptance": [
+    "A user can run the documented one-command installer and receive a scaffolded Quiver project without manually copying folders",
+    "The CLI supports at least one non-interactive mode suitable for docs, demos, and CI",
+    "The resulting scaffold matches the same generated-project contract verified in the earlier specs"
+  ],
+  "files": [
+    "package.json",
+    "package-lock.json",
+    "bin/create-quiver.js",
+    "src/create-quiver/",
+    "README.md",
+    "README_FOR_AI.md",
+    "scripts/package-quiver.sh",
+    "scripts/ci/smoke-create-quiver.sh"
+  ],
+  "tests": [
+    "CLI scaffold smoke test for new directory mode",
+    "CLI scaffold smoke test for existing repo mode"
+  ],
+  "documentation": [
+    "specs/quiver-v04-zero-friction-installation/SPEC.md",
+    "specs/quiver-v04-zero-friction-installation/STATUS.md"
+  ],
+  "dependencies": [
+    "slice-01-package-distribution-contract"
+  ],
+  "assumptions": [
+    "The CLI can rely on packaged template assets rather than a live git checkout",
+    "The project name should be passable without prompts for automation scenarios"
+  ],
+  "estimated_hours": 6,
+  "actual_hours": 6,
+  "status": "completed",
+  "blocked_reason": null,
+  "ready_at": "2026-04-20T00:00:00Z",
+  "started_at": "2026-04-21T00:00:00Z",
+  "completed_at": "2026-04-21T00:00:00Z"
+}

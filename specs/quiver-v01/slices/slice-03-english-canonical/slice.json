@@ -1,0 +1,69 @@
+{
+  "slice_id": "slice-03-english-canonical",
+  "ticket": "QUIVER-03",
+  "type": "feature",
+  "title": "English as Canonical Language",
+  "objective": "Translate the template documentation and required gate headings to English, while keeping Spanish copies in `i18n/es/`.",
+  "description": "The PR readiness gate used to require Spanish headings such as the detailed testing section. English-only projects should not fail that gate. The README must be English-first, and Spanish copies should live under `i18n/es/`.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "develop",
+    "branch_slug": "english-canonical",
+    "branch_name": "feature/QUIVER-03-english-canonical"
+  },
+  "must": [
+    "Translate README.md, README_FOR_AI.md, and TEMPLATE.md to English",
+    "Translate all `.md.template` files under `docs/` to English",
+    "Translate `docs/ai/PRINCIPLES.md` and the comments in `RULES.yaml` to English",
+    "Update the required headings in `scripts/check-pr-readiness.sh` to English",
+    "Update `pr.md.template` with English headings",
+    "Create `i18n/es/` with Spanish copies of the main docs"
+  ],
+  "not_included": [
+    "A configurable i18n framework, deferred to v0.2+ if demand exists",
+    "Translating internal bash script comments, which is not a blocker"
+  ],
+  "acceptance": [
+    "An English project can use `check-pr-readiness.sh` with an English `pr.md` without failing the gate",
+    "README.md is fully in English",
+    "i18n/es/ contains Spanish versions of the main docs",
+    "No required heading in `check-pr-readiness.sh` is in Spanish"
+  ],
+  "files": [
+    "README.md",
+    "README_FOR_AI.md",
+    "TEMPLATE.md",
+    "docs/INDEX.md.template",
+    "docs/CONTEXTO.md.template",
+    "docs/STATUS.md.template",
+    "docs/WORKFLOW.md.template",
+    "docs/MULTI_AGENT_WORKFLOW.md.template",
+    "docs/MOCK_DATA_GUIDE.md.template",
+    "docs/UI_STANDARDS.md.template",
+    "docs/GITFLOW_PR_GUIDE.md.template",
+    "docs/DOCUMENTATION_GUIDE.md.template",
+    "docs/TESTING_GUIDE_FOR_AI.md.template",
+    "docs/ai/PRINCIPLES.md",
+    "docs/ai/RULES.yaml",
+    "docs/ai/LESSONS.md.template",
+    "scripts/check-pr-readiness.sh",
+    "specs/[project-name]/slices/pr.md.template"
+  ],
+  "tests": [],
+  "documentation": [
+    "specs/quiver-v01/slices/slice-03-english-canonical/pr.md",
+    "specs/quiver-v01/STATUS.md"
+  ],
+  "dependencies": ["slice-01-legal-integrity"],
+  "assumptions": [
+    "The translation prioritizes technical clarity over literalness",
+    "Code samples and commands are not translated because they are universal"
+  ],
+  "estimated_hours": 6,
+  "actual_hours": 6,
+  "status": "completed",
+  "blocked_reason": null,
+  "ready_at": "2026-04-20T00:00:00Z",
+  "started_at": "2026-04-20T00:00:00Z",
+  "completed_at": "2026-04-20T00:00:00Z"
+}

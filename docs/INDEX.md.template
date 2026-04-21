@@ -1,75 +1,41 @@
 # {{PROJECT_NAME}} Documentation Index
 
-**Última actualización:** {{FECHA}}
+**Last updated:** {{FECHA}}
 
----
+## Start Here
 
-## Empezar Aquí
+- **Context** - `./CONTEXTO.md`
+- **Workflow** - `./WORKFLOW.md`
+- **Support Matrix** - `./SUPPORT_MATRIX.md`
+- **Troubleshooting** - `./TROUBLESHOOTING.md`
+- **Multi-agent workflow** - `./MULTI_AGENT_WORKFLOW.md`
 
-### Core (Obligatorios)
+## AI Configuration
 
-- **[Contexto](./CONTEXTO.md)** - Qué es {{PROJECT_NAME}}
-- **[Workflow](./WORKFLOW.md)** - Cómo implementar
-- **[Workflow Multi-Agente](./MULTI_AGENT_WORKFLOW.md)** - Cómo paralelizar sin choques
+- **Principles** - `./ai/PRINCIPLES.md`
+- **Rules** - `./ai/RULES.yaml`
+- **Lessons** - `./ai/LESSONS.md`
 
-### IA Configuration (Si usás IA agents)
+## Optional Docs
 
-- **[Principles](./ai/PRINCIPLES.md)** - 4 principios fundamentales
-- **[Rules](./ai/RULES.yaml)** - Reglas de comportamiento
-- **[Lessons](./ai/LESSONS.md)** - Aprendizaje acumulado
+- **Status** - `./STATUS.md`
+- **Specs** - `../specs/{{PROJECT_SLUG}}/`
+- **Tools** - `./tools/`
+- **Archive** - `./archive/`
 
----
+## Directory Layout
 
-## Opcionales (Según Proyecto)
-
-### Estado y Progreso
-
-- **[Status](./STATUS.md)** - Estado del proyecto (recomendado para MVP+)
-
-### Especificaciones
-
-- **[Specs](../specs/{{PROJECT_SLUG}}/)** - Especificaciones de proyectos y slices
-
-### Documentación Técnica
-
-- **[API](./api/)** - API Reference (si tenés backend)
-- **[Tools](./tools/)** - Herramientas (Playwright, ESLint, etc.)
-
-### Histórico
-
-- **[PRs Archive](./PRs/)** - PRs archivados
-- **[Archive](./archive/)** - Documentación histórica
-
----
-
-## Búsqueda por Tema
-
-Ver **[SEARCH.md](./SEARCH.md)** para búsqueda por keyword.
-
----
-
-## Estructura de Directorios
-
-```
+```text
 docs/
-├── INDEX.md                  ← Este archivo
-├── CONTEXTO.md               ← Contexto del proyecto
-├── STATUS.md                 ← Estado (opcional)
-├── WORKFLOW.md               ← Workflow
-├── MULTI_AGENT_WORKFLOW.md   ← Trabajo paralelo con agentes
-├── ai/                       ← IA configuration
-├── api/                      ← API reference (opcional)
-├── tools/                    ← Herramientas (opcional)
-├── PRs/                      ← PRs archivados (opcional)
-└── archive/                  ← Histórico
+├── INDEX.md
+├── CONTEXTO.md
+├── STATUS.md
+├── WORKFLOW.md
+├── SUPPORT_MATRIX.md
+├── TROUBLESHOOTING.md
+├── MULTI_AGENT_WORKFLOW.md
+├── ai/
+├── api/
+├── tools/
+└── archive/
 ```
-
-**Specs de proyectos:** `../specs/{{PROJECT_SLUG}}/`
-
----
-
-## Personalización
-
-Editá este archivo para agregar/quitar secciones según tu proyecto.
-
-**Fin del índice**

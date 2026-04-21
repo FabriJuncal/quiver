@@ -1,249 +1,52 @@
-# Git Workflow and PR Guide
+# Git and PR Guide
 
 **Version:** 2.0
-**Last Updated:** {{FECHA}}
+**Last updated:** {{FECHA}}
 
----
+## Purpose
 
-## Objective
+This guide explains how to open and review spec PRs without breaking the canonical workflow.
 
-Este documento resume como abrir PRs en el proyecto sin apartarse del workflow
-canonico.
+## Core Rule
 
-Se enfoca en:
+- One slice = one commit
+- One spec = one PR
+- Slice numbers reset per spec. `slice-01` is the first slice in each spec.
+- Do not commit directly to `develop`
+- Open and merge the documentation PR before the first slice starts execution
+- Do not open the spec PR before the documentation PR is merged
 
-- que tipo de PR abrir
-- desde que rama
-- con que artefactos minimos
-- en que momento del flujo
+## Required PR Headings
 
----
+All spec PR notes must use:
 
-## Regla Base
+- `## Title`
+- `## Summary`
+- `## Scope`
+- `## Files`
+- `## How to Test (DETAILED - REQUIRED)`
+- `## Evidence`
+- `## Rollback`
+- `## Risks / Notes`
 
-- **1 slice = 1 rama = 1 worktree = 1 PR**
-- siempre se trabaja desde una rama declarada en `slice.json`
-- no se hacen commits directos a `develop`
-- no se abre un PR de ejecucion antes de mergear el PR base de documentacion
+Inside `How to Test`, use:
 
----
-
-## Tipos de PR
-
-### 1. PR Base de Documentacion
-
-Se abre antes de ejecutar slices cuando se crearon o actualizaron:
-
-- specs
-- slices
-- workflow docs
-- status operativos globales
-
-Su objetivo es mergear la fuente de verdad documental antes de abrir worktrees
-de ejecucion.
-
-### 2. PR del Slice
-
-Se abre despues de:
-
-- implementar el alcance del slice
-- validar
-- capturar evidencia
-- actualizar `pr.md`
-
-Ese PR contiene el trabajo real del slice.
-
----
+- `### Required Environment`
+- `### Worktree Access`
+- `### Run the Project`
+- `### Use Cases`
+- `### Technical Verification`
 
 ## Branch Strategy
 
-| Tipo | Prefijo | Source | Target | Uso |
-|------|---------|--------|--------|-----|
-| `feature` | `feature/` | `develop` | `develop` | Nueva funcionalidad por slice |
-| `bugfix` | `bugfix/` | `develop` | `develop` | Correccion por slice |
-| `hotfix` | `hotfix/` | `main` | `main` | Solo incidentes criticos en produccion |
+| Type | Prefix | Source | Target |
+|------|--------|--------|--------|
+| feature | `feature/` | `develop` | `develop` |
+| bugfix | `bugfix/` | `develop` | `develop` |
+| hotfix | `hotfix/` | `main` | `main` |
 
----
+## Anti-Patterns
 
-## Bootstrap Correcto
-
-La rama y el worktree salen del `slice.json`.
-
-Comando estandar:
-
-```bash
-npm run start:slice -- specs/{{PROJECT_SLUG}}/slices/<slice-id>/slice.json
-```
-
-o el equivalente del proyecto para `specs-fix/`.
-
-Eso:
-
-- valida `ticket` y `git.*`
-- crea o reutiliza la rama declarada
-- crea el worktree fuera de la raiz trackeada del repo
-
----
-
-## Flujo Recomendado
-
-### A. PR Base de Documentacion
-
-1. armar plan
-2. crear o actualizar spec(s) y slice(s)
-3. commitear documentacion
-4. push
-5. abrir PR a `develop`
-6. mergear
-
-### B. PR del Slice
-
-1. bootstrapear el slice desde `develop` actualizado
-2. implementar el slice
-3. validar
-4. capturar evidencia
-5. actualizar `pr.md`
-6. commitear
-7. push
-8. abrir PR a `develop`
-
----
-
-## Artefactos Minimos por PR del Slice
-
-El directorio del slice debe contener:
-
-```text
-specs/{{PROJECT_SLUG}}/slices/<slice-id>/
-├── slice.json
-└── pr.md
-```
-
-`pr.md` es la fuente de verdad del cuerpo del PR.
-
-El cuerpo publicado en GitHub debe salir de `pr.md`, no de un resumen ad-hoc
-escrito al momento de abrir el PR.
-
-Antes de abrir el PR, deberia estar alineado tambien:
-
-- `STATUS.md` del spec
-- `EVIDENCE_REPORT.md` del spec
-
-### Contenido obligatorio de `pr.md`
-
-Como minimo, todo `pr.md` debe incluir estas secciones:
-
-- `Titulo`
-- `Resumen`
-- `Alcance`
-- `Archivos`
-- `Cómo Probar (DETTALLADO - OBLIGATORIO)`
-- `Evidencia`
-- `Rollback`
-- `Riesgos / Notas`
-
-Reglas:
-
-- el texto del PR se redacta en español, salvo que el repo o el modulo trabajen
-  explicitamente en otro idioma
-- `Cómo Probar` debe ser paso a paso y verificable
-- `Rollback` debe explicar como deshacer el cambio si el PR ya fue mergeado
-- si hay exclusiones relevantes, deben quedar explicitas en `Alcance` o
-  `Riesgos / Notas`
-
-### Qué debe incluir `Cómo Probar`
-
-Cuando aplique, la sección `Cómo Probar` debe incluir como mínimo:
-
-- `Preparación`
-  - comando para levantar el proyecto o la app relevante
-  - prerequisitos de sesión, flags, mocks o datos
-- `Ejecución`
-  - ruta exacta a abrir
-  - pasos manuales numerados
-- `Resultado Esperado`
-  - qué se debe ver o qué comportamiento debe ocurrir
-- `Verificación Técnica`
-  - comandos útiles de validación (`test`, `build`, `jq`, `git diff --check`, etc.)
-
-No alcanza con frases genéricas como:
-
-- `revisión manual`
-- `probar en la pantalla`
-- `validar visualmente`
-
-Si el cambio es de UI y no hay tests automatizados, igual se debe explicar:
-
-- cómo levantar la app
-- dónde entrar
-- qué hacer
-- qué debería pasar
-
----
-
-## Checklist de PR del Slice
-
-Antes de abrir un PR del slice:
-
-- [ ] El PR base de documentacion ya esta mergeado
-- [ ] La rama/worktree salio del `slice.json`
-- [ ] El alcance del slice esta implementado
-- [ ] La validacion esta cerrada
-- [ ] La evidencia esta capturada
-- [ ] `pr.md` esta actualizado
-- [ ] Paso `npm run check:pr -- <slice.json>`
-
-Antes de mergear:
-
-- [ ] Review cerrado
-- [ ] Checks relevantes en verde o bloqueo explicitamente aceptado
-- [ ] No quedan criterios de aceptacion abiertos
-
-Despues de mergear:
-
-- [ ] `develop` local actualizado antes del cleanup
-- [ ] Se decidio si el worktree queda `congelado` o `cerrado`
-- [ ] Cleanup de rama/worktree si corresponde
-- [ ] Consolidacion de status global si corresponde
-
-Regla operativa:
-
-- `slice-00` normalmente queda `congelado` despues del merge
-- `slice-01+` normalmente queda `cerrado` despues del merge
-- si el slice sigue abierto por correcciones inmediatas, el worktree puede mantenerse `activo`
-
-Comandos estandar:
-
-```bash
-git worktree remove /ruta/al/worktree
-git branch -d nombre-de-rama
-```
-
-Si hay que forzar el cierre:
-
-```bash
-git worktree remove --force /ruta/al/worktree
-git branch -D nombre-de-rama
-```
-
-Comando recomendado:
-
-```bash
-npm run cleanup:slice -- <slice.json>
-```
-
----
-
-## Anti-Patrones
-
-Evitar:
-
-- push directo a `develop`
-- PR por spec cuando el trabajo esta cortado por slices
-- abrir worktrees de ejecucion antes de mergear la documentacion base
-- abrir PR sin `pr.md`
-- usar el mismo branch para varios slices
-
----
-
-**Fin de la guia**
+- Pushing directly to `develop`
+- Reusing the same branch for multiple specs
+- Writing PR bodies outside `pr.md`

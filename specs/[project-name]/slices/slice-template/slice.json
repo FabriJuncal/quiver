@@ -1,74 +1,64 @@
 {
-  "slice_id": "slice-XX-[nombre]",
+  "slice_id": "slice-XX-[name]",
   "ticket": "ABC-123",
   "type": "feature",
-  "title": "[Título del Slice]",
-  "objective": "[Objetivo en 1-2 oraciones. Qué se va a implementar.]",
-  "description": "[Descripción más detallada del slice, contexto, por qué es necesario.]",
+  "title": "[Slice title]",
+  "objective": "[One or two sentences describing what will be implemented.]",
+  "description": "[More detail about the slice and why it is needed.]",
   "git": {
     "branch_type": "feature",
     "base_branch": "develop",
-    "branch_slug": "[slug-en-kebab-del-slice]",
-    "branch_name": "feature/ABC-123-[slug-en-kebab-del-slice]"
+    "branch_slug": "[kebab-case-slug]",
+    "branch_name": "feature/ABC-123-[kebab-case-slug]"
   },
-
   "ui_scope": {
     "routes": [
-      "/ruta-1",
-      "/ruta-2"
+      "/route-1",
+      "/route-2"
     ],
     "components": [
-      "Componente1",
-      "Componente2"
+      "Component1",
+      "Component2"
     ],
     "layouts": [
       "Layout1",
       "Layout2"
     ]
   },
-
   "must": [
-    "[Requerimiento 1: medible y verificable]",
-    "[Requerimiento 2: medible y verificable]",
-    "[Requerimiento 3: medible y verificable]"
+    "[Measurable and verifiable requirement 1]",
+    "[Measurable and verifiable requirement 2]",
+    "[Measurable and verifiable requirement 3]"
   ],
-
   "not_included": [
-    "[Lo que NO está incluido en este slice]",
-    "[Esto va a otro slice]"
+    "[What is not included in this slice]",
+    "[What belongs to another slice]"
   ],
-
   "acceptance": [
-    "[Criterio de aceptación 1: medible y verificable]",
-    "[Criterio de aceptación 2: medible y verificable]",
-    "[Criterio de aceptación 3: medible y verificable]"
+    "[Acceptance criterion 1]",
+    "[Acceptance criterion 2]",
+    "[Acceptance criterion 3]"
   ],
-
   "files": [
-    "app/ruta/archivo.ts",
-    "lib/modulo/archivo.ts",
-    "components/Componente.tsx"
+    "app/path/file.ts",
+    "lib/module/file.ts",
+    "components/Component.tsx"
   ],
-
   "tests": [
-    "tests/e2e/modulo/test.spec.ts",
-    "tests/unit/modulo/test.test.ts"
+    "tests/e2e/module/test.spec.ts",
+    "tests/unit/module/test.test.ts"
   ],
-
   "documentation": [
-    "docs/api/modulo/README.md",
+    "docs/api/module/README.md",
     "docs/STATUS.md",
-    "specs/[project]/slices/[slice-id]/pr.md"
+    "specs/{{PROJECT_SLUG}}/slices/[slice-id]/pr.md"
   ],
-
   "dependencies": [
-    "slice-XX-anterior (si aplica)"
+    "slice-XX-previous (if any)"
   ],
-
   "assumptions": [
-    "[Supuesto técnico o de negocio]"
+    "[Technical or business assumption]"
   ],
-
   "estimated_hours": 0,
   "actual_hours": 0,
   "status": "draft",
