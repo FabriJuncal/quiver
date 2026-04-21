@@ -5,6 +5,7 @@ Quiver is a documentation-first starter for projects that use specs, slices, and
 Slice numbering is local to each spec: every new spec starts at `slice-01`.
 
 The slice bootstrap flow now prefers canonical paths and can bootstrap from a local base branch when `origin` is unavailable.
+The project also ships a support matrix and troubleshooting guide so first-time adopters can self-serve common issues.
 
 ## Quick Start
 
@@ -30,6 +31,8 @@ The slice bootstrap flow now prefers canonical paths and can bootstrap from a lo
   - `SECURITY.md`
   - `CHANGELOG.md`
   - `ROADMAP.md`
+  - `docs/SUPPORT_MATRIX.md`
+  - `docs/TROUBLESHOOTING.md`
   - `.github/pull_request_template.md`
   - `.github/ISSUE_TEMPLATE/bug_report.md`
   - `.github/ISSUE_TEMPLATE/feature_request.md`
@@ -40,6 +43,8 @@ The slice bootstrap flow now prefers canonical paths and can bootstrap from a lo
 - `docs/INDEX.md`
 - `docs/CONTEXTO.md`
 - `docs/WORKFLOW.md`
+- `docs/SUPPORT_MATRIX.md`
+- `docs/TROUBLESHOOTING.md`
 - `docs/TESTING_GUIDE_FOR_AI.md`
 - `docs/ai/PRINCIPLES.md`
 - `docs/ai/RULES.yaml`
@@ -54,6 +59,8 @@ These are copied by `init-docs.sh` when they are missing in the target repo:
 - `SECURITY.md`
 - `CHANGELOG.md`
 - `ROADMAP.md`
+- `docs/SUPPORT_MATRIX.md`
+- `docs/TROUBLESHOOTING.md`
 - `.github/pull_request_template.md`
 - `.github/ISSUE_TEMPLATE/bug_report.md`
 - `.github/ISSUE_TEMPLATE/feature_request.md`
@@ -80,7 +87,9 @@ Recommended reading order:
 3. `docs/CONTEXTO.md`
 4. `docs/STATUS.md`
 5. `docs/WORKFLOW.md`
-6. `docs/TESTING_GUIDE_FOR_AI.md`
+6. `docs/SUPPORT_MATRIX.md`
+7. `docs/TROUBLESHOOTING.md`
+8. `docs/TESTING_GUIDE_FOR_AI.md`
 
 ## License
 

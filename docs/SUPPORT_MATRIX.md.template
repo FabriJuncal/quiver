@@ -1,0 +1,31 @@
+# Support Matrix
+
+**Project:** {{PROJECT_NAME}}
+**Last updated:** {{FECHA}}
+
+Quiver is intentionally opinionated about the first-run environment. If your setup falls outside this matrix, the bootstrap scripts may stop early by design.
+
+## Supported Environments
+
+| Area | Supported | Notes |
+|------|-----------|-------|
+| Operating systems | macOS and Linux | Windows is not supported in this workflow. |
+| Git | Git 2.40+ | Must support worktrees and standard branch refs. |
+| Node.js | Node 22.x LTS | Used for date handling and JSON validation. |
+| Base branches | `develop` or `main` | Local base branches are preferred; `origin` is optional. |
+| Worktree state | Clean worktree | Slice execution and PR checks expect no unrelated local changes. |
+| Path handling | Canonical filesystem paths | Use the physical path to the repo and slice files, not a symlinked alias. |
+
+## Remote Modes
+
+| Mode | Supported | Notes |
+|------|-----------|-------|
+| Local base branch only | Yes | The bootstrap should still work when `origin` is unavailable. |
+| Remote base branch available | Yes | `origin/develop` or `origin/main` can be used when present. |
+| No base branch and no remote | No | Create or fetch a base branch before starting a slice. |
+
+## What This Means
+
+- You can bootstrap a slice on macOS or Linux without changing the scripts.
+- You do not need a remote to begin work if a local base branch already exists.
+- If the environment is outside the matrix, fix the machine first instead of working around the scripts.

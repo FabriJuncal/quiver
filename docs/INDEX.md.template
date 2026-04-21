@@ -6,6 +6,8 @@
 
 - **Context** - `./CONTEXTO.md`
 - **Workflow** - `./WORKFLOW.md`
+- **Support Matrix** - `./SUPPORT_MATRIX.md`
+- **Troubleshooting** - `./TROUBLESHOOTING.md`
 - **Multi-agent workflow** - `./MULTI_AGENT_WORKFLOW.md`
 
 ## AI Configuration
@@ -29,6 +31,8 @@ docs/
 ├── CONTEXTO.md
 ├── STATUS.md
 ├── WORKFLOW.md
+├── SUPPORT_MATRIX.md
+├── TROUBLESHOOTING.md
 ├── MULTI_AGENT_WORKFLOW.md
 ├── ai/
 ├── api/
