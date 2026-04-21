@@ -28,9 +28,13 @@
   ],
   "files": [
     "package.json",
+    "package-lock.json",
     "bin/create-quiver.js",
     "src/create-quiver/",
-    "README.md"
+    "README.md",
+    "README_FOR_AI.md",
+    "scripts/package-quiver.sh",
+    "scripts/ci/smoke-create-quiver.sh"
   ],
   "tests": [
     "CLI scaffold smoke test for new directory mode",
@@ -48,10 +52,10 @@
     "The project name should be passable without prompts for automation scenarios"
   ],
   "estimated_hours": 6,
-  "actual_hours": 0,
-  "status": "ready",
+  "actual_hours": 6,
+  "status": "completed",
   "blocked_reason": null,
   "ready_at": "2026-04-20T00:00:00Z",
-  "started_at": null,
-  "completed_at": null
+  "started_at": "2026-04-21T00:00:00Z",
+  "completed_at": "2026-04-21T00:00:00Z"
 }
