@@ -144,6 +144,8 @@ copy_template "docs-template/docs/INDEX.md.template" "docs/INDEX.md"
 copy_template "docs-template/docs/CONTEXTO.md.template" "docs/CONTEXTO.md"
 copy_template "docs-template/docs/STATUS.md.template" "docs/STATUS.md"
 copy_template "docs-template/docs/WORKFLOW.md.template" "docs/WORKFLOW.md"
+copy_template "docs-template/docs/SUPPORT_MATRIX.md.template" "docs/SUPPORT_MATRIX.md"
+copy_template "docs-template/docs/TROUBLESHOOTING.md.template" "docs/TROUBLESHOOTING.md"
 copy_template "docs-template/docs/MULTI_AGENT_WORKFLOW.md.template" "docs/MULTI_AGENT_WORKFLOW.md"
 copy_template "docs-template/docs/MOCK_DATA_GUIDE.md.template" "docs/MOCK_DATA_GUIDE.md"
 copy_template "docs-template/docs/UI_STANDARDS.md.template" "docs/UI_STANDARDS.md"
@@ -298,6 +300,11 @@ cat > "docs/SEARCH.md" << EOF
 - **Reglas:** \`docs/ai/RULES.yaml\`
 - **Lessons:** \`docs/ai/LESSONS.md\`
 
+## Soporte
+
+- **Support Matrix:** \`docs/SUPPORT_MATRIX.md\`
+- **Troubleshooting:** \`docs/TROUBLESHOOTING.md\`
+
 ---
 
 **Fin de la búsqueda**
@@ -330,6 +337,8 @@ npm run dev
 
 - [Contexto](./docs/CONTEXTO.md) - Qué es $PROJECT_NAME
 - [Workflow](./docs/WORKFLOW.md) - Cómo implementar
+- [Support Matrix](./docs/SUPPORT_MATRIX.md) - Qué entornos están soportados
+- [Troubleshooting](./docs/TROUBLESHOOTING.md) - Cómo recuperarse de fallos comunes
 - [Status](./docs/STATUS.md) - Estado del proyecto
 - [API Docs](./docs/api/) - Endpoint documentation (si aplica)
 EOF

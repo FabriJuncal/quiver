@@ -11,13 +11,13 @@ Slice numbering is local to this spec. The first slice is `slice-01`.
 |-------|-------|--------|----|-----------------|--------------|
 | slice-01 | CI Bootstrap Smoke | Completed | - | 4 | 4 |
 | slice-02 | Workflow Gate Fixtures | Completed | - | 5 | 5 |
-| slice-03 | Support Matrix + Troubleshooting | Ready | - | 2 | 0 |
+| slice-03 | Support Matrix + Troubleshooting | Completed | - | 2 | 2 |
 
 ## Progress
 
-- Completed slices: 2 / 3
+- Completed slices: 3 / 3
 - Estimated hours: 11
-- Actual hours: 9
+- Actual hours: 11
 
 ## Blockers
 

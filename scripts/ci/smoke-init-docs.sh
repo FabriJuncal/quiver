@@ -51,6 +51,8 @@ required_files=(
   "docs/INDEX.md"
   "docs/CONTEXTO.md"
   "docs/WORKFLOW.md"
+  "docs/SUPPORT_MATRIX.md"
+  "docs/TROUBLESHOOTING.md"
   "docs/TESTING_GUIDE_FOR_AI.md"
   "docs/SEARCH.md"
   "docs/ai/PRINCIPLES.md"
@@ -67,6 +69,21 @@ required_files=(
 
 for file in "${required_files[@]}"; do
   assert_file "$file"
+done
+
+assert_contains() {
+  local path="$1"
+  local needle="$2"
+
+  if ! grep -Fq "$needle" "$path"; then
+    echo "Missing expected content in $path: $needle" >&2
+    exit 1
+  fi
+}
+
+for file in README.md docs/INDEX.md docs/WORKFLOW.md docs/SEARCH.md; do
+  assert_contains "$file" "Support Matrix"
+  assert_contains "$file" "Troubleshooting"
 done
 
 required_scripts=(

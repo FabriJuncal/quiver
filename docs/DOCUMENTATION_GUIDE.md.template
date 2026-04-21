@@ -9,8 +9,10 @@
 2. `docs/CONTEXTO.md`
 3. `docs/STATUS.md`
 4. `docs/WORKFLOW.md`
-5. `specs/{{PROJECT_SLUG}}/SPEC.md`
-6. `specs/{{PROJECT_SLUG}}/slices/[slice-id]/slice.json`
+5. `docs/SUPPORT_MATRIX.md`
+6. `docs/TROUBLESHOOTING.md`
+7. `specs/{{PROJECT_SLUG}}/SPEC.md`
+8. `specs/{{PROJECT_SLUG}}/slices/[slice-id]/slice.json`
 
 ## Update Rules
 
@@ -23,6 +25,8 @@
 - Project overview: `docs/CONTEXTO.md`
 - Progress: `docs/STATUS.md`
 - Implementation workflow: `docs/WORKFLOW.md`
+- Support contract: `docs/SUPPORT_MATRIX.md`
+- Recovery guidance: `docs/TROUBLESHOOTING.md`
 - Slice contract: `specs/{{PROJECT_SLUG}}/slices/[slice-id]/slice.json`
 
 ## Notes

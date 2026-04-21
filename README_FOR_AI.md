@@ -10,6 +10,7 @@ Important: slice numbering resets inside each spec. `slice-01` is the first slic
 - Always use `init-docs.sh` instead of copying files by hand.
 - Treat `docs-template/` as generic and `docs/` as generated project-specific output.
 - Not every project needs every optional file.
+- The support contract lives in `docs/SUPPORT_MATRIX.md` and `docs/TROUBLESHOOTING.md`.
 
 ## Initialization Flow
 
@@ -21,9 +22,11 @@ Important: slice numbering resets inside each spec. `slice-01` is the first slic
 ```
 
 3. Tell the user to edit:
-   - `docs/CONTEXTO.md`
-   - `docs/STATUS.md`
-   - `specs/{{PROJECT_SLUG}}/SPEC.md`
+  - `docs/CONTEXTO.md`
+  - `docs/STATUS.md`
+  - `docs/SUPPORT_MATRIX.md`
+  - `docs/TROUBLESHOOTING.md`
+  - `specs/{{PROJECT_SLUG}}/SPEC.md`
 
 ## What the Script Creates
 
@@ -34,16 +37,18 @@ Important: slice numbering resets inside each spec. `slice-01` is the first slic
 - `docs/SEARCH.md`
 - a merged or copied `package.json` with the required npm scripts
 - the default OSS baseline when those files are missing:
-  - `LICENSE`
-  - `CONTRIBUTING.md`
-  - `CODE_OF_CONDUCT.md`
-  - `SECURITY.md`
-  - `CHANGELOG.md`
-  - `ROADMAP.md`
-  - `.github/pull_request_template.md`
-  - `.github/ISSUE_TEMPLATE/bug_report.md`
-  - `.github/ISSUE_TEMPLATE/feature_request.md`
-  - `.github/workflows/ci.yml`
+- `LICENSE`
+- `CONTRIBUTING.md`
+- `CODE_OF_CONDUCT.md`
+- `SECURITY.md`
+- `CHANGELOG.md`
+- `ROADMAP.md`
+- `docs/SUPPORT_MATRIX.md`
+- `docs/TROUBLESHOOTING.md`
+- `.github/pull_request_template.md`
+- `.github/ISSUE_TEMPLATE/bug_report.md`
+- `.github/ISSUE_TEMPLATE/feature_request.md`
+- `.github/workflows/ci.yml`
 
 `init-docs.sh` preserves any existing target files and reports skipped copies instead of overwriting them.
 
@@ -68,6 +73,7 @@ Bootstrap note: `start-slice.sh` should resolve paths canonically, prefer a loca
 - `docs/MOCK_DATA_GUIDE.md` if the project uses mock data
 - `docs/UI_STANDARDS.md` if the project has UI
 - `docs/GITFLOW_PR_GUIDE.md` if the team wants a stricter branch workflow
+- `docs/SUPPORT_MATRIX.md` and `docs/TROUBLESHOOTING.md` for first-run support
 - `docs/ai/LESSONS.md` after each slice
 
 ## Good Defaults

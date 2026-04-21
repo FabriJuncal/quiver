@@ -1,0 +1,70 @@
+# Troubleshooting
+
+**Project:** {{PROJECT_NAME}}
+**Last updated:** {{FECHA}}
+
+Use this guide when a first-run bootstrap or gate check fails. The recovery paths below follow the smoke-tested flows in this repository.
+
+## Path Normalization Failure
+
+### Symptom
+
+- `start-slice.sh` rejects a slice that exists
+- The repo path and the slice path differ only by a symlinked or canonicalized prefix
+
+### Recovery
+
+1. Re-run the command from the physical repo path.
+2. Pass the slice path from the same filesystem view that the repo uses.
+3. Avoid mixing `/tmp/...` and `/private/tmp/...` or other alias paths.
+
+## Missing Base Branch
+
+### Symptom
+
+- `start-slice.sh` reports that it cannot find `develop` or `main`
+- The repo has no local base branch and no usable remote ref
+
+### Recovery
+
+1. Create or fetch the base branch locally.
+2. Re-run the slice bootstrap after `develop` or `main` is visible to git.
+3. If the remote exists but is stale, fetch it before retrying.
+
+## Remote Mode Issues
+
+### Symptom
+
+- The repository works locally but fails as soon as `origin` is removed
+- The bootstrap assumes a remote exists even though the workflow should support local-only setup
+
+### Recovery
+
+1. Keep a local `develop` or `main` branch available.
+2. Re-add the remote only if the workflow genuinely needs it.
+3. Prefer the local base branch path when validating first-run behavior.
+
+## Generated File Conflicts
+
+### Symptom
+
+- `init-docs.sh` or a slice bootstrap stops because a file already exists
+- The generated project has a partially initialized docs tree
+
+### Recovery
+
+1. Check whether the target file is meant to be preserved.
+2. Remove the conflicting generated file only if it is safe to regenerate.
+3. Re-run the bootstrap after the docs tree is consistent again.
+
+## Clean Worktree Failures
+
+### Symptom
+
+- `check-pr-readiness.sh` reports that the worktree is dirty
+
+### Recovery
+
+1. Commit or stash unrelated changes first.
+2. Re-run the gate from the slice branch.
+3. Make sure the PR body lives in `pr.md` beside the slice.
