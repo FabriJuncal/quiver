@@ -27,18 +27,20 @@ This document is the canonical implementation workflow for the project.
 6. Read the AI context pack, support matrix, and troubleshooting guide before the first slice if the environment is new or uncertain.
 7. If the project already existed before this Quiver version, run `migrate` before `analyze`.
 8. If the project was analyzed, read `AI_ONBOARDING_PROMPT.md` before making documentation updates.
+9. Prefer the generated `quiver:*` npm scripts for repeatable project workflows once the package has been initialized or migrated.
 
 ## Execution
 
-1. Bootstrap the slice with `start-slice.sh`.
+1. Bootstrap the slice with `npx create-quiver start-slice <slice.json>` or `npm run quiver:start-slice -- <slice.json>`.
    - The bootstrap step should work with canonical paths and a local base branch when `origin` is absent.
-   - Draft slices require `--allow-draft`; otherwise `start-slice.sh` exits before execution.
+   - Draft slices require `--allow-draft`; otherwise `npx create-quiver start-slice` exits before execution.
+   - Legacy Bash wrappers remain available for compatibility, but generated projects should prefer the Node CLI and `quiver:*` npm scripts.
 2. Implement only what the slice declares.
 3. Make one commit for that slice.
-4. Validate with `check-slice-readiness.sh`.
+4. Validate with `npx create-quiver check-slice <slice.json>` or `npm run quiver:check-slice -- <slice.json>`.
 5. Write evidence.
 6. Repeat for the next slice until the spec is complete.
-7. Open one PR for the spec and use `check-pr-readiness.sh` as the pre-merge gate.
+7. Open one PR for the spec and use `npx create-quiver check-pr <slice.json>` or `npm run quiver:check-pr -- <slice.json>` as the pre-merge gate.
 
 ## Support Contract
 

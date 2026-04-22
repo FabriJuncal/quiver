@@ -38,9 +38,18 @@ npx create-quiver --name "Project Name"
 npx create-quiver migrate
 npx create-quiver analyze
 npx create-quiver doctor
-bash tools/scripts/start-slice.sh <slice.json>
-bash tools/scripts/check-slice-readiness.sh <slice.json>
-bash tools/scripts/check-pr-readiness.sh <slice.json>
+npx create-quiver start-slice <slice.json>
+npx create-quiver check-slice <slice.json>
+npx create-quiver check-pr <slice.json>
+npm run quiver:analyze
+npm run quiver:doctor
+npm run quiver:migrate
+npm run quiver:start-slice -- <slice.json>
+npm run quiver:check-slice -- <slice.json>
+npm run quiver:check-pr -- <slice.json>
+npm run quiver:cleanup-slice -- <slice.json>
+npm run quiver:check-scope -- <slice.json>
+npm run quiver:refresh-active-slices
 ```
 
 ## What To Update After A Slice

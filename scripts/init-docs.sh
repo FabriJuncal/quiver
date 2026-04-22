@@ -403,7 +403,7 @@ cat > "docs/SEARCH.md" << EOF
 
 - **Spec:** \`../specs/$PROJECT_SLUG/slices/slice-01/slice.json\`
 - **PR del slice:** \`../specs/$PROJECT_SLUG/slices/slice-01/pr.md\`
-- **Bootstrap del slice:** \`../tools/scripts/start-slice.sh ../specs/$PROJECT_SLUG/slices/slice-01/slice.json\`
+- **Bootstrap del slice:** \`npx create-quiver start-slice ../specs/$PROJECT_SLUG/slices/slice-01/slice.json\`
 - **Hook:** \`hooks/useAuth.ts\`
 - **API:** \`docs/api/auth/README.md\`
 - **Componentes:** \`app/(auth)/\`
@@ -456,6 +456,24 @@ npm install --save-dev create-quiver
 
 If you need to target another directory from outside the project, pass \`--dir\` explicitly. Quote paths that contain spaces.
 
+## Project NPM Scripts
+
+The generated project includes \`quiver:*\` npm scripts that call the Node CLI and are the preferred repeatable workflow:
+
+\`\`\`bash
+npm run quiver:analyze
+npm run quiver:doctor
+npm run quiver:migrate
+npm run quiver:start-slice -- specs/$PROJECT_SLUG/slices/slice-01/slice.json
+npm run quiver:check-slice -- specs/$PROJECT_SLUG/slices/slice-01/slice.json
+npm run quiver:check-pr -- specs/$PROJECT_SLUG/slices/slice-01/slice.json
+npm run quiver:cleanup-slice -- specs/$PROJECT_SLUG/slices/slice-01/slice.json
+npm run quiver:check-scope -- specs/$PROJECT_SLUG/slices/slice-01/slice.json
+npm run quiver:refresh-active-slices
+\`\`\`
+
+The legacy Bash wrappers remain in \`tools/scripts/\` for compatibility, but new project-level automation should prefer the \`quiver:*\` scripts and the direct \`npx create-quiver ...\` commands below.
+
 ## Cross-Platform Support
 
 Quiver is targeting native support on macOS, Linux, and Windows PowerShell/CMD. Bash is a legacy compatibility path until the runtime slices land, so the generated workflow should be read as a native Node-first contract rather than a Bash-first one.
@@ -496,7 +514,7 @@ Review the AI changes to docs/AI_CONTEXT.md, docs/CONTEXTO.md, docs/STATUS.md, a
 
 1. Review or refine specs/$PROJECT_SLUG/SPEC.md.
 2. Create the first slice from specs/$PROJECT_SLUG/slices/slice-template/slice.json.
-3. Start work with tools/scripts/start-slice.sh <slice.json>.
+3. Start work with \`npx create-quiver start-slice <slice.json>\` or \`npm run quiver:start-slice -- <slice.json>\`.
 4. Make one commit per slice.
 5. Open one PR per spec.
 
