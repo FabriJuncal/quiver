@@ -3,6 +3,8 @@ const os = require('os');
 const path = require('path');
 const { execFileSync } = require('child_process');
 const { initializeProjectDocs } = require('./lib/init-docs');
+const { checkPrReadiness, checkScope, checkSliceReadiness } = require('./lib/readiness');
+const { cleanupSlice, refreshActiveSlicesBoard, startSlice } = require('./lib/lifecycle');
 const { relativePosixPath, resolveTargetRoot } = require('./lib/paths');
 const {
   readState,
@@ -22,6 +24,12 @@ function printUsage() {
   npx create-quiver analyze [options]
   npx create-quiver migrate [options]
   npx create-quiver doctor [options]
+  npx create-quiver start-slice [options] <slice.json>
+  npx create-quiver check-slice [options] <slice.json>
+  npx create-quiver check-pr <slice.json>
+  npx create-quiver cleanup-slice [options] <slice.json>
+  npx create-quiver check-scope [options] <slice.json>
+  npx create-quiver refresh-active-slices
 
 Options:
   -n, --name <project-name>   Project name to generate
@@ -35,6 +43,12 @@ Examples:
   cd ./my-project && npx create-quiver analyze
   cd ./my-project && npx create-quiver migrate
   cd ./my-project && npx create-quiver doctor
+  cd ./my-project && npx create-quiver start-slice specs/my-project/slices/slice-01/slice.json
+  cd ./my-project && npx create-quiver check-slice specs/my-project/slices/slice-01/slice.json
+  cd ./my-project && npx create-quiver check-pr specs/my-project/slices/slice-01/slice.json
+  cd ./my-project && npx create-quiver cleanup-slice specs/my-project/slices/slice-01/slice.json
+  cd ./my-project && npx create-quiver check-scope specs/my-project/slices/slice-01/slice.json
+  cd ./my-project && npx create-quiver refresh-active-slices
   node bin/create-quiver.js doctor --dir ./my-project
 `);
 }
@@ -44,12 +58,20 @@ function parseArgs(argv) {
     help: false,
     force: false,
     mode: 'init',
+    allowDraft: false,
+    closeBaseline: false,
+    discard: false,
+    dryRun: false,
+    gate: 'execution',
     projectName: '',
     targetDir: '.',
+    strict: false,
+    strictOverlap: false,
   };
 
   const args = [...argv];
-  if (args[0] === 'doctor' || args[0] === 'analyze' || args[0] === 'migrate') {
+  const commandModes = new Set(['doctor', 'analyze', 'migrate', 'start-slice', 'check-slice', 'check-pr', 'cleanup-slice', 'check-scope', 'refresh-active-slices']);
+  if (commandModes.has(args[0])) {
     result.mode = args[0];
     args.shift();
   } else if (args[0] === '--analyze') {
@@ -88,6 +110,45 @@ function parseArgs(argv) {
       continue;
     }
 
+    if (arg === '--allow-draft') {
+      result.allowDraft = true;
+      continue;
+    }
+
+    if (arg === '--close-baseline') {
+      result.closeBaseline = true;
+      continue;
+    }
+
+    if (arg === '--discard') {
+      result.discard = true;
+      continue;
+    }
+
+    if (arg === '--dry-run') {
+      result.dryRun = true;
+      continue;
+    }
+
+    if (arg === '--strict') {
+      result.strict = true;
+      continue;
+    }
+
+    if (arg === '--strict-overlap') {
+      result.strictOverlap = true;
+      continue;
+    }
+
+    if (arg === '--gate') {
+      const value = args[++index];
+      if (!value) {
+        throw new Error(formatError('missing value for --gate'));
+      }
+      result.gate = value;
+      continue;
+    }
+
     if (arg === '-n' || arg === '--name' || arg === '--project-name') {
       const value = args[++index];
       if (!value) {
@@ -120,6 +181,10 @@ function parseArgs(argv) {
 
     if (positional.length > 0) {
       result.targetDir = positional.shift();
+    }
+  } else if (result.mode === 'refresh-active-slices') {
+    if (positional.length > 0) {
+      throw new Error(formatError('refresh-active-slices does not accept positional arguments'));
     }
   } else {
     if (positional.length > 0) {
@@ -985,6 +1050,45 @@ async function run(argv) {
 
   if (args.mode === 'doctor') {
     runDoctor(args.targetDir);
+    return;
+  }
+
+  if (args.mode === 'start-slice') {
+    startSlice(path.resolve(process.cwd(), args.targetDir), { allowDraft: args.allowDraft });
+    return;
+  }
+
+  if (args.mode === 'check-slice') {
+    checkSliceReadiness(path.resolve(process.cwd(), args.targetDir), {
+      gate: args.gate,
+      strictOverlap: args.strictOverlap,
+    });
+    return;
+  }
+
+  if (args.mode === 'check-pr') {
+    checkPrReadiness(path.resolve(process.cwd(), args.targetDir));
+    return;
+  }
+
+  if (args.mode === 'cleanup-slice') {
+    cleanupSlice(path.resolve(process.cwd(), args.targetDir), {
+      closeBaseline: args.closeBaseline,
+      discard: args.discard,
+      dryRun: args.dryRun,
+      force: args.force,
+    });
+    return;
+  }
+
+  if (args.mode === 'check-scope') {
+    checkScope(path.resolve(process.cwd(), args.targetDir), { strict: args.strict });
+    return;
+  }
+
+  if (args.mode === 'refresh-active-slices') {
+    const outputPath = refreshActiveSlicesBoard(path.resolve(process.cwd(), '.'));
+    console.log(`Active slices refreshed: ${outputPath}`);
     return;
   }
 
