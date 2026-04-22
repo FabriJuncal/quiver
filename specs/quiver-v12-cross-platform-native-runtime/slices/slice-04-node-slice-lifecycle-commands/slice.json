@@ -1,0 +1,81 @@
+{
+  "slice_id": "slice-04-node-slice-lifecycle-commands",
+  "ticket": "QUIVER-04",
+  "type": "feature",
+  "title": "Node Slice Lifecycle Commands",
+  "objective": "Port slice lifecycle and readiness gates from Bash scripts to Node CLI commands.",
+  "description": "The primary developer workflow still depends on Bash for `start-slice`, readiness checks, PR checks, cleanup, and scope checks. This slice introduces Node-native commands that preserve current behavior while working from PowerShell and CMD.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "node-slice-lifecycle",
+    "branch_name": "feature/QUIVER-04-node-slice-lifecycle"
+  },
+  "must": [
+    "Add CLI commands for `start-slice`, `check-slice`, `check-pr`, `cleanup-slice`, `check-scope`, and `refresh-active-slices`",
+    "Port slice JSON parsing and validation to Node",
+    "Port Git worktree creation, lookup, cleanup, and status checks to Node",
+    "Handle paths with spaces and Windows drive letters safely",
+    "Handle Windows executable-bit differences without false failures",
+    "Keep legacy `.sh` wrappers usable on Unix by delegating to the new CLI commands where practical"
+  ],
+  "not_included": [
+    "Changing the slice JSON schema unless required for compatibility",
+    "Changing branch naming rules",
+    "Changing one slice = one commit validation",
+    "Adding release publishing"
+  ],
+  "acceptance": [
+    "`npx create-quiver start-slice <slice.json>` creates or reuses the expected worktree",
+    "`npx create-quiver check-slice <slice.json>` validates the same contract as the current shell gate",
+    "`npx create-quiver check-pr <slice.json>` validates PR readiness without Bash",
+    "`npx create-quiver cleanup-slice <slice.json>` removes worktree and branch according to existing flags",
+    "Unix shell wrappers still pass existing smokes",
+    "Cross-platform path tests cover spaces and Windows-style path strings"
+  ],
+  "files": [
+    "src/create-quiver/index.js",
+    "src/create-quiver/lib/git.js",
+    "src/create-quiver/lib/slice.js",
+    "src/create-quiver/lib/lifecycle.js",
+    "src/create-quiver/lib/readiness.js",
+    "src/create-quiver/lib/scope.js",
+    "scripts/start-slice.sh",
+    "scripts/check-slice-readiness.sh",
+    "scripts/check-pr-readiness.sh",
+    "scripts/cleanup-slice.sh",
+    "scripts/check-scope.sh",
+    "scripts/refresh-active-slices.sh",
+    "scripts/ci/smoke-workflow-gates.sh",
+    "scripts/ci/smoke-create-quiver.sh",
+    "specs/quiver-v12-cross-platform-native-runtime/SPEC.md",
+    "specs/quiver-v12-cross-platform-native-runtime/STATUS.md",
+    "specs/quiver-v12-cross-platform-native-runtime/EVIDENCE_REPORT.md",
+    "specs/quiver-v12-cross-platform-native-runtime/slices/slice-04-node-slice-lifecycle-commands/slice.json"
+  ],
+  "tests": [
+    "node -c src/create-quiver/index.js",
+    "bash scripts/ci/smoke-workflow-gates.sh",
+    "bash scripts/ci/smoke-create-quiver.sh",
+    "git diff --check"
+  ],
+  "documentation": [
+    "specs/quiver-v12-cross-platform-native-runtime/SPEC.md",
+    "specs/quiver-v12-cross-platform-native-runtime/STATUS.md",
+    "specs/quiver-v12-cross-platform-native-runtime/EVIDENCE_REPORT.md"
+  ],
+  "dependencies": [
+    "slice-03-node-migrate-analyze-doctor-flow"
+  ],
+  "assumptions": [
+    "Git remains an external dependency and is not bundled",
+    "The Node implementation should preserve current shell behavior before improving ergonomics"
+  ],
+  "estimated_hours": 10,
+  "actual_hours": null,
+  "status": "draft",
+  "blocked_reason": null,
+  "ready_at": null,
+  "started_at": null,
+  "completed_at": null
+}

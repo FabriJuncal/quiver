@@ -456,6 +456,10 @@ npm install --save-dev create-quiver
 
 If you need to target another directory from outside the project, pass \`--dir\` explicitly. Quote paths that contain spaces.
 
+## Cross-Platform Support
+
+Quiver is targeting native support on macOS, Linux, and Windows PowerShell/CMD. Bash is a legacy compatibility path until the runtime slices land, so the generated workflow should be read as a native Node-first contract rather than a Bash-first one.
+
 ## Upgrading Existing Projects
 
 If the project already existed before this Quiver version, upgrade it from the project root:

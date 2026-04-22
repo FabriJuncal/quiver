@@ -1,0 +1,74 @@
+{
+  "slice_id": "slice-03-node-migrate-analyze-doctor-flow",
+  "ticket": "QUIVER-03",
+  "type": "feature",
+  "title": "Node Migrate, Analyze, and Doctor Flow",
+  "objective": "Make `migrate`, `analyze`, and `doctor` fully Node-native and Windows-safe.",
+  "description": "After initialization no longer requires Bash, the core maintenance loop must also avoid shell assumptions. This slice hardens path handling, metadata updates, and diagnostics for macOS, Linux, PowerShell, and CMD.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "node-core-flow",
+    "branch_name": "feature/QUIVER-03-node-core-flow"
+  },
+  "must": [
+    "Ensure `create-quiver migrate` uses the Node initialization runtime instead of Bash",
+    "Normalize paths with Node APIs and avoid POSIX-only separators in logic",
+    "Keep `analyze` and `doctor` usable from the project root without Bash",
+    "Update doctor diagnostics so Windows users see PowerShell/CMD-safe commands",
+    "Add focused tests or smoke fixtures for Windows-style paths and paths with spaces",
+    "Preserve existing metadata fields in `.quiver/state.json`"
+  ],
+  "not_included": [
+    "Porting `start-slice` or readiness gates",
+    "Adding GitHub Actions Windows matrix",
+    "Removing shell wrappers",
+    "Publishing a release"
+  ],
+  "acceptance": [
+    "`create-quiver migrate`, `analyze`, and `doctor` do not invoke Bash",
+    "Commands work when the project path contains spaces",
+    "Doctor output uses commands valid in PowerShell, CMD, macOS, and Linux",
+    "State metadata remains valid after migration and analysis",
+    "Existing smoke coverage still passes"
+  ],
+  "files": [
+    "src/create-quiver/index.js",
+    "src/create-quiver/lib/paths.js",
+    "src/create-quiver/lib/state.js",
+    "src/create-quiver/lib/analyze.js",
+    "src/create-quiver/lib/doctor.js",
+    "scripts/ci/smoke-create-quiver.sh",
+    "specs/quiver-v12-cross-platform-native-runtime/SPEC.md",
+    "specs/quiver-v12-cross-platform-native-runtime/STATUS.md",
+    "specs/quiver-v12-cross-platform-native-runtime/EVIDENCE_REPORT.md",
+    "specs/quiver-v12-cross-platform-native-runtime/slices/slice-03-node-migrate-analyze-doctor-flow/slice.json"
+  ],
+  "tests": [
+    "node -c src/create-quiver/index.js",
+    "node bin/create-quiver.js migrate",
+    "node bin/create-quiver.js analyze",
+    "node bin/create-quiver.js doctor",
+    "bash scripts/ci/smoke-create-quiver.sh",
+    "git diff --check"
+  ],
+  "documentation": [
+    "specs/quiver-v12-cross-platform-native-runtime/SPEC.md",
+    "specs/quiver-v12-cross-platform-native-runtime/STATUS.md",
+    "specs/quiver-v12-cross-platform-native-runtime/EVIDENCE_REPORT.md"
+  ],
+  "dependencies": [
+    "slice-02-node-init-docs-runtime"
+  ],
+  "assumptions": [
+    "Analyze and doctor should remain read-mostly except for analysis metadata updates",
+    "`--dir` remains supported for explicit out-of-project targeting"
+  ],
+  "estimated_hours": 5,
+  "actual_hours": null,
+  "status": "draft",
+  "blocked_reason": null,
+  "ready_at": null,
+  "started_at": null,
+  "completed_at": null
+}

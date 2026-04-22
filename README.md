@@ -95,9 +95,15 @@ Slice numbering is local to each spec: every new spec starts at `slice-01`.
 
 - Node.js and npm for the installer
 - Git for slice branches, worktrees, and PR workflow checks
-- macOS or Linux as the primary supported shell environment
+- macOS, Linux, and Windows PowerShell/CMD are the target developer environments for the cross-platform runtime work
+
+Windows native support is the target contract for this spec. Bash remains a legacy compatibility path until the runtime slices land.
 
 See the generated `docs/SUPPORT_MATRIX.md` for the detailed support contract.
+
+## Cross-Platform Support
+
+Quiver is targeting native support on macOS, Linux, and Windows PowerShell/CMD. Bash is a legacy compatibility path until the runtime slices land, so the long-term contract is a Node-first workflow rather than a Bash-first one.
 
 ## What Gets Generated
 
