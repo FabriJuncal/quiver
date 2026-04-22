@@ -68,7 +68,7 @@ Quiver should not require:
 | Slice | Title | Status | Spec |
 |-------|-------|--------|------|
 | 01 | Cross-Platform Support Contract | Completed | [slice-01](./slices/slice-01-cross-platform-support-contract/slice.json) |
-| 02 | Node Init Docs Runtime | Draft | [slice-02](./slices/slice-02-node-init-docs-runtime/slice.json) |
+| 02 | Node Init Docs Runtime | Completed | [slice-02](./slices/slice-02-node-init-docs-runtime/slice.json) |
 | 03 | Node Migrate, Analyze, and Doctor Flow | Draft | [slice-03](./slices/slice-03-node-migrate-analyze-doctor-flow/slice.json) |
 | 04 | Node Slice Lifecycle Commands | Draft | [slice-04](./slices/slice-04-node-slice-lifecycle-commands/slice.json) |
 | 05 | Generated Project Scripts and Migration | Draft | [slice-05](./slices/slice-05-generated-project-scripts-and-migration/slice.json) |
