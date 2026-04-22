@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const { writeState } = require('./state');
 
 function ensureDir(dirPath) {
   fs.mkdirSync(dirPath, { recursive: true });
@@ -94,43 +95,6 @@ function mergePackageJson(projectRoot, templateRoot, skipIfExists) {
 
   fs.writeFileSync(packageJsonPath, `${JSON.stringify(existing, null, 2)}\n`);
   return 'updated';
-}
-
-function writeQuiverState(projectRoot, projectName, cliVersion, migrateMode) {
-  const stateDir = path.join(projectRoot, '.quiver');
-  const statePath = path.join(stateDir, 'state.json');
-  const now = new Date().toISOString();
-  let existing = {};
-
-  if (fs.existsSync(statePath)) {
-    existing = JSON.parse(fs.readFileSync(statePath, 'utf8'));
-  }
-
-  const nextState = migrateMode
-    ? {
-        ...existing,
-        quiver_version: cliVersion,
-        project_name: projectName || existing.project_name || '',
-        initialized_version: existing.initialized_version ?? null,
-        migrated_version: cliVersion,
-        last_initialized_at: existing.last_initialized_at ?? null,
-        last_migration_at: now,
-        last_analysis_at: existing.last_analysis_at ?? null,
-      }
-    : {
-        ...existing,
-        quiver_version: cliVersion,
-        project_name: projectName || existing.project_name || '',
-        initialized_version: existing.initialized_version || cliVersion,
-        migrated_version: existing.migrated_version ?? null,
-        last_initialized_at: existing.last_initialized_at || now,
-        last_migration_at: existing.last_migration_at ?? null,
-        last_analysis_at: existing.last_analysis_at ?? null,
-      };
-
-  ensureDir(stateDir);
-  fs.writeFileSync(statePath, `${JSON.stringify(nextState, null, 2)}\n`);
-  return statePath;
 }
 
 function buildReadme(projectName, projectSlug) {
@@ -325,7 +289,31 @@ function initializeProjectDocs(options) {
   const packageResult = mergePackageJson(projectRoot, templateRoot, migrateMode);
   operations.push({ source: 'package.template.json', destination: 'package.json', result: packageResult });
 
-  writeQuiverState(projectRoot, projectName, cliVersion, migrateMode);
+  const currentState = fs.existsSync(path.join(projectRoot, '.quiver', 'state.json'))
+    ? JSON.parse(fs.readFileSync(path.join(projectRoot, '.quiver', 'state.json'), 'utf8'))
+    : null;
+  const nextState = migrateMode
+    ? {
+        ...(currentState || {}),
+        quiver_version: cliVersion,
+        project_name: projectName || currentState?.project_name || '',
+        initialized_version: currentState?.initialized_version ?? null,
+        migrated_version: cliVersion,
+        last_initialized_at: currentState?.last_initialized_at ?? null,
+        last_migration_at: new Date().toISOString(),
+        last_analysis_at: currentState?.last_analysis_at ?? null,
+      }
+    : {
+        ...(currentState || {}),
+        quiver_version: cliVersion,
+        project_name: projectName || currentState?.project_name || '',
+        initialized_version: currentState?.initialized_version || cliVersion,
+        migrated_version: currentState?.migrated_version ?? null,
+        last_initialized_at: currentState?.last_initialized_at || new Date().toISOString(),
+        last_migration_at: currentState?.last_migration_at ?? null,
+        last_analysis_at: currentState?.last_analysis_at ?? null,
+      };
+  writeState(projectRoot, nextState);
 
   const searchPath = path.join(projectRoot, 'docs', 'SEARCH.md');
   if (!(migrateMode && fs.existsSync(searchPath))) {

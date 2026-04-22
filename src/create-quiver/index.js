@@ -3,6 +3,12 @@ const os = require('os');
 const path = require('path');
 const { execFileSync } = require('child_process');
 const { initializeProjectDocs } = require('./lib/init-docs');
+const { relativePosixPath, resolveTargetRoot } = require('./lib/paths');
+const {
+  readState,
+  updateStateForAnalyze,
+  updateStateForMigrate,
+} = require('./lib/state');
 const cliPackageJson = JSON.parse(fs.readFileSync(path.resolve(__dirname, '../..', 'package.json'), 'utf8'));
 const CLI_VERSION = cliPackageJson.version || '0.0.0';
 
@@ -211,79 +217,6 @@ function runInitDocs(repoRoot, projectName) {
     cliVersion: CLI_VERSION,
     migrateMode: false,
   });
-}
-
-function runInitDocsWithMode(repoRoot, projectName, mode) {
-  return runCommand('bash', ['docs-template/scripts/init-docs.sh', projectName], {
-    cwd: repoRoot,
-    env: {
-      ...process.env,
-      QUIVER_PROJECT_NAME: projectName,
-      QUIVER_MIGRATE: mode === 'migrate' ? '1' : '0',
-      QUIVER_VERSION: CLI_VERSION,
-    },
-  });
-}
-
-function writeQuiverState(projectRoot, nextState) {
-  const stateDir = path.join(projectRoot, '.quiver');
-  const statePath = path.join(stateDir, 'state.json');
-  fs.mkdirSync(stateDir, { recursive: true });
-  fs.writeFileSync(statePath, `${JSON.stringify(nextState, null, 2)}\n`);
-  return statePath;
-}
-
-function readQuiverState(projectRoot) {
-  return readJsonIfExists(path.join(projectRoot, '.quiver', 'state.json'));
-}
-
-function createInitialQuiverState(projectName) {
-  const now = new Date().toISOString();
-
-  return {
-    project_name: projectName,
-    quiver_version: CLI_VERSION,
-    initialized_version: CLI_VERSION,
-    migrated_version: null,
-    last_initialized_at: now,
-    last_migration_at: null,
-    last_analysis_at: null,
-  };
-}
-
-function updateQuiverStateForAnalyze(projectRoot) {
-  const currentState = readQuiverState(projectRoot);
-
-  if (!currentState) {
-    return null;
-  }
-
-  const nextState = {
-    ...currentState,
-    quiver_version: CLI_VERSION,
-    last_analysis_at: new Date().toISOString(),
-  };
-
-  writeQuiverState(projectRoot, nextState);
-  return nextState;
-}
-
-function updateQuiverStateForMigrate(projectRoot, projectName) {
-  const currentState = readQuiverState(projectRoot);
-  const now = new Date().toISOString();
-  const nextState = {
-    ...(currentState || {}),
-    project_name: projectName,
-    quiver_version: CLI_VERSION,
-    initialized_version: currentState?.initialized_version ?? null,
-    migrated_version: CLI_VERSION,
-    last_initialized_at: currentState?.last_initialized_at ?? null,
-    last_migration_at: now,
-    last_analysis_at: currentState?.last_analysis_at ?? null,
-  };
-
-  writeQuiverState(projectRoot, nextState);
-  return nextState;
 }
 
 function listGeneratedSpecDirs(projectRoot) {
@@ -892,7 +825,7 @@ function writeProjectScanArtifacts(projectRoot, scan) {
 }
 
 function runAnalyze(targetDir) {
-  const projectRoot = path.resolve(process.cwd(), targetDir);
+  const projectRoot = resolveTargetRoot(process.cwd(), targetDir);
 
   if (!fs.existsSync(projectRoot)) {
     throw new Error(formatError(`target directory does not exist: ${projectRoot}`));
@@ -900,17 +833,17 @@ function runAnalyze(targetDir) {
 
   const scan = buildProjectScan(projectRoot);
   const artifacts = writeProjectScanArtifacts(projectRoot, scan);
-  updateQuiverStateForAnalyze(projectRoot);
+  updateStateForAnalyze(projectRoot, CLI_VERSION);
 
   console.log(`Project analysis completed for ${projectRoot}`);
-  console.log(`Wrote ${path.relative(projectRoot, artifacts.jsonPath)}`);
-  console.log(`Wrote ${path.relative(projectRoot, artifacts.mdPath)}`);
+  console.log(`Wrote ${relativePosixPath(projectRoot, artifacts.jsonPath)}`);
+  console.log(`Wrote ${relativePosixPath(projectRoot, artifacts.mdPath)}`);
   console.log(`Detected primary stack: ${scan.stack.primary}`);
   console.log(`Detected package manager: ${scan.project.package_manager}`);
 }
 
 function runMigrate(targetDir) {
-  const projectRoot = path.resolve(process.cwd(), targetDir);
+  const projectRoot = resolveTargetRoot(process.cwd(), targetDir);
 
   if (!fs.existsSync(projectRoot)) {
     throw new Error(formatError(`target directory does not exist: ${projectRoot}`));
@@ -924,15 +857,13 @@ function runMigrate(targetDir) {
   try {
     const templateRoot = packTemplate(packageRoot, tempRoot);
     mergeDirectoryTree(templateRoot, path.join(projectRoot, 'docs-template'));
-    const migrationOutput = runInitDocsWithMode(projectRoot, projectName, 'migrate');
-    updateQuiverStateForMigrate(projectRoot, projectName);
-
-    if (migrationOutput.trim().length > 0) {
-      process.stdout.write(migrationOutput);
-      if (!migrationOutput.endsWith('\n')) {
-        process.stdout.write('\n');
-      }
-    }
+    initializeProjectDocs({
+      projectRoot,
+      projectName,
+      cliVersion: CLI_VERSION,
+      migrateMode: true,
+    });
+    updateStateForMigrate(projectRoot, projectName, CLI_VERSION);
 
     console.log(`Quiver migration completed for ${projectRoot}`);
     console.log('Missing workflow files were restored without overwriting existing project files.');
@@ -942,7 +873,7 @@ function runMigrate(targetDir) {
 }
 
 function runDoctor(targetDir) {
-  const projectRoot = path.resolve(process.cwd(), targetDir);
+  const projectRoot = resolveTargetRoot(process.cwd(), targetDir);
 
   if (!fs.existsSync(projectRoot)) {
     throw new Error(formatError(`target directory does not exist: ${projectRoot}`));
@@ -992,7 +923,7 @@ function runDoctor(targetDir) {
   const missingScripts = requiredScripts.filter((name) => typeof pkg.scripts?.[name] !== 'string');
   const hasScanArtifacts = fs.existsSync(path.join(projectRoot, 'docs', 'PROJECT_SCAN.json'))
     && fs.existsSync(path.join(projectRoot, 'docs', 'PROJECT_MAP.md'));
-  const quiverState = readQuiverState(projectRoot);
+  const quiverState = readState(projectRoot);
   const hasQuiverState = Boolean(quiverState);
   const stateWarnings = hasQuiverState ? [] : ['missing Quiver state metadata: .quiver/state.json'];
   const migrationProblems = [
@@ -1018,9 +949,9 @@ function runDoctor(targetDir) {
   } else {
     console.log('- Ask your AI agent: Read docs/AI_ONBOARDING_PROMPT.md and execute it.');
   }
-  console.log(`- Start a slice: bash tools/scripts/start-slice.sh specs/${projectSlug}/slices/slice-template/slice.json`);
-  console.log('- Validate a slice: bash tools/scripts/check-slice-readiness.sh');
-  console.log('- Validate the PR gate: bash tools/scripts/check-pr-readiness.sh');
+  console.log(`- Start a slice: npx create-quiver start-slice specs/${projectSlug}/slices/slice-template/slice.json`);
+  console.log(`- Validate a slice: npx create-quiver check-slice specs/${projectSlug}/slices/slice-template/slice.json`);
+  console.log(`- Validate the PR gate: npx create-quiver check-pr specs/${projectSlug}/slices/slice-template/slice.json`);
 }
 
 function printInitNextSteps(targetDir, projectName) {
@@ -1031,7 +962,7 @@ function printInitNextSteps(targetDir, projectName) {
   console.log(`- Review ${path.join(targetDir, 'docs', 'INDEX.md')}`);
   console.log(`- Review ${path.join(targetDir, 'docs', 'WORKFLOW.md')}`);
   console.log(`- Create your first slice from ${path.join(targetDir, 'specs', projectSlug, 'slices', 'slice-template', 'slice.json')}`);
-  console.log(`- Launch slice work with ${path.join(targetDir, 'tools', 'scripts', 'start-slice.sh')}`);
+  console.log(`- Launch slice work with npx create-quiver start-slice specs/${projectSlug}/slices/slice-template/slice.json`);
 }
 
 async function run(argv) {
@@ -1058,7 +989,7 @@ async function run(argv) {
   }
 
   const packageRoot = path.resolve(__dirname, '../..');
-  const targetDir = path.resolve(process.cwd(), args.targetDir);
+  const targetDir = resolveTargetRoot(process.cwd(), args.targetDir);
   const projectName = args.projectName || path.basename(targetDir) || 'Quiver Project';
   const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'quiver-create-'));
 
@@ -1077,5 +1008,8 @@ async function run(argv) {
 }
 
 module.exports = {
+  runAnalyze,
+  runDoctor,
+  runMigrate,
   run,
 };
