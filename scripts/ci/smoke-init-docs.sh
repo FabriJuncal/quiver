@@ -128,11 +128,29 @@ const fs = require('fs');
 
 const projectSlug = process.argv[2];
 const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
-const required = ['check:slice', 'check:pr', 'start:slice', 'cleanup:slice', 'migrate'];
+const required = [
+  'quiver:analyze',
+  'quiver:doctor',
+  'quiver:migrate',
+  'quiver:start-slice',
+  'quiver:check-slice',
+  'quiver:check-pr',
+  'quiver:cleanup-slice',
+  'quiver:check-scope',
+  'quiver:refresh-active-slices',
+];
 const missing = required.filter((name) => typeof pkg.scripts?.[name] !== 'string');
 
 if (missing.length > 0) {
   console.error(`Missing npm scripts: ${missing.join(', ')}`);
+  process.exit(1);
+}
+
+const legacy = ['check:slice', 'check:pr', 'start:slice', 'cleanup:slice', 'check:scope', 'refresh:active-slices', 'migrate'];
+const missingLegacy = legacy.filter((name) => typeof pkg.scripts?.[name] !== 'string');
+
+if (missingLegacy.length > 0) {
+  console.error(`Missing legacy compatibility scripts: ${missingLegacy.join(', ')}`);
   process.exit(1);
 }
 

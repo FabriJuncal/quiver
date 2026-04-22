@@ -2,10 +2,21 @@
   "name": "quiver-docs-template",
   "private": true,
   "scripts": {
+    "quiver:migrate": "npx create-quiver migrate",
+    "quiver:analyze": "npx create-quiver analyze",
+    "quiver:doctor": "npx create-quiver doctor",
+    "quiver:start-slice": "npx create-quiver start-slice",
+    "quiver:check-slice": "npx create-quiver check-slice",
+    "quiver:check-pr": "npx create-quiver check-pr",
+    "quiver:cleanup-slice": "npx create-quiver cleanup-slice",
+    "quiver:check-scope": "npx create-quiver check-scope",
+    "quiver:refresh-active-slices": "npx create-quiver refresh-active-slices",
     "check:slice": "bash tools/scripts/check-slice-readiness.sh",
     "check:pr": "bash tools/scripts/check-pr-readiness.sh",
     "start:slice": "bash tools/scripts/start-slice.sh",
     "cleanup:slice": "bash tools/scripts/cleanup-slice.sh",
+    "check:scope": "bash tools/scripts/check-scope.sh",
+    "refresh:active-slices": "bash tools/scripts/refresh-active-slices.sh",
     "migrate": "bash tools/scripts/migrate-project.sh"
   }
 }

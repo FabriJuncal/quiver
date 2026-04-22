@@ -9,6 +9,7 @@ The canonical installer entrypoint is `npx create-quiver` run from the target pr
 Do not recommend global installation; use `npx` or a project-local devDependency when the team needs a pinned version.
 The post-init contract is validated with `npx create-quiver doctor` from the project root.
 If the project already exists from an older Quiver version, run `npx create-quiver migrate` before `analyze` from the project root.
+Generated projects also get `quiver:*` npm scripts that call the Node CLI directly; prefer those for repeatable project workflows.
 Maintain release notes and package publishing with `scripts/release-quiver.sh`.
 The primary generated project context for agents is `docs/AI_CONTEXT.md`.
 If a generated project has been analyzed, the exact agent handoff prompt is `docs/AI_ONBOARDING_PROMPT.md`.
@@ -25,6 +26,7 @@ If a generated project has been analyzed, the exact agent handoff prompt is `doc
 - The normal workflow runs from the project root without `--dir`; use `--dir` only when targeting another directory explicitly.
 - The cross-platform work targets native macOS, Linux, and Windows shells; Bash is a legacy compatibility path until the runtime slices land.
 - The support contract lives in `docs/SUPPORT_MATRIX.md` and `docs/TROUBLESHOOTING.md`.
+- Generated project npm scripts should prefer `quiver:*` names such as `quiver:analyze`, `quiver:doctor`, `quiver:start-slice`, `quiver:check-slice`, and `quiver:check-pr`.
 
 ## Initialization Flow
 
@@ -85,12 +87,12 @@ After initialization, the user should:
 9. Open and merge the documentation PR that establishes the workflow files
 10. Create the first slice in `specs/{{PROJECT_SLUG}}/slices/[slice-id]/`
 11. Add `ticket` and `git.*`
-12. Run `tools/scripts/start-slice.sh [--allow-draft] <slice.json>`
+12. Run `npx create-quiver start-slice [--allow-draft] <slice.json>` or `npm run quiver:start-slice -- [--allow-draft] <slice.json>`
 13. Make one commit per slice
 14. Open one PR per spec
 15. Validate the slice and the final PR with the workflow gates
 
-Bootstrap note: `start-slice.sh` should resolve paths canonically, prefer a local `develop` or `main` base branch before reaching for `origin`, and reject `draft` slices unless `--allow-draft` is passed intentionally.
+Bootstrap note: `start-slice` should resolve paths canonically, prefer a local `develop` or `main` base branch before reaching for `origin`, and reject `draft` slices unless `--allow-draft` is passed intentionally.
 
 ## Optional Files
 

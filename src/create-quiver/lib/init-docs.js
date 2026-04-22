@@ -81,10 +81,6 @@ function mergePackageJson(projectRoot, templateRoot, skipIfExists) {
     return 'created';
   }
 
-  if (skipIfExists) {
-    return 'skipped';
-  }
-
   const existing = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
   const template = JSON.parse(fs.readFileSync(packageTemplate, 'utf8'));
 
@@ -94,7 +90,7 @@ function mergePackageJson(projectRoot, templateRoot, skipIfExists) {
   };
 
   fs.writeFileSync(packageJsonPath, `${JSON.stringify(existing, null, 2)}\n`);
-  return 'updated';
+  return skipIfExists ? 'merged' : 'updated';
 }
 
 function buildReadme(projectName, projectSlug) {
@@ -119,6 +115,24 @@ npm install --save-dev create-quiver
 \`\`\`
 
 If you need to target another directory from outside the project, pass \`--dir\` explicitly. Quote paths that contain spaces.
+
+## Project NPM Scripts
+
+The generated project includes \`quiver:*\` npm scripts that call the Node CLI and are the preferred repeatable workflow:
+
+\`\`\`bash
+npm run quiver:analyze
+npm run quiver:doctor
+npm run quiver:migrate
+npm run quiver:start-slice -- specs/${projectSlug}/slices/slice-01/slice.json
+npm run quiver:check-slice -- specs/${projectSlug}/slices/slice-01/slice.json
+npm run quiver:check-pr -- specs/${projectSlug}/slices/slice-01/slice.json
+npm run quiver:cleanup-slice -- specs/${projectSlug}/slices/slice-01/slice.json
+npm run quiver:check-scope -- specs/${projectSlug}/slices/slice-01/slice.json
+npm run quiver:refresh-active-slices
+\`\`\`
+
+The legacy Bash wrappers remain in \`tools/scripts/\` for compatibility, but new project-level automation should prefer the \`quiver:*\` scripts and the direct \`npx create-quiver ...\` commands below.
 
 ## Cross-Platform Support
 
@@ -160,7 +174,7 @@ Review the AI changes to docs/AI_CONTEXT.md, docs/CONTEXTO.md, docs/STATUS.md, a
 
 1. Review or refine specs/${projectSlug}/SPEC.md.
 2. Create the first slice from specs/${projectSlug}/slices/slice-template/slice.json.
-3. Start work with tools/scripts/start-slice.sh <slice.json>.
+3. Start work with \`npx create-quiver start-slice <slice.json>\` or \`npm run quiver:start-slice -- <slice.json>\`.
 4. Make one commit per slice.
 5. Open one PR per spec.
 
@@ -335,7 +349,7 @@ function initializeProjectDocs(options) {
 
 - **Spec:** \`../specs/${replacements.projectSlug}/slices/slice-01/slice.json\`
 - **PR del slice:** \`../specs/${replacements.projectSlug}/slices/slice-01/pr.md\`
-- **Bootstrap del slice:** \`../tools/scripts/start-slice.sh ../specs/${replacements.projectSlug}/slices/slice-01/slice.json\`
+- **Bootstrap del slice:** \`npx create-quiver start-slice ../specs/${replacements.projectSlug}/slices/slice-01/slice.json\`
 - **Hook:** \`hooks/useAuth.ts\`
 - **API:** \`docs/api/auth/README.md\`
 - **Componentes:** \`app/(auth)/\`

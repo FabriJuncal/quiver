@@ -32,6 +32,27 @@ assert_contains() {
   fi
 }
 
+assert_package_scripts() {
+  local package_json="$1"
+  local label="$2"
+  shift 2
+
+  node - "$package_json" "$label" "$@" <<'NODE'
+const fs = require('fs');
+
+const file = process.argv[2];
+const label = process.argv[3];
+const expected = process.argv.slice(4);
+const pkg = JSON.parse(fs.readFileSync(file, 'utf8'));
+const missing = expected.filter((name) => typeof pkg.scripts?.[name] !== 'string');
+
+if (missing.length > 0) {
+  console.error(`${label}: missing npm scripts: ${missing.join(', ')}`);
+  process.exit(1);
+}
+NODE
+}
+
 pack_installer() {
   local pack_dir="$temp_root/package-pack"
   local npm_cache="$temp_root/npm-cache"
@@ -127,6 +148,8 @@ assert_contains "$new_target/README.md" "npm install --save-dev create-quiver@la
 assert_contains "$new_target/docs/PROJECT_MAP.md" "Project Map"
 assert_contains "$new_target/docs/PROJECT_MAP.md" "## Stack"
 assert_contains "$new_target/docs/PROJECT_MAP.md" "## Commands"
+assert_package_scripts "$new_target/package.json" "new project" \
+  quiver:analyze quiver:doctor quiver:migrate quiver:start-slice quiver:check-slice quiver:check-pr quiver:cleanup-slice quiver:check-scope quiver:refresh-active-slices
 node - <<'NODE'
 const path = require('path');
 const { resolveTargetRoot, relativePosixPath } = require('./src/create-quiver/lib/paths');
@@ -141,7 +164,6 @@ if (relative !== 'docs/PROJECT_SCAN.json') {
   throw new Error(`Expected portable relative path, got ${relative}`);
 }
 NODE
-node -e 'const fs = require("fs"); const data = JSON.parse(fs.readFileSync(process.argv[1], "utf8")); if (data.scripts?.migrate !== "bash tools/scripts/migrate-project.sh") { throw new Error("migrate script missing from generated package.json"); }' "$new_target/package.json"
 node -e 'const fs = require("fs"); const data = JSON.parse(fs.readFileSync(process.argv[1], "utf8")); if (!data.last_analysis_at) { throw new Error("analysis metadata missing after analyze"); }' "$new_target/.quiver/state.json"
 
 node -e 'const fs = require("fs"); const data = JSON.parse(fs.readFileSync(process.argv[1], "utf8")); if (!data.project || !data.stack || !data.commands || !data.structure || !data.ci || !data.docs || !Array.isArray(data.risks) || !Array.isArray(data.skipped_paths)) { throw new Error("invalid project scan shape"); }' "$new_target/docs/PROJECT_SCAN.json"
@@ -173,13 +195,32 @@ assert_file "$existing_target/docs/PROJECT_MAP.md"
 assert_file "$existing_target/.quiver/state.json"
 assert_file "$existing_target/docs/SUPPORT_MATRIX.md"
 assert_file "$existing_target/docs/TROUBLESHOOTING.md"
-node -e 'const fs = require("fs"); const data = JSON.parse(fs.readFileSync(process.argv[1], "utf8")); if (data.scripts?.migrate !== "bash tools/scripts/migrate-project.sh") { throw new Error("migrate script missing from existing project package.json"); }' "$existing_target/package.json"
+assert_package_scripts "$existing_target/package.json" "existing project" \
+  quiver:analyze quiver:doctor quiver:migrate quiver:start-slice quiver:check-slice quiver:check-pr quiver:cleanup-slice quiver:check-scope quiver:refresh-active-slices
 assert_file "$space_target/README.md"
 assert_file "$space_target/docs/PROJECT_SCAN.json"
 assert_file "$space_target/docs/PROJECT_MAP.md"
 
 node "$cli" --name "Legacy Project" --dir "$legacy_target" >/dev/null
 printf 'keep me\n' >> "$legacy_target/docs/SEARCH.md"
+node - "$legacy_target/package.json" <<'NODE'
+const fs = require('fs');
+const file = process.argv[2];
+const pkg = JSON.parse(fs.readFileSync(file, 'utf8'));
+
+delete pkg.scripts['quiver:migrate'];
+delete pkg.scripts['quiver:analyze'];
+delete pkg.scripts['quiver:doctor'];
+delete pkg.scripts['quiver:start-slice'];
+delete pkg.scripts['quiver:check-slice'];
+delete pkg.scripts['quiver:check-pr'];
+delete pkg.scripts['quiver:cleanup-slice'];
+delete pkg.scripts['quiver:check-scope'];
+delete pkg.scripts['quiver:refresh-active-slices'];
+pkg.scripts.lint = 'echo lint';
+
+fs.writeFileSync(file, `${JSON.stringify(pkg, null, 2)}\n`);
+NODE
 rm "$legacy_target/.quiver/state.json"
 rm "$legacy_target/docs/AI_ONBOARDING_PROMPT.md"
 rm "$legacy_target/tools/scripts/migrate-project.sh"
@@ -202,7 +243,9 @@ assert_contains "$legacy_target/docs/SEARCH.md" "keep me"
 assert_file "$legacy_target/docs/AI_ONBOARDING_PROMPT.md"
 assert_file "$legacy_target/tools/scripts/migrate-project.sh"
 assert_file "$legacy_target/.quiver/state.json"
-node -e 'const fs = require("fs"); const data = JSON.parse(fs.readFileSync(process.argv[1], "utf8")); if (data.scripts?.migrate !== "bash tools/scripts/migrate-project.sh") { throw new Error("migrate script missing after migrate"); }' "$legacy_target/package.json"
+assert_package_scripts "$legacy_target/package.json" "legacy project after migrate" \
+  quiver:analyze quiver:doctor quiver:migrate quiver:start-slice quiver:check-slice quiver:check-pr quiver:cleanup-slice quiver:check-scope quiver:refresh-active-slices
+node -e 'const fs = require("fs"); const data = JSON.parse(fs.readFileSync(process.argv[1], "utf8")); if (data.scripts?.lint !== "echo lint") { throw new Error("custom user script was not preserved during migrate"); }' "$legacy_target/package.json"
 CLI_VERSION="$cli_version" node -e 'const fs = require("fs"); const expected = process.env.CLI_VERSION; const data = JSON.parse(fs.readFileSync(process.argv[1], "utf8")); if (data.migrated_version !== expected || !data.last_migration_at) { throw new Error("migration metadata missing"); }' "$legacy_target/.quiver/state.json"
 
 (
@@ -239,6 +282,8 @@ assert_file "$release_target/docs/AI_CONTEXT.md"
 assert_file "$release_target/docs/AI_ONBOARDING_PROMPT.md"
 assert_file "$release_target/docs/PROJECT_SCAN.json"
 assert_file "$release_target/docs/PROJECT_MAP.md"
+assert_package_scripts "$release_target/package.json" "packaged project" \
+  quiver:analyze quiver:doctor quiver:migrate quiver:start-slice quiver:check-slice quiver:check-pr quiver:cleanup-slice quiver:check-scope quiver:refresh-active-slices
 
 printf 'keep me\n' >> "$release_target/docs/SEARCH.md"
 rm "$release_target/docs/AI_ONBOARDING_PROMPT.md"

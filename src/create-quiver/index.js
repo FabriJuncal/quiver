@@ -984,8 +984,23 @@ function runDoctor(targetDir) {
   const missingFiles = assertFilesExist(projectRoot, requiredFiles);
   const nonExecutableScripts = assertExecutablesExist(projectRoot, requiredExecutables);
   const pkg = loadPackageJson(projectRoot);
-  const requiredScripts = ['check:slice', 'check:pr', 'start:slice', 'cleanup:slice', 'migrate'];
-  const missingScripts = requiredScripts.filter((name) => typeof pkg.scripts?.[name] !== 'string');
+  const workflowScriptGroups = [
+    { label: 'migrate', node: 'quiver:migrate', legacy: 'migrate' },
+    { label: 'start-slice', node: 'quiver:start-slice', legacy: 'start:slice' },
+    { label: 'check-slice', node: 'quiver:check-slice', legacy: 'check:slice' },
+    { label: 'check-pr', node: 'quiver:check-pr', legacy: 'check:pr' },
+    { label: 'cleanup-slice', node: 'quiver:cleanup-slice', legacy: 'cleanup:slice' },
+    { label: 'check-scope', node: 'quiver:check-scope', legacy: 'check:scope' },
+    { label: 'refresh-active-slices', node: 'quiver:refresh-active-slices', legacy: 'refresh:active-slices' },
+  ];
+  const missingScripts = workflowScriptGroups
+    .filter((group) => typeof pkg.scripts?.[group.node] !== 'string' && typeof pkg.scripts?.[group.legacy] !== 'string')
+    .map((group) => `${group.node} (or legacy ${group.legacy})`);
+  const legacyOnlyScripts = workflowScriptGroups
+    .filter((group) => typeof pkg.scripts?.[group.node] !== 'string' && typeof pkg.scripts?.[group.legacy] === 'string')
+    .map((group) => group.label);
+  const missingNodeNativeScripts = ['quiver:migrate', 'quiver:analyze', 'quiver:doctor']
+    .filter((name) => typeof pkg.scripts?.[name] !== 'string');
   const hasScanArtifacts = fs.existsSync(path.join(projectRoot, 'docs', 'PROJECT_SCAN.json'))
     && fs.existsSync(path.join(projectRoot, 'docs', 'PROJECT_MAP.md'));
   const quiverState = readState(projectRoot);
@@ -1006,6 +1021,12 @@ function runDoctor(targetDir) {
   console.log('Next steps:');
   for (const warning of stateWarnings) {
     console.log(`- Warning: ${warning}`);
+  }
+  for (const scriptName of missingNodeNativeScripts) {
+    console.log(`- Warning: missing Node-native script: ${scriptName}`);
+  }
+  if (legacyOnlyScripts.length > 0) {
+    console.log(`- Warning: legacy Bash workflow scripts detected for ${legacyOnlyScripts.join(', ')}. Run npx create-quiver migrate to add quiver:* npm scripts.`);
   }
   if (!hasQuiverState) {
     console.log('- Run migration first: npx create-quiver migrate');

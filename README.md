@@ -47,6 +47,24 @@ The analyzer creates `docs/PROJECT_SCAN.json` and `docs/PROJECT_MAP.md`. These f
 
 The doctor checks the generated project contract and prints the next workflow steps. If the scan artifacts are missing, it recommends `npx create-quiver analyze` first.
 
+### Project NPM Scripts
+
+Generated projects include `quiver:*` npm scripts that call the Node CLI and are the preferred repeatable workflow:
+
+```bash
+npm run quiver:analyze
+npm run quiver:doctor
+npm run quiver:migrate
+npm run quiver:start-slice -- specs/<project-slug>/slices/slice-01/slice.json
+npm run quiver:check-slice -- specs/<project-slug>/slices/slice-01/slice.json
+npm run quiver:check-pr -- specs/<project-slug>/slices/slice-01/slice.json
+npm run quiver:cleanup-slice -- specs/<project-slug>/slices/slice-01/slice.json
+npm run quiver:check-scope -- specs/<project-slug>/slices/slice-01/slice.json
+npm run quiver:refresh-active-slices
+```
+
+The legacy Bash wrappers remain in `tools/scripts/` for compatibility, but new project-level automation should prefer the `quiver:*` scripts and the direct `npx create-quiver ...` commands.
+
 ### 3. Upgrade Existing Projects
 
 If the project already had Quiver from an older version, upgrade it from the project root:
@@ -85,7 +103,7 @@ After the context docs are reviewed:
 
 1. Define or refine `specs/<project-slug>/SPEC.md`.
 2. Create the first slice from `specs/<project-slug>/slices/slice-template/slice.json`.
-3. Start work with `tools/scripts/start-slice.sh <slice.json>`.
+3. Start work with `npx create-quiver start-slice <slice.json>` or `npm run quiver:start-slice -- <slice.json>`.
 4. Make one commit per slice.
 5. Open one PR per spec.
 
