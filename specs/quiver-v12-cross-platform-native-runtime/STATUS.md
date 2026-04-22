@@ -12,15 +12,15 @@ Slice numbering is local to this spec. The first slice is `slice-01`.
 | slice-01 | Cross-Platform Support Contract | Completed | - | 3 | 3 |
 | slice-02 | Node Init Docs Runtime | Completed | - | 8 | 4 |
 | slice-03 | Node Migrate, Analyze, and Doctor Flow | Completed | - | 5 | 5 |
-| slice-04 | Node Slice Lifecycle Commands | Draft | - | 10 | - |
+| slice-04 | Node Slice Lifecycle Commands | Completed | - | 10 | 10 |
 | slice-05 | Generated Project Scripts and Migration | Draft | - | 5 | - |
 | slice-06 | Cross-Platform CI and Release Readiness | Draft | - | 5 | - |
 
 ## Progress
 
-- Completed slices: 3 / 6
+- Completed slices: 4 / 6
 - Estimated hours: 36
-- Actual hours: 12
+- Actual hours: 22
 
 ## Blockers
 

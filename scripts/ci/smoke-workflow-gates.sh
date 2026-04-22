@@ -117,13 +117,13 @@ run_start_slice_remote() {
   git -C "$repo" branch -D develop >/dev/null 2>&1 || true
 
   output="$(
-    cd "$repo" && SLICE_WORKTREES_DIR="$smoke_root/worktrees-remote" bash scripts/start-slice.sh "$slice_rel"
+    cd "$repo" && SLICE_WORKTREES_DIR="$smoke_root/worktrees-remote" node "$repo_root/bin/create-quiver.js" start-slice --allow-draft "$slice_rel"
   )"
 
   assert_contains "$output" "Slice listo para trabajar."
   assert_contains "$output" "Alias: QUI-02"
   assert_contains "$output" "Base: develop"
-  pass "start-slice.sh works with origin available"
+  pass "start-slice CLI works with origin available"
 }
 
 run_start_slice_no_remote() {
@@ -137,13 +137,13 @@ run_start_slice_no_remote() {
   git -C "$repo" remote remove origin
 
   output="$(
-    cd "$repo" && SLICE_WORKTREES_DIR="$smoke_root/worktrees-no-remote" bash scripts/start-slice.sh "$slice_rel"
+    cd "$repo" && SLICE_WORKTREES_DIR="$smoke_root/worktrees-no-remote" node "$repo_root/bin/create-quiver.js" start-slice --allow-draft "$slice_rel"
   )"
 
   assert_contains "$output" "Slice listo para trabajar."
   assert_contains "$output" "Alias: QUI-02"
   assert_contains "$output" "Base: develop"
-  pass "start-slice.sh works without origin"
+  pass "start-slice CLI works without origin"
 }
 
 run_check_slice_ready() {
@@ -156,7 +156,7 @@ run_check_slice_ready() {
   git -C "$repo" config user.email "smoke@example.com"
   [[ -f "$repo/specs/quiver-v03-adoption-verification/SPEC.md" ]] || fail "copy_repo no trajo SPEC.md al repo de check-slice-ready"
 
-  output="$(cd "$repo" && bash scripts/check-slice-readiness.sh "$slice_rel" --gate ready)"
+  output="$(cd "$repo" && node "$repo_root/bin/create-quiver.js" check-slice --gate ready "$slice_rel")"
   assert_contains "$output" "PASS: Gate ready"
   pass "check-slice-readiness ready gate passes on happy path"
 
@@ -168,13 +168,13 @@ json.status = 'draft';
 fs.writeFileSync(path, `${JSON.stringify(json, null, 2)}\n`);
 NODE
 
-  if cd "$repo" && bash scripts/check-slice-readiness.sh "$slice_rel" --gate ready >/tmp/quiver-slice-ready.out 2>/tmp/quiver-slice-ready.err; then
+  if cd "$repo" && node "$repo_root/bin/create-quiver.js" check-slice --gate ready "$slice_rel" >/tmp/quiver-slice-ready.out 2>/tmp/quiver-slice-ready.err; then
     fail "check-slice-readiness should fail for draft slices"
   fi
 
   error_output="$(cat /tmp/quiver-slice-ready.err)"
   assert_contains "$error_output" "status=ready"
-  pass "check-slice-readiness rejects draft slices"
+  pass "check-slice CLI rejects draft slices"
 }
 
 run_check_pr_readiness() {
@@ -203,9 +203,9 @@ NODE
   git -C "$repo" add "$slice_rel"
   git -C "$repo" commit -m "test: promote slice to completed" >/dev/null
 
-  output="$(cd "$repo" && bash scripts/check-pr-readiness.sh "$slice_rel")"
+  output="$(cd "$repo" && node "$repo_root/bin/create-quiver.js" check-pr "$slice_rel")"
   assert_contains "$output" "PASS: Gate PR listo"
-  pass "check-pr-readiness passes with a valid pr.md"
+  pass "check-pr CLI passes with a valid pr.md"
 
   local failure_repo="$smoke_root/check-pr-failure"
 
@@ -222,13 +222,13 @@ NODE
   git -C "$failure_repo" add "$pr_rel"
   git -C "$failure_repo" commit -m "test: malformed pr fixture" >/dev/null
 
-  if cd "$failure_repo" && bash scripts/check-pr-readiness.sh "$slice_rel" >/tmp/quiver-pr-ready.out 2>/tmp/quiver-pr-ready.err; then
-    fail "check-pr-readiness should fail when pr.md is missing required headings"
+  if cd "$failure_repo" && node "$repo_root/bin/create-quiver.js" check-pr "$slice_rel" >/tmp/quiver-pr-ready.out 2>/tmp/quiver-pr-ready.err; then
+    fail "check-pr should fail when pr.md is missing required headings"
   fi
 
   error_output="$(cat /tmp/quiver-pr-ready.err)"
   assert_contains "$error_output" "Falta la seccion obligatoria"
-  pass "check-pr-readiness rejects malformed pr.md"
+  pass "check-pr CLI rejects malformed pr.md"
 }
 
 run_check_scope() {
@@ -241,9 +241,9 @@ run_check_scope() {
   git -C "$happy_repo" config user.name "Quiver Smoke"
   git -C "$happy_repo" config user.email "smoke@example.com"
   git -C "$happy_repo" update-ref refs/remotes/origin/develop HEAD^
-  output="$(cd "$happy_repo" && bash scripts/check-scope.sh "$slice_rel")"
+  output="$(cd "$happy_repo" && node "$repo_root/bin/create-quiver.js" check-scope "$slice_rel")"
   assert_contains "$output" "PASS: Todos los archivos tocados"
-  pass "check-scope passes on the happy path"
+  pass "check-scope CLI passes on the happy path"
 
   copy_repo "$scope_repo" "$failure_repo"
   failure_repo="$(cd "$failure_repo" && pwd -P)"
@@ -255,13 +255,28 @@ run_check_scope() {
   git -C "$failure_repo" add scripts/ci/out-of-scope.txt
   git -C "$failure_repo" commit -m "chore: out of scope fixture" >/dev/null
 
-  if cd "$failure_repo" && bash scripts/check-scope.sh "$slice_rel" --strict >/tmp/quiver-scope.out 2>/tmp/quiver-scope.err; then
+  if cd "$failure_repo" && node "$repo_root/bin/create-quiver.js" check-scope --strict "$slice_rel" >/tmp/quiver-scope.out 2>/tmp/quiver-scope.err; then
     fail "check-scope should fail when the branch touches an undeclared file"
   fi
 
   error_output="$(cat /tmp/quiver-scope.err)"
   assert_contains "$error_output" "fuera del scope"
-  pass "check-scope rejects out-of-scope files"
+  pass "check-scope CLI rejects out-of-scope files"
+}
+
+run_refresh_active_slices() {
+  local scope_repo="$1"
+  local repo="$smoke_root/refresh-active-slices"
+
+  copy_repo "$scope_repo" "$repo"
+  repo="$(cd "$repo" && pwd -P)"
+  git -C "$repo" config user.name "Quiver Smoke"
+  git -C "$repo" config user.email "smoke@example.com"
+
+  output="$(cd "$repo" && node "$repo_root/bin/create-quiver.js" refresh-active-slices)"
+  assert_contains "$output" "Active slices refreshed"
+  [[ -f "$repo/ACTIVE_SLICES.md" ]] || fail "refresh-active-slices no genero ACTIVE_SLICES.md"
+  pass "refresh-active-slices CLI refreshes the board"
 }
 
 main() {
@@ -274,6 +289,7 @@ main() {
   run_check_slice_ready "$gate_repo"
   run_check_pr_readiness "$gate_repo"
   run_check_scope "$gate_repo"
+  run_refresh_active_slices "$gate_repo"
 
   printf 'workflow gate fixture suite passed\n'
 }
