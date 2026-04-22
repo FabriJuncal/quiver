@@ -10,7 +10,7 @@
 |-------|---------------------|--------|----------|
 | slice-01 | 6 | Completed | `node -c src/create-quiver/index.js`; `bash -n scripts/init-docs.sh scripts/ci/smoke-create-quiver.sh scripts/package-quiver.sh`; `bash scripts/ci/smoke-create-quiver.sh` |
 | slice-02 | 6 | Completed | `node -c src/create-quiver/index.js`; `bash -n scripts/init-docs.sh scripts/ci/smoke-init-docs.sh scripts/ci/smoke-create-quiver.sh scripts/package-quiver.sh`; `bash scripts/ci/smoke-create-quiver.sh` |
-| slice-03 | 6 | Pending | - |
+| slice-03 | 6 | Completed | `node -c src/create-quiver/index.js`; `bash -n scripts/init-docs.sh scripts/ci/smoke-init-docs.sh scripts/ci/smoke-create-quiver.sh scripts/package-quiver.sh`; `bash scripts/ci/smoke-init-docs.sh`; `bash scripts/ci/smoke-create-quiver.sh`; `bash scripts/package-quiver.sh` |
 
 ## Evidence by Slice
 
@@ -28,3 +28,11 @@
 - `analyze` updates `last_analysis_at` when metadata exists
 - `doctor` distinguishes between missing Quiver metadata and missing migration/upgrade artifacts
 - Smoke coverage now verifies the new state lifecycle across init, migrate, analyze, and doctor
+
+## Slice 03
+
+- Added an explicit `Upgrading Existing Projects` section to the root README and the generated project README
+- Documented both `npx` and project-local devDependency upgrade flows
+- Updated the generated onboarding docs so existing projects are guided to `migrate`, then `analyze`, then `doctor`
+- Extended smoke checks to assert the upgrade section and legacy migration preservation behavior
+- Confirmed `scripts/package-quiver.sh` still passes after the documentation and smoke updates

@@ -456,10 +456,24 @@ npm install --save-dev create-quiver
 
 If your project path contains spaces, quote it explicitly when using \`--dir\`.
 
-If the project already existed before this Quiver version, run migration first:
+## Upgrading Existing Projects
+
+If the project already existed before this Quiver version, upgrade it from the project root:
 
 \`\`\`bash
+cd /path/to/your-project
 npx create-quiver migrate --dir .
+npx create-quiver analyze --dir .
+npx create-quiver doctor --dir .
+\`\`\`
+
+If your team prefers a pinned local dependency, update the package first and then run the same flow:
+
+\`\`\`bash
+npm install --save-dev create-quiver@latest
+npx create-quiver migrate --dir .
+npx create-quiver analyze --dir .
+npx create-quiver doctor --dir .
 \`\`\`
 
 ## AI Context Onboarding

@@ -11,13 +11,13 @@ Slice numbering is local to this spec. The first slice is `slice-01`.
 |-------|-------|--------|----|-----------------|--------------|
 | slice-01 | Non-Destructive Migrate Command | Completed | - | 5 | 5 |
 | slice-02 | Version Metadata and Doctor Upgrade Checks | Completed | - | 4 | 4 |
-| slice-03 | Upgrade Docs and Legacy Project Smokes | Pending | - | 3 | - |
+| slice-03 | Upgrade Docs and Legacy Project Smokes | Completed | - | 3 | 3 |
 
 ## Progress
 
-- Completed slices: 2 / 3
+- Completed slices: 3 / 3
 - Estimated hours: 12
-- Actual hours: 9
+- Actual hours: 12
 
 ## Blockers
 
