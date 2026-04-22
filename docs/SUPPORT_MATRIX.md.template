@@ -9,7 +9,7 @@ Quiver is intentionally opinionated about the first-run environment. If your set
 
 | Area | Supported | Notes |
 |------|-----------|-------|
-| Operating systems | macOS, Linux, and Windows | Windows native support is the target contract for this spec. |
+| Operating systems | macOS, Linux, and Windows | Windows native support is verified only when the cross-platform CI matrix is green. |
 | Shells | Terminal, bash-compatible shells, PowerShell, and CMD | Bash is a legacy compatibility path, not a required runtime dependency. |
 | Git | Git 2.40+ | Must support worktrees and standard branch refs on every supported OS. |
 | Node.js | Node 22.x LTS | Required on every supported OS. |
@@ -27,7 +27,7 @@ Quiver is intentionally opinionated about the first-run environment. If your set
 
 ## What This Means
 
-- You can bootstrap and run Quiver on macOS, Linux, and Windows native shells once the runtime slices land.
+- You can bootstrap and run Quiver on macOS, Linux, and Windows native shells once the runtime slices land and the CI matrix is green.
 - Windows native usage should target PowerShell or CMD instead of Bash.
 - Quiver should not auto-install Bash, Git Bash, MSYS2, or WSL.
 - You do not need a remote to begin work if a local base branch already exists.

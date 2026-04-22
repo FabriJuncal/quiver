@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Cross-platform CI matrix covering macOS, Linux, and Windows for the Node-native Quiver runtime
+- Node-native generated project npm scripts and additive migration support for existing projects
+
 ## [0.4.0] - 2026-04-21
 
 ### Added
