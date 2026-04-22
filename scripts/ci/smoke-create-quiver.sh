@@ -51,6 +51,7 @@ pack_installer() {
 }
 
 new_target="$temp_root/new-project"
+space_target="$temp_root/space project"
 existing_target="$temp_root/existing-project"
 legacy_target="$temp_root/legacy-project"
 release_target="$temp_root/release-project"
@@ -69,6 +70,10 @@ if [[ "$doctor_before_analyze" == *"Run "* ]]; then
   echo "Doctor output still contains the word Run" >&2
   exit 1
 fi
+if [[ "$doctor_before_analyze" == *"bash "* ]]; then
+  echo "Doctor output still references bash" >&2
+  exit 1
+fi
 
 (
   cd "$new_target"
@@ -78,6 +83,14 @@ doctor_after_analyze="$(cd "$new_target" && node "$cli" doctor)"
 
 if [[ "$doctor_after_analyze" != *"Read docs/AI_ONBOARDING_PROMPT.md and execute it."* ]]; then
   echo "Doctor output did not point to the AI onboarding prompt after analyze" >&2
+  exit 1
+fi
+if [[ "$doctor_after_analyze" != *"npx create-quiver start-slice"* ]]; then
+  echo "Doctor output did not use the Node slice command" >&2
+  exit 1
+fi
+if [[ "$doctor_after_analyze" == *"bash "* ]]; then
+  echo "Doctor output still references bash after analyze" >&2
   exit 1
 fi
 
@@ -114,6 +127,20 @@ assert_contains "$new_target/README.md" "npm install --save-dev create-quiver@la
 assert_contains "$new_target/docs/PROJECT_MAP.md" "Project Map"
 assert_contains "$new_target/docs/PROJECT_MAP.md" "## Stack"
 assert_contains "$new_target/docs/PROJECT_MAP.md" "## Commands"
+node - <<'NODE'
+const path = require('path');
+const { resolveTargetRoot, relativePosixPath } = require('./src/create-quiver/lib/paths');
+
+const resolved = resolveTargetRoot('C:\\Users\\Fabricio\\repo', 'folder with spaces', path.win32);
+if (!resolved.includes('folder with spaces')) {
+  throw new Error('Windows-style path resolution did not preserve the target folder name');
+}
+
+const relative = relativePosixPath('C:\\Users\\Fabricio\\repo', 'C:\\Users\\Fabricio\\repo\\docs\\PROJECT_SCAN.json', path.win32);
+if (relative !== 'docs/PROJECT_SCAN.json') {
+  throw new Error(`Expected portable relative path, got ${relative}`);
+}
+NODE
 node -e 'const fs = require("fs"); const data = JSON.parse(fs.readFileSync(process.argv[1], "utf8")); if (data.scripts?.migrate !== "bash tools/scripts/migrate-project.sh") { throw new Error("migrate script missing from generated package.json"); }' "$new_target/package.json"
 node -e 'const fs = require("fs"); const data = JSON.parse(fs.readFileSync(process.argv[1], "utf8")); if (!data.last_analysis_at) { throw new Error("analysis metadata missing after analyze"); }' "$new_target/.quiver/state.json"
 
@@ -129,6 +156,13 @@ node "$cli" --name "Existing Repo" --dir "$existing_target" >/dev/null
   node "$cli" doctor >/dev/null
 )
 
+node "$cli" --name "Space Project" --dir "$space_target" >/dev/null
+(
+  cd "$space_target"
+  node "$cli" analyze >/dev/null
+  node "$cli" doctor >/dev/null
+)
+
 assert_file "$existing_target/keep.txt"
 assert_file "$existing_target/README.md"
 assert_file "$existing_target/docs/INDEX.md"
@@ -140,6 +174,9 @@ assert_file "$existing_target/.quiver/state.json"
 assert_file "$existing_target/docs/SUPPORT_MATRIX.md"
 assert_file "$existing_target/docs/TROUBLESHOOTING.md"
 node -e 'const fs = require("fs"); const data = JSON.parse(fs.readFileSync(process.argv[1], "utf8")); if (data.scripts?.migrate !== "bash tools/scripts/migrate-project.sh") { throw new Error("migrate script missing from existing project package.json"); }' "$existing_target/package.json"
+assert_file "$space_target/README.md"
+assert_file "$space_target/docs/PROJECT_SCAN.json"
+assert_file "$space_target/docs/PROJECT_MAP.md"
 
 node "$cli" --name "Legacy Project" --dir "$legacy_target" >/dev/null
 printf 'keep me\n' >> "$legacy_target/docs/SEARCH.md"
