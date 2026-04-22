@@ -5,6 +5,7 @@
     "check:slice": "bash tools/scripts/check-slice-readiness.sh",
     "check:pr": "bash tools/scripts/check-pr-readiness.sh",
     "start:slice": "bash tools/scripts/start-slice.sh",
-    "cleanup:slice": "bash tools/scripts/cleanup-slice.sh"
+    "cleanup:slice": "bash tools/scripts/cleanup-slice.sh",
+    "migrate": "bash tools/scripts/migrate-project.sh"
   }
 }

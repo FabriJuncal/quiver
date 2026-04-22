@@ -1,0 +1,78 @@
+{
+  "slice_id": "slice-03-upgrade-docs-legacy-project-smokes",
+  "ticket": "QUIVER-03",
+  "type": "docs",
+  "title": "Upgrade Docs and Legacy Project Smokes",
+  "objective": "Document the upgrade path for existing projects and add smoke coverage for legacy generated projects.",
+  "description": "Users need a clear path when they already initialized Quiver with an older package. This slice updates README and generated docs with upgrade instructions and adds fixtures or smoke setup that simulate older projects missing newer onboarding artifacts.",
+  "git": {
+    "branch_type": "docs",
+    "base_branch": "main",
+    "branch_slug": "existing-project-migration",
+    "branch_name": "docs/QUIVER-03-existing-project-migration"
+  },
+  "must": [
+    "Add an `Upgrading Existing Projects` section to the root README",
+    "Document both `npx` and devDependency upgrade flows",
+    "Update generated README or AI docs to mention migration for already-initialized projects",
+    "Add smoke coverage for a legacy project missing `docs/AI_ONBOARDING_PROMPT.md` and metadata",
+    "Verify migration does not overwrite edited context docs",
+    "Close the spec status and evidence"
+  ],
+  "not_included": [
+    "Publishing a release",
+    "Changing migration behavior beyond doc/test-driven fixes found during validation",
+    "Adding provider-specific AI instructions",
+    "Supporting global installation as a recommended path"
+  ],
+  "acceptance": [
+    "README explains what to do if Quiver was already initialized with an older version",
+    "Generated guidance points existing projects to `migrate`, then `analyze`, then `doctor`",
+    "Legacy project smoke proves missing files are added",
+    "Legacy project smoke proves edited docs are preserved",
+    "Package smoke passes",
+    "Spec status and evidence show all slices completed"
+  ],
+  "files": [
+    "README.md",
+    "README_FOR_AI.md",
+    "scripts/init-docs.sh",
+    "scripts/ci/smoke-create-quiver.sh",
+    "scripts/ci/smoke-init-docs.sh",
+    "scripts/package-quiver.sh",
+    "specs/quiver-v11-existing-project-migration/SPEC.md",
+    "specs/quiver-v11-existing-project-migration/STATUS.md",
+    "specs/quiver-v11-existing-project-migration/EVIDENCE_REPORT.md",
+    "specs/quiver-v11-existing-project-migration/slices/slice-03-upgrade-docs-legacy-project-smokes/slice.json"
+  ],
+  "tests": [
+    "bash scripts/ci/smoke-init-docs.sh",
+    "bash scripts/ci/smoke-create-quiver.sh",
+    "bash scripts/package-quiver.sh",
+    "legacy migration fixture or smoke path",
+    "git diff --check"
+  ],
+  "documentation": [
+    "README.md",
+    "README_FOR_AI.md",
+    "specs/quiver-v11-existing-project-migration/SPEC.md",
+    "specs/quiver-v11-existing-project-migration/STATUS.md",
+    "specs/quiver-v11-existing-project-migration/EVIDENCE_REPORT.md"
+  ],
+  "dependencies": [
+    "slice-01-non-destructive-migrate-command",
+    "slice-02-version-metadata-doctor-upgrade-checks"
+  ],
+  "assumptions": [
+    "Existing projects should not need to delete generated docs before upgrading",
+    "The safest upgrade order is migrate, analyze, doctor, then AI prompt",
+    "Smoke fixtures can simulate old projects by deleting newer artifacts from a generated project"
+  ],
+  "estimated_hours": 3,
+  "actual_hours": 0,
+  "status": "draft",
+  "blocked_reason": null,
+  "ready_at": null,
+  "started_at": null,
+  "completed_at": null
+}

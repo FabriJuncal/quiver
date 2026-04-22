@@ -1,0 +1,73 @@
+{
+  "slice_id": "slice-01-non-destructive-migrate-command",
+  "ticket": "QUIVER-01",
+  "type": "feature",
+  "title": "Non-Destructive Migrate Command",
+  "objective": "Add `create-quiver migrate --dir <project>` so existing Quiver projects can receive missing framework artifacts without reinstalling or overwriting user-authored files.",
+  "description": "Users who initialized Quiver before newer onboarding files existed currently need to copy missing templates by hand. This slice adds a migration command that detects an existing Quiver project, copies missing files from the packaged template, preserves existing files, and reports exactly what happened.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "existing-project-migration",
+    "branch_name": "feature/QUIVER-01-existing-project-migration"
+  },
+  "must": [
+    "Add `migrate` mode to the `create-quiver` CLI with `--dir <project>` support",
+    "Detect an existing Quiver project using generated docs, specs, package scripts, or tools scripts",
+    "Copy missing generated framework files such as `docs/AI_ONBOARDING_PROMPT.md`, support docs, workflow docs, and tool scripts when absent",
+    "Never overwrite existing files without preserving or explicitly skipping them",
+    "Print a migration summary with copied, skipped, and already-present paths",
+    "Fail with a clear message when the target does not look like a Quiver-initialized project"
+  ],
+  "not_included": [
+    "Overwriting user-authored docs",
+    "Running `analyze` automatically",
+    "Executing AI prompts",
+    "Changing slice execution semantics",
+    "Publishing a package release"
+  ],
+  "acceptance": [
+    "`npx create-quiver migrate --dir .` runs in an existing Quiver project",
+    "Missing framework artifacts are copied from the packaged template",
+    "Existing user files are preserved",
+    "The command reports copied, skipped, and already-present paths",
+    "The command exits clearly when the target has no Quiver markers",
+    "Existing `init`, `analyze`, and `doctor` modes still work"
+  ],
+  "files": [
+    "src/create-quiver/index.js",
+    "scripts/ci/smoke-create-quiver.sh",
+    "scripts/package-quiver.sh",
+    "specs/quiver-v11-existing-project-migration/SPEC.md",
+    "specs/quiver-v11-existing-project-migration/STATUS.md",
+    "specs/quiver-v11-existing-project-migration/EVIDENCE_REPORT.md",
+    "specs/quiver-v11-existing-project-migration/slices/slice-01-non-destructive-migrate-command/slice.json"
+  ],
+  "tests": [
+    "node src/create-quiver/index.js migrate --dir <legacy-fixture>",
+    "node src/create-quiver/index.js doctor --dir <migrated-fixture>",
+    "bash scripts/ci/smoke-create-quiver.sh",
+    "bash scripts/package-quiver.sh",
+    "git diff --check"
+  ],
+  "documentation": [
+    "specs/quiver-v11-existing-project-migration/SPEC.md",
+    "specs/quiver-v11-existing-project-migration/STATUS.md",
+    "specs/quiver-v11-existing-project-migration/EVIDENCE_REPORT.md"
+  ],
+  "dependencies": [
+    "quiver-v10-local-project-installation-guidance"
+  ],
+  "assumptions": [
+    "Migration should be additive by default",
+    "The CLI should not infer business context during migration",
+    "Manual review remains required after migration"
+  ],
+  "estimated_hours": 5,
+  "actual_hours": 5,
+  "status": "completed",
+  "blocked_reason": null,
+  "ready_at": null,
+  "started_at": "2026-04-22T00:00:00Z",
+  "completed_at": "2026-04-22T00:00:00Z"
+}

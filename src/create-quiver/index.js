@@ -11,6 +11,7 @@ function printUsage() {
   console.log(`Usage:
   npx create-quiver [options]
   npx create-quiver analyze [options]
+  npx create-quiver migrate [options]
   npx create-quiver doctor [options]
 
 Options:
@@ -23,6 +24,7 @@ Examples:
   npx create-quiver --name "My Project"
   npx create-quiver --name "My Project" --dir ./my-project
   npx create-quiver analyze --dir ./my-project
+  npx create-quiver migrate --dir ./my-project
   npx create-quiver doctor --dir ./my-project
   node bin/create-quiver.js doctor --dir ./my-project
 `);
@@ -38,11 +40,14 @@ function parseArgs(argv) {
   };
 
   const args = [...argv];
-  if (args[0] === 'doctor' || args[0] === 'analyze') {
+  if (args[0] === 'doctor' || args[0] === 'analyze' || args[0] === 'migrate') {
     result.mode = args[0];
     args.shift();
   } else if (args[0] === '--analyze') {
     result.mode = 'analyze';
+    args.shift();
+  } else if (args[0] === '--migrate') {
+    result.mode = 'migrate';
     args.shift();
   } else if (args[0] === '--doctor') {
     result.mode = 'doctor';
@@ -66,6 +71,11 @@ function parseArgs(argv) {
 
     if (arg === '--doctor') {
       result.mode = 'doctor';
+      continue;
+    }
+
+    if (arg === '--migrate') {
+      result.mode = 'migrate';
       continue;
     }
 
@@ -177,9 +187,33 @@ function copyTemplate(templateRoot, targetDir) {
   return docsTemplateDir;
 }
 
+function mergeDirectoryTree(sourceDir, targetDir) {
+  if (!fs.existsSync(sourceDir)) {
+    return;
+  }
+
+  fs.mkdirSync(targetDir, { recursive: true });
+  fs.cpSync(sourceDir, targetDir, {
+    recursive: true,
+    force: false,
+    errorOnExist: false,
+    preserveTimestamps: true,
+  });
+}
+
 function runInitDocs(repoRoot, projectName) {
   runCommand('bash', ['docs-template/scripts/init-docs.sh', projectName], {
     cwd: repoRoot,
+  });
+}
+
+function runInitDocsWithMode(repoRoot, projectName, mode) {
+  return runCommand('bash', ['docs-template/scripts/init-docs.sh', projectName], {
+    cwd: repoRoot,
+    env: {
+      ...process.env,
+      QUIVER_MIGRATE: mode === 'migrate' ? '1' : '0',
+    },
   });
 }
 
@@ -805,6 +839,37 @@ function runAnalyze(targetDir) {
   console.log(`Detected package manager: ${scan.project.package_manager}`);
 }
 
+function runMigrate(targetDir) {
+  const projectRoot = path.resolve(process.cwd(), targetDir);
+
+  if (!fs.existsSync(projectRoot)) {
+    throw new Error(formatError(`target directory does not exist: ${projectRoot}`));
+  }
+
+  const packageJson = loadPackageJson(projectRoot);
+  const projectName = packageJson.name || path.basename(projectRoot) || 'Quiver Project';
+  const packageRoot = path.resolve(__dirname, '../..');
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'quiver-migrate-'));
+
+  try {
+    const templateRoot = packTemplate(packageRoot, tempRoot);
+    mergeDirectoryTree(templateRoot, path.join(projectRoot, 'docs-template'));
+    const migrationOutput = runInitDocsWithMode(projectRoot, projectName, 'migrate');
+
+    if (migrationOutput.trim().length > 0) {
+      process.stdout.write(migrationOutput);
+      if (!migrationOutput.endsWith('\n')) {
+        process.stdout.write('\n');
+      }
+    }
+
+    console.log(`Quiver migration completed for ${projectRoot}`);
+    console.log('Missing workflow files were restored without overwriting existing project files.');
+  } finally {
+    fs.rmSync(tempRoot, { recursive: true, force: true });
+  }
+}
+
 function runDoctor(targetDir) {
   const projectRoot = path.resolve(process.cwd(), targetDir);
 
@@ -901,6 +966,11 @@ async function run(argv) {
 
   if (args.mode === 'analyze') {
     runAnalyze(args.targetDir);
+    return;
+  }
+
+  if (args.mode === 'migrate') {
+    runMigrate(args.targetDir);
     return;
   }
 
