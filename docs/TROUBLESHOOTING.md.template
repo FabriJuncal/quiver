@@ -68,3 +68,17 @@ Use this guide when a first-run bootstrap or gate check fails. The recovery path
 1. Commit or stash unrelated changes first.
 2. Re-run the gate from the slice branch.
 3. Make sure the PR body lives in `pr.md` beside the slice.
+
+## Windows Shell Fallback
+
+### Symptom
+
+- You are on Windows and the native runtime slices have not landed yet
+- A command expects a Bash-compatible shell before the cross-platform port is complete
+
+### Recovery
+
+1. Prefer PowerShell or CMD once the native runtime slices are complete.
+2. If you are using an intermediate build and need a temporary bridge, use WSL2 or Git Bash manually.
+3. Do not expect Quiver to install Bash, WSL, or MSYS2 for you.
+4. Re-run the command after the native cross-platform support slices are merged.

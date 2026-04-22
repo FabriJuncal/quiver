@@ -23,6 +23,7 @@ If a generated project has been analyzed, the exact agent handoff prompt is `doc
 - The onboarding prompt lives in `docs/AI_ONBOARDING_PROMPT.md` and should reference the analyzer outputs.
 - Initial onboarding should complete context docs and report assumptions before any feature work starts.
 - The normal workflow runs from the project root without `--dir`; use `--dir` only when targeting another directory explicitly.
+- The cross-platform work targets native macOS, Linux, and Windows shells; Bash is a legacy compatibility path until the runtime slices land.
 - The support contract lives in `docs/SUPPORT_MATRIX.md` and `docs/TROUBLESHOOTING.md`.
 
 ## Initialization Flow

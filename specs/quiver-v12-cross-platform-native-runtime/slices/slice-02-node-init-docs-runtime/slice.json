@@ -1,0 +1,76 @@
+{
+  "slice_id": "slice-02-node-init-docs-runtime",
+  "ticket": "QUIVER-02",
+  "type": "feature",
+  "title": "Node Init Docs Runtime",
+  "objective": "Replace the Bash dependency in project initialization with a Node.js implementation.",
+  "description": "The current installer invokes `bash docs-template/scripts/init-docs.sh`, which blocks native Windows usage at the first command. This slice ports initialization behavior to Node while preserving generated file content, migration-safe copy behavior, package.json sync, and Quiver state metadata.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "node-init-docs-runtime",
+    "branch_name": "feature/QUIVER-02-node-init-docs-runtime"
+  },
+  "must": [
+    "Add a Node-native initialization module used by `create-quiver --name`",
+    "Copy templates and replace placeholders without invoking Bash, sed, cp, or chmod as required steps",
+    "Preserve existing files according to current init and migration behavior",
+    "Generate docs, specs, tools, package.json scripts, README, and `.quiver/state.json` with equivalent content",
+    "Keep `scripts/init-docs.sh` as a compatibility wrapper or legacy path where useful",
+    "Update package smoke so packaged installs initialize without Bash"
+  ],
+  "not_included": [
+    "Porting slice lifecycle scripts",
+    "Changing the spec/slice workflow semantics",
+    "Adding Windows CI matrix",
+    "Removing legacy shell scripts"
+  ],
+  "acceptance": [
+    "`node bin/create-quiver.js --name \"Smoke Project\" --dir <target>` initializes without spawning Bash",
+    "Generated project files match the current contract",
+    "Existing file preservation still works",
+    "Package smoke proves initialization from the tarball works through Node runtime",
+    "Unix `scripts/init-docs.sh` compatibility path still passes or clearly delegates to Node"
+  ],
+  "files": [
+    "src/create-quiver/index.js",
+    "src/create-quiver/lib/init-docs.js",
+    "src/create-quiver/lib/templates.js",
+    "src/create-quiver/lib/package-json.js",
+    "scripts/init-docs.sh",
+    "scripts/ci/smoke-init-docs.sh",
+    "scripts/ci/smoke-create-quiver.sh",
+    "scripts/package-quiver.sh",
+    "specs/quiver-v12-cross-platform-native-runtime/SPEC.md",
+    "specs/quiver-v12-cross-platform-native-runtime/STATUS.md",
+    "specs/quiver-v12-cross-platform-native-runtime/EVIDENCE_REPORT.md",
+    "specs/quiver-v12-cross-platform-native-runtime/slices/slice-02-node-init-docs-runtime/slice.json"
+  ],
+  "tests": [
+    "node -c src/create-quiver/index.js",
+    "node -c src/create-quiver/lib/init-docs.js",
+    "bash scripts/ci/smoke-init-docs.sh",
+    "bash scripts/ci/smoke-create-quiver.sh",
+    "bash scripts/package-quiver.sh",
+    "git diff --check"
+  ],
+  "documentation": [
+    "specs/quiver-v12-cross-platform-native-runtime/SPEC.md",
+    "specs/quiver-v12-cross-platform-native-runtime/STATUS.md",
+    "specs/quiver-v12-cross-platform-native-runtime/EVIDENCE_REPORT.md"
+  ],
+  "dependencies": [
+    "slice-01-cross-platform-support-contract"
+  ],
+  "assumptions": [
+    "Node.js is the shared runtime across all supported systems",
+    "Current generated content should remain stable unless cross-platform support requires a wording change"
+  ],
+  "estimated_hours": 8,
+  "actual_hours": null,
+  "status": "draft",
+  "blocked_reason": null,
+  "ready_at": null,
+  "started_at": null,
+  "completed_at": null
+}

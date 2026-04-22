@@ -1,0 +1,69 @@
+{
+  "slice_id": "slice-01-cross-platform-support-contract",
+  "ticket": "QUIVER-01",
+  "type": "documentation",
+  "title": "Cross-Platform Support Contract",
+  "objective": "Define the official macOS, Linux, and Windows support contract before runtime code is ported.",
+  "description": "Quiver currently documents macOS and Linux as the supported environments. This slice updates the support contract, README, generated docs, and troubleshooting language so the project has a precise target for native Windows support.",
+  "git": {
+    "branch_type": "docs",
+    "base_branch": "main",
+    "branch_slug": "cross-platform-support-contract",
+    "branch_name": "docs/QUIVER-01-cross-platform-support-contract"
+  },
+  "must": [
+    "Document macOS, Linux, Windows PowerShell, and Windows CMD as the target support matrix for the cross-platform work",
+    "State that Bash remains a legacy compatibility path, not the future required runtime",
+    "Define common requirements: Node.js LTS, npm, Git, and Git worktree support",
+    "Document that Quiver should not auto-install Bash, Git Bash, MSYS2, or WSL",
+    "Update generated support matrix and troubleshooting templates",
+    "Keep Windows marked as target support until CI proves native behavior"
+  ],
+  "not_included": [
+    "Porting Bash scripts to Node",
+    "Changing generated package scripts",
+    "Adding Windows CI",
+    "Publishing a release"
+  ],
+  "acceptance": [
+    "README explains the target native Windows support approach",
+    "Support matrix template includes macOS, Linux, PowerShell, and CMD expectations",
+    "Troubleshooting explains when to use WSL or Git Bash as a fallback during transition",
+    "No doc claims Windows is fully supported before runtime and CI slices are complete"
+  ],
+  "files": [
+    "README.md",
+    "README_FOR_AI.md",
+    "docs/SUPPORT_MATRIX.md.template",
+    "docs/TROUBLESHOOTING.md.template",
+    "scripts/init-docs.sh",
+    "specs/quiver-v12-cross-platform-native-runtime/SPEC.md",
+    "specs/quiver-v12-cross-platform-native-runtime/STATUS.md",
+    "specs/quiver-v12-cross-platform-native-runtime/EVIDENCE_REPORT.md",
+    "specs/quiver-v12-cross-platform-native-runtime/slices/slice-01-cross-platform-support-contract/slice.json"
+  ],
+  "tests": [
+    "bash scripts/ci/smoke-init-docs.sh",
+    "git diff --check"
+  ],
+  "documentation": [
+    "specs/quiver-v12-cross-platform-native-runtime/SPEC.md",
+    "specs/quiver-v12-cross-platform-native-runtime/STATUS.md",
+    "specs/quiver-v12-cross-platform-native-runtime/EVIDENCE_REPORT.md"
+  ],
+  "dependencies": [
+    "quiver-v11-existing-project-migration",
+    "docs/root-first-docs-flow"
+  ],
+  "assumptions": [
+    "The support contract should lead implementation but avoid overstating current Windows readiness",
+    "Bash wrappers can remain documented as legacy Unix compatibility"
+  ],
+  "estimated_hours": 3,
+  "actual_hours": null,
+  "status": "draft",
+  "blocked_reason": null,
+  "ready_at": null,
+  "started_at": null,
+  "completed_at": null
+}

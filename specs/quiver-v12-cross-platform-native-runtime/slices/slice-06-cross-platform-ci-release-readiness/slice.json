@@ -1,0 +1,74 @@
+{
+  "slice_id": "slice-06-cross-platform-ci-release-readiness",
+  "ticket": "QUIVER-06",
+  "type": "ci",
+  "title": "Cross-Platform CI and Release Readiness",
+  "objective": "Prove native behavior on Linux, macOS, and Windows before declaring Windows support complete.",
+  "description": "The runtime port should only be considered complete when CI exercises the generated project lifecycle on all supported operating systems. This slice adds cross-platform GitHub Actions coverage, final documentation updates, and release readiness evidence.",
+  "git": {
+    "branch_type": "ci",
+    "base_branch": "main",
+    "branch_slug": "cross-platform-ci-release-readiness",
+    "branch_name": "ci/QUIVER-06-cross-platform-ci-release-readiness"
+  },
+  "must": [
+    "Add or update GitHub Actions matrix for `ubuntu-latest`, `macos-latest`, and `windows-latest`",
+    "Run core Quiver smokes on each OS without Bash as the required path",
+    "Package and install the tarball in CI on each OS",
+    "Validate initialization, migration, analysis, doctor, and slice lifecycle commands",
+    "Update support matrix from target support to verified support when CI passes",
+    "Prepare release notes and evidence for the next package release"
+  ],
+  "not_included": [
+    "Publishing the npm package",
+    "Removing legacy Bash wrappers",
+    "Adding non-Git version control support"
+  ],
+  "acceptance": [
+    "CI passes on Linux, macOS, and Windows",
+    "Windows CI runs PowerShell or CMD commands without Bash",
+    "Packaged CLI works on all matrix OSes",
+    "Docs state Windows native support only after the matrix is green",
+    "Evidence report links or records all relevant CI validations"
+  ],
+  "files": [
+    ".github/workflows/ci.yml",
+    "README.md",
+    "README_FOR_AI.md",
+    "docs/SUPPORT_MATRIX.md.template",
+    "docs/TROUBLESHOOTING.md.template",
+    "CHANGELOG.md",
+    "scripts/ci/smoke-create-quiver.sh",
+    "scripts/ci/smoke-workflow-gates.sh",
+    "specs/quiver-v12-cross-platform-native-runtime/SPEC.md",
+    "specs/quiver-v12-cross-platform-native-runtime/STATUS.md",
+    "specs/quiver-v12-cross-platform-native-runtime/EVIDENCE_REPORT.md",
+    "specs/quiver-v12-cross-platform-native-runtime/slices/slice-06-cross-platform-ci-release-readiness/slice.json"
+  ],
+  "tests": [
+    "GitHub Actions matrix on ubuntu-latest",
+    "GitHub Actions matrix on macos-latest",
+    "GitHub Actions matrix on windows-latest",
+    "bash scripts/package-quiver.sh",
+    "git diff --check"
+  ],
+  "documentation": [
+    "specs/quiver-v12-cross-platform-native-runtime/SPEC.md",
+    "specs/quiver-v12-cross-platform-native-runtime/STATUS.md",
+    "specs/quiver-v12-cross-platform-native-runtime/EVIDENCE_REPORT.md"
+  ],
+  "dependencies": [
+    "slice-05-generated-project-scripts-and-migration"
+  ],
+  "assumptions": [
+    "Windows support should not be declared final until CI proves the package path",
+    "Release publishing happens after this spec completes"
+  ],
+  "estimated_hours": 5,
+  "actual_hours": null,
+  "status": "draft",
+  "blocked_reason": null,
+  "ready_at": null,
+  "started_at": null,
+  "completed_at": null
+}

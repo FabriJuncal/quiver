@@ -1,0 +1,78 @@
+{
+  "slice_id": "slice-05-generated-project-scripts-and-migration",
+  "ticket": "QUIVER-05",
+  "type": "feature",
+  "title": "Generated Project Scripts and Migration",
+  "objective": "Update generated and migrated projects to use Node-native Quiver commands as the primary npm scripts.",
+  "description": "After Node-native lifecycle commands exist, generated projects should stop advertising Bash scripts as the primary workflow. This slice updates package templates, generated README content, migration behavior, and docs while preserving legacy script compatibility where useful.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "generated-scripts-migration",
+    "branch_name": "feature/QUIVER-05-generated-scripts-migration"
+  },
+  "must": [
+    "Update `package.template.json` scripts to call `create-quiver` commands",
+    "Update generated README and AI context commands to use Node-native commands",
+    "Teach `migrate` to add new npm scripts without deleting user scripts",
+    "Preserve legacy Bash script entries where needed with clear naming or documentation",
+    "Update doctor to recommend migration when generated scripts still only point to Bash",
+    "Add smokes for old projects migrated to Node-native npm scripts"
+  ],
+  "not_included": [
+    "Deleting legacy Bash scripts",
+    "Adding Windows CI matrix",
+    "Changing slice JSON schema",
+    "Publishing a release"
+  ],
+  "acceptance": [
+    "New projects include npm scripts that work without Bash",
+    "Existing projects gain Node-native scripts after `create-quiver migrate`",
+    "User-defined package scripts are preserved",
+    "Generated docs show `npx create-quiver start-slice`, `check-slice`, and `check-pr`",
+    "Doctor identifies projects that need script migration"
+  ],
+  "files": [
+    "package.template.json",
+    "package.json",
+    "README.md",
+    "README_FOR_AI.md",
+    "docs/AI_CONTEXT.md.template",
+    "docs/WORKFLOW.md.template",
+    "scripts/init-docs.sh",
+    "src/create-quiver/index.js",
+    "scripts/ci/smoke-init-docs.sh",
+    "scripts/ci/smoke-create-quiver.sh",
+    "scripts/package-quiver.sh",
+    "specs/quiver-v12-cross-platform-native-runtime/SPEC.md",
+    "specs/quiver-v12-cross-platform-native-runtime/STATUS.md",
+    "specs/quiver-v12-cross-platform-native-runtime/EVIDENCE_REPORT.md",
+    "specs/quiver-v12-cross-platform-native-runtime/slices/slice-05-generated-project-scripts-and-migration/slice.json"
+  ],
+  "tests": [
+    "node -c src/create-quiver/index.js",
+    "bash scripts/ci/smoke-init-docs.sh",
+    "bash scripts/ci/smoke-create-quiver.sh",
+    "bash scripts/package-quiver.sh",
+    "git diff --check"
+  ],
+  "documentation": [
+    "specs/quiver-v12-cross-platform-native-runtime/SPEC.md",
+    "specs/quiver-v12-cross-platform-native-runtime/STATUS.md",
+    "specs/quiver-v12-cross-platform-native-runtime/EVIDENCE_REPORT.md"
+  ],
+  "dependencies": [
+    "slice-04-node-slice-lifecycle-commands"
+  ],
+  "assumptions": [
+    "Project-local devDependency usage should remain supported",
+    "npx usage should remain the recommended first path"
+  ],
+  "estimated_hours": 5,
+  "actual_hours": null,
+  "status": "draft",
+  "blocked_reason": null,
+  "ready_at": null,
+  "started_at": null,
+  "completed_at": null
+}
