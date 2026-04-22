@@ -56,6 +56,7 @@ release_target="$temp_root/release-project"
 installer_root="$temp_root/installer"
 
 node "$cli" --name "Smoke Project" --dir "$new_target" >/dev/null
+node -e 'const fs = require("fs"); const data = JSON.parse(fs.readFileSync(process.argv[1], "utf8")); if (!data.initialized_version || !data.last_initialized_at) { throw new Error("initial metadata missing from new project state"); } if (data.last_analysis_at) { throw new Error("new project state should not have analysis metadata yet"); }' "$new_target/.quiver/state.json"
 doctor_before_analyze="$(node "$cli" doctor --dir "$new_target")"
 
 if [[ "$doctor_before_analyze" != *"npx create-quiver analyze --dir ."* ]]; then
@@ -82,9 +83,11 @@ assert_file "$new_target/docs/AI_CONTEXT.md"
 assert_file "$new_target/docs/AI_ONBOARDING_PROMPT.md"
 assert_file "$new_target/docs/PROJECT_SCAN.json"
 assert_file "$new_target/docs/PROJECT_MAP.md"
+assert_file "$new_target/.quiver/state.json"
 assert_file "$new_target/docs/SUPPORT_MATRIX.md"
 assert_file "$new_target/docs/TROUBLESHOOTING.md"
 assert_file "$new_target/tools/scripts/start-slice.sh"
+assert_file "$new_target/tools/scripts/migrate-project.sh"
 assert_file "$new_target/specs/smoke-project/SPEC.md"
 assert_file "$new_target/docs-template/scripts/init-docs.sh"
 
@@ -103,6 +106,7 @@ assert_contains "$new_target/docs/PROJECT_MAP.md" "Project Map"
 assert_contains "$new_target/docs/PROJECT_MAP.md" "## Stack"
 assert_contains "$new_target/docs/PROJECT_MAP.md" "## Commands"
 node -e 'const fs = require("fs"); const data = JSON.parse(fs.readFileSync(process.argv[1], "utf8")); if (data.scripts?.migrate !== "bash tools/scripts/migrate-project.sh") { throw new Error("migrate script missing from generated package.json"); }' "$new_target/package.json"
+node -e 'const fs = require("fs"); const data = JSON.parse(fs.readFileSync(process.argv[1], "utf8")); if (!data.last_analysis_at) { throw new Error("analysis metadata missing after analyze"); }' "$new_target/.quiver/state.json"
 
 node -e 'const fs = require("fs"); const data = JSON.parse(fs.readFileSync(process.argv[1], "utf8")); if (!data.project || !data.stack || !data.commands || !data.structure || !data.ci || !data.docs || !Array.isArray(data.risks) || !Array.isArray(data.skipped_paths)) { throw new Error("invalid project scan shape"); }' "$new_target/docs/PROJECT_SCAN.json"
 
@@ -120,14 +124,23 @@ assert_file "$existing_target/docs/AI_CONTEXT.md"
 assert_file "$existing_target/docs/AI_ONBOARDING_PROMPT.md"
 assert_file "$existing_target/docs/PROJECT_SCAN.json"
 assert_file "$existing_target/docs/PROJECT_MAP.md"
+assert_file "$existing_target/.quiver/state.json"
 assert_file "$existing_target/docs/SUPPORT_MATRIX.md"
 assert_file "$existing_target/docs/TROUBLESHOOTING.md"
 node -e 'const fs = require("fs"); const data = JSON.parse(fs.readFileSync(process.argv[1], "utf8")); if (data.scripts?.migrate !== "bash tools/scripts/migrate-project.sh") { throw new Error("migrate script missing from existing project package.json"); }' "$existing_target/package.json"
 
 node "$cli" --name "Legacy Project" --dir "$legacy_target" >/dev/null
 printf 'keep me\n' >> "$legacy_target/docs/SEARCH.md"
+rm "$legacy_target/.quiver/state.json"
 rm "$legacy_target/docs/AI_ONBOARDING_PROMPT.md"
 rm "$legacy_target/tools/scripts/migrate-project.sh"
+
+doctor_before_migrate_output="$(node "$cli" doctor --dir "$legacy_target" 2>&1 || true)"
+
+if [[ "$doctor_before_migrate_output" != *"Run migration first: npx create-quiver migrate --dir ."* ]]; then
+  echo "Doctor output did not recommend migration for legacy project" >&2
+  exit 1
+fi
 
 migrate_output="$(node "$cli" migrate --dir "$legacy_target")"
 
@@ -139,7 +152,19 @@ fi
 assert_contains "$legacy_target/docs/SEARCH.md" "keep me"
 assert_file "$legacy_target/docs/AI_ONBOARDING_PROMPT.md"
 assert_file "$legacy_target/tools/scripts/migrate-project.sh"
+assert_file "$legacy_target/.quiver/state.json"
 node -e 'const fs = require("fs"); const data = JSON.parse(fs.readFileSync(process.argv[1], "utf8")); if (data.scripts?.migrate !== "bash tools/scripts/migrate-project.sh") { throw new Error("migrate script missing after migrate"); }' "$legacy_target/package.json"
+node -e 'const fs = require("fs"); const data = JSON.parse(fs.readFileSync(process.argv[1], "utf8")); if (data.migrated_version !== "0.5.0" || !data.last_migration_at) { throw new Error("migration metadata missing"); }' "$legacy_target/.quiver/state.json"
+
+node "$cli" analyze --dir "$legacy_target" >/dev/null
+node -e 'const fs = require("fs"); const data = JSON.parse(fs.readFileSync(process.argv[1], "utf8")); if (!data.last_analysis_at) { throw new Error("analysis metadata missing after analyze"); }' "$legacy_target/.quiver/state.json"
+
+doctor_after_migrate_output="$(node "$cli" doctor --dir "$legacy_target")"
+
+if [[ "$doctor_after_migrate_output" != *"Read docs/AI_ONBOARDING_PROMPT.md and execute it."* ]]; then
+  echo "Doctor output did not point to the AI onboarding prompt after migrate and analyze" >&2
+  exit 1
+fi
 
 tarball_path="$(pack_installer)"
 

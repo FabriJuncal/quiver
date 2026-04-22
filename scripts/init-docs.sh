@@ -267,6 +267,48 @@ NODE
 
 sync_package_json
 
+mkdir -p ".quiver"
+node - <<'NODE'
+const fs = require('fs');
+const path = require('path');
+
+const statePath = path.join('.quiver', 'state.json');
+const packageJson = fs.existsSync('package.json') ? JSON.parse(fs.readFileSync('package.json', 'utf8')) : {};
+const currentVersion = process.env.QUIVER_VERSION || packageJson.version || '0.0.0';
+const migrateMode = process.env.QUIVER_MIGRATE === '1';
+const now = new Date().toISOString();
+const projectName = process.env.QUIVER_PROJECT_NAME || packageJson.name || '';
+
+let existing = {};
+if (fs.existsSync(statePath)) {
+  existing = JSON.parse(fs.readFileSync(statePath, 'utf8'));
+}
+
+const nextState = migrateMode
+  ? {
+      ...existing,
+      quiver_version: currentVersion,
+      project_name: projectName || existing.project_name || '',
+      initialized_version: existing.initialized_version ?? null,
+      migrated_version: currentVersion,
+      last_initialized_at: existing.last_initialized_at ?? null,
+      last_migration_at: now,
+      last_analysis_at: existing.last_analysis_at ?? null,
+    }
+  : {
+    ...existing,
+    quiver_version: currentVersion,
+    project_name: projectName || existing.project_name || '',
+      initialized_version: existing.initialized_version || currentVersion,
+      migrated_version: existing.migrated_version ?? null,
+      last_initialized_at: existing.last_initialized_at || now,
+      last_migration_at: existing.last_migration_at ?? null,
+      last_analysis_at: existing.last_analysis_at ?? null,
+    };
+
+fs.writeFileSync(statePath, `${JSON.stringify(nextState, null, 2)}\n`);
+NODE
+
 # Copiar bootstrap de slices a tools/scripts
 if [ -f "docs-template/scripts/start-slice.sh" ]; then
     if [ "$MIGRATE_MODE" = "1" ] && [ -f "tools/scripts/start-slice.sh" ]; then
