@@ -57,6 +57,7 @@ required_files=(
   "docs/TROUBLESHOOTING.md"
   "docs/TESTING_GUIDE_FOR_AI.md"
   "docs/SEARCH.md"
+  ".quiver/state.json"
   "docs/ai/PRINCIPLES.md"
   "docs/ai/RULES.yaml"
   "specs/$project_slug/SPEC.md"
@@ -118,7 +119,7 @@ const fs = require('fs');
 
 const projectSlug = process.argv[2];
 const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
-const required = ['check:slice', 'check:pr', 'start:slice', 'cleanup:slice'];
+const required = ['check:slice', 'check:pr', 'start:slice', 'cleanup:slice', 'migrate'];
 const missing = required.filter((name) => typeof pkg.scripts?.[name] !== 'string');
 
 if (missing.length > 0) {

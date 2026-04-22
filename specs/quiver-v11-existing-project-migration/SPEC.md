@@ -46,7 +46,7 @@ Then the developer opens the AI agent and asks it to execute `docs/AI_ONBOARDING
 | Slice | Title | Status | Spec |
 |-------|-------|--------|------|
 | 01 | Non-Destructive Migrate Command | Completed | [slice-01](./slices/slice-01-non-destructive-migrate-command/slice.json) |
-| 02 | Version Metadata and Doctor Upgrade Checks | Pending | [slice-02](./slices/slice-02-version-metadata-doctor-upgrade-checks/slice.json) |
+| 02 | Version Metadata and Doctor Upgrade Checks | Completed | [slice-02](./slices/slice-02-version-metadata-doctor-upgrade-checks/slice.json) |
 | 03 | Upgrade Docs and Legacy Project Smokes | Pending | [slice-03](./slices/slice-03-upgrade-docs-legacy-project-smokes/slice.json) |
 
 ## Definition of Done

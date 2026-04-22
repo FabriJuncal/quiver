@@ -9,7 +9,7 @@
 | Slice | Acceptance criteria | Status | Evidence |
 |-------|---------------------|--------|----------|
 | slice-01 | 6 | Completed | `node -c src/create-quiver/index.js`; `bash -n scripts/init-docs.sh scripts/ci/smoke-create-quiver.sh scripts/package-quiver.sh`; `bash scripts/ci/smoke-create-quiver.sh` |
-| slice-02 | 6 | Pending | - |
+| slice-02 | 6 | Completed | `node -c src/create-quiver/index.js`; `bash -n scripts/init-docs.sh scripts/ci/smoke-init-docs.sh scripts/ci/smoke-create-quiver.sh scripts/package-quiver.sh`; `bash scripts/ci/smoke-create-quiver.sh` |
 | slice-03 | 6 | Pending | - |
 
 ## Evidence by Slice
@@ -20,3 +20,11 @@
 - `init-docs.sh` now respects `QUIVER_MIGRATE=1` and skips files that already exist
 - Generated projects now receive `tools/scripts/migrate-project.sh` and a `migrate` package script
 - Smoke coverage now verifies that migration restores missing files without overwriting existing edits
+
+## Slice 02
+
+- Added `.quiver/state.json` as project-local Quiver metadata
+- `init` and `migrate` create or refresh the state file with initialized and migrated version data
+- `analyze` updates `last_analysis_at` when metadata exists
+- `doctor` distinguishes between missing Quiver metadata and missing migration/upgrade artifacts
+- Smoke coverage now verifies the new state lifecycle across init, migrate, analyze, and doctor

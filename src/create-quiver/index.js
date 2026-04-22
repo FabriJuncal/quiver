@@ -2,6 +2,8 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { execFileSync } = require('child_process');
+const cliPackageJson = JSON.parse(fs.readFileSync(path.resolve(__dirname, '../..', 'package.json'), 'utf8'));
+const CLI_VERSION = cliPackageJson.version || '0.0.0';
 
 function formatError(message) {
   return `create-quiver: ${message}`;
@@ -212,9 +214,72 @@ function runInitDocsWithMode(repoRoot, projectName, mode) {
     cwd: repoRoot,
     env: {
       ...process.env,
+      QUIVER_PROJECT_NAME: projectName,
       QUIVER_MIGRATE: mode === 'migrate' ? '1' : '0',
+      QUIVER_VERSION: CLI_VERSION,
     },
   });
+}
+
+function writeQuiverState(projectRoot, nextState) {
+  const stateDir = path.join(projectRoot, '.quiver');
+  const statePath = path.join(stateDir, 'state.json');
+  fs.mkdirSync(stateDir, { recursive: true });
+  fs.writeFileSync(statePath, `${JSON.stringify(nextState, null, 2)}\n`);
+  return statePath;
+}
+
+function readQuiverState(projectRoot) {
+  return readJsonIfExists(path.join(projectRoot, '.quiver', 'state.json'));
+}
+
+function createInitialQuiverState(projectName) {
+  const now = new Date().toISOString();
+
+  return {
+    project_name: projectName,
+    quiver_version: CLI_VERSION,
+    initialized_version: CLI_VERSION,
+    migrated_version: null,
+    last_initialized_at: now,
+    last_migration_at: null,
+    last_analysis_at: null,
+  };
+}
+
+function updateQuiverStateForAnalyze(projectRoot) {
+  const currentState = readQuiverState(projectRoot);
+
+  if (!currentState) {
+    return null;
+  }
+
+  const nextState = {
+    ...currentState,
+    quiver_version: CLI_VERSION,
+    last_analysis_at: new Date().toISOString(),
+  };
+
+  writeQuiverState(projectRoot, nextState);
+  return nextState;
+}
+
+function updateQuiverStateForMigrate(projectRoot, projectName) {
+  const currentState = readQuiverState(projectRoot);
+  const now = new Date().toISOString();
+  const nextState = {
+    ...(currentState || {}),
+    project_name: projectName,
+    quiver_version: CLI_VERSION,
+    initialized_version: currentState?.initialized_version ?? null,
+    migrated_version: CLI_VERSION,
+    last_initialized_at: currentState?.last_initialized_at ?? null,
+    last_migration_at: now,
+    last_analysis_at: currentState?.last_analysis_at ?? null,
+  };
+
+  writeQuiverState(projectRoot, nextState);
+  return nextState;
 }
 
 function listGeneratedSpecDirs(projectRoot) {
@@ -831,6 +896,7 @@ function runAnalyze(targetDir) {
 
   const scan = buildProjectScan(projectRoot);
   const artifacts = writeProjectScanArtifacts(projectRoot, scan);
+  updateQuiverStateForAnalyze(projectRoot);
 
   console.log(`Project analysis completed for ${projectRoot}`);
   console.log(`Wrote ${path.relative(projectRoot, artifacts.jsonPath)}`);
@@ -855,6 +921,7 @@ function runMigrate(targetDir) {
     const templateRoot = packTemplate(packageRoot, tempRoot);
     mergeDirectoryTree(templateRoot, path.join(projectRoot, 'docs-template'));
     const migrationOutput = runInitDocsWithMode(projectRoot, projectName, 'migrate');
+    updateQuiverStateForMigrate(projectRoot, projectName);
 
     if (migrationOutput.trim().length > 0) {
       process.stdout.write(migrationOutput);
@@ -917,25 +984,32 @@ function runDoctor(targetDir) {
   const missingFiles = assertFilesExist(projectRoot, requiredFiles);
   const nonExecutableScripts = assertExecutablesExist(projectRoot, requiredExecutables);
   const pkg = loadPackageJson(projectRoot);
-  const requiredScripts = ['check:slice', 'check:pr', 'start:slice', 'cleanup:slice'];
+  const requiredScripts = ['check:slice', 'check:pr', 'start:slice', 'cleanup:slice', 'migrate'];
   const missingScripts = requiredScripts.filter((name) => typeof pkg.scripts?.[name] !== 'string');
   const hasScanArtifacts = fs.existsSync(path.join(projectRoot, 'docs', 'PROJECT_SCAN.json'))
     && fs.existsSync(path.join(projectRoot, 'docs', 'PROJECT_MAP.md'));
-
-  const problems = [
+  const quiverState = readQuiverState(projectRoot);
+  const hasQuiverState = Boolean(quiverState);
+  const stateWarnings = hasQuiverState ? [] : ['missing Quiver state metadata: .quiver/state.json'];
+  const migrationProblems = [
     ...missingFiles.map((file) => `missing file: ${file}`),
     ...nonExecutableScripts.map((file) => `missing executable bit: ${file}`),
     ...missingScripts.map((name) => `missing package.json script: ${name}`),
   ];
 
-  if (problems.length > 0) {
-    throw new Error(formatError(`doctor failed:\n- ${problems.join('\n- ')}`));
+  if (migrationProblems.length > 0) {
+    throw new Error(formatError(`doctor failed:\n- ${migrationProblems.join('\n- ')}\n- Run migration first: npx create-quiver migrate --dir .`));
   }
 
   console.log(`Quiver doctor passed for ${projectRoot}`);
   console.log(`Generated project slug: ${projectSlug}`);
   console.log('Next steps:');
-  if (!hasScanArtifacts) {
+  for (const warning of stateWarnings) {
+    console.log(`- Warning: ${warning}`);
+  }
+  if (!hasQuiverState) {
+    console.log('- Run migration first: npx create-quiver migrate --dir .');
+  } else if (!hasScanArtifacts) {
     console.log('- Analyze the project first: npx create-quiver analyze --dir .');
   } else {
     console.log('- Ask your AI agent: Read docs/AI_ONBOARDING_PROMPT.md and execute it.');
