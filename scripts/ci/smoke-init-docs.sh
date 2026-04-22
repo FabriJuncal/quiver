@@ -89,15 +89,21 @@ for file in README.md docs/INDEX.md docs/WORKFLOW.md docs/SEARCH.md; do
   assert_contains "$file" "Troubleshooting"
 done
 
-assert_contains "README.md" "npx create-quiver analyze --dir ."
+assert_contains "README.md" "npx create-quiver analyze"
+assert_contains "README.md" "npx create-quiver doctor"
 assert_contains "README.md" "AI Onboarding Prompt"
 assert_contains "README.md" "Do not install it globally"
 assert_contains "README.md" "npm install --save-dev create-quiver"
 assert_contains "README.md" "Read docs/AI_ONBOARDING_PROMPT.md and execute it."
 assert_contains "README.md" "Context docs were reviewed before the first slice"
 assert_contains "README.md" "Upgrading Existing Projects"
-assert_contains "README.md" "npx create-quiver migrate --dir ."
+assert_contains "README.md" "npx create-quiver migrate"
 assert_contains "README.md" "npm install --save-dev create-quiver@latest"
+
+if grep -Fq "npx create-quiver analyze --dir ." README.md; then
+  echo "README.md still uses --dir in the main analyze flow" >&2
+  exit 1
+fi
 
 assert_contains "docs/AI_CONTEXT.md" "AI Context Pack"
 assert_contains "docs/AI_CONTEXT.md" "Read First"

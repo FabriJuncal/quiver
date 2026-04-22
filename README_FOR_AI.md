@@ -7,8 +7,8 @@ The first AI job in a generated project is context preparation, not product impl
 Important: slice numbering resets inside each spec. `slice-01` is the first slice of that spec, not a global repo counter.
 The canonical installer entrypoint is `npx create-quiver` run from the target project root.
 Do not recommend global installation; use `npx` or a project-local devDependency when the team needs a pinned version.
-The post-init contract is validated with `npx create-quiver doctor --dir <project>`.
-If the project already exists from an older Quiver version, run `npx create-quiver migrate --dir <project>` before `analyze`.
+The post-init contract is validated with `npx create-quiver doctor` from the project root.
+If the project already exists from an older Quiver version, run `npx create-quiver migrate` before `analyze` from the project root.
 Maintain release notes and package publishing with `scripts/release-quiver.sh`.
 The primary generated project context for agents is `docs/AI_CONTEXT.md`.
 If a generated project has been analyzed, the exact agent handoff prompt is `docs/AI_ONBOARDING_PROMPT.md`.
@@ -22,6 +22,7 @@ If a generated project has been analyzed, the exact agent handoff prompt is `doc
 - The AI context pack lives in `docs/AI_CONTEXT.md`; `docs/CONTEXTO.md` is the broader project overview.
 - The onboarding prompt lives in `docs/AI_ONBOARDING_PROMPT.md` and should reference the analyzer outputs.
 - Initial onboarding should complete context docs and report assumptions before any feature work starts.
+- The normal workflow runs from the project root without `--dir`; use `--dir` only when targeting another directory explicitly.
 - The support contract lives in `docs/SUPPORT_MATRIX.md` and `docs/TROUBLESHOOTING.md`.
 
 ## Initialization Flow
@@ -76,8 +77,8 @@ After initialization, the user should:
 2. Fill in `docs/AI_ONBOARDING_PROMPT.md`
 3. Fill in `docs/CONTEXTO.md`
 4. Fill in `docs/STATUS.md`
-5. Run `npx create-quiver analyze --dir <project>` if scan artifacts are missing
-6. If the project already exists from an older Quiver version, run `npx create-quiver migrate --dir <project>`
+5. Run `npx create-quiver analyze` if scan artifacts are missing
+6. If the project already exists from an older Quiver version, run `npx create-quiver migrate`
 7. Ask the AI agent to execute `docs/AI_ONBOARDING_PROMPT.md`
 8. Review context docs before creating the first implementation slice
 9. Open and merge the documentation PR that establishes the workflow files
