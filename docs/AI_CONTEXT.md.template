@@ -35,6 +35,7 @@ This file is the first stop for any AI agent working in this project. It compres
 ```bash
 cd /path/to/project
 npx create-quiver --name "Project Name"
+npx create-quiver migrate --dir .
 npx create-quiver analyze --dir .
 npx create-quiver doctor --dir .
 bash tools/scripts/start-slice.sh <slice.json>

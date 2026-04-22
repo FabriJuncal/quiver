@@ -8,6 +8,7 @@ Important: slice numbering resets inside each spec. `slice-01` is the first slic
 The canonical installer entrypoint is `npx create-quiver` run from the target project root.
 Do not recommend global installation; use `npx` or a project-local devDependency when the team needs a pinned version.
 The post-init contract is validated with `npx create-quiver doctor --dir <project>`.
+If the project already exists from an older Quiver version, run `npx create-quiver migrate --dir <project>` before `analyze`.
 Maintain release notes and package publishing with `scripts/release-quiver.sh`.
 The primary generated project context for agents is `docs/AI_CONTEXT.md`.
 If a generated project has been analyzed, the exact agent handoff prompt is `docs/AI_ONBOARDING_PROMPT.md`.
@@ -76,15 +77,16 @@ After initialization, the user should:
 3. Fill in `docs/CONTEXTO.md`
 4. Fill in `docs/STATUS.md`
 5. Run `npx create-quiver analyze --dir <project>` if scan artifacts are missing
-6. Ask the AI agent to execute `docs/AI_ONBOARDING_PROMPT.md`
-7. Review context docs before creating the first implementation slice
-8. Open and merge the documentation PR that establishes the workflow files
-9. Create the first slice in `specs/{{PROJECT_SLUG}}/slices/[slice-id]/`
-10. Add `ticket` and `git.*`
-11. Run `tools/scripts/start-slice.sh [--allow-draft] <slice.json>`
-12. Make one commit per slice
-13. Open one PR per spec
-14. Validate the slice and the final PR with the workflow gates
+6. If the project already exists from an older Quiver version, run `npx create-quiver migrate --dir <project>`
+7. Ask the AI agent to execute `docs/AI_ONBOARDING_PROMPT.md`
+8. Review context docs before creating the first implementation slice
+9. Open and merge the documentation PR that establishes the workflow files
+10. Create the first slice in `specs/{{PROJECT_SLUG}}/slices/[slice-id]/`
+11. Add `ticket` and `git.*`
+12. Run `tools/scripts/start-slice.sh [--allow-draft] <slice.json>`
+13. Make one commit per slice
+14. Open one PR per spec
+15. Validate the slice and the final PR with the workflow gates
 
 Bootstrap note: `start-slice.sh` should resolve paths canonically, prefer a local `develop` or `main` base branch before reaching for `origin`, and reject `draft` slices unless `--allow-draft` is passed intentionally.
 

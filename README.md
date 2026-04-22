@@ -43,6 +43,12 @@ npx create-quiver doctor --dir ./target-repo
 
 If you are working in the current directory, use `--dir .`.
 
+If the project already had Quiver from an older version, run migration first:
+
+```bash
+npx create-quiver migrate --dir ./target-repo
+```
+
 The analyzer creates `docs/PROJECT_SCAN.json` and `docs/PROJECT_MAP.md`. These files give the AI agent a deterministic project map before it edits context docs.
 
 The doctor checks the generated project contract and prints the next workflow steps. If the scan artifacts are missing, it recommends `npx create-quiver analyze --dir .` first.

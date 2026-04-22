@@ -40,6 +40,7 @@ fi
 PROJECT_NAME="$1"
 PROJECT_SLUG=$(echo "$PROJECT_NAME" | tr '[:upper:]' '[:lower:]' | tr ' ' '-' | tr -cd '[:alnum:]-')
 CURRENT_DATE=$(date +%Y-%m-%d)
+MIGRATE_MODE="${QUIVER_MIGRATE:-0}"
 DATE_PLUS_7=$(node -e 'const d = new Date(); d.setDate(d.getDate() + 7); const p = (n) => String(n).padStart(2, "0"); console.log(`${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`);')
 DATE_PLUS_30=$(node -e 'const d = new Date(); d.setDate(d.getDate() + 30); const p = (n) => String(n).padStart(2, "0"); console.log(`${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`);')
 DATE_PLUS_35=$(node -e 'const d = new Date(); d.setDate(d.getDate() + 35); const p = (n) => String(n).padStart(2, "0"); console.log(`${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`);')
@@ -76,6 +77,11 @@ copy_template() {
     if [ -f "$src" ]; then
         # Remover .template del nombre si existe
         dest=$(echo "$dest" | sed 's/\.template$//')
+
+        if [ "$MIGRATE_MODE" = "1" ] && [ -f "$dest" ]; then
+            print_info "Saltado: $dest ya existe"
+            return 0
+        fi
         
         # Copiar y reemplazar placeholders
         sed -e "s/{{PROJECT_NAME}}/$PROJECT_NAME/g" \
@@ -101,6 +107,11 @@ copy_template_keep_name() {
     local dest="$2"
 
     if [ -f "$src" ]; then
+        if [ "$MIGRATE_MODE" = "1" ] && [ -f "$dest" ]; then
+            print_info "Saltado: $dest ya existe"
+            return 0
+        fi
+
         sed -e "s/{{PROJECT_NAME}}/$PROJECT_NAME/g" \
             -e "s/{{PROJECT_SLUG}}/$PROJECT_SLUG/g" \
             -e "s/\[project\]/$PROJECT_SLUG/g" \
@@ -157,24 +168,40 @@ copy_template "docs-template/docs/TESTING_GUIDE_FOR_AI.md.template" "docs/TESTIN
 
 # Copiar archivos que no son templates
 if [ -f "docs-template/docs/UI_STANDARDS.md" ]; then
-    cp "docs-template/docs/UI_STANDARDS.md" "docs/UI_STANDARDS.md"
-    print_success "Creado: docs/UI_STANDARDS.md"
+    if [ "$MIGRATE_MODE" = "1" ] && [ -f "docs/UI_STANDARDS.md" ]; then
+        print_info "Saltado: docs/UI_STANDARDS.md ya existe"
+    else
+        cp "docs-template/docs/UI_STANDARDS.md" "docs/UI_STANDARDS.md"
+        print_success "Creado: docs/UI_STANDARDS.md"
+    fi
 fi
 
 if [ -f "docs-template/docs/MOCK_DATA_GUIDE.md" ]; then
-    cp "docs-template/docs/MOCK_DATA_GUIDE.md" "docs/MOCK_DATA_GUIDE.md"
-    print_success "Creado: docs/MOCK_DATA_GUIDE.md"
+    if [ "$MIGRATE_MODE" = "1" ] && [ -f "docs/MOCK_DATA_GUIDE.md" ]; then
+        print_info "Saltado: docs/MOCK_DATA_GUIDE.md ya existe"
+    else
+        cp "docs-template/docs/MOCK_DATA_GUIDE.md" "docs/MOCK_DATA_GUIDE.md"
+        print_success "Creado: docs/MOCK_DATA_GUIDE.md"
+    fi
 fi
 
 # Copiar configuración de IA
 if [ -f "docs-template/docs/ai/PRINCIPLES.md" ]; then
-    cp "docs-template/docs/ai/PRINCIPLES.md" "docs/ai/PRINCIPLES.md"
-    print_success "Creado: docs/ai/PRINCIPLES.md"
+    if [ "$MIGRATE_MODE" = "1" ] && [ -f "docs/ai/PRINCIPLES.md" ]; then
+        print_info "Saltado: docs/ai/PRINCIPLES.md ya existe"
+    else
+        cp "docs-template/docs/ai/PRINCIPLES.md" "docs/ai/PRINCIPLES.md"
+        print_success "Creado: docs/ai/PRINCIPLES.md"
+    fi
 fi
 
 if [ -f "docs-template/docs/ai/RULES.yaml" ]; then
-    cp "docs-template/docs/ai/RULES.yaml" "docs/ai/RULES.yaml"
-    print_success "Creado: docs/ai/RULES.yaml"
+    if [ "$MIGRATE_MODE" = "1" ] && [ -f "docs/ai/RULES.yaml" ]; then
+        print_info "Saltado: docs/ai/RULES.yaml ya existe"
+    else
+        cp "docs-template/docs/ai/RULES.yaml" "docs/ai/RULES.yaml"
+        print_success "Creado: docs/ai/RULES.yaml"
+    fi
 fi
 
 # Copiar template de LESSONS (vacío)
@@ -242,42 +269,79 @@ sync_package_json
 
 # Copiar bootstrap de slices a tools/scripts
 if [ -f "docs-template/scripts/start-slice.sh" ]; then
-    cp "docs-template/scripts/start-slice.sh" "tools/scripts/start-slice.sh"
-    chmod +x "tools/scripts/start-slice.sh"
-    print_success "Creado: tools/scripts/start-slice.sh"
+    if [ "$MIGRATE_MODE" = "1" ] && [ -f "tools/scripts/start-slice.sh" ]; then
+        print_info "Saltado: tools/scripts/start-slice.sh ya existe"
+    else
+        cp "docs-template/scripts/start-slice.sh" "tools/scripts/start-slice.sh"
+        chmod +x "tools/scripts/start-slice.sh"
+        print_success "Creado: tools/scripts/start-slice.sh"
+    fi
 fi
 
 if [ -f "docs-template/scripts/refresh-active-slices.sh" ]; then
-    cp "docs-template/scripts/refresh-active-slices.sh" "tools/scripts/refresh-active-slices.sh"
-    chmod +x "tools/scripts/refresh-active-slices.sh"
-    print_success "Creado: tools/scripts/refresh-active-slices.sh"
+    if [ "$MIGRATE_MODE" = "1" ] && [ -f "tools/scripts/refresh-active-slices.sh" ]; then
+        print_info "Saltado: tools/scripts/refresh-active-slices.sh ya existe"
+    else
+        cp "docs-template/scripts/refresh-active-slices.sh" "tools/scripts/refresh-active-slices.sh"
+        chmod +x "tools/scripts/refresh-active-slices.sh"
+        print_success "Creado: tools/scripts/refresh-active-slices.sh"
+    fi
 fi
 
 if [ -f "docs-template/scripts/check-slice-readiness.sh" ]; then
-    cp "docs-template/scripts/check-slice-readiness.sh" "tools/scripts/check-slice-readiness.sh"
-    chmod +x "tools/scripts/check-slice-readiness.sh"
-    print_success "Creado: tools/scripts/check-slice-readiness.sh"
+    if [ "$MIGRATE_MODE" = "1" ] && [ -f "tools/scripts/check-slice-readiness.sh" ]; then
+        print_info "Saltado: tools/scripts/check-slice-readiness.sh ya existe"
+    else
+        cp "docs-template/scripts/check-slice-readiness.sh" "tools/scripts/check-slice-readiness.sh"
+        chmod +x "tools/scripts/check-slice-readiness.sh"
+        print_success "Creado: tools/scripts/check-slice-readiness.sh"
+    fi
 fi
 
 if [ -f "docs-template/scripts/check-pr-readiness.sh" ]; then
-    cp "docs-template/scripts/check-pr-readiness.sh" "tools/scripts/check-pr-readiness.sh"
-    chmod +x "tools/scripts/check-pr-readiness.sh"
-    print_success "Creado: tools/scripts/check-pr-readiness.sh"
+    if [ "$MIGRATE_MODE" = "1" ] && [ -f "tools/scripts/check-pr-readiness.sh" ]; then
+        print_info "Saltado: tools/scripts/check-pr-readiness.sh ya existe"
+    else
+        cp "docs-template/scripts/check-pr-readiness.sh" "tools/scripts/check-pr-readiness.sh"
+        chmod +x "tools/scripts/check-pr-readiness.sh"
+        print_success "Creado: tools/scripts/check-pr-readiness.sh"
+    fi
 fi
 
 if [ -f "docs-template/scripts/cleanup-slice.sh" ]; then
-    cp "docs-template/scripts/cleanup-slice.sh" "tools/scripts/cleanup-slice.sh"
-    chmod +x "tools/scripts/cleanup-slice.sh"
-    print_success "Creado: tools/scripts/cleanup-slice.sh"
+    if [ "$MIGRATE_MODE" = "1" ] && [ -f "tools/scripts/cleanup-slice.sh" ]; then
+        print_info "Saltado: tools/scripts/cleanup-slice.sh ya existe"
+    else
+        cp "docs-template/scripts/cleanup-slice.sh" "tools/scripts/cleanup-slice.sh"
+        chmod +x "tools/scripts/cleanup-slice.sh"
+        print_success "Creado: tools/scripts/cleanup-slice.sh"
+    fi
 fi
 
 if [ -f "docs-template/scripts/check-scope.sh" ]; then
-    cp "docs-template/scripts/check-scope.sh" "tools/scripts/check-scope.sh"
-    chmod +x "tools/scripts/check-scope.sh"
-    print_success "Creado: tools/scripts/check-scope.sh"
+    if [ "$MIGRATE_MODE" = "1" ] && [ -f "tools/scripts/check-scope.sh" ]; then
+        print_info "Saltado: tools/scripts/check-scope.sh ya existe"
+    else
+        cp "docs-template/scripts/check-scope.sh" "tools/scripts/check-scope.sh"
+        chmod +x "tools/scripts/check-scope.sh"
+        print_success "Creado: tools/scripts/check-scope.sh"
+    fi
+fi
+
+if [ -f "docs-template/scripts/migrate-project.sh" ]; then
+    if [ "$MIGRATE_MODE" = "1" ] && [ -f "tools/scripts/migrate-project.sh" ]; then
+        print_info "Saltado: tools/scripts/migrate-project.sh ya existe"
+    else
+        cp "docs-template/scripts/migrate-project.sh" "tools/scripts/migrate-project.sh"
+        chmod +x "tools/scripts/migrate-project.sh"
+        print_success "Creado: tools/scripts/migrate-project.sh"
+    fi
 fi
 
 # Crear archivo SEARCH.md básico
+if [ "$MIGRATE_MODE" = "1" ] && [ -f "docs/SEARCH.md" ]; then
+    print_info "Saltado: docs/SEARCH.md ya existe"
+else
 cat > "docs/SEARCH.md" << EOF
 # Búsqueda por Tema
 
@@ -319,8 +383,11 @@ cat > "docs/SEARCH.md" << EOF
 
 **Fin de la búsqueda**
 EOF
+fi
 
-print_success "Creado: docs/SEARCH.md"
+if [ "$MIGRATE_MODE" != "1" ] || [ ! -f "docs/SEARCH.md" ]; then
+    print_success "Creado: docs/SEARCH.md"
+fi
 
 # Crear README.md en la raíz del proyecto (si no existe)
 if [ ! -f "README.md" ]; then
@@ -346,6 +413,12 @@ npm install --save-dev create-quiver
 \`\`\`
 
 If your project path contains spaces, quote it explicitly when using \`--dir\`.
+
+If the project already existed before this Quiver version, run migration first:
+
+\`\`\`bash
+npx create-quiver migrate --dir .
+\`\`\`
 
 ## AI Context Onboarding
 

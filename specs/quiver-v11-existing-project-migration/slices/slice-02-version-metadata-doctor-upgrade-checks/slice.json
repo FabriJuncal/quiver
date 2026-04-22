@@ -1,0 +1,71 @@
+{
+  "slice_id": "slice-02-version-metadata-doctor-upgrade-checks",
+  "ticket": "QUIVER-02",
+  "type": "feature",
+  "title": "Version Metadata and Doctor Upgrade Checks",
+  "objective": "Record Quiver project state and teach `doctor` to identify projects that need migration or analysis.",
+  "description": "After migration exists, Quiver needs a durable way to know which template version initialized or migrated the project. This slice adds metadata and extends doctor diagnostics so users get the right next command instead of guessing.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "existing-project-migration",
+    "branch_name": "feature/QUIVER-02-existing-project-migration"
+  },
+  "must": [
+    "Create or update a project-local metadata file such as `.quiver/state.json`",
+    "Record initialized version, migrated version, last migration date, and last analysis date where available",
+    "Update `init`, `migrate`, and `analyze` to maintain metadata",
+    "Teach `doctor` to report missing metadata without failing older projects unnecessarily",
+    "Teach `doctor` to recommend `npx create-quiver migrate --dir .` when required upgrade artifacts are missing",
+    "Keep metadata deterministic and free of secrets"
+  ],
+  "not_included": [
+    "Remote telemetry",
+    "User identity tracking",
+    "AI-generated metadata",
+    "Changing package publish flow"
+  ],
+  "acceptance": [
+    "Newly initialized projects include Quiver metadata",
+    "Migrated projects update metadata",
+    "`analyze` updates last analysis metadata",
+    "`doctor` distinguishes missing analysis from missing migration",
+    "Older projects without metadata receive a clear migration recommendation",
+    "Metadata contains no absolute secrets or credential values"
+  ],
+  "files": [
+    "src/create-quiver/index.js",
+    "scripts/ci/smoke-create-quiver.sh",
+    "scripts/ci/smoke-init-docs.sh",
+    "scripts/package-quiver.sh",
+    "specs/quiver-v11-existing-project-migration/STATUS.md",
+    "specs/quiver-v11-existing-project-migration/EVIDENCE_REPORT.md",
+    "specs/quiver-v11-existing-project-migration/slices/slice-02-version-metadata-doctor-upgrade-checks/slice.json"
+  ],
+  "tests": [
+    "init smoke verifies `.quiver/state.json`",
+    "migrate smoke verifies migration metadata",
+    "analyze smoke verifies last analysis metadata",
+    "doctor smoke verifies migration recommendation",
+    "git diff --check"
+  ],
+  "documentation": [
+    "specs/quiver-v11-existing-project-migration/STATUS.md",
+    "specs/quiver-v11-existing-project-migration/EVIDENCE_REPORT.md"
+  ],
+  "dependencies": [
+    "slice-01-non-destructive-migrate-command"
+  ],
+  "assumptions": [
+    "A local metadata file is simpler and more reliable than parsing docs for version state",
+    "Metadata should supplement, not replace, user-facing docs",
+    "Doctor should guide remediation but not run migration automatically"
+  ],
+  "estimated_hours": 4,
+  "actual_hours": 0,
+  "status": "draft",
+  "blocked_reason": null,
+  "ready_at": null,
+  "started_at": null,
+  "completed_at": null
+}

@@ -25,7 +25,8 @@ This document is the canonical implementation workflow for the project.
 4. Mark each slice `ready` before execution.
 5. Open and merge the documentation PR before running the first slice bootstrap.
 6. Read the AI context pack, support matrix, and troubleshooting guide before the first slice if the environment is new or uncertain.
-7. If the project was analyzed, read `AI_ONBOARDING_PROMPT.md` before making documentation updates.
+7. If the project already existed before this Quiver version, run `migrate` before `analyze`.
+8. If the project was analyzed, read `AI_ONBOARDING_PROMPT.md` before making documentation updates.
 
 ## Execution
 
