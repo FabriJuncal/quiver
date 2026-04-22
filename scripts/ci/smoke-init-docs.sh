@@ -8,7 +8,7 @@ project_name="${1:-Smoke Project}"
 project_slug="$(printf '%s' "$project_name" | tr '[:upper:]' '[:lower:]' | tr ' ' '-' | tr -cd '[:alnum:]-')"
 smoke_root="$(mktemp -d "${TMPDIR:-/tmp}/quiver-init-smoke.XXXXXX")"
 target_repo="$smoke_root/target"
-template_repo="$target_repo/docs-template"
+cli="$repo_root/bin/create-quiver.js"
 
 cleanup() {
   rm -rf "$smoke_root"
@@ -17,10 +17,8 @@ cleanup() {
 trap cleanup EXIT
 
 mkdir -p "$target_repo"
-cp -R "$repo_root" "$template_repo"
-
+node "$cli" --name "$project_name" --dir "$target_repo" >/dev/null
 cd "$target_repo"
-bash docs-template/scripts/init-docs.sh "$project_name" >/dev/null
 
 assert_file() {
   local path="$1"

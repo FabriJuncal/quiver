@@ -2,6 +2,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { execFileSync } = require('child_process');
+const { initializeProjectDocs } = require('./lib/init-docs');
 const cliPackageJson = JSON.parse(fs.readFileSync(path.resolve(__dirname, '../..', 'package.json'), 'utf8'));
 const CLI_VERSION = cliPackageJson.version || '0.0.0';
 
@@ -204,8 +205,11 @@ function mergeDirectoryTree(sourceDir, targetDir) {
 }
 
 function runInitDocs(repoRoot, projectName) {
-  runCommand('bash', ['docs-template/scripts/init-docs.sh', projectName], {
-    cwd: repoRoot,
+  initializeProjectDocs({
+    projectRoot: repoRoot,
+    projectName,
+    cliVersion: CLI_VERSION,
+    migrateMode: false,
   });
 }
 
