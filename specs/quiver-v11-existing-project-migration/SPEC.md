@@ -1,7 +1,7 @@
 # Quiver v0.11 - Existing Project Migration
 
 **Date:** 2026-04-22
-**Status:** Draft
+**Status:** Completed
 
 Slice numbering resets here: this spec starts at `slice-01` and does not continue any previous spec's numbering.
 
@@ -47,7 +47,7 @@ Then the developer opens the AI agent and asks it to execute `docs/AI_ONBOARDING
 |-------|-------|--------|------|
 | 01 | Non-Destructive Migrate Command | Completed | [slice-01](./slices/slice-01-non-destructive-migrate-command/slice.json) |
 | 02 | Version Metadata and Doctor Upgrade Checks | Completed | [slice-02](./slices/slice-02-version-metadata-doctor-upgrade-checks/slice.json) |
-| 03 | Upgrade Docs and Legacy Project Smokes | Pending | [slice-03](./slices/slice-03-upgrade-docs-legacy-project-smokes/slice.json) |
+| 03 | Upgrade Docs and Legacy Project Smokes | Completed | [slice-03](./slices/slice-03-upgrade-docs-legacy-project-smokes/slice.json) |
 
 ## Definition of Done
 

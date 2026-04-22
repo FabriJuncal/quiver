@@ -43,17 +43,31 @@ npx create-quiver doctor --dir ./target-repo
 
 If you are working in the current directory, use `--dir .`.
 
-If the project already had Quiver from an older version, run migration first:
-
-```bash
-npx create-quiver migrate --dir ./target-repo
-```
-
 The analyzer creates `docs/PROJECT_SCAN.json` and `docs/PROJECT_MAP.md`. These files give the AI agent a deterministic project map before it edits context docs.
 
 The doctor checks the generated project contract and prints the next workflow steps. If the scan artifacts are missing, it recommends `npx create-quiver analyze --dir .` first.
 
-### 3. Ask The AI To Prepare Context
+### 3. Upgrade Existing Projects
+
+If the project already had Quiver from an older version, upgrade it from the project root:
+
+```bash
+cd /path/to/your-project
+npx create-quiver migrate --dir .
+npx create-quiver analyze --dir .
+npx create-quiver doctor --dir .
+```
+
+If your team prefers a pinned local dependency, update the package first and then run the same flow:
+
+```bash
+npm install --save-dev create-quiver@latest
+npx create-quiver migrate --dir .
+npx create-quiver analyze --dir .
+npx create-quiver doctor --dir .
+```
+
+### 4. Ask The AI To Prepare Context
 
 Open your AI agent in the target project and run this short handoff:
 
@@ -65,7 +79,7 @@ Prepare the project context docs and report assumptions, risks, and files change
 
 The AI should use the scan artifacts to prepare `docs/AI_CONTEXT.md`, `docs/CONTEXTO.md`, `docs/STATUS.md`, and the initial project spec. The developer should review those documentation changes before implementation work starts.
 
-### 4. Start The First Slice
+### 5. Start The First Slice
 
 After the context docs are reviewed:
 

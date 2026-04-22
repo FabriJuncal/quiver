@@ -69,10 +69,10 @@
     "Smoke fixtures can simulate old projects by deleting newer artifacts from a generated project"
   ],
   "estimated_hours": 3,
-  "actual_hours": 0,
-  "status": "draft",
+  "actual_hours": 3,
+  "status": "completed",
   "blocked_reason": null,
   "ready_at": null,
-  "started_at": null,
-  "completed_at": null
+  "started_at": "2026-04-22T00:00:00Z",
+  "completed_at": "2026-04-22T00:00:00Z"
 }
