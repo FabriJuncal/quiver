@@ -34,18 +34,18 @@ npx create-quiver --name "Project Name" --dir "/Users/me/My Project"
 
 ### 2. Analyze And Validate
 
-Run the local analyzer and then validate the generated contract:
+Run the local analyzer and then validate the generated contract from the project root:
 
 ```bash
-npx create-quiver analyze --dir ./target-repo
-npx create-quiver doctor --dir ./target-repo
+npx create-quiver analyze
+npx create-quiver doctor
 ```
 
-If you are working in the current directory, use `--dir .`.
+If you need to target another directory from outside the project, pass `--dir` explicitly. For the current project root, omit it.
 
 The analyzer creates `docs/PROJECT_SCAN.json` and `docs/PROJECT_MAP.md`. These files give the AI agent a deterministic project map before it edits context docs.
 
-The doctor checks the generated project contract and prints the next workflow steps. If the scan artifacts are missing, it recommends `npx create-quiver analyze --dir .` first.
+The doctor checks the generated project contract and prints the next workflow steps. If the scan artifacts are missing, it recommends `npx create-quiver analyze` first.
 
 ### 3. Upgrade Existing Projects
 
@@ -53,18 +53,18 @@ If the project already had Quiver from an older version, upgrade it from the pro
 
 ```bash
 cd /path/to/your-project
-npx create-quiver migrate --dir .
-npx create-quiver analyze --dir .
-npx create-quiver doctor --dir .
+npx create-quiver migrate
+npx create-quiver analyze
+npx create-quiver doctor
 ```
 
 If your team prefers a pinned local dependency, update the package first and then run the same flow:
 
 ```bash
 npm install --save-dev create-quiver@latest
-npx create-quiver migrate --dir .
-npx create-quiver analyze --dir .
-npx create-quiver doctor --dir .
+npx create-quiver migrate
+npx create-quiver analyze
+npx create-quiver doctor
 ```
 
 ### 4. Ask The AI To Prepare Context

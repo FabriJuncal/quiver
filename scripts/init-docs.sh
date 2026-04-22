@@ -444,8 +444,8 @@ Run Quiver from this project root. Do not install it globally.
 
 \`\`\`bash
 npm install
-npx create-quiver analyze --dir .
-npx create-quiver doctor --dir .
+npx create-quiver analyze
+npx create-quiver doctor
 \`\`\`
 
 If this project needs a pinned Quiver version, install it as a devDependency:
@@ -454,7 +454,7 @@ If this project needs a pinned Quiver version, install it as a devDependency:
 npm install --save-dev create-quiver
 \`\`\`
 
-If your project path contains spaces, quote it explicitly when using \`--dir\`.
+If you need to target another directory from outside the project, pass \`--dir\` explicitly. Quote paths that contain spaces.
 
 ## Upgrading Existing Projects
 
@@ -462,18 +462,18 @@ If the project already existed before this Quiver version, upgrade it from the p
 
 \`\`\`bash
 cd /path/to/your-project
-npx create-quiver migrate --dir .
-npx create-quiver analyze --dir .
-npx create-quiver doctor --dir .
+npx create-quiver migrate
+npx create-quiver analyze
+npx create-quiver doctor
 \`\`\`
 
 If your team prefers a pinned local dependency, update the package first and then run the same flow:
 
 \`\`\`bash
 npm install --save-dev create-quiver@latest
-npx create-quiver migrate --dir .
-npx create-quiver analyze --dir .
-npx create-quiver doctor --dir .
+npx create-quiver migrate
+npx create-quiver analyze
+npx create-quiver doctor
 \`\`\`
 
 ## AI Context Onboarding
@@ -499,8 +499,8 @@ Review the AI changes to docs/AI_CONTEXT.md, docs/CONTEXTO.md, docs/STATUS.md, a
 ## Verification Checklist
 
 - [ ] npm install completes
-- [ ] npx create-quiver analyze --dir . completes
-- [ ] npx create-quiver doctor --dir . completes
+- [ ] npx create-quiver analyze completes
+- [ ] npx create-quiver doctor completes
 - [ ] AI agent executed docs/AI_ONBOARDING_PROMPT.md
 - [ ] Context docs were reviewed before the first slice
 

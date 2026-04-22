@@ -5,6 +5,7 @@ set -euo pipefail
 repo_root="$(git rev-parse --show-toplevel)"
 cli="$repo_root/bin/create-quiver.js"
 temp_root="$(mktemp -d "${TMPDIR:-/tmp}/quiver-create-smoke.XXXXXX")"
+cli_version="$(node -p 'require(process.argv[1]).version' "$repo_root/package.json")"
 
 cleanup() {
   rm -rf "$temp_root"
@@ -57,9 +58,9 @@ installer_root="$temp_root/installer"
 
 node "$cli" --name "Smoke Project" --dir "$new_target" >/dev/null
 node -e 'const fs = require("fs"); const data = JSON.parse(fs.readFileSync(process.argv[1], "utf8")); if (!data.initialized_version || !data.last_initialized_at) { throw new Error("initial metadata missing from new project state"); } if (data.last_analysis_at) { throw new Error("new project state should not have analysis metadata yet"); }' "$new_target/.quiver/state.json"
-doctor_before_analyze="$(node "$cli" doctor --dir "$new_target")"
+doctor_before_analyze="$(cd "$new_target" && node "$cli" doctor)"
 
-if [[ "$doctor_before_analyze" != *"npx create-quiver analyze --dir ."* ]]; then
+if [[ "$doctor_before_analyze" != *"npx create-quiver analyze"* ]]; then
   echo "Doctor output did not recommend analyze first" >&2
   exit 1
 fi
@@ -69,8 +70,11 @@ if [[ "$doctor_before_analyze" == *"Run "* ]]; then
   exit 1
 fi
 
-node "$cli" analyze --dir "$new_target" >/dev/null
-doctor_after_analyze="$(node "$cli" doctor --dir "$new_target")"
+(
+  cd "$new_target"
+  node "$cli" analyze >/dev/null
+)
+doctor_after_analyze="$(cd "$new_target" && node "$cli" doctor)"
 
 if [[ "$doctor_after_analyze" != *"Read docs/AI_ONBOARDING_PROMPT.md and execute it."* ]]; then
   echo "Doctor output did not point to the AI onboarding prompt after analyze" >&2
@@ -103,7 +107,7 @@ assert_contains "$new_target/docs/AI_ONBOARDING_PROMPT.md" "docs/PROJECT_SCAN.js
 assert_contains "$new_target/README.md" "Do not install it globally"
 assert_contains "$new_target/README.md" "npm install --save-dev create-quiver"
 assert_contains "$new_target/README.md" "Upgrading Existing Projects"
-assert_contains "$new_target/README.md" "npx create-quiver migrate --dir ."
+assert_contains "$new_target/README.md" "npx create-quiver migrate"
 assert_contains "$new_target/README.md" "npm install --save-dev create-quiver@latest"
 assert_contains "$new_target/docs/PROJECT_MAP.md" "Project Map"
 assert_contains "$new_target/docs/PROJECT_MAP.md" "## Stack"
@@ -117,8 +121,11 @@ mkdir -p "$existing_target"
 printf 'keep me\n' > "$existing_target/keep.txt"
 
 node "$cli" --name "Existing Repo" --dir "$existing_target" >/dev/null
-node "$cli" analyze --dir "$existing_target" >/dev/null
-node "$cli" doctor --dir "$existing_target" >/dev/null
+(
+  cd "$existing_target"
+  node "$cli" analyze >/dev/null
+  node "$cli" doctor >/dev/null
+)
 
 assert_file "$existing_target/keep.txt"
 assert_file "$existing_target/README.md"
@@ -138,14 +145,14 @@ rm "$legacy_target/.quiver/state.json"
 rm "$legacy_target/docs/AI_ONBOARDING_PROMPT.md"
 rm "$legacy_target/tools/scripts/migrate-project.sh"
 
-doctor_before_migrate_output="$(node "$cli" doctor --dir "$legacy_target" 2>&1 || true)"
+doctor_before_migrate_output="$(cd "$legacy_target" && node "$cli" doctor 2>&1 || true)"
 
-if [[ "$doctor_before_migrate_output" != *"Run migration first: npx create-quiver migrate --dir ."* ]]; then
+if [[ "$doctor_before_migrate_output" != *"Run migration first: npx create-quiver migrate"* ]]; then
   echo "Doctor output did not recommend migration for legacy project" >&2
   exit 1
 fi
 
-migrate_output="$(node "$cli" migrate --dir "$legacy_target")"
+migrate_output="$(cd "$legacy_target" && node "$cli" migrate)"
 
 if [[ "$migrate_output" != *"Quiver migration completed for"* ]]; then
   echo "Migrate output did not report completion" >&2
@@ -157,12 +164,15 @@ assert_file "$legacy_target/docs/AI_ONBOARDING_PROMPT.md"
 assert_file "$legacy_target/tools/scripts/migrate-project.sh"
 assert_file "$legacy_target/.quiver/state.json"
 node -e 'const fs = require("fs"); const data = JSON.parse(fs.readFileSync(process.argv[1], "utf8")); if (data.scripts?.migrate !== "bash tools/scripts/migrate-project.sh") { throw new Error("migrate script missing after migrate"); }' "$legacy_target/package.json"
-node -e 'const fs = require("fs"); const data = JSON.parse(fs.readFileSync(process.argv[1], "utf8")); if (data.migrated_version !== "0.5.0" || !data.last_migration_at) { throw new Error("migration metadata missing"); }' "$legacy_target/.quiver/state.json"
+CLI_VERSION="$cli_version" node -e 'const fs = require("fs"); const expected = process.env.CLI_VERSION; const data = JSON.parse(fs.readFileSync(process.argv[1], "utf8")); if (data.migrated_version !== expected || !data.last_migration_at) { throw new Error("migration metadata missing"); }' "$legacy_target/.quiver/state.json"
 
-node "$cli" analyze --dir "$legacy_target" >/dev/null
+(
+  cd "$legacy_target"
+  node "$cli" analyze >/dev/null
+)
 node -e 'const fs = require("fs"); const data = JSON.parse(fs.readFileSync(process.argv[1], "utf8")); if (!data.last_analysis_at) { throw new Error("analysis metadata missing after analyze"); }' "$legacy_target/.quiver/state.json"
 
-doctor_after_migrate_output="$(node "$cli" doctor --dir "$legacy_target")"
+doctor_after_migrate_output="$(cd "$legacy_target" && node "$cli" doctor)"
 
 if [[ "$doctor_after_migrate_output" != *"Read docs/AI_ONBOARDING_PROMPT.md and execute it."* ]]; then
   echo "Doctor output did not point to the AI onboarding prompt after migrate and analyze" >&2
@@ -175,8 +185,11 @@ mkdir -p "$installer_root"
 npm_config_cache="$temp_root/npm-cache" npm install --prefix "$installer_root" "$tarball_path" --ignore-scripts --no-audit --no-fund >/dev/null
 
 node "$installer_root/node_modules/create-quiver/bin/create-quiver.js" --name "Packaged Project" --dir "$release_target" >/dev/null
-node "$installer_root/node_modules/create-quiver/bin/create-quiver.js" analyze --dir "$release_target" >/dev/null
-release_doctor_output="$(node "$installer_root/node_modules/create-quiver/bin/create-quiver.js" doctor --dir "$release_target")"
+(
+  cd "$release_target"
+  node "$installer_root/node_modules/create-quiver/bin/create-quiver.js" analyze >/dev/null
+)
+release_doctor_output="$(cd "$release_target" && node "$installer_root/node_modules/create-quiver/bin/create-quiver.js" doctor)"
 
 if [[ "$release_doctor_output" != *"Read docs/AI_ONBOARDING_PROMPT.md and execute it."* ]]; then
   echo "Packaged doctor output did not point to the AI onboarding prompt after analyze" >&2
@@ -192,7 +205,7 @@ printf 'keep me\n' >> "$release_target/docs/SEARCH.md"
 rm "$release_target/docs/AI_ONBOARDING_PROMPT.md"
 rm "$release_target/tools/scripts/migrate-project.sh"
 
-release_migrate_output="$(node "$installer_root/node_modules/create-quiver/bin/create-quiver.js" migrate --dir "$release_target")"
+release_migrate_output="$(cd "$release_target" && node "$installer_root/node_modules/create-quiver/bin/create-quiver.js" migrate)"
 
 if [[ "$release_migrate_output" != *"Quiver migration completed for"* ]]; then
   echo "Packaged migrate output did not report completion" >&2
@@ -202,7 +215,7 @@ fi
 assert_contains "$release_target/docs/SEARCH.md" "keep me"
 assert_file "$release_target/docs/AI_ONBOARDING_PROMPT.md"
 assert_file "$release_target/tools/scripts/migrate-project.sh"
-release_doctor_after_migrate="$(node "$installer_root/node_modules/create-quiver/bin/create-quiver.js" doctor --dir "$release_target")"
+release_doctor_after_migrate="$(cd "$release_target" && node "$installer_root/node_modules/create-quiver/bin/create-quiver.js" doctor)"
 
 if [[ "$release_doctor_after_migrate" != *"Read docs/AI_ONBOARDING_PROMPT.md and execute it."* ]]; then
   echo "Packaged doctor output did not point to the AI onboarding prompt after migrate" >&2

@@ -25,9 +25,9 @@ Options:
 Examples:
   npx create-quiver --name "My Project"
   npx create-quiver --name "My Project" --dir ./my-project
-  npx create-quiver analyze --dir ./my-project
-  npx create-quiver migrate --dir ./my-project
-  npx create-quiver doctor --dir ./my-project
+  cd ./my-project && npx create-quiver analyze
+  cd ./my-project && npx create-quiver migrate
+  cd ./my-project && npx create-quiver doctor
   node bin/create-quiver.js doctor --dir ./my-project
 `);
 }
@@ -998,7 +998,7 @@ function runDoctor(targetDir) {
   ];
 
   if (migrationProblems.length > 0) {
-    throw new Error(formatError(`doctor failed:\n- ${migrationProblems.join('\n- ')}\n- Run migration first: npx create-quiver migrate --dir .`));
+    throw new Error(formatError(`doctor failed:\n- ${migrationProblems.join('\n- ')}\n- Run migration first: npx create-quiver migrate`));
   }
 
   console.log(`Quiver doctor passed for ${projectRoot}`);
@@ -1008,9 +1008,9 @@ function runDoctor(targetDir) {
     console.log(`- Warning: ${warning}`);
   }
   if (!hasQuiverState) {
-    console.log('- Run migration first: npx create-quiver migrate --dir .');
+    console.log('- Run migration first: npx create-quiver migrate');
   } else if (!hasScanArtifacts) {
-    console.log('- Analyze the project first: npx create-quiver analyze --dir .');
+    console.log('- Analyze the project first: npx create-quiver analyze');
   } else {
     console.log('- Ask your AI agent: Read docs/AI_ONBOARDING_PROMPT.md and execute it.');
   }
