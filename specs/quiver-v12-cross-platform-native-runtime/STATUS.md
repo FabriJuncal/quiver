@@ -14,13 +14,13 @@ Slice numbering is local to this spec. The first slice is `slice-01`.
 | slice-03 | Node Migrate, Analyze, and Doctor Flow | Completed | - | 5 | 5 |
 | slice-04 | Node Slice Lifecycle Commands | Completed | - | 10 | 10 |
 | slice-05 | Generated Project Scripts and Migration | Completed | - | 5 | 5 |
-| slice-06 | Cross-Platform CI and Release Readiness | Draft | - | 5 | - |
+| slice-06 | Cross-Platform CI and Release Readiness | Completed | - | 5 | 5 |
 
 ## Progress
 
-- Completed slices: 5 / 6
+- Completed slices: 6 / 6
 - Estimated hours: 36
-- Actual hours: 27
+- Actual hours: 32
 
 ## Blockers
 

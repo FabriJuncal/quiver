@@ -38,6 +38,7 @@
     "docs/SUPPORT_MATRIX.md.template",
     "docs/TROUBLESHOOTING.md.template",
     "CHANGELOG.md",
+    "scripts/ci/smoke-cross-platform.js",
     "scripts/ci/smoke-create-quiver.sh",
     "scripts/ci/smoke-workflow-gates.sh",
     "specs/quiver-v12-cross-platform-native-runtime/SPEC.md",
@@ -46,9 +47,8 @@
     "specs/quiver-v12-cross-platform-native-runtime/slices/slice-06-cross-platform-ci-release-readiness/slice.json"
   ],
   "tests": [
-    "GitHub Actions matrix on ubuntu-latest",
-    "GitHub Actions matrix on macos-latest",
-    "GitHub Actions matrix on windows-latest",
+    "GitHub Actions matrix on ubuntu-latest, macos-latest, and windows-latest",
+    "Node portable cross-platform smoke",
     "bash scripts/package-quiver.sh",
     "git diff --check"
   ],
@@ -65,10 +65,10 @@
     "Release publishing happens after this spec completes"
   ],
   "estimated_hours": 5,
-  "actual_hours": null,
-  "status": "draft",
+  "actual_hours": 5,
+  "status": "completed",
   "blocked_reason": null,
-  "ready_at": null,
-  "started_at": null,
-  "completed_at": null
+  "ready_at": "2026-04-22T00:00:00Z",
+  "started_at": "2026-04-22T00:00:00Z",
+  "completed_at": "2026-04-22T00:00:00Z"
 }

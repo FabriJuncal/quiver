@@ -1,7 +1,7 @@
 # Quiver v0.12 - Cross-Platform Native Runtime
 
 **Date:** 2026-04-22
-**Status:** Draft
+**Status:** Completed
 
 Slice numbering resets here: this spec starts at `slice-01` and does not continue any previous spec's numbering.
 
@@ -72,7 +72,7 @@ Quiver should not require:
 | 03 | Node Migrate, Analyze, and Doctor Flow | Completed | [slice-03](./slices/slice-03-node-migrate-analyze-doctor-flow/slice.json) |
 | 04 | Node Slice Lifecycle Commands | Completed | [slice-04](./slices/slice-04-node-slice-lifecycle-commands/slice.json) |
 | 05 | Generated Project Scripts and Migration | Completed | [slice-05](./slices/slice-05-generated-project-scripts-and-migration/slice.json) |
-| 06 | Cross-Platform CI and Release Readiness | Draft | [slice-06](./slices/slice-06-cross-platform-ci-release-readiness/slice.json) |
+| 06 | Cross-Platform CI and Release Readiness | Completed | [slice-06](./slices/slice-06-cross-platform-ci-release-readiness/slice.json) |
 
 ## Definition of Done
 

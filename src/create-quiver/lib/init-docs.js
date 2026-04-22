@@ -136,7 +136,7 @@ The legacy Bash wrappers remain in \`tools/scripts/\` for compatibility, but new
 
 ## Cross-Platform Support
 
-Quiver is targeting native support on macOS, Linux, and Windows PowerShell/CMD. Bash is a legacy compatibility path until the runtime slices land, so the generated workflow should be read as a native Node-first contract rather than a Bash-first one.
+Quiver is targeting native support on macOS, Linux, and Windows PowerShell/CMD. Bash is a legacy compatibility path until the runtime slices land, so the generated workflow should be read as a native Node-first contract rather than a Bash-first one. Windows support is only considered verified once the CI matrix is green.
 
 ## Upgrading Existing Projects
 
