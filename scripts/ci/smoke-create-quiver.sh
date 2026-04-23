@@ -128,6 +128,9 @@ fi
 
 assert_file "$new_target/README.md"
 assert_file "$new_target/docs/INDEX.md"
+assert_file "$new_target/docs/ai/QUICK.md"
+assert_file "$new_target/docs/ai/STANDARD.md"
+assert_file "$new_target/docs/ai/DEEP.md"
 assert_file "$new_target/docs/DECISIONS.md"
 assert_file "$new_target/docs/AI_CONTEXT.md"
 assert_file "$new_target/docs/AI_ONBOARDING_PROMPT.md"
@@ -150,12 +153,21 @@ done
 assert_contains "$new_target/README.md" "Decision Log"
 assert_contains "$new_target/docs/INDEX.md" "Decision Log"
 assert_contains "$new_target/docs/INDEX.md" "DECISIONS.md"
+assert_contains "$new_target/docs/INDEX.md" "./ai/QUICK.md"
+assert_contains "$new_target/docs/INDEX.md" "./ai/STANDARD.md"
+assert_contains "$new_target/docs/INDEX.md" "./ai/DEEP.md"
 
 assert_contains "$new_target/docs/AI_CONTEXT.md" "AI Context Pack"
 assert_contains "$new_target/docs/AI_CONTEXT.md" "Read First"
 assert_contains "$new_target/docs/AI_CONTEXT.md" "DECISIONS.md"
 assert_contains "$new_target/docs/DECISIONS.md" "Decision Log"
 assert_contains "$new_target/docs/DECISIONS.md" "| Date | Decision | Reason | Alternatives | Impact |"
+assert_contains "$new_target/docs/ai/QUICK.md" "Quick Context"
+assert_contains "$new_target/docs/ai/QUICK.md" "Read Next"
+assert_contains "$new_target/docs/ai/STANDARD.md" "Standard Context"
+assert_contains "$new_target/docs/ai/STANDARD.md" "V13 Mode Guidance"
+assert_contains "$new_target/docs/ai/DEEP.md" "Deep Context"
+assert_contains "$new_target/docs/ai/DEEP.md" "What Belongs Here"
 assert_contains "$new_target/docs/AI_ONBOARDING_PROMPT.md" "AI Onboarding Prompt"
 assert_contains "$new_target/docs/AI_ONBOARDING_PROMPT.md" "docs/PROJECT_SCAN.json"
 assert_contains "$new_target/README.md" "Do not install it globally"
@@ -208,6 +220,9 @@ node "$cli" --name "Space Project" --dir "$space_target" >/dev/null
 assert_file "$existing_target/keep.txt"
 assert_file "$existing_target/README.md"
 assert_file "$existing_target/docs/INDEX.md"
+assert_file "$existing_target/docs/ai/QUICK.md"
+assert_file "$existing_target/docs/ai/STANDARD.md"
+assert_file "$existing_target/docs/ai/DEEP.md"
 assert_file "$existing_target/docs/DECISIONS.md"
 assert_file "$existing_target/docs/AI_CONTEXT.md"
 assert_file "$existing_target/docs/AI_ONBOARDING_PROMPT.md"
@@ -222,6 +237,9 @@ assert_package_scripts "$existing_target/package.json" "existing project" \
 assert_file "$space_target/README.md"
 assert_file "$space_target/docs/PROJECT_SCAN.json"
 assert_file "$space_target/docs/PROJECT_MAP.md"
+assert_file "$space_target/docs/ai/QUICK.md"
+assert_file "$space_target/docs/ai/STANDARD.md"
+assert_file "$space_target/docs/ai/DEEP.md"
 assert_project_map_sections "$space_target/docs/PROJECT_MAP.md"
 assert_file "$space_target/docs/DECISIONS.md"
 
@@ -266,6 +284,9 @@ fi
 assert_contains "$legacy_target/docs/SEARCH.md" "keep me"
 assert_file "$legacy_target/docs/AI_ONBOARDING_PROMPT.md"
 assert_file "$legacy_target/docs/DECISIONS.md"
+assert_file "$legacy_target/docs/ai/QUICK.md"
+assert_file "$legacy_target/docs/ai/STANDARD.md"
+assert_file "$legacy_target/docs/ai/DEEP.md"
 assert_file "$legacy_target/tools/scripts/migrate-project.sh"
 assert_file "$legacy_target/.quiver/state.json"
 assert_package_scripts "$legacy_target/package.json" "legacy project after migrate" \
@@ -306,9 +327,25 @@ fi
 assert_file "$release_target/docs/AI_CONTEXT.md"
 assert_file "$release_target/docs/AI_ONBOARDING_PROMPT.md"
 assert_file "$release_target/docs/DECISIONS.md"
+assert_file "$release_target/docs/ai/QUICK.md"
+assert_file "$release_target/docs/ai/STANDARD.md"
+assert_file "$release_target/docs/ai/DEEP.md"
 assert_file "$release_target/docs/PROJECT_SCAN.json"
 assert_file "$release_target/docs/PROJECT_MAP.md"
 assert_project_map_sections "$release_target/docs/PROJECT_MAP.md"
+
+quick_lines="$(awk 'NF' "$new_target/docs/ai/QUICK.md" | wc -l | awk '{ print $1 }')"
+standard_lines="$(awk 'NF' "$new_target/docs/ai/STANDARD.md" | wc -l | awk '{ print $1 }')"
+
+if [[ "$quick_lines" -gt 50 ]]; then
+  echo "QUICK.md exceeds 50 non-empty lines: $quick_lines" >&2
+  exit 1
+fi
+
+if [[ "$standard_lines" -gt 300 ]]; then
+  echo "STANDARD.md exceeds 300 non-empty lines: $standard_lines" >&2
+  exit 1
+fi
 assert_package_scripts "$release_target/package.json" "packaged project" \
   quiver:analyze quiver:doctor quiver:migrate quiver:start-slice quiver:check-slice quiver:check-pr quiver:cleanup-slice quiver:check-scope quiver:refresh-active-slices
 

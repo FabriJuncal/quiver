@@ -9,7 +9,7 @@ Slice numbering is local to this spec. The first slice is `slice-01`.
 
 | Slice | Title | Status | PR | Estimated hours | Actual hours |
 |-------|-------|--------|----|-----------------|--------------|
-| slice-01 | Tiered Context Pack | Draft | - | 4 | - |
+| slice-01 | Tiered Context Pack | Completed | - | 4 | 4 |
 | slice-02 | AGENTS.md Router | Draft | - | 3 | - |
 | slice-03 | Active Slice Lifecycle | Draft | - | 4 | - |
 | slice-04 | Dedup and Front-Matter | Draft | - | 4 | - |
@@ -17,9 +17,9 @@ Slice numbering is local to this spec. The first slice is `slice-01`.
 
 ## Progress
 
-- Completed slices: 0 / 5
+- Completed slices: 1 / 5
 - Estimated hours: 19
-- Actual hours: 0
+- Actual hours: 4
 
 ## Blockers
 

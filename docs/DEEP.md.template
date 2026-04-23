@@ -1,0 +1,33 @@
+# {{PROJECT_NAME}} Deep Context
+
+**Date:** {{FECHA}}
+**Status:** {{ESTADO}}
+
+Use this file for history, decisions, and context that does not belong in the default pack.
+
+## What Belongs Here
+
+- Project history and major milestones
+- Durable decisions that explain why the workflow exists
+- Cultural notes and team preferences
+- Legacy migrations and compatibility caveats
+- Edge cases that keep coming back
+
+## What Not To Repeat
+
+- Do not duplicate `docs/QUICK.md`
+- Do not duplicate `docs/STANDARD.md`
+- Keep the deep pack additive, not repetitive
+
+## Suggested Sections
+
+- Background
+- Key Decisions
+- Migration Notes
+- Open Questions
+- Lessons Learned
+- Archived Context
+
+## Notes
+
+Add longer narratives only when they help future planning models avoid re-discovering old decisions.

@@ -1,0 +1,43 @@
+# {{PROJECT_NAME}} Quick Context
+
+**Date:** {{FECHA}}
+**Status:** {{ESTADO}}
+
+Minimum viable briefing for execution agents.
+
+## Snapshot
+
+- Project: {{PROJECT_NAME}}
+- Package manager: {{PACKAGE_MANAGER}}
+- Detected stack: {{STACK_SUMMARY}}
+
+## Primary Commands
+
+- Install: {{PRIMARY_INSTALL}}
+- Dev: {{PRIMARY_DEV}}
+- Test: {{PRIMARY_TEST}}
+
+## Quiver Commands
+
+- Analyze: {{ANALYZE_COMMAND}}
+- Doctor: {{DOCTOR_COMMAND}}
+- Start slice: {{START_SLICE_COMMAND}}
+- Check slice: {{CHECK_SLICE_COMMAND}}
+- Check PR: {{CHECK_PR_COMMAND}}
+- Cleanup slice: {{CLEANUP_SLICE_COMMAND}}
+- Check scope: {{CHECK_SCOPE_COMMAND}}
+- Refresh active slices: {{REFRESH_ACTIVE_SLICES_COMMAND}}
+
+## Hard Rules
+
+- One slice = one commit.
+- One spec = one PR.
+- Read `./STANDARD.md` for workflow details.
+- Read `./DEEP.md` for history and context.
+- Do not edit files outside the active slice.
+- Prefer project-root commands over global installs.
+
+## Read Next
+
+- `./STANDARD.md`
+- `./DEEP.md`
