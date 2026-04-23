@@ -117,6 +117,7 @@ fi
 
 assert_file "$new_target/README.md"
 assert_file "$new_target/docs/INDEX.md"
+assert_file "$new_target/docs/DECISIONS.md"
 assert_file "$new_target/docs/AI_CONTEXT.md"
 assert_file "$new_target/docs/AI_ONBOARDING_PROMPT.md"
 assert_file "$new_target/docs/PROJECT_SCAN.json"
@@ -134,8 +135,15 @@ for file in "$new_target/README.md" "$new_target/docs/INDEX.md" "$new_target/doc
   assert_contains "$file" "Troubleshooting"
 done
 
+assert_contains "$new_target/README.md" "Decision Log"
+assert_contains "$new_target/docs/INDEX.md" "Decision Log"
+assert_contains "$new_target/docs/INDEX.md" "DECISIONS.md"
+
 assert_contains "$new_target/docs/AI_CONTEXT.md" "AI Context Pack"
 assert_contains "$new_target/docs/AI_CONTEXT.md" "Read First"
+assert_contains "$new_target/docs/AI_CONTEXT.md" "DECISIONS.md"
+assert_contains "$new_target/docs/DECISIONS.md" "Decision Log"
+assert_contains "$new_target/docs/DECISIONS.md" "| Date | Decision | Reason | Alternatives | Impact |"
 assert_contains "$new_target/docs/AI_ONBOARDING_PROMPT.md" "AI Onboarding Prompt"
 assert_contains "$new_target/docs/AI_ONBOARDING_PROMPT.md" "docs/PROJECT_SCAN.json"
 assert_contains "$new_target/README.md" "Do not install it globally"
@@ -188,6 +196,7 @@ node "$cli" --name "Space Project" --dir "$space_target" >/dev/null
 assert_file "$existing_target/keep.txt"
 assert_file "$existing_target/README.md"
 assert_file "$existing_target/docs/INDEX.md"
+assert_file "$existing_target/docs/DECISIONS.md"
 assert_file "$existing_target/docs/AI_CONTEXT.md"
 assert_file "$existing_target/docs/AI_ONBOARDING_PROMPT.md"
 assert_file "$existing_target/docs/PROJECT_SCAN.json"
@@ -200,6 +209,7 @@ assert_package_scripts "$existing_target/package.json" "existing project" \
 assert_file "$space_target/README.md"
 assert_file "$space_target/docs/PROJECT_SCAN.json"
 assert_file "$space_target/docs/PROJECT_MAP.md"
+assert_file "$space_target/docs/DECISIONS.md"
 
 node "$cli" --name "Legacy Project" --dir "$legacy_target" >/dev/null
 printf 'keep me\n' >> "$legacy_target/docs/SEARCH.md"
@@ -241,6 +251,7 @@ fi
 
 assert_contains "$legacy_target/docs/SEARCH.md" "keep me"
 assert_file "$legacy_target/docs/AI_ONBOARDING_PROMPT.md"
+assert_file "$legacy_target/docs/DECISIONS.md"
 assert_file "$legacy_target/tools/scripts/migrate-project.sh"
 assert_file "$legacy_target/.quiver/state.json"
 assert_package_scripts "$legacy_target/package.json" "legacy project after migrate" \
@@ -280,6 +291,7 @@ fi
 
 assert_file "$release_target/docs/AI_CONTEXT.md"
 assert_file "$release_target/docs/AI_ONBOARDING_PROMPT.md"
+assert_file "$release_target/docs/DECISIONS.md"
 assert_file "$release_target/docs/PROJECT_SCAN.json"
 assert_file "$release_target/docs/PROJECT_MAP.md"
 assert_package_scripts "$release_target/package.json" "packaged project" \

@@ -6,6 +6,7 @@
 
 - **Context** - `./CONTEXTO.md`
 - **AI Context** - `./AI_CONTEXT.md`
+- **Decision Log** - `./DECISIONS.md`
 - **AI Onboarding Prompt** - `./AI_ONBOARDING_PROMPT.md`
 - **Workflow** - `./WORKFLOW.md`
 - **Support Matrix** - `./SUPPORT_MATRIX.md`
@@ -31,6 +32,7 @@
 docs/
 ├── INDEX.md
 ├── AI_CONTEXT.md
+├── DECISIONS.md
 ├── AI_ONBOARDING_PROMPT.md
 ├── CONTEXTO.md
 ├── STATUS.md

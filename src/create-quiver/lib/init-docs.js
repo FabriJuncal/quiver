@@ -170,6 +170,10 @@ Prepare the project context docs and report assumptions, risks, and files change
 
 Review the AI changes to docs/AI_CONTEXT.md, docs/CONTEXTO.md, docs/STATUS.md, and specs/${projectSlug}/SPEC.md before starting implementation work.
 
+## Decision Log
+
+Record durable decisions in \`docs/DECISIONS.md\` so future AI agents do not re-litigate the same choices.
+
 ## First Slice Workflow
 
 1. Review or refine specs/${projectSlug}/SPEC.md.
@@ -189,6 +193,7 @@ Review the AI changes to docs/AI_CONTEXT.md, docs/CONTEXTO.md, docs/STATUS.md, a
 ## Documentation
 
 - [AI Context](./docs/AI_CONTEXT.md) - Contexto resumido para IA
+- [Decision Log](./docs/DECISIONS.md) - Decisiones durables del proyecto
 - [AI Onboarding Prompt](./docs/AI_ONBOARDING_PROMPT.md) - Handoff exacto para agentes después del análisis
 - [Contexto](./docs/CONTEXTO.md) - Qué es ${projectName}
 - [Workflow](./docs/WORKFLOW.md) - Cómo implementar
@@ -233,6 +238,7 @@ function initializeProjectDocs(options) {
   const operations = [];
   const templateCopies = [
     ['docs/INDEX.md.template', 'docs/INDEX.md'],
+    ['docs/DECISIONS.md.template', 'docs/DECISIONS.md'],
     ['docs/AI_CONTEXT.md.template', 'docs/AI_CONTEXT.md'],
     ['docs/AI_ONBOARDING_PROMPT.md.template', 'docs/AI_ONBOARDING_PROMPT.md'],
     ['docs/CONTEXTO.md.template', 'docs/CONTEXTO.md'],

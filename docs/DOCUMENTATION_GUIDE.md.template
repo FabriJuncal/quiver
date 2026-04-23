@@ -7,13 +7,14 @@
 
 1. `docs/INDEX.md`
 2. `docs/AI_CONTEXT.md`
-3. `docs/CONTEXTO.md`
-4. `docs/STATUS.md`
-5. `docs/WORKFLOW.md`
-6. `docs/SUPPORT_MATRIX.md`
-7. `docs/TROUBLESHOOTING.md`
-8. `specs/{{PROJECT_SLUG}}/SPEC.md`
-9. `specs/{{PROJECT_SLUG}}/slices/[slice-id]/slice.json`
+3. `docs/DECISIONS.md`
+4. `docs/CONTEXTO.md`
+5. `docs/STATUS.md`
+6. `docs/WORKFLOW.md`
+7. `docs/SUPPORT_MATRIX.md`
+8. `docs/TROUBLESHOOTING.md`
+9. `specs/{{PROJECT_SLUG}}/SPEC.md`
+10. `specs/{{PROJECT_SLUG}}/slices/[slice-id]/slice.json`
 
 ## Update Rules
 
@@ -25,6 +26,7 @@
 
 - Project overview: `docs/CONTEXTO.md`
 - Agent context pack: `docs/AI_CONTEXT.md`
+- Decisions: `docs/DECISIONS.md`
 - Progress: `docs/STATUS.md`
 - Implementation workflow: `docs/WORKFLOW.md`
 - Support contract: `docs/SUPPORT_MATRIX.md`

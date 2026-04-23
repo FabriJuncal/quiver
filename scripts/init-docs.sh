@@ -152,6 +152,7 @@ copy_file_if_missing() {
 
 # Copiar templates de docs/
 copy_template "docs-template/docs/INDEX.md.template" "docs/INDEX.md"
+copy_template "docs-template/docs/DECISIONS.md.template" "docs/DECISIONS.md"
 copy_template "docs-template/docs/AI_CONTEXT.md.template" "docs/AI_CONTEXT.md"
 copy_template "docs-template/docs/AI_ONBOARDING_PROMPT.md.template" "docs/AI_ONBOARDING_PROMPT.md"
 copy_template "docs-template/docs/CONTEXTO.md.template" "docs/CONTEXTO.md"
@@ -510,6 +511,10 @@ Prepare the project context docs and report assumptions, risks, and files change
 
 Review the AI changes to docs/AI_CONTEXT.md, docs/CONTEXTO.md, docs/STATUS.md, and specs/$PROJECT_SLUG/SPEC.md before starting implementation work.
 
+## Decision Log
+
+Record durable decisions in \`docs/DECISIONS.md\` so future AI agents do not re-litigate the same choices.
+
 ## First Slice Workflow
 
 1. Review or refine specs/$PROJECT_SLUG/SPEC.md.
@@ -529,6 +534,7 @@ Review the AI changes to docs/AI_CONTEXT.md, docs/CONTEXTO.md, docs/STATUS.md, a
 ## Documentation
 
 - [AI Context](./docs/AI_CONTEXT.md) - Contexto resumido para IA
+- [Decision Log](./docs/DECISIONS.md) - Decisiones durables del proyecto
 - [AI Onboarding Prompt](./docs/AI_ONBOARDING_PROMPT.md) - Handoff exacto para agentes después del análisis
 - [Contexto](./docs/CONTEXTO.md) - Qué es $PROJECT_NAME
 - [Workflow](./docs/WORKFLOW.md) - Cómo implementar

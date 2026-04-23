@@ -47,6 +47,7 @@ required_files=(
   "CHANGELOG.md"
   "ROADMAP.md"
   "docs/INDEX.md"
+  "docs/DECISIONS.md"
   "docs/AI_CONTEXT.md"
   "docs/AI_ONBOARDING_PROMPT.md"
   "docs/CONTEXTO.md"
@@ -87,6 +88,10 @@ for file in README.md docs/INDEX.md docs/WORKFLOW.md docs/SEARCH.md; do
   assert_contains "$file" "Troubleshooting"
 done
 
+assert_contains "README.md" "Decision Log"
+assert_contains "docs/INDEX.md" "Decision Log"
+assert_contains "docs/INDEX.md" "DECISIONS.md"
+
 assert_contains "README.md" "npx create-quiver analyze"
 assert_contains "README.md" "npx create-quiver doctor"
 assert_contains "README.md" "AI Onboarding Prompt"
@@ -107,6 +112,9 @@ fi
 
 assert_contains "docs/AI_CONTEXT.md" "AI Context Pack"
 assert_contains "docs/AI_CONTEXT.md" "Read First"
+assert_contains "docs/AI_CONTEXT.md" "DECISIONS.md"
+assert_contains "docs/DECISIONS.md" "Decision Log"
+assert_contains "docs/DECISIONS.md" "| Date | Decision | Reason | Alternatives | Impact |"
 assert_contains "docs/AI_ONBOARDING_PROMPT.md" "AI Onboarding Prompt"
 assert_contains "docs/AI_ONBOARDING_PROMPT.md" "docs/PROJECT_SCAN.json"
 assert_contains "docs/AI_ONBOARDING_PROMPT.md" "Do not modify product source code"
