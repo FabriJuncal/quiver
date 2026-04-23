@@ -1,0 +1,77 @@
+{
+  "slice_id": "slice-01-tiered-context-pack",
+  "ticket": "QUIVER-01",
+  "type": "feat",
+  "title": "Tiered Context Pack (QUICK, STANDARD, DEEP)",
+  "objective": "Generate a three-tier AI context pack so execution models load a minimal QUICK brief, default tasks load a bounded STANDARD brief, and planning models can opt into unbounded DEEP context on demand.",
+  "description": "Today the generated AI context is flat: agents that only need to act on an active slice still load several hundred lines of project-wide documentation. This slice introduces three bounded tiers under `docs/ai/` with distinct purposes and generation rules, distributing content that currently lives in AI_CONTEXT.md, CONTEXTO.md, and WORKFLOW.md without losing information. The tiers are additive: QUICK is the minimum viable briefing, STANDARD is the default, DEEP is the archive.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "tiered-context-pack",
+    "branch_name": "feature/QUIVER-01-tiered-context-pack"
+  },
+  "must": [
+    "Create `docs/QUICK.md.template` with a 50-line upper bound covering stack, primary commands, hard rules, and pointer to STANDARD/DEEP",
+    "Create `docs/STANDARD.md.template` with a 300-line upper bound covering conventions, workflow overview, testing expectations, and v13 mode guidance",
+    "Create `docs/DEEP.md.template` without a line bound, intended for project history, decisions, and cultural context",
+    "Update `src/create-quiver/lib/init-docs.js` to render the three tier templates into `docs/ai/QUICK.md`, `docs/ai/STANDARD.md`, and `docs/ai/DEEP.md` on init and on migrate",
+    "Populate QUICK with deterministic content from the existing analyzer scan (stack, package manager, primary commands, slice workflow commands)",
+    "Reference the tiers explicitly from `docs/INDEX.md.template` so the project index lists them"
+  ],
+  "not_included": [
+    "Creating AGENTS.md (handled in slice-02)",
+    "Generating ACTIVE_SLICE.md (handled in slice-03)",
+    "Adding YAML front-matter (handled in slice-04)",
+    "Doctor warnings for tier size (handled in slice-05)",
+    "Deleting AI_CONTEXT.md, CONTEXTO.md, or WORKFLOW.md"
+  ],
+  "acceptance": [
+    "A freshly initialized project contains `docs/ai/QUICK.md`, `docs/ai/STANDARD.md`, and `docs/ai/DEEP.md`",
+    "QUICK.md has 50 or fewer non-empty content lines",
+    "STANDARD.md has 300 or fewer non-empty content lines",
+    "QUICK.md includes at least: project name, detected stack, primary install/dev/test commands, slice start command, and a pointer line to STANDARD.md and DEEP.md",
+    "Running `migrate` on a project generated before v14 creates the three tier files without overwriting existing content",
+    "`docs/INDEX.md` links to all three tier files"
+  ],
+  "files": [
+    "docs/QUICK.md.template",
+    "docs/STANDARD.md.template",
+    "docs/DEEP.md.template",
+    "docs/INDEX.md.template",
+    "src/create-quiver/lib/init-docs.js",
+    "scripts/init-docs.sh",
+    "specs/quiver-v14-tiered-context-pack/SPEC.md",
+    "specs/quiver-v14-tiered-context-pack/STATUS.md",
+    "specs/quiver-v14-tiered-context-pack/EVIDENCE_REPORT.md",
+    "specs/quiver-v14-tiered-context-pack/slices/slice-01-tiered-context-pack/slice.json"
+  ],
+  "tests": [
+    "node bin/create-quiver.js --name \"Scratch\" --dir /tmp/quiver-v14-slice-01-smoke",
+    "test -f /tmp/quiver-v14-slice-01-smoke/docs/ai/QUICK.md",
+    "test -f /tmp/quiver-v14-slice-01-smoke/docs/ai/STANDARD.md",
+    "test -f /tmp/quiver-v14-slice-01-smoke/docs/ai/DEEP.md",
+    "awk 'NF' /tmp/quiver-v14-slice-01-smoke/docs/ai/QUICK.md | wc -l | awk '{ if ($1 > 50) exit 1 }'",
+    "awk 'NF' /tmp/quiver-v14-slice-01-smoke/docs/ai/STANDARD.md | wc -l | awk '{ if ($1 > 300) exit 1 }'",
+    "git diff --check"
+  ],
+  "documentation": [
+    "docs/QUICK.md.template",
+    "docs/STANDARD.md.template",
+    "docs/DEEP.md.template",
+    "docs/INDEX.md.template"
+  ],
+  "dependencies": [],
+  "assumptions": [
+    "Three tiers are sufficient granularity; no project needs a fourth level",
+    "A 50-line cap on QUICK is tight enough to force selection and loose enough to stay useful",
+    "Execution models benefit more from a short, deterministic briefing than from a rich but long one"
+  ],
+  "estimated_hours": 4,
+  "actual_hours": null,
+  "status": "draft",
+  "blocked_reason": null,
+  "ready_at": null,
+  "started_at": null,
+  "completed_at": null
+}

@@ -1,0 +1,65 @@
+{
+  "slice_id": "slice-01-token-efficient-ai-modes-guidance",
+  "ticket": "QUIVER-01",
+  "type": "docs",
+  "title": "Token-Efficient AI Modes Guidance",
+  "objective": "Define mode-aware AI reading rules so agents spend tokens on the right artifacts for onboarding, implementation, review, and debugging.",
+  "description": "The current AI guidance encourages structured onboarding, but it does not clearly separate when to use map-first, slice-scope-first, diff-first, or error-first workflows. This slice makes those modes explicit in the generated guidance without introducing new runtime behavior.",
+  "git": {
+    "branch_type": "docs",
+    "base_branch": "main",
+    "branch_slug": "token-efficient-ai-modes-guidance",
+    "branch_name": "docs/QUIVER-01-token-efficient-ai-modes-guidance"
+  },
+  "must": [
+    "Document the four AI work modes: onboarding, implementation, review, and debugging",
+    "Update `README_FOR_AI.md` with token-efficient reading rules",
+    "Update `docs/AI_ONBOARDING_PROMPT.md.template` to start from maps and metadata before source files",
+    "Update `docs/WORKFLOW.md.template` with mode-aware context selection",
+    "Update `docs/GITFLOW_PR_GUIDE.md.template` with diff-first review guidance"
+  ],
+  "not_included": [
+    "Adding new generated files",
+    "Changing analyzer output",
+    "Changing doctor output",
+    "Adding semantic search or embeddings"
+  ],
+  "acceptance": [
+    "AI guidance names all four modes explicitly",
+    "Review guidance instructs agents to inspect `git diff` before opening full files",
+    "Implementation guidance instructs agents to start from `slice.json` and declared files",
+    "Debug guidance preserves command, exit code, first relevant error, stacktrace, and log path when available"
+  ],
+  "files": [
+    "README_FOR_AI.md",
+    "docs/AI_ONBOARDING_PROMPT.md.template",
+    "docs/WORKFLOW.md.template",
+    "docs/GITFLOW_PR_GUIDE.md.template",
+    "specs/quiver-v13-token-efficient-ai-context/SPEC.md",
+    "specs/quiver-v13-token-efficient-ai-context/STATUS.md",
+    "specs/quiver-v13-token-efficient-ai-context/EVIDENCE_REPORT.md",
+    "specs/quiver-v13-token-efficient-ai-context/slices/slice-01-token-efficient-ai-modes-guidance/slice.json"
+  ],
+  "tests": [
+    "rg check for onboarding, implementation, review, and debugging modes",
+    "git diff --check"
+  ],
+  "documentation": [
+    "README_FOR_AI.md",
+    "docs/AI_ONBOARDING_PROMPT.md.template",
+    "docs/WORKFLOW.md.template",
+    "docs/GITFLOW_PR_GUIDE.md.template"
+  ],
+  "dependencies": [],
+  "assumptions": [
+    "Mode-aware guidance is more useful than one generic token-efficiency checklist",
+    "Detailed enforcement can wait until the generated artifacts exist"
+  ],
+  "estimated_hours": 3,
+  "actual_hours": null,
+  "status": "draft",
+  "blocked_reason": null,
+  "ready_at": null,
+  "started_at": null,
+  "completed_at": null
+}

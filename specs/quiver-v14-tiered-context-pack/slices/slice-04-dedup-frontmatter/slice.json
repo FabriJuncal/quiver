@@ -1,0 +1,83 @@
+{
+  "slice_id": "slice-04-dedup-frontmatter",
+  "ticket": "QUIVER-04",
+  "type": "feat",
+  "title": "Deduplication and YAML Front-Matter",
+  "objective": "Add structured YAML front-matter to every generated context file and remove duplication so `PROJECT_MAP.md` is the single source of truth for stack and commands.",
+  "description": "Today stack information, commands, and package manager details are repeated across AI_CONTEXT, CONTEXTO, PROJECT_MAP, STATUS, and WORKFLOW. Agents that load more than one file pay the token cost twice. This slice collapses duplication by making PROJECT_MAP.md authoritative and having other files link to it, and adds a YAML front-matter header on every file in `docs/ai/` so agents can skip irrelevant files without reading the body.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "dedup-frontmatter",
+    "branch_name": "feature/QUIVER-04-dedup-frontmatter"
+  },
+  "must": [
+    "Every file rendered into `docs/ai/` (QUICK.md, STANDARD.md, DEEP.md, ACTIVE_SLICE.md, PRINCIPLES.md, RULES.yaml skipped, LESSONS.md) starts with a YAML front-matter block containing: `purpose`, `applies_when`, `token_cost` (integer heuristic using 4 chars per token), `last_updated` (YYYY-MM-DD), `supersedes` (path or null)",
+    "AI_CONTEXT.md.template no longer restates stack, package manager, or command tables; it links to `docs/PROJECT_MAP.md` for that information",
+    "CONTEXTO.md.template becomes a thin summary that links to AI_CONTEXT.md; existing CONTEXTO.md files in already-generated projects are preserved during migrate",
+    "STATUS.md.template stops restating stack or commands; it references PROJECT_MAP.md when needed",
+    "Implement a `writeFrontMatter(targetPath, fields)` helper in `src/create-quiver/lib/init-docs.js` that prepends or updates front-matter idempotently without duplicating the block",
+    "`supersedes` is populated with the path of the deprecated file when a file replaces another (for example CONTEXTO.md supersedes nothing, but AI_CONTEXT.md stops restating PROJECT_MAP and documents that in a comment)"
+  ],
+  "not_included": [
+    "Deleting AI_CONTEXT.md, CONTEXTO.md, or STATUS.md",
+    "Enforcing front-matter outside `docs/ai/`",
+    "Tokenizer-accurate token counting; the 4 chars per token heuristic is sufficient",
+    "Doctor warnings for missing front-matter (handled in slice-05)"
+  ],
+  "acceptance": [
+    "A freshly initialized project has YAML front-matter on every file directly under `docs/ai/` that is a Markdown file",
+    "Each front-matter block contains `purpose`, `applies_when`, `token_cost`, `last_updated`, `supersedes`",
+    "`grep -c 'Package manager' docs/PROJECT_MAP.md` returns at least 1 and no other generated file under `docs/` contains the phrase `Package manager:` as a content line",
+    "AI_CONTEXT.md contains a link to `docs/PROJECT_MAP.md`",
+    "Running init twice on the same directory does not produce duplicated front-matter blocks",
+    "Migrating a project generated before v14 adds front-matter to existing `docs/ai/` files idempotently"
+  ],
+  "files": [
+    "docs/AI_CONTEXT.md.template",
+    "docs/CONTEXTO.md.template",
+    "docs/STATUS.md.template",
+    "docs/QUICK.md.template",
+    "docs/STANDARD.md.template",
+    "docs/DEEP.md.template",
+    "src/create-quiver/lib/init-docs.js",
+    "scripts/init-docs.sh",
+    "specs/quiver-v14-tiered-context-pack/SPEC.md",
+    "specs/quiver-v14-tiered-context-pack/STATUS.md",
+    "specs/quiver-v14-tiered-context-pack/EVIDENCE_REPORT.md",
+    "specs/quiver-v14-tiered-context-pack/slices/slice-04-dedup-frontmatter/slice.json"
+  ],
+  "tests": [
+    "node bin/create-quiver.js --name \"Scratch\" --dir /tmp/quiver-v14-slice-04-smoke",
+    "head -n 1 /tmp/quiver-v14-slice-04-smoke/docs/ai/QUICK.md | grep -q '^---$'",
+    "head -n 1 /tmp/quiver-v14-slice-04-smoke/docs/ai/STANDARD.md | grep -q '^---$'",
+    "head -n 1 /tmp/quiver-v14-slice-04-smoke/docs/ai/DEEP.md | grep -q '^---$'",
+    "grep -q 'purpose:' /tmp/quiver-v14-slice-04-smoke/docs/ai/QUICK.md",
+    "grep -q 'applies_when:' /tmp/quiver-v14-slice-04-smoke/docs/ai/QUICK.md",
+    "grep -q 'token_cost:' /tmp/quiver-v14-slice-04-smoke/docs/ai/QUICK.md",
+    "node bin/create-quiver.js --name \"Scratch\" --dir /tmp/quiver-v14-slice-04-smoke -y",
+    "test \"$(grep -c '^purpose:' /tmp/quiver-v14-slice-04-smoke/docs/ai/QUICK.md)\" = \"1\"",
+    "test \"$(grep -r 'Package manager:' /tmp/quiver-v14-slice-04-smoke/docs | wc -l | tr -d ' ')\" = \"1\"",
+    "git diff --check"
+  ],
+  "documentation": [
+    "docs/AI_CONTEXT.md.template",
+    "docs/CONTEXTO.md.template",
+    "README_FOR_AI.md"
+  ],
+  "dependencies": [
+    "slice-01-tiered-context-pack"
+  ],
+  "assumptions": [
+    "A 4 chars per token heuristic is accurate enough for budget decisions; exact tokenization is not needed",
+    "Idempotent front-matter is preferable to regenerating the whole file, since users may edit the body",
+    "Linking between generated files is acceptable; agents handle Markdown links well"
+  ],
+  "estimated_hours": 4,
+  "actual_hours": null,
+  "status": "draft",
+  "blocked_reason": null,
+  "ready_at": null,
+  "started_at": null,
+  "completed_at": null
+}

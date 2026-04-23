@@ -1,0 +1,83 @@
+{
+  "slice_id": "slice-05-doctor-smokes-tiered-pack",
+  "ticket": "QUIVER-05",
+  "type": "test",
+  "title": "Doctor and Smokes for Tiered Pack",
+  "objective": "Teach `doctor` to warn when the tiered pack drifts out of contract, and add CI smokes that cover the pack, AGENTS.md, ACTIVE_SLICE lifecycle, and deduplication.",
+  "description": "Slices 01-04 introduce new artifacts. Without validation, those artifacts silently decay: QUICK grows past 50 lines, front-matter fields disappear, ACTIVE_SLICE is left orphaned after cleanup, or stack duplication creeps back in. This slice adds lightweight checks in `doctor` and cross-platform smokes in CI so the contract stays enforced. This slice also absorbs the doctor and smoke assertions originally planned for v13 slice-04, which was removed during reconciliation.",
+  "git": {
+    "branch_type": "test",
+    "base_branch": "main",
+    "branch_slug": "doctor-smokes-tiered-pack",
+    "branch_name": "test/QUIVER-05-doctor-smokes-tiered-pack"
+  },
+  "must": [
+    "Extend `src/create-quiver/lib/doctor.js` (or the doctor logic in `src/create-quiver/index.js`) to print warnings when: QUICK.md exceeds 50 non-empty lines, STANDARD.md exceeds 300 non-empty lines, AGENTS.md is missing any of the six required sections, any file in `docs/ai/` is missing front-matter, `ACTIVE_SLICE.md` exists without any active worktree, or stack information appears in more than one generated file",
+    "Warnings are non-fatal: doctor still exits 0 when only warnings are present, and exits non-zero only for existing hard failures",
+    "Add a smoke script `scripts/ci/smoke-tiered-pack.sh` that: creates a scratch project, verifies tier files exist and meet size bounds, verifies AGENTS.md sections, runs start-slice and checks ACTIVE_SLICE.md, runs cleanup-slice and checks ACTIVE_SLICE.md is gone, and greps for duplicated stack info",
+    "Wire `scripts/ci/smoke-tiered-pack.sh` into the existing `smoke:create-quiver` package script or add a sibling `smoke:tiered-pack` script",
+    "Update `.github/workflows/ci.yml` so the new smoke runs on macOS, Linux, and Windows matrix entries",
+    "Smoke asserts that docs/DECISIONS.md exists in a freshly generated project",
+    "Smoke asserts that docs/PROJECT_MAP.md contains a Suggested Reading Order section",
+    "Smoke asserts that generated guidance names all four AI modes (onboarding, implementation, review, debug)",
+    "Update specs/[project-name]/EVIDENCE_REPORT.md.template guidance to prefer summarized command evidence (command, exit code, first relevant error, stacktrace, log path) over pasted long logs"
+  ],
+  "not_included": [
+    "New diagnostic commands (token-cost, diff-pack are deferred to v15)",
+    "Blocking doctor on warnings (they stay informational)",
+    "Replacing existing smokes"
+  ],
+  "acceptance": [
+    "Running `doctor` on a healthy v14-generated project prints zero warnings and exits 0",
+    "Running `doctor` on a project where QUICK.md has 60 non-empty lines prints a warning mentioning the 50-line budget",
+    "Running `doctor` on a project where AGENTS.md is missing the Reading Budget section prints a warning naming that section",
+    "Running `doctor` on a project where `docs/ai/STANDARD.md` has no front-matter prints a warning for that file",
+    "`smoke-tiered-pack.sh` exits 0 against a freshly generated project and non-zero when any check fails",
+    "CI matrix entries for macOS, Linux, and Windows execute the new smoke",
+    "Smoke fails if DECISIONS.md is missing after init",
+    "Smoke fails if PROJECT_MAP.md is missing the Suggested Reading Order section",
+    "Smoke fails if any of the four mode names is missing from generated guidance",
+    "Generated EVIDENCE_REPORT.md.template prefers summarized command evidence over long logs"
+  ],
+  "files": [
+    "src/create-quiver/lib/doctor.js",
+    "src/create-quiver/index.js",
+    "scripts/ci/smoke-tiered-pack.sh",
+    "package.json",
+    ".github/workflows/ci.yml",
+    "specs/[project-name]/EVIDENCE_REPORT.md.template",
+    "specs/quiver-v14-tiered-context-pack/SPEC.md",
+    "specs/quiver-v14-tiered-context-pack/STATUS.md",
+    "specs/quiver-v14-tiered-context-pack/EVIDENCE_REPORT.md",
+    "specs/quiver-v14-tiered-context-pack/slices/slice-05-doctor-smokes-tiered-pack/slice.json"
+  ],
+  "tests": [
+    "node bin/create-quiver.js --name \"Scratch\" --dir /tmp/quiver-v14-slice-05-smoke",
+    "node bin/create-quiver.js doctor --dir /tmp/quiver-v14-slice-05-smoke",
+    "bash scripts/ci/smoke-tiered-pack.sh",
+    "awk 'NR==1,/^---$/{next} /^---$/{exit} {print}' /tmp/quiver-v14-slice-05-smoke/docs/ai/QUICK.md > /dev/null",
+    "git diff --check"
+  ],
+  "documentation": [
+    "docs/TESTING_GUIDE_FOR_AI.md.template",
+    "README.md"
+  ],
+  "dependencies": [
+    "slice-01-tiered-context-pack",
+    "slice-02-agents-md-router",
+    "slice-03-active-slice-lifecycle",
+    "slice-04-dedup-frontmatter"
+  ],
+  "assumptions": [
+    "Warnings are more useful than hard failures for stylistic contracts; hard failures belong to migration and file presence checks",
+    "A single smoke script is easier to maintain than spreading the checks across the existing smokes",
+    "Cross-platform shell differences are already handled by the v12 CI matrix; the new smoke follows the same conventions"
+  ],
+  "estimated_hours": 4,
+  "actual_hours": null,
+  "status": "draft",
+  "blocked_reason": null,
+  "ready_at": null,
+  "started_at": null,
+  "completed_at": null
+}
