@@ -8,6 +8,7 @@ const { checkPrReadiness, checkScope, checkSliceReadiness } = require('./lib/rea
 const { cleanupSlice, refreshActiveSlicesBoard, startSlice } = require('./lib/lifecycle');
 const { relativePosixPath, resolveTargetRoot } = require('./lib/paths');
 const {
+  hasQuiverInitializationEvidence,
   readState,
   updateStateForAnalyze,
   updateStateForMigrate,
@@ -1020,6 +1021,10 @@ function runMigrate(targetDir) {
 
   if (!fs.existsSync(projectRoot)) {
     throw new Error(formatError(`target directory does not exist: ${projectRoot}`));
+  }
+
+  if (!hasQuiverInitializationEvidence(projectRoot)) {
+    throw new Error(formatError('migrate requires a project previously initialized by Quiver.\nRun: npx create-quiver --name "Project Name"'));
   }
 
   const packageJson = loadPackageJson(projectRoot);

@@ -19,6 +19,52 @@ function readState(projectRoot) {
   return JSON.parse(fs.readFileSync(filePath, 'utf8'));
 }
 
+function hasInitializedStateMetadata(state) {
+  return Boolean(
+    state
+    && typeof state.initialized_version === 'string'
+    && state.initialized_version.length > 0
+    && typeof state.last_initialized_at === 'string'
+    && state.last_initialized_at.length > 0,
+  );
+}
+
+function hasGeneratedProjectSpec(projectRoot) {
+  const specsDir = path.join(projectRoot, 'specs');
+  if (!fs.existsSync(specsDir)) {
+    return false;
+  }
+
+  return fs.readdirSync(specsDir, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => entry.name)
+    .filter((entry) => entry !== '[project-name]' && !entry.startsWith('quiver-'))
+    .some((entry) => (
+      fs.existsSync(path.join(specsDir, entry, 'SPEC.md'))
+      && fs.existsSync(path.join(specsDir, entry, 'STATUS.md'))
+      && fs.existsSync(path.join(specsDir, entry, 'EVIDENCE_REPORT.md'))
+      && fs.existsSync(path.join(specsDir, entry, 'slices', 'slice-template', 'slice.json'))
+    ));
+}
+
+function hasLegacyQuiverInitializationEvidence(projectRoot) {
+  const requiredPaths = [
+    'docs-template/scripts/init-docs.sh',
+    'tools/scripts/start-slice.sh',
+    'tools/scripts/check-slice-readiness.sh',
+    '.github/pull_request_template.md',
+    'docs/INDEX.md',
+  ];
+
+  return requiredPaths.every((relativePath) => fs.existsSync(path.join(projectRoot, relativePath)))
+    && hasGeneratedProjectSpec(projectRoot);
+}
+
+function hasQuiverInitializationEvidence(projectRoot) {
+  const state = readState(projectRoot);
+  return hasInitializedStateMetadata(state) || hasLegacyQuiverInitializationEvidence(projectRoot);
+}
+
 function writeState(projectRoot, nextState) {
   const stateDir = path.join(projectRoot, '.quiver');
   ensureDir(stateDir);
@@ -80,6 +126,10 @@ function updateStateForAnalyze(projectRoot, cliVersion) {
 }
 
 module.exports = {
+  hasGeneratedProjectSpec,
+  hasInitializedStateMetadata,
+  hasLegacyQuiverInitializationEvidence,
+  hasQuiverInitializationEvidence,
   readState,
   statePath,
   updateStateForAnalyze,
