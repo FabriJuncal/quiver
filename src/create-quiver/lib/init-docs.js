@@ -70,14 +70,41 @@ function renderTemplate(text, replacements) {
     .replace(/{{REFRESH_ACTIVE_SLICES_COMMAND}}/g, replacements.refreshActiveSlicesCommand || 'npx create-quiver refresh-active-slices');
 }
 
-function copyRenderedFile(sourcePath, destinationPath, replacements, skipIfExists) {
+function copyRenderedFile(sourcePath, destinationPath, replacements, skipIfExists, frontMatterFactory) {
+  const sourceText = fs.readFileSync(sourcePath, 'utf8');
+  const renderedText = renderTemplate(sourceText, replacements);
+
   if (skipIfExists && fs.existsSync(destinationPath)) {
+    if (typeof frontMatterFactory === 'function') {
+      const existingText = fs.readFileSync(destinationPath, 'utf8');
+      const body = stripFrontMatter(existingText);
+      writeFrontMatter(destinationPath, frontMatterFactory({
+        body,
+        existingText,
+        renderedText,
+        replacements,
+        destinationPath,
+      }));
+      return 'frontmatter-updated';
+    }
+
     return 'skipped';
   }
 
   ensureDir(path.dirname(destinationPath));
-  const sourceText = fs.readFileSync(sourcePath, 'utf8');
-  fs.writeFileSync(destinationPath, renderTemplate(sourceText, replacements));
+  fs.writeFileSync(destinationPath, renderedText);
+
+  if (typeof frontMatterFactory === 'function') {
+    writeFrontMatter(destinationPath, frontMatterFactory({
+      body: renderedText,
+      existingText: null,
+      renderedText,
+      replacements,
+      destinationPath,
+    }));
+    return 'created-with-frontmatter';
+  }
+
   return 'created';
 }
 
@@ -105,6 +132,67 @@ function copyIfSourceExists(sourcePath, destinationPath, skipIfExists) {
   }
 
   return copyBinaryFile(sourcePath, destinationPath, skipIfExists);
+}
+
+function stripFrontMatter(text) {
+  if (!text.startsWith('---\n')) {
+    return text;
+  }
+
+  const closing = text.indexOf('\n---\n', 4);
+  if (closing === -1) {
+    return text;
+  }
+
+  return text.slice(closing + 5).replace(/^\n+/, '');
+}
+
+function estimateTokenCost(text) {
+  return Math.max(1, Math.ceil(Buffer.byteLength(text, 'utf8') / 4));
+}
+
+function serializeFrontMatterValue(value) {
+  if (value === null) {
+    return 'null';
+  }
+
+  if (typeof value === 'number') {
+    return String(value);
+  }
+
+  return JSON.stringify(String(value));
+}
+
+function serializeFrontMatter(fields) {
+  return [
+    '---',
+    `purpose: ${serializeFrontMatterValue(fields.purpose)}`,
+    `applies_when: ${serializeFrontMatterValue(fields.applies_when)}`,
+    `token_cost: ${serializeFrontMatterValue(fields.token_cost)}`,
+    `last_updated: ${serializeFrontMatterValue(fields.last_updated)}`,
+    `supersedes: ${serializeFrontMatterValue(fields.supersedes)}`,
+    '---',
+  ].join('\n');
+}
+
+function buildFrontMatterFields({ purpose, appliesWhen, body, currentDate, supersedes = null }) {
+  return {
+    purpose,
+    applies_when: appliesWhen,
+    token_cost: estimateTokenCost(body),
+    last_updated: currentDate,
+    supersedes,
+  };
+}
+
+function writeFrontMatter(filePath, fields) {
+  const existing = fs.existsSync(filePath) ? fs.readFileSync(filePath, 'utf8') : '';
+  const body = stripFrontMatter(existing);
+  const frontMatter = serializeFrontMatter(fields);
+  const nextContent = body.length > 0 ? `${frontMatter}\n\n${body.replace(/\s+$/, '')}\n` : `${frontMatter}\n`;
+  ensureDir(path.dirname(filePath));
+  fs.writeFileSync(filePath, nextContent);
+  return nextContent;
 }
 
 function mergePackageJson(projectRoot, templateRoot, skipIfExists) {
@@ -154,6 +242,8 @@ npm install --save-dev create-quiver
 \`\`\`
 
 If you need to target another directory from outside the project, pass \`--dir\` explicitly. Quote paths that contain spaces.
+
+After you run \`analyze\`, open \`docs/PROJECT_MAP.md\` for the detected stack, package manager, and command surface.
 
 ## Project NPM Scripts
 
@@ -209,7 +299,7 @@ Do not modify product code unless I explicitly authorize it.
 Prepare the project context docs and report assumptions, risks, and files changed.
 \`\`\`
 
-Review the AI changes to docs/AI_CONTEXT.md, docs/CONTEXTO.md, docs/STATUS.md, and specs/${projectSlug}/SPEC.md before starting implementation work.
+Review the AI changes to docs/AI_CONTEXT.md, docs/CONTEXTO.md, docs/STATUS.md, and specs/${projectSlug}/SPEC.md before starting implementation work. Use \`docs/PROJECT_MAP.md\` for stack and command details.
 
 ## Decision Log
 
@@ -283,14 +373,21 @@ function initializeProjectDocs(options) {
     const result = copyRenderedFile(agentsSourcePath, agentsDestinationPath, replacements, true);
     operations.push({ source: 'AGENTS.md.template', destination: 'AGENTS.md', result });
   }
+  const frontMatterFor = (purpose, appliesWhen, supersedes = null) => ({ body }) => buildFrontMatterFields({
+    purpose,
+    appliesWhen,
+    body,
+    currentDate: replacements.currentDate,
+    supersedes,
+  });
   const templateCopies = [
     ['docs/INDEX.md.template', 'docs/INDEX.md'],
     ['docs/DECISIONS.md.template', 'docs/DECISIONS.md'],
-    ['docs/AI_CONTEXT.md.template', 'docs/AI_CONTEXT.md'],
-    ['docs/AI_ONBOARDING_PROMPT.md.template', 'docs/AI_ONBOARDING_PROMPT.md'],
-    ['docs/CONTEXTO.md.template', 'docs/CONTEXTO.md'],
-    ['docs/STATUS.md.template', 'docs/STATUS.md'],
-    ['docs/WORKFLOW.md.template', 'docs/WORKFLOW.md'],
+    ['docs/AI_CONTEXT.md.template', 'docs/AI_CONTEXT.md', frontMatterFor('Agent-facing project context pack', 'onboarding, implementation, review')],
+    ['docs/AI_ONBOARDING_PROMPT.md.template', 'docs/AI_ONBOARDING_PROMPT.md', frontMatterFor('AI onboarding handoff prompt', 'onboarding after analysis')],
+    ['docs/CONTEXTO.md.template', 'docs/CONTEXTO.md', frontMatterFor('Human-readable project overview', 'onboarding, review')],
+    ['docs/STATUS.md.template', 'docs/STATUS.md', frontMatterFor('Project status snapshot', 'progress review, planning')],
+    ['docs/WORKFLOW.md.template', 'docs/WORKFLOW.md', frontMatterFor('Execution workflow contract', 'planning, implementation')],
     ['docs/SUPPORT_MATRIX.md.template', 'docs/SUPPORT_MATRIX.md'],
     ['docs/TROUBLESHOOTING.md.template', 'docs/TROUBLESHOOTING.md'],
     ['docs/MULTI_AGENT_WORKFLOW.md.template', 'docs/MULTI_AGENT_WORKFLOW.md'],
@@ -299,7 +396,7 @@ function initializeProjectDocs(options) {
     ['docs/GITFLOW_PR_GUIDE.md.template', 'docs/GITFLOW_PR_GUIDE.md'],
     ['docs/DOCUMENTATION_GUIDE.md.template', 'docs/DOCUMENTATION_GUIDE.md'],
     ['docs/TESTING_GUIDE_FOR_AI.md.template', 'docs/TESTING_GUIDE_FOR_AI.md'],
-    ['docs/ai/LESSONS.md.template', 'docs/ai/LESSONS.md'],
+    ['docs/ai/LESSONS.md.template', 'docs/ai/LESSONS.md', frontMatterFor('Slice learnings log', 'after slice completion')],
     ['specs/[project-name]/SPEC.md.template', `specs/${replacements.projectSlug}/SPEC.md`],
     ['specs/[project-name]/STATUS.md.template', `specs/${replacements.projectSlug}/STATUS.md`],
     ['specs/[project-name]/EVIDENCE_REPORT.md.template', `specs/${replacements.projectSlug}/EVIDENCE_REPORT.md`],
@@ -307,21 +404,20 @@ function initializeProjectDocs(options) {
     ['specs/[project-name]/slices/pr.md.template', `specs/${replacements.projectSlug}/slices/slice-template/pr.md.template`],
   ];
 
-  for (const [source, destination] of templateCopies) {
+  for (const [source, destination, frontMatterFactory] of templateCopies) {
     const sourcePath = path.join(templateRoot, source);
     if (!fs.existsSync(sourcePath)) {
       continue;
     }
 
     const destinationPath = path.join(projectRoot, destination);
-    const result = copyRenderedFile(sourcePath, destinationPath, replacements, migrateMode);
+    const result = copyRenderedFile(sourcePath, destinationPath, replacements, migrateMode, frontMatterFactory);
     operations.push({ source, destination, result });
   }
 
   const binaryCopies = [
     ['docs/UI_STANDARDS.md', 'docs/UI_STANDARDS.md'],
     ['docs/MOCK_DATA_GUIDE.md', 'docs/MOCK_DATA_GUIDE.md'],
-    ['docs/ai/PRINCIPLES.md', 'docs/ai/PRINCIPLES.md'],
     ['docs/ai/RULES.yaml', 'docs/ai/RULES.yaml'],
     ['LICENSE', 'LICENSE'],
     ['CONTRIBUTING.md', 'CONTRIBUTING.md'],
@@ -351,6 +447,19 @@ function initializeProjectDocs(options) {
 
     const result = copyIfSourceExists(sourcePath, destinationPath, migrateMode);
     operations.push({ source, destination, result });
+  }
+
+  const aiPrinciplesSource = path.join(templateRoot, 'docs/ai/PRINCIPLES.md');
+  if (fs.existsSync(aiPrinciplesSource)) {
+    const aiPrinciplesDestination = path.join(projectRoot, 'docs/ai/PRINCIPLES.md');
+    const result = copyRenderedFile(
+      aiPrinciplesSource,
+      aiPrinciplesDestination,
+      replacements,
+      migrateMode,
+      frontMatterFor('AI operating principles', 'all AI work'),
+    );
+    operations.push({ source: 'docs/ai/PRINCIPLES.md', destination: 'docs/ai/PRINCIPLES.md', result });
   }
 
   const packageResult = mergePackageJson(projectRoot, templateRoot, migrateMode);
@@ -392,7 +501,23 @@ function initializeProjectDocs(options) {
     }
 
     const destinationPath = path.join(projectRoot, destination);
-    const result = copyRenderedFile(sourcePath, destinationPath, tierReplacements, migrateMode);
+    const result = copyRenderedFile(sourcePath, destinationPath, tierReplacements, migrateMode, ({
+      body,
+    }) => buildFrontMatterFields({
+      purpose: destination.endsWith('QUICK.md')
+        ? 'Minimum execution briefing'
+        : destination.endsWith('STANDARD.md')
+          ? 'Default context pack'
+          : 'Deep project context',
+      appliesWhen: destination.endsWith('QUICK.md')
+        ? 'execution'
+        : destination.endsWith('STANDARD.md')
+          ? 'planning, implementation'
+          : 'planning, escalation',
+      body,
+      currentDate: replacements.currentDate,
+      supersedes: null,
+    }));
     operations.push({ source, destination, result });
   }
 
@@ -486,5 +611,6 @@ function initializeProjectDocs(options) {
 
 module.exports = {
   initializeProjectDocs,
+  writeFrontMatter,
   toProjectSlug,
 };

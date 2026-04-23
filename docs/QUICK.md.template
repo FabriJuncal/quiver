@@ -1,32 +1,16 @@
 # {{PROJECT_NAME}} Quick Context
 
-**Date:** {{FECHA}}
-**Status:** {{ESTADO}}
-
 Minimum viable briefing for execution agents.
 
 ## Snapshot
 
 - Project: {{PROJECT_NAME}}
-- Package manager: {{PACKAGE_MANAGER}}
-- Detected stack: {{STACK_SUMMARY}}
+- Project map: `docs/PROJECT_MAP.md`
+- Focus: unknown until analyze
 
-## Primary Commands
+## Where Commands Live
 
-- Install: {{PRIMARY_INSTALL}}
-- Dev: {{PRIMARY_DEV}}
-- Test: {{PRIMARY_TEST}}
-
-## Quiver Commands
-
-- Analyze: {{ANALYZE_COMMAND}}
-- Doctor: {{DOCTOR_COMMAND}}
-- Start slice: {{START_SLICE_COMMAND}}
-- Check slice: {{CHECK_SLICE_COMMAND}}
-- Check PR: {{CHECK_PR_COMMAND}}
-- Cleanup slice: {{CLEANUP_SLICE_COMMAND}}
-- Check scope: {{CHECK_SCOPE_COMMAND}}
-- Refresh active slices: {{REFRESH_ACTIVE_SLICES_COMMAND}}
+Use `docs/PROJECT_MAP.md` for the package manager, project stack, test commands, and Quiver command surface.
 
 ## Hard Rules
 

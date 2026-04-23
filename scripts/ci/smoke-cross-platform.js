@@ -48,6 +48,40 @@ function assertContains(text, needle, label) {
   assert(text.includes(needle), `${label} did not contain: ${needle}`);
 }
 
+function assertFrontMatter(filePath) {
+  const text = fs.readFileSync(filePath, 'utf8');
+  const lines = text.split(/\r?\n/);
+  assert(lines[0] === '---', `Missing front matter start in ${filePath}`);
+  const markerCount = lines.filter((line) => line === '---').length;
+  assert(markerCount === 2, `Expected exactly one front matter block in ${filePath}, found ${markerCount} markers`);
+  for (const field of ['purpose', 'applies_when', 'token_cost', 'last_updated', 'supersedes']) {
+    assert(text.includes(`${field}:`), `Missing front matter field '${field}' in ${filePath}`);
+  }
+}
+
+function assertPackageManagerOnlyInProjectMap(docsRoot) {
+  const matches = [];
+
+  const walk = (dir) => {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      const fullPath = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        walk(fullPath);
+        continue;
+      }
+      if (entry.isFile() && entry.name.endsWith('.md')) {
+        const text = fs.readFileSync(fullPath, 'utf8');
+        if (text.includes('Package manager:') && !fullPath.endsWith(path.join('docs', 'PROJECT_MAP.md'))) {
+          matches.push(fullPath);
+        }
+      }
+    }
+  };
+
+  walk(docsRoot);
+  assert(matches.length === 0, `Package manager should only be documented in docs/PROJECT_MAP.md, found in: ${matches.join(', ')}`);
+}
+
 function assertPackageScripts(packageJsonPath, label, scripts) {
   const pkg = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
   const missing = scripts.filter((name) => typeof pkg.scripts?.[name] !== 'string');
@@ -168,6 +202,8 @@ function runSmoke() {
   assertFile(path.join(newProject, 'docs', 'ai', 'QUICK.md'));
   assertFile(path.join(newProject, 'docs', 'ai', 'STANDARD.md'));
   assertFile(path.join(newProject, 'docs', 'ai', 'DEEP.md'));
+  assertFile(path.join(newProject, 'docs', 'ai', 'LESSONS.md'));
+  assertFile(path.join(newProject, 'docs', 'ai', 'PRINCIPLES.md'));
   assertFile(path.join(newProject, '.quiver', 'state.json'));
   assertNodeNativeScripts(path.join(newProject, 'package.json'), 'new project');
   assertPackageScripts(path.join(newProject, 'package.json'), 'new project', [
@@ -192,11 +228,28 @@ function runSmoke() {
   assertFile(path.join(newProject, 'docs', 'PROJECT_SCAN.json'));
   assertFile(path.join(newProject, 'docs', 'PROJECT_MAP.md'));
   assertProjectMapSections(path.join(newProject, 'docs', 'PROJECT_MAP.md'));
+  assertContains(fs.readFileSync(path.join(newProject, 'docs', 'AI_CONTEXT.md'), 'utf8'), 'docs/PROJECT_MAP.md', 'AI_CONTEXT.md');
+  assertContains(fs.readFileSync(path.join(newProject, 'docs', 'CONTEXTO.md'), 'utf8'), 'docs/PROJECT_MAP.md', 'CONTEXTO.md');
+  assertContains(fs.readFileSync(path.join(newProject, 'docs', 'STATUS.md'), 'utf8'), 'docs/PROJECT_MAP.md', 'STATUS.md');
+  assertContains(fs.readFileSync(path.join(newProject, 'docs', 'WORKFLOW.md'), 'utf8'), 'docs/PROJECT_MAP.md', 'WORKFLOW.md');
+  assertContains(fs.readFileSync(path.join(newProject, 'docs', 'AI_ONBOARDING_PROMPT.md'), 'utf8'), 'docs/PROJECT_MAP.md', 'AI_ONBOARDING_PROMPT.md');
+  assertContains(fs.readFileSync(path.join(newProject, 'docs', 'ai', 'QUICK.md'), 'utf8'), 'docs/PROJECT_MAP.md', 'QUICK.md');
+  assertFrontMatter(path.join(newProject, 'docs', 'AI_CONTEXT.md'));
+  assertFrontMatter(path.join(newProject, 'docs', 'AI_ONBOARDING_PROMPT.md'));
+  assertFrontMatter(path.join(newProject, 'docs', 'CONTEXTO.md'));
+  assertFrontMatter(path.join(newProject, 'docs', 'STATUS.md'));
+  assertFrontMatter(path.join(newProject, 'docs', 'WORKFLOW.md'));
+  assertFrontMatter(path.join(newProject, 'docs', 'ai', 'QUICK.md'));
+  assertFrontMatter(path.join(newProject, 'docs', 'ai', 'STANDARD.md'));
+  assertFrontMatter(path.join(newProject, 'docs', 'ai', 'DEEP.md'));
+  assertFrontMatter(path.join(newProject, 'docs', 'ai', 'LESSONS.md'));
+  assertFrontMatter(path.join(newProject, 'docs', 'ai', 'PRINCIPLES.md'));
   assertContains(fs.readFileSync(path.join(newProject, 'docs', 'INDEX.md'), 'utf8'), './ai/QUICK.md', 'docs index');
   assertContains(fs.readFileSync(path.join(newProject, 'docs', 'INDEX.md'), 'utf8'), './ai/STANDARD.md', 'docs index');
   assertContains(fs.readFileSync(path.join(newProject, 'docs', 'INDEX.md'), 'utf8'), './ai/DEEP.md', 'docs index');
   assert(countNonEmptyLines(path.join(newProject, 'docs', 'ai', 'QUICK.md')) <= 50, 'QUICK.md exceeds 50 non-empty lines');
   assert(countNonEmptyLines(path.join(newProject, 'docs', 'ai', 'STANDARD.md')) <= 300, 'STANDARD.md exceeds 300 non-empty lines');
+  assertPackageManagerOnlyInProjectMap(path.join(newProject, 'docs'));
   assert(readJson(path.join(newProject, '.quiver', 'state.json')).last_analysis_at, 'analysis metadata missing after analyze');
 
   initProject(legacyProject, 'Legacy Repo');
@@ -242,6 +295,18 @@ function runSmoke() {
   assertFile(path.join(legacyProject, 'docs', 'ai', 'QUICK.md'));
   assertFile(path.join(legacyProject, 'docs', 'ai', 'STANDARD.md'));
   assertFile(path.join(legacyProject, 'docs', 'ai', 'DEEP.md'));
+  assertFile(path.join(legacyProject, 'docs', 'ai', 'LESSONS.md'));
+  assertFile(path.join(legacyProject, 'docs', 'ai', 'PRINCIPLES.md'));
+  assertFrontMatter(path.join(legacyProject, 'docs', 'AI_CONTEXT.md'));
+  assertFrontMatter(path.join(legacyProject, 'docs', 'AI_ONBOARDING_PROMPT.md'));
+  assertFrontMatter(path.join(legacyProject, 'docs', 'CONTEXTO.md'));
+  assertFrontMatter(path.join(legacyProject, 'docs', 'STATUS.md'));
+  assertFrontMatter(path.join(legacyProject, 'docs', 'WORKFLOW.md'));
+  assertFrontMatter(path.join(legacyProject, 'docs', 'ai', 'QUICK.md'));
+  assertFrontMatter(path.join(legacyProject, 'docs', 'ai', 'STANDARD.md'));
+  assertFrontMatter(path.join(legacyProject, 'docs', 'ai', 'DEEP.md'));
+  assertFrontMatter(path.join(legacyProject, 'docs', 'ai', 'LESSONS.md'));
+  assertFrontMatter(path.join(legacyProject, 'docs', 'ai', 'PRINCIPLES.md'));
   assert(readJson(legacyPackage).scripts.lint === 'echo lint', 'custom user script was not preserved');
 
   cloneRepo(startRepo);
@@ -255,6 +320,7 @@ function runSmoke() {
   assertContains(startOutput, 'Slice listo para trabajar.', 'start-slice output');
   assertContains(startOutput, 'Base: develop', 'start-slice output');
   assertFile(activeSlicePath);
+  assertFrontMatter(activeSlicePath);
   assertContains(fs.readFileSync(activeSlicePath, 'utf8'), '## allowed_files', 'ACTIVE_SLICE');
   assertContains(fs.readFileSync(activeSlicePath, 'utf8'), 'Definition of Done', 'ACTIVE_SLICE');
   assertContains(fs.readFileSync(path.join(worktreePath, 'WORKTREE_CONTEXT.md'), 'utf8'), 'docs/ai/ACTIVE_SLICE.md', 'WORKTREE_CONTEXT');
@@ -271,6 +337,7 @@ function runSmoke() {
   const startAfterCleanup = runNodeCli(startRepo, ['start-slice', '--allow-draft', slicePath], { env: startEnv });
   assertContains(startAfterCleanup, 'Slice listo para trabajar.', 'start-slice output after cleanup');
   assertFile(activeSlicePath);
+  assertFrontMatter(activeSlicePath);
   fs.rmSync(activeSlicePath);
   const cleanupMissingOutput = runNodeCli(startRepo, ['cleanup-slice', '--discard', slicePath], { env: startEnv });
   assertContains(cleanupMissingOutput, 'PASS: Cleanup finalizado', 'cleanup-slice output when active slice missing');
@@ -317,8 +384,20 @@ function runSmoke() {
   assertFile(path.join(releaseProject, 'docs', 'ai', 'QUICK.md'));
   assertFile(path.join(releaseProject, 'docs', 'ai', 'STANDARD.md'));
   assertFile(path.join(releaseProject, 'docs', 'ai', 'DEEP.md'));
+  assertFile(path.join(releaseProject, 'docs', 'ai', 'LESSONS.md'));
+  assertFile(path.join(releaseProject, 'docs', 'ai', 'PRINCIPLES.md'));
   assert(countNonEmptyLines(path.join(releaseProject, 'docs', 'ai', 'QUICK.md')) <= 50, 'packaged QUICK.md exceeds 50 non-empty lines');
   assert(countNonEmptyLines(path.join(releaseProject, 'docs', 'ai', 'STANDARD.md')) <= 300, 'packaged STANDARD.md exceeds 300 non-empty lines');
+  assertFrontMatter(path.join(releaseProject, 'docs', 'AI_CONTEXT.md'));
+  assertFrontMatter(path.join(releaseProject, 'docs', 'AI_ONBOARDING_PROMPT.md'));
+  assertFrontMatter(path.join(releaseProject, 'docs', 'CONTEXTO.md'));
+  assertFrontMatter(path.join(releaseProject, 'docs', 'STATUS.md'));
+  assertFrontMatter(path.join(releaseProject, 'docs', 'WORKFLOW.md'));
+  assertFrontMatter(path.join(releaseProject, 'docs', 'ai', 'QUICK.md'));
+  assertFrontMatter(path.join(releaseProject, 'docs', 'ai', 'STANDARD.md'));
+  assertFrontMatter(path.join(releaseProject, 'docs', 'ai', 'DEEP.md'));
+  assertFrontMatter(path.join(releaseProject, 'docs', 'ai', 'LESSONS.md'));
+  assertFrontMatter(path.join(releaseProject, 'docs', 'ai', 'PRINCIPLES.md'));
 
   console.log('create-quiver cross-platform smoke passed');
 }

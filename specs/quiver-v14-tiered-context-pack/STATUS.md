@@ -12,14 +12,14 @@ Slice numbering is local to this spec. The first slice is `slice-01`.
 | slice-01 | Tiered Context Pack | Completed | - | 4 | 4 |
 | slice-02 | AGENTS.md Router | Completed | #38 | 3 | 3 |
 | slice-03 | Active Slice Lifecycle | Completed | - | 4 | 4 |
-| slice-04 | Dedup and Front-Matter | Draft | - | 4 | - |
+| slice-04 | Dedup and Front-Matter | Completed | - | 4 | 5 |
 | slice-05 | Doctor and Smokes for Tiered Pack | Draft | - | 4 | - |
 
 ## Progress
 
-- Completed slices: 3 / 5
-- Estimated hours: 19
-- Actual hours: 11
+- Completed slices: 4 / 5
+- Estimated hours: 23
+- Actual hours: 16
 
 ## Blockers
 

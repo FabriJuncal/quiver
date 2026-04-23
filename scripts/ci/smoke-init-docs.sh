@@ -18,6 +18,8 @@ trap cleanup EXIT
 
 mkdir -p "$target_repo"
 node "$cli" --name "$project_name" --dir "$target_repo" >/dev/null
+rm -rf "$target_repo/docs-template"
+node "$cli" --name "$project_name" --dir "$target_repo" >/dev/null
 cd "$target_repo"
 
 assert_file() {
@@ -51,6 +53,7 @@ required_files=(
   "docs/ai/QUICK.md"
   "docs/ai/STANDARD.md"
   "docs/ai/DEEP.md"
+  "docs/ai/LESSONS.md"
   "docs/DECISIONS.md"
   "docs/AI_CONTEXT.md"
   "docs/AI_ONBOARDING_PROMPT.md"
@@ -87,11 +90,44 @@ assert_contains() {
   fi
 }
 
+assert_front_matter() {
+  local path="$1"
+
+  if [[ "$(head -n 1 "$path")" != "---" ]]; then
+    echo "Missing front matter start in: $path" >&2
+    exit 1
+  fi
+
+  local block_count
+  block_count="$(grep -c '^---$' "$path")"
+  if [[ "$block_count" -ne 2 ]]; then
+    echo "Expected exactly one front matter block in $path, found $block_count markers" >&2
+    exit 1
+  fi
+
+  for field in purpose applies_when token_cost last_updated supersedes; do
+    if ! grep -Fq "$field:" "$path"; then
+      echo "Missing front matter field '$field' in: $path" >&2
+      exit 1
+    fi
+  done
+}
+
 assert_contains "AGENTS.md" "## Reading Budget"
 assert_contains "AGENTS.md" "## Reading Order"
 assert_contains "AGENTS.md" "## Output Policy"
 assert_contains "AGENTS.md" "## Slice Execution Rules"
 assert_contains "AGENTS.md" "QUICK"
+assert_front_matter "docs/AI_CONTEXT.md"
+assert_front_matter "docs/AI_ONBOARDING_PROMPT.md"
+assert_front_matter "docs/CONTEXTO.md"
+assert_front_matter "docs/STATUS.md"
+assert_front_matter "docs/WORKFLOW.md"
+assert_front_matter "docs/ai/QUICK.md"
+assert_front_matter "docs/ai/STANDARD.md"
+assert_front_matter "docs/ai/DEEP.md"
+assert_front_matter "docs/ai/LESSONS.md"
+assert_front_matter "docs/ai/PRINCIPLES.md"
 
 for file in README.md docs/INDEX.md docs/WORKFLOW.md docs/SEARCH.md; do
   assert_contains "$file" "Support Matrix"
@@ -104,10 +140,12 @@ assert_contains "docs/INDEX.md" "DECISIONS.md"
 assert_contains "docs/INDEX.md" "./ai/QUICK.md"
 assert_contains "docs/INDEX.md" "./ai/STANDARD.md"
 assert_contains "docs/INDEX.md" "./ai/DEEP.md"
+assert_contains "docs/INDEX.md" "Project Map"
 
 assert_contains "README.md" "npx create-quiver analyze"
 assert_contains "README.md" "npx create-quiver doctor"
 assert_contains "README.md" "AI Onboarding Prompt"
+assert_contains "README.md" "docs/PROJECT_MAP.md"
 assert_contains "README.md" "AGENTS.md"
 assert_contains "README.md" "Do not install it globally"
 assert_contains "README.md" "Cross-Platform Support"
@@ -126,17 +164,23 @@ fi
 
 assert_contains "docs/AI_CONTEXT.md" "AI Context Pack"
 assert_contains "docs/AI_CONTEXT.md" "Read First"
+assert_contains "docs/AI_CONTEXT.md" "docs/PROJECT_MAP.md"
 assert_contains "docs/AI_CONTEXT.md" "DECISIONS.md"
+assert_contains "docs/AI_CONTEXT.md" "Project Map"
 assert_contains "docs/DECISIONS.md" "Decision Log"
 assert_contains "docs/DECISIONS.md" "| Date | Decision | Reason | Alternatives | Impact |"
+assert_contains "docs/CONTEXTO.md" "docs/PROJECT_MAP.md"
+assert_contains "docs/STATUS.md" "docs/PROJECT_MAP.md"
+assert_contains "docs/WORKFLOW.md" "docs/PROJECT_MAP.md"
 assert_contains "docs/ai/QUICK.md" "Quick Context"
-assert_contains "docs/ai/QUICK.md" "Read Next"
+assert_contains "docs/ai/QUICK.md" "docs/PROJECT_MAP.md"
 assert_contains "docs/ai/STANDARD.md" "Standard Context"
 assert_contains "docs/ai/STANDARD.md" "V13 Mode Guidance"
 assert_contains "docs/ai/DEEP.md" "Deep Context"
 assert_contains "docs/ai/DEEP.md" "What Belongs Here"
 assert_contains "docs/AI_ONBOARDING_PROMPT.md" "AI Onboarding Prompt"
 assert_contains "docs/AI_ONBOARDING_PROMPT.md" "docs/PROJECT_SCAN.json"
+assert_contains "docs/AI_ONBOARDING_PROMPT.md" "docs/PROJECT_MAP.md"
 assert_contains "docs/AI_ONBOARDING_PROMPT.md" "Do not modify product source code"
 
 quick_lines="$(awk 'NF' docs/ai/QUICK.md | wc -l | awk '{ print $1 }')"

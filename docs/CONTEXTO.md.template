@@ -1,8 +1,5 @@
 # {{PROJECT_NAME}} Context
 
-**Date:** {{FECHA}}
-**Status:** {{ESTADO}}
-
 ## What Is {{PROJECT_NAME}}?
 
 [One or two paragraphs that explain the project.]
@@ -15,24 +12,14 @@
 
 [Describe the primary user.]
 
-## Technical Stack
-
-```text
-Frontend:
-├── [Framework]
-├── [Language]
-└── [UI library]
-
-Backend:
-├── [Framework]
-├── [Database]
-└── [Deploy target]
-```
-
 ## Current Focus
 
 - [Current goal 1]
 - [Current goal 2]
+
+## Where The Stack Lives
+
+The stack, package manager, and command surface are generated in `docs/PROJECT_MAP.md` after analysis. Keep this file focused on the human summary.
 
 ## Security and Privacy
 
