@@ -56,10 +56,10 @@
     "Detailed enforcement can wait until the generated artifacts exist"
   ],
   "estimated_hours": 3,
-  "actual_hours": null,
-  "status": "draft",
+  "actual_hours": 3,
+  "status": "completed",
   "blocked_reason": null,
   "ready_at": null,
   "started_at": null,
-  "completed_at": null
+  "completed_at": "2026-04-23"
 }

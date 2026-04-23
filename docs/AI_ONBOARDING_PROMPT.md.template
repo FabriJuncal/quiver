@@ -23,6 +23,17 @@ You are the onboarding agent for this project. Your job is to analyze the genera
 - Preserve Quiver workflow invariants: one slice = one commit, one spec = one PR.
 - Ask for confirmation before making product-code changes.
 
+## Mode Selection
+
+Use the least context that still solves the task:
+
+- **Onboarding:** rely on maps and metadata first. Read `docs/PROJECT_SCAN.json` and `docs/PROJECT_MAP.md` before any source files, then use `docs/AI_CONTEXT.md` and `docs/CONTEXTO.md` to fill gaps.
+- **Implementation:** start from `specs/{{PROJECT_SLUG}}/slices/<slice-id>/slice.json`, then read the declared files, nearby tests, and only then adjacent source.
+- **Review:** start from `git diff` and the slice scope before opening full files.
+- **Debug:** start from the command, exit code, first relevant error, stacktrace, and the nearest changed code before reading long logs.
+
+Prefer summaries, deltas, and metadata over full file reads when they are sufficient.
+
 ## Hard Constraints
 
 - Do not read or expose secret values from `.env`, credential files, tokens, SSH keys, or private config.

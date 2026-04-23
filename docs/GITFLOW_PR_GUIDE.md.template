@@ -16,6 +16,13 @@ This guide explains how to open and review spec PRs without breaking the canonic
 - Open and merge the documentation PR before the first slice starts execution
 - Do not open the spec PR before the documentation PR is merged
 
+## Review Guidance
+
+- Start with `git diff` and the slice scope before opening full files.
+- Use the diff to confirm what changed, then open full files only for gaps, regressions, or unclear context.
+- For debugging reviews, inspect the first relevant error, stacktrace, or failing command before reading large logs.
+- Keep review notes anchored to the changed lines and the slice acceptance criteria.
+
 ## Required PR Headings
 
 All spec PR notes must use:
