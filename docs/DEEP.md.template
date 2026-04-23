@@ -17,6 +17,7 @@ Use this file for history, decisions, and context that does not belong in the de
 
 - Do not duplicate `docs/QUICK.md`
 - Do not duplicate `docs/STANDARD.md`
+- Do not restate stack or command tables; link to `docs/PROJECT_MAP.md`
 - Keep the deep pack additive, not repetitive
 
 ## Suggested Sections

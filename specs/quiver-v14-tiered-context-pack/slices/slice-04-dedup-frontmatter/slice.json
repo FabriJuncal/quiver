@@ -74,10 +74,10 @@
     "Linking between generated files is acceptable; agents handle Markdown links well"
   ],
   "estimated_hours": 4,
-  "actual_hours": null,
-  "status": "draft",
+  "actual_hours": 5,
+  "status": "completed",
   "blocked_reason": null,
   "ready_at": null,
-  "started_at": null,
-  "completed_at": null
+  "started_at": "2026-04-23",
+  "completed_at": "2026-04-23"
 }

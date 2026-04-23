@@ -1,11 +1,16 @@
 const fs = require('fs');
 const path = require('path');
 const { branchDelete, catFileExists, currentBranch, fetchBranch, fetchRemote, hasLocalBranch, hasRemoteBranch, lsRemoteHeads, mergeBaseIsAncestor, revListCount, runGit, statusPorcelain, worktreeAdd, worktreeList, worktreePrune, worktreeRemove } = require('./git');
+const { writeFrontMatter } = require('./init-docs');
 const { resolveTargetRoot } = require('./paths');
 const { activeSlicePath, renderActiveSlice, resolveSliceContext, safeBranchName, toAlias, validateSliceMetaForStart, worktreesRootForRepo } = require('./slice');
 
 function ensureDir(dirPath) {
   fs.mkdirSync(dirPath, { recursive: true });
+}
+
+function estimateTokenCost(text) {
+  return Math.max(1, Math.ceil(Buffer.byteLength(text, 'utf8') / 4));
 }
 
 function appendUniqueLine(filePath, line) {
@@ -88,7 +93,15 @@ function writeActiveSlice(repoRoot, slice) {
 
   const existed = fs.existsSync(activePath);
   fs.mkdirSync(path.dirname(activePath), { recursive: true });
-  fs.writeFileSync(activePath, renderActiveSlice(slice));
+  const body = renderActiveSlice(slice);
+  fs.writeFileSync(activePath, body);
+  writeFrontMatter(activePath, {
+    purpose: 'Active slice execution brief',
+    applies_when: 'implementation',
+    token_cost: estimateTokenCost(body),
+    last_updated: new Date().toISOString().slice(0, 10),
+    supersedes: null,
+  });
   return existed ? { path: activePath, replaced: true } : { path: activePath, replaced: false };
 }
 

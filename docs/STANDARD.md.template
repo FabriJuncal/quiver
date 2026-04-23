@@ -21,6 +21,7 @@ This is the default context pack for everyday AI work.
 - Make one commit per slice.
 - Open one PR per spec.
 - Record durable decisions in `docs/DECISIONS.md`.
+- Treat `docs/PROJECT_MAP.md` as the single source of truth for stack, package manager, and command references.
 
 ## Workflow Overview
 

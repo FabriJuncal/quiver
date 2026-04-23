@@ -1,9 +1,6 @@
 # {{PROJECT_NAME}} AI Context Pack
 
-**Date:** {{FECHA}}
-**Status:** {{ESTADO}}
-
-This file is the first stop for any AI agent working in this project. It compresses the working contract into one place and points to the canonical docs when deeper context is required.
+This file is the main context pack after `AGENTS.md` and `docs/PROJECT_MAP.md`. It compresses the working contract into one place and points to the canonical docs when deeper context is required.
 
 ## What This Project Is
 
@@ -11,15 +8,23 @@ This file is the first stop for any AI agent working in this project. It compres
 
 ## Read First
 
-1. `docs/INDEX.md`
-2. `docs/AI_CONTEXT.md`
-3. `docs/DECISIONS.md`
-4. `docs/CONTEXTO.md`
-5. `docs/WORKFLOW.md`
-6. `docs/SUPPORT_MATRIX.md`
-7. `docs/TROUBLESHOOTING.md`
-8. `specs/{{PROJECT_SLUG}}/SPEC.md`
-9. `specs/{{PROJECT_SLUG}}/slices/[slice-id]/slice.json`
+1. `docs/PROJECT_MAP.md`
+2. `docs/INDEX.md`
+3. `docs/AI_ONBOARDING_PROMPT.md`
+4. `docs/DECISIONS.md`
+5. `docs/CONTEXTO.md`
+6. `docs/WORKFLOW.md`
+7. `docs/SUPPORT_MATRIX.md`
+8. `docs/TROUBLESHOOTING.md`
+9. `specs/{{PROJECT_SLUG}}/SPEC.md`
+10. `specs/{{PROJECT_SLUG}}/slices/[slice-id]/slice.json`
+
+## Why This Pack Exists
+
+- Project Map: `docs/PROJECT_MAP.md` is the single source of truth for stack, package manager, commands, and file hints.
+- `docs/AI_ONBOARDING_PROMPT.md` is the handoff after analysis.
+- `docs/DECISIONS.md` tracks durable choices so agents do not re-litigate them.
+- `docs/STATUS.md` tracks progress, blockers, and the current slice.
 
 ## Critical Rules
 
@@ -31,28 +36,6 @@ This file is the first stop for any AI agent working in this project. It compres
 - Never overwrite user-authored content without checking whether the file is meant to be preserved.
 - If a command or path is ambiguous, prefer the local project root and the generated docs.
 
-## Common Commands
-
-```bash
-cd /path/to/project
-npx create-quiver --name "Project Name"
-npx create-quiver migrate
-npx create-quiver analyze
-npx create-quiver doctor
-npx create-quiver start-slice <slice.json>
-npx create-quiver check-slice <slice.json>
-npx create-quiver check-pr <slice.json>
-npm run quiver:analyze
-npm run quiver:doctor
-npm run quiver:migrate
-npm run quiver:start-slice -- <slice.json>
-npm run quiver:check-slice -- <slice.json>
-npm run quiver:check-pr -- <slice.json>
-npm run quiver:cleanup-slice -- <slice.json>
-npm run quiver:check-scope -- <slice.json>
-npm run quiver:refresh-active-slices
-```
-
 ## What To Update After A Slice
 
 - `specs/{{PROJECT_SLUG}}/STATUS.md`
@@ -62,7 +45,7 @@ npm run quiver:refresh-active-slices
 
 ## If You Need More Context
 
-Read `docs/DECISIONS.md` for durable choices, `docs/CONTEXTO.md` for the human project overview, and `docs/WORKFLOW.md` for the execution contract.
+Read `docs/DECISIONS.md` for durable choices, `docs/CONTEXTO.md` for the human project overview, and `docs/WORKFLOW.md` for the execution contract. When you need stack details or command references, open `docs/PROJECT_MAP.md`.
 
 ## If The Environment Fails
 

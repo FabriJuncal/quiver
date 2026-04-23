@@ -1,7 +1,6 @@
 # {{PROJECT_NAME}} Status
 
-**Last updated:** {{FECHA}}
-**Next update:** {{FECHA_PROXIMA}}
+This page tracks progress, blockers, and the current slice. Stack and command details live in `docs/PROJECT_MAP.md`.
 
 ## Overall Status
 
@@ -24,3 +23,4 @@
 ## Notes
 
 - Update this file after each completed slice.
+- Keep stack and command changes in `docs/PROJECT_MAP.md`, not here.

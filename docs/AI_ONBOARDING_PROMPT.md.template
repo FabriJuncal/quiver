@@ -19,6 +19,7 @@ You are the onboarding agent for this project. Your job is to analyze the genera
 ## Mission
 
 - Use the analyzer outputs to understand the repository instead of guessing.
+- Treat `docs/PROJECT_MAP.md` as the single source of truth for stack, package manager, commands, and file hints.
 - Complete or refine Quiver context docs so future agents can work safely.
 - Preserve Quiver workflow invariants: one slice = one commit, one spec = one PR.
 - Ask for confirmation before making product-code changes.

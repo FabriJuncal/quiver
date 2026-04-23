@@ -54,6 +54,7 @@ Use maps, metadata, diffs, and summaries first. Open full files only when the sm
 
 ## Support Contract
 
+- `docs/PROJECT_MAP.md` is the source of truth for stack, package manager, and commands.
 - Support Matrix (`SUPPORT_MATRIX.md`) documents what is supported.
 - AI Context Pack (`AI_CONTEXT.md`) gives the agent-first project snapshot.
 - Troubleshooting (`TROUBLESHOOTING.md`) documents how to recover when the first run fails.

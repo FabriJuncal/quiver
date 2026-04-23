@@ -32,6 +32,29 @@ assert_contains() {
   fi
 }
 
+assert_front_matter() {
+  local path="$1"
+
+  if [[ "$(head -n 1 "$path")" != "---" ]]; then
+    echo "Missing front matter start in: $path" >&2
+    exit 1
+  fi
+
+  local block_count
+  block_count="$(grep -c '^---$' "$path")"
+  if [[ "$block_count" -ne 2 ]]; then
+    echo "Expected exactly one front matter block in $path, found $block_count markers" >&2
+    exit 1
+  fi
+
+  for field in purpose applies_when token_cost last_updated supersedes; do
+    if ! grep -Fq "$field:" "$path"; then
+      echo "Missing front matter field '$field' in: $path" >&2
+      exit 1
+    fi
+  done
+}
+
 assert_project_map_sections() {
   local path="$1"
 
@@ -132,6 +155,8 @@ assert_file "$new_target/docs/INDEX.md"
 assert_file "$new_target/docs/ai/QUICK.md"
 assert_file "$new_target/docs/ai/STANDARD.md"
 assert_file "$new_target/docs/ai/DEEP.md"
+assert_file "$new_target/docs/ai/LESSONS.md"
+assert_file "$new_target/docs/ai/PRINCIPLES.md"
 assert_file "$new_target/docs/DECISIONS.md"
 assert_file "$new_target/docs/AI_CONTEXT.md"
 assert_file "$new_target/docs/AI_ONBOARDING_PROMPT.md"
@@ -161,14 +186,30 @@ assert_contains "$new_target/docs/INDEX.md" "./ai/DEEP.md"
 assert_contains "$new_target/docs/AI_CONTEXT.md" "AI Context Pack"
 assert_contains "$new_target/docs/AI_CONTEXT.md" "Read First"
 assert_contains "$new_target/docs/AI_CONTEXT.md" "DECISIONS.md"
+assert_contains "$new_target/docs/AI_CONTEXT.md" "docs/PROJECT_MAP.md"
+assert_contains "$new_target/docs/CONTEXTO.md" "docs/PROJECT_MAP.md"
+assert_contains "$new_target/docs/STATUS.md" "docs/PROJECT_MAP.md"
+assert_contains "$new_target/docs/WORKFLOW.md" "docs/PROJECT_MAP.md"
+assert_contains "$new_target/docs/AI_ONBOARDING_PROMPT.md" "docs/PROJECT_MAP.md"
 assert_contains "$new_target/docs/DECISIONS.md" "Decision Log"
 assert_contains "$new_target/docs/DECISIONS.md" "| Date | Decision | Reason | Alternatives | Impact |"
 assert_contains "$new_target/docs/ai/QUICK.md" "Quick Context"
 assert_contains "$new_target/docs/ai/QUICK.md" "Read Next"
+assert_contains "$new_target/docs/ai/QUICK.md" "docs/PROJECT_MAP.md"
 assert_contains "$new_target/docs/ai/STANDARD.md" "Standard Context"
 assert_contains "$new_target/docs/ai/STANDARD.md" "V13 Mode Guidance"
 assert_contains "$new_target/docs/ai/DEEP.md" "Deep Context"
 assert_contains "$new_target/docs/ai/DEEP.md" "What Belongs Here"
+assert_front_matter "$new_target/docs/AI_CONTEXT.md"
+assert_front_matter "$new_target/docs/AI_ONBOARDING_PROMPT.md"
+assert_front_matter "$new_target/docs/CONTEXTO.md"
+assert_front_matter "$new_target/docs/STATUS.md"
+assert_front_matter "$new_target/docs/WORKFLOW.md"
+assert_front_matter "$new_target/docs/ai/QUICK.md"
+assert_front_matter "$new_target/docs/ai/STANDARD.md"
+assert_front_matter "$new_target/docs/ai/DEEP.md"
+assert_front_matter "$new_target/docs/ai/LESSONS.md"
+assert_front_matter "$new_target/docs/ai/PRINCIPLES.md"
 assert_contains "$new_target/docs/AI_ONBOARDING_PROMPT.md" "AI Onboarding Prompt"
 assert_contains "$new_target/docs/AI_ONBOARDING_PROMPT.md" "docs/PROJECT_SCAN.json"
 assert_contains "$new_target/AGENTS.md" "## Reading Budget"
@@ -180,12 +221,17 @@ assert_contains "$new_target/README.md" "AGENTS.md"
 assert_contains "$new_target/README.md" "Cross-Platform Support"
 assert_contains "$new_target/README.md" "Windows PowerShell/CMD"
 assert_contains "$new_target/README.md" "npm install --save-dev create-quiver"
+assert_contains "$new_target/README.md" "docs/PROJECT_MAP.md"
 assert_contains "$new_target/README.md" "Upgrading Existing Projects"
 assert_contains "$new_target/README.md" "npx create-quiver migrate"
 assert_contains "$new_target/README.md" "npm install --save-dev create-quiver@latest"
 assert_contains "$new_target/docs/PROJECT_MAP.md" "Project Map"
 assert_contains "$new_target/docs/PROJECT_MAP.md" "## Stack"
 assert_contains "$new_target/docs/PROJECT_MAP.md" "## Commands"
+if grep -R -nF "Package manager:" "$new_target/docs" | grep -v "docs/PROJECT_MAP.md" >/dev/null 2>&1; then
+  echo "Package manager should only be documented in docs/PROJECT_MAP.md" >&2
+  exit 1
+fi
 assert_package_scripts "$new_target/package.json" "new project" \
   quiver:analyze quiver:doctor quiver:migrate quiver:start-slice quiver:check-slice quiver:check-pr quiver:cleanup-slice quiver:check-scope quiver:refresh-active-slices
 
@@ -204,6 +250,7 @@ if [[ "$start_output" != *"Slice listo para trabajar."* ]]; then
   exit 1
 fi
 assert_file "$new_target/docs/ai/ACTIVE_SLICE.md"
+assert_front_matter "$new_target/docs/ai/ACTIVE_SLICE.md"
 assert_contains "$new_target/docs/ai/ACTIVE_SLICE.md" "## allowed_files"
 assert_contains "$new_target/docs/ai/ACTIVE_SLICE.md" "Definition of Done"
 
@@ -285,6 +332,8 @@ assert_file "$existing_target/docs/INDEX.md"
 assert_file "$existing_target/docs/ai/QUICK.md"
 assert_file "$existing_target/docs/ai/STANDARD.md"
 assert_file "$existing_target/docs/ai/DEEP.md"
+assert_file "$existing_target/docs/ai/LESSONS.md"
+assert_file "$existing_target/docs/ai/PRINCIPLES.md"
 assert_file "$existing_target/docs/DECISIONS.md"
 assert_file "$existing_target/docs/AI_CONTEXT.md"
 assert_file "$existing_target/docs/AI_ONBOARDING_PROMPT.md"
@@ -294,6 +343,16 @@ assert_project_map_sections "$existing_target/docs/PROJECT_MAP.md"
 assert_file "$existing_target/.quiver/state.json"
 assert_file "$existing_target/docs/SUPPORT_MATRIX.md"
 assert_file "$existing_target/docs/TROUBLESHOOTING.md"
+assert_front_matter "$existing_target/docs/AI_CONTEXT.md"
+assert_front_matter "$existing_target/docs/AI_ONBOARDING_PROMPT.md"
+assert_front_matter "$existing_target/docs/CONTEXTO.md"
+assert_front_matter "$existing_target/docs/STATUS.md"
+assert_front_matter "$existing_target/docs/WORKFLOW.md"
+assert_front_matter "$existing_target/docs/ai/QUICK.md"
+assert_front_matter "$existing_target/docs/ai/STANDARD.md"
+assert_front_matter "$existing_target/docs/ai/DEEP.md"
+assert_front_matter "$existing_target/docs/ai/LESSONS.md"
+assert_front_matter "$existing_target/docs/ai/PRINCIPLES.md"
 assert_package_scripts "$existing_target/package.json" "existing project" \
   quiver:analyze quiver:doctor quiver:migrate quiver:start-slice quiver:check-slice quiver:check-pr quiver:cleanup-slice quiver:check-scope quiver:refresh-active-slices
 assert_file "$space_target/README.md"
@@ -303,8 +362,20 @@ assert_file "$space_target/docs/PROJECT_MAP.md"
 assert_file "$space_target/docs/ai/QUICK.md"
 assert_file "$space_target/docs/ai/STANDARD.md"
 assert_file "$space_target/docs/ai/DEEP.md"
+assert_file "$space_target/docs/ai/LESSONS.md"
+assert_file "$space_target/docs/ai/PRINCIPLES.md"
 assert_project_map_sections "$space_target/docs/PROJECT_MAP.md"
 assert_file "$space_target/docs/DECISIONS.md"
+assert_front_matter "$space_target/docs/AI_CONTEXT.md"
+assert_front_matter "$space_target/docs/AI_ONBOARDING_PROMPT.md"
+assert_front_matter "$space_target/docs/CONTEXTO.md"
+assert_front_matter "$space_target/docs/STATUS.md"
+assert_front_matter "$space_target/docs/WORKFLOW.md"
+assert_front_matter "$space_target/docs/ai/QUICK.md"
+assert_front_matter "$space_target/docs/ai/STANDARD.md"
+assert_front_matter "$space_target/docs/ai/DEEP.md"
+assert_front_matter "$space_target/docs/ai/LESSONS.md"
+assert_front_matter "$space_target/docs/ai/PRINCIPLES.md"
 
 node "$cli" --name "Legacy Project" --dir "$legacy_target" >/dev/null
 printf 'keep me\n' > "$legacy_target/AGENTS.md"
@@ -352,8 +423,20 @@ assert_file "$legacy_target/docs/DECISIONS.md"
 assert_file "$legacy_target/docs/ai/QUICK.md"
 assert_file "$legacy_target/docs/ai/STANDARD.md"
 assert_file "$legacy_target/docs/ai/DEEP.md"
+assert_file "$legacy_target/docs/ai/LESSONS.md"
+assert_file "$legacy_target/docs/ai/PRINCIPLES.md"
 assert_file "$legacy_target/tools/scripts/migrate-project.sh"
 assert_file "$legacy_target/.quiver/state.json"
+assert_front_matter "$legacy_target/docs/AI_CONTEXT.md"
+assert_front_matter "$legacy_target/docs/AI_ONBOARDING_PROMPT.md"
+assert_front_matter "$legacy_target/docs/CONTEXTO.md"
+assert_front_matter "$legacy_target/docs/STATUS.md"
+assert_front_matter "$legacy_target/docs/WORKFLOW.md"
+assert_front_matter "$legacy_target/docs/ai/QUICK.md"
+assert_front_matter "$legacy_target/docs/ai/STANDARD.md"
+assert_front_matter "$legacy_target/docs/ai/DEEP.md"
+assert_front_matter "$legacy_target/docs/ai/LESSONS.md"
+assert_front_matter "$legacy_target/docs/ai/PRINCIPLES.md"
 assert_package_scripts "$legacy_target/package.json" "legacy project after migrate" \
   quiver:analyze quiver:doctor quiver:migrate quiver:start-slice quiver:check-slice quiver:check-pr quiver:cleanup-slice quiver:check-scope quiver:refresh-active-slices
 node -e 'const fs = require("fs"); const data = JSON.parse(fs.readFileSync(process.argv[1], "utf8")); if (data.scripts?.lint !== "echo lint") { throw new Error("custom user script was not preserved during migrate"); }' "$legacy_target/package.json"
@@ -396,9 +479,21 @@ assert_file "$release_target/docs/DECISIONS.md"
 assert_file "$release_target/docs/ai/QUICK.md"
 assert_file "$release_target/docs/ai/STANDARD.md"
 assert_file "$release_target/docs/ai/DEEP.md"
+assert_file "$release_target/docs/ai/LESSONS.md"
+assert_file "$release_target/docs/ai/PRINCIPLES.md"
 assert_file "$release_target/docs/PROJECT_SCAN.json"
 assert_file "$release_target/docs/PROJECT_MAP.md"
 assert_project_map_sections "$release_target/docs/PROJECT_MAP.md"
+assert_front_matter "$release_target/docs/AI_CONTEXT.md"
+assert_front_matter "$release_target/docs/AI_ONBOARDING_PROMPT.md"
+assert_front_matter "$release_target/docs/CONTEXTO.md"
+assert_front_matter "$release_target/docs/STATUS.md"
+assert_front_matter "$release_target/docs/WORKFLOW.md"
+assert_front_matter "$release_target/docs/ai/QUICK.md"
+assert_front_matter "$release_target/docs/ai/STANDARD.md"
+assert_front_matter "$release_target/docs/ai/DEEP.md"
+assert_front_matter "$release_target/docs/ai/LESSONS.md"
+assert_front_matter "$release_target/docs/ai/PRINCIPLES.md"
 
 quick_lines="$(awk 'NF' "$new_target/docs/ai/QUICK.md" | wc -l | awk '{ print $1 }')"
 standard_lines="$(awk 'NF' "$new_target/docs/ai/STANDARD.md" | wc -l | awk '{ print $1 }')"
@@ -429,6 +524,16 @@ fi
 assert_contains "$release_target/docs/SEARCH.md" "keep me"
 assert_file "$release_target/docs/AI_ONBOARDING_PROMPT.md"
 assert_file "$release_target/tools/scripts/migrate-project.sh"
+assert_front_matter "$release_target/docs/AI_CONTEXT.md"
+assert_front_matter "$release_target/docs/AI_ONBOARDING_PROMPT.md"
+assert_front_matter "$release_target/docs/CONTEXTO.md"
+assert_front_matter "$release_target/docs/STATUS.md"
+assert_front_matter "$release_target/docs/WORKFLOW.md"
+assert_front_matter "$release_target/docs/ai/QUICK.md"
+assert_front_matter "$release_target/docs/ai/STANDARD.md"
+assert_front_matter "$release_target/docs/ai/DEEP.md"
+assert_front_matter "$release_target/docs/ai/LESSONS.md"
+assert_front_matter "$release_target/docs/ai/PRINCIPLES.md"
 release_doctor_after_migrate="$(cd "$release_target" && node "$installer_root/node_modules/create-quiver/bin/create-quiver.js" doctor)"
 
 if [[ "$release_doctor_after_migrate" != *"Read AGENTS.md, then docs/AI_ONBOARDING_PROMPT.md and execute it."* ]]; then

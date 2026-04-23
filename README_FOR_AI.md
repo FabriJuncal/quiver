@@ -12,6 +12,7 @@ If the project already exists from an older Quiver version, run `npx create-quiv
 Generated projects also get `quiver:*` npm scripts that call the Node CLI directly; prefer those for repeatable project workflows.
 Maintain release notes and package publishing with `scripts/release-quiver.sh`.
 The primary generated project context for agents is `docs/AI_CONTEXT.md`.
+The project map is the single source of truth for stack, package manager, commands, and file hints: `docs/PROJECT_MAP.md`.
 The universal router for generated projects is `AGENTS.md`; read it before `docs/AI_CONTEXT.md` and `docs/AI_ONBOARDING_PROMPT.md`.
 Generated projects also get `docs/DECISIONS.md`; use it for durable choices that should not be re-litigated.
 If a generated project has been analyzed, the exact agent handoff prompt is `docs/AI_ONBOARDING_PROMPT.md`.
@@ -27,7 +28,7 @@ Use the smallest context that still answers the current task.
 - **Review:** start from `git diff` and the slice scope before opening full files.
 - **Debug:** start from the command, exit code, first relevant error, stacktrace, and the nearest changed code before reading long logs.
 
-Prefer maps, metadata, diffs, and summaries over full file reads when they are enough.
+Prefer maps, metadata, diffs, and summaries over full file reads when they are enough. Treat front-matter as a skim-first signal: if the header is enough, do not open the body.
 
 ## Core Rules
 
@@ -35,7 +36,7 @@ Prefer maps, metadata, diffs, and summaries over full file reads when they are e
 - Always use `init-docs.sh` instead of copying files by hand.
 - Treat `docs-template/` as generic and `docs/` as generated project-specific output.
 - Not every project needs every optional file.
-- The AI context pack lives in `docs/AI_CONTEXT.md`; `docs/CONTEXTO.md` is the broader project overview.
+- The AI context pack lives in `docs/AI_CONTEXT.md`; `docs/CONTEXTO.md` is the broader project overview; `docs/PROJECT_MAP.md` owns stack and command facts.
 - The onboarding prompt lives in `docs/AI_ONBOARDING_PROMPT.md` and should reference the analyzer outputs.
 - Initial onboarding should complete context docs and report assumptions before any feature work starts.
 - The normal workflow runs from the project root without `--dir`; use `--dir` only when targeting another directory explicitly.
