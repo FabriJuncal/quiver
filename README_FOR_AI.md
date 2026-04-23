@@ -23,7 +23,7 @@ Use the smallest context that still answers the current task.
 
 - **Onboarding:** start from `docs/PROJECT_MAP.md`, `docs/PROJECT_SCAN.json`, `docs/AI_CONTEXT.md`, and `docs/AI_ONBOARDING_PROMPT.md` before opening source files.
 - **Onboarding router:** start from `AGENTS.md` first, then the onboarding files above.
-- **Implementation:** start from `specs/<project-slug>/slices/<slice-id>/slice.json`, then read only the declared files, nearby tests, and directly related source.
+- **Implementation:** start from `docs/ai/ACTIVE_SLICE.md` when it exists; otherwise start from `specs/<project-slug>/slices/<slice-id>/slice.json`, then read only the declared files, nearby tests, and directly related source.
 - **Review:** start from `git diff` and the slice scope before opening full files.
 - **Debug:** start from the command, exit code, first relevant error, stacktrace, and the nearest changed code before reading long logs.
 

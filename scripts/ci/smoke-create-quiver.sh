@@ -188,6 +188,61 @@ assert_contains "$new_target/docs/PROJECT_MAP.md" "## Stack"
 assert_contains "$new_target/docs/PROJECT_MAP.md" "## Commands"
 assert_package_scripts "$new_target/package.json" "new project" \
   quiver:analyze quiver:doctor quiver:migrate quiver:start-slice quiver:check-slice quiver:check-pr quiver:cleanup-slice quiver:check-scope quiver:refresh-active-slices
+
+git -C "$new_target" init >/dev/null
+git -C "$new_target" config user.name "Quiver Smoke"
+git -C "$new_target" config user.email "smoke@example.com"
+git -C "$new_target" add .
+git -C "$new_target" commit -m "test: init generated project" >/dev/null
+git -C "$new_target" branch develop HEAD
+
+npm install --prefix "$new_target" --save-dev "$repo_root" --ignore-scripts --no-audit --no-fund >/dev/null
+
+start_output="$(cd "$new_target" && SLICE_WORKTREES_DIR="$temp_root/worktrees-shell" bash tools/scripts/start-slice.sh --allow-draft specs/smoke-project/slices/slice-template/slice.json)"
+if [[ "$start_output" != *"Slice listo para trabajar."* ]]; then
+  echo "Missing expected output from start-slice wrapper: Slice listo para trabajar." >&2
+  exit 1
+fi
+assert_file "$new_target/docs/ai/ACTIVE_SLICE.md"
+assert_contains "$new_target/docs/ai/ACTIVE_SLICE.md" "## allowed_files"
+assert_contains "$new_target/docs/ai/ACTIVE_SLICE.md" "Definition of Done"
+
+start_again_output="$(cd "$new_target" && SLICE_WORKTREES_DIR="$temp_root/worktrees-shell" bash tools/scripts/start-slice.sh --allow-draft specs/smoke-project/slices/slice-template/slice.json)"
+if [[ "$start_again_output" != *"Reemplazando docs/ai/ACTIVE_SLICE.md existente."* ]]; then
+  echo "Missing replacement message from start-slice wrapper" >&2
+  exit 1
+fi
+
+cleanup_output="$(cd "$new_target" && SLICE_WORKTREES_DIR="$temp_root/worktrees-shell" bash tools/scripts/cleanup-slice.sh --discard specs/smoke-project/slices/slice-template/slice.json)"
+if [[ "$cleanup_output" != *"PASS: Cleanup finalizado"* ]]; then
+  echo "Missing cleanup completion message from wrapper" >&2
+  exit 1
+fi
+if [[ "$cleanup_output" != *"PASS: ACTIVE_SLICE.md eliminado"* ]]; then
+  echo "Missing ACTIVE_SLICE.md removal message from wrapper" >&2
+  exit 1
+fi
+if [ -f "$new_target/docs/ai/ACTIVE_SLICE.md" ]; then
+  echo "ACTIVE_SLICE.md should be removed after cleanup" >&2
+  exit 1
+fi
+
+start_missing_output="$(cd "$new_target" && SLICE_WORKTREES_DIR="$temp_root/worktrees-shell" bash tools/scripts/start-slice.sh --allow-draft specs/smoke-project/slices/slice-template/slice.json)"
+if [[ "$start_missing_output" != *"Slice listo para trabajar."* ]]; then
+  echo "Missing expected output from second start-slice wrapper" >&2
+  exit 1
+fi
+rm "$new_target/docs/ai/ACTIVE_SLICE.md"
+cleanup_missing_output="$(cd "$new_target" && SLICE_WORKTREES_DIR="$temp_root/worktrees-shell" bash tools/scripts/cleanup-slice.sh --discard specs/smoke-project/slices/slice-template/slice.json)"
+if [[ "$cleanup_missing_output" != *"PASS: Cleanup finalizado"* ]]; then
+  echo "Missing cleanup completion message when ACTIVE_SLICE.md was already absent" >&2
+  exit 1
+fi
+if [ -f "$new_target/docs/ai/ACTIVE_SLICE.md" ]; then
+  echo "ACTIVE_SLICE.md should stay removed after cleanup without file" >&2
+  exit 1
+fi
+
 node - <<'NODE'
 const path = require('path');
 const { resolveTargetRoot, relativePosixPath } = require('./src/create-quiver/lib/paths');

@@ -247,9 +247,34 @@ function runSmoke() {
   cloneRepo(startRepo);
   seedWorkflowFixtures(startRepo, false);
   run('git', ['branch', 'develop', 'HEAD'], { cwd: startRepo });
-  const startOutput = runNodeCli(startRepo, ['start-slice', '--allow-draft', slicePath], { env: { ...process.env, SLICE_WORKTREES_DIR: path.join(tempRoot, 'worktrees-start') } });
+  const startEnv = { ...process.env, SLICE_WORKTREES_DIR: path.join(tempRoot, 'worktrees-start') };
+  const activeSlicePath = path.join(startRepo, 'docs', 'ai', 'ACTIVE_SLICE.md');
+  const worktreePath = path.join(tempRoot, 'worktrees-start', 'feature-QUIVER-02-workflow-gate-fixtures');
+
+  const startOutput = runNodeCli(startRepo, ['start-slice', '--allow-draft', slicePath], { env: startEnv });
   assertContains(startOutput, 'Slice listo para trabajar.', 'start-slice output');
   assertContains(startOutput, 'Base: develop', 'start-slice output');
+  assertFile(activeSlicePath);
+  assertContains(fs.readFileSync(activeSlicePath, 'utf8'), '## allowed_files', 'ACTIVE_SLICE');
+  assertContains(fs.readFileSync(activeSlicePath, 'utf8'), 'Definition of Done', 'ACTIVE_SLICE');
+  assertContains(fs.readFileSync(path.join(worktreePath, 'WORKTREE_CONTEXT.md'), 'utf8'), 'docs/ai/ACTIVE_SLICE.md', 'WORKTREE_CONTEXT');
+
+  const startAgainOutput = runNodeCli(startRepo, ['start-slice', '--allow-draft', slicePath], { env: startEnv });
+  assertContains(startAgainOutput, 'Reemplazando docs/ai/ACTIVE_SLICE.md existente.', 'start-slice replacement');
+  assertFile(activeSlicePath);
+
+  const cleanupOutput = runNodeCli(startRepo, ['cleanup-slice', '--discard', slicePath], { env: startEnv });
+  assertContains(cleanupOutput, 'PASS: Cleanup finalizado', 'cleanup-slice output');
+  assertContains(cleanupOutput, 'PASS: ACTIVE_SLICE.md eliminado', 'cleanup-slice output');
+  assert(!fs.existsSync(activeSlicePath), 'ACTIVE_SLICE.md should be removed after cleanup');
+
+  const startAfterCleanup = runNodeCli(startRepo, ['start-slice', '--allow-draft', slicePath], { env: startEnv });
+  assertContains(startAfterCleanup, 'Slice listo para trabajar.', 'start-slice output after cleanup');
+  assertFile(activeSlicePath);
+  fs.rmSync(activeSlicePath);
+  const cleanupMissingOutput = runNodeCli(startRepo, ['cleanup-slice', '--discard', slicePath], { env: startEnv });
+  assertContains(cleanupMissingOutput, 'PASS: Cleanup finalizado', 'cleanup-slice output when active slice missing');
+  assert(!fs.existsSync(activeSlicePath), 'ACTIVE_SLICE.md should stay removed when cleanup runs without it');
 
   cloneRepo(readyRepo);
   seedWorkflowFixtures(readyRepo, false);

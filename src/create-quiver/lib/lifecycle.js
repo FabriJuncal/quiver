@@ -1,8 +1,8 @@
 const fs = require('fs');
 const path = require('path');
-const { catFileExists, currentBranch, fetchBranch, fetchRemote, hasLocalBranch, hasRemoteBranch, lsRemoteHeads, mergeBaseIsAncestor, revListCount, runGit, statusPorcelain, worktreeAdd, worktreeList, worktreePrune, worktreeRemove } = require('./git');
+const { branchDelete, catFileExists, currentBranch, fetchBranch, fetchRemote, hasLocalBranch, hasRemoteBranch, lsRemoteHeads, mergeBaseIsAncestor, revListCount, runGit, statusPorcelain, worktreeAdd, worktreeList, worktreePrune, worktreeRemove } = require('./git');
 const { resolveTargetRoot } = require('./paths');
-const { resolveSliceContext, safeBranchName, toAlias, validateSliceMetaForStart, worktreesRootForRepo } = require('./slice');
+const { activeSlicePath, renderActiveSlice, resolveSliceContext, safeBranchName, toAlias, validateSliceMetaForStart, worktreesRootForRepo } = require('./slice');
 
 function ensureDir(dirPath) {
   fs.mkdirSync(dirPath, { recursive: true });
@@ -65,6 +65,10 @@ function writeWorktreeContext(targetWorktree, slice, branchName) {
     '',
     Array.isArray(slice.files) && slice.files.length > 0 ? slice.files.map((item) => `- ${item}`).join('\n') : '- n/a',
     '',
+    '## Active Slice Brief',
+    '',
+    `- ${activeSlicePath(slice.repoRoot)}`,
+    '',
     '## Constraints',
     '',
     Array.isArray(slice.json.not_included) && slice.json.not_included.length > 0 ? slice.json.not_included.map((item) => `- ${item}`).join('\n') : '- n/a',
@@ -76,6 +80,25 @@ function writeWorktreeContext(targetWorktree, slice, branchName) {
   ];
 
   fs.writeFileSync(path.join(targetWorktree, 'WORKTREE_CONTEXT.md'), `${lines.join('\n')}\n`);
+}
+
+function writeActiveSlice(repoRoot, slice) {
+  const activePath = activeSlicePath(repoRoot);
+  ensureLocalExclude(repoRoot, 'docs/ai/ACTIVE_SLICE.md');
+
+  const existed = fs.existsSync(activePath);
+  fs.mkdirSync(path.dirname(activePath), { recursive: true });
+  fs.writeFileSync(activePath, renderActiveSlice(slice));
+  return existed ? { path: activePath, replaced: true } : { path: activePath, replaced: false };
+}
+
+function removeActiveSlice(repoRoot) {
+  const activePath = activeSlicePath(repoRoot);
+  if (fs.existsSync(activePath)) {
+    fs.rmSync(activePath);
+    return true;
+  }
+  return false;
 }
 
 function refreshActiveSlicesBoard(repoRoot) {
@@ -288,6 +311,12 @@ function startSlice(sliceInput, options = {}) {
 
   if (existingWorktreePath && fs.existsSync(existingWorktreePath)) {
     writeWorktreeContext(existingWorktreePath, slice, slice.branchName);
+    const activeSlice = writeActiveSlice(repoRoot, slice);
+    if (activeSlice.replaced) {
+      console.log('WARN: Reemplazando docs/ai/ACTIVE_SLICE.md existente.');
+    } else {
+      console.log('Wrote docs/ai/ACTIVE_SLICE.md');
+    }
     refreshActiveSlicesBoard(repoRoot);
     console.log('La rama ya tiene un worktree asociado.');
     console.log(`Alias: ${toAlias(slice.ticket)}`);
@@ -326,6 +355,12 @@ function startSlice(sliceInput, options = {}) {
   }
 
   writeWorktreeContext(worktreePath, slice, slice.branchName);
+  const activeSlice = writeActiveSlice(repoRoot, slice);
+  if (activeSlice.replaced) {
+    console.log('WARN: Reemplazando docs/ai/ACTIVE_SLICE.md existente.');
+  } else {
+    console.log('Wrote docs/ai/ACTIVE_SLICE.md');
+  }
   refreshActiveSlicesBoard(repoRoot);
 
   console.log('Slice listo para trabajar.');
@@ -413,6 +448,10 @@ function cleanupSlice(sliceInput, options = {}) {
   if (branchExists) {
     removeBranch();
     console.log(`PASS: Rama local eliminada: ${slice.branchName}`);
+  }
+
+  if (removeActiveSlice(repoRoot)) {
+    console.log('PASS: ACTIVE_SLICE.md eliminado');
   }
 
   refreshActiveSlicesBoard(repoRoot);
