@@ -64,6 +64,7 @@ npm run quiver:refresh-active-slices
 ```
 
 The legacy Bash wrappers remain in `tools/scripts/` for compatibility, but new project-level automation should prefer the `quiver:*` scripts and the direct `npx create-quiver ...` commands.
+`npm run quiver:migrate` is only for projects that were already initialized by Quiver.
 
 ### 3. Upgrade Existing Projects
 
@@ -74,6 +75,12 @@ cd /path/to/your-project
 npx create-quiver migrate
 npx create-quiver analyze
 npx create-quiver doctor
+```
+
+If the project never ran Quiver initialization before, do not use `migrate` as bootstrap. Run:
+
+```bash
+npx create-quiver --name "Project Name"
 ```
 
 If your team prefers a pinned local dependency, update the package first and then run the same flow:

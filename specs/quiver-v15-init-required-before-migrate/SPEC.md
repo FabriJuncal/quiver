@@ -1,7 +1,7 @@
 # Quiver v0.15 - Init Required Before Migrate
 
 **Date:** 2026-04-23
-**Status:** Draft
+**Status:** Completed
 
 Slice numbering resets here: this spec starts at `slice-01` and does not continue any previous spec's numbering.
 
@@ -54,7 +54,7 @@ If the project was never initialized by Quiver, `migrate` must fail with a clear
 |-------|-------|--------|------|
 | 01 | Migrate Initialization Precondition | Completed | [slice-01](./slices/slice-01-migrate-initialization-precondition/slice.json) |
 | 02 | Doctor Not-Initialized Guidance | Completed | [slice-02](./slices/slice-02-doctor-not-initialized-guidance/slice.json) |
-| 03 | Docs and Smokes for Init Before Migrate | Draft | [slice-03](./slices/slice-03-docs-smokes-init-before-migrate/slice.json) |
+| 03 | Docs and Smokes for Init Before Migrate | Completed | [slice-03](./slices/slice-03-docs-smokes-init-before-migrate/slice.json) |
 
 ## Definition of Done
 

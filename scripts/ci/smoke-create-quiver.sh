@@ -288,6 +288,8 @@ assert_contains "$new_target/README.md" "npm install --save-dev create-quiver"
 assert_contains "$new_target/README.md" "docs/PROJECT_MAP.md"
 assert_contains "$new_target/README.md" "Upgrading Existing Projects"
 assert_contains "$new_target/README.md" "npx create-quiver migrate"
+assert_contains "$new_target/README.md" "only for projects that were already initialized by Quiver"
+assert_contains "$new_target/README.md" 'do not use `migrate` as bootstrap'
 assert_contains "$new_target/README.md" "npm install --save-dev create-quiver@latest"
 assert_contains "$new_target/docs/PROJECT_MAP.md" "Project Map"
 assert_contains "$new_target/docs/PROJECT_MAP.md" "## Stack"

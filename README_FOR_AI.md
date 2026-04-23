@@ -8,7 +8,8 @@ Important: slice numbering resets inside each spec. `slice-01` is the first slic
 The canonical installer entrypoint is `npx create-quiver` run from the target project root.
 Do not recommend global installation; use `npx` or a project-local devDependency when the team needs a pinned version.
 The post-init contract is validated with `npx create-quiver doctor` from the project root.
-If the project already exists from an older Quiver version, run `npx create-quiver migrate` before `analyze` from the project root.
+If the project already exists from an older Quiver version and was previously initialized by Quiver, run `npx create-quiver migrate` before `analyze` from the project root.
+If the project was never initialized by Quiver, do not use `migrate` as bootstrap; run `npx create-quiver --name "Project Name"` first.
 Generated projects also get `quiver:*` npm scripts that call the Node CLI directly; prefer those for repeatable project workflows.
 Maintain release notes and package publishing with `scripts/release-quiver.sh`.
 The primary generated project context for agents is `docs/AI_CONTEXT.md`.
@@ -97,16 +98,17 @@ After initialization, the user should:
 3. Fill in `docs/CONTEXTO.md`
 4. Fill in `docs/STATUS.md`
 5. Run `npx create-quiver analyze` if scan artifacts are missing
-6. If the project already exists from an older Quiver version, run `npx create-quiver migrate`
-7. Ask the AI agent to execute `docs/AI_ONBOARDING_PROMPT.md`
-8. Review context docs before creating the first implementation slice
-9. Open and merge the documentation PR that establishes the workflow files
-10. Create the first slice in `specs/{{PROJECT_SLUG}}/slices/[slice-id]/`
-11. Add `ticket` and `git.*`
-12. Run `npx create-quiver start-slice [--allow-draft] <slice.json>` or `npm run quiver:start-slice -- [--allow-draft] <slice.json>`
-13. Make one commit per slice
-14. Open one PR per spec
-15. Validate the slice and the final PR with the workflow gates
+6. If the project already exists from an older Quiver version and was previously initialized by Quiver, run `npx create-quiver migrate`
+7. If the project was never initialized by Quiver, run `npx create-quiver --name "Project Name"` instead of `migrate`
+8. Ask the AI agent to execute `docs/AI_ONBOARDING_PROMPT.md`
+9. Review context docs before creating the first implementation slice
+10. Open and merge the documentation PR that establishes the workflow files
+11. Create the first slice in `specs/{{PROJECT_SLUG}}/slices/[slice-id]/`
+12. Add `ticket` and `git.*`
+13. Run `npx create-quiver start-slice [--allow-draft] <slice.json>` or `npm run quiver:start-slice -- [--allow-draft] <slice.json>`
+14. Make one commit per slice
+15. Open one PR per spec
+16. Validate the slice and the final PR with the workflow gates
 
 Bootstrap note: `start-slice` should resolve paths canonically, prefer a local `develop` or `main` base branch before reaching for `origin`, and reject `draft` slices unless `--allow-draft` is passed intentionally.
 

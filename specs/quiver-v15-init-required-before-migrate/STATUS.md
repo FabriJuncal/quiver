@@ -11,13 +11,13 @@ Slice numbering is local to this spec. The first slice is `slice-01`.
 |-------|-------|--------|----|-----------------|--------------|
 | slice-01 | Migrate Initialization Precondition | Completed | - | 3 | 2 |
 | slice-02 | Doctor Not-Initialized Guidance | Completed | - | 2 | 1 |
-| slice-03 | Docs and Smokes for Init Before Migrate | Draft | - | 3 | - |
+| slice-03 | Docs and Smokes for Init Before Migrate | Completed | - | 3 | 1 |
 
 ## Progress
 
-- Completed slices: 2 / 3
+- Completed slices: 3 / 3
 - Estimated hours: 8
-- Actual hours: 3
+- Actual hours: 4
 
 ## Blockers
 
