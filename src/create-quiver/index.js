@@ -2,6 +2,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { execFileSync } = require('child_process');
+const { collectDoctorWarnings } = require('./lib/doctor');
 const { initializeProjectDocs } = require('./lib/init-docs');
 const { checkPrReadiness, checkScope, checkSliceReadiness } = require('./lib/readiness');
 const { cleanupSlice, refreshActiveSlicesBoard, startSlice } = require('./lib/lifecycle');
@@ -1119,6 +1120,7 @@ function runDoctor(targetDir) {
     ...nonExecutableScripts.map((file) => `missing executable bit: ${file}`),
     ...missingScripts.map((name) => `missing package.json script: ${name}`),
   ];
+  const softWarnings = collectDoctorWarnings(projectRoot);
 
   if (migrationProblems.length > 0) {
     throw new Error(formatError(`doctor failed:\n- ${migrationProblems.join('\n- ')}\n- Run migration first: npx create-quiver migrate`));
@@ -1135,6 +1137,9 @@ function runDoctor(targetDir) {
   }
   if (legacyOnlyScripts.length > 0) {
     console.log(`- Warning: legacy Bash workflow scripts detected for ${legacyOnlyScripts.join(', ')}. Run npx create-quiver migrate to add quiver:* npm scripts.`);
+  }
+  for (const warning of softWarnings) {
+    console.log(`- Warning: ${warning}`);
   }
   if (!hasQuiverState) {
     console.log('- Run migration first: npx create-quiver migrate');

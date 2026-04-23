@@ -12,4 +12,6 @@
 
 ## Evidence by Slice
 
-_No evidence recorded yet._
+- Prefer summarized command evidence over pasted long logs.
+- For each command, record: command, exit code, first relevant error or success signal, and log path if one exists.
+- Keep full logs in files or artifacts when they are too long to fit comfortably here.

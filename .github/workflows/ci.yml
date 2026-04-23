@@ -45,3 +45,7 @@ jobs:
 
       - name: Run cross-platform smoke
         run: node scripts/ci/smoke-cross-platform.js
+
+      - name: Run tiered pack smoke
+        shell: bash
+        run: bash scripts/ci/smoke-tiered-pack.sh
