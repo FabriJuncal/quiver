@@ -1,0 +1,66 @@
+{
+  "slice_id": "slice-03-project-map-reading-order",
+  "ticket": "QUIVER-03",
+  "type": "feature",
+  "title": "Project Map Reading Order",
+  "objective": "Improve `create-quiver analyze` so `docs/PROJECT_MAP.md` becomes a practical first-read index for AI agents.",
+  "description": "The highest token savings come from a better project map. This slice enriches analyzer output with a suggested reading order, entry points, primary config files, likely test commands, high-signal files, and paths that should not be read first.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "project-map-reading-order",
+    "branch_name": "feature/QUIVER-03-project-map-reading-order"
+  },
+  "must": [
+    "Add `Suggested Reading Order` to generated `docs/PROJECT_MAP.md`",
+    "Add `Entry Points` to generated `docs/PROJECT_MAP.md`",
+    "Add `Primary Config Files` to generated `docs/PROJECT_MAP.md`",
+    "Add `Likely Test Commands` to generated `docs/PROJECT_MAP.md`",
+    "Add `High-Signal Files` and `Do Not Read First` sections",
+    "Keep analyzer secret-safe and avoid reading secret file contents"
+  ],
+  "not_included": [
+    "Embeddings",
+    "Vector databases",
+    "Multi-language AST call graph",
+    "Provider-specific token accounting"
+  ],
+  "acceptance": [
+    "`create-quiver analyze` creates `PROJECT_MAP.md` with all new sections",
+    "`PROJECT_SCAN.json` remains parseable and backward-compatible for existing fields",
+    "The analyzer continues to skip secrets, dependency folders, build outputs, and generated heavy paths",
+    "Smokes validate the new map sections"
+  ],
+  "files": [
+    "src/create-quiver/lib/analyze.js",
+    "scripts/ci/smoke-create-quiver.sh",
+    "scripts/ci/smoke-cross-platform.js",
+    "specs/quiver-v13-token-efficient-ai-context/SPEC.md",
+    "specs/quiver-v13-token-efficient-ai-context/STATUS.md",
+    "specs/quiver-v13-token-efficient-ai-context/EVIDENCE_REPORT.md",
+    "specs/quiver-v13-token-efficient-ai-context/slices/slice-03-project-map-reading-order/slice.json"
+  ],
+  "tests": [
+    "node -c src/create-quiver/lib/analyze.js",
+    "bash scripts/ci/smoke-create-quiver.sh",
+    "node scripts/ci/smoke-cross-platform.js",
+    "git diff --check"
+  ],
+  "documentation": [
+    "docs/PROJECT_MAP.md generated output contract"
+  ],
+  "dependencies": [
+    "slice-02-decision-log-context-checkpoint"
+  ],
+  "assumptions": [
+    "Better map quality saves more tokens than adding retrieval infrastructure at this stage",
+    "Heuristics are acceptable as long as they are conservative and transparent"
+  ],
+  "estimated_hours": 5,
+  "actual_hours": null,
+  "status": "draft",
+  "blocked_reason": null,
+  "ready_at": null,
+  "started_at": null,
+  "completed_at": null
+}

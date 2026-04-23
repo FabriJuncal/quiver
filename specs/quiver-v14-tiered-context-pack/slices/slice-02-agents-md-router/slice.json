@@ -1,0 +1,74 @@
+{
+  "slice_id": "slice-02-agents-md-router",
+  "ticket": "QUIVER-02",
+  "type": "feat",
+  "title": "AGENTS.md Router",
+  "objective": "Generate a single root `AGENTS.md` that tells any AI agent which tier to load, how many tokens to spend, and how to respond concisely.",
+  "description": "AGENTS.md is the universal entry point that Claude Code, Cursor, Aider, Continue, and other agent runtimes discover automatically. This slice adds a template for it and wires init-docs and migrate to render it at the project root. The content is deliberately narrow: it declares a reading budget per task mode, points to QUICK.md first, and sets an output policy that discourages restating tasks and summarizing diffs.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "agents-md-router",
+    "branch_name": "feature/QUIVER-02-agents-md-router"
+  },
+  "must": [
+    "Create `AGENTS.md.template` at repository root with sections: Purpose, Reading Budget, Reading Order, Output Policy, Slice Execution Rules, and Links",
+    "Reading Budget section declares explicit per-mode budgets: planning up to 10000 tokens, execution under 2000 tokens before first action, debug under 1000 tokens before proposing a hypothesis",
+    "Reading Order section instructs agents to read QUICK first, STANDARD only if QUICK is insufficient, DEEP only when history or past decisions are requested",
+    "Output Policy section forbids restating the task before acting, forbids post-edit summaries of diffs, and caps confirmations at one sentence",
+    "Slice Execution Rules section instructs agents to treat `docs/ai/ACTIVE_SLICE.md` as the single source of truth when it exists and to avoid reading SPEC.md unless ACTIVE_SLICE.md references it",
+    "Update `src/create-quiver/lib/init-docs.js` and `scripts/init-docs.sh` to render AGENTS.md on init and on migrate, preserving existing AGENTS.md if the project already has one"
+  ],
+  "not_included": [
+    "Generating model-specific adapters (CLAUDE.md, .cursorrules, copilot-instructions.md)",
+    "Any runtime enforcement of the reading budget",
+    "Deleting existing AI guidance files"
+  ],
+  "acceptance": [
+    "A freshly initialized project contains `AGENTS.md` at the repository root",
+    "AGENTS.md contains all six required sections named verbatim",
+    "Reading Budget section contains explicit numeric budgets for planning, execution, and debug",
+    "Reading Order section names QUICK, STANDARD, and DEEP in that order",
+    "Output Policy section contains at minimum: no task restatement, no post-edit diff summary, one-sentence confirmation",
+    "Migrating a project that already has `AGENTS.md` preserves the existing content and logs a skip message"
+  ],
+  "files": [
+    "AGENTS.md.template",
+    "src/create-quiver/lib/init-docs.js",
+    "scripts/init-docs.sh",
+    "specs/quiver-v14-tiered-context-pack/SPEC.md",
+    "specs/quiver-v14-tiered-context-pack/STATUS.md",
+    "specs/quiver-v14-tiered-context-pack/EVIDENCE_REPORT.md",
+    "specs/quiver-v14-tiered-context-pack/slices/slice-02-agents-md-router/slice.json"
+  ],
+  "tests": [
+    "node bin/create-quiver.js --name \"Scratch\" --dir /tmp/quiver-v14-slice-02-smoke",
+    "test -f /tmp/quiver-v14-slice-02-smoke/AGENTS.md",
+    "grep -q '^## Reading Budget' /tmp/quiver-v14-slice-02-smoke/AGENTS.md",
+    "grep -q '^## Reading Order' /tmp/quiver-v14-slice-02-smoke/AGENTS.md",
+    "grep -q '^## Output Policy' /tmp/quiver-v14-slice-02-smoke/AGENTS.md",
+    "grep -q '^## Slice Execution Rules' /tmp/quiver-v14-slice-02-smoke/AGENTS.md",
+    "grep -q 'QUICK' /tmp/quiver-v14-slice-02-smoke/AGENTS.md",
+    "git diff --check"
+  ],
+  "documentation": [
+    "AGENTS.md.template",
+    "README.md",
+    "README_FOR_AI.md"
+  ],
+  "dependencies": [
+    "slice-01-tiered-context-pack"
+  ],
+  "assumptions": [
+    "AGENTS.md is discoverable by Claude Code, Cursor, Aider, and Continue without additional configuration",
+    "A single router is better than multiple model-specific adapters until a user asks for one",
+    "Agents respect explicit numeric budgets better than vague guidance"
+  ],
+  "estimated_hours": 3,
+  "actual_hours": null,
+  "status": "draft",
+  "blocked_reason": null,
+  "ready_at": null,
+  "started_at": null,
+  "completed_at": null
+}

@@ -1,0 +1,64 @@
+{
+  "slice_id": "slice-02-decision-log-context-checkpoint",
+  "ticket": "QUIVER-02",
+  "type": "docs",
+  "title": "Decision Log",
+  "objective": "Add a durable decision log so AI agents do not re-litigate past decisions.",
+  "description": "Quiver already externalizes project context, but it lacks a dedicated decision log. This slice adds that one durable artifact; assumptions and context-efficiency notes are handled by the tiered context pack in v14 instead.",
+  "git": {
+    "branch_type": "docs",
+    "base_branch": "main",
+    "branch_slug": "decision-log-context-checkpoint",
+    "branch_name": "docs/QUIVER-02-decision-log-context-checkpoint"
+  },
+  "must": [
+    "Add `docs/DECISIONS.md.template` with a compact decision log table",
+    "Generate `docs/DECISIONS.md` during init and migration",
+    "Link `docs/DECISIONS.md` from `docs/INDEX.md.template` and generated README guidance where appropriate"
+  ],
+  "not_included": [
+    "Creating a separate assumptions file",
+    "Automatic decision extraction",
+    "Token counting",
+    "Deleting existing context sections"
+  ],
+  "acceptance": [
+    "New projects contain `docs/DECISIONS.md`",
+    "Migration adds `docs/DECISIONS.md` without overwriting existing docs",
+    "Existing user package scripts and docs are preserved during migration"
+  ],
+  "files": [
+    "docs/DECISIONS.md.template",
+    "docs/INDEX.md.template",
+    "scripts/init-docs.sh",
+    "src/create-quiver/lib/init-docs.js",
+    "scripts/ci/smoke-init-docs.sh",
+    "scripts/ci/smoke-create-quiver.sh",
+    "scripts/package-quiver.sh",
+    "specs/quiver-v13-token-efficient-ai-context/SPEC.md",
+    "specs/quiver-v13-token-efficient-ai-context/EVIDENCE_REPORT.md",
+    "specs/quiver-v13-token-efficient-ai-context/slices/slice-02-decision-log-context-checkpoint/slice.json"
+  ],
+  "tests": [
+    "bash scripts/ci/smoke-init-docs.sh",
+    "bash scripts/ci/smoke-create-quiver.sh",
+    "bash scripts/package-quiver.sh",
+    "git diff --check"
+  ],
+  "documentation": [
+    "docs/DECISIONS.md.template"
+  ],
+  "dependencies": [
+    "slice-01-token-efficient-ai-modes-guidance"
+  ],
+  "assumptions": [
+    "A single decision log is enough for now"
+  ],
+  "estimated_hours": 2,
+  "actual_hours": null,
+  "status": "draft",
+  "blocked_reason": null,
+  "ready_at": null,
+  "started_at": null,
+  "completed_at": null
+}
