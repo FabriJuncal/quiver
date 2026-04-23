@@ -8,8 +8,8 @@
   "git": {
     "branch_type": "feature",
     "base_branch": "develop",
-    "branch_slug": "[kebab-case-slug]",
-    "branch_name": "feature/ABC-123-[kebab-case-slug]"
+    "branch_slug": "slice-template",
+    "branch_name": "feature/ABC-123-slice-template"
   },
   "ui_scope": {
     "routes": [

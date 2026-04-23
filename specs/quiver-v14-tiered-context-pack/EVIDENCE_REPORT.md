@@ -16,7 +16,7 @@ The primary measurable outcome is a reduction in default token loadout for execu
 |-------|--------|----------|
 | slice-01 | Completed | `docs/QUICK.md.template`, `docs/STANDARD.md.template`, and `docs/DEEP.md.template` now exist; init and migrate render them into `docs/ai/QUICK.md`, `docs/ai/STANDARD.md`, and `docs/ai/DEEP.md`; `docs/INDEX.md.template` links to the new tiers |
 | slice-02 | Completed | Root `AGENTS.md.template` now exists; init and migrate render `AGENTS.md` at the project root and preserve an existing file on rerun; generated README and `README_FOR_AI.md` now point agents to `AGENTS.md` first; doctor and smokes validate the new router |
-| slice-03 | Draft | Pending |
+| slice-03 | Completed | `docs/ai/ACTIVE_SLICE.md` is created by `start-slice`, rewritten when a stale active brief exists, and removed by `cleanup-slice`; `WORKTREE_CONTEXT.md` now points to the active brief path; legacy Bash wrappers delegate to the Node CLI |
 | slice-04 | Draft | Pending |
 | slice-05 | Draft | Pending |
 

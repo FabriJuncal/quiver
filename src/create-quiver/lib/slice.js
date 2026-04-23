@@ -56,6 +56,7 @@ function readSliceMeta(slicePath) {
     specFamily: null,
     specSlug: null,
     status,
+    tests: Array.isArray(json.tests) ? json.tests : [],
     ticket,
   };
 }
@@ -116,6 +117,60 @@ function resolveSliceContext(repoRoot, slicePath) {
   return slice;
 }
 
+function activeSlicePath(repoRoot) {
+  return path.join(repoRoot, 'docs', 'ai', 'ACTIVE_SLICE.md');
+}
+
+function renderActiveSlice(slice) {
+  const lines = [
+    '# Active Slice',
+    '',
+    '## Slice ID',
+    '',
+    slice.sliceId || 'slice-unknown',
+    '',
+    '## Title',
+    '',
+    slice.json.title || slice.sliceId || 'Untitled slice',
+    '',
+    '## Objective',
+    '',
+    slice.json.objective || 'Sin objetivo declarado.',
+    '',
+    '## allowed_files',
+  ];
+
+  if (Array.isArray(slice.files) && slice.files.length > 0) {
+    for (const file of slice.files) {
+      lines.push(`- ${file}`);
+    }
+  } else {
+    lines.push('- n/a');
+  }
+
+  lines.push('', '## Validation Commands');
+  if (Array.isArray(slice.tests) && slice.tests.length > 0) {
+    for (const command of slice.tests) {
+      lines.push(`- ${command}`);
+    }
+  } else {
+    lines.push('- n/a');
+  }
+
+  lines.push('', '## Definition of Done');
+  if (Array.isArray(slice.acceptance) && slice.acceptance.length > 0) {
+    for (const item of slice.acceptance) {
+      lines.push(`- ${item}`);
+    }
+  } else {
+    lines.push('- n/a');
+  }
+
+  lines.push('', '## Prohibition', '', 'Do not edit any file outside allowed_files.', '');
+
+  return `${lines.join('\n')}\n`;
+}
+
 function worktreesRootForRepo(repoRoot, branchName) {
   const repoName = path.basename(repoRoot);
   const repoParent = path.dirname(repoRoot);
@@ -131,6 +186,8 @@ module.exports = {
   readSliceMeta,
   resolveSliceContext,
   safeBranchName,
+  activeSlicePath,
+  renderActiveSlice,
   toAlias,
   validateSliceMetaForStart,
   worktreesRootForRepo,

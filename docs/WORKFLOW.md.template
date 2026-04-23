@@ -20,7 +20,7 @@ This document is the canonical implementation workflow for the project.
 ## Mode-Aware Context Selection
 
 - **Onboarding:** read `PROJECT_SCAN.json`, `PROJECT_MAP.md`, `AI_CONTEXT.md`, and `AI_ONBOARDING_PROMPT.md` before source files.
-- **Implementation:** read `slice.json`, declared files, nearby tests, and only then adjacent source.
+- **Implementation:** read `docs/ai/ACTIVE_SLICE.md` first when it exists; otherwise read `slice.json`, declared files, nearby tests, and only then adjacent source.
 - **Review:** read `git diff` and the slice scope before opening full files.
 - **Debug:** read the command, exit code, first relevant error, stacktrace, and nearest changed code before long logs.
 
@@ -44,6 +44,7 @@ Use maps, metadata, diffs, and summaries first. Open full files only when the sm
    - The bootstrap step should work with canonical paths and a local base branch when `origin` is absent.
    - Draft slices require `--allow-draft`; otherwise `npx create-quiver start-slice` exits before execution.
    - Legacy Bash wrappers remain available for compatibility, but generated projects should prefer the Node CLI and `quiver:*` npm scripts.
+   - `start-slice` generates `docs/ai/ACTIVE_SLICE.md` and `WORKTREE_CONTEXT.md`; use the active slice brief as the source of truth for execution.
 2. Implement only what the slice declares.
 3. Make one commit for that slice.
 4. Validate with `npx create-quiver check-slice <slice.json>` or `npm run quiver:check-slice -- <slice.json>`.
