@@ -95,7 +95,7 @@ This lets agents skip files without reading the body.
 | Slice | Title | Status | Spec |
 |-------|-------|--------|------|
 | 01 | Tiered Context Pack | Completed | [slice-01](./slices/slice-01-tiered-context-pack/slice.json) |
-| 02 | AGENTS.md Router | Draft | [slice-02](./slices/slice-02-agents-md-router/slice.json) |
+| 02 | AGENTS.md Router | Completed | [slice-02](./slices/slice-02-agents-md-router/slice.json) |
 | 03 | Active Slice Lifecycle | Draft | [slice-03](./slices/slice-03-active-slice-lifecycle/slice.json) |
 | 04 | Dedup and Front-Matter | Draft | [slice-04](./slices/slice-04-dedup-frontmatter/slice.json) |
 | 05 | Doctor and Smokes for Tiered Pack | Draft | [slice-05](./slices/slice-05-doctor-smokes-tiered-pack/slice.json) |

@@ -12,6 +12,7 @@ If the project already exists from an older Quiver version, run `npx create-quiv
 Generated projects also get `quiver:*` npm scripts that call the Node CLI directly; prefer those for repeatable project workflows.
 Maintain release notes and package publishing with `scripts/release-quiver.sh`.
 The primary generated project context for agents is `docs/AI_CONTEXT.md`.
+The universal router for generated projects is `AGENTS.md`; read it before `docs/AI_CONTEXT.md` and `docs/AI_ONBOARDING_PROMPT.md`.
 Generated projects also get `docs/DECISIONS.md`; use it for durable choices that should not be re-litigated.
 If a generated project has been analyzed, the exact agent handoff prompt is `docs/AI_ONBOARDING_PROMPT.md`.
 During onboarding, after reading `ROADMAP.md`, also read `BACKLOG.md` in the repository root: it tracks emerging patterns that are not yet scoped as specs. Before proposing a new spec, confirm the idea is not already parked or emerging there.
@@ -21,6 +22,7 @@ During onboarding, after reading `ROADMAP.md`, also read `BACKLOG.md` in the rep
 Use the smallest context that still answers the current task.
 
 - **Onboarding:** start from `docs/PROJECT_MAP.md`, `docs/PROJECT_SCAN.json`, `docs/AI_CONTEXT.md`, and `docs/AI_ONBOARDING_PROMPT.md` before opening source files.
+- **Onboarding router:** start from `AGENTS.md` first, then the onboarding files above.
 - **Implementation:** start from `specs/<project-slug>/slices/<slice-id>/slice.json`, then read only the declared files, nearby tests, and directly related source.
 - **Review:** start from `git diff` and the slice scope before opening full files.
 - **Debug:** start from the command, exit code, first relevant error, stacktrace, and the nearest changed code before reading long logs.
