@@ -70,6 +70,13 @@ function assertProjectMapSections(filePath) {
   }
 }
 
+function countNonEmptyLines(filePath) {
+  return fs.readFileSync(filePath, 'utf8')
+    .split(/\r?\n/)
+    .filter((line) => line.trim().length > 0)
+    .length;
+}
+
 function cloneRepo(dest) {
   run('git', ['clone', '--quiet', repoRoot, dest]);
   run('git', ['config', 'user.name', 'Quiver Smoke'], { cwd: dest });
@@ -157,6 +164,9 @@ function runSmoke() {
   assertFile(path.join(newProject, 'README.md'));
   assertFile(path.join(newProject, 'docs', 'AI_CONTEXT.md'));
   assertFile(path.join(newProject, 'docs', 'AI_ONBOARDING_PROMPT.md'));
+  assertFile(path.join(newProject, 'docs', 'ai', 'QUICK.md'));
+  assertFile(path.join(newProject, 'docs', 'ai', 'STANDARD.md'));
+  assertFile(path.join(newProject, 'docs', 'ai', 'DEEP.md'));
   assertFile(path.join(newProject, '.quiver', 'state.json'));
   assertNodeNativeScripts(path.join(newProject, 'package.json'), 'new project');
   assertPackageScripts(path.join(newProject, 'package.json'), 'new project', [
@@ -180,6 +190,11 @@ function runSmoke() {
   assertFile(path.join(newProject, 'docs', 'PROJECT_SCAN.json'));
   assertFile(path.join(newProject, 'docs', 'PROJECT_MAP.md'));
   assertProjectMapSections(path.join(newProject, 'docs', 'PROJECT_MAP.md'));
+  assertContains(fs.readFileSync(path.join(newProject, 'docs', 'INDEX.md'), 'utf8'), './ai/QUICK.md', 'docs index');
+  assertContains(fs.readFileSync(path.join(newProject, 'docs', 'INDEX.md'), 'utf8'), './ai/STANDARD.md', 'docs index');
+  assertContains(fs.readFileSync(path.join(newProject, 'docs', 'INDEX.md'), 'utf8'), './ai/DEEP.md', 'docs index');
+  assert(countNonEmptyLines(path.join(newProject, 'docs', 'ai', 'QUICK.md')) <= 50, 'QUICK.md exceeds 50 non-empty lines');
+  assert(countNonEmptyLines(path.join(newProject, 'docs', 'ai', 'STANDARD.md')) <= 300, 'STANDARD.md exceeds 300 non-empty lines');
   assert(readJson(path.join(newProject, '.quiver', 'state.json')).last_analysis_at, 'analysis metadata missing after analyze');
 
   initProject(legacyProject, 'Legacy Repo');
@@ -220,6 +235,9 @@ function runSmoke() {
   ]);
   assert(readJson(path.join(legacyProject, '.quiver', 'state.json')).last_migration_at, 'migration metadata missing');
   assertFile(path.join(legacyProject, 'docs', 'AI_ONBOARDING_PROMPT.md'));
+  assertFile(path.join(legacyProject, 'docs', 'ai', 'QUICK.md'));
+  assertFile(path.join(legacyProject, 'docs', 'ai', 'STANDARD.md'));
+  assertFile(path.join(legacyProject, 'docs', 'ai', 'DEEP.md'));
   assert(readJson(legacyPackage).scripts.lint === 'echo lint', 'custom user script was not preserved');
 
   cloneRepo(startRepo);
@@ -266,6 +284,11 @@ function runSmoke() {
   assertFile(path.join(releaseProject, 'docs', 'PROJECT_SCAN.json'));
   assertFile(path.join(releaseProject, 'docs', 'PROJECT_MAP.md'));
   assertProjectMapSections(path.join(releaseProject, 'docs', 'PROJECT_MAP.md'));
+  assertFile(path.join(releaseProject, 'docs', 'ai', 'QUICK.md'));
+  assertFile(path.join(releaseProject, 'docs', 'ai', 'STANDARD.md'));
+  assertFile(path.join(releaseProject, 'docs', 'ai', 'DEEP.md'));
+  assert(countNonEmptyLines(path.join(releaseProject, 'docs', 'ai', 'QUICK.md')) <= 50, 'packaged QUICK.md exceeds 50 non-empty lines');
+  assert(countNonEmptyLines(path.join(releaseProject, 'docs', 'ai', 'STANDARD.md')) <= 300, 'packaged STANDARD.md exceeds 300 non-empty lines');
 
   console.log('create-quiver cross-platform smoke passed');
 }

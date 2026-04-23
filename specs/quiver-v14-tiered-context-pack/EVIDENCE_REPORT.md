@@ -14,7 +14,7 @@ The primary measurable outcome is a reduction in default token loadout for execu
 
 | Slice | Status | Evidence |
 |-------|--------|----------|
-| slice-01 | Draft | Pending |
+| slice-01 | Completed | `docs/QUICK.md.template`, `docs/STANDARD.md.template`, and `docs/DEEP.md.template` now exist; init and migrate render them into `docs/ai/QUICK.md`, `docs/ai/STANDARD.md`, and `docs/ai/DEEP.md`; `docs/INDEX.md.template` links to the new tiers |
 | slice-02 | Draft | Pending |
 | slice-03 | Draft | Pending |
 | slice-04 | Draft | Pending |

@@ -15,6 +15,32 @@ function toProjectSlug(projectName) {
     .replace(/^-+|-+$/g, '') || 'quiver-project';
 }
 
+function detectPackageManager(projectRoot) {
+  const packageJsonPath = path.join(projectRoot, 'package.json');
+  if (fs.existsSync(packageJsonPath)) {
+    const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
+    if (typeof packageJson.packageManager === 'string' && packageJson.packageManager.length > 0) {
+      return packageJson.packageManager.split('@')[0];
+    }
+  }
+
+  const candidates = [
+    ['pnpm', 'pnpm-lock.yaml'],
+    ['yarn', 'yarn.lock'],
+    ['bun', 'bun.lockb'],
+    ['bun', 'bun.lock'],
+    ['npm', 'package-lock.json'],
+  ];
+
+  for (const [manager, lockFile] of candidates) {
+    if (fs.existsSync(path.join(projectRoot, lockFile))) {
+      return manager;
+    }
+  }
+
+  return 'npm';
+}
+
 function renderTemplate(text, replacements) {
   return text
     .replace(/{{PROJECT_NAME}}/g, replacements.projectName)
@@ -28,7 +54,20 @@ function renderTemplate(text, replacements) {
     .replace(/{{FECHA_LAUNCH}}/g, replacements.datePlus35)
     .replace(/{{ESTADO}}/g, 'En planificación')
     .replace(/{{FASE}}/g, 'Fase 1')
-    .replace(/{{X}}%/g, '0%');
+    .replace(/{{X}}%/g, '0%')
+    .replace(/{{PACKAGE_MANAGER}}/g, replacements.packageManager || 'npm')
+    .replace(/{{STACK_SUMMARY}}/g, replacements.stackSummary || 'unknown until analyze')
+    .replace(/{{PRIMARY_INSTALL}}/g, replacements.primaryInstall || 'npm install')
+    .replace(/{{PRIMARY_DEV}}/g, replacements.primaryDev || 'not defined')
+    .replace(/{{PRIMARY_TEST}}/g, replacements.primaryTest || 'not defined')
+    .replace(/{{ANALYZE_COMMAND}}/g, replacements.analyzeCommand || 'npx create-quiver analyze')
+    .replace(/{{DOCTOR_COMMAND}}/g, replacements.doctorCommand || 'npx create-quiver doctor')
+    .replace(/{{START_SLICE_COMMAND}}/g, replacements.startSliceCommand || 'npx create-quiver start-slice <slice.json>')
+    .replace(/{{CHECK_SLICE_COMMAND}}/g, replacements.checkSliceCommand || 'npx create-quiver check-slice <slice.json>')
+    .replace(/{{CHECK_PR_COMMAND}}/g, replacements.checkPrCommand || 'npx create-quiver check-pr <slice.json>')
+    .replace(/{{CLEANUP_SLICE_COMMAND}}/g, replacements.cleanupSliceCommand || 'npx create-quiver cleanup-slice <slice.json>')
+    .replace(/{{CHECK_SCOPE_COMMAND}}/g, replacements.checkScopeCommand || 'npx create-quiver check-scope <slice.json>')
+    .replace(/{{REFRESH_ACTIVE_SLICES_COMMAND}}/g, replacements.refreshActiveSlicesCommand || 'npx create-quiver refresh-active-slices');
 }
 
 function copyRenderedFile(sourcePath, destinationPath, replacements, skipIfExists) {
@@ -308,6 +347,46 @@ function initializeProjectDocs(options) {
 
   const packageResult = mergePackageJson(projectRoot, templateRoot, migrateMode);
   operations.push({ source: 'package.template.json', destination: 'package.json', result: packageResult });
+
+  const mergedPackageJsonPath = path.join(projectRoot, 'package.json');
+  const mergedPackageJson = fs.existsSync(mergedPackageJsonPath)
+    ? JSON.parse(fs.readFileSync(mergedPackageJsonPath, 'utf8'))
+    : {};
+  const packageScripts = mergedPackageJson.scripts || {};
+
+  const tierReplacements = {
+    ...replacements,
+    packageManager: detectPackageManager(projectRoot),
+    stackSummary: 'unknown until analyze',
+    primaryInstall: 'npm install',
+    primaryDev: packageScripts.dev || packageScripts.start || 'not defined',
+    primaryTest: packageScripts.test || 'not defined',
+    analyzeCommand: 'npx create-quiver analyze',
+    doctorCommand: 'npx create-quiver doctor',
+    startSliceCommand: 'npx create-quiver start-slice <slice.json>',
+    checkSliceCommand: 'npx create-quiver check-slice <slice.json>',
+    checkPrCommand: 'npx create-quiver check-pr <slice.json>',
+    cleanupSliceCommand: 'npx create-quiver cleanup-slice <slice.json>',
+    checkScopeCommand: 'npx create-quiver check-scope <slice.json>',
+    refreshActiveSlicesCommand: 'npx create-quiver refresh-active-slices',
+  };
+
+  const tierCopies = [
+    ['docs/QUICK.md.template', 'docs/ai/QUICK.md'],
+    ['docs/STANDARD.md.template', 'docs/ai/STANDARD.md'],
+    ['docs/DEEP.md.template', 'docs/ai/DEEP.md'],
+  ];
+
+  for (const [source, destination] of tierCopies) {
+    const sourcePath = path.join(templateRoot, source);
+    if (!fs.existsSync(sourcePath)) {
+      continue;
+    }
+
+    const destinationPath = path.join(projectRoot, destination);
+    const result = copyRenderedFile(sourcePath, destinationPath, tierReplacements, migrateMode);
+    operations.push({ source, destination, result });
+  }
 
   const currentState = fs.existsSync(path.join(projectRoot, '.quiver', 'state.json'))
     ? JSON.parse(fs.readFileSync(path.join(projectRoot, '.quiver', 'state.json'), 'utf8'))

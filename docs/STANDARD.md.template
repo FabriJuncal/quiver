@@ -1,0 +1,48 @@
+# {{PROJECT_NAME}} Standard Context
+
+**Date:** {{FECHA}}
+**Status:** {{ESTADO}}
+
+This is the default context pack for everyday AI work.
+
+## Reading Order
+
+1. `./QUICK.md`
+2. `docs/PROJECT_MAP.md`
+3. `docs/AI_CONTEXT.md`
+4. `docs/DECISIONS.md`
+5. `docs/CONTEXTO.md`
+6. `docs/WORKFLOW.md`
+
+## Conventions
+
+- Use maps, metadata, and diffs before opening full source files.
+- Keep scope inside the active slice.
+- Make one commit per slice.
+- Open one PR per spec.
+- Record durable decisions in `docs/DECISIONS.md`.
+
+## Workflow Overview
+
+- Onboarding starts from `docs/PROJECT_SCAN.json` and `docs/PROJECT_MAP.md`.
+- Implementation starts from `specs/{{PROJECT_SLUG}}/slices/<slice-id>/slice.json`.
+- Review starts from `git diff` and the slice scope.
+- Debugging starts from the command, exit code, first relevant error, and stacktrace.
+
+## Testing Expectations
+
+- Validate the active slice before merging.
+- Prefer focused smoke tests over large manual walkthroughs.
+- Preserve existing user-authored content during migration.
+- Keep secret-safe paths and generated heavy folders out of the read path.
+
+## V13 Mode Guidance
+
+- Onboarding: read maps and metadata first.
+- Implementation: read `slice.json` and declared files first.
+- Review: inspect `git diff` before full files.
+- Debug: inspect the error signal before long logs.
+
+## Read Next
+
+- `./DEEP.md`

@@ -68,10 +68,10 @@
     "Execution models benefit more from a short, deterministic briefing than from a rich but long one"
   ],
   "estimated_hours": 4,
-  "actual_hours": null,
-  "status": "draft",
+  "actual_hours": 4,
+  "status": "completed",
   "blocked_reason": null,
   "ready_at": null,
   "started_at": null,
-  "completed_at": null
+  "completed_at": "2026-04-23"
 }

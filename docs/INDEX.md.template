@@ -15,6 +15,9 @@
 
 ## AI Configuration
 
+- **QUICK** - `./ai/QUICK.md`
+- **STANDARD** - `./ai/STANDARD.md`
+- **DEEP** - `./ai/DEEP.md`
 - **Principles** - `./ai/PRINCIPLES.md`
 - **Rules** - `./ai/RULES.yaml`
 - **Lessons** - `./ai/LESSONS.md`
@@ -33,6 +36,9 @@ docs/
 ├── INDEX.md
 ├── AI_CONTEXT.md
 ├── DECISIONS.md
+├── ai/QUICK.md
+├── ai/STANDARD.md
+├── ai/DEEP.md
 ├── AI_ONBOARDING_PROMPT.md
 ├── CONTEXTO.md
 ├── STATUS.md

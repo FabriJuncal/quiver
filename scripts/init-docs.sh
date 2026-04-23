@@ -44,6 +44,19 @@ MIGRATE_MODE="${QUIVER_MIGRATE:-0}"
 DATE_PLUS_7=$(node -e 'const d = new Date(); d.setDate(d.getDate() + 7); const p = (n) => String(n).padStart(2, "0"); console.log(`${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`);')
 DATE_PLUS_30=$(node -e 'const d = new Date(); d.setDate(d.getDate() + 30); const p = (n) => String(n).padStart(2, "0"); console.log(`${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`);')
 DATE_PLUS_35=$(node -e 'const d = new Date(); d.setDate(d.getDate() + 35); const p = (n) => String(n).padStart(2, "0"); console.log(`${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`);')
+PACKAGE_MANAGER="npm"
+STACK_SUMMARY="unknown until analyze"
+PRIMARY_INSTALL="npm install"
+PRIMARY_DEV="npm run quiver:analyze"
+PRIMARY_TEST="npm test"
+ANALYZE_COMMAND="npx create-quiver analyze"
+DOCTOR_COMMAND="npx create-quiver doctor"
+START_SLICE_COMMAND="npx create-quiver start-slice <slice.json>"
+CHECK_SLICE_COMMAND="npx create-quiver check-slice <slice.json>"
+CHECK_PR_COMMAND="npx create-quiver check-pr <slice.json>"
+CLEANUP_SLICE_COMMAND="npx create-quiver cleanup-slice <slice.json>"
+CHECK_SCOPE_COMMAND="npx create-quiver check-scope <slice.json>"
+REFRESH_ACTIVE_SLICES_COMMAND="npx create-quiver refresh-active-slices"
 
 print_info "Inicializando documentación para: $PROJECT_NAME"
 print_info "Project slug: $PROJECT_SLUG"
@@ -92,11 +105,24 @@ copy_template() {
             -e "s/{{FECHA}}/$CURRENT_DATE/g" \
             -e "s/{{FECHA_PROXIMA}}/$DATE_PLUS_7/g" \
             -e "s/{{FECHA_PROXIMA_MES}}/$DATE_PLUS_30/g" \
-            -e "s/{{FECHA_LAUNCH}}/$DATE_PLUS_35/g" \
-            -e "s/{{ESTADO}}/En planificación/g" \
-            -e "s/{{FASE}}/Fase 1/g" \
-            -e "s/{{X}}%/0%/g" \
-            "$src" > "$dest"
+        -e "s/{{FECHA_LAUNCH}}/$DATE_PLUS_35/g" \
+        -e "s/{{ESTADO}}/En planificación/g" \
+        -e "s/{{FASE}}/Fase 1/g" \
+        -e "s/{{X}}%/0%/g" \
+        -e "s/{{PACKAGE_MANAGER}}/$PACKAGE_MANAGER/g" \
+        -e "s/{{STACK_SUMMARY}}/$STACK_SUMMARY/g" \
+        -e "s/{{PRIMARY_INSTALL}}/$PRIMARY_INSTALL/g" \
+        -e "s/{{PRIMARY_DEV}}/$PRIMARY_DEV/g" \
+        -e "s/{{PRIMARY_TEST}}/$PRIMARY_TEST/g" \
+        -e "s/{{ANALYZE_COMMAND}}/$ANALYZE_COMMAND/g" \
+        -e "s/{{DOCTOR_COMMAND}}/$DOCTOR_COMMAND/g" \
+        -e "s/{{START_SLICE_COMMAND}}/$START_SLICE_COMMAND/g" \
+        -e "s/{{CHECK_SLICE_COMMAND}}/$CHECK_SLICE_COMMAND/g" \
+        -e "s/{{CHECK_PR_COMMAND}}/$CHECK_PR_COMMAND/g" \
+        -e "s/{{CLEANUP_SLICE_COMMAND}}/$CLEANUP_SLICE_COMMAND/g" \
+        -e "s/{{CHECK_SCOPE_COMMAND}}/$CHECK_SCOPE_COMMAND/g" \
+        -e "s/{{REFRESH_ACTIVE_SLICES_COMMAND}}/$REFRESH_ACTIVE_SLICES_COMMAND/g" \
+        "$src" > "$dest"
         
         print_success "Creado: $dest"
     fi
@@ -120,11 +146,24 @@ copy_template_keep_name() {
             -e "s/{{FECHA}}/$CURRENT_DATE/g" \
             -e "s/{{FECHA_PROXIMA}}/$DATE_PLUS_7/g" \
             -e "s/{{FECHA_PROXIMA_MES}}/$DATE_PLUS_30/g" \
-            -e "s/{{FECHA_LAUNCH}}/$DATE_PLUS_35/g" \
-            -e "s/{{ESTADO}}/En planificación/g" \
-            -e "s/{{FASE}}/Fase 1/g" \
-            -e "s/{{X}}%/0%/g" \
-            "$src" > "$dest"
+        -e "s/{{FECHA_LAUNCH}}/$DATE_PLUS_35/g" \
+        -e "s/{{ESTADO}}/En planificación/g" \
+        -e "s/{{FASE}}/Fase 1/g" \
+        -e "s/{{X}}%/0%/g" \
+        -e "s/{{PACKAGE_MANAGER}}/$PACKAGE_MANAGER/g" \
+        -e "s/{{STACK_SUMMARY}}/$STACK_SUMMARY/g" \
+        -e "s/{{PRIMARY_INSTALL}}/$PRIMARY_INSTALL/g" \
+        -e "s/{{PRIMARY_DEV}}/$PRIMARY_DEV/g" \
+        -e "s/{{PRIMARY_TEST}}/$PRIMARY_TEST/g" \
+        -e "s/{{ANALYZE_COMMAND}}/$ANALYZE_COMMAND/g" \
+        -e "s/{{DOCTOR_COMMAND}}/$DOCTOR_COMMAND/g" \
+        -e "s/{{START_SLICE_COMMAND}}/$START_SLICE_COMMAND/g" \
+        -e "s/{{CHECK_SLICE_COMMAND}}/$CHECK_SLICE_COMMAND/g" \
+        -e "s/{{CHECK_PR_COMMAND}}/$CHECK_PR_COMMAND/g" \
+        -e "s/{{CLEANUP_SLICE_COMMAND}}/$CLEANUP_SLICE_COMMAND/g" \
+        -e "s/{{CHECK_SCOPE_COMMAND}}/$CHECK_SCOPE_COMMAND/g" \
+        -e "s/{{REFRESH_ACTIVE_SLICES_COMMAND}}/$REFRESH_ACTIVE_SLICES_COMMAND/g" \
+        "$src" > "$dest"
 
         print_success "Creado: $dest"
     fi
@@ -152,6 +191,9 @@ copy_file_if_missing() {
 
 # Copiar templates de docs/
 copy_template "docs-template/docs/INDEX.md.template" "docs/INDEX.md"
+copy_template "docs-template/docs/QUICK.md.template" "docs/ai/QUICK.md"
+copy_template "docs-template/docs/STANDARD.md.template" "docs/ai/STANDARD.md"
+copy_template "docs-template/docs/DEEP.md.template" "docs/ai/DEEP.md"
 copy_template "docs-template/docs/DECISIONS.md.template" "docs/DECISIONS.md"
 copy_template "docs-template/docs/AI_CONTEXT.md.template" "docs/AI_CONTEXT.md"
 copy_template "docs-template/docs/AI_ONBOARDING_PROMPT.md.template" "docs/AI_ONBOARDING_PROMPT.md"

@@ -47,6 +47,9 @@ required_files=(
   "CHANGELOG.md"
   "ROADMAP.md"
   "docs/INDEX.md"
+  "docs/ai/QUICK.md"
+  "docs/ai/STANDARD.md"
+  "docs/ai/DEEP.md"
   "docs/DECISIONS.md"
   "docs/AI_CONTEXT.md"
   "docs/AI_ONBOARDING_PROMPT.md"
@@ -91,6 +94,9 @@ done
 assert_contains "README.md" "Decision Log"
 assert_contains "docs/INDEX.md" "Decision Log"
 assert_contains "docs/INDEX.md" "DECISIONS.md"
+assert_contains "docs/INDEX.md" "./ai/QUICK.md"
+assert_contains "docs/INDEX.md" "./ai/STANDARD.md"
+assert_contains "docs/INDEX.md" "./ai/DEEP.md"
 
 assert_contains "README.md" "npx create-quiver analyze"
 assert_contains "README.md" "npx create-quiver doctor"
@@ -115,9 +121,28 @@ assert_contains "docs/AI_CONTEXT.md" "Read First"
 assert_contains "docs/AI_CONTEXT.md" "DECISIONS.md"
 assert_contains "docs/DECISIONS.md" "Decision Log"
 assert_contains "docs/DECISIONS.md" "| Date | Decision | Reason | Alternatives | Impact |"
+assert_contains "docs/ai/QUICK.md" "Quick Context"
+assert_contains "docs/ai/QUICK.md" "Read Next"
+assert_contains "docs/ai/STANDARD.md" "Standard Context"
+assert_contains "docs/ai/STANDARD.md" "V13 Mode Guidance"
+assert_contains "docs/ai/DEEP.md" "Deep Context"
+assert_contains "docs/ai/DEEP.md" "What Belongs Here"
 assert_contains "docs/AI_ONBOARDING_PROMPT.md" "AI Onboarding Prompt"
 assert_contains "docs/AI_ONBOARDING_PROMPT.md" "docs/PROJECT_SCAN.json"
 assert_contains "docs/AI_ONBOARDING_PROMPT.md" "Do not modify product source code"
+
+quick_lines="$(awk 'NF' docs/ai/QUICK.md | wc -l | awk '{ print $1 }')"
+standard_lines="$(awk 'NF' docs/ai/STANDARD.md | wc -l | awk '{ print $1 }')"
+
+if [ "$quick_lines" -gt 50 ]; then
+  echo "docs/ai/QUICK.md exceeds 50 non-empty lines: $quick_lines" >&2
+  exit 1
+fi
+
+if [ "$standard_lines" -gt 300 ]; then
+  echo "docs/ai/STANDARD.md exceeds 300 non-empty lines: $standard_lines" >&2
+  exit 1
+fi
 
 required_scripts=(
   "tools/scripts/start-slice.sh"
