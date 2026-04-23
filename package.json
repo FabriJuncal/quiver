@@ -15,6 +15,7 @@
     "migrate": "bash tools/scripts/migrate-project.sh",
     "package:quiver": "bash scripts/package-quiver.sh",
     "smoke:create-quiver": "bash scripts/ci/smoke-create-quiver.sh",
+    "smoke:tiered-pack": "bash scripts/ci/smoke-tiered-pack.sh",
     "release:quiver": "bash scripts/release-quiver.sh"
   }
 }

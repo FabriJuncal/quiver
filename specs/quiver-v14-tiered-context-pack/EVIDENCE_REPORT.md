@@ -2,7 +2,7 @@
 
 **Spec:** quiver-v14-tiered-context-pack
 **Date:** 2026-04-23
-**Status:** Draft
+**Status:** Completed
 
 ## Summary
 
@@ -18,7 +18,7 @@ The primary measurable outcome is a reduction in default token loadout for execu
 | slice-02 | Completed | Root `AGENTS.md.template` now exists; init and migrate render `AGENTS.md` at the project root and preserve an existing file on rerun; generated README and `README_FOR_AI.md` now point agents to `AGENTS.md` first; doctor and smokes validate the new router |
 | slice-03 | Completed | `docs/ai/ACTIVE_SLICE.md` is created by `start-slice`, rewritten when a stale active brief exists, and removed by `cleanup-slice`; `WORKTREE_CONTEXT.md` now points to the active brief path; legacy Bash wrappers delegate to the Node CLI |
 | slice-04 | Completed | Front-matter helper added in `src/create-quiver/lib/init-docs.js`; generated context docs now get YAML front matter idempotently; `docs/AI_CONTEXT.md`, `docs/CONTEXTO.md`, `docs/STATUS.md`, `docs/WORKFLOW.md`, `docs/AI_ONBOARDING_PROMPT.md`, `docs/ai/QUICK.md`, `docs/ai/STANDARD.md`, `docs/ai/DEEP.md`, `docs/ai/LESSONS.md`, and `docs/ai/PRINCIPLES.md` are validated; `docs/PROJECT_MAP.md` is now the only generated file carrying the package manager/command surface |
-| slice-05 | Draft | Pending |
+| slice-05 | Completed | `src/create-quiver/lib/doctor.js` now warns on oversize QUICK/STANDARD files, missing AGENTS sections, missing front matter, orphaned ACTIVE_SLICE briefs, and duplicated stack info; `scripts/ci/smoke-tiered-pack.sh` validates the tiered pack, lifecycle, and warning scenarios; CI matrix now runs the new smoke on macOS, Linux, and Windows; `specs/[project-name]/EVIDENCE_REPORT.md.template` now asks for summarized evidence |
 
 ## Required Final Evidence
 

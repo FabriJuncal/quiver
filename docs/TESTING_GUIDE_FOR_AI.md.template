@@ -31,9 +31,10 @@
 
 ## Evidence
 
-- Logs
-- Screenshots
-- Diff output
+- Prefer summarized command evidence over pasted long logs.
+- Capture the command, exit code, first relevant error, and stacktrace when available.
+- Record the log path or artifact path instead of dumping full logs inline.
+- Use screenshots or diff output only when they are the smallest useful proof.
 
 ## If Something Fails
 

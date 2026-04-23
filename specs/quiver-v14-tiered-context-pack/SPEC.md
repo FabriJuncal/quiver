@@ -1,7 +1,7 @@
 # Quiver v0.14 - Tiered Context Pack
 
 **Date:** 2026-04-22
-**Status:** Draft
+**Status:** Completed
 
 Slice numbering resets here: this spec starts at `slice-01` and does not continue any previous spec's numbering.
 
@@ -98,7 +98,7 @@ This lets agents skip files without reading the body.
 | 02 | AGENTS.md Router | Completed | [slice-02](./slices/slice-02-agents-md-router/slice.json) |
 | 03 | Active Slice Lifecycle | Completed | [slice-03](./slices/slice-03-active-slice-lifecycle/slice.json) |
 | 04 | Dedup and Front-Matter | Completed | [slice-04](./slices/slice-04-dedup-frontmatter/slice.json) |
-| 05 | Doctor and Smokes for Tiered Pack | Draft | [slice-05](./slices/slice-05-doctor-smokes-tiered-pack/slice.json) |
+| 05 | Doctor and Smokes for Tiered Pack | Completed | [slice-05](./slices/slice-05-doctor-smokes-tiered-pack/slice.json) |
 
 ## Definition of Done
 
