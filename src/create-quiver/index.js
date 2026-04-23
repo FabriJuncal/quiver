@@ -1057,6 +1057,10 @@ function runDoctor(targetDir) {
     throw new Error(formatError(`target directory does not exist: ${projectRoot}`));
   }
 
+  if (!hasQuiverInitializationEvidence(projectRoot)) {
+    throw new Error(formatError('doctor requires a project previously initialized by Quiver.\nRun init first: npx create-quiver --name "Project Name"'));
+  }
+
   const generatedSpecs = listGeneratedSpecDirs(projectRoot);
   if (generatedSpecs.length !== 1) {
     throw new Error(formatError(`expected exactly one generated spec directory, found ${generatedSpecs.length || 0}`));

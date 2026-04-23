@@ -52,10 +52,10 @@
     "The init state can be inferred purely from Quiver metadata without guessing from generated files"
   ],
   "estimated_hours": 2,
-  "actual_hours": null,
-  "status": "draft",
+  "actual_hours": 1,
+  "status": "completed",
   "blocked_reason": null,
   "ready_at": null,
-  "started_at": null,
-  "completed_at": null
+  "started_at": "2026-04-23",
+  "completed_at": "2026-04-23"
 }
