@@ -51,7 +51,7 @@ Quiver should guide AI agents differently depending on the task:
 |-------|-------|--------|------|
 | 01 | Token-Efficient AI Modes Guidance | Completed | [slice-01](./slices/slice-01-token-efficient-ai-modes-guidance/slice.json) |
 | 02 | Decision Log | Completed | [slice-02](./slices/slice-02-decision-log-context-checkpoint/slice.json) |
-| 03 | Project Map Reading Order | Draft | [slice-03](./slices/slice-03-project-map-reading-order/slice.json) |
+| 03 | Project Map Reading Order | Completed | [slice-03](./slices/slice-03-project-map-reading-order/slice.json) |
 
 ## Definition of Done
 

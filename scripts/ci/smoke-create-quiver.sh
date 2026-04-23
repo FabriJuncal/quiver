@@ -32,6 +32,17 @@ assert_contains() {
   fi
 }
 
+assert_project_map_sections() {
+  local path="$1"
+
+  assert_contains "$path" "## Suggested Reading Order"
+  assert_contains "$path" "## Entry Points"
+  assert_contains "$path" "## Primary Config Files"
+  assert_contains "$path" "## Likely Test Commands"
+  assert_contains "$path" "## High-Signal Files"
+  assert_contains "$path" "## Do Not Read First"
+}
+
 assert_package_scripts() {
   local package_json="$1"
   local label="$2"
@@ -122,6 +133,7 @@ assert_file "$new_target/docs/AI_CONTEXT.md"
 assert_file "$new_target/docs/AI_ONBOARDING_PROMPT.md"
 assert_file "$new_target/docs/PROJECT_SCAN.json"
 assert_file "$new_target/docs/PROJECT_MAP.md"
+assert_project_map_sections "$new_target/docs/PROJECT_MAP.md"
 assert_file "$new_target/.quiver/state.json"
 assert_file "$new_target/docs/SUPPORT_MATRIX.md"
 assert_file "$new_target/docs/TROUBLESHOOTING.md"
@@ -201,6 +213,7 @@ assert_file "$existing_target/docs/AI_CONTEXT.md"
 assert_file "$existing_target/docs/AI_ONBOARDING_PROMPT.md"
 assert_file "$existing_target/docs/PROJECT_SCAN.json"
 assert_file "$existing_target/docs/PROJECT_MAP.md"
+assert_project_map_sections "$existing_target/docs/PROJECT_MAP.md"
 assert_file "$existing_target/.quiver/state.json"
 assert_file "$existing_target/docs/SUPPORT_MATRIX.md"
 assert_file "$existing_target/docs/TROUBLESHOOTING.md"
@@ -209,6 +222,7 @@ assert_package_scripts "$existing_target/package.json" "existing project" \
 assert_file "$space_target/README.md"
 assert_file "$space_target/docs/PROJECT_SCAN.json"
 assert_file "$space_target/docs/PROJECT_MAP.md"
+assert_project_map_sections "$space_target/docs/PROJECT_MAP.md"
 assert_file "$space_target/docs/DECISIONS.md"
 
 node "$cli" --name "Legacy Project" --dir "$legacy_target" >/dev/null
@@ -294,6 +308,7 @@ assert_file "$release_target/docs/AI_ONBOARDING_PROMPT.md"
 assert_file "$release_target/docs/DECISIONS.md"
 assert_file "$release_target/docs/PROJECT_SCAN.json"
 assert_file "$release_target/docs/PROJECT_MAP.md"
+assert_project_map_sections "$release_target/docs/PROJECT_MAP.md"
 assert_package_scripts "$release_target/package.json" "packaged project" \
   quiver:analyze quiver:doctor quiver:migrate quiver:start-slice quiver:check-slice quiver:check-pr quiver:cleanup-slice quiver:check-scope quiver:refresh-active-slices
 

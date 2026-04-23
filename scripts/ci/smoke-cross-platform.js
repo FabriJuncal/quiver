@@ -54,6 +54,22 @@ function assertPackageScripts(packageJsonPath, label, scripts) {
   assert(missing.length === 0, `${label}: missing npm scripts: ${missing.join(', ')}`);
 }
 
+function assertProjectMapSections(filePath) {
+  const text = fs.readFileSync(filePath, 'utf8');
+  const expected = [
+    '## Suggested Reading Order',
+    '## Entry Points',
+    '## Primary Config Files',
+    '## Likely Test Commands',
+    '## High-Signal Files',
+    '## Do Not Read First',
+  ];
+
+  for (const needle of expected) {
+    assert(text.includes(needle), `Project map missing section: ${needle}`);
+  }
+}
+
 function cloneRepo(dest) {
   run('git', ['clone', '--quiet', repoRoot, dest]);
   run('git', ['config', 'user.name', 'Quiver Smoke'], { cwd: dest });
@@ -163,6 +179,7 @@ function runSmoke() {
   assertContains(doctorAfter, 'npx create-quiver start-slice', 'doctor after analyze');
   assertFile(path.join(newProject, 'docs', 'PROJECT_SCAN.json'));
   assertFile(path.join(newProject, 'docs', 'PROJECT_MAP.md'));
+  assertProjectMapSections(path.join(newProject, 'docs', 'PROJECT_MAP.md'));
   assert(readJson(path.join(newProject, '.quiver', 'state.json')).last_analysis_at, 'analysis metadata missing after analyze');
 
   initProject(legacyProject, 'Legacy Repo');
@@ -248,6 +265,7 @@ function runSmoke() {
   assertContains(releaseDoctor, 'Read docs/AI_ONBOARDING_PROMPT.md and execute it.', 'packaged doctor');
   assertFile(path.join(releaseProject, 'docs', 'PROJECT_SCAN.json'));
   assertFile(path.join(releaseProject, 'docs', 'PROJECT_MAP.md'));
+  assertProjectMapSections(path.join(releaseProject, 'docs', 'PROJECT_MAP.md'));
 
   console.log('create-quiver cross-platform smoke passed');
 }

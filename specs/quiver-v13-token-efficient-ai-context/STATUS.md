@@ -11,13 +11,13 @@ Slice numbering is local to this spec. The first slice is `slice-01`.
 |-------|-------|--------|----|-----------------|--------------|
 | slice-01 | Token-Efficient AI Modes Guidance | Completed | - | 3 | 3 |
 | slice-02 | Decision Log | Completed | - | 2 | 2 |
-| slice-03 | Project Map Reading Order | Draft | - | 5 | - |
+| slice-03 | Project Map Reading Order | Completed | - | 5 | 5 |
 
 ## Progress
 
-- Completed slices: 2 / 3
+- Completed slices: 3 / 3
 - Estimated hours: 10
-- Actual hours: 5
+- Actual hours: 10
 
 ## Blockers
 

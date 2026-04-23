@@ -14,7 +14,7 @@ This spec will reduce AI token usage by improving Quiver's context contracts, ge
 |-------|--------|----------|
 | slice-01 | Completed | README_FOR_AI.md, AI_ONBOARDING_PROMPT.md.template, WORKFLOW.md.template, and GITFLOW_PR_GUIDE.md.template now name onboarding, implementation, review, and debugging modes explicitly |
 | slice-02 | Completed | docs/DECISIONS.md.template added; docs/INDEX.md.template, README guidance, AI context, workflow, and PR guide now link or route to the decision log |
-| slice-03 | Draft | Pending |
+| slice-03 | Completed | create-quiver analyze now writes Suggested Reading Order, Entry Points, Primary Config Files, Likely Test Commands, High-Signal Files, and Do Not Read First sections into PROJECT_MAP.md |
 
 ## Required Final Evidence
 

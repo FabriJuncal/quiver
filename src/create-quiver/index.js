@@ -793,6 +793,49 @@ function buildProjectScan(projectRoot) {
 
 function renderProjectMap(scan) {
   const lines = [];
+  const projectSlug = scan.project.name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '') || 'project';
+  const docsFiles = new Set(scan.docs.files);
+  const hasDecisionLog = docsFiles.has('docs/DECISIONS.md');
+  const hasAiPrompt = docsFiles.has('docs/AI_ONBOARDING_PROMPT.md');
+  const sourceDirs = scan.structure.source_directories.length > 0 ? scan.structure.source_directories : [];
+  const configFiles = scan.structure.config_files.length > 0 ? scan.structure.config_files : [];
+  const highSignalFiles = [
+    'README.md',
+    'docs/INDEX.md',
+    'docs/AI_CONTEXT.md',
+    'docs/DECISIONS.md',
+    'docs/PROJECT_SCAN.json',
+    'docs/PROJECT_MAP.md',
+    'docs/AI_ONBOARDING_PROMPT.md',
+    'docs/CONTEXTO.md',
+    'docs/WORKFLOW.md',
+    'docs/SUPPORT_MATRIX.md',
+    'docs/TROUBLESHOOTING.md',
+    'package.json',
+    ...configFiles,
+  ].filter((value, index, array) => array.indexOf(value) === index);
+  const likelyTestCommands = [
+    ['Install', scan.commands.install || 'npm install'],
+    ['dev', scan.commands.common.dev || 'not defined'],
+    ['build', scan.commands.common.build || 'not defined'],
+    ['test', scan.commands.common.test || 'not defined'],
+    ['lint', scan.commands.common.lint || 'not defined'],
+  ];
+  const readingOrder = [
+    'README.md',
+    'docs/INDEX.md',
+    'docs/AI_CONTEXT.md',
+    'docs/PROJECT_SCAN.json',
+    'docs/PROJECT_MAP.md',
+    hasDecisionLog ? 'docs/DECISIONS.md' : 'docs/DECISIONS.md (create with migrate if missing)',
+    'docs/CONTEXTO.md',
+    'docs/WORKFLOW.md',
+    'docs/SUPPORT_MATRIX.md',
+    'docs/TROUBLESHOOTING.md',
+  ];
 
   lines.push('# Project Map');
   lines.push('');
@@ -803,6 +846,70 @@ function renderProjectMap(scan) {
   lines.push(`- package.json present: ${scan.project.has_package_json ? 'yes' : 'no'}`);
   if (scan.project.workspaces.length > 0) {
     lines.push(`- Workspaces: ${scan.project.workspaces.join(', ')}`);
+  }
+
+  lines.push('');
+  lines.push('## Suggested Reading Order');
+  for (const item of readingOrder) {
+    lines.push(`- ${item}`);
+  }
+
+  if (hasAiPrompt) {
+    lines.push('- docs/AI_ONBOARDING_PROMPT.md');
+  }
+
+  lines.push(`- specs/${projectSlug}/SPEC.md`);
+  if (sourceDirs.length > 0) {
+    for (const sourceDir of sourceDirs) {
+      lines.push(`- ${sourceDir}/...`);
+    }
+  }
+
+  lines.push('');
+  lines.push('## Entry Points');
+  lines.push(`- Project overview: ${scan.docs.has_readme ? 'README.md' : 'docs/CONTEXTO.md'}`);
+  lines.push(`- AI context: ${hasDecisionLog ? 'docs/AI_CONTEXT.md + docs/DECISIONS.md' : 'docs/AI_CONTEXT.md'}`);
+  lines.push('- Analysis outputs: docs/PROJECT_SCAN.json, docs/PROJECT_MAP.md');
+  lines.push(`- Workflow contract: docs/WORKFLOW.md`);
+  lines.push(`- Spec contract: specs/${projectSlug}/SPEC.md`);
+  if (sourceDirs.length > 0) {
+    lines.push(`- Source roots: ${sourceDirs.join(', ')}`);
+  } else {
+    lines.push('- Source roots: none detected');
+  }
+
+  lines.push('');
+  lines.push('## Primary Config Files');
+  if (configFiles.length > 0) {
+    for (const configFile of configFiles) {
+      lines.push(`- ${configFile}`);
+    }
+  } else {
+    lines.push('- none detected');
+  }
+
+  lines.push('');
+  lines.push('## Commands');
+  lines.push('See **Likely Test Commands** for the current read-friendly command summary.');
+
+  lines.push('');
+  lines.push('## Likely Test Commands');
+  lines.push('| Command | Value |');
+  lines.push('|---------|-------|');
+  for (const [name, value] of likelyTestCommands) {
+    lines.push(`| ${name} | ${escapeMarkdownCell(value)} |`);
+  }
+
+  const relevantScripts = Object.entries(scan.commands.scripts)
+    .filter(([name]) => /(^|:)(analyze|doctor|migrate|test|build|lint|dev|start|check)(:|$)|analyze|doctor|migrate|test|build|lint|dev|start|check/i.test(name))
+    .slice(0, 12);
+
+  if (relevantScripts.length > 0) {
+    lines.push('');
+    lines.push('### package.json scripts');
+    for (const [name, command] of relevantScripts) {
+      lines.push(`- ${name}: \`${command}\``);
+    }
   }
 
   lines.push('');
@@ -820,24 +927,6 @@ function renderProjectMap(scan) {
   }
 
   lines.push('');
-  lines.push('## Commands');
-  lines.push('| Command | Value |');
-  lines.push('|---------|-------|');
-  lines.push(`| Install | ${escapeMarkdownCell(scan.commands.install || 'npm install')} |`);
-  lines.push(`| dev | ${escapeMarkdownCell(scan.commands.common.dev || 'not defined')} |`);
-  lines.push(`| build | ${escapeMarkdownCell(scan.commands.common.build || 'not defined')} |`);
-  lines.push(`| test | ${escapeMarkdownCell(scan.commands.common.test || 'not defined')} |`);
-  lines.push(`| lint | ${escapeMarkdownCell(scan.commands.common.lint || 'not defined')} |`);
-
-  if (Object.keys(scan.commands.scripts).length > 0) {
-    lines.push('');
-    lines.push('### package.json scripts');
-    for (const [name, command] of Object.entries(scan.commands.scripts)) {
-      lines.push(`- ${name}: \`${command}\``);
-    }
-  }
-
-  lines.push('');
   lines.push('## Structure');
   lines.push(`- Top-level directories: ${scan.structure.top_level_directories.length > 0 ? scan.structure.top_level_directories.join(', ') : 'none detected'}`);
   lines.push(`- Source directories: ${scan.structure.source_directories.length > 0 ? scan.structure.source_directories.join(', ') : 'none detected'}`);
@@ -851,6 +940,14 @@ function renderProjectMap(scan) {
   lines.push('## Docs');
   lines.push(`- README present: ${scan.docs.has_readme ? 'yes' : 'no'}`);
   lines.push(`- Docs files: ${scan.docs.files.length > 0 ? scan.docs.files.join(', ') : 'none detected'}`);
+  lines.push(`- Decision log: ${hasDecisionLog ? 'present' : 'missing'}`);
+  lines.push(`- AI onboarding prompt: ${hasAiPrompt ? 'present' : 'missing'}`);
+
+  lines.push('');
+  lines.push('## High-Signal Files');
+  for (const file of highSignalFiles) {
+    lines.push(`- ${file}`);
+  }
 
   lines.push('');
   lines.push('## Risks');
@@ -870,6 +967,16 @@ function renderProjectMap(scan) {
     }
   } else {
     lines.push('- None');
+  }
+
+  lines.push('');
+  lines.push('## Do Not Read First');
+  if (scan.skipped_paths.length > 0) {
+    for (const skippedPath of scan.skipped_paths) {
+      lines.push(`- ${skippedPath}`);
+    }
+  } else {
+    lines.push('- None detected, but still prioritize docs and config files before source trees.');
   }
 
   lines.push('');
