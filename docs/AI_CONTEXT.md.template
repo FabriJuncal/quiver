@@ -13,12 +13,13 @@ This file is the first stop for any AI agent working in this project. It compres
 
 1. `docs/INDEX.md`
 2. `docs/AI_CONTEXT.md`
-3. `docs/CONTEXTO.md`
-4. `docs/WORKFLOW.md`
-5. `docs/SUPPORT_MATRIX.md`
-6. `docs/TROUBLESHOOTING.md`
-7. `specs/{{PROJECT_SLUG}}/SPEC.md`
-8. `specs/{{PROJECT_SLUG}}/slices/[slice-id]/slice.json`
+3. `docs/DECISIONS.md`
+4. `docs/CONTEXTO.md`
+5. `docs/WORKFLOW.md`
+6. `docs/SUPPORT_MATRIX.md`
+7. `docs/TROUBLESHOOTING.md`
+8. `specs/{{PROJECT_SLUG}}/SPEC.md`
+9. `specs/{{PROJECT_SLUG}}/slices/[slice-id]/slice.json`
 
 ## Critical Rules
 
@@ -61,7 +62,7 @@ npm run quiver:refresh-active-slices
 
 ## If You Need More Context
 
-Read `docs/CONTEXTO.md` for the human project overview and `docs/WORKFLOW.md` for the execution contract.
+Read `docs/DECISIONS.md` for durable choices, `docs/CONTEXTO.md` for the human project overview, and `docs/WORKFLOW.md` for the execution contract.
 
 ## If The Environment Fails
 

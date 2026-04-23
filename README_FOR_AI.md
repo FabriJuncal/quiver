@@ -12,6 +12,7 @@ If the project already exists from an older Quiver version, run `npx create-quiv
 Generated projects also get `quiver:*` npm scripts that call the Node CLI directly; prefer those for repeatable project workflows.
 Maintain release notes and package publishing with `scripts/release-quiver.sh`.
 The primary generated project context for agents is `docs/AI_CONTEXT.md`.
+Generated projects also get `docs/DECISIONS.md`; use it for durable choices that should not be re-litigated.
 If a generated project has been analyzed, the exact agent handoff prompt is `docs/AI_ONBOARDING_PROMPT.md`.
 During onboarding, after reading `ROADMAP.md`, also read `BACKLOG.md` in the repository root: it tracks emerging patterns that are not yet scoped as specs. Before proposing a new spec, confirm the idea is not already parked or emerging there.
 

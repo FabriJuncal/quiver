@@ -1,0 +1,18 @@
+# {{PROJECT_NAME}} Decision Log
+
+**Date:** {{FECHA}}
+**Status:** {{ESTADO}}
+
+This file records durable project decisions so AI agents do not re-litigate choices that were already made.
+
+## Log
+
+| Date | Decision | Reason | Alternatives | Impact |
+|------|----------|--------|--------------|--------|
+
+## Rules
+
+- Record one decision per row.
+- Keep entries short and specific.
+- Prefer the decision outcome, not the full discussion history.
+- Add a new row when a choice would otherwise be re-opened during future work.
