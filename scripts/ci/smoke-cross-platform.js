@@ -247,6 +247,8 @@ function runSmoke() {
   assertContains(fs.readFileSync(path.join(newProject, 'docs', 'INDEX.md'), 'utf8'), './ai/QUICK.md', 'docs index');
   assertContains(fs.readFileSync(path.join(newProject, 'docs', 'INDEX.md'), 'utf8'), './ai/STANDARD.md', 'docs index');
   assertContains(fs.readFileSync(path.join(newProject, 'docs', 'INDEX.md'), 'utf8'), './ai/DEEP.md', 'docs index');
+  assertContains(fs.readFileSync(path.join(newProject, 'README.md'), 'utf8'), 'only for projects that were already initialized by Quiver', 'generated README');
+  assertContains(fs.readFileSync(path.join(newProject, 'README.md'), 'utf8'), 'do not use `migrate` as bootstrap', 'generated README');
   assert(countNonEmptyLines(path.join(newProject, 'docs', 'ai', 'QUICK.md')) <= 50, 'QUICK.md exceeds 50 non-empty lines');
   assert(countNonEmptyLines(path.join(newProject, 'docs', 'ai', 'STANDARD.md')) <= 300, 'STANDARD.md exceeds 300 non-empty lines');
   assertPackageManagerOnlyInProjectMap(path.join(newProject, 'docs'));
