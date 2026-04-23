@@ -136,6 +136,16 @@ if [[ "$plain_migrate_output" != *'Run: npx create-quiver --name "Project Name"'
   exit 1
 fi
 
+if plain_doctor_output="$(cd "$plain_target" && node "$cli" doctor 2>&1)"; then
+  echo "Doctor should fail before a project is initialized with Quiver" >&2
+  exit 1
+fi
+
+if [[ "$plain_doctor_output" != *'Run init first: npx create-quiver --name "Project Name"'* ]]; then
+  echo "Doctor failure did not recommend initializing Quiver first" >&2
+  exit 1
+fi
+
 assert_missing "$plain_target/docs"
 assert_missing "$plain_target/docs-template"
 assert_missing "$plain_target/.quiver"
@@ -150,6 +160,16 @@ fi
 
 if [[ "$malformed_migrate_output" != *'Run: npx create-quiver --name "Project Name"'* ]]; then
   echo "Malformed migrate failure did not recommend initializing Quiver first" >&2
+  exit 1
+fi
+
+if malformed_doctor_output="$(cd "$malformed_target" && node "$cli" doctor 2>&1)"; then
+  echo "Doctor should fail when Quiver state is incomplete and there is no legacy evidence" >&2
+  exit 1
+fi
+
+if [[ "$malformed_doctor_output" != *'Run init first: npx create-quiver --name "Project Name"'* ]]; then
+  echo "Malformed doctor failure did not recommend initializing Quiver first" >&2
   exit 1
 fi
 
@@ -450,6 +470,11 @@ doctor_before_migrate_output="$(cd "$legacy_target" && node "$cli" doctor 2>&1 |
 
 if [[ "$doctor_before_migrate_output" != *"Run migration first: npx create-quiver migrate"* ]]; then
   echo "Doctor output did not recommend migration for legacy project" >&2
+  exit 1
+fi
+
+if [[ "$doctor_before_migrate_output" == *'Run init first: npx create-quiver --name "Project Name"'* ]]; then
+  echo "Doctor should not recommend init first for a legacy Quiver project" >&2
   exit 1
 fi
 

@@ -53,7 +53,7 @@ If the project was never initialized by Quiver, `migrate` must fail with a clear
 | Slice | Title | Status | Spec |
 |-------|-------|--------|------|
 | 01 | Migrate Initialization Precondition | Completed | [slice-01](./slices/slice-01-migrate-initialization-precondition/slice.json) |
-| 02 | Doctor Not-Initialized Guidance | Draft | [slice-02](./slices/slice-02-doctor-not-initialized-guidance/slice.json) |
+| 02 | Doctor Not-Initialized Guidance | Completed | [slice-02](./slices/slice-02-doctor-not-initialized-guidance/slice.json) |
 | 03 | Docs and Smokes for Init Before Migrate | Draft | [slice-03](./slices/slice-03-docs-smokes-init-before-migrate/slice.json) |
 
 ## Definition of Done

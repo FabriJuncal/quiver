@@ -13,7 +13,7 @@ This spec hardens `migrate` so it only upgrades projects that were already initi
 | Slice | Status | Evidence |
 |-------|--------|----------|
 | slice-01 | Completed | `runMigrate()` now fails before any writes when a repo lacks Quiver initialization evidence; `src/create-quiver/lib/state.js` recognizes both initialized state metadata and strong legacy Quiver markers; `scripts/ci/smoke-create-quiver.sh` now proves that migrate fails for plain or malformed repos and still succeeds for legacy Quiver projects |
-| slice-02 | Draft | Pending |
+| slice-02 | Completed | `doctor` now fails early with an init-first message when the repo has no Quiver initialization evidence; the smoke suite proves that plain repos and malformed state get `Run init first`, while legacy Quiver projects still receive migration guidance |
 | slice-03 | Draft | Pending |
 
 ## Required Final Evidence
