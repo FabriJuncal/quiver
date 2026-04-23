@@ -1,0 +1,61 @@
+{
+  "slice_id": "slice-02-doctor-not-initialized-guidance",
+  "ticket": "QUIVER-02",
+  "type": "feature",
+  "title": "Doctor Not-Initialized Guidance",
+  "objective": "Make `doctor` explain when a project was never initialized by Quiver.",
+  "description": "Once `migrate` is hardened, `doctor` must stop implying that every repo only needs migration. This slice teaches the CLI to distinguish not-initialized from not-migrated projects.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "doctor-not-initialized-guidance",
+    "branch_name": "feature/QUIVER-02-doctor-not-initialized-guidance"
+  },
+  "must": [
+    "Update `doctor` so missing init metadata points to `npx create-quiver --name \"Project Name\"` instead of migration",
+    "Keep migration guidance for projects that do have init metadata but are missing upgrade artifacts",
+    "Do not weaken existing hard failures around missing required files"
+  ],
+  "not_included": [
+    "Changing README or generated docs",
+    "Changing migrate behavior"
+  ],
+  "acceptance": [
+    "A repo without init metadata gets an init-first doctor message",
+    "An initialized but outdated repo still gets migration guidance",
+    "Healthy initialized projects keep the current doctor success flow"
+  ],
+  "files": [
+    "src/create-quiver/index.js",
+    "src/create-quiver/lib/doctor.js",
+    "scripts/ci/smoke-create-quiver.sh",
+    "specs/quiver-v15-init-required-before-migrate/SPEC.md",
+    "specs/quiver-v15-init-required-before-migrate/STATUS.md",
+    "specs/quiver-v15-init-required-before-migrate/EVIDENCE_REPORT.md",
+    "specs/quiver-v15-init-required-before-migrate/slices/slice-02-doctor-not-initialized-guidance/slice.json"
+  ],
+  "tests": [
+    "node -c src/create-quiver/index.js",
+    "node -c src/create-quiver/lib/doctor.js",
+    "bash scripts/ci/smoke-create-quiver.sh",
+    "git diff --check"
+  ],
+  "documentation": [
+    "specs/quiver-v15-init-required-before-migrate/SPEC.md",
+    "specs/quiver-v15-init-required-before-migrate/STATUS.md",
+    "specs/quiver-v15-init-required-before-migrate/EVIDENCE_REPORT.md"
+  ],
+  "dependencies": [
+    "slice-01-migrate-initialization-precondition"
+  ],
+  "assumptions": [
+    "The init state can be inferred purely from Quiver metadata without guessing from generated files"
+  ],
+  "estimated_hours": 2,
+  "actual_hours": null,
+  "status": "draft",
+  "blocked_reason": null,
+  "ready_at": null,
+  "started_at": null,
+  "completed_at": null
+}

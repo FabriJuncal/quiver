@@ -22,6 +22,15 @@ assert_file() {
   fi
 }
 
+assert_missing() {
+  local path="$1"
+
+  if [[ -e "$path" ]]; then
+    echo "Path should not exist: $path" >&2
+    exit 1
+  fi
+}
+
 assert_contains() {
   local path="$1"
   local needle="$2"
@@ -106,11 +115,46 @@ pack_installer() {
 }
 
 new_target="$temp_root/new-project"
+plain_target="$temp_root/plain-project"
+malformed_target="$temp_root/malformed-project"
 space_target="$temp_root/space project"
 existing_target="$temp_root/existing-project"
 legacy_target="$temp_root/legacy-project"
 release_target="$temp_root/release-project"
 installer_root="$temp_root/installer"
+
+mkdir -p "$plain_target"
+node -e 'const fs = require("fs"); fs.writeFileSync(process.argv[1], JSON.stringify({ name: "plain-project", private: true }, null, 2));' "$plain_target/package.json"
+
+if plain_migrate_output="$(cd "$plain_target" && node "$cli" migrate 2>&1)"; then
+  echo "Migrate should fail before a project is initialized with Quiver" >&2
+  exit 1
+fi
+
+if [[ "$plain_migrate_output" != *'Run: npx create-quiver --name "Project Name"'* ]]; then
+  echo "Migrate failure did not recommend initializing Quiver first" >&2
+  exit 1
+fi
+
+assert_missing "$plain_target/docs"
+assert_missing "$plain_target/docs-template"
+assert_missing "$plain_target/.quiver"
+
+mkdir -p "$malformed_target/.quiver"
+node -e 'const fs = require("fs"); fs.writeFileSync(process.argv[1], JSON.stringify({ name: "malformed-project", private: true }, null, 2)); fs.writeFileSync(process.argv[2], JSON.stringify({ migrated_version: "0.7.0" }, null, 2));' "$malformed_target/package.json" "$malformed_target/.quiver/state.json"
+
+if malformed_migrate_output="$(cd "$malformed_target" && node "$cli" migrate 2>&1)"; then
+  echo "Migrate should fail when Quiver state is incomplete and there is no legacy evidence" >&2
+  exit 1
+fi
+
+if [[ "$malformed_migrate_output" != *'Run: npx create-quiver --name "Project Name"'* ]]; then
+  echo "Malformed migrate failure did not recommend initializing Quiver first" >&2
+  exit 1
+fi
+
+assert_missing "$malformed_target/docs"
+assert_missing "$malformed_target/docs-template"
 
 node "$cli" --name "Smoke Project" --dir "$new_target" >/dev/null
 node -e 'const fs = require("fs"); const data = JSON.parse(fs.readFileSync(process.argv[1], "utf8")); if (!data.initialized_version || !data.last_initialized_at) { throw new Error("initial metadata missing from new project state"); } if (data.last_analysis_at) { throw new Error("new project state should not have analysis metadata yet"); }' "$new_target/.quiver/state.json"

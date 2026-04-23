@@ -1,0 +1,65 @@
+{
+  "slice_id": "slice-01-migrate-initialization-precondition",
+  "ticket": "QUIVER-01",
+  "type": "feature",
+  "title": "Migrate Initialization Precondition",
+  "objective": "Block `migrate` unless the target project was previously initialized by Quiver.",
+  "description": "Today `migrate` can create Quiver docs in a repo that never ran `create-quiver --name ...`, which makes migration act like an undocumented bootstrap path. This slice adds a hard precondition based on Quiver initialization evidence and makes the failure non-destructive while preserving migration for legacy Quiver projects.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "init-before-migrate-precondition",
+    "branch_name": "feature/QUIVER-01-init-before-migrate-precondition"
+  },
+  "must": [
+    "Teach `runMigrate()` to fail before any filesystem writes when the project has no durable evidence of a prior Quiver initialization",
+    "The precondition must accept either initialized state metadata or strong legacy Quiver markers from previously generated projects",
+    "The error must tell the developer to run `npx create-quiver --name \"Project Name\"`",
+    "The failure path must not create `docs/`, `docs-template/`, or `.quiver/`"
+  ],
+  "not_included": [
+    "Changing `doctor` guidance",
+    "Updating README or generated docs",
+    "Adding repair or force flags"
+  ],
+  "acceptance": [
+    "Running `npx create-quiver migrate` in a repo without Quiver initialization evidence exits non-zero",
+    "Running `npx create-quiver migrate` in a repo with malformed or incomplete Quiver state and no legacy Quiver markers exits non-zero",
+    "The failure message includes `npx create-quiver --name \"Project Name\"`",
+    "A previously initialized project can still migrate successfully",
+    "A legacy Quiver project missing `.quiver/state.json` can still migrate successfully",
+    "The failing path does not create Quiver docs or template directories"
+  ],
+  "files": [
+    "src/create-quiver/index.js",
+    "src/create-quiver/lib/state.js",
+    "scripts/ci/smoke-create-quiver.sh",
+    "specs/quiver-v15-init-required-before-migrate/SPEC.md",
+    "specs/quiver-v15-init-required-before-migrate/STATUS.md",
+    "specs/quiver-v15-init-required-before-migrate/EVIDENCE_REPORT.md",
+    "specs/quiver-v15-init-required-before-migrate/slices/slice-01-migrate-initialization-precondition/slice.json"
+  ],
+  "tests": [
+    "node -c src/create-quiver/index.js",
+    "node -c src/create-quiver/lib/state.js",
+    "bash scripts/ci/smoke-create-quiver.sh",
+    "git diff --check"
+  ],
+  "documentation": [
+    "specs/quiver-v15-init-required-before-migrate/SPEC.md",
+    "specs/quiver-v15-init-required-before-migrate/STATUS.md",
+    "specs/quiver-v15-init-required-before-migrate/EVIDENCE_REPORT.md"
+  ],
+  "dependencies": [],
+  "assumptions": [
+    "A combination of state metadata and generated Quiver markers is enough to distinguish legacy Quiver repos from unrelated repos",
+    "Blocking before writes is more important than preserving the current bootstrap-like behavior"
+  ],
+  "estimated_hours": 3,
+  "actual_hours": 2,
+  "status": "completed",
+  "blocked_reason": null,
+  "ready_at": null,
+  "started_at": "2026-04-23",
+  "completed_at": "2026-04-23"
+}

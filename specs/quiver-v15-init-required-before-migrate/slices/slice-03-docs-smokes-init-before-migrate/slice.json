@@ -1,0 +1,64 @@
+{
+  "slice_id": "slice-03-docs-smokes-init-before-migrate",
+  "ticket": "QUIVER-03",
+  "type": "docs",
+  "title": "Docs and Smokes for Init Before Migrate",
+  "objective": "Align the public docs and smoke tests with the new init-before-migrate contract.",
+  "description": "Once the CLI behavior changes, the README, generated docs, and smoke coverage must reflect the new rule so users do not keep treating `migrate` as a bootstrap path.",
+  "git": {
+    "branch_type": "docs",
+    "base_branch": "main",
+    "branch_slug": "docs-smokes-init-before-migrate",
+    "branch_name": "docs/QUIVER-03-init-before-migrate-contract"
+  },
+  "must": [
+    "Document that `migrate` is only for projects previously initialized by Quiver",
+    "Update generated docs to point non-initialized repos back to `npx create-quiver --name \"Project Name\"`",
+    "Add smoke coverage for the fail-before-init path and the success-after-init path"
+  ],
+  "not_included": [
+    "Changing CLI semantics beyond messaging and tests"
+  ],
+  "acceptance": [
+    "README explains the init-before-migrate contract",
+    "Generated docs do not imply that `migrate` bootstraps new repos",
+    "Smokes fail if `migrate` succeeds before init"
+  ],
+  "files": [
+    "README.md",
+    "README_FOR_AI.md",
+    "src/create-quiver/lib/init-docs.js",
+    "scripts/ci/smoke-create-quiver.sh",
+    "scripts/ci/smoke-cross-platform.js",
+    "specs/quiver-v15-init-required-before-migrate/SPEC.md",
+    "specs/quiver-v15-init-required-before-migrate/STATUS.md",
+    "specs/quiver-v15-init-required-before-migrate/EVIDENCE_REPORT.md",
+    "specs/quiver-v15-init-required-before-migrate/slices/slice-03-docs-smokes-init-before-migrate/slice.json"
+  ],
+  "tests": [
+    "bash scripts/ci/smoke-create-quiver.sh",
+    "node scripts/ci/smoke-cross-platform.js",
+    "git diff --check"
+  ],
+  "documentation": [
+    "README.md",
+    "README_FOR_AI.md",
+    "specs/quiver-v15-init-required-before-migrate/SPEC.md",
+    "specs/quiver-v15-init-required-before-migrate/STATUS.md",
+    "specs/quiver-v15-init-required-before-migrate/EVIDENCE_REPORT.md"
+  ],
+  "dependencies": [
+    "slice-01-migrate-initialization-precondition",
+    "slice-02-doctor-not-initialized-guidance"
+  ],
+  "assumptions": [
+    "Public docs should describe state-based behavior, not internal implementation details"
+  ],
+  "estimated_hours": 3,
+  "actual_hours": null,
+  "status": "draft",
+  "blocked_reason": null,
+  "ready_at": null,
+  "started_at": null,
+  "completed_at": null
+}
