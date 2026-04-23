@@ -1,0 +1,41 @@
+# AGENTS Router
+
+Purpose
+
+This file is the universal router for AI agents in Quiver-generated projects. Read it before any other project context when you need to decide how deep to load.
+
+## Reading Budget
+
+- Planning: up to 10000 tokens
+- Execution: under 2000 tokens before the first action
+- Debug: under 1000 tokens before proposing a hypothesis
+
+## Reading Order
+
+1. QUICK
+2. STANDARD if QUICK is insufficient
+3. DEEP only when history or past decisions are requested
+
+## Output Policy
+
+- Do not restate the task before acting.
+- Do not summarize diffs after edits.
+- Keep confirmations to one sentence max.
+
+## Slice Execution Rules
+
+- If `docs/ai/ACTIVE_SLICE.md` exists, treat it as the source of truth.
+- Do not read `SPEC.md` unless `ACTIVE_SLICE.md` points to it.
+- Stay inside the slice `allowed_files` when an active slice is present.
+- Prefer the slice tests and checklist over general repo context.
+
+## Links
+
+- QUICK: `./docs/ai/QUICK.md`
+- STANDARD: `./docs/ai/STANDARD.md`
+- DEEP: `./docs/ai/DEEP.md`
+- Project Map: `./docs/PROJECT_MAP.md`
+- AI Context: `./docs/AI_CONTEXT.md`
+- Decision Log: `./docs/DECISIONS.md`
+- AI Onboarding Prompt: `./docs/AI_ONBOARDING_PROMPT.md`
+- Active Slice: `./docs/ai/ACTIVE_SLICE.md`

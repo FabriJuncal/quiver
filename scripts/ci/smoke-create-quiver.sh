@@ -113,8 +113,8 @@ fi
 )
 doctor_after_analyze="$(cd "$new_target" && node "$cli" doctor)"
 
-if [[ "$doctor_after_analyze" != *"Read docs/AI_ONBOARDING_PROMPT.md and execute it."* ]]; then
-  echo "Doctor output did not point to the AI onboarding prompt after analyze" >&2
+if [[ "$doctor_after_analyze" != *"Read AGENTS.md, then docs/AI_ONBOARDING_PROMPT.md and execute it."* ]]; then
+  echo "Doctor output did not point to AGENTS.md before the onboarding prompt" >&2
   exit 1
 fi
 if [[ "$doctor_after_analyze" != *"npx create-quiver start-slice"* ]]; then
@@ -127,6 +127,7 @@ if [[ "$doctor_after_analyze" == *"bash "* ]]; then
 fi
 
 assert_file "$new_target/README.md"
+assert_file "$new_target/AGENTS.md"
 assert_file "$new_target/docs/INDEX.md"
 assert_file "$new_target/docs/ai/QUICK.md"
 assert_file "$new_target/docs/ai/STANDARD.md"
@@ -170,7 +171,12 @@ assert_contains "$new_target/docs/ai/DEEP.md" "Deep Context"
 assert_contains "$new_target/docs/ai/DEEP.md" "What Belongs Here"
 assert_contains "$new_target/docs/AI_ONBOARDING_PROMPT.md" "AI Onboarding Prompt"
 assert_contains "$new_target/docs/AI_ONBOARDING_PROMPT.md" "docs/PROJECT_SCAN.json"
+assert_contains "$new_target/AGENTS.md" "## Reading Budget"
+assert_contains "$new_target/AGENTS.md" "## Reading Order"
+assert_contains "$new_target/AGENTS.md" "## Output Policy"
+assert_contains "$new_target/AGENTS.md" "## Slice Execution Rules"
 assert_contains "$new_target/README.md" "Do not install it globally"
+assert_contains "$new_target/README.md" "AGENTS.md"
 assert_contains "$new_target/README.md" "Cross-Platform Support"
 assert_contains "$new_target/README.md" "Windows PowerShell/CMD"
 assert_contains "$new_target/README.md" "npm install --save-dev create-quiver"
@@ -218,6 +224,7 @@ node "$cli" --name "Space Project" --dir "$space_target" >/dev/null
 )
 
 assert_file "$existing_target/keep.txt"
+assert_file "$existing_target/AGENTS.md"
 assert_file "$existing_target/README.md"
 assert_file "$existing_target/docs/INDEX.md"
 assert_file "$existing_target/docs/ai/QUICK.md"
@@ -235,6 +242,7 @@ assert_file "$existing_target/docs/TROUBLESHOOTING.md"
 assert_package_scripts "$existing_target/package.json" "existing project" \
   quiver:analyze quiver:doctor quiver:migrate quiver:start-slice quiver:check-slice quiver:check-pr quiver:cleanup-slice quiver:check-scope quiver:refresh-active-slices
 assert_file "$space_target/README.md"
+assert_file "$space_target/AGENTS.md"
 assert_file "$space_target/docs/PROJECT_SCAN.json"
 assert_file "$space_target/docs/PROJECT_MAP.md"
 assert_file "$space_target/docs/ai/QUICK.md"
@@ -244,6 +252,7 @@ assert_project_map_sections "$space_target/docs/PROJECT_MAP.md"
 assert_file "$space_target/docs/DECISIONS.md"
 
 node "$cli" --name "Legacy Project" --dir "$legacy_target" >/dev/null
+printf 'keep me\n' > "$legacy_target/AGENTS.md"
 printf 'keep me\n' >> "$legacy_target/docs/SEARCH.md"
 node - "$legacy_target/package.json" <<'NODE'
 const fs = require('fs');
@@ -282,6 +291,7 @@ if [[ "$migrate_output" != *"Quiver migration completed for"* ]]; then
 fi
 
 assert_contains "$legacy_target/docs/SEARCH.md" "keep me"
+assert_contains "$legacy_target/AGENTS.md" "keep me"
 assert_file "$legacy_target/docs/AI_ONBOARDING_PROMPT.md"
 assert_file "$legacy_target/docs/DECISIONS.md"
 assert_file "$legacy_target/docs/ai/QUICK.md"
@@ -302,8 +312,8 @@ node -e 'const fs = require("fs"); const data = JSON.parse(fs.readFileSync(proce
 
 doctor_after_migrate_output="$(cd "$legacy_target" && node "$cli" doctor)"
 
-if [[ "$doctor_after_migrate_output" != *"Read docs/AI_ONBOARDING_PROMPT.md and execute it."* ]]; then
-  echo "Doctor output did not point to the AI onboarding prompt after migrate and analyze" >&2
+if [[ "$doctor_after_migrate_output" != *"Read AGENTS.md, then docs/AI_ONBOARDING_PROMPT.md and execute it."* ]]; then
+  echo "Doctor output did not point to AGENTS.md before the onboarding prompt after migrate and analyze" >&2
   exit 1
 fi
 
@@ -319,12 +329,13 @@ node "$installer_root/node_modules/create-quiver/bin/create-quiver.js" --name "P
 )
 release_doctor_output="$(cd "$release_target" && node "$installer_root/node_modules/create-quiver/bin/create-quiver.js" doctor)"
 
-if [[ "$release_doctor_output" != *"Read docs/AI_ONBOARDING_PROMPT.md and execute it."* ]]; then
-  echo "Packaged doctor output did not point to the AI onboarding prompt after analyze" >&2
+if [[ "$release_doctor_output" != *"Read AGENTS.md, then docs/AI_ONBOARDING_PROMPT.md and execute it."* ]]; then
+  echo "Packaged doctor output did not point to AGENTS.md before the onboarding prompt after analyze" >&2
   exit 1
 fi
 
 assert_file "$release_target/docs/AI_CONTEXT.md"
+assert_file "$release_target/AGENTS.md"
 assert_file "$release_target/docs/AI_ONBOARDING_PROMPT.md"
 assert_file "$release_target/docs/DECISIONS.md"
 assert_file "$release_target/docs/ai/QUICK.md"
@@ -365,8 +376,8 @@ assert_file "$release_target/docs/AI_ONBOARDING_PROMPT.md"
 assert_file "$release_target/tools/scripts/migrate-project.sh"
 release_doctor_after_migrate="$(cd "$release_target" && node "$installer_root/node_modules/create-quiver/bin/create-quiver.js" doctor)"
 
-if [[ "$release_doctor_after_migrate" != *"Read docs/AI_ONBOARDING_PROMPT.md and execute it."* ]]; then
-  echo "Packaged doctor output did not point to the AI onboarding prompt after migrate" >&2
+if [[ "$release_doctor_after_migrate" != *"Read AGENTS.md, then docs/AI_ONBOARDING_PROMPT.md and execute it."* ]]; then
+  echo "Packaged doctor output did not point to AGENTS.md before the onboarding prompt after migrate" >&2
   exit 1
 fi
 

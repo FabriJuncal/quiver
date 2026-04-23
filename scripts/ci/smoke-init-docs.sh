@@ -39,6 +39,7 @@ assert_executable() {
 }
 
 required_files=(
+  "AGENTS.md"
   "README.md"
   "LICENSE"
   "CONTRIBUTING.md"
@@ -86,6 +87,12 @@ assert_contains() {
   fi
 }
 
+assert_contains "AGENTS.md" "## Reading Budget"
+assert_contains "AGENTS.md" "## Reading Order"
+assert_contains "AGENTS.md" "## Output Policy"
+assert_contains "AGENTS.md" "## Slice Execution Rules"
+assert_contains "AGENTS.md" "QUICK"
+
 for file in README.md docs/INDEX.md docs/WORKFLOW.md docs/SEARCH.md; do
   assert_contains "$file" "Support Matrix"
   assert_contains "$file" "Troubleshooting"
@@ -101,6 +108,7 @@ assert_contains "docs/INDEX.md" "./ai/DEEP.md"
 assert_contains "README.md" "npx create-quiver analyze"
 assert_contains "README.md" "npx create-quiver doctor"
 assert_contains "README.md" "AI Onboarding Prompt"
+assert_contains "README.md" "AGENTS.md"
 assert_contains "README.md" "Do not install it globally"
 assert_contains "README.md" "Cross-Platform Support"
 assert_contains "README.md" "Windows PowerShell/CMD"

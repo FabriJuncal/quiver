@@ -199,6 +199,8 @@ npx create-quiver doctor
 
 ## AI Context Onboarding
 
+Read \`AGENTS.md\` first, then open \`docs/AI_ONBOARDING_PROMPT.md\` after analysis.
+
 After analysis and doctor validation, open your AI agent in this project and run:
 
 \`\`\`text
@@ -275,6 +277,12 @@ function initializeProjectDocs(options) {
   }
 
   const operations = [];
+  const agentsSourcePath = path.join(templateRoot, 'AGENTS.md.template');
+  if (fs.existsSync(agentsSourcePath)) {
+    const agentsDestinationPath = path.join(projectRoot, 'AGENTS.md');
+    const result = copyRenderedFile(agentsSourcePath, agentsDestinationPath, replacements, true);
+    operations.push({ source: 'AGENTS.md.template', destination: 'AGENTS.md', result });
+  }
   const templateCopies = [
     ['docs/INDEX.md.template', 'docs/INDEX.md'],
     ['docs/DECISIONS.md.template', 'docs/DECISIONS.md'],

@@ -1058,6 +1058,7 @@ function runDoctor(targetDir) {
 
   const projectSlug = generatedSpecs[0];
   const requiredFiles = [
+    'AGENTS.md',
     'README.md',
     'docs/INDEX.md',
     'docs/AI_CONTEXT.md',
@@ -1140,7 +1141,7 @@ function runDoctor(targetDir) {
   } else if (!hasScanArtifacts) {
     console.log('- Analyze the project first: npx create-quiver analyze');
   } else {
-    console.log('- Ask your AI agent: Read docs/AI_ONBOARDING_PROMPT.md and execute it.');
+    console.log('- Ask your AI agent: Read AGENTS.md, then docs/AI_ONBOARDING_PROMPT.md and execute it.');
   }
   console.log(`- Start a slice: npx create-quiver start-slice specs/${projectSlug}/slices/slice-template/slice.json`);
   console.log(`- Validate a slice: npx create-quiver check-slice specs/${projectSlug}/slices/slice-template/slice.json`);
@@ -1152,7 +1153,7 @@ function printInitNextSteps(targetDir, projectName) {
 
   console.log('');
   console.log('Next steps:');
-  console.log(`- Review ${path.join(targetDir, 'docs', 'INDEX.md')}`);
+  console.log(`- Review AGENTS.md, then ${path.join(targetDir, 'docs', 'INDEX.md')}`);
   console.log(`- Review ${path.join(targetDir, 'docs', 'WORKFLOW.md')}`);
   console.log(`- Create your first slice from ${path.join(targetDir, 'specs', projectSlug, 'slices', 'slice-template', 'slice.json')}`);
   console.log(`- Launch slice work with npx create-quiver start-slice specs/${projectSlug}/slices/slice-template/slice.json`);

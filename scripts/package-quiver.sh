@@ -58,6 +58,7 @@ required_paths=(
   "package/src/create-quiver/index.js"
   "package/README.md"
   "package/README_FOR_AI.md"
+  "package/AGENTS.md.template"
   "package/docs/QUICK.md.template"
   "package/docs/STANDARD.md.template"
   "package/docs/DEEP.md.template"

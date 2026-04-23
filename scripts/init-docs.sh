@@ -133,7 +133,7 @@ copy_template_keep_name() {
     local dest="$2"
 
     if [ -f "$src" ]; then
-        if [ "$MIGRATE_MODE" = "1" ] && [ -f "$dest" ]; then
+        if [ -f "$dest" ]; then
             print_info "Saltado: $dest ya existe"
             return 0
         fi
@@ -190,6 +190,7 @@ copy_file_if_missing() {
 }
 
 # Copiar templates de docs/
+copy_template_keep_name "docs-template/AGENTS.md.template" "AGENTS.md"
 copy_template "docs-template/docs/INDEX.md.template" "docs/INDEX.md"
 copy_template "docs-template/docs/QUICK.md.template" "docs/ai/QUICK.md"
 copy_template "docs-template/docs/STANDARD.md.template" "docs/ai/STANDARD.md"
@@ -542,6 +543,8 @@ npx create-quiver doctor
 \`\`\`
 
 ## AI Context Onboarding
+
+Lee \`AGENTS.md\` primero y después \`docs/AI_ONBOARDING_PROMPT.md\` tras el análisis.
 
 After analysis and doctor validation, open your AI agent in this project and run:
 

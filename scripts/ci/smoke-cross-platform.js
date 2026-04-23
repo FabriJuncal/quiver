@@ -162,6 +162,7 @@ function runSmoke() {
 
   initProject(newProject, 'Smoke Project');
   assertFile(path.join(newProject, 'README.md'));
+  assertFile(path.join(newProject, 'AGENTS.md'));
   assertFile(path.join(newProject, 'docs', 'AI_CONTEXT.md'));
   assertFile(path.join(newProject, 'docs', 'AI_ONBOARDING_PROMPT.md'));
   assertFile(path.join(newProject, 'docs', 'ai', 'QUICK.md'));
@@ -185,8 +186,9 @@ function runSmoke() {
 
   runNodeCli(newProject, ['analyze']);
   const doctorAfter = runNodeCli(newProject, ['doctor']);
-  assertContains(doctorAfter, 'Read docs/AI_ONBOARDING_PROMPT.md and execute it.', 'doctor after analyze');
+  assertContains(doctorAfter, 'Read AGENTS.md, then docs/AI_ONBOARDING_PROMPT.md and execute it.', 'doctor after analyze');
   assertContains(doctorAfter, 'npx create-quiver start-slice', 'doctor after analyze');
+  assertContains(fs.readFileSync(path.join(newProject, 'AGENTS.md'), 'utf8'), '## Reading Budget', 'AGENTS.md');
   assertFile(path.join(newProject, 'docs', 'PROJECT_SCAN.json'));
   assertFile(path.join(newProject, 'docs', 'PROJECT_MAP.md'));
   assertProjectMapSections(path.join(newProject, 'docs', 'PROJECT_MAP.md'));
@@ -214,6 +216,7 @@ function runSmoke() {
   fs.rmSync(path.join(legacyProject, '.quiver', 'state.json'));
   fs.rmSync(path.join(legacyProject, 'docs', 'AI_ONBOARDING_PROMPT.md'));
   fs.rmSync(path.join(legacyProject, 'tools', 'scripts', 'migrate-project.sh'));
+  fs.writeFileSync(path.join(legacyProject, 'AGENTS.md'), 'keep me\n');
   let migrateBefore = '';
   try {
     migrateBefore = runNodeCli(legacyProject, ['doctor']);
@@ -234,6 +237,7 @@ function runSmoke() {
     'quiver:refresh-active-slices',
   ]);
   assert(readJson(path.join(legacyProject, '.quiver', 'state.json')).last_migration_at, 'migration metadata missing');
+  assertContains(fs.readFileSync(path.join(legacyProject, 'AGENTS.md'), 'utf8'), 'keep me', 'legacy AGENTS.md');
   assertFile(path.join(legacyProject, 'docs', 'AI_ONBOARDING_PROMPT.md'));
   assertFile(path.join(legacyProject, 'docs', 'ai', 'QUICK.md'));
   assertFile(path.join(legacyProject, 'docs', 'ai', 'STANDARD.md'));
@@ -280,8 +284,9 @@ function runSmoke() {
   const releaseDoctor = run('node', [path.join(installerRoot, 'node_modules', 'create-quiver', 'bin', 'create-quiver.js'), 'doctor'], {
     cwd: releaseProject,
   });
-  assertContains(releaseDoctor, 'Read docs/AI_ONBOARDING_PROMPT.md and execute it.', 'packaged doctor');
+  assertContains(releaseDoctor, 'Read AGENTS.md, then docs/AI_ONBOARDING_PROMPT.md and execute it.', 'packaged doctor');
   assertFile(path.join(releaseProject, 'docs', 'PROJECT_SCAN.json'));
+  assertFile(path.join(releaseProject, 'AGENTS.md'));
   assertFile(path.join(releaseProject, 'docs', 'PROJECT_MAP.md'));
   assertProjectMapSections(path.join(releaseProject, 'docs', 'PROJECT_MAP.md'));
   assertFile(path.join(releaseProject, 'docs', 'ai', 'QUICK.md'));
