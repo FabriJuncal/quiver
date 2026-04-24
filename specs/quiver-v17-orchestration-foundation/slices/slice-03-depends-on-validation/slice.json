@@ -1,0 +1,64 @@
+{
+  "slice_id": "slice-03-depends-on-validation",
+  "ticket": "QUIVER-03",
+  "type": "feat",
+  "title": "Optional `depends_on` Validation",
+  "objective": "Extend `check-slice` so when a slice declares `depends_on` or `parallel_safe` the values are validated against the real filesystem, preventing typos, dead references, and missing justifications from reaching execution.",
+  "description": "Heuristic inference covers most cases, but specs that need explicit dependencies (cross-spec, non-sequential, or overriding file-overlap inference) should be validated up front. This slice adds three validation rules to `check-slice`: each `depends_on` target must resolve to an existing `slice.json`; the set of declared deps must be acyclic with the graph built so far; and `parallel_safe: \"never\"` requires a non-empty `parallel_safe_reason`.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "depends-on-validation",
+    "branch_name": "feature/QUIVER-03-depends-on-validation"
+  },
+  "must": [
+    "Extend `check-slice` to validate optional `depends_on` entries point to existing `<spec-slug>/<slice-id>` combinations",
+    "Detect cycles introduced by newly declared `depends_on` using `src/create-quiver/lib/slice-graph.js`",
+    "Require a non-empty `parallel_safe_reason` when `parallel_safe: \"never\"` is declared",
+    "Update `specs/[project-name]/slice-template/slice.json` with the new optional fields, commented out",
+    "Update `docs/COMMANDS.md` with a paragraph describing the new validations",
+    "Add a `CHANGELOG.md` entry"
+  ],
+  "not_included": [
+    "Enforcing `depends_on` at `start-slice` time beyond the existing checks",
+    "Auto-filling `depends_on` from heuristic inference (commands can do this read-only)",
+    "Introducing a full JSON Schema (only these fields are validated)"
+  ],
+  "acceptance": [
+    "A slice with `depends_on: [\"nonexistent/slice-99\"]` causes `check-slice` to exit non-zero with a clear message naming the missing path",
+    "A slice that creates a cycle with an existing declaration causes `check-slice` to exit non-zero and print the cycle",
+    "A slice with `parallel_safe: \"never\"` and no `parallel_safe_reason` fails; adding a reason makes it pass",
+    "A slice with no `depends_on` field continues to pass without changes",
+    "The slice template shows the new fields as commented-out examples"
+  ],
+  "files": [
+    "src/create-quiver/lib/check-slice.js",
+    "specs/[project-name]/slice-template/slice.json",
+    "docs/COMMANDS.md",
+    "CHANGELOG.md",
+    "tests/lib/check-slice.test.js",
+    "specs/quiver-v17-orchestration-foundation/slices/slice-03-depends-on-validation/slice.json"
+  ],
+  "tests": [
+    "node --test tests/lib/check-slice.test.js",
+    "git diff --check"
+  ],
+  "documentation": [
+    "docs/COMMANDS.md",
+    "CHANGELOG.md",
+    "specs/[project-name]/slice-template/slice.json"
+  ],
+  "dependencies": ["slice-02-slice-graph-library"],
+  "assumptions": [
+    "`check-slice` already exists as the validation entry point",
+    "Slice IDs across specs are unique enough to form `<spec-slug>/<slice-id>` keys",
+    "Path to `check-slice` source is `src/create-quiver/lib/check-slice.js` or equivalent; adjust in implementation if different"
+  ],
+  "estimated_hours": 2,
+  "actual_hours": null,
+  "status": "draft",
+  "blocked_reason": null,
+  "ready_at": null,
+  "started_at": null,
+  "completed_at": null
+}

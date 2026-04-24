@@ -4,6 +4,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const cp = require('child_process');
+const { relativePosixPath } = require('../../src/create-quiver/lib/paths');
 
 const repoRoot = cp.execFileSync('git', ['rev-parse', '--show-toplevel'], { encoding: 'utf8' }).trim();
 const cli = path.join(repoRoot, 'bin', 'create-quiver.js');
@@ -94,6 +95,15 @@ function assertPackageManagerOnlyInProjectMap(docsRoot) {
 
   walk(docsRoot);
   assert(matches.length === 0, `Package manager should only be documented in docs/PROJECT_MAP.md, found in: ${matches.join(', ')}`);
+}
+
+function assertWindowsPathSeparatorGuard() {
+  const windowsRoot = 'C:\\quiver';
+  const joined = path.win32.join(windowsRoot, 'docs', 'PROJECT_MAP.json');
+  const relative = relativePosixPath(windowsRoot, joined, path.win32);
+
+  assert(relative === 'docs/PROJECT_MAP.json', `Expected Windows relative path to stay portable, got ${relative}`);
+  assert(`${windowsRoot}/docs/PROJECT_MAP.json` !== joined, 'Hardcoded "/" separators must not match Windows joins');
 }
 
 function assertPackageScripts(packageJsonPath, label, scripts) {
@@ -198,6 +208,8 @@ function prepareCompletedSlice(repoDir) {
 }
 
 function runSmoke() {
+  assertWindowsPathSeparatorGuard();
+
   const newProject = path.join(tempRoot, 'new-project');
   const legacyProject = path.join(tempRoot, 'legacy-project');
   const startRepo = path.join(tempRoot, 'start-repo');
@@ -214,6 +226,7 @@ function runSmoke() {
   assertFile(path.join(newProject, 'AGENTS.md'));
   assertFile(path.join(newProject, 'docs', 'AI_CONTEXT.md'));
   assertFile(path.join(newProject, 'docs', 'AI_ONBOARDING_PROMPT.md'));
+  assertFile(path.join(newProject, 'docs', 'COMMANDS.md'));
   assertFile(path.join(newProject, 'docs', 'ai', 'QUICK.md'));
   assertFile(path.join(newProject, 'docs', 'ai', 'STANDARD.md'));
   assertFile(path.join(newProject, 'docs', 'ai', 'DEEP.md'));
@@ -250,6 +263,10 @@ function runSmoke() {
   assertContains(fs.readFileSync(path.join(newProject, 'docs', 'STATUS.md'), 'utf8'), 'docs/PROJECT_MAP.md', 'STATUS.md');
   assertContains(fs.readFileSync(path.join(newProject, 'docs', 'WORKFLOW.md'), 'utf8'), 'docs/PROJECT_MAP.md', 'WORKFLOW.md');
   assertContains(fs.readFileSync(path.join(newProject, 'docs', 'AI_ONBOARDING_PROMPT.md'), 'utf8'), 'docs/PROJECT_MAP.md', 'AI_ONBOARDING_PROMPT.md');
+  assertContains(fs.readFileSync(path.join(newProject, 'docs', 'COMMANDS.md'), 'utf8'), '| Command | Purpose | OS | Since |', 'COMMANDS.md');
+  assertContains(fs.readFileSync(path.join(newProject, 'docs', 'COMMANDS.md'), 'utf8'), '`quiver:plan`', 'COMMANDS.md');
+  assertContains(fs.readFileSync(path.join(newProject, 'docs', 'SUPPORT_MATRIX.md'), 'utf8'), 'Cross-Platform Authoring Rules', 'SUPPORT_MATRIX.md');
+  assertContains(fs.readFileSync(path.join(newProject, 'docs', 'SUPPORT_MATRIX.md'), 'utf8'), 'No shell invocations for logic', 'SUPPORT_MATRIX.md');
   assertContains(fs.readFileSync(path.join(newProject, 'docs', 'ai', 'QUICK.md'), 'utf8'), 'docs/PROJECT_MAP.md', 'QUICK.md');
   assertFrontMatter(path.join(newProject, 'docs', 'AI_CONTEXT.md'));
   assertFrontMatter(path.join(newProject, 'docs', 'AI_ONBOARDING_PROMPT.md'));
@@ -342,6 +359,10 @@ function runSmoke() {
   assertFile(path.join(legacyProject, 'docs', 'ai', 'DEEP.md'));
   assertFile(path.join(legacyProject, 'docs', 'ai', 'LESSONS.md'));
   assertFile(path.join(legacyProject, 'docs', 'ai', 'PRINCIPLES.md'));
+  assertFile(path.join(legacyProject, 'docs', 'COMMANDS.md'));
+  assertContains(fs.readFileSync(path.join(legacyProject, 'docs', 'COMMANDS.md'), 'utf8'), '| Command | Purpose | OS | Since |', 'legacy COMMANDS.md');
+  assertContains(fs.readFileSync(path.join(legacyProject, 'docs', 'COMMANDS.md'), 'utf8'), '`quiver:plan`', 'legacy COMMANDS.md');
+  assertContains(fs.readFileSync(path.join(legacyProject, 'docs', 'SUPPORT_MATRIX.md'), 'utf8'), 'Cross-Platform Authoring Rules', 'legacy SUPPORT_MATRIX.md');
   assertFrontMatter(path.join(legacyProject, 'docs', 'AI_CONTEXT.md'));
   assertFrontMatter(path.join(legacyProject, 'docs', 'AI_ONBOARDING_PROMPT.md'));
   assertFrontMatter(path.join(legacyProject, 'docs', 'CONTEXTO.md'));
@@ -425,6 +446,7 @@ function runSmoke() {
   assertFile(path.join(releaseProject, 'docs', 'PROJECT_SCAN.json'));
   assertFile(path.join(releaseProject, 'AGENTS.md'));
   assertFile(path.join(releaseProject, 'docs', 'PROJECT_MAP.md'));
+  assertFile(path.join(releaseProject, 'docs', 'COMMANDS.md'));
   assertFile(path.join(releaseProject, 'specs', 'packaged-project', 'HANDOFF.md'));
   assertProjectMapSections(path.join(releaseProject, 'docs', 'PROJECT_MAP.md'));
   assertFile(path.join(releaseProject, 'docs', 'ai', 'QUICK.md'));
@@ -444,6 +466,8 @@ function runSmoke() {
   assertFrontMatter(path.join(releaseProject, 'docs', 'ai', 'DEEP.md'));
   assertFrontMatter(path.join(releaseProject, 'docs', 'ai', 'LESSONS.md'));
   assertFrontMatter(path.join(releaseProject, 'docs', 'ai', 'PRINCIPLES.md'));
+  assertContains(fs.readFileSync(path.join(releaseProject, 'docs', 'COMMANDS.md'), 'utf8'), '`quiver:plan`', 'packaged COMMANDS.md');
+  assertContains(fs.readFileSync(path.join(releaseProject, 'docs', 'SUPPORT_MATRIX.md'), 'utf8'), 'Cross-Platform Authoring Rules', 'packaged SUPPORT_MATRIX.md');
   runNodeCli(releaseProject, ['check-handoff', path.join('specs', 'packaged-project', 'HANDOFF.md')]);
   assertThrows(
     () => runNodeCli(releaseProject, ['check-handoff', path.join('docs', 'HANDOFF.md')]),

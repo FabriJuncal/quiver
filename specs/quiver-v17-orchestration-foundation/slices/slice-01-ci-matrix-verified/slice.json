@@ -1,0 +1,68 @@
+{
+  "slice_id": "slice-01-ci-matrix-verified",
+  "ticket": "QUIVER-01",
+  "type": "ops",
+  "title": "Cross-Platform CI Matrix Verified",
+  "objective": "Ensure `.github/workflows/ci.yml` runs on macOS, Linux, and Windows and is green on all three, so every subsequent orchestration command can rely on the matrix instead of adding its own.",
+  "description": "Every command in v18 through v22 is Node-first and must behave identically on macOS, Linux, and Windows. Today some tests assume POSIX shells, `/` path separators, or UTF-8 output. This slice either confirms the existing CI matrix already covers the three OS targets or introduces the missing job(s), and adds a negative test that fails on Windows if paths are hardcoded with `/`.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "ci-matrix-verified",
+    "branch_name": "feature/QUIVER-01-ci-matrix-verified"
+  },
+  "must": [
+    "Confirm or add `macos-latest`, `ubuntu-latest`, and `windows-latest` entries in the `.github/workflows/ci.yml` matrix",
+    "Add a guard test that fails on Windows when a path in the codebase is hardcoded with `/` instead of `path.sep`",
+    "Document the cross-platform authoring rules in `docs/SUPPORT_MATRIX.md` (no shell invocations for logic, `path.join`, EOL handling, JSON-first, TTY-aware color, Unicode opt-in)",
+    "Create `docs/COMMANDS.md` with a header table and a reserved row for `quiver:plan`",
+    "Add a `CHANGELOG.md` entry noting the foundation for orchestration commands"
+  ],
+  "not_included": [
+    "Introducing any new user-facing command",
+    "Building `lib/slice-graph.js` (handled in slice-02)",
+    "Validating `depends_on` (handled in slice-03)",
+    "Removing existing Bash wrappers (legacy path remains until runtime slices land)"
+  ],
+  "acceptance": [
+    "`.github/workflows/ci.yml` shows a matrix with `macos-latest`, `ubuntu-latest`, and `windows-latest`",
+    "The matrix is green on all three OS in the PR that lands this slice",
+    "A deliberate regression using `/` hardcoded paths fails on Windows CI and passes after fixing",
+    "`docs/SUPPORT_MATRIX.md` contains a section named `Cross-Platform Authoring Rules` with the six rules",
+    "`docs/COMMANDS.md` exists with a table header `| Command | Purpose | OS | Since |` and at least one reserved row for `quiver:plan`"
+  ],
+  "files": [
+    ".github/workflows/ci.yml",
+    "docs/SUPPORT_MATRIX.md",
+    "docs/COMMANDS.md",
+    "CHANGELOG.md",
+    "specs/quiver-v17-orchestration-foundation/SPEC.md",
+    "specs/quiver-v17-orchestration-foundation/STATUS.md",
+    "specs/quiver-v17-orchestration-foundation/EVIDENCE_REPORT.md",
+    "specs/quiver-v17-orchestration-foundation/slices/slice-01-ci-matrix-verified/slice.json"
+  ],
+  "tests": [
+    "node -e \"const fs=require('fs'); const y=fs.readFileSync('.github/workflows/ci.yml','utf8'); if(!y.includes('macos-latest')||!y.includes('ubuntu-latest')||!y.includes('windows-latest')) process.exit(1)\"",
+    "test -f docs/SUPPORT_MATRIX.md",
+    "test -f docs/COMMANDS.md",
+    "git diff --check"
+  ],
+  "documentation": [
+    "docs/SUPPORT_MATRIX.md",
+    "docs/COMMANDS.md",
+    "CHANGELOG.md"
+  ],
+  "dependencies": [],
+  "assumptions": [
+    "GitHub Actions continues to offer `windows-latest` runners at no extra cost",
+    "Existing tests are shell-agnostic enough to pass on Windows after the matrix flip",
+    "A single smoke on each OS is sufficient; no need for full matrix fan-out per test"
+  ],
+  "estimated_hours": 4,
+  "actual_hours": null,
+  "status": "completed",
+  "blocked_reason": null,
+  "ready_at": null,
+  "started_at": null,
+  "completed_at": "2026-04-23T00:00:00Z"
+}
