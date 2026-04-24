@@ -1,7 +1,7 @@
 # Quiver v0.17 - Orchestration Foundation
 
 **Date:** 2026-04-23
-**Status:** Draft
+**Status:** Completed
 
 Slice numbering resets here: this spec starts at `slice-01` and does not continue any previous spec's numbering.
 
@@ -64,13 +64,13 @@ Dependency inference rule: within a single spec, `slice-NN` implicitly depends o
 |-------|-------|--------|------|
 | 01 | Cross-Platform CI Matrix Verified | Completed | [slice-01](./slices/slice-01-ci-matrix-verified/slice.json) |
 | 02 | Slice Graph Library | Completed | [slice-02](./slices/slice-02-slice-graph-library/slice.json) |
-| 03 | Optional `depends_on` Validation | Draft | [slice-03](./slices/slice-03-depends-on-validation/slice.json) |
+| 03 | Optional `depends_on` Validation | Completed | [slice-03](./slices/slice-03-depends-on-validation/slice.json) |
 
 ## Definition of Done
 
 - `.github/workflows/ci.yml` runs tests on `macos-latest`, `ubuntu-latest`, and `windows-latest` and is green on all three
 - `src/create-quiver/lib/slice-graph.js` exists with the six documented exports and tests for each
-- `check-slice` rejects `depends_on` entries pointing at nonexistent slices and cycles
+- `check-slice` rejects `depends_on` entries pointing at nonexistent slices and cycles, and requires `parallel_safe_reason` when `parallel_safe: "never"` is declared
 - `docs/COMMANDS.md` exists with a header table and a row reserved for the plan command
 - `docs/SUPPORT_MATRIX.md` documents the cross-platform authoring rules above
 

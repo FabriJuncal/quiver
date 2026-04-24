@@ -44,6 +44,11 @@
     "lib/module/file.ts",
     "components/Component.tsx"
   ],
+  // "depends_on": [
+  //   "slice-01-previous"
+  // ],
+  // "parallel_safe": "never",
+  // "parallel_safe_reason": "Explain why this slice cannot run in parallel."
   "tests": [
     "tests/e2e/module/test.spec.ts",
     "tests/unit/module/test.test.ts"

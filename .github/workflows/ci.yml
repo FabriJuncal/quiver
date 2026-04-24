@@ -22,8 +22,8 @@ jobs:
 
       - name: Validate slice templates
         run: |
-          node -e "JSON.parse(require('fs').readFileSync('specs/[project-name]/slices/slice-template/slice.json', 'utf8'))"
-          node -e "JSON.parse(require('fs').readFileSync('specs/quiver-v01/slices/slice-01-legal-integrity/slice.json', 'utf8'))"
+          node -e "const fs=require('fs'); const {parseJsonWithComments}=require('./src/create-quiver/lib/json'); parseJsonWithComments(fs.readFileSync('specs/[project-name]/slices/slice-template/slice.json', 'utf8'))"
+          node -e "const fs=require('fs'); const {parseJsonWithComments}=require('./src/create-quiver/lib/json'); parseJsonWithComments(fs.readFileSync('specs/quiver-v01/slices/slice-01-legal-integrity/slice.json', 'utf8'))"
 
   cross-platform-smoke:
     strategy:

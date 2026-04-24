@@ -1,6 +1,8 @@
 const fs = require('fs');
 const path = require('path');
 const { catFileExists, currentBranch, hasLocalBranch, hasRemoteBranch, mergeBaseIsAncestor, revListCount, runGit, statusPorcelain, worktreeList } = require('./git');
+const { parseJsonWithComments } = require('./json');
+const { buildGraph, readAllSlices, SliceGraphError, topoSort } = require('./slice-graph');
 const { resolveSliceContext, toAlias } = require('./slice');
 
 function ensureExists(filePath, message) {
@@ -22,7 +24,7 @@ function walkSlices(rootDir, acc, repoRoot) {
     }
 
     if (entry.isFile() && entry.name === 'slice.json' && fullPath.includes(`${path.sep}slices${path.sep}`)) {
-      const json = JSON.parse(fs.readFileSync(fullPath, 'utf8'));
+      const json = parseJsonWithComments(fs.readFileSync(fullPath, 'utf8'));
       const branchName = json.git?.branch_name;
       if (!branchName) {
         continue;
@@ -93,6 +95,56 @@ function collectOverlapWarnings(repoRoot, currentBranchName, currentFiles) {
   return warnings;
 }
 
+function validateDeclaredDependencyContract(repoRoot, slice) {
+  const declaredDependsOn = Array.isArray(slice.json.depends_on) ? slice.json.depends_on : null;
+  const declaredParallelSafe = typeof slice.json.parallel_safe === 'string' ? slice.json.parallel_safe.trim() : '';
+  const hasDependsOn = declaredDependsOn !== null;
+  const hasParallelSafe = declaredParallelSafe.length > 0;
+
+  if (!hasDependsOn && !hasParallelSafe) {
+    return;
+  }
+
+  const graph = buildGraph(readAllSlices(repoRoot));
+  const currentRef = `${slice.specSlug}/${slice.sliceId}`;
+  const currentNode = graph.nodes.find((node) => node.ref === currentRef);
+
+  if (!currentNode) {
+    throw new Error(`create-quiver: No se encontro el slice actual en el grafo: ${currentRef}`);
+  }
+
+  if (hasDependsOn) {
+    const declared = declaredDependsOn.map((dep) => String(dep).trim()).filter(Boolean);
+    if (declared.length !== new Set(declared).size) {
+      throw new Error(`create-quiver: depends_on contiene referencias duplicadas en ${currentRef}.`);
+    }
+
+    const currentSet = new Set(currentNode.depends_on || []);
+    for (const dep of declared) {
+      if (!currentSet.has(dep)) {
+        throw new Error(`create-quiver: depends_on apunta a una referencia inexistente o invalida: ${dep}`);
+      }
+    }
+  }
+
+  if (declaredParallelSafe === 'never') {
+    const reason = typeof slice.json.parallel_safe_reason === 'string' ? slice.json.parallel_safe_reason.trim() : '';
+    if (!reason) {
+      throw new Error('create-quiver: parallel_safe="never" requiere parallel_safe_reason.');
+    }
+  }
+
+  try {
+    // If the graph contains a cycle, topoSort will surface the path.
+    topoSort(graph);
+  } catch (error) {
+    if (error instanceof SliceGraphError && error.code === 'CYCLE_DETECTED') {
+      throw new Error(`create-quiver: El slice declarado introduce un ciclo: ${error.message}`);
+    }
+    throw error;
+  }
+}
+
 function checkSliceReadiness(sliceInput, options = {}) {
   const gate = options.gate || 'execution';
   const strictOverlap = options.strictOverlap === true;
@@ -124,6 +176,8 @@ function checkSliceReadiness(sliceInput, options = {}) {
       console.log(`WARN: Overlap con worktree activo '${overlapBranch}': ${overlapFiles}`);
     }
   }
+
+  validateDeclaredDependencyContract(repoRoot, slice);
 
   switch (gate) {
     case 'ready':

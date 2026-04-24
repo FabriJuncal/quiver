@@ -14,7 +14,7 @@ This spec installs the cross-platform foundation and shared graph library used b
 |-------|--------|----------|
 | slice-01 | Completed | CI matrix runs macOS + Linux + Windows; a Windows path guard validates `path.win32` handling and the authoring rules docs are generated |
 | slice-02 | Completed | `src/create-quiver/lib/slice-graph.js` exports the six documented functions; unit tests cover empty repos, heuristic inference, explicit overrides, cross-spec deps, cycle detection, and conflict grouping |
-| slice-03 | Draft | `check-slice` rejects `depends_on: ["nonexistent/slice-99"]`, rejects self-cycles, and requires `parallel_safe_reason` when `parallel_safe: "never"` |
+| slice-03 | Completed | `check-slice` rejects `depends_on: ["nonexistent/slice-99"]`, rejects cycles, and requires `parallel_safe_reason` when `parallel_safe: "never"` |
 
 ## Required Final Evidence
 

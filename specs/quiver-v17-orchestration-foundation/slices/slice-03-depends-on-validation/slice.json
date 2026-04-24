@@ -13,7 +13,7 @@
   },
   "must": [
     "Extend `check-slice` to validate optional `depends_on` entries point to existing `<spec-slug>/<slice-id>` combinations",
-    "Detect cycles introduced by newly declared `depends_on` using `src/create-quiver/lib/slice-graph.js`",
+    "Detect cycles introduced by newly declared `depends_on` using the shared slice graph library",
     "Require a non-empty `parallel_safe_reason` when `parallel_safe: \"never\"` is declared",
     "Update `specs/[project-name]/slice-template/slice.json` with the new optional fields, commented out",
     "Update `docs/COMMANDS.md` with a paragraph describing the new validations",
@@ -32,11 +32,19 @@
     "The slice template shows the new fields as commented-out examples"
   ],
   "files": [
-    "src/create-quiver/lib/check-slice.js",
+    "src/create-quiver/lib/json.js",
+    "src/create-quiver/lib/readiness.js",
+    "src/create-quiver/lib/slice-graph.js",
+    "src/create-quiver/lib/slice.js",
     "specs/[project-name]/slice-template/slice.json",
     "docs/COMMANDS.md",
     "CHANGELOG.md",
     "tests/lib/check-slice.test.js",
+    "scripts/check-slice-readiness.sh",
+    "scripts/ci/smoke-create-quiver.sh",
+    "scripts/ci/smoke-cross-platform.js",
+    "scripts/ci/smoke-init-docs.sh",
+    ".github/workflows/ci.yml",
     "specs/quiver-v17-orchestration-foundation/slices/slice-03-depends-on-validation/slice.json"
   ],
   "tests": [
@@ -52,13 +60,13 @@
   "assumptions": [
     "`check-slice` already exists as the validation entry point",
     "Slice IDs across specs are unique enough to form `<spec-slug>/<slice-id>` keys",
-    "Path to `check-slice` source is `src/create-quiver/lib/check-slice.js` or equivalent; adjust in implementation if different"
+    "The validation implementation lives in `src/create-quiver/lib/readiness.js` or an equivalent shared gate module"
   ],
   "estimated_hours": 2,
-  "actual_hours": null,
-  "status": "draft",
+  "actual_hours": 2,
+  "status": "completed",
   "blocked_reason": null,
-  "ready_at": null,
-  "started_at": null,
-  "completed_at": null
+  "ready_at": "2026-04-23T00:00:00Z",
+  "started_at": "2026-04-23T00:00:00Z",
+  "completed_at": "2026-04-23T00:00:00Z"
 }
