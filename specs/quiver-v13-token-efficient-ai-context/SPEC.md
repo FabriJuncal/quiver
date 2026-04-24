@@ -1,7 +1,7 @@
 # Quiver v0.13 - Token-Efficient AI Context
 
 **Date:** 2026-04-23
-**Status:** Draft
+**Status:** Completed
 
 Slice numbering resets here: this spec starts at `slice-01` and does not continue any previous spec's numbering.
 
