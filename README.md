@@ -53,6 +53,7 @@ Generated projects include `quiver:*` npm scripts that call the Node CLI and are
 
 ```bash
 npm run quiver:analyze
+npm run quiver:plan
 npm run quiver:doctor
 npm run quiver:migrate
 npm run quiver:start-slice -- specs/<project-slug>/slices/slice-01/slice.json

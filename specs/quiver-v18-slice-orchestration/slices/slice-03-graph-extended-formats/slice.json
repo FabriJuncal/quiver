@@ -1,0 +1,70 @@
+{
+  "slice_id": "slice-03-graph-extended-formats",
+  "ticket": "QUIVER-03",
+  "type": "feat",
+  "title": "`quiver:graph` Extended Formats (Mermaid, DOT)",
+  "objective": "Extend `quiver:graph` with `--format mermaid` and `--format dot` so dependency graphs can be pasted into GitHub markdown (Mermaid) or rendered with Graphviz (DOT) for documentation and slide decks.",
+  "description": "Once the ASCII tree is working, adding machine-renderable formats is cheap: both are templated serializations of the same levels and conflicts data. Mermaid is the primary target for PR descriptions; DOT unlocks Graphviz pipelines and high-resolution exports. Neither format requires external binaries to be present; Graphviz is only needed by the end user if they want to render DOT.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "graph-extended-formats",
+    "branch_name": "feature/QUIVER-03-graph-extended-formats"
+  },
+  "must": [
+    "Add a Mermaid renderer at `src/create-quiver/lib/renderers/mermaid.js` producing a `flowchart TD` block",
+    "Add a DOT renderer at `src/create-quiver/lib/renderers/dot.js` producing valid `digraph` source",
+    "Wire both renderers to `quiver:graph --format mermaid` and `quiver:graph --format dot`",
+    "Update `docs/examples/graph.md` with sample Mermaid and DOT outputs and a note about GitHub's Mermaid support",
+    "Add a `docs/COMMANDS.md` note covering the new formats",
+    "Add a `CHANGELOG.md` entry"
+  ],
+  "not_included": [
+    "Auto-rendering DOT to PNG (Graphviz binary not assumed)",
+    "Interactive web visualizer",
+    "Per-spec subgraphs in Mermaid (flat layout is enough for now)"
+  ],
+  "acceptance": [
+    "`npx create-quiver graph --format mermaid` prints a valid `flowchart TD` block starting with ```` ```mermaid ```` fence",
+    "Pasting the output into a GitHub markdown preview renders the graph",
+    "`npx create-quiver graph --format dot` prints valid DOT source starting with `digraph`",
+    "`echo $(node bin/create-quiver.js graph --format dot) | dot -Tsvg` produces SVG when Graphviz is installed (test runs conditionally)",
+    "`docs/examples/graph.md` shows both formats"
+  ],
+  "files": [
+    "src/create-quiver/commands/graph.js",
+    "src/create-quiver/lib/renderers/mermaid.js",
+    "src/create-quiver/lib/renderers/dot.js",
+    "docs/examples/graph.md",
+    "docs/COMMANDS.md",
+    "CHANGELOG.md",
+    "tests/lib/renderers/mermaid.test.js",
+    "tests/lib/renderers/dot.test.js",
+    "specs/quiver-v18-slice-orchestration/slices/slice-03-graph-extended-formats/slice.json"
+  ],
+  "tests": [
+    "node --test tests/lib/renderers/mermaid.test.js",
+    "node --test tests/lib/renderers/dot.test.js",
+    "node bin/create-quiver.js graph --format mermaid | head -n 1 | grep -q mermaid",
+    "node bin/create-quiver.js graph --format dot | head -n 1 | grep -q digraph",
+    "git diff --check"
+  ],
+  "documentation": [
+    "docs/examples/graph.md",
+    "docs/COMMANDS.md",
+    "CHANGELOG.md"
+  ],
+  "dependencies": ["slice-02-graph-mvp-tree"],
+  "assumptions": [
+    "GitHub continues to render Mermaid in markdown",
+    "DOT identifiers sanitized from slice IDs are stable enough not to collide",
+    "Users who want PNG/SVG have Graphviz installed locally; Quiver does not bundle it"
+  ],
+  "estimated_hours": 2,
+  "actual_hours": null,
+  "status": "draft",
+  "blocked_reason": null,
+  "ready_at": null,
+  "started_at": null,
+  "completed_at": null
+}

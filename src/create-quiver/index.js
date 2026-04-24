@@ -4,6 +4,7 @@ const path = require('path');
 const { execFileSync } = require('child_process');
 const { checkHandoff, scaffoldHandoff } = require('./lib/handoff');
 const { collectDoctorWarnings } = require('./lib/doctor');
+const { runPlan } = require('./commands/plan');
 const { initializeProjectDocs } = require('./lib/init-docs');
 const { checkPrReadiness, checkScope, checkSliceReadiness } = require('./lib/readiness');
 const { cleanupSlice, refreshActiveSlicesBoard, startSlice } = require('./lib/lifecycle');
@@ -25,6 +26,7 @@ function printUsage() {
   console.log(`Usage:
   npx create-quiver [options]
   npx create-quiver analyze [options]
+  npx create-quiver plan [options]
   npx create-quiver migrate [options]
   npx create-quiver doctor [options]
   npx create-quiver start-slice [options] <slice.json>
@@ -39,6 +41,10 @@ function printUsage() {
 Options:
   -n, --name <project-name>   Project name to generate
   -d, --dir <target-dir>      Target directory to scaffold into or inspect
+      --spec <slug>           Restrict plan output to one spec
+      --json                  Emit machine-readable JSON
+      --only-ready            Show only slices with no pending dependencies
+      --unicode               Prefer Unicode output when supported
   -y, --yes                   Skip prompts and use the provided inputs
   -h, --help                  Show this help message
 
@@ -46,6 +52,7 @@ Examples:
   npx create-quiver --name "My Project"
   npx create-quiver --name "My Project" --dir ./my-project
   cd ./my-project && npx create-quiver analyze
+  cd ./my-project && npx create-quiver plan --json
   cd ./my-project && npx create-quiver migrate
   cd ./my-project && npx create-quiver doctor
   cd ./my-project && npx create-quiver start-slice specs/my-project/slices/slice-01/slice.json
@@ -74,10 +81,14 @@ function parseArgs(argv) {
     targetDir: '.',
     strict: false,
     strictOverlap: false,
+    json: false,
+    onlyReady: false,
+    specSlug: '',
+    unicode: false,
   };
 
   const args = [...argv];
-  const commandModes = new Set(['doctor', 'analyze', 'migrate', 'start-slice', 'check-slice', 'check-pr', 'check-handoff', 'new-handoff', 'cleanup-slice', 'check-scope', 'refresh-active-slices']);
+  const commandModes = new Set(['plan', 'doctor', 'analyze', 'migrate', 'start-slice', 'check-slice', 'check-pr', 'check-handoff', 'new-handoff', 'cleanup-slice', 'check-scope', 'refresh-active-slices']);
   if (commandModes.has(args[0])) {
     result.mode = args[0];
     args.shift();
@@ -163,6 +174,30 @@ function parseArgs(argv) {
       continue;
     }
 
+    if (arg === '--json') {
+      result.json = true;
+      continue;
+    }
+
+    if (arg === '--only-ready') {
+      result.onlyReady = true;
+      continue;
+    }
+
+    if (arg === '--unicode') {
+      result.unicode = true;
+      continue;
+    }
+
+    if (arg === '--spec') {
+      const value = args[++index];
+      if (!value) {
+        throw new Error(formatError('missing value for --spec'));
+      }
+      result.specSlug = value;
+      continue;
+    }
+
     if (arg === '--gate') {
       const value = args[++index];
       if (!value) {
@@ -204,6 +239,10 @@ function parseArgs(argv) {
 
     if (positional.length > 0) {
       result.targetDir = positional.shift();
+    }
+  } else if (result.mode === 'plan') {
+    if (positional.length > 0) {
+      throw new Error(formatError('plan does not accept positional arguments; use --spec <slug>'));
     }
   } else if (result.mode === 'refresh-active-slices') {
     if (positional.length > 0) {
@@ -1204,6 +1243,16 @@ async function run(argv) {
 
   if (args.mode === 'analyze') {
     runAnalyze(args.targetDir);
+    return;
+  }
+
+  if (args.mode === 'plan') {
+    runPlan(process.cwd(), {
+      json: args.json,
+      onlyReady: args.onlyReady,
+      specSlug: args.specSlug,
+      unicode: args.unicode,
+    });
     return;
   }
 

@@ -263,6 +263,7 @@ function runSmoke() {
   assertContains(fs.readFileSync(path.join(newProject, 'AGENTS.md'), 'utf8'), '## Reading Budget', 'AGENTS.md');
   assertFile(path.join(newProject, 'docs', 'PROJECT_SCAN.json'));
   assertFile(path.join(newProject, 'docs', 'PROJECT_MAP.md'));
+  assertFile(path.join(newProject, 'docs', 'examples', 'plan.md'));
   assertFile(path.join(newProject, 'specs', 'smoke-project', 'HANDOFF.md'));
   assertSliceTemplateOptionalFields(path.join(newProject, 'specs', 'smoke-project', 'slices', 'slice-template', 'slice.json'));
   assertProjectMapSections(path.join(newProject, 'docs', 'PROJECT_MAP.md'));
@@ -271,8 +272,9 @@ function runSmoke() {
   assertContains(fs.readFileSync(path.join(newProject, 'docs', 'STATUS.md'), 'utf8'), 'docs/PROJECT_MAP.md', 'STATUS.md');
   assertContains(fs.readFileSync(path.join(newProject, 'docs', 'WORKFLOW.md'), 'utf8'), 'docs/PROJECT_MAP.md', 'WORKFLOW.md');
   assertContains(fs.readFileSync(path.join(newProject, 'docs', 'AI_ONBOARDING_PROMPT.md'), 'utf8'), 'docs/PROJECT_MAP.md', 'AI_ONBOARDING_PROMPT.md');
-  assertContains(fs.readFileSync(path.join(newProject, 'docs', 'COMMANDS.md'), 'utf8'), '| Command | Purpose | OS | Since |', 'COMMANDS.md');
+  assertContains(fs.readFileSync(path.join(newProject, 'docs', 'COMMANDS.md'), 'utf8'), '| Command | Purpose | OS | Since | Example |', 'COMMANDS.md');
   assertContains(fs.readFileSync(path.join(newProject, 'docs', 'COMMANDS.md'), 'utf8'), '`quiver:plan`', 'COMMANDS.md');
+  assertContains(fs.readFileSync(path.join(newProject, 'docs', 'COMMANDS.md'), 'utf8'), 'docs/examples/plan.md', 'COMMANDS.md');
   assertContains(fs.readFileSync(path.join(newProject, 'docs', 'COMMANDS.md'), 'utf8'), 'src/create-quiver/lib/slice-graph.js', 'COMMANDS.md');
   assertContains(fs.readFileSync(path.join(newProject, 'docs', 'SUPPORT_MATRIX.md'), 'utf8'), 'Cross-Platform Authoring Rules', 'SUPPORT_MATRIX.md');
   assertContains(fs.readFileSync(path.join(newProject, 'docs', 'SUPPORT_MATRIX.md'), 'utf8'), 'No shell invocations for logic', 'SUPPORT_MATRIX.md');
@@ -369,9 +371,11 @@ function runSmoke() {
   assertFile(path.join(legacyProject, 'docs', 'ai', 'LESSONS.md'));
   assertFile(path.join(legacyProject, 'docs', 'ai', 'PRINCIPLES.md'));
   assertFile(path.join(legacyProject, 'docs', 'COMMANDS.md'));
-  assertContains(fs.readFileSync(path.join(legacyProject, 'docs', 'COMMANDS.md'), 'utf8'), '| Command | Purpose | OS | Since |', 'legacy COMMANDS.md');
+  assertContains(fs.readFileSync(path.join(legacyProject, 'docs', 'COMMANDS.md'), 'utf8'), '| Command | Purpose | OS | Since | Example |', 'legacy COMMANDS.md');
   assertContains(fs.readFileSync(path.join(legacyProject, 'docs', 'COMMANDS.md'), 'utf8'), '`quiver:plan`', 'legacy COMMANDS.md');
+  assertContains(fs.readFileSync(path.join(legacyProject, 'docs', 'COMMANDS.md'), 'utf8'), 'docs/examples/plan.md', 'legacy COMMANDS.md');
   assertContains(fs.readFileSync(path.join(legacyProject, 'docs', 'COMMANDS.md'), 'utf8'), 'src/create-quiver/lib/slice-graph.js', 'legacy COMMANDS.md');
+  assertFile(path.join(legacyProject, 'docs', 'examples', 'plan.md'));
   assertContains(fs.readFileSync(path.join(legacyProject, 'docs', 'SUPPORT_MATRIX.md'), 'utf8'), 'Cross-Platform Authoring Rules', 'legacy SUPPORT_MATRIX.md');
   assertSliceTemplateOptionalFields(path.join(legacyProject, 'specs', 'legacy-repo', 'slices', 'slice-template', 'slice.json'));
   assertFrontMatter(path.join(legacyProject, 'docs', 'AI_CONTEXT.md'));
@@ -457,6 +461,7 @@ function runSmoke() {
   assertFile(path.join(releaseProject, 'docs', 'PROJECT_SCAN.json'));
   assertFile(path.join(releaseProject, 'AGENTS.md'));
   assertFile(path.join(releaseProject, 'docs', 'PROJECT_MAP.md'));
+  assertFile(path.join(releaseProject, 'docs', 'examples', 'plan.md'));
   assertFile(path.join(releaseProject, 'docs', 'COMMANDS.md'));
   assertFile(path.join(releaseProject, 'specs', 'packaged-project', 'HANDOFF.md'));
   assertSliceTemplateOptionalFields(path.join(releaseProject, 'specs', 'packaged-project', 'slices', 'slice-template', 'slice.json'));
@@ -478,7 +483,9 @@ function runSmoke() {
   assertFrontMatter(path.join(releaseProject, 'docs', 'ai', 'DEEP.md'));
   assertFrontMatter(path.join(releaseProject, 'docs', 'ai', 'LESSONS.md'));
   assertFrontMatter(path.join(releaseProject, 'docs', 'ai', 'PRINCIPLES.md'));
+  assertContains(fs.readFileSync(path.join(releaseProject, 'docs', 'COMMANDS.md'), 'utf8'), '| Command | Purpose | OS | Since | Example |', 'packaged COMMANDS.md');
   assertContains(fs.readFileSync(path.join(releaseProject, 'docs', 'COMMANDS.md'), 'utf8'), '`quiver:plan`', 'packaged COMMANDS.md');
+  assertContains(fs.readFileSync(path.join(releaseProject, 'docs', 'COMMANDS.md'), 'utf8'), 'docs/examples/plan.md', 'packaged COMMANDS.md');
   assertContains(fs.readFileSync(path.join(releaseProject, 'docs', 'COMMANDS.md'), 'utf8'), 'src/create-quiver/lib/slice-graph.js', 'packaged COMMANDS.md');
   assertContains(fs.readFileSync(path.join(releaseProject, 'docs', 'SUPPORT_MATRIX.md'), 'utf8'), 'Cross-Platform Authoring Rules', 'packaged SUPPORT_MATRIX.md');
   runNodeCli(releaseProject, ['check-handoff', path.join('specs', 'packaged-project', 'HANDOFF.md')]);
