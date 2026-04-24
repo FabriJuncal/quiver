@@ -265,6 +265,7 @@ function runSmoke() {
   assertContains(fs.readFileSync(path.join(newProject, 'docs', 'AI_ONBOARDING_PROMPT.md'), 'utf8'), 'docs/PROJECT_MAP.md', 'AI_ONBOARDING_PROMPT.md');
   assertContains(fs.readFileSync(path.join(newProject, 'docs', 'COMMANDS.md'), 'utf8'), '| Command | Purpose | OS | Since |', 'COMMANDS.md');
   assertContains(fs.readFileSync(path.join(newProject, 'docs', 'COMMANDS.md'), 'utf8'), '`quiver:plan`', 'COMMANDS.md');
+  assertContains(fs.readFileSync(path.join(newProject, 'docs', 'COMMANDS.md'), 'utf8'), 'src/create-quiver/lib/slice-graph.js', 'COMMANDS.md');
   assertContains(fs.readFileSync(path.join(newProject, 'docs', 'SUPPORT_MATRIX.md'), 'utf8'), 'Cross-Platform Authoring Rules', 'SUPPORT_MATRIX.md');
   assertContains(fs.readFileSync(path.join(newProject, 'docs', 'SUPPORT_MATRIX.md'), 'utf8'), 'No shell invocations for logic', 'SUPPORT_MATRIX.md');
   assertContains(fs.readFileSync(path.join(newProject, 'docs', 'ai', 'QUICK.md'), 'utf8'), 'docs/PROJECT_MAP.md', 'QUICK.md');
@@ -362,6 +363,7 @@ function runSmoke() {
   assertFile(path.join(legacyProject, 'docs', 'COMMANDS.md'));
   assertContains(fs.readFileSync(path.join(legacyProject, 'docs', 'COMMANDS.md'), 'utf8'), '| Command | Purpose | OS | Since |', 'legacy COMMANDS.md');
   assertContains(fs.readFileSync(path.join(legacyProject, 'docs', 'COMMANDS.md'), 'utf8'), '`quiver:plan`', 'legacy COMMANDS.md');
+  assertContains(fs.readFileSync(path.join(legacyProject, 'docs', 'COMMANDS.md'), 'utf8'), 'src/create-quiver/lib/slice-graph.js', 'legacy COMMANDS.md');
   assertContains(fs.readFileSync(path.join(legacyProject, 'docs', 'SUPPORT_MATRIX.md'), 'utf8'), 'Cross-Platform Authoring Rules', 'legacy SUPPORT_MATRIX.md');
   assertFrontMatter(path.join(legacyProject, 'docs', 'AI_CONTEXT.md'));
   assertFrontMatter(path.join(legacyProject, 'docs', 'AI_ONBOARDING_PROMPT.md'));
@@ -467,6 +469,7 @@ function runSmoke() {
   assertFrontMatter(path.join(releaseProject, 'docs', 'ai', 'LESSONS.md'));
   assertFrontMatter(path.join(releaseProject, 'docs', 'ai', 'PRINCIPLES.md'));
   assertContains(fs.readFileSync(path.join(releaseProject, 'docs', 'COMMANDS.md'), 'utf8'), '`quiver:plan`', 'packaged COMMANDS.md');
+  assertContains(fs.readFileSync(path.join(releaseProject, 'docs', 'COMMANDS.md'), 'utf8'), 'src/create-quiver/lib/slice-graph.js', 'packaged COMMANDS.md');
   assertContains(fs.readFileSync(path.join(releaseProject, 'docs', 'SUPPORT_MATRIX.md'), 'utf8'), 'Cross-Platform Authoring Rules', 'packaged SUPPORT_MATRIX.md');
   runNodeCli(releaseProject, ['check-handoff', path.join('specs', 'packaged-project', 'HANDOFF.md')]);
   assertThrows(
