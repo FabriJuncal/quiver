@@ -1,0 +1,79 @@
+{
+  "slice_id": "slice-01-plan-command",
+  "ticket": "QUIVER-01",
+  "type": "feat",
+  "title": "`quiver:plan` Command",
+  "objective": "Ship `npx create-quiver plan` and `quiver:plan` that print the sequential execution order of all pending slices, the critical path, and the total hours, with `--json` for tooling integration.",
+  "description": "The plan command answers \"what do I work on next, and in what order?\" across every spec in the repo. It reads all `slice.json` files, drops completed and skipped slices, builds the dependency graph using the v17 library, topologically sorts the remaining nodes, and prints the result. The command is read-only, deterministic, and cross-platform.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "plan-command",
+    "branch_name": "feature/QUIVER-01-plan-command"
+  },
+  "must": [
+    "Create `src/create-quiver/commands/plan.js` that wires up `readAllSlices`, `inferDependencies`, `buildGraph`, and `topoSort` from the v17 library",
+    "Implement critical path detection by walking the longest-hours chain in the DAG",
+    "Implement `--spec <slug>`, `--only-ready`, and `--json` flags",
+    "Register `plan` in `bin/create-quiver.js` and add `quiver:plan` to `package.json`",
+    "Print human output with ASCII by default, Unicode only when `process.env.LANG` includes `UTF-8` or `--unicode` is passed",
+    "Respect `NO_COLOR` and `!isTTY` when deciding whether to emit colors",
+    "Create `docs/examples/plan.md` with input and representative output",
+    "Add a `COMMANDS.md` row for plan",
+    "Update `README.md` npm scripts list and `README_FOR_AI.md` reading order if relevant",
+    "Add a `CHANGELOG.md` entry"
+  ],
+  "not_included": [
+    "Auto-starting slices (handled by `next --auto-start`)",
+    "Rendering a graph tree (handled in slice-02)",
+    "Status dashboards (handled in v19)"
+  ],
+  "acceptance": [
+    "`npx create-quiver plan` returns exit 0 and prints a non-empty plan in the Quiver repo",
+    "`npx create-quiver plan --json` produces valid JSON with `plan`, `critical_path`, and `total_hours` fields",
+    "`npx create-quiver plan --only-ready` returns only slices with no pending predecessors",
+    "`npx create-quiver plan --spec quiver-v14-tiered-context-pack` returns only that spec's slices",
+    "Introducing a cycle in a test fixture causes exit code 1 with a message naming the cycle",
+    "Running under `CI=true TERM=dumb NO_COLOR=1` produces ASCII output without color codes",
+    "`docs/examples/plan.md` exists with a real example block",
+    "`docs/COMMANDS.md` has a row naming `plan` with OS support listed"
+  ],
+  "files": [
+    "src/create-quiver/commands/plan.js",
+    "bin/create-quiver.js",
+    "package.json",
+    "docs/examples/plan.md",
+    "docs/COMMANDS.md",
+    "README.md",
+    "README_FOR_AI.md",
+    "CHANGELOG.md",
+    "tests/commands/plan.test.js",
+    "specs/quiver-v18-slice-orchestration/slices/slice-01-plan-command/slice.json"
+  ],
+  "tests": [
+    "node --test tests/commands/plan.test.js",
+    "node bin/create-quiver.js plan --json > /tmp/quiver-plan.json",
+    "node -e \"const p=require('/tmp/quiver-plan.json'); if(!Array.isArray(p.plan)||typeof p.total_hours!=='number') process.exit(1)\"",
+    "git diff --check"
+  ],
+  "documentation": [
+    "docs/examples/plan.md",
+    "docs/COMMANDS.md",
+    "README.md",
+    "README_FOR_AI.md",
+    "CHANGELOG.md"
+  ],
+  "dependencies": ["quiver-v17-orchestration-foundation/slice-02-slice-graph-library"],
+  "assumptions": [
+    "`readAllSlices` is fast enough to run on every invocation without caching",
+    "A single critical-path metric (longest hours chain) is sufficient for now",
+    "Humans reading the default output prefer ASCII over Unicode box-drawing by default"
+  ],
+  "estimated_hours": 5,
+  "actual_hours": 5,
+  "status": "completed",
+  "blocked_reason": null,
+  "ready_at": null,
+  "started_at": null,
+  "completed_at": null
+}

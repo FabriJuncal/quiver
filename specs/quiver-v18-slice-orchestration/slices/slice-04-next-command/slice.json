@@ -1,0 +1,73 @@
+{
+  "slice_id": "slice-04-next-command",
+  "ticket": "QUIVER-04",
+  "type": "feat",
+  "title": "`quiver:next` Command",
+  "objective": "Ship `npx create-quiver next` and `quiver:next` as the daily entry point that answers \"what do I work on right now?\" with an optional `--auto-start` shortcut behind an interactive confirmation.",
+  "description": "`quiver:next` prints the top-1 ready slice by default (the first node returned by `quiver:plan --only-ready`). With `--all-ready`, it lists the whole first level. With `--auto-start`, it prompts the user to confirm and then runs `start-slice` on the suggested slice; the prompt is mandatory on TTY and the command refuses to auto-start on a non-TTY to avoid surprises in CI.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "next-command",
+    "branch_name": "feature/QUIVER-04-next-command"
+  },
+  "must": [
+    "Create `src/create-quiver/commands/next.js` that reuses the plan ordering",
+    "Default output: print the top-1 slice plus the exact `start-slice` command to copy",
+    "Flag `--all-ready`: list every slice at the first unblocked level",
+    "Flag `--auto-start`: read a `y/N` prompt on TTY, run `start-slice` on `y`, refuse on non-TTY",
+    "Flag `--json`: emit `{ next: Slice | null, all_ready: Slice[] }`",
+    "Register `next` in `bin/create-quiver.js` and add `quiver:next` to `package.json`",
+    "Create `docs/examples/next.md` showing both read-only and `--auto-start` flows",
+    "Add a `docs/COMMANDS.md` row and update `README.md` npm scripts list",
+    "Add a `CHANGELOG.md` entry"
+  ],
+  "not_included": [
+    "Silent auto-start without confirmation",
+    "Auto-start on non-TTY environments",
+    "Automatic branch merging or PR creation after the slice is started"
+  ],
+  "acceptance": [
+    "`npx create-quiver next` prints a single slice and the exact `start-slice` command; running it twice returns the same slice",
+    "`npx create-quiver next --all-ready` prints every slice in level 0",
+    "`npx create-quiver next --auto-start` on a TTY prompts `Start slice X? [y/N]` and only proceeds on `y`",
+    "`npx create-quiver next --auto-start` on a non-TTY exits non-zero with a clear message and does not start anything",
+    "`--json` output is valid and parseable"
+  ],
+  "files": [
+    "src/create-quiver/commands/next.js",
+    "bin/create-quiver.js",
+    "package.json",
+    "docs/examples/next.md",
+    "docs/COMMANDS.md",
+    "README.md",
+    "CHANGELOG.md",
+    "tests/commands/next.test.js",
+    "specs/quiver-v18-slice-orchestration/slices/slice-04-next-command/slice.json"
+  ],
+  "tests": [
+    "node --test tests/commands/next.test.js",
+    "node bin/create-quiver.js next --json > /tmp/quiver-next.json",
+    "node -e \"const n=require('/tmp/quiver-next.json'); if(!('next' in n)) process.exit(1)\"",
+    "git diff --check"
+  ],
+  "documentation": [
+    "docs/examples/next.md",
+    "docs/COMMANDS.md",
+    "README.md",
+    "CHANGELOG.md"
+  ],
+  "dependencies": ["slice-01-plan-command"],
+  "assumptions": [
+    "Users accept that `next` is a suggestion and not a commitment",
+    "Interactive TTY prompts are acceptable in CLI tools for destructive actions",
+    "`start-slice` already handles worktree creation and is idempotent enough to tolerate re-runs"
+  ],
+  "estimated_hours": 3,
+  "actual_hours": null,
+  "status": "draft",
+  "blocked_reason": null,
+  "ready_at": null,
+  "started_at": null,
+  "completed_at": null
+}

@@ -8,12 +8,13 @@
     "create-quiver": "./bin/create-quiver.js"
   },
   "scripts": {
-    "check:slice": "bash tools/scripts/check-slice-readiness.sh",
-    "check:pr": "bash tools/scripts/check-pr-readiness.sh",
-    "start:slice": "bash tools/scripts/start-slice.sh",
-    "cleanup:slice": "bash tools/scripts/cleanup-slice.sh",
-    "migrate": "bash tools/scripts/migrate-project.sh",
-    "package:quiver": "bash scripts/package-quiver.sh",
+  "check:slice": "bash tools/scripts/check-slice-readiness.sh",
+  "check:pr": "bash tools/scripts/check-pr-readiness.sh",
+  "start:slice": "bash tools/scripts/start-slice.sh",
+  "cleanup:slice": "bash tools/scripts/cleanup-slice.sh",
+  "migrate": "bash tools/scripts/migrate-project.sh",
+  "quiver:plan": "npx create-quiver plan",
+  "package:quiver": "bash scripts/package-quiver.sh",
     "smoke:create-quiver": "bash scripts/ci/smoke-create-quiver.sh",
     "smoke:tiered-pack": "bash scripts/ci/smoke-tiered-pack.sh",
     "release:quiver": "bash scripts/release-quiver.sh"

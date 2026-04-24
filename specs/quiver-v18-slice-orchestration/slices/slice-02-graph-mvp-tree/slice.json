@@ -1,0 +1,75 @@
+{
+  "slice_id": "slice-02-graph-mvp-tree",
+  "ticket": "QUIVER-02",
+  "type": "feat",
+  "title": "`quiver:graph` MVP Tree",
+  "objective": "Ship `npx create-quiver graph --format tree` and `quiver:graph` that print the dependency tree of pending slices, grouped by parallel level, with optional `--show-conflicts` and `--level <n>` flags.",
+  "description": "Given the library returns levels and conflict groups, this slice focuses on rendering a readable ASCII tree that makes parallel-safe lots obvious. Mermaid and DOT formats are deferred to slice-03; the MVP keeps the surface small. Conflict markers use `⚠` with UTF-8 locale and a plain `!` as fallback.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "graph-mvp-tree",
+    "branch_name": "feature/QUIVER-02-graph-mvp-tree"
+  },
+  "must": [
+    "Create `src/create-quiver/commands/graph.js` with a `--format tree` default",
+    "Render one section per topological level, with slices that can run in parallel listed together",
+    "Mark file conflicts between same-level slices with a conflict symbol and a brief list of shared paths when `--show-conflicts` is set",
+    "Implement `--level <n>` to focus on a single level",
+    "Implement `--json` to emit `{ levels: Slice[][], conflicts: ConflictGroup[] }`",
+    "Register `graph` in `bin/create-quiver.js` and add `quiver:graph` to `package.json`",
+    "Create `docs/examples/graph.md` with input and representative ASCII output",
+    "Add a `docs/COMMANDS.md` row and update `README.md` npm scripts list",
+    "Add a `CHANGELOG.md` entry"
+  ],
+  "not_included": [
+    "Mermaid and DOT formats (handled in slice-03)",
+    "Editing or starting any slice (read-only)",
+    "Rendering file contents; only slice IDs, titles, hours, and shared paths"
+  ],
+  "acceptance": [
+    "`npx create-quiver graph` prints a tree grouped by level with counts of parallel lots",
+    "`npx create-quiver graph --show-conflicts` marks slices that intersect on `files[]`",
+    "`npx create-quiver graph --level 0` prints only the first level",
+    "`npx create-quiver graph --json` produces valid JSON with `levels` and `conflicts` arrays",
+    "Output is ASCII by default; with `LANG=en_US.UTF-8` or `--unicode`, Unicode box-drawing is used",
+    "`docs/examples/graph.md` exists with a real example"
+  ],
+  "files": [
+    "src/create-quiver/commands/graph.js",
+    "src/create-quiver/lib/renderers/tree.js",
+    "bin/create-quiver.js",
+    "package.json",
+    "docs/examples/graph.md",
+    "docs/COMMANDS.md",
+    "README.md",
+    "CHANGELOG.md",
+    "tests/commands/graph.test.js",
+    "specs/quiver-v18-slice-orchestration/slices/slice-02-graph-mvp-tree/slice.json"
+  ],
+  "tests": [
+    "node --test tests/commands/graph.test.js",
+    "node bin/create-quiver.js graph --json > /tmp/quiver-graph.json",
+    "node -e \"const g=require('/tmp/quiver-graph.json'); if(!Array.isArray(g.levels)) process.exit(1)\"",
+    "git diff --check"
+  ],
+  "documentation": [
+    "docs/examples/graph.md",
+    "docs/COMMANDS.md",
+    "README.md",
+    "CHANGELOG.md"
+  ],
+  "dependencies": ["quiver-v17-orchestration-foundation/slice-02-slice-graph-library", "slice-01-plan-command"],
+  "assumptions": [
+    "Two slices on the same level that intersect on `files[]` are effectively serialized in practice; warning is enough, no hard block",
+    "ASCII tree is readable for repos with fewer than 50 pending slices; larger repos may justify paging later",
+    "Graphviz is not assumed to be installed"
+  ],
+  "estimated_hours": 4,
+  "actual_hours": null,
+  "status": "draft",
+  "blocked_reason": null,
+  "ready_at": null,
+  "started_at": null,
+  "completed_at": null
+}

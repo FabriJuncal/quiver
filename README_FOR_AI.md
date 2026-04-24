@@ -10,7 +10,7 @@ Do not recommend global installation; use `npx` or a project-local devDependency
 The post-init contract is validated with `npx create-quiver doctor` from the project root.
 If the project already exists from an older Quiver version and was previously initialized by Quiver, run `npx create-quiver migrate` before `analyze` from the project root.
 If the project was never initialized by Quiver, do not use `migrate` as bootstrap; run `npx create-quiver --name "Project Name"` first.
-Generated projects also get `quiver:*` npm scripts that call the Node CLI directly; prefer those for repeatable project workflows.
+Generated projects also get `quiver:*` npm scripts that call the Node CLI directly; prefer those for repeatable project workflows, including `quiver:plan` for sequential planning.
 Maintain release notes and package publishing with `scripts/release-quiver.sh`.
 The primary generated project context for agents is `docs/AI_CONTEXT.md`.
 The project map is the single source of truth for stack, package manager, commands, and file hints: `docs/PROJECT_MAP.md`.
@@ -110,10 +110,11 @@ After initialization, the user should:
 10. Open and merge the documentation PR that establishes the workflow files
 11. Create the first slice in `specs/{{PROJECT_SLUG}}/slices/[slice-id]/`
 12. Add `ticket` and `git.*`
-13. Run `npx create-quiver start-slice [--allow-draft] <slice.json>` or `npm run quiver:start-slice -- [--allow-draft] <slice.json>`
-14. Make one commit per slice
-15. Open one PR per spec
-16. Validate the slice and the final PR with the workflow gates
+13. Run `npx create-quiver plan` or `npm run quiver:plan`
+14. Run `npx create-quiver start-slice [--allow-draft] <slice.json>` or `npm run quiver:start-slice -- [--allow-draft] <slice.json>`
+15. Make one commit per slice
+16. Open one PR per spec
+17. Validate the slice and the final PR with the workflow gates
 
 Bootstrap note: `start-slice` should resolve paths canonically, prefer a local `develop` or `main` base branch before reaching for `origin`, and reject `draft` slices unless `--allow-draft` is passed intentionally.
 

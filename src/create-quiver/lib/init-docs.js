@@ -61,6 +61,7 @@ function renderTemplate(text, replacements) {
     .replace(/{{PRIMARY_DEV}}/g, replacements.primaryDev || 'not defined')
     .replace(/{{PRIMARY_TEST}}/g, replacements.primaryTest || 'not defined')
     .replace(/{{ANALYZE_COMMAND}}/g, replacements.analyzeCommand || 'npx create-quiver analyze')
+    .replace(/{{PLAN_COMMAND}}/g, replacements.planCommand || 'npx create-quiver plan')
     .replace(/{{DOCTOR_COMMAND}}/g, replacements.doctorCommand || 'npx create-quiver doctor')
     .replace(/{{START_SLICE_COMMAND}}/g, replacements.startSliceCommand || 'npx create-quiver start-slice <slice.json>')
     .replace(/{{CHECK_SLICE_COMMAND}}/g, replacements.checkSliceCommand || 'npx create-quiver check-slice <slice.json>')
@@ -231,8 +232,9 @@ Run Quiver from this project root. Do not install it globally.
 
 \`\`\`bash
 npm install
-npx create-quiver analyze
-npx create-quiver doctor
+{{ANALYZE_COMMAND}}
+{{PLAN_COMMAND}}
+{{DOCTOR_COMMAND}}
 \`\`\`
 
 If this project needs a pinned Quiver version, install it as a devDependency:
@@ -251,6 +253,7 @@ The generated project includes \`quiver:*\` npm scripts that call the Node CLI a
 
 \`\`\`bash
 npm run quiver:analyze
+npm run quiver:plan
 npm run quiver:doctor
 npm run quiver:migrate
 npm run quiver:start-slice -- specs/${projectSlug}/slices/slice-01/slice.json
@@ -279,8 +282,9 @@ If the project already existed before this Quiver version, upgrade it from the p
 \`\`\`bash
 cd /path/to/your-project
 npx create-quiver migrate
-npx create-quiver analyze
-npx create-quiver doctor
+{{ANALYZE_COMMAND}}
+{{PLAN_COMMAND}}
+{{DOCTOR_COMMAND}}
 \`\`\`
 
 If the project never ran Quiver initialization before, do not use \`migrate\` as bootstrap. Run:
@@ -294,8 +298,9 @@ If your team prefers a pinned local dependency, update the package first and the
 \`\`\`bash
 npm install --save-dev create-quiver@latest
 npx create-quiver migrate
-npx create-quiver analyze
-npx create-quiver doctor
+{{ANALYZE_COMMAND}}
+{{PLAN_COMMAND}}
+{{DOCTOR_COMMAND}}
 \`\`\`
 
 ## AI Context Onboarding
@@ -321,15 +326,17 @@ Record durable decisions in \`docs/DECISIONS.md\` so future AI agents do not re-
 
 1. Review or refine specs/${projectSlug}/SPEC.md.
 2. Create the first slice from specs/${projectSlug}/slices/slice-template/slice.json.
-3. Start work with \`npx create-quiver start-slice <slice.json>\` or \`npm run quiver:start-slice -- <slice.json>\`.
-4. Make one commit per slice.
-5. Open one PR per spec.
+3. Review the plan with \`{{PLAN_COMMAND}}\` or \`npm run quiver:plan\`.
+4. Start work with \`{{START_SLICE_COMMAND}}\` or \`npm run quiver:start-slice -- <slice.json>\`.
+5. Make one commit per slice.
+6. Open one PR per spec.
 
 ## Verification Checklist
 
 - [ ] npm install completes
-- [ ] npx create-quiver analyze completes
-- [ ] npx create-quiver doctor completes
+- [ ] {{ANALYZE_COMMAND}} completes
+- [ ] {{PLAN_COMMAND}} completes
+- [ ] {{DOCTOR_COMMAND}} completes
 - [ ] AI agent executed docs/AI_ONBOARDING_PROMPT.md
 - [ ] Context docs were reviewed before the first slice
 
@@ -496,6 +503,7 @@ function initializeProjectDocs(options) {
     primaryDev: packageScripts.dev || packageScripts.start || 'not defined',
     primaryTest: packageScripts.test || 'not defined',
     analyzeCommand: 'npx create-quiver analyze',
+    planCommand: 'npx create-quiver plan',
     doctorCommand: 'npx create-quiver doctor',
     startSliceCommand: 'npx create-quiver start-slice <slice.json>',
     checkSliceCommand: 'npx create-quiver check-slice <slice.json>',
@@ -509,6 +517,7 @@ function initializeProjectDocs(options) {
     ['docs/QUICK.md.template', 'docs/ai/QUICK.md'],
     ['docs/STANDARD.md.template', 'docs/ai/STANDARD.md'],
     ['docs/DEEP.md.template', 'docs/ai/DEEP.md'],
+    ['docs/examples/plan.md.template', 'docs/examples/plan.md'],
   ];
 
   for (const [source, destination] of tierCopies) {
@@ -614,7 +623,7 @@ function initializeProjectDocs(options) {
 
   const readmePath = path.join(projectRoot, 'README.md');
   if (!fs.existsSync(readmePath)) {
-    fs.writeFileSync(readmePath, `${buildReadme(projectName, replacements.projectSlug)}\n`);
+    fs.writeFileSync(readmePath, `${renderTemplate(buildReadme(projectName, replacements.projectSlug), replacements)}\n`);
     operations.push({ source: 'README.md template', destination: 'README.md', result: 'created' });
   } else {
     operations.push({ source: 'README.md template', destination: 'README.md', result: 'skipped' });

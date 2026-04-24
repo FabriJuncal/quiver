@@ -1,0 +1,28 @@
+# Plan Example
+
+Use `plan` to inspect the pending slice order before starting implementation work.
+
+## Input
+
+```bash
+npx create-quiver plan
+```
+
+## Representative Output
+
+```text
+Quiver plan
+Total hours: 10
+Critical path: spec-a/slice-01-alpha -> spec-a/slice-02-beta -> spec-b/slice-01-delta
+
+[N]  TICKET   SPEC/SLICE            TITLE                 HOURS  STATUS
+---  -------  --------------------  --------------------  -----  ------
+[1]  QUIVER-1 spec-a/slice-01-alpha Alpha                 2      draft
+[2]  QUIVER-1 spec-a/slice-02-beta  Beta                  5      draft
+[3]  QUIVER-1 spec-b/slice-01-delta Delta                 3      draft
+```
+
+## Notes
+
+- The exact order depends on the repo's current pending graph.
+- Use `--json` when another tool needs the plan, critical path, or total hours.
