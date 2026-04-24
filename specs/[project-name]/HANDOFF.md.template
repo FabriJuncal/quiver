@@ -1,0 +1,37 @@
+# Handoff - {{PROJECT_NAME}}
+
+**Date:** {{FECHA}}
+**Project:** {{PROJECT_NAME}}
+**Slug:** {{PROJECT_SLUG}}
+
+This handoff is an exceptional transfer artifact. Use it when work needs to move between agents or between planning and execution with bounded context.
+
+## Background
+
+Describe the situation that requires a handoff and the current state of the work.
+
+## What you will change
+
+List the exact files, modules, docs, or workflows that should change.
+
+## Validation checklist
+
+List the commands, checks, or observations that prove the handoff was completed correctly.
+
+## Out of scope
+
+List anything that should not be touched in this handoff.
+
+## Expected deliverable
+
+Describe the concrete output expected from the recipient.
+
+## Constraints
+
+List the rules, assumptions, and boundaries the recipient must follow.
+
+## Notes
+
+- Handoffs are orthogonal to specs and slices.
+- Do not use this file to introduce a new `slice.json` type.
+- If the work is large enough to need a durable plan, prefer a spec instead.

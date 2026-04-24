@@ -226,6 +226,7 @@ assert_file "$new_target/docs/AI_CONTEXT.md"
 assert_file "$new_target/docs/AI_ONBOARDING_PROMPT.md"
 assert_file "$new_target/docs/PROJECT_SCAN.json"
 assert_file "$new_target/docs/PROJECT_MAP.md"
+assert_file "$new_target/specs/smoke-project/HANDOFF.md"
 assert_project_map_sections "$new_target/docs/PROJECT_MAP.md"
 assert_file "$new_target/.quiver/state.json"
 assert_file "$new_target/docs/SUPPORT_MATRIX.md"
@@ -276,6 +277,12 @@ assert_front_matter "$new_target/docs/ai/LESSONS.md"
 assert_front_matter "$new_target/docs/ai/PRINCIPLES.md"
 assert_contains "$new_target/docs/AI_ONBOARDING_PROMPT.md" "AI Onboarding Prompt"
 assert_contains "$new_target/docs/AI_ONBOARDING_PROMPT.md" "docs/PROJECT_SCAN.json"
+assert_contains "$new_target/specs/smoke-project/HANDOFF.md" "## Background"
+assert_contains "$new_target/specs/smoke-project/HANDOFF.md" "## What you will change"
+assert_contains "$new_target/specs/smoke-project/HANDOFF.md" "## Validation checklist"
+assert_contains "$new_target/specs/smoke-project/HANDOFF.md" "## Out of scope"
+assert_contains "$new_target/specs/smoke-project/HANDOFF.md" "## Expected deliverable"
+assert_contains "$new_target/specs/smoke-project/HANDOFF.md" "## Constraints"
 assert_contains "$new_target/AGENTS.md" "## Reading Budget"
 assert_contains "$new_target/AGENTS.md" "## Reading Order"
 assert_contains "$new_target/AGENTS.md" "## Output Policy"
@@ -294,12 +301,83 @@ assert_contains "$new_target/README.md" "npm install --save-dev create-quiver@la
 assert_contains "$new_target/docs/PROJECT_MAP.md" "Project Map"
 assert_contains "$new_target/docs/PROJECT_MAP.md" "## Stack"
 assert_contains "$new_target/docs/PROJECT_MAP.md" "## Commands"
+check_handoff_output="$(cd "$new_target" && node "$cli" check-handoff "specs/smoke-project/HANDOFF.md")"
+if [[ "$check_handoff_output" != *"PASS: Handoff validated at specs/smoke-project/HANDOFF.md"* ]]; then
+  echo "check-handoff did not validate the canonical handoff" >&2
+  exit 1
+fi
+
+if node "$cli" check-handoff "specs/missing-project/HANDOFF.md" >/dev/null 2>&1; then
+  echo "check-handoff should fail for a missing handoff file" >&2
+  exit 1
+fi
+
+cp "$new_target/specs/smoke-project/HANDOFF.md" "$new_target/docs/HANDOFF.md"
+if node "$cli" check-handoff "docs/HANDOFF.md" >/dev/null 2>&1; then
+  echo "check-handoff should fail for a handoff outside the canonical specs path" >&2
+  exit 1
+fi
+
+bad_handoff_root="$temp_root/bad-handoff-project"
+mkdir -p "$bad_handoff_root/specs/smoke-project"
+cp "$new_target/specs/smoke-project/HANDOFF.md" "$bad_handoff_root/specs/smoke-project/HANDOFF.md"
+node - "$bad_handoff_root/specs/smoke-project/HANDOFF.md" <<'NODE'
+const fs = require('fs');
+const filePath = process.argv[2];
+const text = fs.readFileSync(filePath, 'utf8');
+const next = text.replace(/\n## Validation checklist[\s\S]*?## Out of scope\n/, '\n## Out of scope\n');
+fs.writeFileSync(filePath, next);
+NODE
+if node "$cli" check-handoff "$bad_handoff_root/specs/smoke-project/HANDOFF.md" >/dev/null 2>&1; then
+  echo "check-handoff should fail when a required section is missing" >&2
+  exit 1
+fi
 if grep -R -nF "Package manager:" "$new_target/docs" | grep -v "docs/PROJECT_MAP.md" >/dev/null 2>&1; then
   echo "Package manager should only be documented in docs/PROJECT_MAP.md" >&2
   exit 1
 fi
 assert_package_scripts "$new_target/package.json" "new project" \
-  quiver:analyze quiver:doctor quiver:migrate quiver:start-slice quiver:check-slice quiver:check-pr quiver:cleanup-slice quiver:check-scope quiver:refresh-active-slices
+  quiver:analyze quiver:doctor quiver:migrate quiver:start-slice quiver:check-slice quiver:check-pr quiver:check-handoff check-handoff quiver:cleanup-slice quiver:check-scope quiver:refresh-active-slices
+
+assert_file "$new_target/specs/smoke-project/HANDOFF.md"
+assert_contains "$new_target/specs/smoke-project/HANDOFF.md" "## Background"
+assert_contains "$new_target/specs/smoke-project/HANDOFF.md" "## What you will change"
+assert_contains "$new_target/specs/smoke-project/HANDOFF.md" "## Validation checklist"
+assert_contains "$new_target/specs/smoke-project/HANDOFF.md" "## Out of scope"
+assert_contains "$new_target/specs/smoke-project/HANDOFF.md" "## Expected deliverable"
+assert_contains "$new_target/specs/smoke-project/HANDOFF.md" "## Constraints"
+
+check_handoff_output="$(cd "$new_target" && node "$cli" check-handoff "specs/smoke-project/HANDOFF.md")"
+if [[ "$check_handoff_output" != *"PASS: Handoff validated at specs/smoke-project/HANDOFF.md"* ]]; then
+  echo "check-handoff did not validate the canonical handoff" >&2
+  exit 1
+fi
+
+if node "$cli" check-handoff "specs/missing-project/HANDOFF.md" >/dev/null 2>&1; then
+  echo "check-handoff should fail for a missing handoff file" >&2
+  exit 1
+fi
+
+cp "$new_target/specs/smoke-project/HANDOFF.md" "$new_target/docs/HANDOFF.md"
+if node "$cli" check-handoff "docs/HANDOFF.md" >/dev/null 2>&1; then
+  echo "check-handoff should fail for a handoff outside the canonical specs path" >&2
+  exit 1
+fi
+
+bad_handoff_root="$temp_root/bad-handoff-project"
+mkdir -p "$bad_handoff_root/specs/smoke-project"
+cp "$new_target/specs/smoke-project/HANDOFF.md" "$bad_handoff_root/specs/smoke-project/HANDOFF.md"
+node - "$bad_handoff_root/specs/smoke-project/HANDOFF.md" <<'NODE'
+const fs = require('fs');
+const filePath = process.argv[2];
+const text = fs.readFileSync(filePath, 'utf8');
+const next = text.replace(/\n## Validation checklist[\s\S]*?## Out of scope\n/, '\n## Out of scope\n');
+fs.writeFileSync(filePath, next);
+NODE
+if node "$cli" check-handoff "$bad_handoff_root/specs/smoke-project/HANDOFF.md" >/dev/null 2>&1; then
+  echo "check-handoff should fail when a required section is missing" >&2
+  exit 1
+fi
 
 git -C "$new_target" init >/dev/null
 git -C "$new_target" config user.name "Quiver Smoke"
@@ -405,6 +483,7 @@ assert_file "$existing_target/docs/AI_CONTEXT.md"
 assert_file "$existing_target/docs/AI_ONBOARDING_PROMPT.md"
 assert_file "$existing_target/docs/PROJECT_SCAN.json"
 assert_file "$existing_target/docs/PROJECT_MAP.md"
+assert_file "$existing_target/specs/existing-repo/HANDOFF.md"
 assert_project_map_sections "$existing_target/docs/PROJECT_MAP.md"
 assert_file "$existing_target/.quiver/state.json"
 assert_file "$existing_target/docs/SUPPORT_MATRIX.md"
@@ -420,7 +499,7 @@ assert_front_matter "$existing_target/docs/ai/DEEP.md"
 assert_front_matter "$existing_target/docs/ai/LESSONS.md"
 assert_front_matter "$existing_target/docs/ai/PRINCIPLES.md"
 assert_package_scripts "$existing_target/package.json" "existing project" \
-  quiver:analyze quiver:doctor quiver:migrate quiver:start-slice quiver:check-slice quiver:check-pr quiver:cleanup-slice quiver:check-scope quiver:refresh-active-slices
+  quiver:analyze quiver:doctor quiver:migrate quiver:start-slice quiver:check-slice quiver:check-pr quiver:check-handoff check-handoff quiver:cleanup-slice quiver:check-scope quiver:refresh-active-slices
 assert_file "$space_target/README.md"
 assert_file "$space_target/AGENTS.md"
 assert_file "$space_target/docs/PROJECT_SCAN.json"
@@ -430,6 +509,7 @@ assert_file "$space_target/docs/ai/STANDARD.md"
 assert_file "$space_target/docs/ai/DEEP.md"
 assert_file "$space_target/docs/ai/LESSONS.md"
 assert_file "$space_target/docs/ai/PRINCIPLES.md"
+assert_file "$space_target/specs/space-project/HANDOFF.md"
 assert_project_map_sections "$space_target/docs/PROJECT_MAP.md"
 assert_file "$space_target/docs/DECISIONS.md"
 assert_front_matter "$space_target/docs/AI_CONTEXT.md"
@@ -498,6 +578,7 @@ assert_file "$legacy_target/docs/ai/LESSONS.md"
 assert_file "$legacy_target/docs/ai/PRINCIPLES.md"
 assert_file "$legacy_target/tools/scripts/migrate-project.sh"
 assert_file "$legacy_target/.quiver/state.json"
+assert_file "$legacy_target/specs/legacy-project/HANDOFF.md"
 assert_front_matter "$legacy_target/docs/AI_CONTEXT.md"
 assert_front_matter "$legacy_target/docs/AI_ONBOARDING_PROMPT.md"
 assert_front_matter "$legacy_target/docs/CONTEXTO.md"
@@ -509,7 +590,7 @@ assert_front_matter "$legacy_target/docs/ai/DEEP.md"
 assert_front_matter "$legacy_target/docs/ai/LESSONS.md"
 assert_front_matter "$legacy_target/docs/ai/PRINCIPLES.md"
 assert_package_scripts "$legacy_target/package.json" "legacy project after migrate" \
-  quiver:analyze quiver:doctor quiver:migrate quiver:start-slice quiver:check-slice quiver:check-pr quiver:cleanup-slice quiver:check-scope quiver:refresh-active-slices
+  quiver:analyze quiver:doctor quiver:migrate quiver:start-slice quiver:check-slice quiver:check-pr quiver:check-handoff check-handoff quiver:cleanup-slice quiver:check-scope quiver:refresh-active-slices
 node -e 'const fs = require("fs"); const data = JSON.parse(fs.readFileSync(process.argv[1], "utf8")); if (data.scripts?.lint !== "echo lint") { throw new Error("custom user script was not preserved during migrate"); }' "$legacy_target/package.json"
 CLI_VERSION="$cli_version" node -e 'const fs = require("fs"); const expected = process.env.CLI_VERSION; const data = JSON.parse(fs.readFileSync(process.argv[1], "utf8")); if (data.migrated_version !== expected || !data.last_migration_at) { throw new Error("migration metadata missing"); }' "$legacy_target/.quiver/state.json"
 
@@ -554,6 +635,7 @@ assert_file "$release_target/docs/ai/LESSONS.md"
 assert_file "$release_target/docs/ai/PRINCIPLES.md"
 assert_file "$release_target/docs/PROJECT_SCAN.json"
 assert_file "$release_target/docs/PROJECT_MAP.md"
+assert_file "$release_target/specs/packaged-project/HANDOFF.md"
 assert_project_map_sections "$release_target/docs/PROJECT_MAP.md"
 assert_front_matter "$release_target/docs/AI_CONTEXT.md"
 assert_front_matter "$release_target/docs/AI_ONBOARDING_PROMPT.md"
@@ -579,7 +661,7 @@ if [[ "$standard_lines" -gt 300 ]]; then
   exit 1
 fi
 assert_package_scripts "$release_target/package.json" "packaged project" \
-  quiver:analyze quiver:doctor quiver:migrate quiver:start-slice quiver:check-slice quiver:check-pr quiver:cleanup-slice quiver:check-scope quiver:refresh-active-slices
+  quiver:analyze quiver:doctor quiver:migrate quiver:start-slice quiver:check-slice quiver:check-pr quiver:check-handoff check-handoff quiver:cleanup-slice quiver:check-scope quiver:refresh-active-slices
 
 printf 'keep me\n' >> "$release_target/docs/SEARCH.md"
 rm "$release_target/docs/AI_ONBOARDING_PROMPT.md"

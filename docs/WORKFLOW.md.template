@@ -16,11 +16,14 @@ This document is the canonical implementation workflow for the project.
 - The support matrix defines the supported OS, git, node, and remote modes.
 - The troubleshooting guide explains the first-run recovery paths for common bootstrap failures.
 - The AI onboarding prompt generated after analysis is the handoff for agents that need project context before editing.
+- `specs/<project-slug>/HANDOFF.md` is the exceptional transfer artifact for agents or phases that need bounded context handoff.
 
 ## Mode-Aware Context Selection
 
 - **Onboarding:** read `PROJECT_SCAN.json`, `PROJECT_MAP.md`, `AI_CONTEXT.md`, and `AI_ONBOARDING_PROMPT.md` before source files.
 - **Implementation:** read `docs/ai/ACTIVE_SLICE.md` first when it exists; otherwise read `slice.json`, declared files, nearby tests, and only then adjacent source.
+- **Handoff:** read `specs/<project-slug>/HANDOFF.md` when the work was explicitly transferred through a handoff artifact.
+- Validate a received handoff with `npx create-quiver check-handoff specs/<project-slug>/HANDOFF.md` before starting execution.
 - **Review:** read `git diff` and the slice scope before opening full files.
 - **Debug:** read the command, exit code, first relevant error, stacktrace, and nearest changed code before long logs.
 

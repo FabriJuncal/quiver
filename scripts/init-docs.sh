@@ -198,6 +198,7 @@ copy_template "docs-template/docs/DEEP.md.template" "docs/ai/DEEP.md"
 copy_template "docs-template/docs/DECISIONS.md.template" "docs/DECISIONS.md"
 copy_template "docs-template/docs/AI_CONTEXT.md.template" "docs/AI_CONTEXT.md"
 copy_template "docs-template/docs/AI_ONBOARDING_PROMPT.md.template" "docs/AI_ONBOARDING_PROMPT.md"
+copy_template "docs-template/specs/[project-name]/HANDOFF.md.template" "specs/$PROJECT_SLUG/HANDOFF.md"
 copy_template "docs-template/docs/CONTEXTO.md.template" "docs/CONTEXTO.md"
 copy_template "docs-template/docs/STATUS.md.template" "docs/STATUS.md"
 copy_template "docs-template/docs/WORKFLOW.md.template" "docs/WORKFLOW.md"
@@ -511,12 +512,15 @@ npm run quiver:migrate
 npm run quiver:start-slice -- specs/$PROJECT_SLUG/slices/slice-01/slice.json
 npm run quiver:check-slice -- specs/$PROJECT_SLUG/slices/slice-01/slice.json
 npm run quiver:check-pr -- specs/$PROJECT_SLUG/slices/slice-01/slice.json
+npm run quiver:check-handoff -- specs/$PROJECT_SLUG/HANDOFF.md
 npm run quiver:cleanup-slice -- specs/$PROJECT_SLUG/slices/slice-01/slice.json
 npm run quiver:check-scope -- specs/$PROJECT_SLUG/slices/slice-01/slice.json
 npm run quiver:refresh-active-slices
 \`\`\`
 
 The legacy Bash wrappers remain in \`tools/scripts/\` for compatibility, but new project-level automation should prefer the \`quiver:*\` scripts and the direct \`npx create-quiver ...\` commands below.
+\`npm run check-handoff -- specs/$PROJECT_SLUG/HANDOFF.md\` is available as a legacy-friendly alias for the handoff validator.
+For exceptional context transfers between agents or phases, a dedicated \`HANDOFF.md\` can live alongside the usual spec and docs files.
 
 ## Cross-Platform Support
 
@@ -555,6 +559,7 @@ Prepare the project context docs and report assumptions, risks, and files change
 \`\`\`
 
 Review the AI changes to docs/AI_CONTEXT.md, docs/CONTEXTO.md, docs/STATUS.md, and specs/$PROJECT_SLUG/SPEC.md before starting implementation work.
+If the work was explicitly transferred through a handoff artifact, read \`specs/$PROJECT_SLUG/HANDOFF.md\` before implementation.
 
 ## Decision Log
 
@@ -581,6 +586,8 @@ Record durable decisions in \`docs/DECISIONS.md\` so future AI agents do not re-
 - [AI Context](./docs/AI_CONTEXT.md) - Contexto resumido para IA
 - [Decision Log](./docs/DECISIONS.md) - Decisiones durables del proyecto
 - [AI Onboarding Prompt](./docs/AI_ONBOARDING_PROMPT.md) - Handoff exacto para agentes después del análisis
+- [Handoff](./specs/$PROJECT_SLUG/HANDOFF.md) - Transferencia excepcional entre agentes o fases
+- [Check Handoff](./docs/WORKFLOW.md) - Valida el handoff con \`npx create-quiver check-handoff\`
 - [Contexto](./docs/CONTEXTO.md) - Qué es $PROJECT_NAME
 - [Workflow](./docs/WORKFLOW.md) - Cómo implementar
 - [Support Matrix](./docs/SUPPORT_MATRIX.md) - Qué entornos están soportados

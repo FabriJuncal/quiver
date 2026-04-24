@@ -256,6 +256,7 @@ npm run quiver:migrate
 npm run quiver:start-slice -- specs/${projectSlug}/slices/slice-01/slice.json
 npm run quiver:check-slice -- specs/${projectSlug}/slices/slice-01/slice.json
 npm run quiver:check-pr -- specs/${projectSlug}/slices/slice-01/slice.json
+npm run quiver:check-handoff -- specs/${projectSlug}/HANDOFF.md
 npm run quiver:cleanup-slice -- specs/${projectSlug}/slices/slice-01/slice.json
 npm run quiver:check-scope -- specs/${projectSlug}/slices/slice-01/slice.json
 npm run quiver:refresh-active-slices
@@ -263,6 +264,8 @@ npm run quiver:refresh-active-slices
 
 The legacy Bash wrappers remain in \`tools/scripts/\` for compatibility, but new project-level automation should prefer the \`quiver:*\` scripts and the direct \`npx create-quiver ...\` commands below.
 \`npm run quiver:migrate\` is only for projects that were already initialized by Quiver.
+\`npm run check-handoff -- specs/${projectSlug}/HANDOFF.md\` is available as a legacy-friendly alias for the handoff validator.
+For exceptional context transfers between agents or phases, a dedicated \`HANDOFF.md\` can live alongside the usual spec and docs files.
 
 ## Cross-Platform Support
 
@@ -307,6 +310,7 @@ Prepare the project context docs and report assumptions, risks, and files change
 \`\`\`
 
 Review the AI changes to docs/AI_CONTEXT.md, docs/CONTEXTO.md, docs/STATUS.md, and specs/${projectSlug}/SPEC.md before starting implementation work. Use \`docs/PROJECT_MAP.md\` for stack and command details.
+If the work was explicitly transferred through a handoff artifact, read \`specs/${projectSlug}/HANDOFF.md\` before implementation.
 
 ## Decision Log
 
@@ -333,6 +337,8 @@ Record durable decisions in \`docs/DECISIONS.md\` so future AI agents do not re-
 - [AI Context](./docs/AI_CONTEXT.md) - Contexto resumido para IA
 - [Decision Log](./docs/DECISIONS.md) - Decisiones durables del proyecto
 - [AI Onboarding Prompt](./docs/AI_ONBOARDING_PROMPT.md) - Handoff exacto para agentes después del análisis
+- [Handoff](./specs/${projectSlug}/HANDOFF.md) - Transferencia excepcional entre agentes o fases
+- [Check Handoff](./docs/WORKFLOW.md) - Valida el handoff con \`npx create-quiver check-handoff\`
 - [Contexto](./docs/CONTEXTO.md) - Qué es ${projectName}
 - [Workflow](./docs/WORKFLOW.md) - Cómo implementar
 - [Support Matrix](./docs/SUPPORT_MATRIX.md) - Qué entornos están soportados
@@ -405,6 +411,7 @@ function initializeProjectDocs(options) {
     ['docs/TESTING_GUIDE_FOR_AI.md.template', 'docs/TESTING_GUIDE_FOR_AI.md'],
     ['docs/ai/LESSONS.md.template', 'docs/ai/LESSONS.md', frontMatterFor('Slice learnings log', 'after slice completion')],
     ['specs/[project-name]/SPEC.md.template', `specs/${replacements.projectSlug}/SPEC.md`],
+    ['specs/[project-name]/HANDOFF.md.template', `specs/${replacements.projectSlug}/HANDOFF.md`],
     ['specs/[project-name]/STATUS.md.template', `specs/${replacements.projectSlug}/STATUS.md`],
     ['specs/[project-name]/EVIDENCE_REPORT.md.template', `specs/${replacements.projectSlug}/EVIDENCE_REPORT.md`],
     ['specs/[project-name]/slices/slice-template/slice.json', `specs/${replacements.projectSlug}/slices/slice-template/slice.json`],

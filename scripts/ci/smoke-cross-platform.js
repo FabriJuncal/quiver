@@ -40,6 +40,20 @@ function assert(condition, message) {
   }
 }
 
+function assertThrows(fn, expectedNeedle, label) {
+  try {
+    fn();
+  } catch (error) {
+    const text = String(error && error.stderr ? error.stderr.toString() : error && error.message ? error.message : error);
+    if (expectedNeedle && !text.includes(expectedNeedle)) {
+      throw new Error(`${label} did not contain: ${expectedNeedle}\n${text}`);
+    }
+    return;
+  }
+
+  throw new Error(`${label} should have failed`);
+}
+
 function assertFile(filePath) {
   assert(fs.existsSync(filePath), `Missing expected file: ${filePath}`);
 }
@@ -163,6 +177,7 @@ function assertNodeNativeScripts(packageJsonPath, label) {
     'quiver:start-slice',
     'quiver:check-slice',
     'quiver:check-pr',
+    'quiver:check-handoff',
     'quiver:cleanup-slice',
     'quiver:check-scope',
     'quiver:refresh-active-slices',
@@ -209,6 +224,7 @@ function runSmoke() {
   assertPackageScripts(path.join(newProject, 'package.json'), 'new project', [
     'check:slice',
     'check:pr',
+    'check-handoff',
     'start:slice',
     'cleanup:slice',
     'check:scope',
@@ -227,6 +243,7 @@ function runSmoke() {
   assertContains(fs.readFileSync(path.join(newProject, 'AGENTS.md'), 'utf8'), '## Reading Budget', 'AGENTS.md');
   assertFile(path.join(newProject, 'docs', 'PROJECT_SCAN.json'));
   assertFile(path.join(newProject, 'docs', 'PROJECT_MAP.md'));
+  assertFile(path.join(newProject, 'specs', 'smoke-project', 'HANDOFF.md'));
   assertProjectMapSections(path.join(newProject, 'docs', 'PROJECT_MAP.md'));
   assertContains(fs.readFileSync(path.join(newProject, 'docs', 'AI_CONTEXT.md'), 'utf8'), 'docs/PROJECT_MAP.md', 'AI_CONTEXT.md');
   assertContains(fs.readFileSync(path.join(newProject, 'docs', 'CONTEXTO.md'), 'utf8'), 'docs/PROJECT_MAP.md', 'CONTEXTO.md');
@@ -249,10 +266,17 @@ function runSmoke() {
   assertContains(fs.readFileSync(path.join(newProject, 'docs', 'INDEX.md'), 'utf8'), './ai/DEEP.md', 'docs index');
   assertContains(fs.readFileSync(path.join(newProject, 'README.md'), 'utf8'), 'only for projects that were already initialized by Quiver', 'generated README');
   assertContains(fs.readFileSync(path.join(newProject, 'README.md'), 'utf8'), 'do not use `migrate` as bootstrap', 'generated README');
+  assertContains(fs.readFileSync(path.join(newProject, 'README.md'), 'utf8'), 'check-handoff', 'generated README');
   assert(countNonEmptyLines(path.join(newProject, 'docs', 'ai', 'QUICK.md')) <= 50, 'QUICK.md exceeds 50 non-empty lines');
   assert(countNonEmptyLines(path.join(newProject, 'docs', 'ai', 'STANDARD.md')) <= 300, 'STANDARD.md exceeds 300 non-empty lines');
+  runNodeCli(newProject, ['check-handoff', path.join('specs', 'smoke-project', 'HANDOFF.md')]);
   assertPackageManagerOnlyInProjectMap(path.join(newProject, 'docs'));
   assert(readJson(path.join(newProject, '.quiver', 'state.json')).last_analysis_at, 'analysis metadata missing after analyze');
+  assertThrows(
+    () => runNodeCli(newProject, ['check-handoff', path.join('docs', 'HANDOFF.md')]),
+    'handoff must live at specs/<spec-slug>/HANDOFF.md',
+    'check-handoff placement failure',
+  );
 
   initProject(legacyProject, 'Legacy Repo');
   const legacyPackage = path.join(legacyProject, 'package.json');
@@ -287,6 +311,7 @@ function runSmoke() {
     'quiver:start-slice',
     'quiver:check-slice',
     'quiver:check-pr',
+    'quiver:check-handoff',
     'quiver:cleanup-slice',
     'quiver:check-scope',
     'quiver:refresh-active-slices',
@@ -382,6 +407,7 @@ function runSmoke() {
   assertFile(path.join(releaseProject, 'docs', 'PROJECT_SCAN.json'));
   assertFile(path.join(releaseProject, 'AGENTS.md'));
   assertFile(path.join(releaseProject, 'docs', 'PROJECT_MAP.md'));
+  assertFile(path.join(releaseProject, 'specs', 'packaged-project', 'HANDOFF.md'));
   assertProjectMapSections(path.join(releaseProject, 'docs', 'PROJECT_MAP.md'));
   assertFile(path.join(releaseProject, 'docs', 'ai', 'QUICK.md'));
   assertFile(path.join(releaseProject, 'docs', 'ai', 'STANDARD.md'));
@@ -400,6 +426,12 @@ function runSmoke() {
   assertFrontMatter(path.join(releaseProject, 'docs', 'ai', 'DEEP.md'));
   assertFrontMatter(path.join(releaseProject, 'docs', 'ai', 'LESSONS.md'));
   assertFrontMatter(path.join(releaseProject, 'docs', 'ai', 'PRINCIPLES.md'));
+  runNodeCli(releaseProject, ['check-handoff', path.join('specs', 'packaged-project', 'HANDOFF.md')]);
+  assertThrows(
+    () => runNodeCli(releaseProject, ['check-handoff', path.join('docs', 'HANDOFF.md')]),
+    'handoff must live at specs/<spec-slug>/HANDOFF.md',
+    'packaged check-handoff placement failure',
+  );
 
   console.log('create-quiver cross-platform smoke passed');
 }

@@ -36,12 +36,13 @@
 - Node-native generated project npm scripts (`quiver:*`)
 - Additive migration support for existing projects
 
-## v0.7 — Token-Efficient AI Context Packs (in progress)
+## v0.7 — Token-Efficient AI Context Packs (shipped 2026-04-23)
 
-- **v13** — Token-efficient AI modes guidance (Draft)
-- **v14** — Tiered context pack: QUICK/STANDARD/DEEP tiers, AGENTS.md router, ACTIVE_SLICE lifecycle, YAML front-matter, dedup (Draft, 5 slices)
+- **v13** — Token-efficient AI modes guidance (Completed)
+- **v14** — Tiered context pack: QUICK/STANDARD/DEEP tiers, AGENTS.md router, ACTIVE_SLICE lifecycle, YAML front-matter, dedup (Completed)
+- **v15** — Init required before migrate (Completed)
 - v13 slice-04 reconciled into v14 slice-05 (2026-04-23); v13 slice-02 narrowed to `DECISIONS.md` only
-- **Validation checkpoint** — 1 week real-world use + ≥1 external user before v15 is scoped
+- Validation checkpoint passed after real-world use and spec completion
 
 ## Post-Checkpoint Plan (do not execute before validating v14)
 
@@ -49,7 +50,14 @@
 > evidence from v14 in real use. Rescope or drop anything that does not
 > respond to observed friction.
 
-### v15 — Context Hygiene and Diagnostics (proposed, not yet spec-ed)
+### v0.8 — Handoff Contract (draft spec created, pending evidence)
+
+- Canonical `HANDOFF.md.template` for exceptional context transfers
+- `create-quiver check-handoff <path>` validation for structure and placement
+- Optional `create-quiver new-handoff <slug>` scaffold
+- Keep handoffs orthogonal to `slice.json`, not a new slice type
+
+### v0.9 — Context Hygiene and Diagnostics (proposed, not yet spec-ed)
 
 - Analyzer noise filter (ignore lockfiles, dist/, build/, binaries, generated files)
 - `create-quiver token-cost` diagnostic (4 chars/token heuristic)

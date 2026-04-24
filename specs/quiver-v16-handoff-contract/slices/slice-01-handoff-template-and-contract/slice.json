@@ -1,0 +1,66 @@
+{
+  "slice_id": "slice-01-handoff-template-and-contract",
+  "ticket": "QUIVER-01",
+  "type": "docs",
+  "title": "Handoff Template and Contract",
+  "objective": "Define the canonical HANDOFF artifact, its required sections, and its lifecycle without changing the slice model.",
+  "description": "Quiver already has one real handoff artifact, but there is no formal contract yet. This slice standardizes the artifact as `specs/<spec-slug>/HANDOFF.md`, adds a reusable template at `specs/[project-name]/HANDOFF.md.template`, and documents when a handoff is appropriate versus when a normal spec or slice update is enough.",
+  "git": {
+    "branch_type": "docs",
+    "base_branch": "main",
+    "branch_slug": "handoff-template-and-contract",
+    "branch_name": "docs/QUIVER-01-handoff-template-and-contract"
+  },
+  "must": [
+    "Add `specs/[project-name]/HANDOFF.md.template` with the required sections `Background`, `What you will change`, `Validation checklist`, `Out of scope`, `Expected deliverable`, and `Constraints`",
+    "Document the canonical path for concrete handoffs as `specs/<spec-slug>/HANDOFF.md`",
+    "Document when a handoff should be used and when a spec, status update, or slice update is the correct tool instead",
+    "State explicitly that handoffs do not introduce a new `slice.json` type and do not replace spec artifacts"
+  ],
+  "not_included": [
+    "CLI commands",
+    "Doctor integration",
+    "Handoff state metadata",
+    "Automatic handoff generation"
+  ],
+  "acceptance": [
+    "The repository contains a canonical `specs/[project-name]/HANDOFF.md.template`",
+    "The template contains all six required sections with stable headings",
+    "README and AI workflow documentation explain the canonical path and lifecycle for handoffs",
+    "The documentation explains that handoffs are exceptional artifacts and not a replacement for `SPEC.md`, `STATUS.md`, `EVIDENCE_REPORT.md`, or `slice.json`"
+  ],
+  "files": [
+    "specs/[project-name]/HANDOFF.md.template",
+    "README.md",
+    "README_FOR_AI.md",
+    "docs/WORKFLOW.md.template",
+    "specs/quiver-v16-handoff-contract/SPEC.md",
+    "specs/quiver-v16-handoff-contract/STATUS.md",
+    "specs/quiver-v16-handoff-contract/EVIDENCE_REPORT.md",
+    "specs/quiver-v16-handoff-contract/slices/slice-01-handoff-template-and-contract/slice.json"
+  ],
+  "tests": [
+    "rg -n \"^## Background$|^## What you will change$|^## Validation checklist$|^## Out of scope$|^## Expected deliverable$|^## Constraints$\" specs/[project-name]/HANDOFF.md.template",
+    "rg -n \"HANDOFF.md|handoff\" README.md README_FOR_AI.md docs/WORKFLOW.md.template",
+    "git diff --check"
+  ],
+  "documentation": [
+    "README.md",
+    "README_FOR_AI.md",
+    "docs/WORKFLOW.md.template",
+    "specs/[project-name]/HANDOFF.md.template"
+  ],
+  "dependencies": [],
+  "assumptions": [
+    "One organic handoff example is enough to justify a documented contract layer",
+    "The first step should define the artifact and its boundaries before adding automation"
+  ],
+  "estimated_hours": 3,
+  "actual_hours": null,
+  "status": "completed",
+  "blocked_reason": null,
+  "ready_at": null,
+  "started_at": "2026-04-23",
+  "completed_at": "2026-04-23",
+  "actual_hours": 2
+}
