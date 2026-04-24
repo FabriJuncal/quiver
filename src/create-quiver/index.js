@@ -5,6 +5,7 @@ const { execFileSync } = require('child_process');
 const { checkHandoff, scaffoldHandoff } = require('./lib/handoff');
 const { collectDoctorWarnings } = require('./lib/doctor');
 const { runGraph } = require('./commands/graph');
+const { runNext } = require('./commands/next');
 const { runPlan } = require('./commands/plan');
 const { initializeProjectDocs } = require('./lib/init-docs');
 const { checkPrReadiness, checkScope, checkSliceReadiness } = require('./lib/readiness');
@@ -29,6 +30,7 @@ function printUsage() {
   npx create-quiver analyze [options]
   npx create-quiver plan [options]
   npx create-quiver graph [options]
+  npx create-quiver next [options]
   npx create-quiver migrate [options]
   npx create-quiver doctor [options]
   npx create-quiver start-slice [options] <slice.json>
@@ -49,6 +51,8 @@ Options:
       --level <n>             Restrict graph output to one level
       --json                  Emit machine-readable JSON
       --only-ready            Show only slices with no pending dependencies
+      --all-ready             List every ready slice returned by next
+      --auto-start            Prompt for confirmation and run start-slice on next
       --unicode               Prefer Unicode output when supported
   -y, --yes                   Skip prompts and use the provided inputs
   -h, --help                  Show this help message
@@ -61,6 +65,9 @@ Examples:
   cd ./my-project && npx create-quiver graph --show-conflicts
   cd ./my-project && npx create-quiver graph --format mermaid
   cd ./my-project && npx create-quiver graph --format dot
+  cd ./my-project && npx create-quiver next
+  cd ./my-project && npx create-quiver next --all-ready
+  cd ./my-project && npx create-quiver next --auto-start
   cd ./my-project && npx create-quiver migrate
   cd ./my-project && npx create-quiver doctor
   cd ./my-project && npx create-quiver start-slice specs/my-project/slices/slice-01/slice.json
@@ -91,6 +98,8 @@ function parseArgs(argv) {
     strictOverlap: false,
     json: false,
     onlyReady: false,
+    allReady: false,
+    autoStart: false,
     specSlug: '',
     format: 'tree',
     showConflicts: false,
@@ -99,7 +108,7 @@ function parseArgs(argv) {
   };
 
   const args = [...argv];
-  const commandModes = new Set(['plan', 'graph', 'doctor', 'analyze', 'migrate', 'start-slice', 'check-slice', 'check-pr', 'check-handoff', 'new-handoff', 'cleanup-slice', 'check-scope', 'refresh-active-slices']);
+  const commandModes = new Set(['plan', 'graph', 'next', 'doctor', 'analyze', 'migrate', 'start-slice', 'check-slice', 'check-pr', 'check-handoff', 'new-handoff', 'cleanup-slice', 'check-scope', 'refresh-active-slices']);
   if (commandModes.has(args[0])) {
     result.mode = args[0];
     args.shift();
@@ -219,6 +228,16 @@ function parseArgs(argv) {
 
     if (arg === '--only-ready') {
       result.onlyReady = true;
+      continue;
+    }
+
+    if (arg === '--all-ready') {
+      result.allReady = true;
+      continue;
+    }
+
+    if (arg === '--auto-start') {
+      result.autoStart = true;
       continue;
     }
 
@@ -1251,10 +1270,11 @@ function runDoctor(targetDir) {
   if (!hasQuiverState) {
     console.log('- Run migration first: npx create-quiver migrate');
   } else if (!hasScanArtifacts) {
-    console.log('- Analyze the project first: npx create-quiver analyze');
+  console.log('- Analyze the project first: npx create-quiver analyze');
   } else {
     console.log('- Ask your AI agent: Read AGENTS.md, then docs/AI_ONBOARDING_PROMPT.md and execute it.');
   }
+  console.log('- Check the next ready slice: npx create-quiver next');
   console.log(`- Start a slice: npx create-quiver start-slice specs/${projectSlug}/slices/slice-template/slice.json`);
   console.log(`- Validate a slice: npx create-quiver check-slice specs/${projectSlug}/slices/slice-template/slice.json`);
   console.log(`- Validate the PR gate: npx create-quiver check-pr specs/${projectSlug}/slices/slice-template/slice.json`);
@@ -1301,6 +1321,16 @@ async function run(argv) {
       level: args.level,
       showConflicts: args.showConflicts,
       unicode: args.unicode,
+    });
+    return;
+  }
+
+  if (args.mode === 'next') {
+    await runNext(process.cwd(), {
+      allReady: args.allReady,
+      autoStart: args.autoStart,
+      json: args.json,
+      specSlug: args.specSlug,
     });
     return;
   }

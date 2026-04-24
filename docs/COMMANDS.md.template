@@ -12,6 +12,7 @@ It is intentionally small at v0.18: only the plan and graph rows are reserved fo
 |---------|---------|----|-------|---------|
 | `quiver:plan` | Sequential orchestration planning command | macOS, Linux, Windows | v0.18 | [docs/examples/plan.md](./examples/plan.md) |
 | `quiver:graph` | Parallel-level orchestration tree command | macOS, Linux, Windows | v0.18 | [docs/examples/graph.md](./examples/graph.md) |
+| `quiver:next` | Ready-slice suggestion command | macOS, Linux, Windows | v0.18 | [docs/examples/next.md](./examples/next.md) |
 
 ## Notes
 
@@ -19,5 +20,6 @@ It is intentionally small at v0.18: only the plan and graph rows are reserved fo
 - Keep the table concise and cross-platform.
 - Shared graph library: `src/create-quiver/lib/slice-graph.js`.
 - `quiver:graph --format mermaid` is the PR-friendly export; `--format dot` is for Graphviz consumers.
+- `quiver:next` prints the next ready slice and can auto-start it behind a confirmation prompt.
 - `check-slice` now validates optional `depends_on` targets and requires `parallel_safe_reason` when `parallel_safe` is set to `never`.
 - Cross-platform authoring rules live in `docs/SUPPORT_MATRIX.md`.

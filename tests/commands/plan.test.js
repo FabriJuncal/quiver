@@ -91,6 +91,7 @@ test('collectPlan returns pending slices, critical path, and total hours', () =>
     const report = collectPlan(repo.root);
     assert.equal(report.total_hours, 10);
     assert.deepEqual(report.critical_path, ['spec-a/slice-01-alpha', 'spec-a/slice-02-beta', 'spec-c/slice-01-epsilon']);
+    assert.equal(report.plan[0].slice_path, 'specs/spec-a/slices/slice-01-alpha/slice.json');
     assert.deepEqual(
       report.plan.map((item) => item.ref).sort(),
       ['spec-a/slice-01-alpha', 'spec-a/slice-02-beta', 'spec-b/slice-01-delta', 'spec-c/slice-01-epsilon'].sort(),
@@ -126,6 +127,7 @@ test('plan CLI emits parseable JSON', () => {
     assert.ok(Array.isArray(parsed.plan));
     assert.equal(parsed.total_hours, 5);
     assert.deepEqual(parsed.critical_path, ['spec-a/slice-01-alpha', 'spec-a/slice-02-beta']);
+    assert.equal(parsed.plan[0].slice_path, 'specs/spec-a/slices/slice-01-alpha/slice.json');
   } finally {
     repo.cleanup();
   }

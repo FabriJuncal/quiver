@@ -52,6 +52,7 @@ PRIMARY_TEST="npm test"
 ANALYZE_COMMAND="npx create-quiver analyze"
 PLAN_COMMAND="npx create-quiver plan"
 GRAPH_COMMAND="npx create-quiver graph"
+NEXT_COMMAND="npx create-quiver next"
 DOCTOR_COMMAND="npx create-quiver doctor"
 START_SLICE_COMMAND="npx create-quiver start-slice <slice.json>"
 CHECK_SLICE_COMMAND="npx create-quiver check-slice <slice.json>"
@@ -200,6 +201,7 @@ copy_template "docs-template/docs/STANDARD.md.template" "docs/ai/STANDARD.md"
 copy_template "docs-template/docs/DEEP.md.template" "docs/ai/DEEP.md"
 copy_template "docs-template/docs/examples/plan.md.template" "docs/examples/plan.md"
 copy_template "docs-template/docs/examples/graph.md.template" "docs/examples/graph.md"
+copy_template "docs-template/docs/examples/next.md.template" "docs/examples/next.md"
 copy_template "docs-template/docs/DECISIONS.md.template" "docs/DECISIONS.md"
 copy_template "docs-template/docs/AI_CONTEXT.md.template" "docs/AI_CONTEXT.md"
 copy_template "docs-template/docs/AI_ONBOARDING_PROMPT.md.template" "docs/AI_ONBOARDING_PROMPT.md"
@@ -496,7 +498,9 @@ Run Quiver from this project root. Do not install it globally.
 npm install
 $ANALYZE_COMMAND
 $PLAN_COMMAND
+$GRAPH_COMMAND
 $DOCTOR_COMMAND
+$NEXT_COMMAND
 \`\`\`
 
 If this project needs a pinned Quiver version, install it as a devDependency:
@@ -515,6 +519,7 @@ The generated project includes \`quiver:*\` npm scripts that call the Node CLI a
 npm run quiver:analyze
 npm run quiver:plan
 npm run quiver:graph
+npm run quiver:next
 npm run quiver:doctor
 npm run quiver:migrate
 npm run quiver:start-slice -- specs/$PROJECT_SLUG/slices/slice-01/slice.json
@@ -527,6 +532,8 @@ npm run quiver:refresh-active-slices
 \`\`\`
 
 The \`quiver:graph\` script prints the tree view by default; use \`npx create-quiver graph --format mermaid\` for PR-ready Markdown and \`--format dot\` when you want Graphviz source.
+The \`quiver:next\` script points to the next ready slice and can auto-start it behind a confirmation prompt.
+Use \`npx create-quiver next --all-ready\` when you want the full ready level instead of a single suggestion.
 The legacy Bash wrappers remain in \`tools/scripts/\` for compatibility, but new project-level automation should prefer the \`quiver:*\` scripts and the direct \`npx create-quiver ...\` commands below.
 \`npm run check-handoff -- specs/$PROJECT_SLUG/HANDOFF.md\` is available as a legacy-friendly alias for the handoff validator.
 If a new bounded transfer is needed, scaffold \`specs/$PROJECT_SLUG/HANDOFF.md\` with \`npx create-quiver new-handoff $PROJECT_SLUG\` and validate it with \`npx create-quiver check-handoff specs/$PROJECT_SLUG/HANDOFF.md\`.
@@ -546,6 +553,7 @@ npx create-quiver migrate
 $ANALYZE_COMMAND
 $PLAN_COMMAND
 $GRAPH_COMMAND
+$NEXT_COMMAND
 $DOCTOR_COMMAND
 \`\`\`
 
@@ -566,6 +574,7 @@ npx create-quiver migrate
 npx create-quiver analyze
 npx create-quiver plan
 npx create-quiver graph
+npx create-quiver next
 npx create-quiver doctor
 \`\`\`
 
@@ -596,9 +605,10 @@ Record durable decisions in \`docs/DECISIONS.md\` so future AI agents do not re-
 2. Create the first slice from specs/$PROJECT_SLUG/slices/slice-template/slice.json.
 3. Review the plan with \`$PLAN_COMMAND\` or \`npm run quiver:plan\`.
 4. Inspect the graph with \`$GRAPH_COMMAND\` or \`npm run quiver:graph\`.
-5. Start work with \`$START_SLICE_COMMAND\` or \`npm run quiver:start-slice -- <slice.json>\`.
-6. Make one commit per slice.
-7. Open one PR per spec.
+5. Check the next ready slice with \`$NEXT_COMMAND\` or \`npm run quiver:next\`.
+6. Start work with \`$START_SLICE_COMMAND\` or \`npm run quiver:start-slice -- <slice.json>\`.
+7. Make one commit per slice.
+8. Open one PR per spec.
 
 ## Verification Checklist
 
@@ -606,6 +616,7 @@ Record durable decisions in \`docs/DECISIONS.md\` so future AI agents do not re-
 - [ ] $ANALYZE_COMMAND completes
 - [ ] $PLAN_COMMAND completes
 - [ ] $GRAPH_COMMAND completes
+- [ ] $NEXT_COMMAND completes
 - [ ] $DOCTOR_COMMAND completes
 - [ ] AI agent executed docs/AI_ONBOARDING_PROMPT.md
 - [ ] Context docs were reviewed before the first slice

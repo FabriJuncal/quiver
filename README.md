@@ -40,6 +40,7 @@ Run the local analyzer and then validate the generated contract from the project
 npx create-quiver analyze
 npx create-quiver graph
 npx create-quiver doctor
+npx create-quiver next
 ```
 
 Use `npx create-quiver graph --format mermaid` for PR-ready Markdown or `npx create-quiver graph --format dot` for Graphviz source.
@@ -49,6 +50,7 @@ If you need to target another directory from outside the project, pass `--dir` e
 The analyzer creates `docs/PROJECT_SCAN.json` and `docs/PROJECT_MAP.md`. These files give the AI agent a deterministic project map before it edits context docs.
 
 The doctor checks the generated project contract and prints the next workflow steps. If the scan artifacts are missing, it recommends `npx create-quiver analyze` first.
+`npx create-quiver next` prints the next ready slice and can auto-start it behind a confirmation prompt.
 
 ### Project NPM Scripts
 
@@ -58,6 +60,7 @@ Generated projects include `quiver:*` npm scripts that call the Node CLI and are
 npm run quiver:analyze
 npm run quiver:plan
 npm run quiver:graph
+npm run quiver:next
 npm run quiver:doctor
 npm run quiver:migrate
 npm run quiver:start-slice -- specs/<project-slug>/slices/slice-01/slice.json
@@ -69,6 +72,8 @@ npm run quiver:refresh-active-slices
 ```
 
 `npm run quiver:graph` prints the tree view by default. Pass `--format mermaid` or `--format dot` when you need an exportable graph artifact.
+`npm run quiver:next` points to the next ready slice and can auto-start it behind a confirmation prompt.
+`npx create-quiver next --all-ready` shows the full ready level when you want the whole queue instead of one slice.
 
 The legacy Bash wrappers remain in `tools/scripts/` for compatibility, but new project-level automation should prefer the `quiver:*` scripts and the direct `npx create-quiver ...` commands.
 `npm run quiver:migrate` is only for projects that were already initialized by Quiver.
@@ -83,6 +88,7 @@ npx create-quiver migrate
 npx create-quiver analyze
 npx create-quiver graph
 npx create-quiver doctor
+npx create-quiver next
 ```
 
 Use `npx create-quiver graph --format mermaid` for GitHub-friendly graph embeds or `npx create-quiver graph --format dot` for Graphviz pipelines.

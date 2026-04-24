@@ -206,6 +206,10 @@ if [[ "$doctor_after_analyze" != *"Read AGENTS.md, then docs/AI_ONBOARDING_PROMP
   echo "Doctor output did not point to AGENTS.md before the onboarding prompt" >&2
   exit 1
 fi
+if [[ "$doctor_after_analyze" != *"npx create-quiver next"* ]]; then
+  echo "Doctor output did not recommend the next command" >&2
+  exit 1
+fi
 if [[ "$doctor_after_analyze" != *"npx create-quiver start-slice"* ]]; then
   echo "Doctor output did not use the Node slice command" >&2
   exit 1
@@ -276,15 +280,20 @@ assert_contains "$new_target/docs/DECISIONS.md" "| Date | Decision | Reason | Al
 assert_contains "$new_target/docs/COMMANDS.md" "| Command | Purpose | OS | Since | Example |"
 assert_contains "$new_target/docs/COMMANDS.md" "\`quiver:plan\`"
 assert_contains "$new_target/docs/COMMANDS.md" "\`quiver:graph\`"
+assert_contains "$new_target/docs/COMMANDS.md" "\`quiver:next\`"
 assert_contains "$new_target/docs/COMMANDS.md" "Mermaid"
 assert_contains "$new_target/docs/COMMANDS.md" "DOT"
 assert_contains "$new_target/docs/COMMANDS.md" "docs/examples/plan.md"
 assert_contains "$new_target/docs/COMMANDS.md" "docs/examples/graph.md"
+assert_contains "$new_target/docs/COMMANDS.md" "docs/examples/next.md"
 assert_file "$new_target/docs/examples/plan.md"
 assert_file "$new_target/docs/examples/graph.md"
+assert_file "$new_target/docs/examples/next.md"
 assert_contains "$new_target/docs/examples/graph.md" '```mermaid'
 assert_contains "$new_target/docs/examples/graph.md" "digraph QuiverGraph"
 assert_contains "$new_target/docs/examples/graph.md" "GitHub renders Mermaid"
+assert_contains "$new_target/docs/examples/next.md" "Next Example"
+assert_contains "$new_target/docs/examples/next.md" "npx create-quiver next --auto-start"
 assert_contains "$new_target/docs/COMMANDS.md" "src/create-quiver/lib/slice-graph.js"
 assert_contains "$new_target/docs/SUPPORT_MATRIX.md" "## Cross-Platform Authoring Rules"
 assert_contains "$new_target/docs/SUPPORT_MATRIX.md" "No shell invocations for logic"
@@ -331,8 +340,11 @@ assert_contains "$new_target/README.md" "npx create-quiver migrate"
 assert_contains "$new_target/README.md" "only for projects that were already initialized by Quiver"
 assert_contains "$new_target/README.md" 'do not use `migrate` as bootstrap'
 assert_contains "$new_target/README.md" "npm install --save-dev create-quiver@latest"
+assert_contains "$new_target/README.md" "npm run quiver:next"
+assert_contains "$new_target/README.md" "npx create-quiver next"
 assert_contains "$new_target/README.md" "graph --format mermaid"
 assert_contains "$new_target/README.md" "graph --format dot"
+assert_contains "$new_target/README.md" "next --all-ready"
 assert_contains "$new_target/docs/PROJECT_MAP.md" "Project Map"
 assert_contains "$new_target/docs/PROJECT_MAP.md" "## Stack"
 assert_contains "$new_target/docs/PROJECT_MAP.md" "## Commands"
@@ -397,7 +409,7 @@ if grep -R -nF "Package manager:" "$new_target/docs" | grep -v "docs/PROJECT_MAP
   exit 1
 fi
 assert_package_scripts "$new_target/package.json" "new project" \
-  quiver:analyze quiver:plan quiver:graph quiver:doctor quiver:migrate quiver:start-slice quiver:check-slice quiver:check-pr quiver:check-handoff check-handoff quiver:cleanup-slice quiver:check-scope quiver:refresh-active-slices
+  quiver:analyze quiver:plan quiver:graph quiver:next quiver:doctor quiver:migrate quiver:start-slice quiver:check-slice quiver:check-pr quiver:check-handoff check-handoff quiver:cleanup-slice quiver:check-scope quiver:refresh-active-slices
 
 assert_file "$new_target/specs/smoke-project/HANDOFF.md"
 assert_contains "$new_target/specs/smoke-project/HANDOFF.md" "## Background"
@@ -564,13 +576,16 @@ assert_file "$existing_target/docs/examples/plan.md"
 assert_file "$existing_target/docs/examples/graph.md"
 assert_contains "$existing_target/docs/COMMANDS.md" "| Command | Purpose | OS | Since | Example |"
 assert_contains "$existing_target/docs/COMMANDS.md" "\`quiver:graph\`"
+assert_contains "$existing_target/docs/COMMANDS.md" "\`quiver:next\`"
 assert_contains "$existing_target/docs/COMMANDS.md" "docs/examples/plan.md"
 assert_contains "$existing_target/docs/COMMANDS.md" "docs/examples/graph.md"
+assert_contains "$existing_target/docs/COMMANDS.md" "docs/examples/next.md"
+assert_file "$existing_target/docs/examples/next.md"
 assert_contains "$existing_target/docs/SUPPORT_MATRIX.md" "## Cross-Platform Authoring Rules"
 assert_contains "$existing_target/docs/COMMANDS.md" "src/create-quiver/lib/slice-graph.js"
 assert_contains "$existing_target/specs/existing-repo/slices/slice-template/slice.json" "// \"depends_on\": ["
 assert_package_scripts "$existing_target/package.json" "existing project" \
-  quiver:analyze quiver:plan quiver:graph quiver:doctor quiver:migrate quiver:start-slice quiver:check-slice quiver:check-pr quiver:check-handoff check-handoff quiver:cleanup-slice quiver:check-scope quiver:refresh-active-slices
+  quiver:analyze quiver:plan quiver:graph quiver:next quiver:doctor quiver:migrate quiver:start-slice quiver:check-slice quiver:check-pr quiver:check-handoff check-handoff quiver:cleanup-slice quiver:check-scope quiver:refresh-active-slices
 assert_file "$space_target/README.md"
 assert_file "$space_target/AGENTS.md"
 assert_file "$space_target/docs/PROJECT_SCAN.json"
@@ -581,6 +596,9 @@ assert_file "$space_target/docs/ai/QUICK.md"
 assert_file "$space_target/docs/ai/STANDARD.md"
 assert_file "$space_target/docs/ai/DEEP.md"
 assert_file "$space_target/docs/ai/LESSONS.md"
+assert_contains "$space_target/docs/COMMANDS.md" "\`quiver:next\`"
+assert_contains "$space_target/docs/COMMANDS.md" "docs/examples/next.md"
+assert_file "$space_target/docs/examples/next.md"
 assert_file "$space_target/docs/ai/PRINCIPLES.md"
 assert_file "$space_target/specs/space-project/HANDOFF.md"
 assert_file "$space_target/docs/examples/plan.md"
@@ -616,6 +634,7 @@ const pkg = JSON.parse(fs.readFileSync(file, 'utf8'));
 delete pkg.scripts['quiver:migrate'];
 delete pkg.scripts['quiver:analyze'];
 delete pkg.scripts['quiver:doctor'];
+delete pkg.scripts['quiver:next'];
 delete pkg.scripts['quiver:start-slice'];
 delete pkg.scripts['quiver:check-slice'];
 delete pkg.scripts['quiver:check-pr'];
@@ -667,8 +686,11 @@ assert_file "$legacy_target/docs/examples/plan.md"
 assert_file "$legacy_target/docs/examples/graph.md"
 assert_contains "$legacy_target/docs/COMMANDS.md" "| Command | Purpose | OS | Since | Example |"
 assert_contains "$legacy_target/docs/COMMANDS.md" "\`quiver:graph\`"
+assert_contains "$legacy_target/docs/COMMANDS.md" "\`quiver:next\`"
 assert_contains "$legacy_target/docs/COMMANDS.md" "docs/examples/plan.md"
 assert_contains "$legacy_target/docs/COMMANDS.md" "docs/examples/graph.md"
+assert_contains "$legacy_target/docs/COMMANDS.md" "docs/examples/next.md"
+assert_file "$legacy_target/docs/examples/next.md"
 assert_contains "$legacy_target/docs/COMMANDS.md" "src/create-quiver/lib/slice-graph.js"
 assert_contains "$legacy_target/docs/SUPPORT_MATRIX.md" "## Cross-Platform Authoring Rules"
 assert_contains "$legacy_target/specs/legacy-project/slices/slice-template/slice.json" "// \"depends_on\": ["
@@ -683,7 +705,7 @@ assert_front_matter "$legacy_target/docs/ai/DEEP.md"
 assert_front_matter "$legacy_target/docs/ai/LESSONS.md"
 assert_front_matter "$legacy_target/docs/ai/PRINCIPLES.md"
 assert_package_scripts "$legacy_target/package.json" "legacy project after migrate" \
-  quiver:analyze quiver:plan quiver:graph quiver:doctor quiver:migrate quiver:start-slice quiver:check-slice quiver:check-pr quiver:check-handoff check-handoff quiver:cleanup-slice quiver:check-scope quiver:refresh-active-slices
+  quiver:analyze quiver:plan quiver:graph quiver:next quiver:doctor quiver:migrate quiver:start-slice quiver:check-slice quiver:check-pr quiver:check-handoff check-handoff quiver:cleanup-slice quiver:check-scope quiver:refresh-active-slices
 node -e 'const fs = require("fs"); const data = JSON.parse(fs.readFileSync(process.argv[1], "utf8")); if (data.scripts?.lint !== "echo lint") { throw new Error("custom user script was not preserved during migrate"); }' "$legacy_target/package.json"
 CLI_VERSION="$cli_version" node -e 'const fs = require("fs"); const expected = process.env.CLI_VERSION; const data = JSON.parse(fs.readFileSync(process.argv[1], "utf8")); if (data.migrated_version !== expected || !data.last_migration_at) { throw new Error("migration metadata missing"); }' "$legacy_target/.quiver/state.json"
 
@@ -745,8 +767,11 @@ assert_front_matter "$release_target/docs/ai/PRINCIPLES.md"
 assert_contains "$release_target/docs/COMMANDS.md" "| Command | Purpose | OS | Since | Example |"
 assert_contains "$release_target/docs/COMMANDS.md" "\`quiver:plan\`"
 assert_contains "$release_target/docs/COMMANDS.md" "\`quiver:graph\`"
+assert_contains "$release_target/docs/COMMANDS.md" "\`quiver:next\`"
 assert_contains "$release_target/docs/COMMANDS.md" "docs/examples/plan.md"
 assert_contains "$release_target/docs/COMMANDS.md" "docs/examples/graph.md"
+assert_contains "$release_target/docs/COMMANDS.md" "docs/examples/next.md"
+assert_file "$release_target/docs/examples/next.md"
 assert_contains "$release_target/docs/COMMANDS.md" "src/create-quiver/lib/slice-graph.js"
 
 quick_lines="$(awk 'NF' "$release_target/docs/ai/QUICK.md" | wc -l | awk '{ print $1 }')"
@@ -762,7 +787,7 @@ if [[ "$standard_lines" -gt 300 ]]; then
   exit 1
 fi
 assert_package_scripts "$release_target/package.json" "packaged project" \
-  quiver:analyze quiver:plan quiver:graph quiver:doctor quiver:migrate quiver:start-slice quiver:check-slice quiver:check-pr quiver:check-handoff check-handoff quiver:cleanup-slice quiver:check-scope quiver:refresh-active-slices
+  quiver:analyze quiver:plan quiver:graph quiver:next quiver:doctor quiver:migrate quiver:start-slice quiver:check-slice quiver:check-pr quiver:check-handoff check-handoff quiver:cleanup-slice quiver:check-scope quiver:refresh-active-slices
 
 printf 'keep me\n' >> "$release_target/docs/SEARCH.md"
 rm "$release_target/docs/AI_ONBOARDING_PROMPT.md"

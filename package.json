@@ -15,6 +15,7 @@
   "migrate": "bash tools/scripts/migrate-project.sh",
   "quiver:plan": "npx create-quiver plan",
   "quiver:graph": "npx create-quiver graph",
+  "quiver:next": "npx create-quiver next",
   "package:quiver": "bash scripts/package-quiver.sh",
     "smoke:create-quiver": "bash scripts/ci/smoke-create-quiver.sh",
     "smoke:tiered-pack": "bash scripts/ci/smoke-tiered-pack.sh",

@@ -1,0 +1,27 @@
+# Next Example
+
+Use `next` to ask Quiver what slice is ready right now. The default output gives you one slice and the exact `start-slice` command to copy.
+
+## Input
+
+```bash
+npx create-quiver next
+npx create-quiver next --all-ready
+npx create-quiver next --auto-start
+```
+
+## Representative Output
+
+```text
+Next ready slice
+Slice: spec-a/slice-01-alpha
+Title: Alpha
+Status: draft
+Start: npx create-quiver start-slice "specs/spec-a/slices/slice-01-alpha/slice.json"
+```
+
+## Notes
+
+- `--all-ready` lists every slice in the first unblocked level.
+- `--auto-start` requires a TTY confirmation before it calls `start-slice`.
+- Use `--json` when another tool needs the next slice payload.

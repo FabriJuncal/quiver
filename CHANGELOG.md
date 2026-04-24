@@ -10,6 +10,7 @@ All notable changes to this project will be documented in this file.
 - Node-native generated project npm scripts and additive migration support for existing projects
 - Optional `depends_on` and `parallel_safe` validation in `check-slice`, plus JSON-with-comments support for slice templates
 - `quiver:graph` export formats for Mermaid and DOT, plus graph example docs for PR-ready output
+- `quiver:next` command for suggesting the next ready slice, with `--all-ready`, `--json`, and guarded auto-start
 
 ## [0.4.0] - 2026-04-21
 
