@@ -340,6 +340,7 @@ Record durable decisions in \`docs/DECISIONS.md\` so future AI agents do not re-
 - [AI Onboarding Prompt](./docs/AI_ONBOARDING_PROMPT.md) - Handoff exacto para agentes después del análisis
 - [Handoff](./specs/${projectSlug}/HANDOFF.md) - Transferencia excepcional entre agentes o fases
 - [Check Handoff](./docs/WORKFLOW.md) - Valida el handoff con \`npx create-quiver check-handoff\`
+- [Commands](./docs/COMMANDS.md) - Tabla canónica de comandos de orquestación
 - [Contexto](./docs/CONTEXTO.md) - Qué es ${projectName}
 - [Workflow](./docs/WORKFLOW.md) - Cómo implementar
 - [Support Matrix](./docs/SUPPORT_MATRIX.md) - Qué entornos están soportados
@@ -396,6 +397,7 @@ function initializeProjectDocs(options) {
   });
   const templateCopies = [
     ['docs/INDEX.md.template', 'docs/INDEX.md'],
+    ['docs/COMMANDS.md.template', 'docs/COMMANDS.md'],
     ['docs/DECISIONS.md.template', 'docs/DECISIONS.md'],
     ['docs/AI_CONTEXT.md.template', 'docs/AI_CONTEXT.md', frontMatterFor('Agent-facing project context pack', 'onboarding, implementation, review')],
     ['docs/AI_ONBOARDING_PROMPT.md.template', 'docs/AI_ONBOARDING_PROMPT.md', frontMatterFor('AI onboarding handoff prompt', 'onboarding after analysis')],

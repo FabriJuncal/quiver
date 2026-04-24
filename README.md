@@ -140,6 +140,7 @@ Quiver generates a project-local workflow under:
 - `specs/<project-slug>/HANDOFF.md` as the exceptional transfer artifact between agents or phases
 - `npx create-quiver new-handoff <spec-slug>` to scaffold an optional handoff artifact when work needs to move between agents or phases
 - `npx create-quiver check-handoff specs/<project-slug>/HANDOFF.md` to validate a transferred handoff before execution
+- `docs/COMMANDS.md` as the canonical command reference table for orchestration
 - `specs/<project-slug>/` for the project spec, status, evidence, and slice contracts
 - `tools/scripts/` for slice lifecycle and readiness gates
 - `.github/` for default PR, issue, and CI templates

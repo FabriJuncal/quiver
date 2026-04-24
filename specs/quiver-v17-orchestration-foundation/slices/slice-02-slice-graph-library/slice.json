@@ -1,0 +1,65 @@
+{
+  "slice_id": "slice-02-slice-graph-library",
+  "ticket": "QUIVER-02",
+  "type": "feat",
+  "title": "Slice Graph Library",
+  "objective": "Introduce `src/create-quiver/lib/slice-graph.js` as the single shared dependency of every orchestration command, exposing a stable API to read slices, infer dependencies, build a graph, topologically sort, compute parallel levels, and detect file conflicts.",
+  "description": "All v18–v22 commands must read `slice.json` files, understand ordering, and identify parallel-safe groups. Without a library each command re-implements this. This slice builds the library, includes heuristic dependency inference (numeric order within a spec, intersected with `files[]` overlap) and honors explicit `depends_on` when present. The library is pure Node and deterministic so it works identically on all three OS.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "slice-graph-library",
+    "branch_name": "feature/QUIVER-02-slice-graph-library"
+  },
+  "must": [
+    "Create `src/create-quiver/lib/slice-graph.js` exporting `readAllSlices`, `inferDependencies`, `buildGraph`, `topoSort`, `computeLevels`, `detectFileConflicts`",
+    "Implement heuristic dependency inference: within a spec, `slice-NN` depends on any lower-numbered sibling that shares at least one entry in `files[]`",
+    "Honor explicit `depends_on` in `slice.json` when present (overrides heuristic)",
+    "Detect cycles in `topoSort` and throw a typed error with the cycle path",
+    "Implement `computeLevels` as a repeated Kahn pass: each level is the set of nodes with no pending predecessors",
+    "Implement `detectFileConflicts` by grouping slices in a level whose `files[]` intersect",
+    "Add unit tests under `tests/lib/slice-graph.test.js` covering: empty repo, single spec, cross-spec deps, explicit `depends_on`, cycle, disjoint vs intersecting files",
+    "Document the API at the top of `src/create-quiver/lib/slice-graph.js` and cross-link from `docs/COMMANDS.md`"
+  ],
+  "not_included": [
+    "Any CLI-facing command (handled from slice-18 onward)",
+    "Validating `depends_on` at `check-slice` time (handled in slice-03)",
+    "Rendering trees, mermaid, or DOT output (handled in v18)",
+    "Enforcing parallelism at runtime (library is advisory)"
+  ],
+  "acceptance": [
+    "`require('./src/create-quiver/lib/slice-graph')` exposes all six documented functions",
+    "`readAllSlices('.')` against the Quiver repo returns a non-zero slice count and does not throw",
+    "Unit tests pass on macOS, Linux, and Windows",
+    "A test fixture with a cycle causes `topoSort` to throw an error whose message includes every node in the cycle",
+    "A test fixture with two slices that touch disjoint files places them at the same level"
+  ],
+  "files": [
+    "src/create-quiver/lib/slice-graph.js",
+    "tests/lib/slice-graph.test.js",
+    "docs/COMMANDS.md",
+    "specs/quiver-v17-orchestration-foundation/slices/slice-02-slice-graph-library/slice.json"
+  ],
+  "tests": [
+    "node --test tests/lib/slice-graph.test.js",
+    "node -e \"const g=require('./src/create-quiver/lib/slice-graph'); if(g.readAllSlices('.').length===0) process.exit(1)\"",
+    "git diff --check"
+  ],
+  "documentation": [
+    "src/create-quiver/lib/slice-graph.js",
+    "docs/COMMANDS.md"
+  ],
+  "dependencies": ["slice-01-ci-matrix-verified"],
+  "assumptions": [
+    "Heuristic inference by numeric order + file overlap is accurate enough for existing specs; edge cases escalate to explicit `depends_on`",
+    "`node --test` is available in the Node version required by the project",
+    "Reading every `slice.json` at startup is cheap enough not to warrant caching yet"
+  ],
+  "estimated_hours": 5,
+  "actual_hours": null,
+  "status": "draft",
+  "blocked_reason": null,
+  "ready_at": null,
+  "started_at": null,
+  "completed_at": null
+}

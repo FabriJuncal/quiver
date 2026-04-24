@@ -192,6 +192,7 @@ copy_file_if_missing() {
 # Copiar templates de docs/
 copy_template_keep_name "docs-template/AGENTS.md.template" "AGENTS.md"
 copy_template "docs-template/docs/INDEX.md.template" "docs/INDEX.md"
+copy_template "docs-template/docs/COMMANDS.md.template" "docs/COMMANDS.md"
 copy_template "docs-template/docs/QUICK.md.template" "docs/ai/QUICK.md"
 copy_template "docs-template/docs/STANDARD.md.template" "docs/ai/STANDARD.md"
 copy_template "docs-template/docs/DEEP.md.template" "docs/ai/DEEP.md"
@@ -589,6 +590,7 @@ Record durable decisions in \`docs/DECISIONS.md\` so future AI agents do not re-
 - [AI Onboarding Prompt](./docs/AI_ONBOARDING_PROMPT.md) - Handoff exacto para agentes después del análisis
 - [Handoff](./specs/$PROJECT_SLUG/HANDOFF.md) - Transferencia excepcional entre agentes o fases
 - [Check Handoff](./docs/WORKFLOW.md) - Valida el handoff con \`npx create-quiver check-handoff\`
+- [Commands](./docs/COMMANDS.md) - Tabla canónica de comandos de orquestación
 - [Contexto](./docs/CONTEXTO.md) - Qué es $PROJECT_NAME
 - [Workflow](./docs/WORKFLOW.md) - Cómo implementar
 - [Support Matrix](./docs/SUPPORT_MATRIX.md) - Qué entornos están soportados

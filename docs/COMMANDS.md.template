@@ -1,0 +1,19 @@
+# Commands
+
+**Project:** {{PROJECT_NAME}}
+**Last updated:** {{FECHA}}
+
+This document is the canonical command reference for the orchestration roadmap.
+It is intentionally small at v0.17: only the plan row is reserved for now.
+
+## Command Table
+
+| Command | Purpose | OS | Since |
+|---------|---------|----|-------|
+| `quiver:plan` | Reserved orchestration planning command | macOS, Linux, Windows | v0.18 |
+
+## Notes
+
+- Add new rows here only when a command is officially shipped.
+- Keep the table concise and cross-platform.
+- Cross-platform authoring rules live in `docs/SUPPORT_MATRIX.md`.

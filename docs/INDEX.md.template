@@ -10,6 +10,7 @@
 - **Decision Log** - `./DECISIONS.md`
 - **AI Onboarding Prompt** - `./AI_ONBOARDING_PROMPT.md`
 - **Workflow** - `./WORKFLOW.md`
+- **Commands** - `./COMMANDS.md`
 - **Support Matrix** - `./SUPPORT_MATRIX.md`
 - **Troubleshooting** - `./TROUBLESHOOTING.md`
 - **Multi-agent workflow** - `./MULTI_AGENT_WORKFLOW.md`
@@ -44,6 +45,7 @@ docs/
 ├── CONTEXTO.md
 ├── STATUS.md
 ├── WORKFLOW.md
+├── COMMANDS.md
 ├── SUPPORT_MATRIX.md
 ├── TROUBLESHOOTING.md
 ├── MULTI_AGENT_WORKFLOW.md

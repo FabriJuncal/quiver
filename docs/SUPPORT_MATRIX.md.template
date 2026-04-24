@@ -17,6 +17,15 @@ Quiver is intentionally opinionated about the first-run environment. If your set
 | Worktree state | Clean worktree | Slice execution and PR checks expect no unrelated local changes. |
 | Path handling | Canonical filesystem paths | Use the physical path to the repo and slice files, not a symlinked alias. |
 
+## Cross-Platform Authoring Rules
+
+- No shell invocations for logic: use Node.js `fs`, `path`, and `child_process` with `shell: false`.
+- Build paths with `path.join` and `path.sep`; normalize to `/` only for human-readable output.
+- Write files with `\n`; read files tolerating `\r\n`.
+- `--json` is the primary contract; human output is courtesy and may vary.
+- Colors are TTY-aware and suppressed with `NO_COLOR`; Unicode is opt-in unless UTF-8 is available.
+- Optional external tools such as `gh` and `graphviz` should be probed and skipped gracefully if missing.
+
 ## Remote Modes
 
 | Mode | Supported | Notes |
