@@ -11,6 +11,7 @@
  */
 const fs = require('fs');
 const path = require('path');
+const { parseJsonWithComments } = require('./json');
 
 class SliceGraphError extends Error {
   constructor(message, code) {
@@ -110,7 +111,7 @@ function readAllSlices(rootDir) {
           continue;
         }
 
-        const json = JSON.parse(fs.readFileSync(slicePath, 'utf8'));
+        const json = parseJsonWithComments(fs.readFileSync(slicePath, 'utf8'));
         const sliceId = String(json.slice_id || sliceEntry.name).trim();
         const ref = `${specSlug}/${sliceId}`;
         slices.push({

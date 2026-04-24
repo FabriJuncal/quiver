@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const { branchDelete, catFileExists, currentBranch, fetchBranch, fetchRemote, hasLocalBranch, hasRemoteBranch, lsRemoteHeads, mergeBaseIsAncestor, revListCount, runGit, statusPorcelain, worktreeAdd, worktreeList, worktreePrune, worktreeRemove } = require('./git');
+const { parseJsonWithComments } = require('./json');
 const { writeFrontMatter } = require('./init-docs');
 const { resolveTargetRoot } = require('./paths');
 const { activeSlicePath, renderActiveSlice, resolveSliceContext, safeBranchName, toAlias, validateSliceMetaForStart, worktreesRootForRepo } = require('./slice');
@@ -131,7 +132,7 @@ function refreshActiveSlicesBoard(repoRoot) {
         continue;
       }
       if (entry.isFile() && entry.name === 'slice.json' && fullPath.includes(`${path.sep}slices${path.sep}`)) {
-        const json = JSON.parse(fs.readFileSync(fullPath, 'utf8'));
+        const json = parseJsonWithComments(fs.readFileSync(fullPath, 'utf8'));
         const relPath = path.relative(repoRoot, fullPath);
         const parts = relPath.split(path.sep);
         const specFamily = parts[0];
@@ -181,7 +182,7 @@ function refreshActiveSlicesBoard(repoRoot) {
     const liveSlicePath = path.join(worktreePath, slice.relPath);
     if (fs.existsSync(liveSlicePath)) {
       try {
-        const liveJson = JSON.parse(fs.readFileSync(liveSlicePath, 'utf8'));
+        const liveJson = parseJsonWithComments(fs.readFileSync(liveSlicePath, 'utf8'));
         liveStatus = liveJson.status || liveStatus;
       } catch {
         // ignore

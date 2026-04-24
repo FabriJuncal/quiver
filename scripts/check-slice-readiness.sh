@@ -82,11 +82,12 @@ slice_rel="${slice_abs#$repo_root/}"
 slice_meta=()
 while IFS= read -r line; do
   slice_meta+=("$line")
-done < <(node - "$slice_abs" "$slice_rel" <<'NODE'
+done < <(node - "$slice_abs" "$slice_rel" "$repo_root" <<'NODE'
 const fs = require('fs');
 const path = require('path');
 
-const [slicePath, sliceRel] = process.argv.slice(2);
+const [slicePath, sliceRel, repoRoot] = process.argv.slice(2);
+const { parseJsonWithComments } = require(path.join(repoRoot, 'src', 'create-quiver', 'lib', 'json'));
 
 function fail(message) {
   console.error(`Error: ${message}`);
@@ -95,7 +96,7 @@ function fail(message) {
 
 let json;
 try {
-  json = JSON.parse(fs.readFileSync(slicePath, 'utf8'));
+  json = parseJsonWithComments(fs.readFileSync(slicePath, 'utf8'));
 } catch (error) {
   fail(`No se pudo parsear '${slicePath}' como JSON: ${error.message}`);
 }
@@ -175,6 +176,7 @@ const cp = require('child_process');
 
 const [repoRoot, currentBranch, currentFilesB64] = process.argv.slice(2);
 const currentFiles = JSON.parse(Buffer.from(currentFilesB64, 'base64').toString('utf8'));
+const { parseJsonWithComments } = require(path.join(repoRoot, 'src', 'create-quiver', 'lib', 'json'));
 
 function run(cmd, cwd = repoRoot) {
   try {
@@ -201,7 +203,7 @@ function walkSlices(rootDir, acc) {
     }
 
     if (entry.isFile() && entry.name === 'slice.json' && fullPath.includes(`${path.sep}slices${path.sep}`)) {
-      const json = JSON.parse(fs.readFileSync(fullPath, 'utf8'));
+      const json = parseJsonWithComments(fs.readFileSync(fullPath, 'utf8'));
       const branchName = json.git?.branch_name;
       if (!branchName) {
         continue;

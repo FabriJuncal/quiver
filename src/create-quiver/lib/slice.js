@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const { parseJsonWithComments } = require('./json');
 const { resolveTargetRoot, toPosixPath } = require('./paths');
 
 function readJson(filePath) {
@@ -31,7 +32,7 @@ function resolveSlicePath(sliceInput) {
 }
 
 function readSliceMeta(slicePath) {
-  const json = readJson(slicePath);
+  const json = parseJsonWithComments(fs.readFileSync(slicePath, 'utf8'));
   const ticket = typeof json.ticket === 'string' ? json.ticket.trim() : '';
   const git = json.git ?? {};
   const branchType = typeof git.branch_type === 'string' ? git.branch_type.trim() : '';

@@ -128,6 +128,13 @@ function assertProjectMapSections(filePath) {
   }
 }
 
+function assertSliceTemplateOptionalFields(filePath) {
+  const text = fs.readFileSync(filePath, 'utf8');
+  assertContains(text, '// "depends_on": [', 'slice template');
+  assertContains(text, '// "parallel_safe": "never"', 'slice template');
+  assertContains(text, '// "parallel_safe_reason": "Explain why this slice cannot run in parallel."', 'slice template');
+}
+
 function countNonEmptyLines(filePath) {
   return fs.readFileSync(filePath, 'utf8')
     .split(/\r?\n/)
@@ -257,6 +264,7 @@ function runSmoke() {
   assertFile(path.join(newProject, 'docs', 'PROJECT_SCAN.json'));
   assertFile(path.join(newProject, 'docs', 'PROJECT_MAP.md'));
   assertFile(path.join(newProject, 'specs', 'smoke-project', 'HANDOFF.md'));
+  assertSliceTemplateOptionalFields(path.join(newProject, 'specs', 'smoke-project', 'slices', 'slice-template', 'slice.json'));
   assertProjectMapSections(path.join(newProject, 'docs', 'PROJECT_MAP.md'));
   assertContains(fs.readFileSync(path.join(newProject, 'docs', 'AI_CONTEXT.md'), 'utf8'), 'docs/PROJECT_MAP.md', 'AI_CONTEXT.md');
   assertContains(fs.readFileSync(path.join(newProject, 'docs', 'CONTEXTO.md'), 'utf8'), 'docs/PROJECT_MAP.md', 'CONTEXTO.md');
@@ -365,6 +373,7 @@ function runSmoke() {
   assertContains(fs.readFileSync(path.join(legacyProject, 'docs', 'COMMANDS.md'), 'utf8'), '`quiver:plan`', 'legacy COMMANDS.md');
   assertContains(fs.readFileSync(path.join(legacyProject, 'docs', 'COMMANDS.md'), 'utf8'), 'src/create-quiver/lib/slice-graph.js', 'legacy COMMANDS.md');
   assertContains(fs.readFileSync(path.join(legacyProject, 'docs', 'SUPPORT_MATRIX.md'), 'utf8'), 'Cross-Platform Authoring Rules', 'legacy SUPPORT_MATRIX.md');
+  assertSliceTemplateOptionalFields(path.join(legacyProject, 'specs', 'legacy-repo', 'slices', 'slice-template', 'slice.json'));
   assertFrontMatter(path.join(legacyProject, 'docs', 'AI_CONTEXT.md'));
   assertFrontMatter(path.join(legacyProject, 'docs', 'AI_ONBOARDING_PROMPT.md'));
   assertFrontMatter(path.join(legacyProject, 'docs', 'CONTEXTO.md'));
@@ -450,6 +459,7 @@ function runSmoke() {
   assertFile(path.join(releaseProject, 'docs', 'PROJECT_MAP.md'));
   assertFile(path.join(releaseProject, 'docs', 'COMMANDS.md'));
   assertFile(path.join(releaseProject, 'specs', 'packaged-project', 'HANDOFF.md'));
+  assertSliceTemplateOptionalFields(path.join(releaseProject, 'specs', 'packaged-project', 'slices', 'slice-template', 'slice.json'));
   assertProjectMapSections(path.join(releaseProject, 'docs', 'PROJECT_MAP.md'));
   assertFile(path.join(releaseProject, 'docs', 'ai', 'QUICK.md'));
   assertFile(path.join(releaseProject, 'docs', 'ai', 'STANDARD.md'));

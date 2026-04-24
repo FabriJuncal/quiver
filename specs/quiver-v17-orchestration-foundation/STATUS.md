@@ -11,13 +11,13 @@ Slice numbering is local to this spec. The first slice is `slice-01`.
 |-------|-------|--------|----|-----------------|--------------|
 | slice-01 | Cross-Platform CI Matrix Verified | Completed | https://github.com/FabriJuncal/quiver/pull/46 | 4 | 4 |
 | slice-02 | Slice Graph Library | Completed | https://github.com/FabriJuncal/quiver/pull/46 | 5 | 5 |
-| slice-03 | Optional `depends_on` Validation | Draft | - | 2 | - |
+| slice-03 | Optional `depends_on` Validation | Completed | https://github.com/FabriJuncal/quiver/pull/48 | 2 | 2 |
 
 ## Progress
 
-- Completed slices: 2 / 3
+- Completed slices: 3 / 3
 - Estimated hours: 11
-- Actual hours: 9
+- Actual hours: 11
 
 ## Blockers
 
