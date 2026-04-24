@@ -66,8 +66,8 @@
     "Graphviz is not assumed to be installed"
   ],
   "estimated_hours": 4,
-  "actual_hours": null,
-  "status": "draft",
+  "actual_hours": 4,
+  "status": "completed",
   "blocked_reason": null,
   "ready_at": null,
   "started_at": null,

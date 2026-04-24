@@ -4,6 +4,7 @@ const path = require('path');
 const { execFileSync } = require('child_process');
 const { checkHandoff, scaffoldHandoff } = require('./lib/handoff');
 const { collectDoctorWarnings } = require('./lib/doctor');
+const { runGraph } = require('./commands/graph');
 const { runPlan } = require('./commands/plan');
 const { initializeProjectDocs } = require('./lib/init-docs');
 const { checkPrReadiness, checkScope, checkSliceReadiness } = require('./lib/readiness');
@@ -27,6 +28,7 @@ function printUsage() {
   npx create-quiver [options]
   npx create-quiver analyze [options]
   npx create-quiver plan [options]
+  npx create-quiver graph [options]
   npx create-quiver migrate [options]
   npx create-quiver doctor [options]
   npx create-quiver start-slice [options] <slice.json>
@@ -42,6 +44,9 @@ Options:
   -n, --name <project-name>   Project name to generate
   -d, --dir <target-dir>      Target directory to scaffold into or inspect
       --spec <slug>           Restrict plan output to one spec
+      --format <name>         Graph output format (tree)
+      --show-conflicts        Show shared file paths in graph output
+      --level <n>             Restrict graph output to one level
       --json                  Emit machine-readable JSON
       --only-ready            Show only slices with no pending dependencies
       --unicode               Prefer Unicode output when supported
@@ -53,6 +58,7 @@ Examples:
   npx create-quiver --name "My Project" --dir ./my-project
   cd ./my-project && npx create-quiver analyze
   cd ./my-project && npx create-quiver plan --json
+  cd ./my-project && npx create-quiver graph --show-conflicts
   cd ./my-project && npx create-quiver migrate
   cd ./my-project && npx create-quiver doctor
   cd ./my-project && npx create-quiver start-slice specs/my-project/slices/slice-01/slice.json
@@ -84,11 +90,14 @@ function parseArgs(argv) {
     json: false,
     onlyReady: false,
     specSlug: '',
+    format: 'tree',
+    showConflicts: false,
+    level: null,
     unicode: false,
   };
 
   const args = [...argv];
-  const commandModes = new Set(['plan', 'doctor', 'analyze', 'migrate', 'start-slice', 'check-slice', 'check-pr', 'check-handoff', 'new-handoff', 'cleanup-slice', 'check-scope', 'refresh-active-slices']);
+  const commandModes = new Set(['plan', 'graph', 'doctor', 'analyze', 'migrate', 'start-slice', 'check-slice', 'check-pr', 'check-handoff', 'new-handoff', 'cleanup-slice', 'check-scope', 'refresh-active-slices']);
   if (commandModes.has(args[0])) {
     result.mode = args[0];
     args.shift();
@@ -176,6 +185,33 @@ function parseArgs(argv) {
 
     if (arg === '--json') {
       result.json = true;
+      continue;
+    }
+
+    if (arg === '--show-conflicts') {
+      result.showConflicts = true;
+      continue;
+    }
+
+    if (arg === '--format') {
+      const value = args[++index];
+      if (!value) {
+        throw new Error(formatError('missing value for --format'));
+      }
+      result.format = value;
+      continue;
+    }
+
+    if (arg === '--level') {
+      const value = args[++index];
+      if (typeof value === 'undefined') {
+        throw new Error(formatError('missing value for --level'));
+      }
+      const parsed = Number.parseInt(value, 10);
+      if (!Number.isInteger(parsed) || parsed < 0) {
+        throw new Error(formatError('invalid value for --level'));
+      }
+      result.level = parsed;
       continue;
     }
 
@@ -1251,6 +1287,17 @@ async function run(argv) {
       json: args.json,
       onlyReady: args.onlyReady,
       specSlug: args.specSlug,
+      unicode: args.unicode,
+    });
+    return;
+  }
+
+  if (args.mode === 'graph') {
+    runGraph(process.cwd(), {
+      format: args.format,
+      json: args.json,
+      level: args.level,
+      showConflicts: args.showConflicts,
       unicode: args.unicode,
     });
     return;

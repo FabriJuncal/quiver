@@ -5,6 +5,7 @@
   "quiver:migrate": "npx create-quiver migrate",
   "quiver:analyze": "npx create-quiver analyze",
   "quiver:plan": "npx create-quiver plan",
+  "quiver:graph": "npx create-quiver graph",
   "quiver:doctor": "npx create-quiver doctor",
     "quiver:start-slice": "npx create-quiver start-slice",
     "quiver:check-slice": "npx create-quiver check-slice",

@@ -13,7 +13,7 @@ This spec delivers the first three user-facing orchestration commands: `plan`, `
 | Slice | Status | Evidence |
 |-------|--------|----------|
 | slice-01 | Completed | `quiver:plan` prints the topological order of pending slices; `--json` is a valid parseable payload; critical path is calculated; docs/examples/plan.md exists |
-| slice-02 | Draft | `quiver:graph --format tree` prints an ASCII tree; `--show-conflicts` flags intersecting files; ASCII fallback works without UTF-8 locale |
+| slice-02 | Completed | `quiver:graph --format tree` prints an ASCII tree; `--show-conflicts` flags intersecting files; ASCII fallback works without UTF-8 locale |
 | slice-03 | Draft | `quiver:graph --format mermaid` output renders in a GitHub markdown preview; `--format dot` output compiles with Graphviz |
 | slice-04 | Draft | `quiver:next` prints one slice; `--all-ready` prints the whole first level; `--auto-start` requires confirmation on TTY and refuses on non-TTY |
 

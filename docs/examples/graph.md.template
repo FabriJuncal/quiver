@@ -1,0 +1,27 @@
+# Graph Example
+
+Use `graph` to inspect the parallel levels and conflict groups before starting implementation work.
+
+## Input
+
+```bash
+npx create-quiver graph --show-conflicts
+```
+
+## Representative Output
+
+```text
+Quiver graph
+Level 0 (2 slices, 2 lots)
++-- ! spec-a/slice-01-alpha Alpha [draft]
++-- ! spec-b/slice-01-delta Delta [draft]
+|
+Level 1 (1 slices, 1 lots)
+\-- ⚠ spec-a/slice-02-beta Beta [draft] [docs/shared.md]
+```
+
+## Notes
+
+- The exact level grouping depends on the repo's pending dependency graph.
+- Use `--level <n>` to focus on a single level.
+- Use `--json` when another tool needs structured levels and conflict groups.

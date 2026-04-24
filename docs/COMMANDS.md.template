@@ -4,13 +4,14 @@
 **Last updated:** {{FECHA}}
 
 This document is the canonical command reference for the orchestration roadmap.
-It is intentionally small at v0.18: only the plan row is reserved for now.
+It is intentionally small at v0.18: only the plan and graph rows are reserved for now.
 
 ## Command Table
 
 | Command | Purpose | OS | Since | Example |
 |---------|---------|----|-------|---------|
-| `quiver:plan` | Reserved orchestration planning command | macOS, Linux, Windows | v0.18 | [docs/examples/plan.md](./examples/plan.md) |
+| `quiver:plan` | Sequential orchestration planning command | macOS, Linux, Windows | v0.18 | [docs/examples/plan.md](./examples/plan.md) |
+| `quiver:graph` | Parallel-level orchestration tree command | macOS, Linux, Windows | v0.18 | [docs/examples/graph.md](./examples/graph.md) |
 
 ## Notes
 

@@ -38,6 +38,7 @@ Run the local analyzer and then validate the generated contract from the project
 
 ```bash
 npx create-quiver analyze
+npx create-quiver graph
 npx create-quiver doctor
 ```
 
@@ -54,6 +55,7 @@ Generated projects include `quiver:*` npm scripts that call the Node CLI and are
 ```bash
 npm run quiver:analyze
 npm run quiver:plan
+npm run quiver:graph
 npm run quiver:doctor
 npm run quiver:migrate
 npm run quiver:start-slice -- specs/<project-slug>/slices/slice-01/slice.json
@@ -75,6 +77,7 @@ If the project already had Quiver from an older version, upgrade it from the pro
 cd /path/to/your-project
 npx create-quiver migrate
 npx create-quiver analyze
+npx create-quiver graph
 npx create-quiver doctor
 ```
 
@@ -90,6 +93,7 @@ If your team prefers a pinned local dependency, update the package first and the
 npm install --save-dev create-quiver@latest
 npx create-quiver migrate
 npx create-quiver analyze
+npx create-quiver graph
 npx create-quiver doctor
 ```
 
