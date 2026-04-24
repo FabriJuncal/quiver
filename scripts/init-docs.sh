@@ -51,6 +51,7 @@ PRIMARY_DEV="npm run quiver:analyze"
 PRIMARY_TEST="npm test"
 ANALYZE_COMMAND="npx create-quiver analyze"
 PLAN_COMMAND="npx create-quiver plan"
+GRAPH_COMMAND="npx create-quiver graph"
 DOCTOR_COMMAND="npx create-quiver doctor"
 START_SLICE_COMMAND="npx create-quiver start-slice <slice.json>"
 CHECK_SLICE_COMMAND="npx create-quiver check-slice <slice.json>"
@@ -198,6 +199,7 @@ copy_template "docs-template/docs/QUICK.md.template" "docs/ai/QUICK.md"
 copy_template "docs-template/docs/STANDARD.md.template" "docs/ai/STANDARD.md"
 copy_template "docs-template/docs/DEEP.md.template" "docs/ai/DEEP.md"
 copy_template "docs-template/docs/examples/plan.md.template" "docs/examples/plan.md"
+copy_template "docs-template/docs/examples/graph.md.template" "docs/examples/graph.md"
 copy_template "docs-template/docs/DECISIONS.md.template" "docs/DECISIONS.md"
 copy_template "docs-template/docs/AI_CONTEXT.md.template" "docs/AI_CONTEXT.md"
 copy_template "docs-template/docs/AI_ONBOARDING_PROMPT.md.template" "docs/AI_ONBOARDING_PROMPT.md"
@@ -512,6 +514,7 @@ The generated project includes \`quiver:*\` npm scripts that call the Node CLI a
 \`\`\`bash
 npm run quiver:analyze
 npm run quiver:plan
+npm run quiver:graph
 npm run quiver:doctor
 npm run quiver:migrate
 npm run quiver:start-slice -- specs/$PROJECT_SLUG/slices/slice-01/slice.json
@@ -541,6 +544,7 @@ cd /path/to/your-project
 npx create-quiver migrate
 $ANALYZE_COMMAND
 $PLAN_COMMAND
+$GRAPH_COMMAND
 $DOCTOR_COMMAND
 \`\`\`
 
@@ -551,6 +555,7 @@ npm install --save-dev create-quiver@latest
 npx create-quiver migrate
 npx create-quiver analyze
 npx create-quiver plan
+npx create-quiver graph
 npx create-quiver doctor
 \`\`\`
 
@@ -578,15 +583,17 @@ Record durable decisions in \`docs/DECISIONS.md\` so future AI agents do not re-
 1. Review or refine specs/$PROJECT_SLUG/SPEC.md.
 2. Create the first slice from specs/$PROJECT_SLUG/slices/slice-template/slice.json.
 3. Review the plan with \`$PLAN_COMMAND\` or \`npm run quiver:plan\`.
-4. Start work with \`$START_SLICE_COMMAND\` or \`npm run quiver:start-slice -- <slice.json>\`.
-5. Make one commit per slice.
-6. Open one PR per spec.
+4. Inspect the graph with \`$GRAPH_COMMAND\` or \`npm run quiver:graph\`.
+5. Start work with \`$START_SLICE_COMMAND\` or \`npm run quiver:start-slice -- <slice.json>\`.
+6. Make one commit per slice.
+7. Open one PR per spec.
 
 ## Verification Checklist
 
 - [ ] npm install completes
 - [ ] $ANALYZE_COMMAND completes
 - [ ] $PLAN_COMMAND completes
+- [ ] $GRAPH_COMMAND completes
 - [ ] $DOCTOR_COMMAND completes
 - [ ] AI agent executed docs/AI_ONBOARDING_PROMPT.md
 - [ ] Context docs were reviewed before the first slice

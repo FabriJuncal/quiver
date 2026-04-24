@@ -62,6 +62,7 @@ function renderTemplate(text, replacements) {
     .replace(/{{PRIMARY_TEST}}/g, replacements.primaryTest || 'not defined')
     .replace(/{{ANALYZE_COMMAND}}/g, replacements.analyzeCommand || 'npx create-quiver analyze')
     .replace(/{{PLAN_COMMAND}}/g, replacements.planCommand || 'npx create-quiver plan')
+    .replace(/{{GRAPH_COMMAND}}/g, replacements.graphCommand || 'npx create-quiver graph')
     .replace(/{{DOCTOR_COMMAND}}/g, replacements.doctorCommand || 'npx create-quiver doctor')
     .replace(/{{START_SLICE_COMMAND}}/g, replacements.startSliceCommand || 'npx create-quiver start-slice <slice.json>')
     .replace(/{{CHECK_SLICE_COMMAND}}/g, replacements.checkSliceCommand || 'npx create-quiver check-slice <slice.json>')
@@ -228,12 +229,13 @@ function buildReadme(projectName, projectSlug) {
 
 ## Quick Start
 
-Run Quiver from this project root. Do not install it globally.
+  Run Quiver from this project root. Do not install it globally.
 
 \`\`\`bash
 npm install
 {{ANALYZE_COMMAND}}
 {{PLAN_COMMAND}}
+{{GRAPH_COMMAND}}
 {{DOCTOR_COMMAND}}
 \`\`\`
 
@@ -254,6 +256,7 @@ The generated project includes \`quiver:*\` npm scripts that call the Node CLI a
 \`\`\`bash
 npm run quiver:analyze
 npm run quiver:plan
+npm run quiver:graph
 npm run quiver:doctor
 npm run quiver:migrate
 npm run quiver:start-slice -- specs/${projectSlug}/slices/slice-01/slice.json
@@ -284,6 +287,7 @@ cd /path/to/your-project
 npx create-quiver migrate
 {{ANALYZE_COMMAND}}
 {{PLAN_COMMAND}}
+{{GRAPH_COMMAND}}
 {{DOCTOR_COMMAND}}
 \`\`\`
 
@@ -300,6 +304,7 @@ npm install --save-dev create-quiver@latest
 npx create-quiver migrate
 {{ANALYZE_COMMAND}}
 {{PLAN_COMMAND}}
+{{GRAPH_COMMAND}}
 {{DOCTOR_COMMAND}}
 \`\`\`
 
@@ -327,15 +332,17 @@ Record durable decisions in \`docs/DECISIONS.md\` so future AI agents do not re-
 1. Review or refine specs/${projectSlug}/SPEC.md.
 2. Create the first slice from specs/${projectSlug}/slices/slice-template/slice.json.
 3. Review the plan with \`{{PLAN_COMMAND}}\` or \`npm run quiver:plan\`.
-4. Start work with \`{{START_SLICE_COMMAND}}\` or \`npm run quiver:start-slice -- <slice.json>\`.
-5. Make one commit per slice.
-6. Open one PR per spec.
+4. Inspect parallel lots with \`{{GRAPH_COMMAND}}\` or \`npm run quiver:graph\`.
+5. Start work with \`{{START_SLICE_COMMAND}}\` or \`npm run quiver:start-slice -- <slice.json>\`.
+6. Make one commit per slice.
+7. Open one PR per spec.
 
 ## Verification Checklist
 
 - [ ] npm install completes
 - [ ] {{ANALYZE_COMMAND}} completes
 - [ ] {{PLAN_COMMAND}} completes
+- [ ] {{GRAPH_COMMAND}} completes
 - [ ] {{DOCTOR_COMMAND}} completes
 - [ ] AI agent executed docs/AI_ONBOARDING_PROMPT.md
 - [ ] Context docs were reviewed before the first slice
@@ -504,6 +511,7 @@ function initializeProjectDocs(options) {
     primaryTest: packageScripts.test || 'not defined',
     analyzeCommand: 'npx create-quiver analyze',
     planCommand: 'npx create-quiver plan',
+    graphCommand: 'npx create-quiver graph',
     doctorCommand: 'npx create-quiver doctor',
     startSliceCommand: 'npx create-quiver start-slice <slice.json>',
     checkSliceCommand: 'npx create-quiver check-slice <slice.json>',
@@ -518,6 +526,7 @@ function initializeProjectDocs(options) {
     ['docs/STANDARD.md.template', 'docs/ai/STANDARD.md'],
     ['docs/DEEP.md.template', 'docs/ai/DEEP.md'],
     ['docs/examples/plan.md.template', 'docs/examples/plan.md'],
+    ['docs/examples/graph.md.template', 'docs/examples/graph.md'],
   ];
 
   for (const [source, destination] of tierCopies) {

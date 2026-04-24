@@ -10,7 +10,7 @@ Do not recommend global installation; use `npx` or a project-local devDependency
 The post-init contract is validated with `npx create-quiver doctor` from the project root.
 If the project already exists from an older Quiver version and was previously initialized by Quiver, run `npx create-quiver migrate` before `analyze` from the project root.
 If the project was never initialized by Quiver, do not use `migrate` as bootstrap; run `npx create-quiver --name "Project Name"` first.
-Generated projects also get `quiver:*` npm scripts that call the Node CLI directly; prefer those for repeatable project workflows, including `quiver:plan` for sequential planning.
+Generated projects also get `quiver:*` npm scripts that call the Node CLI directly; prefer those for repeatable project workflows, including `quiver:plan` for sequential planning and `quiver:graph` for parallel-level inspection.
 Maintain release notes and package publishing with `scripts/release-quiver.sh`.
 The primary generated project context for agents is `docs/AI_CONTEXT.md`.
 The project map is the single source of truth for stack, package manager, commands, and file hints: `docs/PROJECT_MAP.md`.
@@ -48,7 +48,7 @@ Prefer maps, metadata, diffs, and summaries over full file reads when they are e
 - The normal workflow runs from the project root without `--dir`; use `--dir` only when targeting another directory explicitly.
 - The cross-platform work targets native macOS, Linux, and Windows shells; Bash is a legacy compatibility path until the runtime slices land, and Windows support is only considered verified once the CI matrix is green.
 - The support contract lives in `docs/SUPPORT_MATRIX.md` and `docs/TROUBLESHOOTING.md`.
-- Generated project npm scripts should prefer `quiver:*` names such as `quiver:analyze`, `quiver:doctor`, `quiver:start-slice`, `quiver:check-slice`, and `quiver:check-pr`.
+- Generated project npm scripts should prefer `quiver:*` names such as `quiver:analyze`, `quiver:plan`, `quiver:graph`, `quiver:doctor`, `quiver:start-slice`, `quiver:check-slice`, and `quiver:check-pr`.
 
 ## Initialization Flow
 
