@@ -17,6 +17,7 @@ This document is the canonical implementation workflow for the project.
 - The troubleshooting guide explains the first-run recovery paths for common bootstrap failures.
 - The AI onboarding prompt generated after analysis is the handoff for agents that need project context before editing.
 - `specs/<project-slug>/HANDOFF.md` is the exceptional transfer artifact for agents or phases that need bounded context handoff.
+- Scaffold a new handoff only when needed with `npx create-quiver new-handoff <spec-slug>`, then validate it with `npx create-quiver check-handoff specs/<project-slug>/HANDOFF.md`.
 
 ## Mode-Aware Context Selection
 

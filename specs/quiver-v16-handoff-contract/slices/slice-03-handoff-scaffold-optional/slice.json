@@ -58,10 +58,10 @@
     "Convenience is valuable only if the generated file stays perfectly aligned with the validator"
   ],
   "estimated_hours": 2,
-  "actual_hours": null,
-  "status": "draft",
+  "actual_hours": 2,
+  "status": "completed",
   "blocked_reason": null,
-  "ready_at": null,
-  "started_at": null,
-  "completed_at": null
+  "ready_at": "2026-04-23T00:00:00Z",
+  "started_at": "2026-04-23T00:00:00Z",
+  "completed_at": "2026-04-23T00:00:00Z"
 }

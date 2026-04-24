@@ -278,6 +278,24 @@ function runSmoke() {
     'check-handoff placement failure',
   );
 
+  const scaffoldOutput = runNodeCli(newProject, ['new-handoff', 'sample-spec']);
+  assertContains(scaffoldOutput, 'PASS: Handoff scaffolded at specs/sample-spec/HANDOFF.md', 'new-handoff output');
+  assertFile(path.join(newProject, 'specs', 'sample-spec', 'HANDOFF.md'));
+  assertContains(fs.readFileSync(path.join(newProject, 'specs', 'sample-spec', 'HANDOFF.md'), 'utf8'), '## Background', 'new-handoff handoff');
+  assertContains(fs.readFileSync(path.join(newProject, 'specs', 'sample-spec', 'HANDOFF.md'), 'utf8'), '## What you will change', 'new-handoff handoff');
+  assertContains(fs.readFileSync(path.join(newProject, 'specs', 'sample-spec', 'HANDOFF.md'), 'utf8'), '## Validation checklist', 'new-handoff handoff');
+  assertContains(fs.readFileSync(path.join(newProject, 'specs', 'sample-spec', 'HANDOFF.md'), 'utf8'), '## Out of scope', 'new-handoff handoff');
+  assertContains(fs.readFileSync(path.join(newProject, 'specs', 'sample-spec', 'HANDOFF.md'), 'utf8'), '## Expected deliverable', 'new-handoff handoff');
+  assertContains(fs.readFileSync(path.join(newProject, 'specs', 'sample-spec', 'HANDOFF.md'), 'utf8'), '## Constraints', 'new-handoff handoff');
+  const scaffoldSnapshot = fs.readFileSync(path.join(newProject, 'specs', 'sample-spec', 'HANDOFF.md'), 'utf8');
+  assertContains(runNodeCli(newProject, ['check-handoff', path.join('specs', 'sample-spec', 'HANDOFF.md')]), 'PASS: Handoff validated at specs/sample-spec/HANDOFF.md', 'new-handoff validation');
+  assertThrows(
+    () => runNodeCli(newProject, ['new-handoff', 'sample-spec']),
+    'handoff already exists at specs/sample-spec/HANDOFF.md',
+    'new-handoff overwrite prevention',
+  );
+  assert(fs.readFileSync(path.join(newProject, 'specs', 'sample-spec', 'HANDOFF.md'), 'utf8') === scaffoldSnapshot, 'new-handoff should preserve existing content');
+
   initProject(legacyProject, 'Legacy Repo');
   const legacyPackage = path.join(legacyProject, 'package.json');
   const legacyPkg = readJson(legacyPackage);

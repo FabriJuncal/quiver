@@ -10,6 +10,8 @@ const REQUIRED_HEADINGS = [
   '## Constraints',
 ];
 
+const HANDOFF_TEMPLATE_PATH = path.resolve(__dirname, '..', '..', '..', 'specs', '[project-name]', 'HANDOFF.md.template');
+
 function normalizePosixPath(filePath, pathLib = path) {
   return filePath.split(pathLib.sep).join('/');
 }
@@ -63,10 +65,40 @@ function checkHandoff(handoffInput, repoRoot = process.cwd()) {
   return resolved;
 }
 
+function scaffoldHandoff(specSlug, repoRoot = process.cwd()) {
+  const trimmedSlug = String(specSlug || '').trim();
+  if (!trimmedSlug) {
+    throw new Error('create-quiver: missing handoff slug. Use: npx create-quiver new-handoff <spec-slug>');
+  }
+
+  if (!fs.existsSync(HANDOFF_TEMPLATE_PATH)) {
+    throw new Error('create-quiver: missing handoff template at specs/[project-name]/HANDOFF.md.template');
+  }
+
+  const resolved = resolveHandoffPath(repoRoot, path.join('specs', trimmedSlug, 'HANDOFF.md'));
+  if (fs.existsSync(resolved.absolutePath)) {
+    throw new Error(`create-quiver: handoff already exists at ${resolved.relativePath}`);
+  }
+
+  const templateText = fs.readFileSync(HANDOFF_TEMPLATE_PATH, 'utf8');
+  const projectName = trimmedSlug.replace(/-/g, ' ');
+  const currentDate = new Date().toISOString().slice(0, 10);
+  const renderedText = templateText
+    .replace(/{{PROJECT_NAME}}/g, projectName)
+    .replace(/{{PROJECT_SLUG}}/g, trimmedSlug)
+    .replace(/{{FECHA}}/g, currentDate);
+
+  fs.mkdirSync(path.dirname(resolved.absolutePath), { recursive: true });
+  fs.writeFileSync(resolved.absolutePath, renderedText);
+
+  return checkHandoff(resolved.relativePath, repoRoot);
+}
+
 module.exports = {
   REQUIRED_HEADINGS,
   checkHandoff,
   readHandoffSections,
+  scaffoldHandoff,
   resolveHandoffPath,
   validateHandoffSections,
 };

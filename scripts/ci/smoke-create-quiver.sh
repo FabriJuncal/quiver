@@ -318,6 +318,31 @@ if node "$cli" check-handoff "docs/HANDOFF.md" >/dev/null 2>&1; then
   exit 1
 fi
 
+new_handoff_output="$(cd "$new_target" && node "$cli" new-handoff sample-spec)"
+if [[ "$new_handoff_output" != *"PASS: Handoff scaffolded at specs/sample-spec/HANDOFF.md"* ]]; then
+  echo "new-handoff did not scaffold the canonical handoff" >&2
+  exit 1
+fi
+
+assert_file "$new_target/specs/sample-spec/HANDOFF.md"
+assert_contains "$new_target/specs/sample-spec/HANDOFF.md" "## Background"
+assert_contains "$new_target/specs/sample-spec/HANDOFF.md" "## What you will change"
+assert_contains "$new_target/specs/sample-spec/HANDOFF.md" "## Validation checklist"
+assert_contains "$new_target/specs/sample-spec/HANDOFF.md" "## Out of scope"
+assert_contains "$new_target/specs/sample-spec/HANDOFF.md" "## Expected deliverable"
+assert_contains "$new_target/specs/sample-spec/HANDOFF.md" "## Constraints"
+
+new_handoff_hash_before="$(shasum "$new_target/specs/sample-spec/HANDOFF.md" | awk '{print $1}')"
+if (cd "$new_target" && node "$cli" new-handoff sample-spec) >/dev/null 2>&1; then
+  echo "new-handoff should fail when the handoff already exists" >&2
+  exit 1
+fi
+new_handoff_hash_after="$(shasum "$new_target/specs/sample-spec/HANDOFF.md" | awk '{print $1}')"
+if [[ "$new_handoff_hash_before" != "$new_handoff_hash_after" ]]; then
+  echo "new-handoff should preserve the existing handoff" >&2
+  exit 1
+fi
+
 bad_handoff_root="$temp_root/bad-handoff-project"
 mkdir -p "$bad_handoff_root/specs/smoke-project"
 cp "$new_target/specs/smoke-project/HANDOFF.md" "$bad_handoff_root/specs/smoke-project/HANDOFF.md"

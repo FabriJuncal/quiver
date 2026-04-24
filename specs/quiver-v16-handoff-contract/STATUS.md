@@ -11,13 +11,13 @@ Slice numbering is local to this spec. The first slice is `slice-01`.
 |-------|-------|--------|----|-----------------|--------------|
 | slice-01 | Handoff Template and Contract | Completed | - | 3 | 2 |
 | slice-02 | Check Handoff Command | Completed | - | 3 | 2 |
-| slice-03 | Handoff Scaffold Optional | Draft | - | 2 | - |
+| slice-03 | Handoff Scaffold Optional | Completed | - | 2 | 2 |
 
 ## Progress
 
-- Completed slices: 2 / 3
+- Completed slices: 3 / 3
 - Estimated hours: 8
-- Actual hours: 4
+- Actual hours: 6
 
 ## Blockers
 

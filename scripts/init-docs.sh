@@ -520,6 +520,7 @@ npm run quiver:refresh-active-slices
 
 The legacy Bash wrappers remain in \`tools/scripts/\` for compatibility, but new project-level automation should prefer the \`quiver:*\` scripts and the direct \`npx create-quiver ...\` commands below.
 \`npm run check-handoff -- specs/$PROJECT_SLUG/HANDOFF.md\` is available as a legacy-friendly alias for the handoff validator.
+If a new bounded transfer is needed, scaffold \`specs/$PROJECT_SLUG/HANDOFF.md\` with \`npx create-quiver new-handoff $PROJECT_SLUG\` and validate it with \`npx create-quiver check-handoff specs/$PROJECT_SLUG/HANDOFF.md\`.
 For exceptional context transfers between agents or phases, a dedicated \`HANDOFF.md\` can live alongside the usual spec and docs files.
 
 ## Cross-Platform Support

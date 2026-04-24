@@ -1,7 +1,7 @@
 # Quiver v0.16 - Handoff Contract
 
 **Date:** 2026-04-23
-**Status:** Draft
+**Status:** Completed
 
 Slice numbering resets here: this spec starts at `slice-01` and does not continue any previous spec's numbering.
 
@@ -56,7 +56,7 @@ Formalize a lightweight `HANDOFF.md` contract for exceptional context transfers 
 |-------|-------|--------|------|
 | 01 | Handoff Template and Contract | Completed | [slice-01](./slices/slice-01-handoff-template-and-contract/slice.json) |
 | 02 | Check Handoff Command | Completed | [slice-02](./slices/slice-02-check-handoff-command/slice.json) |
-| 03 | Handoff Scaffold Optional | Draft | [slice-03](./slices/slice-03-handoff-scaffold-optional/slice.json) |
+| 03 | Handoff Scaffold Optional | Completed | [slice-03](./slices/slice-03-handoff-scaffold-optional/slice.json) |
 
 ## Definition of Done
 

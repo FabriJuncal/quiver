@@ -2,7 +2,7 @@
 
 **Spec:** quiver-v16-handoff-contract
 **Date:** 2026-04-23
-**Status:** Draft
+**Status:** Completed
 
 ## Summary
 
@@ -14,7 +14,7 @@ This spec will standardize Quiver handoffs as a lightweight artifact for excepti
 |-------|--------|----------|
 | slice-01 | Completed | A canonical `specs/[project-name]/HANDOFF.md.template` now exists, `init-docs` and `scripts/init-docs.sh` copy it into `specs/<project-slug>/HANDOFF.md`, and the docs explain when to use a handoff versus updating a spec or slice directly |
 | slice-02 | Completed | `create-quiver check-handoff <path>` validates path and required sections, returns non-zero on malformed handoffs, and smoke coverage proves both valid and invalid examples |
-| slice-03 | Draft | `create-quiver new-handoff <spec-slug>` generates `specs/<spec-slug>/HANDOFF.md` from the template without overwriting an existing handoff and stays aligned with the validator contract |
+| slice-03 | Completed | `create-quiver new-handoff <spec-slug>` generates `specs/<spec-slug>/HANDOFF.md` from the template without overwriting an existing handoff and stays aligned with the validator contract |
 
 ## Required Final Evidence
 

@@ -17,6 +17,7 @@ The project map is the single source of truth for stack, package manager, comman
 The universal router for generated projects is `AGENTS.md`; read it before `docs/AI_CONTEXT.md` and `docs/AI_ONBOARDING_PROMPT.md`.
 Generated projects also get `docs/DECISIONS.md`; use it for durable choices that should not be re-litigated.
 If a generated project has been analyzed, the exact agent handoff prompt is `docs/AI_ONBOARDING_PROMPT.md`.
+If a new bounded transfer is needed, scaffold `specs/<project-slug>/HANDOFF.md` with `npx create-quiver new-handoff <spec-slug>` and validate it with `npx create-quiver check-handoff specs/<project-slug>/HANDOFF.md`.
 Use `npx create-quiver check-handoff specs/<project-slug>/HANDOFF.md` to validate a transferred handoff before execution.
 During onboarding, after reading `ROADMAP.md`, also read `BACKLOG.md` in the repository root: it tracks emerging patterns that are not yet scoped as specs. Before proposing a new spec, confirm the idea is not already parked or emerging there.
 
@@ -28,6 +29,7 @@ Use the smallest context that still answers the current task.
 - **Onboarding router:** start from `AGENTS.md` first, then the onboarding files above.
 - **Implementation:** start from `docs/ai/ACTIVE_SLICE.md` when it exists; otherwise start from `specs/<project-slug>/slices/<slice-id>/slice.json`, then read only the declared files, nearby tests, and directly related source.
 - **Handoff:** start from `specs/<project-slug>/HANDOFF.md` when the work was explicitly transferred through a handoff artifact.
+- **Handoff scaffold:** if no handoff exists yet and the work needs one, use `npx create-quiver new-handoff <spec-slug>` first.
 - **Review:** start from `git diff` and the slice scope before opening full files.
 - **Debug:** start from the command, exit code, first relevant error, stacktrace, and the nearest changed code before reading long logs.
 

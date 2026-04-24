@@ -2,7 +2,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { execFileSync } = require('child_process');
-const { checkHandoff } = require('./lib/handoff');
+const { checkHandoff, scaffoldHandoff } = require('./lib/handoff');
 const { collectDoctorWarnings } = require('./lib/doctor');
 const { initializeProjectDocs } = require('./lib/init-docs');
 const { checkPrReadiness, checkScope, checkSliceReadiness } = require('./lib/readiness');
@@ -31,6 +31,7 @@ function printUsage() {
   npx create-quiver check-slice [options] <slice.json>
   npx create-quiver check-pr <slice.json>
   npx create-quiver check-handoff <handoff.md>
+  npx create-quiver new-handoff <spec-slug>
   npx create-quiver cleanup-slice [options] <slice.json>
   npx create-quiver check-scope [options] <slice.json>
   npx create-quiver refresh-active-slices
@@ -51,6 +52,7 @@ Examples:
   cd ./my-project && npx create-quiver check-slice specs/my-project/slices/slice-01/slice.json
   cd ./my-project && npx create-quiver check-pr specs/my-project/slices/slice-01/slice.json
   cd ./my-project && npx create-quiver check-handoff specs/my-project/HANDOFF.md
+  cd ./my-project && npx create-quiver new-handoff my-spec
   cd ./my-project && npx create-quiver cleanup-slice specs/my-project/slices/slice-01/slice.json
   cd ./my-project && npx create-quiver check-scope specs/my-project/slices/slice-01/slice.json
   cd ./my-project && npx create-quiver refresh-active-slices
@@ -75,7 +77,7 @@ function parseArgs(argv) {
   };
 
   const args = [...argv];
-  const commandModes = new Set(['doctor', 'analyze', 'migrate', 'start-slice', 'check-slice', 'check-pr', 'check-handoff', 'cleanup-slice', 'check-scope', 'refresh-active-slices']);
+  const commandModes = new Set(['doctor', 'analyze', 'migrate', 'start-slice', 'check-slice', 'check-pr', 'check-handoff', 'new-handoff', 'cleanup-slice', 'check-scope', 'refresh-active-slices']);
   if (commandModes.has(args[0])) {
     result.mode = args[0];
     args.shift();
@@ -90,6 +92,9 @@ function parseArgs(argv) {
     args.shift();
   } else if (args[0] === '--check-handoff') {
     result.mode = 'check-handoff';
+    args.shift();
+  } else if (args[0] === '--new-handoff') {
+    result.mode = 'new-handoff';
     args.shift();
   }
 
@@ -120,6 +125,11 @@ function parseArgs(argv) {
 
     if (arg === '--check-handoff') {
       result.mode = 'check-handoff';
+      continue;
+    }
+
+    if (arg === '--new-handoff') {
+      result.mode = 'new-handoff';
       continue;
     }
 
@@ -1233,6 +1243,14 @@ async function run(argv) {
     }
     const resolved = checkHandoff(handoffInput, repoRoot);
     console.log(`PASS: Handoff validated at ${resolved.relativePath}`);
+    return;
+  }
+
+  if (args.mode === 'new-handoff') {
+    const repoRoot = process.cwd();
+    const handoffSlug = args.targetDir;
+    const resolved = scaffoldHandoff(handoffSlug, repoRoot);
+    console.log(`PASS: Handoff scaffolded at ${resolved.relativePath}`);
     return;
   }
 
