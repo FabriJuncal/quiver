@@ -1,3 +1,14 @@
+/**
+ * Slice graph library.
+ *
+ * API:
+ * - readAllSlices(rootDir): collect every slice.json under specs/ and specs-fix/
+ * - inferDependencies(slices): normalize declared deps and infer missing ones
+ * - buildGraph(slices): build a node/edge graph with cycle discovery
+ * - topoSort(graph): return slices in dependency order
+ * - computeLevels(graph): group slices into parallel-ready levels
+ * - detectFileConflicts(levelSlices): group same-level slices that overlap on files[]
+ */
 const fs = require('fs');
 const path = require('path');
 
