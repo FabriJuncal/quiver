@@ -44,7 +44,7 @@ Options:
   -n, --name <project-name>   Project name to generate
   -d, --dir <target-dir>      Target directory to scaffold into or inspect
       --spec <slug>           Restrict plan output to one spec
-      --format <name>         Graph output format (tree)
+      --format <name>         Graph output format (tree, mermaid, dot)
       --show-conflicts        Show shared file paths in graph output
       --level <n>             Restrict graph output to one level
       --json                  Emit machine-readable JSON
@@ -59,6 +59,8 @@ Examples:
   cd ./my-project && npx create-quiver analyze
   cd ./my-project && npx create-quiver plan --json
   cd ./my-project && npx create-quiver graph --show-conflicts
+  cd ./my-project && npx create-quiver graph --format mermaid
+  cd ./my-project && npx create-quiver graph --format dot
   cd ./my-project && npx create-quiver migrate
   cd ./my-project && npx create-quiver doctor
   cd ./my-project && npx create-quiver start-slice specs/my-project/slices/slice-01/slice.json

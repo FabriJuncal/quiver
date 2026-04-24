@@ -239,6 +239,13 @@ npm install
 {{DOCTOR_COMMAND}}
 \`\`\`
 
+Exportable graph formats are available when you need a PR-ready Mermaid block or Graphviz source:
+
+\`\`\`bash
+{{GRAPH_COMMAND}} --format mermaid
+{{GRAPH_COMMAND}} --format dot
+\`\`\`
+
 If this project needs a pinned Quiver version, install it as a devDependency:
 
 \`\`\`bash
@@ -268,6 +275,7 @@ npm run quiver:check-scope -- specs/${projectSlug}/slices/slice-01/slice.json
 npm run quiver:refresh-active-slices
 \`\`\`
 
+The \`quiver:graph\` script prints the tree view by default; use \`npx create-quiver graph --format mermaid\` for PR-ready Markdown and \`--format dot\` when you want Graphviz source.
 The legacy Bash wrappers remain in \`tools/scripts/\` for compatibility, but new project-level automation should prefer the \`quiver:*\` scripts and the direct \`npx create-quiver ...\` commands below.
 \`npm run quiver:migrate\` is only for projects that were already initialized by Quiver.
 \`npm run check-handoff -- specs/${projectSlug}/HANDOFF.md\` is available as a legacy-friendly alias for the handoff validator.
@@ -291,6 +299,8 @@ npx create-quiver migrate
 {{DOCTOR_COMMAND}}
 \`\`\`
 
+Use \`{{GRAPH_COMMAND}} --format mermaid\` for GitHub-friendly graph embeds or \`{{GRAPH_COMMAND}} --format dot\` for Graphviz pipelines.
+
 If the project never ran Quiver initialization before, do not use \`migrate\` as bootstrap. Run:
 
 \`\`\`bash
@@ -307,6 +317,8 @@ npx create-quiver migrate
 {{GRAPH_COMMAND}}
 {{DOCTOR_COMMAND}}
 \`\`\`
+
+The tree output remains the default, but Mermaid and DOT are available on demand for exported docs and slide decks.
 
 ## AI Context Onboarding
 

@@ -9,6 +9,7 @@ All notable changes to this project will be documented in this file.
 - Cross-platform CI matrix covering macOS, Linux, and Windows for the Node-native Quiver runtime
 - Node-native generated project npm scripts and additive migration support for existing projects
 - Optional `depends_on` and `parallel_safe` validation in `check-slice`, plus JSON-with-comments support for slice templates
+- `quiver:graph` export formats for Mermaid and DOT, plus graph example docs for PR-ready output
 
 ## [0.4.0] - 2026-04-21
 

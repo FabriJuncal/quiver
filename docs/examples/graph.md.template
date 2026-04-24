@@ -1,27 +1,62 @@
 # Graph Example
 
-Use `graph` to inspect the parallel levels and conflict groups before starting implementation work.
+Use `graph` to inspect the parallel levels and conflict groups before starting implementation work. The default tree view is best for humans, Mermaid is best for PR descriptions, and DOT is best for Graphviz pipelines.
 
 ## Input
 
 ```bash
 npx create-quiver graph --show-conflicts
+npx create-quiver graph --format mermaid --show-conflicts
+npx create-quiver graph --format dot --show-conflicts
 ```
 
 ## Representative Output
 
+### Tree
+
 ```text
 Quiver graph
 Level 0 (2 slices, 2 lots)
-+-- ! spec-a/slice-01-alpha Alpha [draft]
-+-- ! spec-b/slice-01-delta Delta [draft]
++-- spec-a/slice-01-alpha Alpha [draft]
+\-- spec-b/slice-01-beta Beta [draft]
 |
-Level 1 (1 slices, 1 lots)
-\-- ⚠ spec-a/slice-02-beta Beta [draft] [docs/shared.md]
+Level 1 (2 slices, 1 lots)
++-- ! spec-c/slice-02-gamma Gamma [draft] [docs/shared.md]
+\-- ! spec-d/slice-02-delta Delta [draft] [docs/shared.md]
+```
+
+### Mermaid
+
+```mermaid
+flowchart TD
+  n_spec_a_slice_01_alpha["spec-a/slice-01-alpha<br/>Alpha<br/>2h<br/>[draft]"]
+  n_spec_b_slice_01_beta["spec-b/slice-01-beta<br/>Beta<br/>3h<br/>[draft]"]
+  n_spec_c_slice_02_gamma["! spec-c/slice-02-gamma<br/>Gamma<br/>4h<br/>[draft]<br/>Files: docs/shared.md"]
+  n_spec_d_slice_02_delta["! spec-d/slice-02-delta<br/>Delta<br/>1h<br/>[draft]<br/>Files: docs/shared.md"]
+  n_spec_a_slice_01_alpha --> n_spec_c_slice_02_gamma
+  n_spec_b_slice_01_beta --> n_spec_d_slice_02_delta
+```
+
+### DOT
+
+```dot
+digraph QuiverGraph {
+  rankdir=TB;
+  node [shape=box, style="rounded,filled", fillcolor="#f8f9fa", color="#495057", fontname="Helvetica"];
+  edge [color="#6c757d"];
+  n_spec_a_slice_01_alpha [label="spec-a/slice-01-alpha\nAlpha\n2h\n[draft]"];
+  n_spec_b_slice_01_beta [label="spec-b/slice-01-beta\nBeta\n3h\n[draft]"];
+  n_spec_c_slice_02_gamma [label="! spec-c/slice-02-gamma\nGamma\n4h\n[draft]\nFiles: docs/shared.md", fillcolor="#fff3cd", color="#d39e00"];
+  n_spec_d_slice_02_delta [label="! spec-d/slice-02-delta\nDelta\n1h\n[draft]\nFiles: docs/shared.md", fillcolor="#fff3cd", color="#d39e00"];
+  n_spec_a_slice_01_alpha -> n_spec_c_slice_02_gamma;
+  n_spec_b_slice_01_beta -> n_spec_d_slice_02_delta;
+}
 ```
 
 ## Notes
 
+- GitHub renders Mermaid fenced blocks directly in markdown.
+- DOT output is plain source; render it with Graphviz if you want an image.
 - The exact level grouping depends on the repo's pending dependency graph.
 - Use `--level <n>` to focus on a single level.
 - Use `--json` when another tool needs structured levels and conflict groups.

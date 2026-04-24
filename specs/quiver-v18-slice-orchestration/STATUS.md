@@ -1,7 +1,7 @@
 # Quiver v0.18 Spec Status
 
 **Spec:** quiver-v18-slice-orchestration
-**Last updated:** 2026-04-23
+**Last updated:** 2026-04-24
 
 Slice numbering is local to this spec. The first slice is `slice-01`.
 
@@ -11,14 +11,14 @@ Slice numbering is local to this spec. The first slice is `slice-01`.
 |-------|-------|--------|----|-----------------|--------------|
 | slice-01 | `quiver:plan` Command | Completed | https://github.com/FabriJuncal/quiver/pull/49 | 5 | 5 |
 | slice-02 | `quiver:graph` MVP Tree | Completed | https://github.com/FabriJuncal/quiver/pull/50 | 4 | 4 |
-| slice-03 | `quiver:graph` Extended Formats | Draft | - | 2 | - |
+| slice-03 | `quiver:graph` Extended Formats | Completed | https://github.com/FabriJuncal/quiver/pull/51 | 2 | 2 |
 | slice-04 | `quiver:next` Command | Draft | - | 3 | - |
 
 ## Progress
 
-- Completed slices: 2 / 4
+- Completed slices: 3 / 4
 - Estimated hours: 14
-- Actual hours: 9
+- Actual hours: 11
 
 ## Blockers
 

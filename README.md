@@ -42,6 +42,8 @@ npx create-quiver graph
 npx create-quiver doctor
 ```
 
+Use `npx create-quiver graph --format mermaid` for PR-ready Markdown or `npx create-quiver graph --format dot` for Graphviz source.
+
 If you need to target another directory from outside the project, pass `--dir` explicitly. For the current project root, omit it.
 
 The analyzer creates `docs/PROJECT_SCAN.json` and `docs/PROJECT_MAP.md`. These files give the AI agent a deterministic project map before it edits context docs.
@@ -66,6 +68,8 @@ npm run quiver:check-scope -- specs/<project-slug>/slices/slice-01/slice.json
 npm run quiver:refresh-active-slices
 ```
 
+`npm run quiver:graph` prints the tree view by default. Pass `--format mermaid` or `--format dot` when you need an exportable graph artifact.
+
 The legacy Bash wrappers remain in `tools/scripts/` for compatibility, but new project-level automation should prefer the `quiver:*` scripts and the direct `npx create-quiver ...` commands.
 `npm run quiver:migrate` is only for projects that were already initialized by Quiver.
 
@@ -80,6 +84,8 @@ npx create-quiver analyze
 npx create-quiver graph
 npx create-quiver doctor
 ```
+
+Use `npx create-quiver graph --format mermaid` for GitHub-friendly graph embeds or `npx create-quiver graph --format dot` for Graphviz pipelines.
 
 If the project never ran Quiver initialization before, do not use `migrate` as bootstrap. Run:
 
@@ -96,6 +102,8 @@ npx create-quiver analyze
 npx create-quiver graph
 npx create-quiver doctor
 ```
+
+The tree output remains the default, but Mermaid and DOT are available on demand for exported docs and slide decks.
 
 ### 4. Ask The AI To Prepare Context
 

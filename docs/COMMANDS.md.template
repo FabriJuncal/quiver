@@ -4,7 +4,7 @@
 **Last updated:** {{FECHA}}
 
 This document is the canonical command reference for the orchestration roadmap.
-It is intentionally small at v0.18: only the plan and graph rows are reserved for now.
+It is intentionally small at v0.18: only the plan and graph rows are reserved for now, but `quiver:graph` already supports tree, Mermaid, and DOT output modes.
 
 ## Command Table
 
@@ -18,5 +18,6 @@ It is intentionally small at v0.18: only the plan and graph rows are reserved fo
 - Add new rows here only when a command is officially shipped.
 - Keep the table concise and cross-platform.
 - Shared graph library: `src/create-quiver/lib/slice-graph.js`.
+- `quiver:graph --format mermaid` is the PR-friendly export; `--format dot` is for Graphviz consumers.
 - `check-slice` now validates optional `depends_on` targets and requires `parallel_safe_reason` when `parallel_safe` is set to `never`.
 - Cross-platform authoring rules live in `docs/SUPPORT_MATRIX.md`.

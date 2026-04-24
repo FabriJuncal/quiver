@@ -1,7 +1,7 @@
 # Quiver v0.18 Evidence Report
 
 **Spec:** quiver-v18-slice-orchestration
-**Date:** 2026-04-23
+**Date:** 2026-04-24
 **Status:** Draft
 
 ## Summary
@@ -14,7 +14,7 @@ This spec delivers the first three user-facing orchestration commands: `plan`, `
 |-------|--------|----------|
 | slice-01 | Completed | `quiver:plan` prints the topological order of pending slices; `--json` is a valid parseable payload; critical path is calculated; docs/examples/plan.md exists |
 | slice-02 | Completed | `quiver:graph --format tree` prints an ASCII tree; `--show-conflicts` flags intersecting files; ASCII fallback works without UTF-8 locale |
-| slice-03 | Draft | `quiver:graph --format mermaid` output renders in a GitHub markdown preview; `--format dot` output compiles with Graphviz |
+| slice-03 | Completed | `quiver:graph --format mermaid` prints a fenced Mermaid flowchart; `--format dot` prints valid DOT source and the docs show both formats |
 | slice-04 | Draft | `quiver:next` prints one slice; `--all-ready` prints the whole first level; `--auto-start` requires confirmation on TTY and refuses on non-TTY |
 
 ## Required Final Evidence

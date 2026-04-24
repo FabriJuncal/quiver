@@ -1,4 +1,6 @@
 const { buildGraph, computeLevels, detectFileConflicts, readAllSlices } = require('../lib/slice-graph');
+const { renderDotGraph } = require('../lib/renderers/dot');
+const { renderMermaidGraph } = require('../lib/renderers/mermaid');
 const { renderTreeGraph, isUnicodeEnabled } = require('../lib/renderers/tree');
 
 const EXCLUDED_STATUSES = new Set(['completed', 'skipped', 'cancelled']);
@@ -12,6 +14,7 @@ function toGraphNode(node) {
     hours: Number.isFinite(Number(node.json?.estimated_hours)) ? Number(node.json.estimated_hours) : 0,
     status: node.status || 'draft',
     files: Array.isArray(node.files) ? node.files : [],
+    depends_on: Array.isArray(node.depends_on) ? node.depends_on : [],
   };
 }
 
@@ -51,14 +54,29 @@ function collectGraph(repoRoot, options = {}) {
 }
 
 function formatHumanGraph(report, options = {}) {
-  return renderTreeGraph(report, {
+  const format = options.format || 'tree';
+  const sharedOptions = {
     showConflicts: options.showConflicts === true,
     unicode: options.unicode === true || isUnicodeEnabled(options),
-  });
+  };
+
+  if (format === 'tree') {
+    return renderTreeGraph(report, sharedOptions);
+  }
+
+  if (format === 'mermaid') {
+    return renderMermaidGraph(report, sharedOptions);
+  }
+
+  if (format === 'dot') {
+    return renderDotGraph(report, sharedOptions);
+  }
+
+  throw new Error(`create-quiver: unsupported graph format: ${format}`);
 }
 
 function runGraph(repoRoot, options = {}) {
-  if (options.format && options.format !== 'tree') {
+  if (options.format && !['tree', 'mermaid', 'dot'].includes(options.format)) {
     throw new Error(`create-quiver: unsupported graph format: ${options.format}`);
   }
 
