@@ -166,6 +166,7 @@ function readJson(filePath) {
 }
 
 function writeJson(filePath, data) {
+  fs.mkdirSync(path.dirname(filePath), { recursive: true });
   fs.writeFileSync(filePath, `${JSON.stringify(data, null, 2)}\n`);
 }
 
@@ -190,6 +191,9 @@ function assertNodeNativeScripts(packageJsonPath, label) {
   assertPackageScripts(packageJsonPath, label, [
     'quiver:migrate',
     'quiver:analyze',
+    'quiver:plan',
+    'quiver:graph',
+    'quiver:next',
     'quiver:doctor',
     'quiver:start-slice',
     'quiver:check-slice',
@@ -244,6 +248,7 @@ function runSmoke() {
   assertPackageScripts(path.join(newProject, 'package.json'), 'new project', [
     'quiver:plan',
     'quiver:graph',
+    'quiver:next',
     'quiver:doctor',
     'quiver:migrate',
     'check:slice',
@@ -262,10 +267,12 @@ function runSmoke() {
   runNodeCli(newProject, ['analyze']);
   const doctorAfter = runNodeCli(newProject, ['doctor']);
   assertContains(doctorAfter, 'Read AGENTS.md, then docs/AI_ONBOARDING_PROMPT.md and execute it.', 'doctor after analyze');
+  assertContains(doctorAfter, 'npx create-quiver next', 'doctor after analyze');
   assertContains(doctorAfter, 'npx create-quiver start-slice', 'doctor after analyze');
   assertContains(fs.readFileSync(path.join(newProject, 'AGENTS.md'), 'utf8'), '## Reading Budget', 'AGENTS.md');
   assertFile(path.join(newProject, 'docs', 'PROJECT_SCAN.json'));
   assertFile(path.join(newProject, 'docs', 'PROJECT_MAP.md'));
+  assertFile(path.join(newProject, 'docs', 'examples', 'next.md'));
   assertFile(path.join(newProject, 'docs', 'examples', 'plan.md'));
   assertFile(path.join(newProject, 'docs', 'examples', 'graph.md'));
   const graphMermaid = runNodeCli(newProject, ['graph', '--format', 'mermaid']);
@@ -285,13 +292,45 @@ function runSmoke() {
   assertContains(fs.readFileSync(path.join(newProject, 'docs', 'COMMANDS.md'), 'utf8'), 'DOT', 'COMMANDS.md');
   assertContains(fs.readFileSync(path.join(newProject, 'docs', 'COMMANDS.md'), 'utf8'), 'docs/examples/plan.md', 'COMMANDS.md');
   assertContains(fs.readFileSync(path.join(newProject, 'docs', 'COMMANDS.md'), 'utf8'), 'docs/examples/graph.md', 'COMMANDS.md');
+  assertContains(fs.readFileSync(path.join(newProject, 'docs', 'COMMANDS.md'), 'utf8'), 'docs/examples/next.md', 'COMMANDS.md');
   assertContains(fs.readFileSync(path.join(newProject, 'docs', 'COMMANDS.md'), 'utf8'), 'src/create-quiver/lib/slice-graph.js', 'COMMANDS.md');
   assertContains(fs.readFileSync(path.join(newProject, 'docs', 'examples', 'graph.md'), 'utf8'), '```mermaid', 'graph example');
   assertContains(fs.readFileSync(path.join(newProject, 'docs', 'examples', 'graph.md'), 'utf8'), 'digraph QuiverGraph', 'graph example');
   assertContains(fs.readFileSync(path.join(newProject, 'docs', 'examples', 'graph.md'), 'utf8'), 'GitHub renders Mermaid', 'graph example');
+  assertContains(fs.readFileSync(path.join(newProject, 'docs', 'examples', 'next.md'), 'utf8'), 'Next Example', 'next example');
+  assertContains(fs.readFileSync(path.join(newProject, 'docs', 'examples', 'next.md'), 'utf8'), 'npx create-quiver next --auto-start', 'next example');
   assertContains(graphMermaid, '```mermaid', 'graph mermaid output');
   assertContains(graphMermaid, 'flowchart TD', 'graph mermaid output');
   assertContains(graphDot, 'digraph QuiverGraph', 'graph dot output');
+  const readySlicePath = path.join(newProject, 'specs', 'smoke-project', 'slices', 'slice-01-ready', 'slice.json');
+  writeJson(readySlicePath, {
+    slice_id: 'slice-01-ready',
+    ticket: 'QUIVER-01',
+    title: 'Ready slice',
+    type: 'feat',
+    objective: 'Ready for next command smoke',
+    description: 'Smoke slice for next command',
+    git: {
+      branch_type: 'feature',
+      base_branch: 'develop',
+      branch_slug: 'slice-01-ready',
+      branch_name: 'feature/QUIVER-01-slice-01-ready',
+    },
+    files: ['docs/next-smoke.md'],
+    status: 'draft',
+    acceptance: ['Next smoke acceptance'],
+    tests: ['node --test tests/commands/next.test.js'],
+    estimated_hours: 1,
+  });
+  const nextOutput = runNodeCli(newProject, ['next']);
+  assertContains(nextOutput, 'Next ready slice', 'next output');
+  assertContains(nextOutput, 'specs/smoke-project/slices/slice-01-ready/slice.json', 'next output');
+  assertContains(nextOutput, 'npx create-quiver start-slice "specs/smoke-project/slices/slice-01-ready/slice.json"', 'next output');
+  const nextJson = JSON.parse(runNodeCli(newProject, ['next', '--json']));
+  assert(nextJson.next.ref === 'smoke-project/slice-01-ready', 'next JSON ref mismatch');
+  assert(nextJson.next.start_slice_command === 'npx create-quiver start-slice "specs/smoke-project/slices/slice-01-ready/slice.json"', 'next JSON start command mismatch');
+  assert(Array.isArray(nextJson.all_ready), 'next JSON missing all_ready array');
+  assert(nextJson.all_ready.some((item) => item.ref === 'smoke-project/slice-01-ready'), 'next JSON missing ready slice ref');
   assertContains(fs.readFileSync(path.join(newProject, 'docs', 'SUPPORT_MATRIX.md'), 'utf8'), 'Cross-Platform Authoring Rules', 'SUPPORT_MATRIX.md');
   assertContains(fs.readFileSync(path.join(newProject, 'docs', 'SUPPORT_MATRIX.md'), 'utf8'), 'No shell invocations for logic', 'SUPPORT_MATRIX.md');
   assertContains(fs.readFileSync(path.join(newProject, 'docs', 'ai', 'QUICK.md'), 'utf8'), 'docs/PROJECT_MAP.md', 'QUICK.md');
@@ -346,6 +385,7 @@ function runSmoke() {
   delete legacyPkg.scripts['quiver:migrate'];
   delete legacyPkg.scripts['quiver:analyze'];
   delete legacyPkg.scripts['quiver:doctor'];
+  delete legacyPkg.scripts['quiver:next'];
   delete legacyPkg.scripts['quiver:start-slice'];
   delete legacyPkg.scripts['quiver:check-slice'];
   delete legacyPkg.scripts['quiver:check-pr'];
@@ -371,6 +411,7 @@ function runSmoke() {
     'quiver:analyze',
     'quiver:plan',
     'quiver:graph',
+    'quiver:next',
     'quiver:doctor',
     'quiver:start-slice',
     'quiver:check-slice',

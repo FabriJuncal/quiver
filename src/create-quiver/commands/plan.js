@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const { relativePosixPath } = require('../lib/paths');
 const { buildGraph, readAllSlices, topoSort } = require('../lib/slice-graph');
 
 const EXCLUDED_STATUSES = new Set(['completed', 'skipped', 'cancelled']);
@@ -13,12 +14,14 @@ function compareRefs(left, right) {
   return String(left || '').localeCompare(String(right || ''));
 }
 
-function sliceToPlanItem(slice, index, readySet) {
+function sliceToPlanItem(repoRoot, slice, index, readySet) {
   return {
     index,
     ref: slice.ref,
+    spec_family: slice.specFamily || '',
     spec_slug: slice.specSlug,
     slice_id: slice.sliceId,
+    slice_path: relativePosixPath(repoRoot, slice.slicePath),
     ticket: slice.ticket || '',
     title: slice.title || slice.sliceId,
     status: slice.status || 'draft',
@@ -140,7 +143,7 @@ function collectPlan(repoRoot, options = {}) {
   const targetNodes = options.onlyReady ? readyNodes : selectedNodes;
   const criticalPath = buildCriticalPath(graph, targetNodes.map((node) => node.ref));
   const totalHours = targetNodes.reduce((sum, node) => sum + toHourCount(node.json?.estimated_hours), 0);
-  const plan = targetNodes.map((node, index) => sliceToPlanItem(node, index + 1, readyRefs));
+  const plan = targetNodes.map((node, index) => sliceToPlanItem(repoRoot, node, index + 1, readyRefs));
 
   return {
     critical_path: criticalPath,

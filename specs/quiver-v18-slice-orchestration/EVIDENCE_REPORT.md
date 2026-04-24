@@ -2,11 +2,11 @@
 
 **Spec:** quiver-v18-slice-orchestration
 **Date:** 2026-04-24
-**Status:** Draft
+**Status:** Completed
 
 ## Summary
 
-This spec delivers the first three user-facing orchestration commands: `plan`, `graph`, and `next`. All are read-only by default; `next --auto-start` is the only path that mutates state, and only under TTY confirmation. The measurable outcome is that a maintainer coordinating multiple agents can identify the correct next slice and the current parallel-safe lots without running custom scripts.
+This spec delivers the three user-facing orchestration commands: `plan`, `graph`, and `next`. All are read-only by default; `next --auto-start` is the only path that mutates state, and only under TTY confirmation. The measurable outcome is that a maintainer coordinating multiple agents can identify the correct next slice and the current parallel-safe lots without running custom scripts.
 
 ## Slice Evidence
 
@@ -15,7 +15,7 @@ This spec delivers the first three user-facing orchestration commands: `plan`, `
 | slice-01 | Completed | `quiver:plan` prints the topological order of pending slices; `--json` is a valid parseable payload; critical path is calculated; docs/examples/plan.md exists |
 | slice-02 | Completed | `quiver:graph --format tree` prints an ASCII tree; `--show-conflicts` flags intersecting files; ASCII fallback works without UTF-8 locale |
 | slice-03 | Completed | `quiver:graph --format mermaid` prints a fenced Mermaid flowchart; `--format dot` prints valid DOT source and the docs show both formats |
-| slice-04 | Draft | `quiver:next` prints one slice; `--all-ready` prints the whole first level; `--auto-start` requires confirmation on TTY and refuses on non-TTY |
+| slice-04 | Completed | `quiver:next` prints one slice; `--all-ready` prints the whole first level; `--auto-start` requires confirmation on TTY and refuses on non-TTY |
 
 ## Required Final Evidence
 
@@ -24,7 +24,9 @@ This spec delivers the first three user-facing orchestration commands: `plan`, `
 - `npx create-quiver graph --format tree` renders an ASCII tree on macOS, Linux, and Windows CI
 - `npx create-quiver graph --format mermaid` output pastes directly into a GitHub issue comment and renders
 - `npx create-quiver next` prints a slice without side effects; running it twice returns the same slice
+- `npx create-quiver next --all-ready` prints every slice in the first unblocked level
 - `npx create-quiver next --auto-start` on a TTY prompts before running `start-slice`; on non-TTY returns a non-zero exit
+- `npx create-quiver next --json` returns valid JSON with `next` and `all_ready`
 - `docs/examples/plan.md`, `docs/examples/graph.md`, and `docs/examples/next.md` contain real input and output
 - `docs/COMMANDS.md` has rows for all three commands with OS columns showing macOS/Linux/Windows
 - `README.md` "Project NPM Scripts" lists `quiver:plan`, `quiver:graph`, `quiver:next`

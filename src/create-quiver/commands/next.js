@@ -1,0 +1,134 @@
+const path = require('path');
+const readline = require('readline');
+const { collectPlan } = require('./plan');
+const { startSlice } = require('../lib/lifecycle');
+
+function toStartSliceCommand(slicePath) {
+  return `npx create-quiver start-slice "${slicePath}"`;
+}
+
+function collectNext(repoRoot, options = {}) {
+  const report = collectPlan(repoRoot, {
+    onlyReady: true,
+    specSlug: options.specSlug,
+  });
+
+  const allReady = report.plan.filter((item) => String(item.status || '').toLowerCase() !== 'blocked');
+  const next = allReady.length > 0 ? allReady[0] : null;
+
+  return {
+    all_ready: allReady,
+    next,
+  };
+}
+
+function formatHumanNext(report, options = {}) {
+  const lines = [options.allReady ? 'Ready slices' : 'Next ready slice'];
+
+  if (!report.next) {
+    lines.push('No ready slices found.');
+    return `${lines.join('\n')}\n`;
+  }
+
+  const items = options.allReady ? report.all_ready : [report.next];
+
+  for (const [index, item] of items.entries()) {
+    const command = toStartSliceCommand(item.slice_path);
+    if (options.allReady) {
+      lines.push('');
+      lines.push(`[${index + 1}] ${item.ref}`);
+      lines.push(`Title: ${item.title}`);
+      lines.push(`Status: ${item.status}`);
+      lines.push(`Start: ${command}`);
+    } else {
+      lines.push(`Slice: ${item.ref}`);
+      lines.push(`Title: ${item.title}`);
+      lines.push(`Status: ${item.status}`);
+      lines.push(`Start: ${command}`);
+      if (report.all_ready.length > 1) {
+        lines.push(`Also ready: ${report.all_ready.slice(1).map((candidate) => candidate.ref).join(', ')}`);
+      }
+    }
+  }
+
+  return `${lines.join('\n')}\n`;
+}
+
+function promptConfirm(message, io = {}) {
+  const input = io.input || process.stdin;
+  const output = io.output || process.stdout;
+
+  return new Promise((resolve, reject) => {
+    const rl = readline.createInterface({
+      input,
+      output,
+    });
+
+    rl.question(`${message} [y/N] `, (answer) => {
+      rl.close();
+      resolve(/^y(es)?$/i.test(String(answer || '').trim()));
+    });
+
+    rl.on('SIGINT', () => {
+      rl.close();
+      reject(new Error('create-quiver: confirmation aborted.'));
+    });
+  });
+}
+
+async function runNext(repoRoot, options = {}) {
+  const report = collectNext(repoRoot, options);
+  const isTTY = options.isTTY || {
+    stdin: Boolean(process.stdin.isTTY),
+    stdout: Boolean(process.stdout.isTTY),
+  };
+
+  if (options.autoStart) {
+    if (!isTTY.stdin || !isTTY.stdout) {
+      throw new Error('create-quiver: --auto-start requires an interactive TTY.');
+    }
+
+    if (!report.next) {
+      process.stdout.write('No ready slices found.\n');
+      return report;
+    }
+
+    const confirmed = await (options.promptConfirm || promptConfirm)(`Start slice ${report.next.ref}?`);
+    if (confirmed) {
+      const slicePath = path.resolve(repoRoot, report.next.slice_path);
+      await Promise.resolve((options.startSliceFn || startSlice)(slicePath, { allowDraft: true }));
+      process.stdout.write(`Started: ${report.next.ref}\n`);
+    } else {
+      process.stdout.write('Aborted.\n');
+    }
+    return report;
+  }
+
+  if (options.json) {
+    const payload = {
+      all_ready: report.all_ready.map((item) => ({
+        ...item,
+        start_slice_command: toStartSliceCommand(item.slice_path),
+      })),
+      next: report.next
+        ? {
+            ...report.next,
+            start_slice_command: toStartSliceCommand(report.next.slice_path),
+          }
+        : null,
+    };
+    process.stdout.write(`${JSON.stringify(payload, null, 2)}\n`);
+    return payload;
+  }
+
+  process.stdout.write(formatHumanNext(report, options));
+  return report;
+}
+
+module.exports = {
+  collectNext,
+  formatHumanNext,
+  promptConfirm,
+  runNext,
+  toStartSliceCommand,
+};

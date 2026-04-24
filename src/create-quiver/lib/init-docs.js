@@ -63,6 +63,7 @@ function renderTemplate(text, replacements) {
     .replace(/{{ANALYZE_COMMAND}}/g, replacements.analyzeCommand || 'npx create-quiver analyze')
     .replace(/{{PLAN_COMMAND}}/g, replacements.planCommand || 'npx create-quiver plan')
     .replace(/{{GRAPH_COMMAND}}/g, replacements.graphCommand || 'npx create-quiver graph')
+    .replace(/{{NEXT_COMMAND}}/g, replacements.nextCommand || 'npx create-quiver next')
     .replace(/{{DOCTOR_COMMAND}}/g, replacements.doctorCommand || 'npx create-quiver doctor')
     .replace(/{{START_SLICE_COMMAND}}/g, replacements.startSliceCommand || 'npx create-quiver start-slice <slice.json>')
     .replace(/{{CHECK_SLICE_COMMAND}}/g, replacements.checkSliceCommand || 'npx create-quiver check-slice <slice.json>')
@@ -237,6 +238,7 @@ npm install
 {{PLAN_COMMAND}}
 {{GRAPH_COMMAND}}
 {{DOCTOR_COMMAND}}
+{{NEXT_COMMAND}}
 \`\`\`
 
 Exportable graph formats are available when you need a PR-ready Mermaid block or Graphviz source:
@@ -264,6 +266,7 @@ The generated project includes \`quiver:*\` npm scripts that call the Node CLI a
 npm run quiver:analyze
 npm run quiver:plan
 npm run quiver:graph
+npm run quiver:next
 npm run quiver:doctor
 npm run quiver:migrate
 npm run quiver:start-slice -- specs/${projectSlug}/slices/slice-01/slice.json
@@ -276,6 +279,8 @@ npm run quiver:refresh-active-slices
 \`\`\`
 
 The \`quiver:graph\` script prints the tree view by default; use \`npx create-quiver graph --format mermaid\` for PR-ready Markdown and \`--format dot\` when you want Graphviz source.
+The \`quiver:next\` script points to the next ready slice and can auto-start it behind a confirmation prompt.
+Use \`npx create-quiver next --all-ready\` when you want the full ready level instead of a single suggestion.
 The legacy Bash wrappers remain in \`tools/scripts/\` for compatibility, but new project-level automation should prefer the \`quiver:*\` scripts and the direct \`npx create-quiver ...\` commands below.
 \`npm run quiver:migrate\` is only for projects that were already initialized by Quiver.
 \`npm run check-handoff -- specs/${projectSlug}/HANDOFF.md\` is available as a legacy-friendly alias for the handoff validator.
@@ -296,6 +301,7 @@ npx create-quiver migrate
 {{ANALYZE_COMMAND}}
 {{PLAN_COMMAND}}
 {{GRAPH_COMMAND}}
+{{NEXT_COMMAND}}
 {{DOCTOR_COMMAND}}
 \`\`\`
 
@@ -315,6 +321,7 @@ npx create-quiver migrate
 {{ANALYZE_COMMAND}}
 {{PLAN_COMMAND}}
 {{GRAPH_COMMAND}}
+{{NEXT_COMMAND}}
 {{DOCTOR_COMMAND}}
 \`\`\`
 
@@ -345,9 +352,10 @@ Record durable decisions in \`docs/DECISIONS.md\` so future AI agents do not re-
 2. Create the first slice from specs/${projectSlug}/slices/slice-template/slice.json.
 3. Review the plan with \`{{PLAN_COMMAND}}\` or \`npm run quiver:plan\`.
 4. Inspect parallel lots with \`{{GRAPH_COMMAND}}\` or \`npm run quiver:graph\`.
-5. Start work with \`{{START_SLICE_COMMAND}}\` or \`npm run quiver:start-slice -- <slice.json>\`.
-6. Make one commit per slice.
-7. Open one PR per spec.
+5. Check the next ready slice with \`{{NEXT_COMMAND}}\` or \`npm run quiver:next\`.
+6. Start work with \`{{START_SLICE_COMMAND}}\` or \`npm run quiver:start-slice -- <slice.json>\`.
+7. Make one commit per slice.
+8. Open one PR per spec.
 
 ## Verification Checklist
 
@@ -355,6 +363,7 @@ Record durable decisions in \`docs/DECISIONS.md\` so future AI agents do not re-
 - [ ] {{ANALYZE_COMMAND}} completes
 - [ ] {{PLAN_COMMAND}} completes
 - [ ] {{GRAPH_COMMAND}} completes
+- [ ] {{NEXT_COMMAND}} completes
 - [ ] {{DOCTOR_COMMAND}} completes
 - [ ] AI agent executed docs/AI_ONBOARDING_PROMPT.md
 - [ ] Context docs were reviewed before the first slice
@@ -524,6 +533,7 @@ function initializeProjectDocs(options) {
     analyzeCommand: 'npx create-quiver analyze',
     planCommand: 'npx create-quiver plan',
     graphCommand: 'npx create-quiver graph',
+    nextCommand: 'npx create-quiver next',
     doctorCommand: 'npx create-quiver doctor',
     startSliceCommand: 'npx create-quiver start-slice <slice.json>',
     checkSliceCommand: 'npx create-quiver check-slice <slice.json>',
@@ -539,6 +549,7 @@ function initializeProjectDocs(options) {
     ['docs/DEEP.md.template', 'docs/ai/DEEP.md'],
     ['docs/examples/plan.md.template', 'docs/examples/plan.md'],
     ['docs/examples/graph.md.template', 'docs/examples/graph.md'],
+    ['docs/examples/next.md.template', 'docs/examples/next.md'],
   ];
 
   for (const [source, destination] of tierCopies) {

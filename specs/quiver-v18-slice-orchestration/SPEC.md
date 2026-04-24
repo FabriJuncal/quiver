@@ -61,6 +61,7 @@ Single-slice suggestion. Output modes:
 - Default: top-1 ready slice plus the exact `start-slice` command to copy
 - `--all-ready`: list every slice at the first unblocked level
 - `--auto-start`: prompt for confirmation (requires TTY) and run `start-slice` on accept
+- `--json`: `{ next: Slice | null, all_ready: Slice[] }`
 
 ## Slices
 
@@ -69,7 +70,7 @@ Single-slice suggestion. Output modes:
 | 01 | `quiver:plan` Command | Completed | [slice-01](./slices/slice-01-plan-command/slice.json) |
 | 02 | `quiver:graph` MVP Tree | Completed | [slice-02](./slices/slice-02-graph-mvp-tree/slice.json) |
 | 03 | `quiver:graph` Extended Formats | Completed | [slice-03](./slices/slice-03-graph-extended-formats/slice.json) |
-| 04 | `quiver:next` Command | Draft | [slice-04](./slices/slice-04-next-command/slice.json) |
+| 04 | `quiver:next` Command | Completed | [slice-04](./slices/slice-04-next-command/slice.json) |
 
 ## Definition of Done
 
@@ -77,7 +78,9 @@ Single-slice suggestion. Output modes:
 - `npx create-quiver graph --format tree` prints a correct tree; `--show-conflicts` marks shared files
 - `npx create-quiver graph --format mermaid` output pastes directly into a GitHub markdown block
 - `npx create-quiver next` prints the next ready slice without side effects
+- `npx create-quiver next --all-ready` prints every ready slice in the first unblocked level
 - `npx create-quiver next --auto-start` requires confirmation on TTY and refuses on non-TTY
+- `npx create-quiver next --json` produces a valid parseable object with `next` and `all_ready`
 - Each command has a `docs/examples/<command>.md` page with input and representative output
 - `docs/COMMANDS.md` has rows for all three commands with OS support and example link
 - `README.md` "Project NPM Scripts" lists `quiver:plan`, `quiver:graph`, `quiver:next`
