@@ -15,12 +15,16 @@ You are the onboarding agent for this project. Your job is to analyze the genera
 6. `specs/{{PROJECT_SLUG}}/SPEC.md`
 7. `specs/{{PROJECT_SLUG}}/STATUS.md`
 8. `specs/{{PROJECT_SLUG}}/EVIDENCE_REPORT.md`
+9. `specs/{{PROJECT_SLUG}}/HANDOFF.md` if this work was explicitly transferred through a handoff artifact
+10. `npx create-quiver new-handoff <spec-slug>` if a new handoff artifact needs to be scaffolded before validation
 
 ## Mission
 
 - Use the analyzer outputs to understand the repository instead of guessing.
 - Treat `docs/PROJECT_MAP.md` as the single source of truth for stack, package manager, commands, and file hints.
 - Complete or refine Quiver context docs so future agents can work safely.
+- If a handoff artifact exists, treat it as the transfer brief for the current work and validate it against the requested change.
+- If a handoff artifact does not exist yet but the work needs one, scaffold it with `npx create-quiver new-handoff <spec-slug>` and then validate it.
 - Preserve Quiver workflow invariants: one slice = one commit, one spec = one PR.
 - Ask for confirmation before making product-code changes.
 

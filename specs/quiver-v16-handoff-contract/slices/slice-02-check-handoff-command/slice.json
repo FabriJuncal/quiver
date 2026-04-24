@@ -1,0 +1,70 @@
+{
+  "slice_id": "slice-02-check-handoff-command",
+  "ticket": "QUIVER-02",
+  "type": "feature",
+  "title": "Check Handoff Command",
+  "objective": "Add a lightweight validator for HANDOFF artifacts so the contract is machine-checkable.",
+  "description": "Once the handoff contract exists, Quiver should be able to validate that a concrete handoff lives in the canonical location and contains the required sections. This slice adds `create-quiver check-handoff <path>` with clear failures for missing files, wrong placement, and missing headings.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "check-handoff-command",
+    "branch_name": "feature/QUIVER-02-check-handoff-command"
+  },
+  "must": [
+    "Add `create-quiver check-handoff <path>` to the CLI",
+    "Fail non-zero when the target file does not exist",
+    "Fail non-zero when the target file is not located at the canonical `specs/<spec-slug>/HANDOFF.md` path",
+    "Fail non-zero when any required section heading is missing",
+    "Allow extra sections as long as the required headings are present",
+    "Add smoke coverage for both passing and failing examples"
+  ],
+  "not_included": [
+    "Automatic handoff creation",
+    "Doctor warnings",
+    "Semantic validation of handoff quality"
+  ],
+  "acceptance": [
+    "A valid `specs/<spec-slug>/HANDOFF.md` passes `create-quiver check-handoff <path>`",
+    "A missing handoff path exits non-zero with a clear message",
+    "A handoff missing one required section exits non-zero and names the missing heading",
+    "A handoff outside the canonical `specs/<spec-slug>/HANDOFF.md` path exits non-zero with a placement error",
+    "Smoke coverage proves both valid and invalid cases"
+  ],
+  "files": [
+    "src/create-quiver/index.js",
+    "src/create-quiver/lib/handoff.js",
+    "scripts/ci/smoke-cross-platform.js",
+    "README.md",
+    "README_FOR_AI.md",
+    "specs/quiver-v16-handoff-contract/SPEC.md",
+    "specs/quiver-v16-handoff-contract/STATUS.md",
+    "specs/quiver-v16-handoff-contract/EVIDENCE_REPORT.md",
+    "specs/quiver-v16-handoff-contract/slices/slice-02-check-handoff-command/slice.json"
+  ],
+  "tests": [
+    "node -c src/create-quiver/index.js",
+    "node -c src/create-quiver/lib/handoff.js",
+    "node bin/create-quiver.js check-handoff /tmp/quiver-valid-handoff/specs/sample-spec/HANDOFF.md",
+    "node bin/create-quiver.js check-handoff /tmp/quiver-invalid-handoff/specs/sample-spec/HANDOFF.md",
+    "git diff --check"
+  ],
+  "documentation": [
+    "README.md",
+    "README_FOR_AI.md"
+  ],
+  "dependencies": [
+    "slice-01-handoff-template-and-contract"
+  ],
+  "assumptions": [
+    "Structure validation is enough for the first version; semantic quality can stay a human review concern",
+    "The validator should enforce canonical placement so the contract stays discoverable"
+  ],
+  "estimated_hours": 3,
+  "actual_hours": 2,
+  "status": "completed",
+  "blocked_reason": null,
+  "ready_at": "2026-04-23T00:00:00Z",
+  "started_at": "2026-04-23T00:00:00Z",
+  "completed_at": "2026-04-23T00:00:00Z"
+}

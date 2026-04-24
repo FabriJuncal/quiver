@@ -137,6 +137,9 @@ Quiver generates a project-local workflow under:
 - `docs/` for project context, workflow, support, troubleshooting, and AI guidance
 - `docs/PROJECT_SCAN.json` and `docs/PROJECT_MAP.md` after `create-quiver analyze`
 - `docs/AI_ONBOARDING_PROMPT.md` as the generated handoff prompt for the AI agent
+- `specs/<project-slug>/HANDOFF.md` as the exceptional transfer artifact between agents or phases
+- `npx create-quiver new-handoff <spec-slug>` to scaffold an optional handoff artifact when work needs to move between agents or phases
+- `npx create-quiver check-handoff specs/<project-slug>/HANDOFF.md` to validate a transferred handoff before execution
 - `specs/<project-slug>/` for the project spec, status, evidence, and slice contracts
 - `tools/scripts/` for slice lifecycle and readiness gates
 - `.github/` for default PR, issue, and CI templates
@@ -153,7 +156,7 @@ Use the manual flow only when developing Quiver locally or testing a template ch
 ```
 
 The CLI path is the supported adoption path for users.
-For analyzed projects, the agent handoff prompt lives at `docs/AI_ONBOARDING_PROMPT.md` in the generated project.
+For analyzed projects, the agent handoff prompt lives at `docs/AI_ONBOARDING_PROMPT.md` in the generated project. If a bounded transfer between agents or phases is needed, scaffold `specs/<project-slug>/HANDOFF.md` with `npx create-quiver new-handoff <spec-slug>` and validate it with `npx create-quiver check-handoff specs/<project-slug>/HANDOFF.md`.
 
 ## For AI Agents
 

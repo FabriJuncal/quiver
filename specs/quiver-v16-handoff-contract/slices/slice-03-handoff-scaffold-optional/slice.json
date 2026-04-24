@@ -1,0 +1,67 @@
+{
+  "slice_id": "slice-03-handoff-scaffold-optional",
+  "ticket": "QUIVER-03",
+  "type": "feature",
+  "title": "Handoff Scaffold Optional",
+  "objective": "Optionally add a scaffold command for handoffs after the contract and validator already exist.",
+  "description": "If the handoff contract proves useful, Quiver can add a convenience command to create `specs/<spec-slug>/HANDOFF.md` from the canonical template. This slice stays intentionally small and must not become a larger orchestration feature.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "handoff-scaffold-optional",
+    "branch_name": "feature/QUIVER-03-handoff-scaffold-optional"
+  },
+  "must": [
+    "Add `create-quiver new-handoff <spec-slug>`",
+    "Generate `specs/<spec-slug>/HANDOFF.md` from `specs/[project-name]/HANDOFF.md.template`",
+    "Refuse to overwrite an existing handoff unless a future explicit force flag is added in another spec",
+    "Keep the scaffold aligned with the validator contract and required headings",
+    "Document the command as optional convenience rather than a mandatory workflow step"
+  ],
+  "not_included": [
+    "Force overwrite flags",
+    "Automatic creation of handoffs during init, migrate, or doctor",
+    "Any new state machine for handoff lifecycle"
+  ],
+  "acceptance": [
+    "Running `create-quiver new-handoff sample-spec` creates `specs/sample-spec/HANDOFF.md` in the canonical location",
+    "The generated handoff passes `create-quiver check-handoff specs/sample-spec/HANDOFF.md`",
+    "Running the command again without deleting the file exits non-zero and preserves the existing handoff",
+    "README and AI docs describe the scaffold as optional convenience"
+  ],
+  "files": [
+    "src/create-quiver/index.js",
+    "src/create-quiver/lib/handoff.js",
+    "README.md",
+    "README_FOR_AI.md",
+    "specs/quiver-v16-handoff-contract/SPEC.md",
+    "specs/quiver-v16-handoff-contract/STATUS.md",
+    "specs/quiver-v16-handoff-contract/EVIDENCE_REPORT.md",
+    "specs/quiver-v16-handoff-contract/slices/slice-03-handoff-scaffold-optional/slice.json"
+  ],
+  "tests": [
+    "node -c src/create-quiver/index.js",
+    "node -c src/create-quiver/lib/handoff.js",
+    "node bin/create-quiver.js new-handoff sample-spec",
+    "node bin/create-quiver.js check-handoff specs/sample-spec/HANDOFF.md",
+    "git diff --check"
+  ],
+  "documentation": [
+    "README.md",
+    "README_FOR_AI.md"
+  ],
+  "dependencies": [
+    "slice-01-handoff-template-and-contract"
+  ],
+  "assumptions": [
+    "The scaffold remains optional and should not be built before the contract is clear",
+    "Convenience is valuable only if the generated file stays perfectly aligned with the validator"
+  ],
+  "estimated_hours": 2,
+  "actual_hours": 2,
+  "status": "completed",
+  "blocked_reason": null,
+  "ready_at": "2026-04-23T00:00:00Z",
+  "started_at": "2026-04-23T00:00:00Z",
+  "completed_at": "2026-04-23T00:00:00Z"
+}
