@@ -134,3 +134,18 @@ test('graph CLI prefers Unicode when requested', () => {
     repo.cleanup();
   }
 });
+
+test('graph CLI renders Mermaid and DOT formats', () => {
+  const repo = graphFixture();
+  try {
+    const mermaid = execGraph(repo.root, ['--format', 'mermaid', '--show-conflicts']);
+    const dot = execGraph(repo.root, ['--format', 'dot', '--show-conflicts']);
+
+    assert.ok(mermaid.startsWith('```mermaid\nflowchart TD\n'));
+    assert.ok(mermaid.includes('docs/shared.md'));
+    assert.ok(dot.startsWith('digraph QuiverGraph {'));
+    assert.ok(dot.includes('rankdir=TB;'));
+  } finally {
+    repo.cleanup();
+  }
+});

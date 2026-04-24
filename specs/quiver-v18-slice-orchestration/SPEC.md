@@ -68,7 +68,7 @@ Single-slice suggestion. Output modes:
 |-------|-------|--------|------|
 | 01 | `quiver:plan` Command | Completed | [slice-01](./slices/slice-01-plan-command/slice.json) |
 | 02 | `quiver:graph` MVP Tree | Completed | [slice-02](./slices/slice-02-graph-mvp-tree/slice.json) |
-| 03 | `quiver:graph` Extended Formats | Draft | [slice-03](./slices/slice-03-graph-extended-formats/slice.json) |
+| 03 | `quiver:graph` Extended Formats | Completed | [slice-03](./slices/slice-03-graph-extended-formats/slice.json) |
 | 04 | `quiver:next` Command | Draft | [slice-04](./slices/slice-04-next-command/slice.json) |
 
 ## Definition of Done

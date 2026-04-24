@@ -199,6 +199,8 @@ fi
   node "$cli" analyze >/dev/null
 )
 doctor_after_analyze="$(cd "$new_target" && node "$cli" doctor)"
+graph_mermaid_output="$(cd "$new_target" && node "$cli" graph --format mermaid)"
+graph_dot_output="$(cd "$new_target" && node "$cli" graph --format dot)"
 
 if [[ "$doctor_after_analyze" != *"Read AGENTS.md, then docs/AI_ONBOARDING_PROMPT.md and execute it."* ]]; then
   echo "Doctor output did not point to AGENTS.md before the onboarding prompt" >&2
@@ -210,6 +212,16 @@ if [[ "$doctor_after_analyze" != *"npx create-quiver start-slice"* ]]; then
 fi
 if [[ "$doctor_after_analyze" == *"bash "* ]]; then
   echo "Doctor output still references bash after analyze" >&2
+  exit 1
+fi
+
+if [[ "$graph_mermaid_output" != *'```mermaid'* ]] || [[ "$graph_mermaid_output" != *'flowchart TD'* ]]; then
+  echo "Graph mermaid output is missing the expected Mermaid fence or flowchart header" >&2
+  exit 1
+fi
+
+if [[ "$graph_dot_output" != *"digraph QuiverGraph"* ]]; then
+  echo "Graph dot output is missing the expected digraph header" >&2
   exit 1
 fi
 
@@ -264,10 +276,15 @@ assert_contains "$new_target/docs/DECISIONS.md" "| Date | Decision | Reason | Al
 assert_contains "$new_target/docs/COMMANDS.md" "| Command | Purpose | OS | Since | Example |"
 assert_contains "$new_target/docs/COMMANDS.md" "\`quiver:plan\`"
 assert_contains "$new_target/docs/COMMANDS.md" "\`quiver:graph\`"
+assert_contains "$new_target/docs/COMMANDS.md" "Mermaid"
+assert_contains "$new_target/docs/COMMANDS.md" "DOT"
 assert_contains "$new_target/docs/COMMANDS.md" "docs/examples/plan.md"
 assert_contains "$new_target/docs/COMMANDS.md" "docs/examples/graph.md"
 assert_file "$new_target/docs/examples/plan.md"
 assert_file "$new_target/docs/examples/graph.md"
+assert_contains "$new_target/docs/examples/graph.md" '```mermaid'
+assert_contains "$new_target/docs/examples/graph.md" "digraph QuiverGraph"
+assert_contains "$new_target/docs/examples/graph.md" "GitHub renders Mermaid"
 assert_contains "$new_target/docs/COMMANDS.md" "src/create-quiver/lib/slice-graph.js"
 assert_contains "$new_target/docs/SUPPORT_MATRIX.md" "## Cross-Platform Authoring Rules"
 assert_contains "$new_target/docs/SUPPORT_MATRIX.md" "No shell invocations for logic"
@@ -314,6 +331,8 @@ assert_contains "$new_target/README.md" "npx create-quiver migrate"
 assert_contains "$new_target/README.md" "only for projects that were already initialized by Quiver"
 assert_contains "$new_target/README.md" 'do not use `migrate` as bootstrap'
 assert_contains "$new_target/README.md" "npm install --save-dev create-quiver@latest"
+assert_contains "$new_target/README.md" "graph --format mermaid"
+assert_contains "$new_target/README.md" "graph --format dot"
 assert_contains "$new_target/docs/PROJECT_MAP.md" "Project Map"
 assert_contains "$new_target/docs/PROJECT_MAP.md" "## Stack"
 assert_contains "$new_target/docs/PROJECT_MAP.md" "## Commands"

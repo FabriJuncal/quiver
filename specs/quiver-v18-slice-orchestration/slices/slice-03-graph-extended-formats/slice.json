@@ -61,10 +61,10 @@
     "Users who want PNG/SVG have Graphviz installed locally; Quiver does not bundle it"
   ],
   "estimated_hours": 2,
-  "actual_hours": null,
-  "status": "draft",
+  "actual_hours": 2,
+  "status": "completed",
   "blocked_reason": null,
   "ready_at": null,
   "started_at": null,
-  "completed_at": null
+  "completed_at": "2026-04-24T00:00:00Z"
 }
