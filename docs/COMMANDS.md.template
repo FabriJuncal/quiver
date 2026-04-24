@@ -16,4 +16,5 @@ It is intentionally small at v0.17: only the plan row is reserved for now.
 
 - Add new rows here only when a command is officially shipped.
 - Keep the table concise and cross-platform.
+- Shared graph library: `src/create-quiver/lib/slice-graph.js`.
 - Cross-platform authoring rules live in `docs/SUPPORT_MATRIX.md`.

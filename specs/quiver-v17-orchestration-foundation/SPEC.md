@@ -63,7 +63,7 @@ Dependency inference rule: within a single spec, `slice-NN` implicitly depends o
 | Slice | Title | Status | Spec |
 |-------|-------|--------|------|
 | 01 | Cross-Platform CI Matrix Verified | Completed | [slice-01](./slices/slice-01-ci-matrix-verified/slice.json) |
-| 02 | Slice Graph Library | Draft | [slice-02](./slices/slice-02-slice-graph-library/slice.json) |
+| 02 | Slice Graph Library | Completed | [slice-02](./slices/slice-02-slice-graph-library/slice.json) |
 | 03 | Optional `depends_on` Validation | Draft | [slice-03](./slices/slice-03-depends-on-validation/slice.json) |
 
 ## Definition of Done
