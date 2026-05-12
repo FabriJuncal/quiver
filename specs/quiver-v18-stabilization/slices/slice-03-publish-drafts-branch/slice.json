@@ -1,0 +1,49 @@
+{
+  "slice_id": "slice-03-publish-drafts-branch",
+  "ticket": "QUIVER-03",
+  "type": "chore",
+  "title": "Publish `drafts/v19-v22-orchestration-followups` to origin",
+  "objective": "Push the locally-parked v19–v22 draft specs to origin so they are preserved in the remote in case of local machine loss and are accessible for future promotion.",
+  "description": "The branch `drafts/v19-v22-orchestration-followups` exists only locally. It contains 23 files across 4 spec directories (v19 Project Visibility, v20 Context Diagnostics, v21 Slice Archaeology, v22 Deferred Tooling) committed in a single commit. ROADMAP.md and BACKLOG.md already reference this branch by name. Pushing it to origin completes the traceability chain. This slice has no PR — it is a single `git push` operation. It is gated by the human checkpoint for v18: the maintainer must confirm that `plan`, `graph`, and `next` were used in real work before this slice is executed.",
+  "git": {
+    "branch_type": "chore",
+    "base_branch": null,
+    "branch_slug": "publish-drafts-v19-v22",
+    "branch_name": "drafts/v19-v22-orchestration-followups"
+  },
+  "must": [
+    "Confirm the human checkpoint for v18 was explicitly declared by the maintainer before executing",
+    "Run `git log drafts/v19-v22-orchestration-followups --oneline -1` and confirm the expected SHA is present",
+    "Push with: `GIT_SSH_COMMAND=\"ssh -i ~/ssh/github-personal\" git push origin drafts/v19-v22-orchestration-followups`",
+    "Verify with: `git ls-remote origin drafts/v19-v22-orchestration-followups` and confirm the SHA matches local"
+  ],
+  "not_included": [
+    "Opening a PR for the drafts branch — it is a reference branch, not a merge candidate",
+    "Promoting any of v19–v22 to active spec — that is a separate decision after the checkpoint",
+    "Modifying any file in the drafts branch",
+    "Any other git push"
+  ],
+  "acceptance": [
+    "Maintainer has explicitly confirmed the v18 human checkpoint",
+    "`git ls-remote origin drafts/v19-v22-orchestration-followups` returns a non-empty SHA",
+    "The returned SHA matches `git rev-parse drafts/v19-v22-orchestration-followups`"
+  ],
+  "files": [],
+  "tests": [
+    "git ls-remote origin drafts/v19-v22-orchestration-followups",
+    "git rev-parse drafts/v19-v22-orchestration-followups"
+  ],
+  "documentation": [],
+  "depends_on": [],
+  "assumptions": [
+    "The SSH key at `~/ssh/github-personal` has push access to `FabriJuncal/quiver`",
+    "The local branch `drafts/v19-v22-orchestration-followups` has not been rebased or force-reset since creation"
+  ],
+  "estimated_hours": 0.1,
+  "actual_hours": null,
+  "status": "blocked",
+  "blocked_reason": "Human checkpoint: maintainer must confirm v18 real-use validation before executing",
+  "ready_at": null,
+  "started_at": null,
+  "completed_at": null
+}

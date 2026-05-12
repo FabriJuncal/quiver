@@ -1,0 +1,56 @@
+{
+  "slice_id": "slice-01-fix-legacy-dependency-resolution",
+  "ticket": "QUIVER-01",
+  "type": "bugfix",
+  "title": "Fix legacy dependency resolution in `slice-graph.js`",
+  "objective": "Make `npx create-quiver plan` exit 0 on the Quiver repo by ignoring bare spec-name values in the legacy `\"dependencies\"` field instead of crashing with `MISSING_DEPENDENCY`.",
+  "description": "Old slice.json files (v01–v16) declare cross-spec dependencies with bare spec names in a `\"dependencies\"` array, e.g. `[\"quiver-v01\"]`. The `normalizeDependencyRef` function in `slice-graph.js` expands bare values by prepending the current spec slug, producing refs like `quiver-v02-bootstrap-hardening/quiver-v01`. These refs do not match any slice key, causing `buildGraph` to throw `SliceGraphError: Missing dependency reference(s)`. The fix is one guard: if a bare value does not start with `slice-`, it is a spec-level legacy ref and must be returned as null (filtered). The new `\"depends_on\"` format with full `spec/slice-id` paths is unaffected.",
+  "git": {
+    "branch_type": "bugfix",
+    "base_branch": "main",
+    "branch_slug": "fix-legacy-dependency-resolution",
+    "branch_name": "bugfix/QUIVER-01-fix-legacy-dependency-resolution"
+  },
+  "must": [
+    "Add a guard in `normalizeDependencyRef` that returns `null` when the bare dependency value does not start with `slice-`",
+    "Leave all other logic in `normalizeDependencyRef` and `buildGraph` unchanged",
+    "Add a unit test that exercises the legacy `\"dependencies\": [\"quiver-vNN\"]` format and confirms no error is thrown and no edge is produced",
+    "Run `node --test tests/` and confirm all tests pass",
+    "Run `npx create-quiver plan` on the Quiver repo and confirm exit 0"
+  ],
+  "not_included": [
+    "Changing the output or behavior of `plan`, `graph`, or `next`",
+    "Migrating old slice.json files to the new `depends_on` format",
+    "Adding warnings or notices for legacy deps — silent drop is intentional",
+    "Any other file besides `src/create-quiver/lib/slice-graph.js` and `tests/`"
+  ],
+  "acceptance": [
+    "`npx create-quiver plan` exits 0 on the Quiver repo",
+    "`npx create-quiver plan --json` returns valid JSON with `plan`, `critical_path`, and `total_hours`",
+    "A test with `\"dependencies\": [\"quiver-v01\"]` does not throw and produces zero edges for that dep",
+    "A test with `\"depends_on\": [\"other-spec/slice-01-foo\"]` still produces the expected edge (regression)",
+    "`node --test tests/` exits 0"
+  ],
+  "files": [
+    "src/create-quiver/lib/slice-graph.js",
+    "tests/lib/slice-graph.test.js"
+  ],
+  "tests": [
+    "node --test tests/",
+    "node bin/create-quiver.js plan > /dev/null",
+    "node bin/create-quiver.js plan --json | node -e \"const d=JSON.parse(require('fs').readFileSync('/dev/stdin','utf8')); if(!Array.isArray(d.plan)) process.exit(1)\""
+  ],
+  "documentation": [],
+  "depends_on": [],
+  "assumptions": [
+    "All old slices using bare spec names in `\"dependencies\"` are already completed — silently dropping them causes no operational loss",
+    "No slice uses a bare dep that starts with `slice-` and refers to a different spec (would be an ambiguous format)"
+  ],
+  "estimated_hours": 0.5,
+  "actual_hours": 0.5,
+  "status": "completed",
+  "blocked_reason": null,
+  "ready_at": "2026-05-12T00:00:00Z",
+  "started_at": "2026-05-12T00:00:00Z",
+  "completed_at": "2026-05-12T00:00:00Z"
+}

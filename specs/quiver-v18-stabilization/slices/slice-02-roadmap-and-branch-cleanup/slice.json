@@ -1,0 +1,57 @@
+{
+  "slice_id": "slice-02-roadmap-and-branch-cleanup",
+  "ticket": "QUIVER-02",
+  "type": "chore",
+  "title": "Close v0.6 in ROADMAP and clean stale local branches",
+  "objective": "Remove two sources of noise: the `v0.6 (unreleased)` entry in ROADMAP.md (the scope shipped in v0.7) and ~35 stale local branches that are already merged to main or are backup artifacts.",
+  "description": "v0.6 was never formally closed in ROADMAP.md even though its scope (Node-native runtime, `quiver:*` scripts) landed in v0.7. The entry currently reads `v0.6 (unreleased)`, which is misleading. Additionally, 35 local branches accumulate since earlier in development — two are explicit backup branches created today, the rest are feature/docs/ci branches whose PRs were merged to main months ago. The branch cleanup is a local-only operation with no commit. The ROADMAP fix is a one-line edit that goes in a docs PR.",
+  "git": {
+    "branch_type": "docs",
+    "base_branch": "main",
+    "branch_slug": "close-v06-roadmap",
+    "branch_name": "docs/QUIVER-02-close-v06-roadmap"
+  },
+  "must": [
+    "Edit `ROADMAP.md`: replace `## v0.6 (unreleased)` with `## v0.6 (shipped)` and add a one-line note: scope (Node-native runtime, `quiver:*` npm scripts) was absorbed and shipped as part of v0.7",
+    "Delete locally: `backup/main-before-reconcile-20260512-094512` and `backup/main-before-reconcile-20260512-094712`",
+    "Delete locally all branches returned by `git branch --merged main` except `main`, `develop`, and `drafts/v19-v22-orchestration-followups`",
+    "Confirm no branch with unmerged work is deleted — run `git branch --no-merged main` and verify the list before deleting anything",
+    "Commit only `ROADMAP.md` — branch cleanup produces no commit"
+  ],
+  "not_included": [
+    "Editing any other section of ROADMAP.md",
+    "Deleting branches on origin — local cleanup only",
+    "Closing or editing CHANGELOG.md",
+    "Any source code changes"
+  ],
+  "acceptance": [
+    "`grep 'unreleased' ROADMAP.md` returns no match",
+    "`grep 'v0.6 (shipped)' ROADMAP.md` returns a match",
+    "`git branch` shows no `backup/*` branches",
+    "`git branch --merged main` returns only `main` (and `develop` if present) — no stale feature/docs/ci branches",
+    "PR diff contains only `ROADMAP.md` changes"
+  ],
+  "files": [
+    "ROADMAP.md"
+  ],
+  "tests": [
+    "grep -c 'unreleased' ROADMAP.md | grep -q '^0$'",
+    "git branch --merged main",
+    "git branch | grep backup | wc -l | grep -q '^0$'"
+  ],
+  "documentation": [
+    "ROADMAP.md"
+  ],
+  "depends_on": [],
+  "assumptions": [
+    "All branches returned by `git branch --merged main` (except main/develop/drafts) are safe to delete — they were created from merged PRs",
+    "No branch other than `drafts/v19-v22-orchestration-followups` contains uncommitted or unmerged work worth preserving"
+  ],
+  "estimated_hours": 0.3,
+  "actual_hours": null,
+  "status": "ready",
+  "blocked_reason": null,
+  "ready_at": "2026-05-12T00:00:00Z",
+  "started_at": null,
+  "completed_at": null
+}
