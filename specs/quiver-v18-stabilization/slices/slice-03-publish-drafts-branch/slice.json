@@ -40,10 +40,10 @@
     "The local branch `drafts/v19-v22-orchestration-followups` has not been rebased or force-reset since creation"
   ],
   "estimated_hours": 0.1,
-  "actual_hours": null,
-  "status": "blocked",
-  "blocked_reason": "Human checkpoint: maintainer must confirm v18 real-use validation before executing",
-  "ready_at": null,
-  "started_at": null,
-  "completed_at": null
+  "actual_hours": 0.1,
+  "status": "completed",
+  "blocked_reason": null,
+  "ready_at": "2026-05-12T00:00:00Z",
+  "started_at": "2026-05-12T00:00:00Z",
+  "completed_at": "2026-05-12T00:00:00Z"
 }

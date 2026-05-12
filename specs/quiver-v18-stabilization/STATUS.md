@@ -10,20 +10,18 @@ Slice numbering is local to this spec. The first slice is `slice-01`.
 | Slice | Title | Status | PR | Estimated hours | Actual hours |
 |-------|-------|--------|----|-----------------|--------------|
 | slice-01 | Fix legacy dependency resolution in `slice-graph.js` | Completed | #54 | 0.5 | 0.5 |
-| slice-02 | Close v0.6 in ROADMAP and clean stale branches | Ready | — | 0.3 | — |
-| slice-03 | Publish `drafts/v19-v22-orchestration-followups` | Blocked | — | 0.1 | — |
+| slice-02 | Close v0.6 in ROADMAP and clean stale branches | Completed | #56 | 0.3 | 0.1 |
+| slice-03 | Publish `drafts/v19-v22-orchestration-followups` | Completed | — | 0.1 | 0.1 |
 
 ## Progress
 
-- Completed slices: 1 / 3
+- Completed slices: 3 / 3
 - Estimated hours: 0.9
-- Actual hours: 0.5
+- Actual hours: 0.7
 
 ## Blockers
 
-| Slice | Blocker | Since | Action needed |
-|-------|---------|-------|---------------|
-| slice-03 | Human checkpoint: v18 real-use validation not yet confirmed | 2026-05-12 | Maintainer must use `plan`, `graph`, `next` in real work and confirm |
+_None — spec complete._
 
 ## Dependencies
 
