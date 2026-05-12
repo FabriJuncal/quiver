@@ -48,10 +48,10 @@
     "No branch other than `drafts/v19-v22-orchestration-followups` contains uncommitted or unmerged work worth preserving"
   ],
   "estimated_hours": 0.3,
-  "actual_hours": null,
-  "status": "ready",
+  "actual_hours": 0.1,
+  "status": "completed",
   "blocked_reason": null,
   "ready_at": "2026-05-12T00:00:00Z",
-  "started_at": null,
-  "completed_at": null
+  "started_at": "2026-05-12T00:00:00Z",
+  "completed_at": "2026-05-12T00:00:00Z"
 }
