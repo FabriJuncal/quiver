@@ -1,0 +1,73 @@
+{
+  "slice_id": "slice-03-share-command",
+  "ticket": "QUIVER-03",
+  "type": "feat",
+  "title": "`quiver:share` Command",
+  "objective": "Ship `npx create-quiver share <slice>` that wraps `quiver:replay` into a tar.gz bundle suitable for handoff to another agent or user without the full repository clone.",
+  "description": "When a handoff needs more than HANDOFF.md (for example when another agent needs to see the actual source files declared in the slice), copying each file by hand is error-prone. `quiver:share` produces a self-contained bundle in tar.gz that the recipient can unpack and read. It optionally strips common secret patterns (`.env`, API keys) before packaging.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "share-command",
+    "branch_name": "feature/QUIVER-03-share-command"
+  },
+  "must": [
+    "Create `src/create-quiver/commands/share.js`",
+    "Internally call `replay` to produce the bundle in a temp directory",
+    "Package the directory into `<slice-id>.tar.gz` using Node streams (no external tar binary)",
+    "Support `--strip-env` to redact lines matching common secret patterns (`/^[A-Z_]+=.*/`, `sk-*`, `ghp_*`) with `<REDACTED>`",
+    "Support `--out <path>` for the output archive location",
+    "Print the archive path and a short checksum on completion",
+    "Register `share` in `bin/create-quiver.js` and add `quiver:share` to `package.json`",
+    "Create `docs/examples/share.md`",
+    "Add a `docs/COMMANDS.md` row marked `experimental` and update `README.md` npm scripts list",
+    "Add a `CHANGELOG.md` entry"
+  ],
+  "not_included": [
+    "Uploading the archive anywhere (email, gist, cloud)",
+    "Encryption at rest",
+    "Exhaustive secret detection (users still review before sharing)"
+  ],
+  "acceptance": [
+    "`npx create-quiver share <slice>` produces a `.tar.gz` in the current directory",
+    "`tar -tzf <archive>` lists at least AGENTS.md, QUICK.md, PROJECT_MAP.md, and the slice's files",
+    "`--strip-env` redacts lines that match common secret patterns in bundled files",
+    "`--out <path>` writes to the specified path",
+    "The archive unpacks on macOS, Linux, and Windows (tested in CI)",
+    "`docs/examples/share.md` exists"
+  ],
+  "files": [
+    "src/create-quiver/commands/share.js",
+    "bin/create-quiver.js",
+    "package.json",
+    "docs/examples/share.md",
+    "docs/COMMANDS.md",
+    "README.md",
+    "CHANGELOG.md",
+    "tests/commands/share.test.js",
+    "specs/quiver-v22-deferred-tooling/slices/slice-03-share-command/slice.json"
+  ],
+  "tests": [
+    "node --test tests/commands/share.test.js",
+    "git diff --check"
+  ],
+  "documentation": [
+    "docs/examples/share.md",
+    "docs/COMMANDS.md",
+    "README.md",
+    "CHANGELOG.md"
+  ],
+  "dependencies": ["quiver-v20-context-diagnostics/slice-03-replay-command"],
+  "assumptions": [
+    "Node's `zlib` and `tar` modules (or `tar` npm package) are sufficient; no external `tar` binary required",
+    "Users understand that `--strip-env` is best-effort and still review before sending",
+    "The bundle format is informal; no strict schema beyond the replay contract"
+  ],
+  "estimated_hours": 4,
+  "actual_hours": null,
+  "status": "draft",
+  "blocked_reason": "Deferred: needs ≥1 real handoff where HANDOFF.md alone was insufficient",
+  "ready_at": null,
+  "started_at": null,
+  "completed_at": null
+}

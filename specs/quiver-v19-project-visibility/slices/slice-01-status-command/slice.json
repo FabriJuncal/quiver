@@ -1,0 +1,74 @@
+{
+  "slice_id": "slice-01-status-command",
+  "ticket": "QUIVER-01",
+  "type": "feat",
+  "title": "`quiver:status` Command",
+  "objective": "Ship `npx create-quiver status` that prints a single-screen dashboard of active specs, in-progress slices, open PRs (optional), and the next up suggestion.",
+  "description": "The status command reads every spec's STATUS.md, every slice's status field, the current git worktree list, and optionally GitHub PRs via `gh`. Without `gh`, the command omits the PR section and prints a short note. The output must fit in ~20 lines so it is usable at the start of every session. JSON mode is the stable machine contract.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "status-command",
+    "branch_name": "feature/QUIVER-01-status-command"
+  },
+  "must": [
+    "Create `src/create-quiver/commands/status.js`",
+    "Create `src/create-quiver/lib/git-state.js` that reads worktrees (`git worktree list --porcelain`), current branches, and optionally PRs via `gh`",
+    "Detect `gh` with a cross-platform probe; when absent, omit the PR section and print `(gh not installed — PR section skipped)`",
+    "Print the Next-Up suggestion using `quiver:plan --only-ready` output",
+    "Support flags `--json`, `--no-pr`, `--spec <slug>`",
+    "Register `status` in `bin/create-quiver.js` and add `quiver:status` to `package.json`",
+    "Create `docs/examples/status.md`",
+    "Add a `docs/COMMANDS.md` row and update `README.md` npm scripts list",
+    "Add a `CHANGELOG.md` entry"
+  ],
+  "not_included": [
+    "Editing or transitioning slice statuses",
+    "Installing or auto-detecting `gh` authentication (respect existing config)",
+    "Polling for status changes (one-shot invocation)"
+  ],
+  "acceptance": [
+    "`npx create-quiver status` prints active specs, in-progress slices, and a Next-Up line",
+    "On a machine without `gh`, the command completes with exit 0 and omits the PR section with a note",
+    "`npx create-quiver status --json` returns valid JSON with keys `active_specs`, `in_progress`, `open_prs`, `next_up`",
+    "`npx create-quiver status --no-pr` skips `gh` even when installed",
+    "`docs/examples/status.md` exists with a real example"
+  ],
+  "files": [
+    "src/create-quiver/commands/status.js",
+    "src/create-quiver/lib/git-state.js",
+    "bin/create-quiver.js",
+    "package.json",
+    "docs/examples/status.md",
+    "docs/COMMANDS.md",
+    "README.md",
+    "CHANGELOG.md",
+    "tests/commands/status.test.js",
+    "specs/quiver-v19-project-visibility/slices/slice-01-status-command/slice.json"
+  ],
+  "tests": [
+    "node --test tests/commands/status.test.js",
+    "node bin/create-quiver.js status --json > /tmp/quiver-status.json",
+    "node -e \"const s=require('/tmp/quiver-status.json'); if(!('active_specs' in s)) process.exit(1)\"",
+    "git diff --check"
+  ],
+  "documentation": [
+    "docs/examples/status.md",
+    "docs/COMMANDS.md",
+    "README.md",
+    "CHANGELOG.md"
+  ],
+  "dependencies": ["quiver-v18-slice-orchestration/slice-01-plan-command"],
+  "assumptions": [
+    "`gh auth status` is a reliable proxy for `gh` availability",
+    "`git worktree list --porcelain` output is stable across supported git versions",
+    "Less than 20 lines of output is acceptable for the expected repo sizes"
+  ],
+  "estimated_hours": 5,
+  "actual_hours": null,
+  "status": "draft",
+  "blocked_reason": null,
+  "ready_at": null,
+  "started_at": null,
+  "completed_at": null
+}

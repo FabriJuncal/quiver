@@ -1,0 +1,73 @@
+{
+  "slice_id": "slice-02-estimate-command",
+  "ticket": "QUIVER-02",
+  "type": "feat",
+  "title": "`quiver:estimate` Command",
+  "objective": "Ship `npx create-quiver estimate` that prints total estimated hours, critical path, and wall-clock time with `--agents <n>` parallel workers for the repo or a specific spec.",
+  "description": "Given the v17 library computes levels and dependencies, estimating wall-clock is an aggregation over the DAG: with `k` agents, wall-clock is at least `max(level_hours_at_optimal_packing)` and at most the critical path. This slice implements a simple greedy bin-packing per level to approximate wall-clock for `--agents <n>` and prints both the naive sum and the parallel estimate.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "estimate-command",
+    "branch_name": "feature/QUIVER-02-estimate-command"
+  },
+  "must": [
+    "Create `src/create-quiver/commands/estimate.js`",
+    "Compute total estimated hours (sum of non-completed slices)",
+    "Compute critical path using the longest-hours chain",
+    "Compute wall-clock with N agents using greedy bin-packing per level",
+    "Support flags `--agents <n>` (default 1), `--spec <slug>`, `--json`",
+    "Register `estimate` in `bin/create-quiver.js` and add `quiver:estimate` to `package.json`",
+    "Create `docs/examples/estimate.md`",
+    "Add a `docs/COMMANDS.md` row and update `README.md` npm scripts list",
+    "Add a `CHANGELOG.md` entry"
+  ],
+  "not_included": [
+    "Historical throughput analysis or velocity prediction",
+    "Machine learning-based estimation; only declared `estimated_hours` is used",
+    "Per-person capacity modeling"
+  ],
+  "acceptance": [
+    "`npx create-quiver estimate` prints total hours and critical path",
+    "`npx create-quiver estimate --agents 2` returns a wall-clock less than or equal to `--agents 1`",
+    "`npx create-quiver estimate --agents N` where N is large returns a wall-clock equal to the critical path",
+    "`--spec <slug>` restricts estimation to one spec",
+    "`--json` produces valid JSON with `total_hours`, `critical_path_hours`, and `wall_clock_hours`",
+    "`docs/examples/estimate.md` exists"
+  ],
+  "files": [
+    "src/create-quiver/commands/estimate.js",
+    "bin/create-quiver.js",
+    "package.json",
+    "docs/examples/estimate.md",
+    "docs/COMMANDS.md",
+    "README.md",
+    "CHANGELOG.md",
+    "tests/commands/estimate.test.js",
+    "specs/quiver-v19-project-visibility/slices/slice-02-estimate-command/slice.json"
+  ],
+  "tests": [
+    "node --test tests/commands/estimate.test.js",
+    "node bin/create-quiver.js estimate --agents 1 --json | node -e \"const e=JSON.parse(require('fs').readFileSync(0)); if(typeof e.total_hours!=='number') process.exit(1)\"",
+    "git diff --check"
+  ],
+  "documentation": [
+    "docs/examples/estimate.md",
+    "docs/COMMANDS.md",
+    "README.md",
+    "CHANGELOG.md"
+  ],
+  "dependencies": ["quiver-v18-slice-orchestration/slice-02-graph-mvp-tree"],
+  "assumptions": [
+    "Greedy bin-packing is a good enough approximation for parallel wall-clock at typical repo sizes",
+    "`estimated_hours` is populated on enough slices to produce useful totals",
+    "Users understand the numbers are estimates, not commitments"
+  ],
+  "estimated_hours": 3,
+  "actual_hours": null,
+  "status": "draft",
+  "blocked_reason": null,
+  "ready_at": null,
+  "started_at": null,
+  "completed_at": null
+}

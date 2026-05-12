@@ -1,0 +1,73 @@
+{
+  "slice_id": "slice-01-archive-command",
+  "ticket": "QUIVER-01",
+  "type": "feat",
+  "title": "`quiver:archive` Command",
+  "objective": "Ship `npx create-quiver archive <spec>` that moves a fully completed spec into `specs/_archive/<spec>/`, writes a one-page SUMMARY.md, and updates ROADMAP.md with the archival date.",
+  "description": "As specs accumulate, keeping them all under `specs/` makes orchestration commands noisier. The archive command moves fully completed specs out of the active tree while preserving history (it's a git mv) and produces a short SUMMARY.md so future readers can see what the spec delivered without re-reading every slice. Because the action mutates the filesystem, the command asks for confirmation on TTY unless `--yes` is passed.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "archive-command",
+    "branch_name": "feature/QUIVER-01-archive-command"
+  },
+  "must": [
+    "Create `src/create-quiver/commands/archive.js`",
+    "Verify that every slice in the target spec has `status: \"completed\"`; refuse with exit 1 otherwise",
+    "Move `specs/<spec>/` to `specs/_archive/<spec>/` using `git mv` via `child_process.spawn('git', ['mv', ...], {shell:false})`",
+    "Generate `specs/_archive/<spec>/SUMMARY.md` with objective, slice count, PRs, and completion date",
+    "Update `ROADMAP.md` by appending `(archived YYYY-MM-DD)` next to the spec entry",
+    "Require confirmation on TTY; `--yes` bypasses; non-TTY without `--yes` exits non-zero",
+    "Register `archive` in `bin/create-quiver.js` and add `quiver:archive` to `package.json`",
+    "Create `docs/examples/archive.md`",
+    "Add a `docs/COMMANDS.md` row and update `README.md` npm scripts list",
+    "Add a `CHANGELOG.md` entry"
+  ],
+  "not_included": [
+    "Undo / unarchive command (user uses `git revert`)",
+    "Auto-archiving on completion (explicit command only)",
+    "Archiving individual slices within an incomplete spec"
+  ],
+  "acceptance": [
+    "`npx create-quiver archive <incomplete-spec>` exits non-zero with a message listing unfinished slices",
+    "`npx create-quiver archive <complete-spec> --yes` moves the directory, writes SUMMARY.md, and appends `(archived YYYY-MM-DD)` to ROADMAP.md",
+    "After archiving, `quiver:plan` and `quiver:status` no longer surface the archived spec",
+    "Running on a TTY without `--yes` prompts for confirmation and cancels on `n`",
+    "Running on a non-TTY without `--yes` exits non-zero",
+    "`docs/examples/archive.md` exists"
+  ],
+  "files": [
+    "src/create-quiver/commands/archive.js",
+    "bin/create-quiver.js",
+    "package.json",
+    "docs/examples/archive.md",
+    "docs/COMMANDS.md",
+    "README.md",
+    "CHANGELOG.md",
+    "tests/commands/archive.test.js",
+    "specs/quiver-v21-slice-archaeology/slices/slice-01-archive-command/slice.json"
+  ],
+  "tests": [
+    "node --test tests/commands/archive.test.js",
+    "git diff --check"
+  ],
+  "documentation": [
+    "docs/examples/archive.md",
+    "docs/COMMANDS.md",
+    "README.md",
+    "CHANGELOG.md"
+  ],
+  "dependencies": ["quiver-v19-project-visibility/slice-01-status-command"],
+  "assumptions": [
+    "`git mv` preserves history for downstream tools (blame, log --follow)",
+    "Users understand that archive is a destructive-ish operation that should go in its own commit",
+    "Having `specs/_archive/` excluded from orchestration commands is the correct default"
+  ],
+  "estimated_hours": 4,
+  "actual_hours": null,
+  "status": "draft",
+  "blocked_reason": "Only start once ≥10 specs are completed",
+  "ready_at": null,
+  "started_at": null,
+  "completed_at": null
+}

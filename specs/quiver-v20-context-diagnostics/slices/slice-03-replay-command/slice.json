@@ -1,0 +1,78 @@
+{
+  "slice_id": "slice-03-replay-command",
+  "ticket": "QUIVER-03",
+  "type": "feat",
+  "title": "`quiver:replay` Command",
+  "objective": "Ship `npx create-quiver replay <slice>` that reconstructs the exact context bundle an agent would see when opening a slice: AGENTS.md, QUICK.md, PROJECT_MAP.md, ACTIVE_SLICE.md (if present), and the slice's declared files. Output is reproducible byte-for-byte on the same commit.",
+  "description": "Today passing a slice to another agent requires manual copy-paste of several files. `quiver:replay` produces the canonical bundle programmatically and, with `--out <dir>`, writes it to disk so it can be shared (email, tarball, gist) without ambiguity. The bundle is reproducible so two runs on the same commit produce the same output. Determinism includes stable file order, LF line endings, and no timestamps in the output.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "replay-command",
+    "branch_name": "feature/QUIVER-03-replay-command"
+  },
+  "must": [
+    "Create `src/create-quiver/commands/replay.js`",
+    "Accept a slice reference as `<spec-slug>/<slice-id>` or a path to `slice.json`",
+    "Assemble the bundle in a fixed order: AGENTS.md → QUICK.md → PROJECT_MAP.md → ACTIVE_SLICE.md (if present) → slice files (alphabetical)",
+    "Normalize line endings to `\\n` for reproducibility",
+    "Print the bundle to stdout by default; write each file to `--out <dir>` when provided",
+    "Support `--with-tokens` to append a token estimate at the end using the v20 slice-01 library",
+    "Support `--json` to emit metadata describing the bundle (files, sha256, total bytes)",
+    "Register `replay` in `bin/create-quiver.js` and add `quiver:replay` to `package.json`",
+    "Create `docs/examples/replay.md`",
+    "Add a `docs/COMMANDS.md` row and update `README.md` npm scripts list",
+    "Add a `CHANGELOG.md` entry"
+  ],
+  "not_included": [
+    "Running the bundle against a live model",
+    "Tar/zip packaging (user can tar the output directory)",
+    "Uploading bundles to external services"
+  ],
+  "acceptance": [
+    "`npx create-quiver replay <slice>` prints the bundle to stdout",
+    "Running the same command twice on the same commit produces byte-identical output (SHA-256 match)",
+    "`--out <dir>` writes each bundle file and prints the list of written paths",
+    "`--with-tokens` appends a token estimate block at the end",
+    "`--json` produces metadata with stable `sha256` field",
+    "Referencing a nonexistent slice exits non-zero with a clear message",
+    "`docs/examples/replay.md` exists"
+  ],
+  "files": [
+    "src/create-quiver/commands/replay.js",
+    "bin/create-quiver.js",
+    "package.json",
+    "docs/examples/replay.md",
+    "docs/COMMANDS.md",
+    "README.md",
+    "CHANGELOG.md",
+    "tests/commands/replay.test.js",
+    "specs/quiver-v20-context-diagnostics/slices/slice-03-replay-command/slice.json"
+  ],
+  "tests": [
+    "node --test tests/commands/replay.test.js",
+    "node bin/create-quiver.js replay specs/quiver-v14-tiered-context-pack/slices/slice-01-tiered-context-pack/slice.json > /tmp/replay-1.txt",
+    "node bin/create-quiver.js replay specs/quiver-v14-tiered-context-pack/slices/slice-01-tiered-context-pack/slice.json > /tmp/replay-2.txt",
+    "diff /tmp/replay-1.txt /tmp/replay-2.txt",
+    "git diff --check"
+  ],
+  "documentation": [
+    "docs/examples/replay.md",
+    "docs/COMMANDS.md",
+    "README.md",
+    "CHANGELOG.md"
+  ],
+  "dependencies": ["slice-01-cost-command", "quiver-v18-slice-orchestration/slice-01-plan-command"],
+  "assumptions": [
+    "The canonical bundle is a reasonable starting point; users will request additions over time",
+    "Determinism is more valuable than flexibility for the first version",
+    "Files referenced by `slice.json.files` actually exist at the target commit (missing files are reported, not silently skipped)"
+  ],
+  "estimated_hours": 5,
+  "actual_hours": null,
+  "status": "draft",
+  "blocked_reason": null,
+  "ready_at": null,
+  "started_at": null,
+  "completed_at": null
+}

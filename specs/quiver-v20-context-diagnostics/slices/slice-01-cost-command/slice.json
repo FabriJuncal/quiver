@@ -1,0 +1,74 @@
+{
+  "slice_id": "slice-01-cost-command",
+  "ticket": "QUIVER-01",
+  "type": "feat",
+  "title": "`quiver:cost` Command",
+  "objective": "Ship `npx create-quiver cost` that estimates the token footprint of each slice's context bundle (AGENTS.md + QUICK.md + PROJECT_MAP.md + declared files) as a range, with an optional tokenizer-backed path when `tiktoken` or `@anthropic-ai/tokenizer` is installed.",
+  "description": "v14 introduced the tiered context pack and token budgets in AGENTS.md, but there is no tool to audit whether a slice respects the budget. This command scans each pending slice, sums the characters of its context bundle, and prints both a heuristic range (using `chars/4`) and, when available, a precise count from an installed tokenizer. Over-budget warnings fire against the numeric budget declared in AGENTS.md.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "cost-command",
+    "branch_name": "feature/QUIVER-01-cost-command"
+  },
+  "must": [
+    "Create `src/create-quiver/commands/cost.js`",
+    "Implement heuristic counter `chars/4` with an explicit disclaimer in output",
+    "Detect optional tokenizers at runtime: try `@anthropic-ai/tokenizer`, then `tiktoken`, fallback to heuristic",
+    "Parse AGENTS.md for declared per-mode token budgets; warn when a slice exceeds them",
+    "Support flags `--spec <slug>`, `--slice <id>`, `--json`, `--over-budget-only`",
+    "Register `cost` in `bin/create-quiver.js` and add `quiver:cost` to `package.json`",
+    "Create `docs/examples/cost.md`",
+    "Add a `docs/COMMANDS.md` row and update `README.md` npm scripts list",
+    "Add a `CHANGELOG.md` entry"
+  ],
+  "not_included": [
+    "Automatically rewriting or shrinking context files",
+    "Per-model token counting for non-Anthropic models beyond the optional tokenizers",
+    "Network calls to a tokenizer API"
+  ],
+  "acceptance": [
+    "`npx create-quiver cost` prints per-slice ranges and a disclaimer that the heuristic is `chars/4`",
+    "With `@anthropic-ai/tokenizer` installed, output uses the tokenizer and notes the source",
+    "A slice whose bundle exceeds the budget in AGENTS.md triggers a `WARN: over-budget` line",
+    "`--over-budget-only` filters to over-budget slices",
+    "`--json` output is valid JSON including `tokens_low`, `tokens_high`, and `over_budget: boolean`",
+    "`docs/examples/cost.md` exists"
+  ],
+  "files": [
+    "src/create-quiver/commands/cost.js",
+    "src/create-quiver/lib/token-estimator.js",
+    "bin/create-quiver.js",
+    "package.json",
+    "docs/examples/cost.md",
+    "docs/COMMANDS.md",
+    "README.md",
+    "CHANGELOG.md",
+    "tests/commands/cost.test.js",
+    "specs/quiver-v20-context-diagnostics/slices/slice-01-cost-command/slice.json"
+  ],
+  "tests": [
+    "node --test tests/commands/cost.test.js",
+    "node bin/create-quiver.js cost --json | node -e \"const c=JSON.parse(require('fs').readFileSync(0)); if(!Array.isArray(c.slices)) process.exit(1)\"",
+    "git diff --check"
+  ],
+  "documentation": [
+    "docs/examples/cost.md",
+    "docs/COMMANDS.md",
+    "README.md",
+    "CHANGELOG.md"
+  ],
+  "dependencies": ["quiver-v14-tiered-context-pack"],
+  "assumptions": [
+    "AGENTS.md \"Reading Budget\" section is parseable enough to extract per-mode numeric budgets",
+    "`chars/4` is within ±40% accurate, enough for over-budget warnings",
+    "Optional tokenizers do not need to match every model exactly; they raise confidence"
+  ],
+  "estimated_hours": 4,
+  "actual_hours": null,
+  "status": "draft",
+  "blocked_reason": null,
+  "ready_at": null,
+  "started_at": null,
+  "completed_at": null
+}

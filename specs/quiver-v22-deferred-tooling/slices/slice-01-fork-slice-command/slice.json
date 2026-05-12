@@ -1,0 +1,74 @@
+{
+  "slice_id": "slice-01-fork-slice-command",
+  "ticket": "QUIVER-01",
+  "type": "feat",
+  "title": "`quiver:fork-slice` Command",
+  "objective": "Ship `npx create-quiver fork-slice <slice> --into <newId>` that splits an oversized slice into two, carrying over a user-selected subset of `files[]` and `acceptance[]`, and updating STATUS.md accordingly.",
+  "description": "When a slice grows beyond its intended scope mid-execution, the current workaround is to delete and rewrite two slice.json files by hand and update STATUS.md. This command automates the split safely: it copies the original slice directory to a new ID, prompts for which `files[]`, `acceptance[]`, and `must[]` items move to the new slice, and updates STATUS.md so both slices appear. The original slice's remaining scope is preserved.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "fork-slice-command",
+    "branch_name": "feature/QUIVER-01-fork-slice-command"
+  },
+  "must": [
+    "Create `src/create-quiver/commands/fork-slice.js`",
+    "Copy the source slice directory to `slices/<newId>/`",
+    "Present an interactive prompt listing `files[]`, `acceptance[]`, and `must[]` items for user selection (moved vs retained)",
+    "Update both slice.json files with the resulting split",
+    "Update STATUS.md to insert the new slice row in order",
+    "Require `--yes` to bypass prompts in scripted environments (with `--files`, `--acceptance`, `--must` lists)",
+    "Refuse to fork a slice whose `status` is `completed`",
+    "Register `fork-slice` in `bin/create-quiver.js` and add `quiver:fork-slice` to `package.json`",
+    "Create `docs/examples/fork-slice.md`",
+    "Add a `docs/COMMANDS.md` row marked `experimental` and update `README.md` npm scripts list",
+    "Add a `CHANGELOG.md` entry"
+  ],
+  "not_included": [
+    "Auto-splitting based on file count or size heuristics",
+    "Merging two slices back into one",
+    "Forking completed slices"
+  ],
+  "acceptance": [
+    "`npx create-quiver fork-slice <slice> --into <newId>` creates the new slice directory",
+    "Both slices' `files[]`, `acceptance[]`, and `must[]` cover the union of the original scope with no overlap",
+    "STATUS.md lists the new slice in the right order",
+    "Attempting to fork a completed slice exits non-zero",
+    "Non-TTY invocation without selection flags exits non-zero with a clear message",
+    "`docs/examples/fork-slice.md` exists"
+  ],
+  "files": [
+    "src/create-quiver/commands/fork-slice.js",
+    "bin/create-quiver.js",
+    "package.json",
+    "docs/examples/fork-slice.md",
+    "docs/COMMANDS.md",
+    "README.md",
+    "CHANGELOG.md",
+    "tests/commands/fork-slice.test.js",
+    "specs/quiver-v22-deferred-tooling/slices/slice-01-fork-slice-command/slice.json"
+  ],
+  "tests": [
+    "node --test tests/commands/fork-slice.test.js",
+    "git diff --check"
+  ],
+  "documentation": [
+    "docs/examples/fork-slice.md",
+    "docs/COMMANDS.md",
+    "README.md",
+    "CHANGELOG.md"
+  ],
+  "dependencies": ["quiver-v19-project-visibility/slice-03-lint-spec-command"],
+  "assumptions": [
+    "Users prefer interactive selection over CLI-driven scripting for the first version",
+    "STATUS.md parsing/updating can reuse the machinery from `lint-spec`",
+    "Splitting mid-execution is rare enough that the command never needs to be fast"
+  ],
+  "estimated_hours": 3,
+  "actual_hours": null,
+  "status": "draft",
+  "blocked_reason": "Deferred: needs ≥1 real case of a slice that grew too big",
+  "ready_at": null,
+  "started_at": null,
+  "completed_at": null
+}

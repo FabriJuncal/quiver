@@ -1,0 +1,70 @@
+{
+  "slice_id": "slice-02-squash-spec-command",
+  "ticket": "QUIVER-02",
+  "type": "feat",
+  "title": "`quiver:squash-spec` Command",
+  "objective": "Ship `npx create-quiver squash-spec <spec>` that operates on already-archived specs (v21) to optionally collapse their git history into a single historical commit, or just annotate the archive with a compressed HISTORY_COLLAPSED.md note.",
+  "description": "Once the archive grows, `git log` on the active tree still shows every merge commit from archived specs. This command offers two modes: a safe annotation-only mode (default) that adds a summary file, and an optional `--rewrite-history` mode that rebases the archive commits into one. History rewriting is destructive and requires explicit opt-in and a clean working tree.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "squash-spec-command",
+    "branch_name": "feature/QUIVER-02-squash-spec-command"
+  },
+  "must": [
+    "Create `src/create-quiver/commands/squash-spec.js`",
+    "Require the target spec to be under `specs/_archive/<spec>/`",
+    "Default mode: write `specs/_archive/<spec>/HISTORY_COLLAPSED.md` with summary of commits (author, date, subject)",
+    "`--rewrite-history`: perform an interactive-style rebase programmatically; block if the working tree is dirty, require `--yes` confirmation",
+    "Abort history rewrite with a clear message if the target spec's commits touched files outside `specs/<spec>/` (unsafe)",
+    "Register `squash-spec` in `bin/create-quiver.js` and add `quiver:squash-spec` to `package.json`",
+    "Create `docs/examples/squash-spec.md`",
+    "Add a `docs/COMMANDS.md` row marked `experimental`",
+    "Add a `CHANGELOG.md` entry"
+  ],
+  "not_included": [
+    "Squashing active specs",
+    "Remote history rewriting (users run `git push --force` themselves if they want)",
+    "Auto-selecting which commits to squash (command operates on the spec as a whole)"
+  ],
+  "acceptance": [
+    "`npx create-quiver squash-spec <spec>` on an unarchived spec exits non-zero",
+    "Default mode writes HISTORY_COLLAPSED.md without touching git",
+    "`--rewrite-history --yes` with clean tree rewrites commits for that spec into one",
+    "`--rewrite-history` on a dirty tree exits non-zero with a clear message",
+    "`--rewrite-history` refuses when the spec's commits touched files outside the spec directory",
+    "`docs/examples/squash-spec.md` exists"
+  ],
+  "files": [
+    "src/create-quiver/commands/squash-spec.js",
+    "bin/create-quiver.js",
+    "package.json",
+    "docs/examples/squash-spec.md",
+    "docs/COMMANDS.md",
+    "CHANGELOG.md",
+    "tests/commands/squash-spec.test.js",
+    "specs/quiver-v22-deferred-tooling/slices/slice-02-squash-spec-command/slice.json"
+  ],
+  "tests": [
+    "node --test tests/commands/squash-spec.test.js",
+    "git diff --check"
+  ],
+  "documentation": [
+    "docs/examples/squash-spec.md",
+    "docs/COMMANDS.md",
+    "CHANGELOG.md"
+  ],
+  "dependencies": ["quiver-v21-slice-archaeology/slice-01-archive-command"],
+  "assumptions": [
+    "Default annotation-only mode is enough for most users; history rewriting is rare",
+    "Users understand that `--rewrite-history` is destructive and forces a re-push",
+    "Commits that touch `specs/<spec>/` exclusively are safe to squash; mixed commits are not"
+  ],
+  "estimated_hours": 3,
+  "actual_hours": null,
+  "status": "draft",
+  "blocked_reason": "Deferred: needs ≥20 archived specs and documented friction",
+  "ready_at": null,
+  "started_at": null,
+  "completed_at": null
+}

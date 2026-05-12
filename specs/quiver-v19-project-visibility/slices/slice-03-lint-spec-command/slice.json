@@ -1,0 +1,77 @@
+{
+  "slice_id": "slice-03-lint-spec-command",
+  "ticket": "QUIVER-03",
+  "type": "feat",
+  "title": "`quiver:lint-spec` Command",
+  "objective": "Ship `npx create-quiver lint-spec` that verifies consistency between SPEC.md, STATUS.md, and `slice.json` files: titles match, status values match, hours sum correctly, and no dangling references remain.",
+  "description": "Specs, STATUS dashboards, and slice contracts are edited by hand and drift over time. This command parses the three artifacts and reports every discrepancy. It exits 0 on clean specs and exits 1 with a structured list when it finds issues. It does not auto-fix; humans resolve discrepancies.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "lint-spec-command",
+    "branch_name": "feature/QUIVER-03-lint-spec-command"
+  },
+  "must": [
+    "Create `src/create-quiver/commands/lint-spec.js`",
+    "Check STATUS.md lists every slice directory that exists under `slices/`",
+    "Check STATUS.md does not list nonexistent slice directories",
+    "Check SPEC.md \"Definition of Done\" and \"Slices\" tables do not reference removed slices",
+    "Check the sum of `estimated_hours` equals the total declared in STATUS.md",
+    "Check that titles match across SPEC.md, STATUS.md, and `slice.json.title`",
+    "Check that slice `status` values match between STATUS.md and `slice.json.status`",
+    "Support flags `--spec <slug>`, `--json`",
+    "Exit 0 when clean, exit 1 when any check fails (lists all findings)",
+    "Register `lint-spec` in `bin/create-quiver.js` and add `quiver:lint-spec` to `package.json`",
+    "Create `docs/examples/lint-spec.md`",
+    "Add a `docs/COMMANDS.md` row and update `README.md` npm scripts list",
+    "Add a `CHANGELOG.md` entry"
+  ],
+  "not_included": [
+    "Auto-fixing detected issues",
+    "Validating slice JSON structure beyond the consistency checks (`check-slice` owns that)",
+    "Running `lint-spec` as part of `check-pr` (discuss after validation checkpoint)"
+  ],
+  "acceptance": [
+    "`npx create-quiver lint-spec` returns exit 0 on the current Quiver repo with no false positives",
+    "Deliberately renaming a slice title in STATUS.md causes exit 1 with a clear diff message",
+    "Deliberately deleting a slice directory without updating STATUS.md causes exit 1",
+    "`--spec <slug>` restricts lint scope to one spec",
+    "`--json` produces a structured list of findings",
+    "`docs/examples/lint-spec.md` exists with a sample clean output and a sample failing output"
+  ],
+  "files": [
+    "src/create-quiver/commands/lint-spec.js",
+    "bin/create-quiver.js",
+    "package.json",
+    "docs/examples/lint-spec.md",
+    "docs/COMMANDS.md",
+    "README.md",
+    "CHANGELOG.md",
+    "tests/commands/lint-spec.test.js",
+    "specs/quiver-v19-project-visibility/slices/slice-03-lint-spec-command/slice.json"
+  ],
+  "tests": [
+    "node --test tests/commands/lint-spec.test.js",
+    "node bin/create-quiver.js lint-spec",
+    "git diff --check"
+  ],
+  "documentation": [
+    "docs/examples/lint-spec.md",
+    "docs/COMMANDS.md",
+    "README.md",
+    "CHANGELOG.md"
+  ],
+  "dependencies": ["quiver-v17-orchestration-foundation/slice-02-slice-graph-library"],
+  "assumptions": [
+    "SPEC.md \"Slices\" tables follow the current convention (| Slice | Title | Status | Spec |)",
+    "STATUS.md tables follow the current convention used in v14",
+    "Parsing Markdown tables with regex is sufficient; no full Markdown AST required"
+  ],
+  "estimated_hours": 3,
+  "actual_hours": null,
+  "status": "draft",
+  "blocked_reason": null,
+  "ready_at": null,
+  "started_at": null,
+  "completed_at": null
+}

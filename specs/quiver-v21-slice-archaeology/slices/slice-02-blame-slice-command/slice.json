@@ -1,0 +1,76 @@
+{
+  "slice_id": "slice-02-blame-slice-command",
+  "ticket": "QUIVER-02",
+  "type": "feat",
+  "title": "`quiver:blame-slice` Command",
+  "objective": "Ship `npx create-quiver blame-slice <file>` that lists every slice whose `files[]` declared the given path, along with the PR number and merge date from git history.",
+  "description": "`git blame` tells you who changed a line; it doesn't tell you which slice was responsible. This command bridges the gap: given a file path, it scans every `slice.json.files` to find matching slices, then uses `git log --follow <file>` to locate the merge commit for each slice's branch and extract the PR number from the commit message.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "blame-slice-command",
+    "branch_name": "feature/QUIVER-02-blame-slice-command"
+  },
+  "must": [
+    "Create `src/create-quiver/commands/blame-slice.js`",
+    "Scan every `slice.json` for the given file in `files[]`",
+    "Use `git log --follow --format='%H|%s|%ci' -- <file>` to locate merge commits",
+    "Parse PR numbers from commit messages via regex `#(\\d+)`",
+    "Print: slice id, ticket, PR number (if detected), merge date",
+    "Add a section to `docs/TROUBLESHOOTING.md` titled `Finding the slice that introduced a regression` documenting `git bisect run`",
+    "Support flags `--json`",
+    "Register `blame-slice` in `bin/create-quiver.js` and add `quiver:blame-slice` to `package.json`",
+    "Create `docs/examples/blame-slice.md`",
+    "Add a `docs/COMMANDS.md` row and update `README.md` npm scripts list",
+    "Add a `CHANGELOG.md` entry"
+  ],
+  "not_included": [
+    "Wrapping `git bisect run` (documented in TROUBLESHOOTING.md)",
+    "Line-level blame (use `git blame`)",
+    "Querying GitHub API for PR details (only text in commit messages)"
+  ],
+  "acceptance": [
+    "`npx create-quiver blame-slice src/create-quiver/lib/init-docs.js` returns at least one slice for an existing file with slice history",
+    "For a file with no matching slice, exit 0 with message `No slice references this file`",
+    "`--json` output is an array of `{ slice, ticket, pr, merge_date }`",
+    "`docs/TROUBLESHOOTING.md` has a new section covering `git bisect run`",
+    "`docs/examples/blame-slice.md` exists"
+  ],
+  "files": [
+    "src/create-quiver/commands/blame-slice.js",
+    "bin/create-quiver.js",
+    "package.json",
+    "docs/examples/blame-slice.md",
+    "docs/TROUBLESHOOTING.md",
+    "docs/COMMANDS.md",
+    "README.md",
+    "CHANGELOG.md",
+    "tests/commands/blame-slice.test.js",
+    "specs/quiver-v21-slice-archaeology/slices/slice-02-blame-slice-command/slice.json"
+  ],
+  "tests": [
+    "node --test tests/commands/blame-slice.test.js",
+    "node bin/create-quiver.js blame-slice src/create-quiver/lib/init-docs.js --json",
+    "git diff --check"
+  ],
+  "documentation": [
+    "docs/examples/blame-slice.md",
+    "docs/TROUBLESHOOTING.md",
+    "docs/COMMANDS.md",
+    "README.md",
+    "CHANGELOG.md"
+  ],
+  "dependencies": ["quiver-v17-orchestration-foundation/slice-02-slice-graph-library"],
+  "assumptions": [
+    "PR numbers appear in merge commit messages as `#N`",
+    "`git log --follow` is reliable enough for the path renames we care about",
+    "Users don't need line-level blame from this command"
+  ],
+  "estimated_hours": 3,
+  "actual_hours": null,
+  "status": "draft",
+  "blocked_reason": null,
+  "ready_at": null,
+  "started_at": null,
+  "completed_at": null
+}

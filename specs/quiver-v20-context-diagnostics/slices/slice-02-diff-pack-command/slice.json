@@ -1,0 +1,76 @@
+{
+  "slice_id": "slice-02-diff-pack-command",
+  "ticket": "QUIVER-02",
+  "type": "feat",
+  "title": "`quiver:diff-pack` Command",
+  "objective": "Ship `npx create-quiver diff-pack` that summarizes semantic changes in `docs/ai/*` between the working tree and a git ref (default `main`): files added/removed, front-matter fields changed, sections added/removed, line counts.",
+  "description": "When context files drift it's easy to miss why. A raw `git diff` on Markdown is noisy. This command parses the files on both sides (via `git show` for the ref side) and emits a structured summary that highlights front-matter key changes, heading-level changes, and file additions/removals. It does not replace `git diff`; it summarizes what reviewers need to notice.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "diff-pack-command",
+    "branch_name": "feature/QUIVER-02-diff-pack-command"
+  },
+  "must": [
+    "Create `src/create-quiver/commands/diff-pack.js`",
+    "Read current `docs/ai/*` and compare with the same paths at `--since <ref>` (default `main`)",
+    "Use `child_process.spawn('git', ['show', '<ref>:<path>'], {shell:false})` to read ref-side files cross-platform",
+    "Detect added files, removed files, and modified files",
+    "Parse YAML front-matter on both sides and emit key-level diff (added/removed/changed keys)",
+    "Parse Markdown headings and emit section-level diff (added/removed/renamed)",
+    "Support flags `--since <ref>`, `--json`",
+    "Register `diff-pack` in `bin/create-quiver.js` and add `quiver:diff-pack` to `package.json`",
+    "Create `docs/examples/diff-pack.md`",
+    "Add a `docs/COMMANDS.md` row and update `README.md` npm scripts list",
+    "Add a `CHANGELOG.md` entry"
+  ],
+  "not_included": [
+    "Replacing `git diff` (this is a summary, not a full diff)",
+    "Rendering HTML or rich output",
+    "Showing diffs for non-ai/ files"
+  ],
+  "acceptance": [
+    "`npx create-quiver diff-pack --since main` prints added/removed/modified file counts for `docs/ai/*`",
+    "Changing a front-matter key surfaces in the summary as `Front-matter changed: purpose`",
+    "Adding a `## New Section` heading surfaces as `Section added: New Section`",
+    "Removing a file surfaces as `Removed: docs/ai/OLD.md`",
+    "`--json` output lists `added`, `removed`, `modified`, and per-file `sections`, `frontmatter_keys_changed`",
+    "`docs/examples/diff-pack.md` exists"
+  ],
+  "files": [
+    "src/create-quiver/commands/diff-pack.js",
+    "src/create-quiver/lib/markdown-sections.js",
+    "bin/create-quiver.js",
+    "package.json",
+    "docs/examples/diff-pack.md",
+    "docs/COMMANDS.md",
+    "README.md",
+    "CHANGELOG.md",
+    "tests/commands/diff-pack.test.js",
+    "specs/quiver-v20-context-diagnostics/slices/slice-02-diff-pack-command/slice.json"
+  ],
+  "tests": [
+    "node --test tests/commands/diff-pack.test.js",
+    "node bin/create-quiver.js diff-pack --since HEAD --json",
+    "git diff --check"
+  ],
+  "documentation": [
+    "docs/examples/diff-pack.md",
+    "docs/COMMANDS.md",
+    "README.md",
+    "CHANGELOG.md"
+  ],
+  "dependencies": ["quiver-v14-tiered-context-pack"],
+  "assumptions": [
+    "Git is available in PATH; command exits non-zero with a clear message if not",
+    "YAML front-matter parser tolerates minor formatting drift",
+    "Markdown heading detection by regex is sufficient for our files (all authored by this project)"
+  ],
+  "estimated_hours": 4,
+  "actual_hours": null,
+  "status": "draft",
+  "blocked_reason": null,
+  "ready_at": null,
+  "started_at": null,
+  "completed_at": null
+}
