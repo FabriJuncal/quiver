@@ -50,6 +50,17 @@
 > evidence from v14 in real use. Rescope or drop anything that does not
 > respond to observed friction.
 
+### Orchestration and Tooling (v19–v22, spec drafts created 2026-04-23)
+
+Draft specs exist but are **not executed until v18 passes its validation checkpoint**. Each subsequent spec requires the previous one to pass its own checkpoint before it starts.
+
+- **v19 — Project Visibility** (3 slices, ~11h): `quiver:status`, `quiver:estimate`, `quiver:lint-spec`
+- **v20 — Context Diagnostics** (3 slices, ~13h): `quiver:cost`, `quiver:diff-pack`, `quiver:replay`
+- **v21 — Slice Archaeology** (2 slices, ~7h): `quiver:archive`, `quiver:blame-slice`; `bisect-slice` documented via `git bisect run` in TROUBLESHOOTING
+- **v22 — Deferred Tooling** (3 slices, ~10h, evidence-gated): `quiver:fork-slice`, `quiver:squash-spec`, `quiver:share`
+
+Plan total: ~41h across 11 slices. Drafts parked on `drafts/v19-v22-orchestration-followups`. v22 stays deferred until BACKLOG.md records ≥1 occurrence per slice.
+
 ### v0.8 — Handoff Contract (draft spec created, pending evidence)
 
 - Canonical `HANDOFF.md.template` for exceptional context transfers

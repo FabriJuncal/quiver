@@ -37,6 +37,29 @@
 
 ## Active Entries
 
+### Slice Orchestration and Tooling Commands
+
+- **Observed:** 2026-04-23
+- **Status:** planned
+- **Evidence so far:** 0 real cases. Drafted by the maintainer anticipating multi-model coordination (Opus/GPT-5.4 planning, Sonnet/GPT-5.4 Mini/Qwen Code execution) and visibility pain once specs accumulate.
+- **Problem it solves:** Today coordinating multiple agents across pending slices requires ad-hoc grep, ls, and git commands. There is no canonical way to ask "what runs next", "what can run in parallel", "what is this repo's state", or "how expensive is this slice to load".
+- **Proposed shape:**
+  - v17 Orchestration Foundation (CI matrix, `lib/slice-graph.js`, `depends_on` validation)
+  - v18 Slice Orchestration (`plan`, `graph`, `next`)
+  - v19 Project Visibility (`status`, `estimate`, `lint-spec`)
+  - v20 Context Diagnostics (`cost`, `diff-pack`, `replay`)
+  - v21 Slice Archaeology (`archive`, `blame-slice`)
+  - v22 Deferred Tooling (`fork-slice`, `squash-spec`, `share`, evidence-gated per slice)
+- **Cost to formalize:** ~55h across 15 slices in 4 specs (v19–v22). Spec/slice files drafted under `drafts/v19-v22-orchestration-followups`.
+- **Reasons to wait:** v17 and v18 shipped. v18 must pass its validation checkpoint (≥1 week real use) before v19 starts. Building orchestration before validating the existing commands risks reinforcing a design that does not earn its place.
+- **Trigger to promote (per spec):**
+  - v19: immediately after v18 checkpoint passes (≥1 week real use of `plan`, `graph`, `next`)
+  - v20–v21: previous spec validation checkpoint passed (≥1 week real use)
+  - v22 per slice: explicit occurrence recorded in this file for each of `fork-slice`, `squash-spec`, `share`
+- **Related:**
+  - `drafts/v19-v22-orchestration-followups` (parked spec drafts)
+  - `ROADMAP.md` Orchestration and Tooling section
+
 ### Handoff Contract
 
 - **Observed:** 2026-04-23
@@ -64,7 +87,30 @@
 
 ## Parked Entries
 
-_None yet._
+### Local Web Console for Slice Visualization
+
+- **Observed:** 2026-05-12
+- **Status:** parked
+- **Evidence so far:** 0 real cases. Standalone prototype explored (`devflow-console`, Express + WebSocket + React, ~350 LoC, lives outside this repo at `/Users/fabrijk/Downloads/devflow-console`).
+- **Problem it would solve:** Visual graph of slices (parallel vs sequential, file-level conflicts), button-driven workflow, in-browser terminal, reusable prompts panel.
+- **Why parked:**
+  - Breaks Quiver's CLI-first identity; turns a scaffolder into a mini-IDE.
+  - ~80% of visible value duplicates planned CLI work in v19–v22 (`quiver:status`, `quiver:estimate`, etc.) and already-shipped v18 (`quiver:plan`, `quiver:graph`, `quiver:next`).
+  - Real security surface: arbitrary command execution via HTTP, DNS rebinding against localhost, open CORS, no auth, race conditions on shared filesystem state.
+  - Adds heavy maintenance cost (React + Vite + Express + ws) to a package distributed as a lightweight `npx create-quiver`.
+  - Multi-model agents (the actual audience for Quiver workflows) do not use UI.
+- **Cheaper alternatives identified first:**
+  - `quiver:graph --html` static export (no server, single self-contained file). Explore as subflag of v18 if Mermaid proves insufficient.
+  - Mermaid output shipped in v18 slice-03, renders natively in VSCode/IntelliJ.
+  - Optional VSCode extension as companion if UI is ever justified.
+- **Trigger to promote:**
+  1. v18 (`plan`, `graph`, `next`) is used in real work for ≥3 weeks after its checkpoint passes.
+  2. Mermaid/ASCII output of `quiver:graph` is documented as insufficient with concrete friction examples.
+  3. `quiver:graph --html` static export is built and also proves insufficient.
+  4. If ever implemented: must be a separate companion package (e.g. `@quiver/console`) or VSCode extension — never integrated into `create-quiver` core.
+- **Related:**
+  - Reference prototype: outside repo (not tracked)
+  - `specs/quiver-v18-slice-orchestration/` — CLI alternative already shipped
 
 ## Resolved Entries
 
