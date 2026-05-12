@@ -30,7 +30,10 @@
 - Onboarding README flow polish
 - Local project installation guidance
 
-## v0.6 (unreleased)
+## v0.6 (shipped)
+
+> Scope absorbed into v0.7. Node-native runtime and `quiver:*` npm scripts
+> landed together with the token-efficient context pack work.
 
 - Cross-platform CI matrix (macOS, Linux, Windows) for Node-native runtime
 - Node-native generated project npm scripts (`quiver:*`)
