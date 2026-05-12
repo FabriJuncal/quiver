@@ -69,11 +69,23 @@ function normalizeDependencyRef(slice, dependency) {
   }
 
   if (dep.includes('/')) {
+    // Valid slice ref: the segment after the first slash must start with "slice-".
+    // Entries like "docs/root-first-docs-flow" are legacy branch-name artifacts; drop silently.
+    const afterSlash = dep.slice(dep.indexOf('/') + 1);
+    if (!afterSlash.startsWith('slice-')) {
+      return null;
+    }
     return dep;
   }
 
   if (!slice || !slice.specSlug) {
     return dep;
+  }
+
+  // Legacy bare spec names (e.g. "quiver-v01") have no "slice-" prefix.
+  // They are spec-level refs already completed; drop them silently.
+  if (!dep.startsWith('slice-')) {
+    return null;
   }
 
   return `${slice.specSlug}/${dep}`;

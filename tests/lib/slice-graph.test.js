@@ -179,3 +179,49 @@ test('computeLevels puts disjoint slices in the same level and detects conflicts
     repo.cleanup();
   }
 });
+
+test('buildGraph drops legacy bare spec-name deps and produces zero edges', () => {
+  const repo = makeRepo({
+    'specs/spec-a/slices/slice-01-alpha/slice.json': slice('spec-a/slice-01-alpha', ['docs/a.md'], {
+      dependencies: ['quiver-v01'],
+    }),
+  });
+  try {
+    const graph = buildGraph(readAllSlices(repo.root));
+    assert.equal(graph.edges.length, 0, 'legacy bare spec dep must produce no edges');
+    assert.deepEqual(graph.cycles, []);
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('buildGraph drops slash deps whose second segment is not a slice-id (regression)', () => {
+  const repo = makeRepo({
+    'specs/spec-a/slices/slice-01-alpha/slice.json': slice('spec-a/slice-01-alpha', ['docs/a.md'], {
+      dependencies: ['docs/root-first-docs-flow'],
+    }),
+  });
+  try {
+    const graph = buildGraph(readAllSlices(repo.root));
+    assert.equal(graph.edges.length, 0, 'non-slice-id slash dep must produce no edges');
+    assert.deepEqual(graph.cycles, []);
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('buildGraph preserves depends_on with full spec/slice-id format (regression)', () => {
+  const repo = makeRepo({
+    'specs/spec-a/slices/slice-01-alpha/slice.json': slice('spec-a/slice-01-alpha', ['docs/a.md']),
+    'specs/spec-b/slices/slice-01-cross/slice.json': slice('spec-b/slice-01-cross', ['docs/b.md'], {
+      depends_on: ['spec-a/slice-01-alpha'],
+    }),
+  });
+  try {
+    const graph = buildGraph(readAllSlices(repo.root));
+    assert.equal(graph.edges.length, 1);
+    assert.deepEqual(graph.edges[0], { from: 'spec-a/slice-01-alpha', to: 'spec-b/slice-01-cross' });
+  } finally {
+    repo.cleanup();
+  }
+});
