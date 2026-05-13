@@ -4,13 +4,22 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-05-13
+
 ### Added
 
-- Cross-platform CI matrix covering macOS, Linux, and Windows for the Node-native Quiver runtime
+- `quiver:plan` — lists all pending slices in dependency order with estimated hours, status, and critical path
+- `quiver:graph` — visualizes the slice dependency graph in ASCII tree, Mermaid, and DOT formats
+- `quiver:next` — suggests the next ready slice; supports `--all-ready`, `--json`, and `--auto-start`
+- Slice graph library — `readAllSlices`, `buildGraph`, `topoSort`, `computeLevels`, `detectFileConflicts` for programmatic graph access
+- `depends_on` and `parallel_safe` fields with validation in `check-slice`
+- JSON-with-comments support for slice templates
+- Cross-platform CI matrix covering macOS, Linux, and Windows for the Node-native runtime
 - Node-native generated project npm scripts and additive migration support for existing projects
-- Optional `depends_on` and `parallel_safe` validation in `check-slice`, plus JSON-with-comments support for slice templates
-- `quiver:graph` export formats for Mermaid and DOT, plus graph example docs for PR-ready output
-- `quiver:next` command for suggesting the next ready slice, with `--all-ready`, `--json`, and guarded auto-start
+
+### Fixed
+
+- `quiver:plan` no longer crashes on repos with legacy bare spec names in the `dependencies` field (e.g. `"quiver-v01"`) — these are silently dropped instead of throwing `MISSING_DEPENDENCY`
 
 ## [0.4.0] - 2026-04-21
 
