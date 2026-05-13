@@ -5,18 +5,18 @@
   "description": "Quiver CLI for scaffolding projects from the packaged template",
   "license": "MIT",
   "bin": {
-    "create-quiver": "./bin/create-quiver.js"
+    "create-quiver": "bin/create-quiver.js"
   },
   "scripts": {
-  "check:slice": "bash tools/scripts/check-slice-readiness.sh",
-  "check:pr": "bash tools/scripts/check-pr-readiness.sh",
-  "start:slice": "bash tools/scripts/start-slice.sh",
-  "cleanup:slice": "bash tools/scripts/cleanup-slice.sh",
-  "migrate": "bash tools/scripts/migrate-project.sh",
-  "quiver:plan": "npx create-quiver plan",
-  "quiver:graph": "npx create-quiver graph",
-  "quiver:next": "npx create-quiver next",
-  "package:quiver": "bash scripts/package-quiver.sh",
+    "check:slice": "bash tools/scripts/check-slice-readiness.sh",
+    "check:pr": "bash tools/scripts/check-pr-readiness.sh",
+    "start:slice": "bash tools/scripts/start-slice.sh",
+    "cleanup:slice": "bash tools/scripts/cleanup-slice.sh",
+    "migrate": "bash tools/scripts/migrate-project.sh",
+    "quiver:plan": "npx create-quiver plan",
+    "quiver:graph": "npx create-quiver graph",
+    "quiver:next": "npx create-quiver next",
+    "package:quiver": "bash scripts/package-quiver.sh",
     "smoke:create-quiver": "bash scripts/ci/smoke-create-quiver.sh",
     "smoke:tiered-pack": "bash scripts/ci/smoke-tiered-pack.sh",
     "release:quiver": "bash scripts/release-quiver.sh"
