@@ -17,13 +17,12 @@ cd /path/to/your-project
 npx create-quiver --name "Project Name"
 ```
 
-Do not install Quiver globally. Running it with `npx` from the project root keeps the generated docs, specs, and scripts in the right repository.
+Quiver installs itself as a dev dependency automatically after init. Once installed, `npx create-quiver plan` (and all other commands) resolve to the local version — no `@version` suffix needed and no npx cache issues.
 
-If your team wants to pin the Quiver version in the project, install it as a devDependency:
+To skip the automatic install (for CI environments or offline setups):
 
 ```bash
-npm install --save-dev create-quiver
-npx create-quiver --name "Project Name"
+npx create-quiver --skip-install --name "Project Name"
 ```
 
 To initialize a different directory from outside the project, pass `--dir` explicitly. Quote paths that contain spaces:
@@ -99,14 +98,10 @@ If the project never ran Quiver initialization before, do not use `migrate` as b
 npx create-quiver --name "Project Name"
 ```
 
-If your team prefers a pinned local dependency, update the package first and then run the same flow:
+After `migrate`, Quiver also installs itself as a dev dependency automatically. To skip:
 
 ```bash
-npm install --save-dev create-quiver@latest
-npx create-quiver migrate
-npx create-quiver analyze
-npx create-quiver graph
-npx create-quiver doctor
+npx create-quiver migrate --skip-install
 ```
 
 The tree output remains the default, but Mermaid and DOT are available on demand for exported docs and slide decks.

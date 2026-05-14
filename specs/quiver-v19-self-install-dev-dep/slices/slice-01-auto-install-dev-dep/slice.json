@@ -1,0 +1,56 @@
+{
+  "slice_id": "slice-01-auto-install-dev-dep",
+  "ticket": "QUIVER-01",
+  "type": "feature",
+  "title": "Auto-install create-quiver as dev dependency after init/migrate",
+  "objective": "After `npx create-quiver` init or migrate, the target project has create-quiver in devDependencies and installed in node_modules. Uses the correct package manager. Skippable via --skip-install.",
+  "description": "Add two functions to init-docs.js: detectPackageManager (checks lockfiles) and installSelfAsDevDep (runs the appropriate install command). Call installSelfAsDevDep from the init and migrate flows in index.js after runInitDocs. Add --skip-install flag to the CLI arg parser.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "auto-install-dev-dep",
+    "branch_name": "feature/QUIVER-01-auto-install-dev-dep"
+  },
+  "files": [
+    "src/create-quiver/lib/init-docs.js",
+    "src/create-quiver/index.js",
+    "tests/lib/init-docs.test.js"
+  ],
+  "depends_on": [],
+  "must": [
+    "detectPackageManager(projectRoot) returns 'bun'|'pnpm'|'yarn'|'npm' based on lockfile presence",
+    "installSelfAsDevDep(projectRoot, version) runs the correct install command for the detected pm",
+    "installSelfAsDevDep skips if no package.json exists (returns 'skipped-no-package-json')",
+    "installSelfAsDevDep skips if create-quiver already in devDependencies (returns 'skipped-already-present')",
+    "installSelfAsDevDep catches install errors and returns 'failed' without throwing",
+    "--skip-install flag parsed in index.js and passed through to suppress the install step",
+    "Both init and migrate flows call installSelfAsDevDep unless --skip-install is set",
+    "Init output prints 'Added create-quiver@X.Y.Z as dev dependency' on success or a warning on skip/fail",
+    "node --test tests/**/*.test.js passes"
+  ],
+  "not_included": [
+    "Auto-updating an existing create-quiver version in devDependencies",
+    "Supporting private registries or custom npm configs",
+    "Changing the scaffold output beyond the install step message"
+  ],
+  "acceptance": [
+    "After init: package.json has create-quiver in devDependencies",
+    "After init: node_modules/create-quiver exists",
+    "npx create-quiver plan works without @version in a freshly initialized project",
+    "--skip-install suppresses the install in both init and migrate",
+    "yarn/pnpm/bun projects use the right install command",
+    "Install failure prints a warning but does not crash the init",
+    "node --test tests/**/*.test.js exits 0"
+  ],
+  "tests": [
+    "node --test tests/**/*.test.js",
+    "npx create-quiver --skip-install --name test --dir /tmp/quiver-test-skip && ls /tmp/quiver-test-skip/node_modules/create-quiver 2>/dev/null && echo FAIL || echo OK"
+  ],
+  "estimated_hours": 1.5,
+  "actual_hours": 1,
+  "status": "completed",
+  "blocked_reason": null,
+  "ready_at": "2026-05-14T00:00:00Z",
+  "started_at": "2026-05-14T00:00:00Z",
+  "completed_at": "2026-05-14T00:00:00Z"
+}

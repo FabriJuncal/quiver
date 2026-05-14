@@ -64,20 +64,21 @@ Draft specs exist but are **not executed until v18 passes its validation checkpo
 
 Plan total: ~41h across 11 slices. Drafts parked on `drafts/v19-v22-orchestration-followups`. v22 stays deferred until BACKLOG.md records ≥1 occurrence per slice.
 
-### v0.8 — Handoff Contract (draft spec created, pending evidence)
+### v0.8 — Slice Orchestration Commands (shipped 2026-05-13)
 
-- Canonical `HANDOFF.md.template` for exceptional context transfers
-- `create-quiver check-handoff <path>` validation for structure and placement
-- Optional `create-quiver new-handoff <slug>` scaffold
-- Keep handoffs orthogonal to `slice.json`, not a new slice type
+- `quiver:plan` — pending slices in dependency order with critical path and estimated hours
+- `quiver:graph` — dependency graph in ASCII tree, Mermaid, and DOT formats
+- `quiver:next` — next ready slice with `--all-ready`, `--json`, and `--auto-start`
+- Slice graph library (`slice-graph.js`) with `readAllSlices`, `buildGraph`, `topoSort`, `computeLevels`, `detectFileConflicts`
+- `depends_on` and `parallel_safe` validation in `check-slice`
+- Fix: `quiver:plan` no longer crashes on repos with legacy bare spec deps
 
-### v0.9 — Context Hygiene and Diagnostics (proposed, not yet spec-ed)
+### v0.9 — Auto-Install as Dev Dependency (shipped 2026-05-14)
 
-- Analyzer noise filter (ignore lockfiles, dist/, build/, binaries, generated files)
-- `create-quiver token-cost` diagnostic (4 chars/token heuristic)
-- `create-quiver diff-pack` for review and debug modes
-- Cache-friendly ordering within the pack (stable above, volatile below)
-- `docs/ai/INDEX.yaml` inverted index (directory → purpose)
+- After `init` or `migrate`, Quiver installs itself as a dev dependency automatically
+- Detects package manager via lockfile (bun → pnpm → yarn → npm)
+- Resolves npx cache issues: `npx create-quiver plan` works without `@version`
+- `--skip-install` flag for CI environments
 
 ### Block A — Zero-Question First Use (proposed)
 
