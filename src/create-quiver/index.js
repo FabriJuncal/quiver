@@ -7,7 +7,7 @@ const { collectDoctorWarnings } = require('./lib/doctor');
 const { runGraph } = require('./commands/graph');
 const { runNext } = require('./commands/next');
 const { runPlan } = require('./commands/plan');
-const { initializeProjectDocs } = require('./lib/init-docs');
+const { initializeProjectDocs, installSelfAsDevDep } = require('./lib/init-docs');
 const { checkPrReadiness, checkScope, checkSliceReadiness } = require('./lib/readiness');
 const { cleanupSlice, refreshActiveSlicesBoard, startSlice } = require('./lib/lifecycle');
 const { relativePosixPath, resolveTargetRoot } = require('./lib/paths');
@@ -141,6 +141,11 @@ function parseArgs(argv) {
 
     if (arg === '-y' || arg === '--yes') {
       result.force = true;
+      continue;
+    }
+
+    if (arg === '--skip-install') {
+      result.skipInstall = true;
       continue;
     }
 
@@ -1160,6 +1165,15 @@ function runMigrate(targetDir) {
     });
     updateStateForMigrate(projectRoot, projectName, CLI_VERSION);
 
+    if (!args.skipInstall) {
+      const installResult = installSelfAsDevDep(projectRoot, CLI_VERSION);
+      if (installResult === 'installed') {
+        console.log(`Added create-quiver@${CLI_VERSION} as dev dependency`);
+      } else if (installResult === 'failed') {
+        console.warn(`Warning: could not install create-quiver automatically. Run: npm install -D create-quiver@${CLI_VERSION}`);
+      }
+    }
+
     console.log(`Quiver migration completed for ${projectRoot}`);
     console.log('Missing workflow files were restored without overwriting existing project files.');
   } finally {
@@ -1414,6 +1428,15 @@ async function run(argv) {
     const templateRoot = packTemplate(packageRoot, tempRoot);
     copyTemplate(templateRoot, targetDir);
     runInitDocs(targetDir, projectName);
+
+    if (!args.skipInstall) {
+      const installResult = installSelfAsDevDep(targetDir, CLI_VERSION);
+      if (installResult === 'installed') {
+        console.log(`Added create-quiver@${CLI_VERSION} as dev dependency`);
+      } else if (installResult === 'failed') {
+        console.warn(`Warning: could not install create-quiver automatically. Run: npm install -D create-quiver@${CLI_VERSION}`);
+      }
+    }
 
     console.log(`Installed Quiver into ${targetDir}`);
     printInitNextSteps(targetDir, projectName);

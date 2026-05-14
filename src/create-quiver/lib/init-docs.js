@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const { execSync } = require('child_process');
 const { writeState } = require('./state');
 
 function ensureDir(dirPath) {
@@ -667,8 +668,44 @@ function initializeProjectDocs(options) {
   };
 }
 
+function detectPackageManager(projectRoot) {
+  if (fs.existsSync(path.join(projectRoot, 'bun.lockb'))) return 'bun';
+  if (fs.existsSync(path.join(projectRoot, 'pnpm-lock.yaml'))) return 'pnpm';
+  if (fs.existsSync(path.join(projectRoot, 'yarn.lock'))) return 'yarn';
+  return 'npm';
+}
+
+function installSelfAsDevDep(projectRoot, version) {
+  const packageJsonPath = path.join(projectRoot, 'package.json');
+  if (!fs.existsSync(packageJsonPath)) {
+    return 'skipped-no-package-json';
+  }
+
+  const pkg = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
+  if (pkg.devDependencies && pkg.devDependencies['create-quiver']) {
+    return 'skipped-already-present';
+  }
+
+  const pm = detectPackageManager(projectRoot);
+  const commands = {
+    npm: `npm install -D create-quiver@${version}`,
+    yarn: `yarn add -D create-quiver@${version}`,
+    pnpm: `pnpm add -D create-quiver@${version}`,
+    bun: `bun add -d create-quiver@${version}`,
+  };
+
+  try {
+    execSync(commands[pm], { cwd: projectRoot, stdio: 'inherit' });
+    return 'installed';
+  } catch {
+    return 'failed';
+  }
+}
+
 module.exports = {
   initializeProjectDocs,
   writeFrontMatter,
   toProjectSlug,
+  detectPackageManager,
+  installSelfAsDevDep,
 };
