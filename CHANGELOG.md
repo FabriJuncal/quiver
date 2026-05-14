@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-05-14
+
+### Added
+
+- Auto-install `create-quiver` as a dev dependency after `init` and `migrate` — detects yarn/pnpm/bun/npm via lockfiles and runs the appropriate install command
+- `--skip-install` flag to suppress the dev dependency install step (useful for CI environments)
+
 ## [0.8.0] - 2026-05-13
 
 ### Added
