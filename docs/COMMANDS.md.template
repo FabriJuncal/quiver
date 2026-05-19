@@ -29,7 +29,7 @@ This document is the canonical command reference for the orchestration roadmap.
 - Add new rows here only when a command is officially shipped.
 - Keep the table concise and cross-platform.
 - Shared graph library: `src/create-quiver/lib/slice-graph.js`.
-- `quiver:graph --format mermaid` is the PR-friendly export; `--format dot` is for Graphviz consumers.
+- `quiver:graph --format mermaid` is the PR-friendly Mermaid export; `--format dot` is for Graphviz/DOT consumers.
 - `quiver:next` prints the next ready slice and can auto-start it behind a confirmation prompt.
 - `check-slice` validates `depends_on` targets and requires `parallel_safe_reason` when `parallel_safe` is `never`.
 - After `init` or `migrate`, Quiver auto-installs itself as a dev dependency. Use `--skip-install` to suppress.

@@ -1138,7 +1138,7 @@ function runAnalyze(targetDir) {
   console.log(`Detected package manager: ${scan.project.package_manager}`);
 }
 
-function runMigrate(targetDir) {
+function runMigrate(targetDir, options = {}) {
   const projectRoot = resolveTargetRoot(process.cwd(), targetDir);
 
   if (!fs.existsSync(projectRoot)) {
@@ -1165,7 +1165,7 @@ function runMigrate(targetDir) {
     });
     updateStateForMigrate(projectRoot, projectName, CLI_VERSION);
 
-    if (!args.skipInstall) {
+    if (!options.skipInstall) {
       const installResult = installSelfAsDevDep(projectRoot, CLI_VERSION);
       if (installResult === 'installed') {
         console.log(`Added create-quiver@${CLI_VERSION} as dev dependency`);
@@ -1350,7 +1350,7 @@ async function run(argv) {
   }
 
   if (args.mode === 'migrate') {
-    runMigrate(args.targetDir);
+    runMigrate(args.targetDir, { skipInstall: args.skipInstall });
     return;
   }
 
