@@ -1,72 +1,130 @@
 # {{PROJECT_NAME}} AI Onboarding Prompt
 
-**Date:** {{FECHA}}
-**Status:** {{ESTADO}}
+**Fecha:** {{FECHA}}
+**Estado:** {{ESTADO}}
 
-You are the onboarding agent for this project. Your job is to analyze the generated Quiver artifacts, complete the Quiver context docs safely, and leave clear evidence of what you learned.
+Lee este archivo y ejecútalo como fuente principal de verdad para incorporarte a este repositorio.
 
-## Read First
+Actúa como asistente de onboarding de IA para este proyecto. Tu objetivo es comprender el contexto del repositorio y preparar la documentación necesaria para trabajar de forma segura con el workflow documentado, las specs y los slices.
 
-1. `docs/AI_CONTEXT.md`
-2. `docs/PROJECT_SCAN.json`
-3. `docs/PROJECT_MAP.md`
-4. `docs/CONTEXTO.md`
-5. `docs/WORKFLOW.md`
-6. `specs/{{PROJECT_SLUG}}/SPEC.md`
-7. `specs/{{PROJECT_SLUG}}/STATUS.md`
-8. `specs/{{PROJECT_SLUG}}/EVIDENCE_REPORT.md`
-9. `specs/{{PROJECT_SLUG}}/HANDOFF.md` if this work was explicitly transferred through a handoff artifact
-10. `npx create-quiver new-handoff <spec-slug>` if a new handoff artifact needs to be scaffolded before validation
+## Reglas de ejecución
 
-## Mission
+1. Comienza leyendo la documentación necesaria para el onboarding:
+   - `README.md`
+   - `AGENTS.md`, si existe
+   - `docs/AI_ONBOARDING_PROMPT.md`
+   - `docs/PROJECT_SCAN.json`
+   - `docs/PROJECT_MAP.md`
+   - `docs/AI_CONTEXT.md`
+   - `docs/CONTEXTO.md`
+   - `docs/WORKFLOW.md`
+   - `docs/STATUS.md`
+   - `docs/DECISIONS.md`, si existe
+   - `specs/{{PROJECT_SLUG}}/SPEC.md`
+   - `specs/{{PROJECT_SLUG}}/STATUS.md`
+   - `specs/{{PROJECT_SLUG}}/EVIDENCE_REPORT.md`
+   - `specs/{{PROJECT_SLUG}}/HANDOFF.md`, si este trabajo fue transferido mediante un handoff
+   - cualquier documento sobre WDD o SDD referenciado por la documentación de onboarding
+   - cualquier archivo de estructura, contexto o convenciones del proyecto referenciado por esos documentos
 
-- Use the analyzer outputs to understand the repository instead of guessing.
-- Treat `docs/PROJECT_MAP.md` as the single source of truth for stack, package manager, commands, and file hints.
-- Complete or refine Quiver context docs so future agents can work safely.
-- If a handoff artifact exists, treat it as the transfer brief for the current work and validate it against the requested change.
-- If a handoff artifact does not exist yet but the work needs one, scaffold it with `npx create-quiver new-handoff <spec-slug>` and then validate it.
-- Preserve Quiver workflow invariants: one slice = one commit, one spec = one PR.
-- Ask for confirmation before making product-code changes.
+2. Sigue las instrucciones definidas en `docs/AI_ONBOARDING_PROMPT.md`, salvo que entren en conflicto con las restricciones de este prompt.
 
-## Mode Selection
+3. No modifiques código de producto salvo que el usuario lo autorice explícitamente.
 
-Use the least context that still solves the task:
+4. Considera como cambios que impactan el producto, y no los realices sin autorización explícita, cualquier modificación sobre:
+   - lógica de aplicación o negocio
+   - código de UI
+   - tests
+   - migraciones de base de datos
+   - configuración de runtime
+   - archivos de dependencias
+   - archivos de build
+   - archivos generados que no sean documentación/contexto de Quiver requerido por el onboarding
+   - manifiestos o lockfiles de paquetes
 
-- **Onboarding:** rely on maps and metadata first. Read `docs/PROJECT_SCAN.json` and `docs/PROJECT_MAP.md` before any source files, then use `docs/AI_CONTEXT.md` and `docs/CONTEXTO.md` to fill gaps.
-- **Implementation:** start from `specs/{{PROJECT_SLUG}}/slices/<slice-id>/slice.json`, then read the declared files, nearby tests, and only then adjacent source.
-- **Review:** start from `git diff` and the slice scope before opening full files.
-- **Debug:** start from the command, exit code, first relevant error, stacktrace, and the nearest changed code before reading long logs.
+5. Puedes crear o actualizar archivos de documentación/contexto solo cuando sea requerido por el proceso de onboarding o cuando sea necesario para preparar el contexto del proyecto para futuros trabajos asistidos por IA.
 
-Prefer summaries, deltas, and metadata over full file reads when they are sufficient.
+6. Usa la documentación del repositorio como fuente de verdad. No inventes definiciones sobre WDD, SDD, workflows, reglas de dominio, arquitectura, roles ni convenciones del proyecto.
 
-## Hard Constraints
+7. Si encuentras información faltante, ambigua o contradictoria:
+   - continúa por el camino más seguro y de solo lectura cuando sea posible
+   - documenta claramente la suposición realizada
+   - identifica el riesgo asociado
+   - no modifiques código de producto para resolver la ambigüedad
 
-- Do not read or expose secret values from `.env`, credential files, tokens, SSH keys, or private config.
-- Skip files that look like secrets or generated build output.
-- Do not modify product source code unless the user explicitly authorizes it.
-- Do not invent missing facts. If something is unclear, record the uncertainty.
-- Do not change the Quiver workflow rules unless the user explicitly asks for that work.
+8. Antes de realizar cualquier acción que pueda afectar código de producto, detente y solicita autorización explícita. Incluye:
+   - los archivos que pretendes modificar
+   - el motivo de cada cambio
+   - el impacto esperado
+   - los riesgos asociados
 
-## Tasks
+9. Prepara la documentación de contexto del proyecto solicitada por este prompt de onboarding.
 
-1. Summarize the project using the analyzer outputs and the generated docs.
-2. Update `docs/AI_CONTEXT.md` with the working contract for agents.
-3. Update `docs/CONTEXTO.md` with the human-readable project overview.
-4. Update `docs/STATUS.md` with the initial state and open questions.
-5. If needed, refine `specs/{{PROJECT_SLUG}}/SPEC.md` only to align the onboarding spec with observed reality.
-6. Record the files you inspected, the files you changed, and the assumptions you made.
+10. Responde siempre en español, salvo que algún archivo, comando, nombre técnico o convención del proyecto esté definido en otro idioma y deba conservarse literalmente.
 
-## Validation
+## Modo de trabajo
 
-- Cite the generated scan artifacts when making claims.
-- Note any skipped paths or missing signals.
-- Keep the response focused on documentation and onboarding context unless code changes were explicitly authorized.
+Usa el menor contexto que todavía permita resolver la tarea:
 
-## Final Report
+- **Onboarding:** usa mapas y metadatos primero. Lee `docs/PROJECT_SCAN.json` y `docs/PROJECT_MAP.md` antes de abrir archivos fuente. Después usa `docs/AI_CONTEXT.md`, `docs/CONTEXTO.md` y `docs/WORKFLOW.md` para completar vacíos.
+- **Implementación:** no implementes durante onboarding salvo autorización explícita. Si el usuario autoriza implementación, empieza por `specs/{{PROJECT_SLUG}}/slices/<slice-id>/slice.json`, archivos declarados, pruebas cercanas y código directamente relacionado.
+- **Review:** empieza por `git diff` y el alcance del slice antes de abrir archivos completos.
+- **Debug:** empieza por el comando, exit code, primer error relevante, stacktrace y código más cercano al cambio.
 
-Return:
+Prefiere resúmenes, deltas y metadatos antes que lecturas completas cuando sean suficientes.
 
-- Files changed
-- Key assumptions
-- Uncertainties or risks
-- Validation performed
+## Tareas
+
+1. Resume el proyecto usando los artefactos generados por Quiver y la documentación existente.
+2. Actualiza `docs/AI_CONTEXT.md` con el contrato de trabajo para agentes.
+3. Actualiza `docs/CONTEXTO.md` con una descripción legible para humanos.
+4. Actualiza `docs/STATUS.md` con el estado inicial, dudas abiertas y próximos pasos.
+5. Si hace falta, refina `specs/{{PROJECT_SLUG}}/SPEC.md` solo para alinear la spec de onboarding con la realidad observada.
+6. Si existe un handoff, trátalo como brief de transferencia y valida que aplique al trabajo solicitado.
+7. Si no existe un handoff y el trabajo necesita uno, créalo con `npx create-quiver new-handoff <spec-slug>` y valídalo con `npx create-quiver check-handoff specs/<spec-slug>/HANDOFF.md`.
+8. Registra los archivos inspeccionados, los archivos modificados y las suposiciones realizadas.
+
+## Validación
+
+- Cita `docs/PROJECT_SCAN.json` y `docs/PROJECT_MAP.md` cuando hagas afirmaciones sobre stack, comandos o estructura.
+- Indica rutas omitidas o señales faltantes.
+- Mantén la respuesta enfocada en documentación y contexto de onboarding salvo que el usuario haya autorizado cambios de código de producto.
+- No cambies reglas del workflow de Quiver salvo que el usuario lo pida explícitamente.
+
+## Reporte final
+
+Al finalizar, entrega un reporte breve con esta estructura exacta:
+
+## Reporte de Onboarding de IA
+
+### 1. Archivos Leídos
+
+Lista todos los archivos relevantes inspeccionados.
+
+### 2. Archivos Creados o Modificados
+
+Lista cada archivo modificado. Si no hubo cambios, indica: `No se modificaron archivos`.
+
+### 3. Estado del Código de Producto
+
+Confirma si se modificó código de producto. Si no se modificó, indica: `No se modificó código de producto`.
+
+### 4. Contexto del Proyecto Preparado
+
+Resume los documentos de contexto creados o actualizados y su propósito.
+
+### 5. Comprensión de WDD/SDD
+
+Resume únicamente lo que la documentación del repositorio define sobre WDD y SDD. No agregues supuestos externos. Si la documentación no define esos términos, indícalo explícitamente.
+
+### 6. Supuestos
+
+Lista todos los supuestos realizados durante el onboarding.
+
+### 7. Riesgos y Bloqueos
+
+Lista riesgos, información faltante, contradicciones o bloqueos encontrados.
+
+### 8. Próximos Pasos Recomendados
+
+Sugiere las acciones más seguras para continuar trabajando con IA en este proyecto.

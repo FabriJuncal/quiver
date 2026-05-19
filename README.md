@@ -1,59 +1,362 @@
 # Quiver
 
-Quiver is a CLI-first documentation workflow for projects that use specs, slices, and AI-assisted implementation.
+Quiver es una herramienta de línea de comandos para ordenar proyectos que trabajan con documentación, especificaciones, slices y ayuda de agentes de IA.
 
-It gives a project a repeatable structure for planning work, starting focused implementation slices, validating readiness, and keeping human and AI contributors aligned.
+Su objetivo es simple: que una persona o un agente puedan llegar a un repo, entender qué está pasando, elegir el próximo trabajo correcto y avanzar sin romper el flujo del equipo.
 
-## Developer Onboarding Flow
+## ¿Qué es Quiver?
 
-Use this flow when adopting Quiver in an existing project or starting a new one.
+Quiver es un workflow de documentación para proyectos de software.
 
-### 1. Install Quiver
+Sirve para preparar un proyecto antes de implementar: crea una estructura de documentos, comandos y convenciones para que el trabajo no dependa de memoria, chats perdidos o instrucciones sueltas.
 
-Run Quiver from the project where the workflow will live:
+Ayuda a:
+
+- desarrolladores que quieren trabajar por piezas pequeñas y revisables;
+- equipos que usan IA para analizar, planificar o implementar;
+- maintainers que necesitan que cada cambio tenga contexto, alcance y evidencia;
+- agentes de IA que necesitan saber por dónde empezar sin leer todo el repo.
+
+Quiver existe porque el caos también compila. A veces. Pero después alguien tiene que entenderlo.
+
+## ¿Qué problema resuelve?
+
+En muchos proyectos, el trabajo empieza con una pregunta sencilla: "¿por dónde arranco?"
+
+El problema es que la respuesta suele estar repartida en demasiados lugares:
+
+- un README que no está actualizado;
+- tickets con contexto incompleto;
+- decisiones tomadas en conversaciones;
+- comandos que solo una persona conoce;
+- agentes de IA leyendo archivos de más o tocando archivos de menos;
+- PRs grandes donde es difícil saber qué se intentó hacer.
+
+Quiver busca reducir esa fricción. No intenta reemplazar al equipo ni decidir por él. Lo que hace es ordenar el terreno para que el siguiente paso sea claro.
+
+## ¿Cómo lo resuelve?
+
+Quiver agrega una estructura de trabajo al proyecto.
+
+Esa estructura separa tres cosas que suelen mezclarse:
+
+- **Contexto:** qué es el proyecto, cómo se trabaja y qué comandos existen.
+- **Plan:** qué problema se quiere resolver y en qué partes se divide.
+- **Ejecución:** qué slice se está trabajando, qué archivos puede tocar y cómo se valida.
+
+Al inicializarse, Quiver genera documentos y comandos para que el proyecto tenga un contrato de trabajo repetible.
+
+Los conceptos principales son:
+
+- **Spec:** documento que describe un objetivo de trabajo. Define el problema, alcance, estado y evidencia esperada.
+- **Slice:** parte pequeña de una spec. Un slice debe ser lo bastante acotado como para implementarse, validarse y revisarse sin mezclar temas.
+- **Project map:** resumen generado por Quiver con stack, package manager, comandos y pistas del repo. Vive en `docs/PROJECT_MAP.md`.
+- **AI context:** paquete de contexto para agentes de IA. Vive en `docs/AI_CONTEXT.md`.
+- **Handoff:** documento excepcional para transferir contexto entre agentes o fases. Vive en `specs/<spec-slug>/HANDOFF.md`.
+
+La regla práctica es: primero contexto, después plan, después código.
+
+## Primeros pasos
+
+Quiver se usa desde la raíz del proyecto donde querés instalar el workflow. No se recomienda instalarlo globalmente. Usá `npx create-quiver` o, si el equipo necesita fijar versión, una dev dependency local.
+
+### Caso 1: Proyecto nuevo desde cero
+
+Usá este camino cuando estás empezando un proyecto y querés sumar Quiver desde el principio.
+
+1. Creá o entrá a la carpeta del proyecto.
 
 ```bash
-cd /path/to/your-project
-npx create-quiver --name "Project Name"
+mkdir mi-proyecto
+cd mi-proyecto
 ```
 
-Quiver installs itself as a dev dependency automatically after init. Once installed, `npx create-quiver plan` (and all other commands) resolve to the local version — no `@version` suffix needed and no npx cache issues.
-
-To skip the automatic install (for CI environments or offline setups):
+2. Inicializá Quiver con el nombre del proyecto.
 
 ```bash
-npx create-quiver --skip-install --name "Project Name"
+npx create-quiver --name "Mi Proyecto"
 ```
 
-To initialize a different directory from outside the project, pass `--dir` explicitly. Quote paths that contain spaces:
+Esto crea la estructura base de documentación y workflow. Después de inicializar, Quiver intenta instalarse como dev dependency del proyecto para que los comandos futuros resuelvan a la versión local.
 
-```bash
-npx create-quiver --name "Project Name" --dir "/Users/me/My Project"
-```
-
-### 2. Analyze And Validate
-
-Run the local analyzer and then validate the generated contract from the project root:
+3. Analizá el proyecto.
 
 ```bash
 npx create-quiver analyze
-npx create-quiver graph
+```
+
+Esto genera `docs/PROJECT_SCAN.json` y `docs/PROJECT_MAP.md`. Esos archivos ayudan a humanos y agentes a entender el repo sin adivinar.
+
+4. Validá el contrato generado.
+
+```bash
 npx create-quiver doctor
+```
+
+El doctor revisa si falta algo importante y muestra los próximos pasos recomendados.
+
+5. Leé el onboarding para agentes antes de pedir implementación.
+
+```text
+Lee `docs/AI_ONBOARDING_PROMPT.md` y ejecútalo como fuente principal de verdad para incorporarte a este repositorio.
+
+Actúa como asistente de onboarding de IA. Prepara el contexto del proyecto para trabajar de forma segura con el workflow documentado, specs y slices.
+
+No modifiques código de producto salvo autorización explícita. Puedes crear o actualizar documentación de contexto si el onboarding lo requiere.
+
+Usa solo la documentación del repositorio como fuente de verdad. Si encuentras información faltante, ambigua o contradictoria, documenta el supuesto, el riesgo y continúa por el camino más seguro.
+
+Responde en español y finaliza con un reporte breve de archivos leídos, archivos modificados, estado del código de producto, supuestos, riesgos y próximos pasos.
+```
+
+Resultado esperado: el proyecto queda con `docs/`, `specs/<project-slug>/`, scripts `quiver:*` en `package.json`, archivos de soporte y una primera base para planificar trabajo.
+
+### Caso 2: Proyecto ya comenzado
+
+Usá este camino cuando el proyecto ya existe, pero nunca fue inicializado con Quiver.
+
+1. Revisá el estado actual antes de tocar nada.
+
+```bash
+git status --short
+```
+
+Si hay cambios pendientes, conviene commitearlos, guardarlos o crear una rama dedicada para incorporar Quiver. La idea es que el diff de onboarding sea fácil de revisar.
+
+2. Inicializá Quiver desde la raíz del proyecto.
+
+```bash
+npx create-quiver --name "Nombre del Proyecto"
+```
+
+No uses `migrate` si el proyecto nunca tuvo Quiver. `migrate` es solo para proyectos ya inicializados por una versión anterior.
+
+3. Analizá el repo real.
+
+```bash
+npx create-quiver analyze
+```
+
+Esto detecta stack, package manager, comandos y archivos relevantes.
+
+4. Corré el doctor.
+
+```bash
+npx create-quiver doctor
+```
+
+El doctor indica si falta completar contexto, si conviene revisar el onboarding de IA o si hay pasos pendientes.
+
+5. Revisá el diff antes de seguir.
+
+```bash
+git status --short
+```
+
+Resultado esperado: Quiver agrega o actualiza archivos de workflow y documentación. No debería ser el momento de cambiar código de producto; primero se estabiliza el contexto.
+
+### Caso 3: Proyecto ya comenzado con una versión vieja de Quiver
+
+Usá este camino cuando el proyecto ya tiene archivos de Quiver, pero pueden estar desactualizados.
+
+1. Buscá señales de una instalación previa.
+
+Revisá si existen archivos como:
+
+- `.quiver/state.json`
+- `docs/AI_CONTEXT.md`
+- `docs/PROJECT_MAP.md`
+- `docs-template/`
+- `tools/scripts/`
+- scripts `quiver:*` en `package.json`
+
+2. Ejecutá el doctor para conocer el estado.
+
+```bash
+npx create-quiver doctor
+```
+
+Si el proyecto necesita migración, el doctor debería indicarlo.
+
+3. Migrá solo si el proyecto ya había sido inicializado por Quiver.
+
+```bash
+npx create-quiver migrate
+```
+
+La migración actualiza el contrato de Quiver y agrega scripts o archivos faltantes de forma aditiva. Si estás en CI, offline o no querés instalar dependencias durante la migración, podés usar:
+
+```bash
+npx create-quiver migrate --skip-install
+```
+
+4. Volvé a analizar y validar.
+
+```bash
+npx create-quiver analyze
+npx create-quiver doctor
+```
+
+5. Revisá el diff antes de continuar con slices.
+
+```bash
+git status --short
+```
+
+Resultado esperado: el proyecto queda alineado con el contrato actual de Quiver sin mezclar migración con implementación de producto.
+
+## Flujo de trabajo recomendado con WDD y SDD
+
+El repositorio no define formalmente las siglas WDD y SDD como comandos propios. En esta guía las usamos para nombrar dos prácticas que Quiver ya promueve:
+
+- **WDD, Workflow-Driven Development:** primero se documenta cómo se trabaja. El workflow, comandos, contexto y reglas quedan escritos antes de pedir cambios de producto.
+- **SDD, Spec-Driven Development:** el trabajo se define en specs y slices antes de implementar. La spec explica el objetivo; el slice limita el alcance.
+
+```mermaid
+flowchart TD
+    A[1. Instalar o migrar Quiver] --> B[2. Analizar el proyecto]
+    B --> C[3. Completar contexto WDD]
+    C --> D[4. Definir o revisar spec SDD]
+    D --> E[5. Elegir el próximo slice]
+    E --> F[6. Empezar el slice]
+    F --> G[7. Implementar y validar]
+    G --> H[8. Abrir PR con evidencia]
+```
+
+### 1. Instalar o migrar Quiver
+
+Usá `npx create-quiver --name "Proyecto"` para proyectos nuevos o nunca inicializados. Usá `npx create-quiver migrate` solo cuando el proyecto ya tenía Quiver.
+
+### 2. Analizar el proyecto
+
+Ejecutá:
+
+```bash
+npx create-quiver analyze
+```
+
+El resultado importante es `docs/PROJECT_MAP.md`, que debe tratarse como fuente de verdad para stack, package manager, comandos y pistas de archivos.
+
+### 3. Completar contexto WDD
+
+Antes de implementar, revisá y completá la documentación de contexto:
+
+- `AGENTS.md`
+- `docs/AI_CONTEXT.md`
+- `docs/AI_ONBOARDING_PROMPT.md`
+- `docs/CONTEXTO.md`
+- `docs/WORKFLOW.md`
+- `docs/STATUS.md`
+- `docs/DECISIONS.md`
+
+Si un agente de IA participa, primero debe preparar contexto y reportar supuestos. No debería tocar código de producto sin autorización explícita.
+
+### 4. Definir o revisar spec SDD
+
+Trabajá sobre `specs/<project-slug>/SPEC.md`.
+
+La spec debe explicar:
+
+- qué problema se quiere resolver;
+- qué entra y qué queda afuera;
+- qué evidencia va a demostrar que el trabajo terminó;
+- cómo se divide en slices.
+
+### 5. Elegir el próximo slice
+
+Usá los comandos de orquestación:
+
+```bash
+npx create-quiver plan
+npx create-quiver graph
 npx create-quiver next
 ```
 
-Use `npx create-quiver graph --format mermaid` for PR-ready Markdown or `npx create-quiver graph --format dot` for Graphviz source.
+`plan` muestra el orden sugerido. `graph` muestra dependencias. `next` señala el próximo slice listo.
 
-If you need to target another directory from outside the project, pass `--dir` explicitly. For the current project root, omit it.
+### 6. Empezar el slice
 
-The analyzer creates `docs/PROJECT_SCAN.json` and `docs/PROJECT_MAP.md`. These files give the AI agent a deterministic project map before it edits context docs.
+Cuando el slice esté definido:
 
-The doctor checks the generated project contract and prints the next workflow steps. If the scan artifacts are missing, it recommends `npx create-quiver analyze` first.
-`npx create-quiver next` prints the next ready slice and can auto-start it behind a confirmation prompt.
+```bash
+npx create-quiver start-slice specs/<project-slug>/slices/slice-01/slice.json
+```
 
-### Project NPM Scripts
+Cada spec vuelve a empezar en `slice-01`. El número del slice es local a esa spec, no global del repo.
 
-Generated projects include `quiver:*` npm scripts that call the Node CLI and are the preferred repeatable workflow:
+### 7. Implementar y validar
+
+Durante la implementación, leé primero el `slice.json`, los archivos declarados, pruebas cercanas y código directamente relacionado.
+
+Validá el slice y el PR:
+
+```bash
+npx create-quiver check-slice specs/<project-slug>/slices/slice-01/slice.json
+npx create-quiver check-pr specs/<project-slug>/slices/slice-01/slice.json
+```
+
+Si querés validar que los archivos tocados respetan el alcance declarado:
+
+```bash
+npx create-quiver check-scope specs/<project-slug>/slices/slice-01/slice.json
+```
+
+### 8. Abrir PR con evidencia
+
+La regla del workflow es:
+
+- un slice = un commit;
+- una spec = un PR;
+- cada PR debe incluir evidencia de validación;
+- las decisiones durables van en `docs/DECISIONS.md`;
+- los aprendizajes reutilizables pueden registrarse en `docs/ai/LESSONS.md`.
+
+## Comandos disponibles
+
+Los comandos principales se ejecutan con `npx create-quiver ...`. En proyectos generados, también quedan disponibles scripts `npm run quiver:*` que llaman al CLI Node.
+
+### Inicialización y mantenimiento del workflow
+
+| Comando | Para qué sirve | Cuándo usarlo |
+|---|---|---|
+| `npx create-quiver --name "Proyecto"` | Inicializa Quiver en el proyecto actual. | Proyecto nuevo o proyecto existente que nunca tuvo Quiver. |
+| `npx create-quiver --name "Proyecto" --dir ./ruta` | Inicializa o inspecciona otra carpeta explícitamente. | Cuando no estás parado en la raíz del proyecto destino. |
+| `npx create-quiver migrate` | Actualiza una instalación previa de Quiver. | Solo en proyectos que ya fueron inicializados por Quiver. |
+| `npx create-quiver migrate --skip-install` | Migra sin instalar `create-quiver` como dev dependency. | CI, entornos offline o migraciones donde no querés tocar dependencias. |
+| `npx create-quiver doctor` | Valida el contrato generado y muestra pasos siguientes. | Después de init, migrate o analyze. |
+
+### Análisis y contexto
+
+| Comando | Para qué sirve | Resultado esperado |
+|---|---|---|
+| `npx create-quiver analyze` | Escanea el proyecto y genera contexto técnico. | `docs/PROJECT_SCAN.json` y `docs/PROJECT_MAP.md`. |
+| `npx create-quiver check-handoff specs/<spec-slug>/HANDOFF.md` | Valida que un handoff exista en la ubicación correcta y tenga secciones requeridas. | Confirmación o errores accionables. |
+| `npx create-quiver new-handoff <spec-slug>` | Crea un `HANDOFF.md` para una transferencia excepcional. | `specs/<spec-slug>/HANDOFF.md`. |
+
+### Planificación y orquestación de slices
+
+| Comando | Para qué sirve | Flags útiles |
+|---|---|---|
+| `npx create-quiver plan` | Lista slices pendientes en orden de ejecución y calcula camino crítico. | `--json`, `--only-ready`, `--spec <slug>` |
+| `npx create-quiver graph` | Muestra el grafo de dependencias entre slices. | `--format mermaid`, `--format dot`, `--show-conflicts`, `--level <n>` |
+| `npx create-quiver next` | Muestra el próximo slice listo para trabajar. | `--all-ready`, `--json`, `--auto-start` |
+
+### Ejecución y validación
+
+| Comando | Para qué sirve | Cuándo usarlo |
+|---|---|---|
+| `npx create-quiver start-slice <slice.json>` | Prepara el trabajo de un slice. | Al comenzar una unidad de trabajo. |
+| `npx create-quiver start-slice --allow-draft <slice.json>` | Permite iniciar un slice en estado draft intencionalmente. | Solo cuando el equipo decide trabajar sobre un draft. |
+| `npx create-quiver check-slice <slice.json>` | Valida readiness del slice. | Antes o durante la ejecución. |
+| `npx create-quiver check-slice --gate validation <slice.json>` | Valida el slice en modo cierre. | Antes de marcarlo como completado. |
+| `npx create-quiver check-pr <slice.json>` | Valida que el PR tenga la estructura esperada. | Antes de abrir o pedir review. |
+| `npx create-quiver check-scope <slice.json>` | Revisa que los archivos tocados estén dentro del alcance declarado. | Antes de cerrar el slice. |
+| `npx create-quiver cleanup-slice <slice.json>` | Limpia estado local asociado a un slice. | Al terminar o descartar trabajo local. |
+| `npx create-quiver refresh-active-slices` | Regenera el tablero local de slices activos. | Cuando querés ver o refrescar actividad local. |
+
+### Scripts npm generados
+
+Después de inicializar o migrar, los proyectos quedan con scripts equivalentes:
 
 ```bash
 npm run quiver:analyze
@@ -65,121 +368,60 @@ npm run quiver:migrate
 npm run quiver:start-slice -- specs/<project-slug>/slices/slice-01/slice.json
 npm run quiver:check-slice -- specs/<project-slug>/slices/slice-01/slice.json
 npm run quiver:check-pr -- specs/<project-slug>/slices/slice-01/slice.json
+npm run quiver:check-handoff -- specs/<project-slug>/HANDOFF.md
 npm run quiver:cleanup-slice -- specs/<project-slug>/slices/slice-01/slice.json
 npm run quiver:check-scope -- specs/<project-slug>/slices/slice-01/slice.json
 npm run quiver:refresh-active-slices
 ```
 
-`npm run quiver:graph` prints the tree view by default. Pass `--format mermaid` or `--format dot` when you need an exportable graph artifact.
-`npm run quiver:next` points to the next ready slice and can auto-start it behind a confirmation prompt.
-`npx create-quiver next --all-ready` shows the full ready level when you want the whole queue instead of one slice.
+Los wrappers Bash en `tools/scripts/` existen por compatibilidad en proyectos generados. Para automatización nueva, preferí `npx create-quiver ...` o los scripts `quiver:*`.
 
-The legacy Bash wrappers remain in `tools/scripts/` for compatibility, but new project-level automation should prefer the `quiver:*` scripts and the direct `npx create-quiver ...` commands.
-`npm run quiver:migrate` is only for projects that were already initialized by Quiver.
+## Qué genera Quiver
 
-### 3. Upgrade Existing Projects
+Según el estado del proyecto y el modo usado, Quiver puede generar o actualizar:
 
-If the project already had Quiver from an older version, upgrade it from the project root:
+- `AGENTS.md`
+- `docs/`
+- `docs/ai/`
+- `docs/AI_CONTEXT.md`
+- `docs/AI_ONBOARDING_PROMPT.md`
+- `docs/PROJECT_SCAN.json`
+- `docs/PROJECT_MAP.md`
+- `docs/DECISIONS.md`
+- `docs/COMMANDS.md`
+- `specs/<project-slug>/`
+- `specs/<project-slug>/HANDOFF.md`
+- `tools/scripts/`
+- `.github/`
+- scripts `quiver:*` en `package.json`
 
-```bash
-cd /path/to/your-project
-npx create-quiver migrate
-npx create-quiver analyze
-npx create-quiver graph
-npx create-quiver doctor
-npx create-quiver next
-```
+No todos los proyectos necesitan todos los archivos opcionales. Si un archivo no existe, no lo des por hecho: crealo desde la plantilla o registrá que falta.
 
-Use `npx create-quiver graph --format mermaid` for GitHub-friendly graph embeds or `npx create-quiver graph --format dot` for Graphviz pipelines.
+## Requisitos
 
-If the project never ran Quiver initialization before, do not use `migrate` as bootstrap. Run:
+- Node.js y npm para ejecutar el instalador.
+- Git para branches, worktrees y validaciones de PR.
+- macOS, Linux o Windows PowerShell/CMD como entornos objetivo del runtime Node.
 
-```bash
-npx create-quiver --name "Project Name"
-```
+Bash queda como camino de compatibilidad legacy para algunos wrappers. El contrato de largo plazo es Node-first.
 
-After `migrate`, Quiver also installs itself as a dev dependency automatically. To skip:
+## Para agentes de IA
 
-```bash
-npx create-quiver migrate --skip-install
-```
+Si estás trabajando como agente dentro de este repo, leé primero `README_FOR_AI.md`.
 
-The tree output remains the default, but Mermaid and DOT are available on demand for exported docs and slide decks.
+Si estás trabajando en un proyecto generado con Quiver, el orden recomendado es:
 
-### 4. Ask The AI To Prepare Context
+1. `AGENTS.md`
+2. `docs/PROJECT_MAP.md`
+3. `docs/PROJECT_SCAN.json`
+4. `docs/AI_CONTEXT.md`
+5. `docs/AI_ONBOARDING_PROMPT.md`
 
-Open your AI agent in the target project and run this short handoff:
+Para implementar, no abras todo el repo por costumbre. Empezá por el `slice.json`, los archivos declarados, pruebas cercanas y código directamente relacionado.
 
-```text
-Read docs/AI_ONBOARDING_PROMPT.md and execute it.
-Do not modify product code unless I explicitly authorize it.
-Prepare the project context docs and report assumptions, risks, and files changed.
-```
+## Para maintainers de Quiver
 
-The AI should use the scan artifacts to prepare `docs/AI_CONTEXT.md`, `docs/CONTEXTO.md`, `docs/STATUS.md`, and the initial project spec. The developer should review those documentation changes before implementation work starts.
-
-### 5. Start The First Slice
-
-After the context docs are reviewed:
-
-1. Define or refine `specs/<project-slug>/SPEC.md`.
-2. Create the first slice from `specs/<project-slug>/slices/slice-template/slice.json`.
-3. Start work with `npx create-quiver start-slice <slice.json>` or `npm run quiver:start-slice -- <slice.json>`.
-4. Make one commit per slice.
-5. Open one PR per spec.
-
-Slice numbering is local to each spec: every new spec starts at `slice-01`.
-
-## Requirements
-
-- Node.js and npm for the installer
-- Git for slice branches, worktrees, and PR workflow checks
-- macOS, Linux, and Windows PowerShell/CMD are the target developer environments for the cross-platform runtime work
-
-Windows native support is verified only when the cross-platform CI matrix is green. Bash remains a legacy compatibility path until the runtime slices land.
-
-See the generated `docs/SUPPORT_MATRIX.md` for the detailed support contract.
-
-## Cross-Platform Support
-
-Quiver is targeting native support on macOS, Linux, and Windows PowerShell/CMD. Bash is a legacy compatibility path until the runtime slices land, so the long-term contract is a Node-first workflow rather than a Bash-first one. The CI matrix must be green before Windows is considered fully verified.
-
-## What Gets Generated
-
-Quiver generates a project-local workflow under:
-
-- `docs/` for project context, workflow, support, troubleshooting, and AI guidance
-- `docs/PROJECT_SCAN.json` and `docs/PROJECT_MAP.md` after `create-quiver analyze`
-- `docs/AI_ONBOARDING_PROMPT.md` as the generated handoff prompt for the AI agent
-- `specs/<project-slug>/HANDOFF.md` as the exceptional transfer artifact between agents or phases
-- `npx create-quiver new-handoff <spec-slug>` to scaffold an optional handoff artifact when work needs to move between agents or phases
-- `npx create-quiver check-handoff specs/<project-slug>/HANDOFF.md` to validate a transferred handoff before execution
-- `docs/COMMANDS.md` as the canonical command reference table for orchestration
-- `specs/<project-slug>/` for the project spec, status, evidence, and slice contracts
-- `tools/scripts/` for slice lifecycle and readiness gates
-- `.github/` for default PR, issue, and CI templates
-- `package.json` scripts for the workflow commands
-
-For the detailed support contract, read `docs/SUPPORT_MATRIX.md` in the generated project. For recovery paths, read `docs/TROUBLESHOOTING.md`.
-
-## Manual Template Use
-
-Use the manual flow only when developing Quiver locally or testing a template checkout. From a target project where this repository was copied as `docs-template/`, run:
-
-```bash
-./docs-template/scripts/init-docs.sh "Project Name"
-```
-
-The CLI path is the supported adoption path for users.
-For analyzed projects, the agent handoff prompt lives at `docs/AI_ONBOARDING_PROMPT.md` in the generated project. If a bounded transfer between agents or phases is needed, scaffold `specs/<project-slug>/HANDOFF.md` with `npx create-quiver new-handoff <spec-slug>` and validate it with `npx create-quiver check-handoff specs/<project-slug>/HANDOFF.md`.
-
-## For AI Agents
-
-Read `README_FOR_AI.md` before working in this repository or in a generated project. In generated projects, `docs/AI_CONTEXT.md` is the first agent context file to read, followed by `docs/AI_ONBOARDING_PROMPT.md`, `docs/CONTEXTO.md`, and `docs/WORKFLOW.md`.
-
-## For Maintainers
-
-Release preflight:
+Comandos útiles para preparar releases del paquete:
 
 ```bash
 npm whoami
@@ -189,33 +431,30 @@ npm run smoke:create-quiver
 npm run release:quiver
 ```
 
-Current-version publish:
+Publicar la versión actual:
 
 ```bash
 bash scripts/release-quiver.sh --publish-current
 ```
 
-Versioned publish:
+Publicar con bump de versión:
 
 ```bash
 bash scripts/release-quiver.sh patch --publish
 ```
 
-The release helper stays explicit on purpose: `--publish-current` publishes the current version, and `--publish` follows a normal version bump flow.
+Si `npm whoami` o `npm view create-quiver version` falla, primero resolvé autenticación o conectividad con npm.
 
-If `npm whoami` or `npm view create-quiver version` fails, fix npm auth or registry reachability before publishing.
+## Referencias
 
-For a first release, prefer `--publish-current` so the published package stays at `0.4.0`.
-
-## References
-
-- [AI guide](./README_FOR_AI.md)
-- [AI context template](./docs/AI_CONTEXT.md.template)
-- [Support matrix template](./docs/SUPPORT_MATRIX.md.template)
-- [Troubleshooting template](./docs/TROUBLESHOOTING.md.template)
+- [Guía para IA](./README_FOR_AI.md)
 - [Changelog](./CHANGELOG.md)
 - [Roadmap](./ROADMAP.md)
+- [Backlog](./BACKLOG.md)
+- [Template customization](./TEMPLATE.md)
+- [Contributing](./CONTRIBUTING.md)
+- [Security](./SECURITY.md)
 
-## License
+## Licencia
 
 MIT

@@ -587,9 +587,15 @@ Lee \`AGENTS.md\` primero y después \`docs/AI_ONBOARDING_PROMPT.md\` tras el an
 After analysis and doctor validation, open your AI agent in this project and run:
 
 \`\`\`text
-Read docs/AI_ONBOARDING_PROMPT.md and execute it.
-Do not modify product code unless I explicitly authorize it.
-Prepare the project context docs and report assumptions, risks, and files changed.
+Lee \`docs/AI_ONBOARDING_PROMPT.md\` y ejecútalo como fuente principal de verdad para incorporarte a este repositorio.
+
+Actúa como asistente de onboarding de IA. Prepara el contexto del proyecto para trabajar de forma segura con el workflow documentado, specs y slices.
+
+No modifiques código de producto salvo autorización explícita. Puedes crear o actualizar documentación de contexto si el onboarding lo requiere.
+
+Usa solo la documentación del repositorio como fuente de verdad. Si encuentras información faltante, ambigua o contradictoria, documenta el supuesto, el riesgo y continúa por el camino más seguro.
+
+Responde en español y finaliza con un reporte breve de archivos leídos, archivos modificados, estado del código de producto, supuestos, riesgos y próximos pasos.
 \`\`\`
 
 Review the AI changes to docs/AI_CONTEXT.md, docs/CONTEXTO.md, docs/STATUS.md, and specs/$PROJECT_SLUG/SPEC.md before starting implementation work.
