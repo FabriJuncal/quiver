@@ -2,7 +2,7 @@
 
 ## Status
 
-Slice 05 implemented.
+Slice 07 implemented.
 
 ## Slice Evidence
 
@@ -15,9 +15,9 @@ Slice 05 implemented.
 | slice-04 | Implemented spec-phase generation, safe collision handling, JSON validation, and command/tests coverage. |
 | slice-05 | Implemented execution plan graphing, slice-00 foundation barriers, ready levels, temporary worktree strategy, and cycle/missing dependency diagnostics. |
 | slice-06 | Pending. |
-| slice-07 | Pending. |
+| slice-07 | Implemented GitHub PR preflight, gh auth checks, worktree/branch validation, GitFlow guide checks, SSH identity handling, and CLI/tests coverage. |
 | slice-08 | Pending. |
 
 ## Final Validation
 
-Validated for slice-05 with `node --test tests/lib/slice-graph.test.js tests/lib/ai-execution-plan.test.js tests/commands/plan.test.js tests/commands/graph.test.js tests/commands/next.test.js` and `git diff --check`.
+Validated for slice-07 with `node --test tests/lib/ai-github.test.js tests/commands/ai-pr.test.js`, the existing `ai` command tests, and `git diff --check`.

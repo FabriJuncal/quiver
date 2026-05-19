@@ -2,6 +2,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const { buildContextPackMetadata, normalizeRole } = require('../lib/ai/context-packs');
+const { formatPreflightReport, preflightGitHubPr } = require('../lib/ai/github');
 const { buildSpecGenerationManifest, describeSpecGeneration, generateSpecArtifacts } = require('../lib/ai/spec-generator');
 const { buildProviderInvocation, runProvider } = require('../lib/ai/providers');
 const { assertPlannerPhaseReady, getPlannerPhaseDetails, normalizePlannerPhase, PlannerPhaseError } = require('../lib/ai/phase-gates');
@@ -172,6 +173,15 @@ function annotateProviderError(error, scope, phase) {
   const wrapped = new Error(formatError(`ai ${scope}${phaseLabel} failed: ${message}`));
   wrapped.cause = error;
   wrapped.code = error && error.code ? error.code : 'AI_PROVIDER_ERROR';
+  wrapped.details = error && error.details ? error.details : undefined;
+  return wrapped;
+}
+
+function annotateGitHubError(error, scope) {
+  const message = error && error.message ? error.message : String(error);
+  const wrapped = new Error(formatError(`ai ${scope} failed: ${message}`));
+  wrapped.cause = error;
+  wrapped.code = error && error.code ? error.code : 'AI_GITHUB_PR_ERROR';
   wrapped.details = error && error.details ? error.details : undefined;
   return wrapped;
 }
@@ -357,6 +367,44 @@ async function runPlan(repoRoot, options = {}) {
   };
 }
 
+async function runGitHubTask(repoRoot, options = {}, mode = 'pr') {
+  const dryRun = options.dryRun === true;
+  let report;
+
+  try {
+    report = await (options.preflightFn || preflightGitHubPr)(repoRoot, {
+      remote: options.remote,
+      sshHostAlias: options.sshHostAlias,
+      identityFile: options.identityFile,
+      gitFlowGuidePath: options.gitFlowGuidePath,
+      ghCommand: options.ghCommand,
+      ghProbe: options.ghProbe,
+      ghAuthProbe: options.ghAuthProbe,
+      ghProbeArgs: options.ghProbeArgs,
+      ghAuthArgs: options.ghAuthArgs,
+      blockedBranches: options.blockedBranches,
+    });
+  } catch (error) {
+    throw annotateGitHubError(error, mode);
+  }
+
+  process.stdout.write(formatPreflightReport(report, { mode, dryRun }));
+
+  return {
+    task: mode,
+    dryRun,
+    preflight: report,
+  };
+}
+
+async function runPr(repoRoot, options = {}) {
+  return runGitHubTask(repoRoot, options, 'pr');
+}
+
+async function runDoctor(repoRoot, options = {}) {
+  return runGitHubTask(repoRoot, options, 'doctor');
+}
+
 module.exports = {
   DEFAULT_ONBOARD_CONTEXT,
   DEFAULT_ONBOARD_PROVIDER,
@@ -374,6 +422,8 @@ module.exports = {
   formatSpecDryRunReport,
   normalizeTimeout,
   readTextFile,
+  runDoctor,
+  runPr,
   runOnboard,
   runPlan,
   writeProviderOutput,

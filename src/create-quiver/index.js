@@ -4,7 +4,7 @@ const path = require('path');
 const { execFileSync } = require('child_process');
 const { checkHandoff, scaffoldHandoff } = require('./lib/handoff');
 const { collectDoctorWarnings } = require('./lib/doctor');
-const { runOnboard, runPlan: runAiPlan } = require('./commands/ai');
+const { runDoctor: runAiDoctor, runOnboard, runPlan: runAiPlan, runPr: runAiPr } = require('./commands/ai');
 const { runGraph } = require('./commands/graph');
 const { runNext } = require('./commands/next');
 const { runPlan } = require('./commands/plan');
@@ -66,6 +66,8 @@ Examples:
   cd ./my-project && npx create-quiver plan --json
   cd ./my-project && npx create-quiver ai onboard --dry-run
   cd ./my-project && npx create-quiver ai plan --phase acceptance --input requirements.md --dry-run
+  cd ./my-project && npx create-quiver ai doctor --dry-run --ssh-host-alias github-work --identity-file ~/.ssh/github-work
+  cd ./my-project && npx create-quiver ai pr --dry-run --ssh-host-alias github-work --identity-file ~/.ssh/github-work
   cd ./my-project && npx create-quiver graph --show-conflicts
   cd ./my-project && npx create-quiver graph --format mermaid
   cd ./my-project && npx create-quiver graph --format dot
@@ -116,6 +118,9 @@ function parseArgs(argv) {
     aiContext: '',
     aiInput: '',
     aiTimeout: null,
+    aiSshHostAlias: '',
+    aiIdentityFile: '',
+    aiRemote: 'origin',
   };
 
   const args = [...argv];
@@ -308,6 +313,33 @@ function parseArgs(argv) {
         throw new Error(formatError('invalid value for --timeout'));
       }
       result.aiTimeout = parsed;
+      continue;
+    }
+
+    if (arg === '--ssh-host-alias') {
+      const value = args[++index];
+      if (!value) {
+        throw new Error(formatError('missing value for --ssh-host-alias'));
+      }
+      result.aiSshHostAlias = value;
+      continue;
+    }
+
+    if (arg === '--identity-file') {
+      const value = args[++index];
+      if (!value) {
+        throw new Error(formatError('missing value for --identity-file'));
+      }
+      result.aiIdentityFile = value;
+      continue;
+    }
+
+    if (arg === '--remote') {
+      const value = args[++index];
+      if (!value) {
+        throw new Error(formatError('missing value for --remote'));
+      }
+      result.aiRemote = value;
       continue;
     }
 
@@ -1406,7 +1438,7 @@ async function run(argv) {
 
   if (args.mode === 'ai') {
     if (!args.aiCommand) {
-      throw new Error(formatError('missing ai subcommand. Use: npx create-quiver ai onboard | plan'));
+      throw new Error(formatError('missing ai subcommand. Use: npx create-quiver ai onboard | plan | doctor | pr'));
     }
 
     if (args.aiCommand === 'onboard') {
@@ -1435,7 +1467,27 @@ async function run(argv) {
       return;
     }
 
-    throw new Error(formatError(`unsupported ai subcommand: ${args.aiCommand}. Supported tasks: onboard, plan`));
+    if (args.aiCommand === 'doctor') {
+      await runAiDoctor(process.cwd(), {
+        dryRun: args.dryRun,
+        remote: args.aiRemote || undefined,
+        sshHostAlias: args.aiSshHostAlias || undefined,
+        identityFile: args.aiIdentityFile || undefined,
+      });
+      return;
+    }
+
+    if (args.aiCommand === 'pr') {
+      await runAiPr(process.cwd(), {
+        dryRun: args.dryRun,
+        remote: args.aiRemote || undefined,
+        sshHostAlias: args.aiSshHostAlias || undefined,
+        identityFile: args.aiIdentityFile || undefined,
+      });
+      return;
+    }
+
+    throw new Error(formatError(`unsupported ai subcommand: ${args.aiCommand}. Supported tasks: onboard, plan, doctor, pr`));
   }
 
   if (args.mode === 'graph') {

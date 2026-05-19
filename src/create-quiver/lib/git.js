@@ -101,6 +101,23 @@ function statusPorcelain(repoRoot) {
   return tryGit(['status', '--porcelain'], repoRoot);
 }
 
+function remoteList(repoRoot) {
+  const output = tryGit(['remote'], repoRoot);
+  return output ? output.split('\n').map((line) => line.trim()).filter(Boolean) : [];
+}
+
+function hasRemote(repoRoot, remoteName = 'origin') {
+  return remoteList(repoRoot).includes(remoteName);
+}
+
+function isCleanWorktree(repoRoot) {
+  return statusPorcelain(repoRoot) === '';
+}
+
+function isDetachedHead(repoRoot) {
+  return currentBranch(repoRoot) === '';
+}
+
 function revListCount(repoRoot, range) {
   const output = tryGit(['rev-list', '--count', range], repoRoot);
   return Number(output || '0');
@@ -143,7 +160,11 @@ module.exports = {
   hasRemoteBranch,
   lsRemoteHeads,
   mergeBaseIsAncestor,
+  hasRemote,
+  isCleanWorktree,
+  isDetachedHead,
   revListCount,
+  remoteList,
   runGit,
   statusPorcelain,
   tryGit,
