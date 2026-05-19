@@ -2,7 +2,7 @@
 
 ## Status
 
-Slice 04 implemented.
+Slice 05 implemented.
 
 ## Slice Evidence
 
@@ -13,11 +13,11 @@ Slice 04 implemented.
 | slice-02 | Implemented AI roles, context packs, token-budget hints, safety exclusions, prompt-injection guard text, and tests. |
 | slice-03 | Implemented phase-gated planner commands, dry-run display, phase blocking for spec, and command tests. |
 | slice-04 | Implemented spec-phase generation, safe collision handling, JSON validation, and command/tests coverage. |
-| slice-05 | Pending. |
+| slice-05 | Implemented execution plan graphing, slice-00 foundation barriers, ready levels, temporary worktree strategy, and cycle/missing dependency diagnostics. |
 | slice-06 | Pending. |
 | slice-07 | Pending. |
 | slice-08 | Pending. |
 
 ## Final Validation
 
-Validated for slice-04 with command and library tests plus `git diff --check`.
+Validated for slice-05 with `node --test tests/lib/slice-graph.test.js tests/lib/ai-execution-plan.test.js tests/commands/plan.test.js tests/commands/graph.test.js tests/commands/next.test.js` and `git diff --check`.

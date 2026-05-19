@@ -51,7 +51,9 @@
     "git diff --check"
   ],
   "estimated_hours": 6,
-  "status": "draft",
-  "blocked_reason": "Requires slice-04."
+  "status": "completed",
+  "blocked_reason": null,
+  "actual_hours": 5,
+  "started_at": "2026-05-19T17:24:20-0300",
+  "completed_at": "2026-05-19T17:24:20-0300"
 }
-
