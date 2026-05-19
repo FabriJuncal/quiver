@@ -15,6 +15,10 @@
     "src/create-quiver/commands/ai.js",
     "src/create-quiver/index.js",
     "src/create-quiver/lib/ai/phase-gates.js",
+    "specs/quiver-v20-ai-cli-orchestration/slices/slice-03-ai-phase-gated-planner/CLOSURE_BRIEF.md",
+    "specs/quiver-v20-ai-cli-orchestration/slices/slice-03-ai-phase-gated-planner/slice.json",
+    "specs/quiver-v20-ai-cli-orchestration/EVIDENCE_REPORT.md",
+    "specs/quiver-v20-ai-cli-orchestration/STATUS.md",
     "tests/commands/ai-plan.test.js",
     "tests/commands/ai-onboard.test.js"
   ],
@@ -48,11 +52,11 @@
     "Provider errors propagate with actionable context."
   ],
   "tests": [
-    "node --test tests/commands/ai-plan.test.js tests/commands/ai-onboard.test.js",
+    "node --test tests/commands/ai-plan.test.js tests/commands/ai-onboard.test.js tests/lib/ai-providers.test.js tests/lib/ai-context-packs.test.js",
     "git diff --check"
   ],
   "estimated_hours": 5,
-  "status": "draft",
-  "blocked_reason": "Requires slice-01 and slice-02."
+  "actual_hours": 5,
+  "status": "completed",
+  "blocked_reason": null
 }
-

@@ -4,6 +4,7 @@ const path = require('path');
 const { execFileSync } = require('child_process');
 const { checkHandoff, scaffoldHandoff } = require('./lib/handoff');
 const { collectDoctorWarnings } = require('./lib/doctor');
+const { runOnboard, runPlan: runAiPlan } = require('./commands/ai');
 const { runGraph } = require('./commands/graph');
 const { runNext } = require('./commands/next');
 const { runPlan } = require('./commands/plan');
@@ -29,6 +30,7 @@ function printUsage() {
   npx create-quiver [options]
   npx create-quiver analyze [options]
   npx create-quiver plan [options]
+  npx create-quiver ai <task> [options]
   npx create-quiver graph [options]
   npx create-quiver next [options]
   npx create-quiver migrate [options]
@@ -62,6 +64,8 @@ Examples:
   npx create-quiver --name "My Project" --dir ./my-project
   cd ./my-project && npx create-quiver analyze
   cd ./my-project && npx create-quiver plan --json
+  cd ./my-project && npx create-quiver ai onboard --dry-run
+  cd ./my-project && npx create-quiver ai plan --phase acceptance --input requirements.md --dry-run
   cd ./my-project && npx create-quiver graph --show-conflicts
   cd ./my-project && npx create-quiver graph --format mermaid
   cd ./my-project && npx create-quiver graph --format dot
@@ -105,10 +109,17 @@ function parseArgs(argv) {
     showConflicts: false,
     level: null,
     unicode: false,
+    aiCommand: '',
+    aiPhase: 'acceptance',
+    aiProvider: 'codex',
+    aiRole: 'planner',
+    aiContext: '',
+    aiInput: '',
+    aiTimeout: null,
   };
 
   const args = [...argv];
-  const commandModes = new Set(['plan', 'graph', 'next', 'doctor', 'analyze', 'migrate', 'start-slice', 'check-slice', 'check-pr', 'check-handoff', 'new-handoff', 'cleanup-slice', 'check-scope', 'refresh-active-slices']);
+  const commandModes = new Set(['plan', 'graph', 'next', 'doctor', 'analyze', 'migrate', 'start-slice', 'check-slice', 'check-pr', 'check-handoff', 'new-handoff', 'cleanup-slice', 'check-scope', 'refresh-active-slices', 'ai']);
   if (commandModes.has(args[0])) {
     result.mode = args[0];
     args.shift();
@@ -251,6 +262,64 @@ function parseArgs(argv) {
       continue;
     }
 
+    if (arg === '--provider') {
+      const value = args[++index];
+      if (!value) {
+        throw new Error(formatError('missing value for --provider'));
+      }
+      result.aiProvider = value;
+      continue;
+    }
+
+    if (arg === '--role') {
+      const value = args[++index];
+      if (!value) {
+        throw new Error(formatError('missing value for --role'));
+      }
+      result.aiRole = value;
+      continue;
+    }
+
+    if (arg === '--context') {
+      const value = args[++index];
+      if (!value) {
+        throw new Error(formatError('missing value for --context'));
+      }
+      result.aiContext = value;
+      continue;
+    }
+
+    if (arg === '--input') {
+      const value = args[++index];
+      if (!value) {
+        throw new Error(formatError('missing value for --input'));
+      }
+      result.aiInput = value;
+      continue;
+    }
+
+    if (arg === '--timeout') {
+      const value = args[++index];
+      if (typeof value === 'undefined') {
+        throw new Error(formatError('missing value for --timeout'));
+      }
+      const parsed = Number.parseInt(value, 10);
+      if (!Number.isInteger(parsed) || parsed <= 0) {
+        throw new Error(formatError('invalid value for --timeout'));
+      }
+      result.aiTimeout = parsed;
+      continue;
+    }
+
+    if (arg === '--phase') {
+      const value = args[++index];
+      if (!value) {
+        throw new Error(formatError('missing value for --phase'));
+      }
+      result.aiPhase = value;
+      continue;
+    }
+
     if (arg === '--spec') {
       const value = args[++index];
       if (!value) {
@@ -305,6 +374,13 @@ function parseArgs(argv) {
   } else if (result.mode === 'plan') {
     if (positional.length > 0) {
       throw new Error(formatError('plan does not accept positional arguments; use --spec <slug>'));
+    }
+  } else if (result.mode === 'ai') {
+    if (!result.aiCommand && positional.length > 0) {
+      result.aiCommand = positional.shift();
+    }
+    if (positional.length > 0) {
+      throw new Error(formatError('ai does not accept extra positional arguments'));
     }
   } else if (result.mode === 'refresh-active-slices') {
     if (positional.length > 0) {
@@ -1326,6 +1402,39 @@ async function run(argv) {
       unicode: args.unicode,
     });
     return;
+  }
+
+  if (args.mode === 'ai') {
+    if (!args.aiCommand) {
+      throw new Error(formatError('missing ai subcommand. Use: npx create-quiver ai onboard | plan'));
+    }
+
+    if (args.aiCommand === 'onboard') {
+      await runOnboard(process.cwd(), {
+        context: args.aiContext || undefined,
+        dryRun: args.dryRun,
+        input: args.aiInput || undefined,
+        provider: args.aiProvider,
+        role: args.aiRole,
+        timeout: args.aiTimeout,
+      });
+      return;
+    }
+
+    if (args.aiCommand === 'plan') {
+      await runAiPlan(process.cwd(), {
+        context: args.aiContext || undefined,
+        dryRun: args.dryRun,
+        input: args.aiInput || undefined,
+        phase: args.aiPhase,
+        provider: args.aiProvider,
+        role: args.aiRole,
+        timeout: args.aiTimeout,
+      });
+      return;
+    }
+
+    throw new Error(formatError(`unsupported ai subcommand: ${args.aiCommand}. Supported tasks: onboard, plan`));
   }
 
   if (args.mode === 'graph') {
