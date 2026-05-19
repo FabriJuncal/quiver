@@ -114,16 +114,34 @@ test('ai plan fails with a clear missing-input error', () => {
   }
 });
 
-test('ai plan rejects spec phase until slice-04 lands', () => {
+test('ai plan spec phase dry-run reports spec generation instead of provider invocation', () => {
   const repo = makeRepo({
-    'requirements.md': '# requirements',
+    'docs/approved-plan.json': JSON.stringify({
+      spec: {
+        slug: 'quiver-v21-dry-run-spec',
+        title: 'Quiver v21 dry-run spec',
+        ticket: 'QUIVER-21-03',
+        objective: 'Generate a spec pack from approved input.',
+        slices: [
+          {
+            slice_id: 'slice-01-dry-run',
+            ticket: 'QUIVER-21-03',
+            title: 'Dry run slice',
+            objective: 'Render the spec tree.',
+            description: 'Generate the expected files.',
+            files: ['src/create-quiver/lib/ai/spec-generator.js'],
+            acceptance: ['The generator writes a valid spec tree.'],
+          },
+        ],
+      },
+    }, null, 2),
   });
 
   try {
-    assert.throws(
-      () => execAi(repo.root, ['--phase', 'spec', '--dry-run', '--input', 'requirements.md']),
-      (error) => error.stderr.includes('ai plan phase "spec" is not implemented yet'),
-    );
+    const output = execAi(repo.root, ['--phase', 'spec', '--dry-run', '--input', 'docs/approved-plan.json']);
+    assert.ok(output.includes('AI plan dry-run'));
+    assert.ok(output.includes('Phase: spec'));
+    assert.ok(output.includes('Spec slug: quiver-v21-dry-run-spec'));
   } finally {
     repo.cleanup();
   }

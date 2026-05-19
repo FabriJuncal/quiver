@@ -58,14 +58,6 @@ function getPlannerPhaseDetails(phase) {
 function assertPlannerPhaseReady(phase) {
   const normalized = normalizePlannerPhase(phase);
 
-  if (normalized === 'spec') {
-    throw new PlannerPhaseError(
-      'PLANNER_PHASE_NOT_IMPLEMENTED',
-      'create-quiver: ai plan phase "spec" is not implemented yet. Continue with acceptance or technical-plan until slice-04 lands.',
-      { phase: normalized },
-    );
-  }
-
   return PHASE_DETAILS[normalized];
 }
 

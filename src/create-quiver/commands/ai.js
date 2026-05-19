@@ -2,6 +2,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const { buildContextPackMetadata, normalizeRole } = require('../lib/ai/context-packs');
+const { buildSpecGenerationManifest, describeSpecGeneration, generateSpecArtifacts } = require('../lib/ai/spec-generator');
 const { buildProviderInvocation, runProvider } = require('../lib/ai/providers');
 const { assertPlannerPhaseReady, getPlannerPhaseDetails, normalizePlannerPhase, PlannerPhaseError } = require('../lib/ai/phase-gates');
 
@@ -129,6 +130,42 @@ function writeProviderOutput(result) {
   }
 }
 
+function formatSpecDryRunReport({ manifest, repoRoot }) {
+  const preview = describeSpecGeneration(manifest, repoRoot);
+  const relativeSpecDir = path.relative(repoRoot, preview.specDir).split(path.sep).join('/');
+  const lines = [
+    'AI plan dry-run',
+    'Phase: spec',
+    `Spec slug: ${manifest.slug}`,
+    `Title: ${manifest.title}`,
+    `Input file: ${manifest.sourcePath}`,
+    `Target: ${relativeSpecDir}`,
+    `Planned files: ${preview.files.length}`,
+  ];
+
+  for (const file of preview.files) {
+    lines.push(`- ${file}`);
+  }
+
+  return `${lines.join('\n')}\n`;
+}
+
+function formatSpecGenerationResult(result, repoRoot) {
+  const relativeSpecDir = path.relative(repoRoot, result.specDir).split(path.sep).join('/');
+  const lines = [
+    'AI plan spec generation completed',
+    `Spec slug: ${result.manifest.slug}`,
+    `Target: ${relativeSpecDir}`,
+    `Files written: ${result.files.length}`,
+  ];
+
+  for (const filePath of result.files) {
+    lines.push(`- ${path.relative(repoRoot, filePath).split(path.sep).join('/')}`);
+  }
+
+  return `${lines.join('\n')}\n`;
+}
+
 function annotateProviderError(error, scope, phase) {
   const phaseLabel = phase ? ` phase '${phase}'` : '';
   const message = error && error.message ? error.message : String(error);
@@ -210,11 +247,46 @@ async function runPlan(repoRoot, options = {}) {
   const context = options.context || DEFAULT_PLAN_CONTEXT;
   const timeoutMs = normalizeTimeout(options.timeout);
 
-  assertPlannerPhaseReady(phase);
-
   if (!options.input) {
     throw new Error(formatError(`missing input file for ai plan phase '${phase}'`));
   }
+
+  if (phase === 'spec') {
+    const inputText = readTextFile(options.input, repoRoot);
+    const manifest = buildSpecGenerationManifest({
+      inputPath: options.input,
+      inputText,
+      repoRoot,
+      specSlug: options.specSlug,
+    });
+
+    if (options.dryRun) {
+      const report = {
+        task: 'plan',
+        phase,
+        manifest,
+      };
+      process.stdout.write(formatSpecDryRunReport({ manifest, repoRoot }));
+      return report;
+    }
+
+    const result = generateSpecArtifacts(repoRoot, {
+      input: options.input,
+      specSlug: options.specSlug,
+    });
+    process.stdout.write(formatSpecGenerationResult(result, repoRoot));
+
+    return {
+      task: 'plan',
+      phase,
+      specSlug: result.manifest.slug,
+      specDir: path.relative(repoRoot, result.specDir).split(path.sep).join('/'),
+      files: result.files.map((filePath) => path.relative(repoRoot, filePath).split(path.sep).join('/')),
+      manifest: result.manifest,
+    };
+  }
+
+  assertPlannerPhaseReady(phase);
 
   const inputText = readTextFile(options.input, repoRoot);
   const contextInfo = buildPlanContext({
@@ -298,6 +370,8 @@ module.exports = {
   buildOnboardContext,
   buildPlanContext,
   formatDryRunReport,
+  formatSpecGenerationResult,
+  formatSpecDryRunReport,
   normalizeTimeout,
   readTextFile,
   runOnboard,

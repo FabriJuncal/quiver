@@ -1429,6 +1429,7 @@ async function run(argv) {
         phase: args.aiPhase,
         provider: args.aiProvider,
         role: args.aiRole,
+        specSlug: args.specSlug || undefined,
         timeout: args.aiTimeout,
       });
       return;

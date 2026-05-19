@@ -16,6 +16,7 @@ This spec defines Quiver's AI CLI orchestration layer: provider runners, planner
 - `slice-01`: completed.
 - `slice-02`: completed.
 - `slice-03`: completed.
+- `slice-04`: completed.
 
 ## Execution Rules
 
@@ -29,4 +30,3 @@ This spec defines Quiver's AI CLI orchestration layer: provider runners, planner
 
 - Confirm exact provider CLI stdin/file support during slice-01 implementation.
 - Confirm generated project docs should materialize `docs/GITFLOW_PR_GUIDE.md` rather than only the template.
-- Implement the spec generation path for `ai plan --phase spec` in slice-04.
