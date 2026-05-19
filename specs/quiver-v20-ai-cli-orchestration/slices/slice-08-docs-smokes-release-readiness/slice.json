@@ -1,0 +1,74 @@
+{
+  "slice_id": "slice-08-docs-smokes-release-readiness",
+  "ticket": "QUIVER-20-08",
+  "type": "docs",
+  "title": "Document AI orchestration and add smoke coverage",
+  "objective": "Update user-facing docs, generated templates, scripts, and smoke tests so the AI orchestration workflow is discoverable and release-ready.",
+  "description": "Finalize the feature by documenting commands, roles, context packs, token strategy, provider setup, gh/SSH preflight, and cross-platform behavior. Add dry-run smokes that do not require real provider authentication.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "ai-orchestration-docs-smokes",
+    "branch_name": "feature/QUIVER-20-08-ai-orchestration-docs-smokes"
+  },
+  "files": [
+    "README.md",
+    "README_FOR_AI.md",
+    "docs/AI_ONBOARDING_PROMPT.md.template",
+    "docs/COMMANDS.md.template",
+    "docs/GITFLOW_PR_GUIDE.md.template",
+    "docs/SUPPORT_MATRIX.md.template",
+    "docs/TROUBLESHOOTING.md.template",
+    "src/create-quiver/lib/init-docs.js",
+    "scripts/init-docs.sh",
+    "package.json",
+    "package.template.json",
+    "scripts/ci/smoke-create-quiver.sh",
+    "scripts/ci/smoke-cross-platform.js"
+  ],
+  "depends_on": [
+    "slice-01-ai-provider-runner",
+    "slice-02-context-packs-token-budget",
+    "slice-03-ai-phase-gated-planner",
+    "slice-04-spec-slice-handoff-pr-generation",
+    "slice-05-execution-plan-parallel-worktrees",
+    "slice-06-ai-execute-slice-scope-enforcement",
+    "slice-07-github-pr-preflight"
+  ],
+  "parallel_safe": "never",
+  "parallel_safe_reason": "Final integration slice touches shared docs, templates, package scripts, and smoke tests.",
+  "must": [
+    "Document quiver ai commands in README.",
+    "Document planner and executor roles.",
+    "Document token-efficient context packs.",
+    "Document phase-gated planning and approval rules.",
+    "Document mandatory slice-00.",
+    "Document one spec equals one PR/worktree and one slice equals one commit.",
+    "Document gh and SSH preflight guidance for macOS, Linux, and Windows.",
+    "Add generated npm scripts for quiver:ai:* commands.",
+    "Add smoke tests for dry-run flows without real provider auth.",
+    "Ensure docs/GITFLOW_PR_GUIDE.md is generated or the intended generation behavior is explicitly validated."
+  ],
+  "not_included": [
+    "Adding new provider APIs.",
+    "Publishing npm.",
+    "Changing unrelated docs or old specs."
+  ],
+  "acceptance": [
+    "Generated project README mentions quiver ai commands.",
+    "Generated COMMANDS.md includes ai commands and examples.",
+    "Generated onboarding prompt references planner/executor workflow safely.",
+    "Generated package scripts include quiver:ai:onboard, quiver:ai:plan, quiver:ai:execute-slice, quiver:ai:pr, and quiver:ai:doctor.",
+    "Smoke tests cover ai dry-run flows without requiring provider CLIs.",
+    "Cross-platform smoke validates path handling for ai commands."
+  ],
+  "tests": [
+    "node --test tests/**/*.test.js",
+    "npm run smoke:create-quiver",
+    "node scripts/ci/smoke-cross-platform.js",
+    "git diff --check"
+  ],
+  "estimated_hours": 6,
+  "status": "draft",
+  "blocked_reason": "Must run after implementation slices."
+}

@@ -1,0 +1,57 @@
+{
+  "slice_id": "slice-05-execution-plan-parallel-worktrees",
+  "ticket": "QUIVER-20-05",
+  "type": "feature",
+  "title": "Add execution plan and parallel worktree support",
+  "objective": "Represent slice dependencies, ready levels, parallel execution groups, and temporary worktree strategy for slices that can run concurrently.",
+  "description": "Extend Quiver's orchestration model so generated specs and existing slice graph commands can reason about slice-00, dependencies, sequential work, parallel-ready work, and integration order.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "ai-execution-plan-parallel-worktrees",
+    "branch_name": "feature/QUIVER-20-05-ai-execution-plan-parallel-worktrees"
+  },
+  "files": [
+    "src/create-quiver/lib/ai/execution-plan.js",
+    "src/create-quiver/lib/git.js",
+    "src/create-quiver/lib/slice-graph.js",
+    "src/create-quiver/commands/plan.js",
+    "src/create-quiver/commands/graph.js",
+    "tests/lib/ai-execution-plan.test.js",
+    "tests/lib/slice-graph.test.js"
+  ],
+  "depends_on": [
+    "slice-04-spec-slice-handoff-pr-generation"
+  ],
+  "parallel_safe": "after_dependencies",
+  "parallel_safe_reason": "Can run in parallel with GitHub PR preflight after slice-04 if file ownership is respected.",
+  "must": [
+    "Treat slice-00 as the first required dependency for generated specs.",
+    "Represent ready levels for sequential and parallel execution.",
+    "Document when temporary worktrees are needed for parallel slices.",
+    "Provide integration order for parallel outputs.",
+    "Keep existing quiver:plan, quiver:graph, and quiver:next behavior compatible.",
+    "Handle dependency cycles and missing dependency references with clear errors."
+  ],
+  "not_included": [
+    "Running AI executors.",
+    "Opening PRs.",
+    "Merging temporary worktrees automatically without validation."
+  ],
+  "acceptance": [
+    "Execution plan output shows slice-00 first.",
+    "Parallel-ready slices are grouped only after dependencies are satisfied.",
+    "Dependency cycles fail with a clear diagnostic.",
+    "Missing dependencies fail with a clear diagnostic.",
+    "Existing plan/graph/next smokes still pass."
+  ],
+  "tests": [
+    "node --test tests/lib/ai-execution-plan.test.js tests/lib/slice-graph.test.js",
+    "npm run smoke:create-quiver",
+    "git diff --check"
+  ],
+  "estimated_hours": 6,
+  "status": "draft",
+  "blocked_reason": "Requires slice-04."
+}
+
