@@ -9,7 +9,7 @@ Pending implementation.
 | Slice | Evidence |
 |-------|----------|
 | slice-00 | Spec foundation files created and JSON validation completed. |
-| slice-01 | Pending. |
+| slice-01 | Implemented provider runner, prompt transport, provider preflight, dry-run, timeout handling, and provider tests. |
 | slice-02 | Pending. |
 | slice-03 | Pending. |
 | slice-04 | Pending. |
@@ -21,4 +21,3 @@ Pending implementation.
 ## Final Validation
 
 To be completed after all implementation slices land.
-

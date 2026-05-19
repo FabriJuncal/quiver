@@ -49,7 +49,7 @@
     "git diff --check"
   ],
   "estimated_hours": 4,
-  "status": "draft",
-  "blocked_reason": "Requires slice-00 to be committed first."
+  "actual_hours": 4,
+  "status": "completed",
+  "blocked_reason": null
 }
-
