@@ -2,6 +2,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const { buildContextPackMetadata, normalizeRole } = require('../lib/ai/context-packs');
+const { runExecuteSlice } = require('../lib/ai/executor');
 const { formatPreflightReport, preflightGitHubPr } = require('../lib/ai/github');
 const { buildSpecGenerationManifest, describeSpecGeneration, generateSpecArtifacts } = require('../lib/ai/spec-generator');
 const { buildProviderInvocation, runProvider } = require('../lib/ai/providers');
@@ -423,6 +424,7 @@ module.exports = {
   normalizeTimeout,
   readTextFile,
   runDoctor,
+  runExecuteSlice,
   runPr,
   runOnboard,
   runPlan,

@@ -18,6 +18,7 @@ This spec defines Quiver's AI CLI orchestration layer: provider runners, planner
 - `slice-03`: completed.
 - `slice-04`: completed.
 - `slice-05`: completed.
+- `slice-06`: completed.
 - `slice-07`: completed.
 
 ## Execution Rules
@@ -30,6 +31,5 @@ This spec defines Quiver's AI CLI orchestration layer: provider runners, planner
 
 ## Open Items
 
-- `slice-06` executor scope enforcement remains pending.
 - `slice-08` docs, smokes, and release readiness remain pending.
 - Confirm whether generated projects should materialize `docs/GITFLOW_PR_GUIDE.md` in addition to the template before the PR flow lands.

@@ -4,7 +4,7 @@ const path = require('path');
 const { execFileSync } = require('child_process');
 const { checkHandoff, scaffoldHandoff } = require('./lib/handoff');
 const { collectDoctorWarnings } = require('./lib/doctor');
-const { runDoctor: runAiDoctor, runOnboard, runPlan: runAiPlan, runPr: runAiPr } = require('./commands/ai');
+const { runDoctor: runAiDoctor, runExecuteSlice: runAiExecuteSlice, runOnboard, runPlan: runAiPlan, runPr: runAiPr } = require('./commands/ai');
 const { runGraph } = require('./commands/graph');
 const { runNext } = require('./commands/next');
 const { runPlan } = require('./commands/plan');
@@ -66,6 +66,7 @@ Examples:
   cd ./my-project && npx create-quiver plan --json
   cd ./my-project && npx create-quiver ai onboard --dry-run
   cd ./my-project && npx create-quiver ai plan --phase acceptance --input requirements.md --dry-run
+  cd ./my-project && npx create-quiver ai execute-slice --slice specs/my-project/slices/slice-01/slice.json --dry-run
   cd ./my-project && npx create-quiver ai doctor --dry-run --ssh-host-alias github-work --identity-file ~/.ssh/github-work
   cd ./my-project && npx create-quiver ai pr --dry-run --ssh-host-alias github-work --identity-file ~/.ssh/github-work
   cd ./my-project && npx create-quiver graph --show-conflicts
@@ -114,9 +115,10 @@ function parseArgs(argv) {
     aiCommand: '',
     aiPhase: 'acceptance',
     aiProvider: 'codex',
-    aiRole: 'planner',
+    aiRole: '',
     aiContext: '',
     aiInput: '',
+    aiSlice: '',
     aiTimeout: null,
     aiSshHostAlias: '',
     aiIdentityFile: '',
@@ -300,6 +302,15 @@ function parseArgs(argv) {
         throw new Error(formatError('missing value for --input'));
       }
       result.aiInput = value;
+      continue;
+    }
+
+    if (arg === '--slice') {
+      const value = args[++index];
+      if (!value) {
+        throw new Error(formatError('missing value for --slice'));
+      }
+      result.aiSlice = value;
       continue;
     }
 
@@ -1438,7 +1449,7 @@ async function run(argv) {
 
   if (args.mode === 'ai') {
     if (!args.aiCommand) {
-      throw new Error(formatError('missing ai subcommand. Use: npx create-quiver ai onboard | plan | doctor | pr'));
+      throw new Error(formatError('missing ai subcommand. Use: npx create-quiver ai onboard | plan | execute-slice | doctor | pr'));
     }
 
     if (args.aiCommand === 'onboard') {
@@ -1467,6 +1478,18 @@ async function run(argv) {
       return;
     }
 
+    if (args.aiCommand === 'execute-slice') {
+      await runAiExecuteSlice(process.cwd(), {
+        context: args.aiContext || undefined,
+        dryRun: args.dryRun,
+        provider: args.aiProvider,
+        role: args.aiRole,
+        slice: args.aiSlice || undefined,
+        timeout: args.aiTimeout,
+      });
+      return;
+    }
+
     if (args.aiCommand === 'doctor') {
       await runAiDoctor(process.cwd(), {
         dryRun: args.dryRun,
@@ -1487,7 +1510,7 @@ async function run(argv) {
       return;
     }
 
-    throw new Error(formatError(`unsupported ai subcommand: ${args.aiCommand}. Supported tasks: onboard, plan, doctor, pr`));
+    throw new Error(formatError(`unsupported ai subcommand: ${args.aiCommand}. Supported tasks: onboard, plan, execute-slice, doctor, pr`));
   }
 
   if (args.mode === 'graph') {
