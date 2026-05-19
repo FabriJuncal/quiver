@@ -14,6 +14,7 @@ This spec defines Quiver's AI CLI orchestration layer: provider runners, planner
 - Spec and slice handoffs: created in this documentation pass.
 - `slice-00`: completed.
 - `slice-01`: completed.
+- `slice-02`: completed.
 
 ## Execution Rules
 

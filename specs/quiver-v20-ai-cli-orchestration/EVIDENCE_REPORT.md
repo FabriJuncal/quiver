@@ -10,7 +10,7 @@ Pending implementation.
 |-------|----------|
 | slice-00 | Spec foundation files created and JSON validation completed. |
 | slice-01 | Implemented provider runner, prompt transport, provider preflight, dry-run, timeout handling, and provider tests. |
-| slice-02 | Pending. |
+| slice-02 | Implemented AI roles, context packs, token-budget hints, safety exclusions, prompt-injection guard text, and tests. |
 | slice-03 | Pending. |
 | slice-04 | Pending. |
 | slice-05 | Pending. |
