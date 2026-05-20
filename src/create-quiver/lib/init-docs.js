@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const { execSync } = require('child_process');
+const { buildQuiverConfig, buildQuiverInternalGitignore, quiverInternalPaths } = require('./init-layout');
 const { writeState } = require('./state');
 
 function ensureDir(dirPath) {
@@ -423,9 +424,11 @@ function initializeProjectDocs(options) {
     projectName,
     cliVersion,
     migrateMode = false,
+    templateRoot: providedTemplateRoot = '',
   } = options;
 
-  const templateRoot = path.join(projectRoot, 'docs-template');
+  const templateRoot = providedTemplateRoot || path.join(projectRoot, 'docs-template');
+  const internalPaths = quiverInternalPaths(projectRoot);
   const replacements = {
     projectName,
     projectSlug: toProjectSlug(projectName),
@@ -438,6 +441,8 @@ function initializeProjectDocs(options) {
   const dirs = [
     'docs',
     'docs/ai',
+    '.quiver',
+    '.quiver/scans',
     'docs/tools',
     'docs/archive',
     `specs/${replacements.projectSlug}/slices/slice-template`,
@@ -449,6 +454,16 @@ function initializeProjectDocs(options) {
   }
 
   const operations = [];
+  if (!fs.existsSync(internalPaths.configPath)) {
+    fs.writeFileSync(internalPaths.configPath, `${JSON.stringify(buildQuiverConfig(), null, 2)}\n`);
+    operations.push({ source: 'Quiver config', destination: '.quiver/config.json', result: 'created' });
+  } else {
+    operations.push({ source: 'Quiver config', destination: '.quiver/config.json', result: 'skipped' });
+  }
+
+  fs.writeFileSync(internalPaths.gitignorePath, buildQuiverInternalGitignore());
+  operations.push({ source: 'Quiver internal gitignore', destination: '.quiver/.gitignore', result: 'updated' });
+
   const agentsSourcePath = path.join(templateRoot, 'AGENTS.md.template');
   if (fs.existsSync(agentsSourcePath)) {
     const agentsDestinationPath = path.join(projectRoot, 'AGENTS.md');

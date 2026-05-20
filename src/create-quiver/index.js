@@ -13,6 +13,7 @@ const { initializeProjectDocs, installSelfAsDevDep } = require('./lib/init-docs'
 const { checkPrReadiness, checkScope, checkSliceReadiness } = require('./lib/readiness');
 const { cleanupSlice, refreshActiveSlicesBoard, startSlice } = require('./lib/lifecycle');
 const { relativePosixPath, resolveTargetRoot } = require('./lib/paths');
+const { resolveTemplateRoot } = require('./lib/template-resolver');
 const {
   hasQuiverInitializationEvidence,
   readState,
@@ -539,6 +540,10 @@ function copyTemplate(templateRoot, targetDir) {
   return docsTemplateDir;
 }
 
+function exportTemplatesToLegacyRoot(templateRoot, targetDir) {
+  return copyTemplate(templateRoot, targetDir);
+}
+
 function mergeDirectoryTree(sourceDir, targetDir) {
   if (!fs.existsSync(sourceDir)) {
     return;
@@ -554,11 +559,16 @@ function mergeDirectoryTree(sourceDir, targetDir) {
 }
 
 function runInitDocs(repoRoot, projectName) {
+  const templateRoot = resolveTemplateRoot(repoRoot, {
+    packageRoot: path.resolve(__dirname, '../..'),
+  });
+
   initializeProjectDocs({
     projectRoot: repoRoot,
     projectName,
     cliVersion: CLI_VERSION,
     migrateMode: false,
+    templateRoot: templateRoot.path,
   });
 }
 
@@ -1316,6 +1326,7 @@ function runMigrate(targetDir, options = {}) {
       projectName,
       cliVersion: CLI_VERSION,
       migrateMode: true,
+      templateRoot,
     });
     updateStateForMigrate(projectRoot, projectName, CLI_VERSION);
 
@@ -1672,7 +1683,7 @@ async function run(argv) {
     ensureDir(targetDir);
 
     const templateRoot = packTemplate(packageRoot, tempRoot);
-    copyTemplate(templateRoot, targetDir);
+    exportTemplatesToLegacyRoot(templateRoot, targetDir);
     runInitDocs(targetDir, projectName);
 
     if (!args.skipInstall) {

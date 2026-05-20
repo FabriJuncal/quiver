@@ -1,8 +1,9 @@
 const fs = require('fs');
 const path = require('path');
+const { quiverInternalPaths } = require('./init-layout');
 
 function statePath(projectRoot) {
-  return path.join(projectRoot, '.quiver', 'state.json');
+  return quiverInternalPaths(projectRoot).statePath;
 }
 
 function ensureDir(dirPath) {

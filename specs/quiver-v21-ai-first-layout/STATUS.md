@@ -14,7 +14,7 @@ This spec defines the cleanup of Quiver's generated project layout. The default 
 | --- | --- | --- | --- |
 | slice-00 | Spec foundation | Completed | - |
 | slice-01 | Init profiles and dry-run planner | Completed | slice-00 |
-| slice-02 | Internal layout and template resolver | Draft | slice-01 |
+| slice-02 | Internal layout and template resolver | Completed | slice-01 |
 | slice-03 | Generation profiles and visible contract | Draft | slice-02 |
 | slice-04 | Analyze scan relocation | Draft | slice-02 |
 | slice-05 | Empty specs and layout doctor | Draft | slice-03, slice-04 |

@@ -18,6 +18,41 @@ function toRelativePath(relativePath) {
   return relativePath.split(path.sep).join('/');
 }
 
+function quiverInternalPaths(projectRoot) {
+  const root = path.join(projectRoot, '.quiver');
+
+  return {
+    root,
+    cacheDir: path.join(root, 'cache'),
+    configPath: path.join(root, 'config.json'),
+    gitignorePath: path.join(root, '.gitignore'),
+    runsDir: path.join(root, 'runs'),
+    scansDir: path.join(root, 'scans'),
+    statePath: path.join(root, 'state.json'),
+    templatesDir: path.join(root, 'templates'),
+    worktreesDir: path.join(root, 'worktrees'),
+  };
+}
+
+function buildQuiverInternalGitignore() {
+  return [
+    'cache/',
+    'runs/',
+    'worktrees/',
+    '',
+  ].join('\n');
+}
+
+function buildQuiverConfig(options = {}) {
+  return {
+    layout_version: options.layoutVersion || 1,
+    internal_root: '.quiver',
+    scan_path: '.quiver/scans/PROJECT_SCAN.json',
+    project_map_path: 'docs/PROJECT_MAP.md',
+    templates_path: '.quiver/templates',
+  };
+}
+
 function normalizeInitLayoutOptions(options = {}) {
   const minimal = options.minimal === true;
   const full = options.full === true;
@@ -87,7 +122,7 @@ function buildInitLayout(projectRoot, options = {}) {
   const operations = [];
   const risks = [];
 
-  const visibleDirectories = ['docs', 'docs/ai', '.quiver'];
+  const visibleDirectories = ['docs', 'docs/ai', '.quiver', '.quiver/scans'];
   const visibleFiles = [
     'README.md',
     'AGENTS.md',
@@ -320,9 +355,12 @@ function formatInitLayoutPlan(plan) {
 }
 
 module.exports = {
+  buildQuiverConfig,
+  buildQuiverInternalGitignore,
   buildInitLayout,
   formatInitLayoutPlan,
   normalizeInitLayoutOptions,
+  quiverInternalPaths,
   resolveInitProfile,
   toProjectSlug,
 };
