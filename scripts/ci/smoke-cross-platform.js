@@ -12,6 +12,7 @@ const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'quiver-cross-smoke-'));
 const fixtureRoot = path.join(repoRoot, 'tests', 'fixtures', 'workflow-gates');
 const slicePath = path.join('specs', 'quiver-v03-adoption-verification', 'slices', 'slice-02-workflow-gate-fixtures', 'slice.json');
 const prPath = path.join('specs', 'quiver-v03-adoption-verification', 'slices', 'slice-02-workflow-gate-fixtures', 'pr.md');
+const npmCommand = process.platform === 'win32' ? 'npm.cmd' : 'npm';
 
 function cleanup() {
   fs.rmSync(tempRoot, { recursive: true, force: true });
@@ -175,7 +176,7 @@ function packInstaller() {
   const cacheDir = path.join(tempRoot, 'npm-cache');
   fs.mkdirSync(packDir, { recursive: true });
   fs.mkdirSync(cacheDir, { recursive: true });
-  const output = run('npm', ['pack', '--json', '--pack-destination', packDir], {
+  const output = run(npmCommand, ['pack', '--json', '--pack-destination', packDir], {
     cwd: repoRoot,
     env: { ...process.env, npm_config_cache: cacheDir },
   });
@@ -565,7 +566,7 @@ function runSmoke() {
 
   const tarball = packInstaller();
   fs.mkdirSync(installerRoot, { recursive: true });
-  run('npm', ['install', '--prefix', installerRoot, tarball, '--ignore-scripts', '--no-audit', '--no-fund'], {
+  run(npmCommand, ['install', '--prefix', installerRoot, tarball, '--ignore-scripts', '--no-audit', '--no-fund'], {
     cwd: repoRoot,
     env: { ...process.env, npm_config_cache: path.join(tempRoot, 'npm-cache-install') },
   });
