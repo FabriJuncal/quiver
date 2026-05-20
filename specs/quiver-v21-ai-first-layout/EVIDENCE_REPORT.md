@@ -9,7 +9,7 @@ No implementation evidence yet. This spec is in planning/documentation state.
 | Slice | Evidence |
 | --- | --- |
 | slice-00 | Completed. Created spec foundation, all slice handoffs, execution plan, and PR body. Validated JSON parsing for all `slice.json` files and `git diff --check`. |
-| slice-01 | Pending implementation. |
+| slice-01 | Completed. Added explicit `init` command parsing, init profile flags, pure layout planner, dry-run formatter, compatibility alias handling, and focused tests. Evidence: `node --test tests/lib/init-layout.test.js tests/commands/init-profiles.test.js`; `git diff --check`. |
 | slice-02 | Pending implementation. |
 | slice-03 | Pending implementation. |
 | slice-04 | Pending implementation. |

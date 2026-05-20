@@ -8,6 +8,7 @@ const { runDoctor: runAiDoctor, runExecuteSlice: runAiExecuteSlice, runOnboard, 
 const { runGraph } = require('./commands/graph');
 const { runNext } = require('./commands/next');
 const { runPlan } = require('./commands/plan');
+const { buildInitLayout, formatInitLayoutPlan } = require('./lib/init-layout');
 const { initializeProjectDocs, installSelfAsDevDep } = require('./lib/init-docs');
 const { checkPrReadiness, checkScope, checkSliceReadiness } = require('./lib/readiness');
 const { cleanupSlice, refreshActiveSlicesBoard, startSlice } = require('./lib/lifecycle');
@@ -28,6 +29,7 @@ function formatError(message) {
 function printUsage() {
   console.log(`Usage:
   npx create-quiver [options]
+  npx create-quiver init [options]
   npx create-quiver analyze [options]
   npx create-quiver plan [options]
   npx create-quiver ai <task> [options]
@@ -56,10 +58,17 @@ Options:
       --all-ready             List every ready slice returned by next
       --auto-start            Prompt for confirmation and run start-slice on next
       --unicode               Prefer Unicode output when supported
+      --minimal               Plan or run the minimal init profile
+      --full                  Plan or run the full compatibility init profile
+      --legacy-scripts        Include legacy Bash wrappers in init profile
+      --include-templates     Export packaged templates in init profile
+      --dry-run               Preview init or AI work without executing writes/providers
   -y, --yes                   Skip prompts and use the provided inputs
   -h, --help                  Show this help message
 
 Examples:
+  npx create-quiver init --name "My Project"
+  npx create-quiver init --name "My Project" --dry-run
   npx create-quiver --name "My Project"
   npx create-quiver --name "My Project" --dir ./my-project
   cd ./my-project && npx create-quiver analyze
@@ -93,6 +102,7 @@ function parseArgs(argv) {
   const result = {
     help: false,
     force: false,
+    explicitInit: false,
     mode: 'init',
     allowDraft: false,
     closeBaseline: false,
@@ -123,12 +133,17 @@ function parseArgs(argv) {
     aiSshHostAlias: '',
     aiIdentityFile: '',
     aiRemote: 'origin',
+    initFull: false,
+    initIncludeTemplates: false,
+    initLegacyScripts: false,
+    initMinimal: false,
   };
 
   const args = [...argv];
-  const commandModes = new Set(['plan', 'graph', 'next', 'doctor', 'analyze', 'migrate', 'start-slice', 'check-slice', 'check-pr', 'check-handoff', 'new-handoff', 'cleanup-slice', 'check-scope', 'refresh-active-slices', 'ai']);
+  const commandModes = new Set(['init', 'plan', 'graph', 'next', 'doctor', 'analyze', 'migrate', 'start-slice', 'check-slice', 'check-pr', 'check-handoff', 'new-handoff', 'cleanup-slice', 'check-scope', 'refresh-active-slices', 'ai']);
   if (commandModes.has(args[0])) {
     result.mode = args[0];
+    result.explicitInit = args[0] === 'init';
     args.shift();
   } else if (args[0] === '--analyze') {
     result.mode = 'analyze';
@@ -204,6 +219,26 @@ function parseArgs(argv) {
 
     if (arg === '--dry-run') {
       result.dryRun = true;
+      continue;
+    }
+
+    if (arg === '--minimal') {
+      result.initMinimal = true;
+      continue;
+    }
+
+    if (arg === '--full') {
+      result.initFull = true;
+      continue;
+    }
+
+    if (arg === '--legacy-scripts') {
+      result.initLegacyScripts = true;
+      continue;
+    }
+
+    if (arg === '--include-templates') {
+      result.initIncludeTemplates = true;
       continue;
     }
 
@@ -1615,6 +1650,22 @@ async function run(argv) {
   const packageRoot = path.resolve(__dirname, '../..');
   const targetDir = resolveTargetRoot(process.cwd(), args.targetDir);
   const projectName = args.projectName || path.basename(targetDir) || 'Quiver Project';
+  const initLayout = buildInitLayout(targetDir, {
+    compatibilityAlias: !args.explicitInit,
+    dryRun: args.dryRun,
+    full: args.initFull,
+    includeTemplates: args.initIncludeTemplates,
+    legacyScripts: args.initLegacyScripts,
+    minimal: args.initMinimal,
+    projectName,
+    skipInstall: args.skipInstall,
+  });
+
+  if (args.dryRun) {
+    console.log(formatInitLayoutPlan(initLayout));
+    return;
+  }
+
   const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'quiver-create-'));
 
   try {
