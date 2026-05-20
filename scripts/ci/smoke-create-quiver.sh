@@ -176,7 +176,7 @@ fi
 assert_missing "$malformed_target/docs"
 assert_missing "$malformed_target/docs-template"
 
-node "$cli" --name "Smoke Project" --dir "$new_target" >/dev/null
+node "$cli" --name "Smoke Project" --dir "$new_target" --full --skip-install >/dev/null
 node -e 'const fs = require("fs"); const data = JSON.parse(fs.readFileSync(process.argv[1], "utf8")); if (!data.initialized_version || !data.last_initialized_at) { throw new Error("initial metadata missing from new project state"); } if (data.last_analysis_at) { throw new Error("new project state should not have analysis metadata yet"); }' "$new_target/.quiver/state.json"
 doctor_before_analyze="$(cd "$new_target" && node "$cli" doctor)"
 
@@ -614,14 +614,14 @@ node -e 'const fs = require("fs"); const data = JSON.parse(fs.readFileSync(proce
 mkdir -p "$existing_target"
 printf 'keep me\n' > "$existing_target/keep.txt"
 
-node "$cli" --name "Existing Repo" --dir "$existing_target" >/dev/null
+node "$cli" --name "Existing Repo" --dir "$existing_target" --full --skip-install >/dev/null
 (
   cd "$existing_target"
   node "$cli" analyze >/dev/null
   node "$cli" doctor >/dev/null
 )
 
-node "$cli" --name "Space Project" --dir "$space_target" >/dev/null
+node "$cli" --name "Space Project" --dir "$space_target" --full --skip-install >/dev/null
 (
   cd "$space_target"
   node "$cli" analyze >/dev/null
@@ -710,7 +710,7 @@ assert_front_matter "$space_target/docs/ai/DEEP.md"
 assert_front_matter "$space_target/docs/ai/LESSONS.md"
 assert_front_matter "$space_target/docs/ai/PRINCIPLES.md"
 
-node "$cli" --name "Legacy Project" --dir "$legacy_target" >/dev/null
+node "$cli" --name "Legacy Project" --dir "$legacy_target" --full --skip-install >/dev/null
 printf 'keep me\n' > "$legacy_target/AGENTS.md"
 printf 'keep me\n' >> "$legacy_target/docs/SEARCH.md"
 node - "$legacy_target/package.json" <<'NODE'
@@ -748,7 +748,7 @@ if [[ "$doctor_before_migrate_output" == *'Run init first: npx create-quiver --n
   exit 1
 fi
 
-migrate_output="$(cd "$legacy_target" && node "$cli" migrate)"
+migrate_output="$(cd "$legacy_target" && node "$cli" migrate --skip-install)"
 
 if [[ "$migrate_output" != *"Quiver migration completed for"* ]]; then
   echo "Migrate output did not report completion" >&2
@@ -814,7 +814,7 @@ tarball_path="$(pack_installer)"
 mkdir -p "$installer_root"
 npm_config_cache="$temp_root/npm-cache" npm install --prefix "$installer_root" "$tarball_path" --ignore-scripts --no-audit --no-fund >/dev/null
 
-node "$installer_root/node_modules/create-quiver/bin/create-quiver.js" --name "Packaged Project" --dir "$release_target" >/dev/null
+node "$installer_root/node_modules/create-quiver/bin/create-quiver.js" --name "Packaged Project" --dir "$release_target" --full --skip-install >/dev/null
 (
   cd "$release_target"
   node "$installer_root/node_modules/create-quiver/bin/create-quiver.js" analyze >/dev/null
@@ -880,7 +880,7 @@ printf 'keep me\n' >> "$release_target/docs/SEARCH.md"
 rm "$release_target/docs/AI_ONBOARDING_PROMPT.md"
 rm "$release_target/tools/scripts/migrate-project.sh"
 
-release_migrate_output="$(cd "$release_target" && node "$installer_root/node_modules/create-quiver/bin/create-quiver.js" migrate)"
+release_migrate_output="$(cd "$release_target" && node "$installer_root/node_modules/create-quiver/bin/create-quiver.js" migrate --skip-install)"
 
 if [[ "$release_migrate_output" != *"Quiver migration completed for"* ]]; then
   echo "Packaged migrate output did not report completion" >&2

@@ -92,15 +92,89 @@ test('init rejects incompatible profile flags before writing files', () => {
   }
 });
 
-test('init command without dry-run still preserves the historical generated layout for this slice', () => {
+function readPackageJson(projectRoot) {
+  return JSON.parse(fs.readFileSync(path.join(projectRoot, 'package.json'), 'utf8'));
+}
+
+test('init command without dry-run writes the default clean AI-first layout', () => {
   const { dir, cleanup } = makeTmpDir();
   const target = path.join(dir, 'target');
   try {
     runCli(['init', '--name', 'Real Project', '--dir', target, '--skip-install']);
 
+    assert.equal(fs.existsSync(path.join(target, 'README.md')), true);
+    assert.equal(fs.existsSync(path.join(target, 'AGENTS.md')), true);
+    assert.equal(fs.existsSync(path.join(target, 'docs', 'AI_CONTEXT.md')), true);
+    assert.equal(fs.existsSync(path.join(target, 'docs', 'AI_ONBOARDING_PROMPT.md')), true);
+    assert.equal(fs.existsSync(path.join(target, 'docs', 'COMMANDS.md')), true);
+    assert.equal(fs.existsSync(path.join(target, 'docs', 'WORKFLOW.md')), true);
+    assert.equal(fs.existsSync(path.join(target, 'docs-template')), false);
+    assert.equal(fs.existsSync(path.join(target, 'tools', 'scripts')), false);
+    assert.equal(fs.existsSync(path.join(target, 'specs', 'real-project')), false);
+
+    const pkg = readPackageJson(target);
+    assert.equal(typeof pkg.scripts['quiver:ai:onboard'], 'string');
+    assert.equal(typeof pkg.scripts['quiver:check-slice'], 'string');
+    assert.equal(pkg.scripts['start:slice'], undefined);
+    assert.equal(pkg.scripts.migrate, undefined);
+  } finally {
+    cleanup();
+  }
+});
+
+test('init --minimal writes only the essential onboarding contract', () => {
+  const { dir, cleanup } = makeTmpDir();
+  const target = path.join(dir, 'target');
+  try {
+    runCli(['init', '--name', 'Minimal Project', '--dir', target, '--minimal', '--skip-install']);
+
+    assert.equal(fs.existsSync(path.join(target, 'README.md')), true);
+    assert.equal(fs.existsSync(path.join(target, 'AGENTS.md')), true);
+    assert.equal(fs.existsSync(path.join(target, 'docs', 'AI_CONTEXT.md')), true);
+    assert.equal(fs.existsSync(path.join(target, 'docs', 'AI_ONBOARDING_PROMPT.md')), true);
+    assert.equal(fs.existsSync(path.join(target, 'docs', 'COMMANDS.md')), true);
+    assert.equal(fs.existsSync(path.join(target, 'docs', 'WORKFLOW.md')), true);
+    assert.equal(fs.existsSync(path.join(target, 'docs', 'INDEX.md')), false);
+    assert.equal(fs.existsSync(path.join(target, 'docs', 'SUPPORT_MATRIX.md')), false);
+    assert.equal(fs.existsSync(path.join(target, 'docs-template')), false);
+    assert.equal(fs.existsSync(path.join(target, 'tools', 'scripts')), false);
+    assert.equal(fs.existsSync(path.join(target, 'specs', 'minimal-project')), false);
+  } finally {
+    cleanup();
+  }
+});
+
+test('init --full preserves the historical compatibility layout explicitly', () => {
+  const { dir, cleanup } = makeTmpDir();
+  const target = path.join(dir, 'target');
+  try {
+    runCli(['init', '--name', 'Full Project', '--dir', target, '--full', '--skip-install']);
+
     assert.equal(fs.existsSync(path.join(target, 'docs-template')), true);
     assert.equal(fs.existsSync(path.join(target, 'tools', 'scripts')), true);
-    assert.equal(fs.existsSync(path.join(target, 'specs', 'real-project', 'slices', 'slice-template', 'slice.json')), true);
+    assert.equal(fs.existsSync(path.join(target, 'specs', 'full-project', 'slices', 'slice-template', 'slice.json')), true);
+
+    const pkg = readPackageJson(target);
+    assert.equal(typeof pkg.scripts['quiver:ai:onboard'], 'string');
+    assert.equal(typeof pkg.scripts['start:slice'], 'string');
+    assert.equal(typeof pkg.scripts.migrate, 'string');
+  } finally {
+    cleanup();
+  }
+});
+
+test('init preserves existing project files by default', () => {
+  const { dir, cleanup } = makeTmpDir();
+  const target = path.join(dir, 'target');
+  try {
+    fs.mkdirSync(path.join(target, 'docs'), { recursive: true });
+    fs.writeFileSync(path.join(target, 'README.md'), '# Keep README\n');
+    fs.writeFileSync(path.join(target, 'docs', 'COMMANDS.md'), '# Keep Commands\n');
+
+    runCli(['init', '--name', 'Existing Project', '--dir', target, '--skip-install']);
+
+    assert.equal(fs.readFileSync(path.join(target, 'README.md'), 'utf8'), '# Keep README\n');
+    assert.equal(fs.readFileSync(path.join(target, 'docs', 'COMMANDS.md'), 'utf8'), '# Keep Commands\n');
   } finally {
     cleanup();
   }

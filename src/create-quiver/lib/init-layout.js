@@ -18,6 +18,61 @@ function toRelativePath(relativePath) {
   return relativePath.split(path.sep).join('/');
 }
 
+const CORE_VISIBLE_DIRECTORIES = ['docs', 'docs/ai', '.quiver', '.quiver/scans'];
+const MINIMAL_VISIBLE_FILES = [
+  'README.md',
+  'AGENTS.md',
+  'docs/AI_CONTEXT.md',
+  'docs/AI_ONBOARDING_PROMPT.md',
+  'docs/COMMANDS.md',
+  'docs/WORKFLOW.md',
+  'docs/ai/PRINCIPLES.md',
+  'docs/ai/RULES.yaml',
+  'package.json',
+  '.quiver/state.json',
+  '.quiver/config.json',
+  '.quiver/.gitignore',
+];
+
+const DEFAULT_VISIBLE_EXTRAS = [
+  'docs/CONTEXTO.md',
+  'docs/DECISIONS.md',
+  'docs/INDEX.md',
+  'docs/STATUS.md',
+  'docs/SUPPORT_MATRIX.md',
+  'docs/TROUBLESHOOTING.md',
+  'docs/TESTING_GUIDE_FOR_AI.md',
+  'docs/GITFLOW_PR_GUIDE.md',
+  'docs/ai/LESSONS.md',
+];
+
+const FULL_VISIBLE_EXTRAS = [
+  'docs/SEARCH.md',
+  'docs/MULTI_AGENT_WORKFLOW.md',
+  'docs/MOCK_DATA_GUIDE.md',
+  'docs/UI_STANDARDS.md',
+  'docs/DOCUMENTATION_GUIDE.md',
+  'docs/examples/plan.md',
+  'docs/examples/graph.md',
+  'docs/examples/next.md',
+];
+
+const LEGACY_SCRIPT_FILES = [
+  'tools/scripts/start-slice.sh',
+  'tools/scripts/refresh-active-slices.sh',
+  'tools/scripts/check-slice-readiness.sh',
+  'tools/scripts/check-pr-readiness.sh',
+  'tools/scripts/cleanup-slice.sh',
+  'tools/scripts/check-scope.sh',
+  'tools/scripts/migrate-project.sh',
+];
+
+const FULL_DIRECTORIES = [
+  'docs-template',
+  'docs/examples',
+  'tools/scripts',
+];
+
 function quiverInternalPaths(projectRoot) {
   const root = path.join(projectRoot, '.quiver');
 
@@ -84,6 +139,80 @@ function resolveInitProfile(normalizedOptions) {
   return 'default';
 }
 
+function resolveInitVisibleFiles(profile, projectSlug) {
+  if (profile === 'minimal') {
+    return [...MINIMAL_VISIBLE_FILES];
+  }
+
+  if (profile === 'full') {
+    return [
+      ...MINIMAL_VISIBLE_FILES,
+      ...DEFAULT_VISIBLE_EXTRAS,
+      ...FULL_VISIBLE_EXTRAS,
+      `specs/${projectSlug}/SPEC.md`,
+      `specs/${projectSlug}/HANDOFF.md`,
+      `specs/${projectSlug}/STATUS.md`,
+      `specs/${projectSlug}/EVIDENCE_REPORT.md`,
+      `specs/${projectSlug}/slices/slice-template/slice.json`,
+      `specs/${projectSlug}/slices/slice-template/pr.md.template`,
+    ];
+  }
+
+  return [...MINIMAL_VISIBLE_FILES, ...DEFAULT_VISIBLE_EXTRAS];
+}
+
+function resolveInitVisibleDirectories(profile, projectSlug) {
+  const directories = [...CORE_VISIBLE_DIRECTORIES];
+
+  if (profile === 'full') {
+    directories.push(...FULL_DIRECTORIES);
+    directories.push(`specs/${projectSlug}`);
+    directories.push(`specs/${projectSlug}/slices`);
+    directories.push(`specs/${projectSlug}/slices/slice-template`);
+  }
+
+  return directories;
+}
+
+function resolveInitPackageScripts(profile, options = {}) {
+  const baseScripts = {
+    'quiver:migrate': 'npx create-quiver migrate',
+    'quiver:analyze': 'npx create-quiver analyze',
+    'quiver:plan': 'npx create-quiver plan',
+    'quiver:graph': 'npx create-quiver graph',
+    'quiver:next': 'npx create-quiver next',
+    'quiver:doctor': 'npx create-quiver doctor',
+    'quiver:ai:onboard': 'npx create-quiver ai onboard',
+    'quiver:ai:plan': 'npx create-quiver ai plan',
+    'quiver:ai:execute-slice': 'npx create-quiver ai execute-slice',
+    'quiver:ai:pr': 'npx create-quiver ai pr',
+    'quiver:ai:doctor': 'npx create-quiver ai doctor',
+    'quiver:start-slice': 'npx create-quiver start-slice',
+    'quiver:check-slice': 'npx create-quiver check-slice',
+    'quiver:check-pr': 'npx create-quiver check-pr',
+    'quiver:check-handoff': 'npx create-quiver check-handoff',
+    'check-handoff': 'npx create-quiver check-handoff',
+    'quiver:cleanup-slice': 'npx create-quiver cleanup-slice',
+    'quiver:check-scope': 'npx create-quiver check-scope',
+    'quiver:refresh-active-slices': 'npx create-quiver refresh-active-slices',
+  };
+
+  if (profile === 'full' || options.legacyScripts === true) {
+    return {
+      ...baseScripts,
+      'check:slice': 'bash tools/scripts/check-slice-readiness.sh',
+      'check:pr': 'bash tools/scripts/check-pr-readiness.sh',
+      'start:slice': 'bash tools/scripts/start-slice.sh',
+      'cleanup:slice': 'bash tools/scripts/cleanup-slice.sh',
+      'check:scope': 'bash tools/scripts/check-scope.sh',
+      'refresh:active-slices': 'bash tools/scripts/refresh-active-slices.sh',
+      migrate: 'bash tools/scripts/migrate-project.sh',
+    };
+  }
+
+  return baseScripts;
+}
+
 function pushPlannedOperation(operations, targetRoot, relativePath, kind, action, reason, profile, category) {
   const absolutePath = path.join(targetRoot, relativePath);
   const exists = fs.existsSync(absolutePath);
@@ -122,65 +251,8 @@ function buildInitLayout(projectRoot, options = {}) {
   const operations = [];
   const risks = [];
 
-  const visibleDirectories = ['docs', 'docs/ai', '.quiver', '.quiver/scans'];
-  const visibleFiles = [
-    'README.md',
-    'AGENTS.md',
-    'docs/AI_CONTEXT.md',
-    'docs/AI_ONBOARDING_PROMPT.md',
-    'package.json',
-    '.quiver/state.json',
-    '.quiver/config.json',
-    '.quiver/.gitignore',
-  ];
-
-  const defaultDocs = [
-    'docs/COMMANDS.md',
-    'docs/WORKFLOW.md',
-    'docs/GITFLOW_PR_GUIDE.md',
-  ];
-
-  const fullDirectories = [
-    'docs-template',
-    'tools/scripts',
-    `specs/${projectSlug}`,
-    `specs/${projectSlug}/slices`,
-    `specs/${projectSlug}/slices/slice-template`,
-  ];
-
-  const fullFiles = [
-    'docs/STATUS.md',
-    'docs/DECISIONS.md',
-    'docs/INDEX.md',
-    'docs/CONTEXTO.md',
-    'docs/SUPPORT_MATRIX.md',
-    'docs/TROUBLESHOOTING.md',
-    'docs/TESTING_GUIDE_FOR_AI.md',
-    'docs/SEARCH.md',
-    'docs/ai/PRINCIPLES.md',
-    'docs/ai/RULES.yaml',
-    'docs/ai/LESSONS.md',
-    `specs/${projectSlug}/SPEC.md`,
-    `specs/${projectSlug}/HANDOFF.md`,
-    `specs/${projectSlug}/STATUS.md`,
-    `specs/${projectSlug}/EVIDENCE_REPORT.md`,
-    `specs/${projectSlug}/slices/slice-template/slice.json`,
-    `specs/${projectSlug}/slices/slice-template/pr.md.template`,
-  ];
-
-  const legacyScriptFiles = [
-    'tools/scripts/start-slice.sh',
-    'tools/scripts/refresh-active-slices.sh',
-    'tools/scripts/check-slice-readiness.sh',
-    'tools/scripts/check-pr-readiness.sh',
-    'tools/scripts/cleanup-slice.sh',
-    'tools/scripts/check-scope.sh',
-    'tools/scripts/migrate-project.sh',
-  ];
-
-  const templateExportFiles = [
-    '.quiver/templates/',
-  ];
+  const visibleDirectories = resolveInitVisibleDirectories(profile, projectSlug);
+  const visibleFiles = resolveInitVisibleFiles(profile, projectSlug);
 
   for (const directory of visibleDirectories) {
     pushPlannedOperation(operations, projectRoot, directory, 'directory', 'create', 'core visible contract directory', profile, 'visible');
@@ -190,36 +262,26 @@ function buildInitLayout(projectRoot, options = {}) {
     pushPlannedOperation(operations, projectRoot, file, 'file', file === 'package.json' ? 'update' : 'create', file === 'package.json' ? 'prepare package metadata and scripts' : 'core visible contract file', profile, 'visible');
   }
 
-  for (const file of defaultDocs) {
-    pushPlannedOperation(operations, projectRoot, file, 'file', 'create', 'default onboarding and workflow guidance', profile, 'visible');
-  }
-
   if (profile === 'full') {
-    for (const directory of fullDirectories) {
-      pushStaticOperation(operations, directory, 'directory', 'create', 'compatibility-heavy full profile directory', profile, 'compatibility');
+    for (const file of LEGACY_SCRIPT_FILES) {
+      pushStaticOperation(operations, file, 'file', 'create', 'legacy Bash wrapper', profile, 'compatibility');
     }
-
-    for (const file of fullFiles) {
-      pushStaticOperation(operations, file, 'file', 'create', 'compatibility-heavy full profile file', profile, 'compatibility');
-    }
-  }
-
-  if (normalized.legacyScripts) {
-    for (const file of legacyScriptFiles) {
+  } else if (normalized.legacyScripts) {
+    for (const file of LEGACY_SCRIPT_FILES) {
       pushStaticOperation(operations, file, 'file', 'create', 'legacy Bash wrapper', profile, 'compatibility');
     }
   }
 
   if (normalized.includeTemplates) {
-    for (const file of templateExportFiles) {
-      pushStaticOperation(operations, file, 'directory', 'create', 'export packaged templates into .quiver/templates', profile, 'internal');
-    }
+    pushStaticOperation(operations, '.quiver/templates/', 'directory', 'create', 'export packaged templates into .quiver/templates', profile, 'internal');
   }
 
   const ignoredPaths = [];
   if (profile !== 'full') {
     ignoredPaths.push('docs-template/');
-    ignoredPaths.push('tools/scripts/');
+    if (!normalized.legacyScripts) {
+      ignoredPaths.push('tools/scripts/');
+    }
     ignoredPaths.push(`specs/${projectSlug}/`);
   }
 
@@ -228,17 +290,12 @@ function buildInitLayout(projectRoot, options = {}) {
   }
 
   if (profile !== 'full') {
-    ignoredPaths.push('docs/STATUS.md');
-    ignoredPaths.push('docs/DECISIONS.md');
-    ignoredPaths.push('docs/INDEX.md');
-    ignoredPaths.push('docs/CONTEXTO.md');
-    ignoredPaths.push('docs/SUPPORT_MATRIX.md');
-    ignoredPaths.push('docs/TROUBLESHOOTING.md');
-    ignoredPaths.push('docs/TESTING_GUIDE_FOR_AI.md');
-    ignoredPaths.push('docs/SEARCH.md');
-    ignoredPaths.push('docs/ai/PRINCIPLES.md');
-    ignoredPaths.push('docs/ai/RULES.yaml');
-    ignoredPaths.push('docs/ai/LESSONS.md');
+    const visibleSet = new Set(visibleFiles);
+    for (const file of resolveInitVisibleFiles('full', projectSlug)) {
+      if (!visibleSet.has(file)) {
+        ignoredPaths.push(file);
+      }
+    }
   }
 
   if (normalized.compatibilityAlias) {
@@ -267,7 +324,7 @@ function buildInitLayout(projectRoot, options = {}) {
       create: counts.create || 0,
       preserve: counts.preserve || 0,
       update: counts.update || 0,
-      ignore: ignoredPaths.length,
+      ignore: [...new Set(ignoredPaths)].length,
     },
   };
 }
@@ -360,6 +417,9 @@ module.exports = {
   buildInitLayout,
   formatInitLayoutPlan,
   normalizeInitLayoutOptions,
+  resolveInitPackageScripts,
+  resolveInitVisibleDirectories,
+  resolveInitVisibleFiles,
   quiverInternalPaths,
   resolveInitProfile,
   toProjectSlug,

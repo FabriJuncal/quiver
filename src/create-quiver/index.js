@@ -558,16 +558,21 @@ function mergeDirectoryTree(sourceDir, targetDir) {
   });
 }
 
-function runInitDocs(repoRoot, projectName) {
-  const templateRoot = resolveTemplateRoot(repoRoot, {
-    packageRoot: path.resolve(__dirname, '../..'),
-  });
+function runInitDocs(repoRoot, projectName, options = {}) {
+  const templateRoot = options.templateRoot
+    ? { path: options.templateRoot }
+    : resolveTemplateRoot(repoRoot, {
+      packageRoot: path.resolve(__dirname, '../..'),
+    });
 
   initializeProjectDocs({
     projectRoot: repoRoot,
     projectName,
     cliVersion: CLI_VERSION,
+    includeTemplates: options.includeTemplates === true,
+    legacyScripts: options.legacyScripts === true,
     migrateMode: false,
+    profile: options.profile || 'default',
     templateRoot: templateRoot.path,
   });
 }
@@ -1325,7 +1330,9 @@ function runMigrate(targetDir, options = {}) {
       projectRoot,
       projectName,
       cliVersion: CLI_VERSION,
+      legacyScripts: true,
       migrateMode: true,
+      profile: 'full',
       templateRoot,
     });
     updateStateForMigrate(projectRoot, projectName, CLI_VERSION);
@@ -1470,14 +1477,12 @@ function runDoctor(targetDir) {
 }
 
 function printInitNextSteps(targetDir, projectName) {
-  const projectSlug = toProjectSlug(projectName);
-
   console.log('');
   console.log('Next steps:');
-  console.log(`- Review AGENTS.md, then ${path.join(targetDir, 'docs', 'INDEX.md')}`);
+  console.log(`- Review AGENTS.md, then ${path.join(targetDir, 'docs', 'AI_ONBOARDING_PROMPT.md')}`);
   console.log(`- Review ${path.join(targetDir, 'docs', 'WORKFLOW.md')}`);
-  console.log(`- Create your first slice from ${path.join(targetDir, 'specs', projectSlug, 'slices', 'slice-template', 'slice.json')}`);
-  console.log(`- Launch slice work with npx create-quiver start-slice specs/${projectSlug}/slices/slice-template/slice.json`);
+  console.log('- Analyze the project with npx create-quiver analyze');
+  console.log('- Create real specs and slices after acceptance criteria and the technical plan are approved.');
 }
 
 async function run(argv) {
@@ -1683,8 +1688,15 @@ async function run(argv) {
     ensureDir(targetDir);
 
     const templateRoot = packTemplate(packageRoot, tempRoot);
-    exportTemplatesToLegacyRoot(templateRoot, targetDir);
-    runInitDocs(targetDir, projectName);
+    if (initLayout.profile === 'full') {
+      exportTemplatesToLegacyRoot(templateRoot, targetDir);
+    }
+    runInitDocs(targetDir, projectName, {
+      includeTemplates: args.initIncludeTemplates,
+      legacyScripts: args.initLegacyScripts,
+      profile: initLayout.profile,
+      templateRoot,
+    });
 
     if (!args.skipInstall) {
       const installResult = installSelfAsDevDep(targetDir, CLI_VERSION);
