@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const { parseJsonWithComments } = require('./json');
-const { normalizeGitBashDrivePath, relativePosixPath, resolveTargetRoot } = require('./paths');
+const { normalizeGitBashDrivePath, relativePosixPath, resolveTargetRoot, toPosixPath } = require('./paths');
 
 function readJson(filePath) {
   return JSON.parse(fs.readFileSync(filePath, 'utf8'));
@@ -98,8 +98,17 @@ function validateSliceMetaForStart(slice) {
 function resolveSliceContext(repoRoot, slicePath) {
   const canonicalRepoRoot = canonicalizePath(repoRoot);
   const absSlicePath = resolveSlicePath(slicePath);
-  const relSlicePath = relativePosixPath(canonicalRepoRoot, absSlicePath);
-  const parts = relSlicePath.split('/');
+  let relSlicePath = relativePosixPath(canonicalRepoRoot, absSlicePath);
+  let parts = relSlicePath.split('/');
+
+  if (parts[0] !== 'specs' && parts[0] !== 'specs-fix' && !path.isAbsolute(slicePath)) {
+    const inputRelSlicePath = toPosixPath(slicePath).replace(/^\.\/+/, '');
+    const inputParts = inputRelSlicePath.split('/');
+    if (inputParts[0] === 'specs' || inputParts[0] === 'specs-fix') {
+      relSlicePath = inputRelSlicePath;
+      parts = inputParts;
+    }
+  }
 
   if (parts[0] !== 'specs' && parts[0] !== 'specs-fix') {
     throw new Error('create-quiver: el slice debe vivir dentro de specs/ o specs-fix/.');

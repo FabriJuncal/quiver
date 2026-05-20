@@ -1674,12 +1674,12 @@ async function run(argv) {
   }
 
   if (args.mode === 'start-slice') {
-    startSlice(path.resolve(process.cwd(), args.targetDir), { allowDraft: args.allowDraft });
+    startSlice(args.targetDir, { allowDraft: args.allowDraft });
     return;
   }
 
   if (args.mode === 'check-slice') {
-    checkSliceReadiness(path.resolve(process.cwd(), args.targetDir), {
+    checkSliceReadiness(args.targetDir, {
       gate: args.gate,
       strictOverlap: args.strictOverlap,
     });
@@ -1687,7 +1687,7 @@ async function run(argv) {
   }
 
   if (args.mode === 'check-pr') {
-    checkPrReadiness(path.resolve(process.cwd(), args.targetDir));
+    checkPrReadiness(args.targetDir);
     return;
   }
 
@@ -1711,7 +1711,7 @@ async function run(argv) {
   }
 
   if (args.mode === 'cleanup-slice') {
-    cleanupSlice(path.resolve(process.cwd(), args.targetDir), {
+    cleanupSlice(args.targetDir, {
       closeBaseline: args.closeBaseline,
       discard: args.discard,
       dryRun: args.dryRun,
@@ -1721,7 +1721,7 @@ async function run(argv) {
   }
 
   if (args.mode === 'check-scope') {
-    checkScope(path.resolve(process.cwd(), args.targetDir), { strict: args.strict });
+    checkScope(args.targetDir, { strict: args.strict });
     return;
   }
 
