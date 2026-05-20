@@ -95,22 +95,35 @@ function validateSliceMetaForStart(slice) {
   }
 }
 
+function isSpecRelativePath(parts) {
+  return parts[0] === 'specs' || parts[0] === 'specs-fix';
+}
+
 function resolveSliceContext(repoRoot, slicePath) {
   const canonicalRepoRoot = canonicalizePath(repoRoot);
   const absSlicePath = resolveSlicePath(slicePath);
   let relSlicePath = relativePosixPath(canonicalRepoRoot, absSlicePath);
   let parts = relSlicePath.split('/');
 
-  if (parts[0] !== 'specs' && parts[0] !== 'specs-fix' && !path.isAbsolute(slicePath)) {
+  if (!isSpecRelativePath(parts)) {
+    const cwdRelSlicePath = relativePosixPath(canonicalizePath(process.cwd()), absSlicePath);
+    const cwdParts = cwdRelSlicePath.split('/');
+    if (isSpecRelativePath(cwdParts)) {
+      relSlicePath = cwdRelSlicePath;
+      parts = cwdParts;
+    }
+  }
+
+  if (!isSpecRelativePath(parts) && !path.isAbsolute(slicePath)) {
     const inputRelSlicePath = toPosixPath(slicePath).replace(/^\.\/+/, '');
     const inputParts = inputRelSlicePath.split('/');
-    if (inputParts[0] === 'specs' || inputParts[0] === 'specs-fix') {
+    if (isSpecRelativePath(inputParts)) {
       relSlicePath = inputRelSlicePath;
       parts = inputParts;
     }
   }
 
-  if (parts[0] !== 'specs' && parts[0] !== 'specs-fix') {
+  if (!isSpecRelativePath(parts)) {
     throw new Error('create-quiver: el slice debe vivir dentro de specs/ o specs-fix/.');
   }
 
