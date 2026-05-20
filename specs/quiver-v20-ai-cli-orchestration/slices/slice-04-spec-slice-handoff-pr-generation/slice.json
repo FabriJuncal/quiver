@@ -1,0 +1,59 @@
+{
+  "slice_id": "slice-04-spec-slice-handoff-pr-generation",
+  "ticket": "QUIVER-20-04",
+  "type": "feature",
+  "title": "Generate specs, slices, handoffs, and PR body after approval",
+  "objective": "Implement the artifact generator used by the planner spec phase.",
+  "description": "After the user approves the technical plan, Quiver should generate a spec directory with mandatory slice-00, slice.json files, EXECUTION_BRIEF.md, CLOSURE_BRIEF.md, EXECUTION_PLAN.md, and pr.md.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "ai-spec-slice-handoff-generation",
+    "branch_name": "feature/QUIVER-20-04-ai-spec-slice-handoff-generation"
+  },
+  "files": [
+    "src/create-quiver/lib/ai/spec-generator.js",
+    "src/create-quiver/lib/ai/spec-templates.js",
+    "src/create-quiver/commands/ai.js",
+    "tests/lib/ai-spec-generator.test.js",
+    "tests/commands/ai-plan-spec-phase.test.js"
+  ],
+  "depends_on": [
+    "slice-03-ai-phase-gated-planner"
+  ],
+  "parallel_safe": "after_dependencies",
+  "parallel_safe_reason": "Requires planner phase plumbing.",
+  "must": [
+    "Generate SPEC.md from approved criteria and plan.",
+    "Generate mandatory slice-00.",
+    "Generate one or more implementation slices.",
+    "Generate EXECUTION_BRIEF.md and CLOSURE_BRIEF.md for every slice.",
+    "Generate EXECUTION_PLAN.md with dependencies and parallelization.",
+    "Generate pr.md following GitFlow headings.",
+    "Avoid overwriting existing spec directories unless an explicit overwrite flag is added and approved.",
+    "Validate generated slice.json files before completing."
+  ],
+  "not_included": [
+    "Running executor agents.",
+    "Creating GitHub PRs.",
+    "Automatically committing generated artifacts."
+  ],
+  "acceptance": [
+    "Generated spec has slice-00.",
+    "Every later slice depends on slice-00 directly or indirectly.",
+    "Every slice has both execution and closure briefs.",
+    "pr.md is always created.",
+    "Existing spec directory collision fails safely.",
+    "Generated JSON parses successfully."
+  ],
+  "tests": [
+    "node --test tests/lib/ai-spec-generator.test.js tests/commands/ai-plan-spec-phase.test.js",
+    "git diff --check"
+  ],
+  "estimated_hours": 6,
+  "status": "completed",
+  "blocked_reason": null,
+  "actual_hours": 5,
+  "started_at": "2026-05-19T17:00:18-0300",
+  "completed_at": "2026-05-19T17:00:18-0300"
+}

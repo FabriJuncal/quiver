@@ -1,0 +1,55 @@
+{
+  "slice_id": "slice-01-ai-provider-runner",
+  "ticket": "QUIVER-20-01",
+  "type": "feature",
+  "title": "Add AI provider runner and safe prompt transport",
+  "objective": "Add a provider abstraction for Codex, Claude, and Gemini CLIs with dry-run, command validation, and safe long-prompt transport.",
+  "description": "Implement the core provider runner used by future quiver ai commands. The runner must avoid shell string concatenation, support cross-platform argument arrays, validate missing CLIs, and allow mockable dry-run behavior.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "ai-provider-runner",
+    "branch_name": "feature/QUIVER-20-01-ai-provider-runner"
+  },
+  "files": [
+    "src/create-quiver/lib/ai/providers.js",
+    "src/create-quiver/lib/ai/prompt-transport.js",
+    "src/create-quiver/lib/ai/preflight.js",
+    "tests/lib/ai-providers.test.js",
+    "tests/lib/ai-prompt-transport.test.js"
+  ],
+  "depends_on": [
+    "slice-00-spec-foundation"
+  ],
+  "parallel_safe": "after_dependencies",
+  "parallel_safe_reason": "Can run after slice-00. It owns provider modules and tests.",
+  "must": [
+    "Support provider ids: codex, claude, gemini.",
+    "Build provider invocations without shell concatenation.",
+    "Support dry-run output that includes provider, command, args, prompt transport, and timeout.",
+    "Validate missing provider CLIs with actionable errors.",
+    "Support prompt transport for long prompts through stdin or temporary files where supported.",
+    "Allow provider execution to be mocked in tests.",
+    "Return structured results with exit code, stdout, stderr, and error metadata."
+  ],
+  "not_included": [
+    "Adding public quiver ai commands.",
+    "Implementing context packs.",
+    "Calling real provider CLIs in CI."
+  ],
+  "acceptance": [
+    "Unsupported provider returns a clear error listing codex, claude, and gemini.",
+    "Dry-run does not invoke a child process.",
+    "Long prompts are not passed as a single shell command string.",
+    "Provider command construction handles paths with spaces.",
+    "Provider tests pass without Codex, Claude, or Gemini installed."
+  ],
+  "tests": [
+    "node --test tests/lib/ai-providers.test.js tests/lib/ai-prompt-transport.test.js",
+    "git diff --check"
+  ],
+  "estimated_hours": 4,
+  "actual_hours": 4,
+  "status": "completed",
+  "blocked_reason": null
+}

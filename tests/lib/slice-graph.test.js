@@ -9,7 +9,9 @@ const {
   computeLevels,
   detectFileConflicts,
   inferDependencies,
+  isFoundationSliceId,
   readAllSlices,
+  naturalNumberFromSliceId,
   topoSort,
   SliceGraphError,
 } = require('../../src/create-quiver/lib/slice-graph');
@@ -224,4 +226,11 @@ test('buildGraph preserves depends_on with full spec/slice-id format (regression
   } finally {
     repo.cleanup();
   }
+});
+
+test('foundation slice helpers recognize slice-00 ids', () => {
+  assert.equal(isFoundationSliceId('slice-00-spec-foundation'), true);
+  assert.equal(isFoundationSliceId('slice-01-alpha'), false);
+  assert.equal(naturalNumberFromSliceId('slice-00-spec-foundation'), 0);
+  assert.equal(naturalNumberFromSliceId('slice-12-beta'), 12);
 });

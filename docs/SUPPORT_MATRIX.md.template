@@ -16,6 +16,8 @@ Quiver is intentionally opinionated about the first-run environment. If your set
 | Base branches | `develop` or `main` | Local base branches are preferred; `origin` is optional. |
 | Worktree state | Clean worktree | Slice execution and PR checks expect no unrelated local changes. |
 | Path handling | Canonical filesystem paths | Use the physical path to the repo and slice files, not a symlinked alias. |
+| AI providers | Local `codex`, `claude`, or `gemini` CLI | Required only for non-dry-run AI commands. Dry-run smokes do not require provider auth. |
+| GitHub PR preflight | `gh` plus user-managed SSH config | Quiver validates `gh`, auth, host alias, identity file, branch, worktree, and `docs/GITFLOW_PR_GUIDE.md`; it does not install or edit credentials. |
 
 ## Cross-Platform Authoring Rules
 
@@ -25,6 +27,8 @@ Quiver is intentionally opinionated about the first-run environment. If your set
 - `--json` is the primary contract; human output is courtesy and may vary.
 - Colors are TTY-aware and suppressed with `NO_COLOR`; Unicode is opt-in unless UTF-8 is available.
 - Optional external tools such as `gh` and `graphviz` should be probed and skipped gracefully if missing.
+- Long AI prompts must be sent through stdin or another safe transport, never shell string concatenation.
+- `sshHostAlias` and `identityFile` are separate values. The alias is the host entry used by Git; the identity file is the key path to validate.
 
 ## Remote Modes
 

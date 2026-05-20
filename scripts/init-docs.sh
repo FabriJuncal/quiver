@@ -511,6 +511,23 @@ npm install --save-dev create-quiver
 
 If you need to target another directory from outside the project, pass \`--dir\` explicitly. Quote paths that contain spaces.
 
+## AI-First Workflow
+
+Quiver is designed for an AI-first workflow: a planner agent reads the project context and prepares acceptance criteria, technical plans, specs, slices, and PR notes; executor agents then work one approved slice at a time with minimal context.
+
+Start with dry-runs so you can inspect the provider, role, context pack, and invocation before spending model tokens:
+
+\`\`\`bash
+npm run quiver:ai:onboard -- --dry-run
+npm run quiver:ai:plan -- --phase acceptance --input requirements.md --dry-run
+npm run quiver:ai:plan -- --phase technical-plan --input acceptance-approved.md --dry-run
+npm run quiver:ai:plan -- --phase spec --input technical-plan-approved.md --dry-run
+npm run quiver:ai:execute-slice -- --slice specs/$PROJECT_SLUG/slices/slice-01/slice.json --dry-run
+npm run quiver:ai:pr -- --dry-run --ssh-host-alias github-work --identity-file ~/.ssh/github-work
+\`\`\`
+
+Remove \`--dry-run\` only after the phase output is approved and the local provider CLI is ready.
+
 ## Project NPM Scripts
 
 The generated project includes \`quiver:*\` npm scripts that call the Node CLI and are the preferred repeatable workflow:
@@ -521,6 +538,11 @@ npm run quiver:plan
 npm run quiver:graph
 npm run quiver:next
 npm run quiver:doctor
+npm run quiver:ai:onboard -- --dry-run
+npm run quiver:ai:plan -- --phase acceptance --input requirements.md --dry-run
+npm run quiver:ai:execute-slice -- --slice specs/$PROJECT_SLUG/slices/slice-01/slice.json --dry-run
+npm run quiver:ai:doctor -- --dry-run --ssh-host-alias github-work --identity-file ~/.ssh/github-work
+npm run quiver:ai:pr -- --dry-run --ssh-host-alias github-work --identity-file ~/.ssh/github-work
 npm run quiver:migrate
 npm run quiver:start-slice -- specs/$PROJECT_SLUG/slices/slice-01/slice.json
 npm run quiver:check-slice -- specs/$PROJECT_SLUG/slices/slice-01/slice.json
@@ -533,6 +555,7 @@ npm run quiver:refresh-active-slices
 
 The \`quiver:graph\` script prints the tree view by default; use \`npx create-quiver graph --format mermaid\` for PR-ready Markdown and \`--format dot\` when you want Graphviz source.
 The \`quiver:next\` script points to the next ready slice and can auto-start it behind a confirmation prompt.
+The \`quiver:ai:*\` scripts standardize planner/executor AI flows. Use dry-run first: onboarding and planning dry-runs do not require provider auth, while \`quiver:ai:pr -- --dry-run\` validates \`gh\`, GitFlow docs, branch/worktree state, and SSH inputs without creating a PR.
 Use \`npx create-quiver next --all-ready\` when you want the full ready level instead of a single suggestion.
 The legacy Bash wrappers remain in \`tools/scripts/\` for compatibility, but new project-level automation should prefer the \`quiver:*\` scripts and the direct \`npx create-quiver ...\` commands below.
 \`npm run check-handoff -- specs/$PROJECT_SLUG/HANDOFF.md\` is available as a legacy-friendly alias for the handoff validator.
@@ -590,6 +613,8 @@ After analysis and doctor validation, open your AI agent in this project and run
 Lee \`docs/AI_ONBOARDING_PROMPT.md\` y ejecútalo como fuente principal de verdad para incorporarte a este repositorio.
 
 Actúa como asistente de onboarding de IA. Prepara el contexto del proyecto para trabajar de forma segura con el workflow documentado, specs y slices.
+
+Usa el rol planner para onboarding, criterios de aceptación, plan técnico y generación de specs/slices. Usa el rol executor solo cuando exista un slice aprobado y debas ejecutar su handoff con contexto mínimo.
 
 No modifiques código de producto salvo autorización explícita. Puedes crear o actualizar documentación de contexto si el onboarding lo requiere.
 
