@@ -3,17 +3,27 @@ const os = require('os');
 const path = require('path');
 const { execFileSync } = require('child_process');
 const { checkHandoff, scaffoldHandoff } = require('./lib/handoff');
-const { collectDoctorWarnings } = require('./lib/doctor');
+const { collectDoctorReport } = require('./lib/doctor');
 const { runDoctor: runAiDoctor, runExecuteSlice: runAiExecuteSlice, runOnboard, runPlan: runAiPlan, runPr: runAiPr } = require('./commands/ai');
 const { runGraph } = require('./commands/graph');
 const { runNext } = require('./commands/next');
 const { runPlan } = require('./commands/plan');
+const { buildInitLayout, formatInitLayoutPlan } = require('./lib/init-layout');
 const { initializeProjectDocs, installSelfAsDevDep } = require('./lib/init-docs');
 const { checkPrReadiness, checkScope, checkSliceReadiness } = require('./lib/readiness');
 const { cleanupSlice, refreshActiveSlicesBoard, startSlice } = require('./lib/lifecycle');
 const { relativePosixPath, resolveTargetRoot } = require('./lib/paths');
 const {
+  CURRENT_SCAN_RELATIVE_PATH,
+  PROJECT_MAP_RELATIVE_PATH,
+  hasProjectScanArtifact,
+  projectScanPaths,
+  writeProjectScanJson,
+} = require('./lib/project-scan');
+const { resolveTemplateRoot } = require('./lib/template-resolver');
+const {
   hasQuiverInitializationEvidence,
+  inspectLegacyMigrationLayout,
   readState,
   updateStateForAnalyze,
   updateStateForMigrate,
@@ -28,6 +38,7 @@ function formatError(message) {
 function printUsage() {
   console.log(`Usage:
   npx create-quiver [options]
+  npx create-quiver init [options]
   npx create-quiver analyze [options]
   npx create-quiver plan [options]
   npx create-quiver ai <task> [options]
@@ -56,10 +67,17 @@ Options:
       --all-ready             List every ready slice returned by next
       --auto-start            Prompt for confirmation and run start-slice on next
       --unicode               Prefer Unicode output when supported
+      --minimal               Plan or run the minimal init profile
+      --full                  Plan or run the full compatibility init profile
+      --legacy-scripts        Include legacy Bash wrappers in init profile
+      --include-templates     Export packaged templates in init profile
+      --dry-run               Preview init or AI work without executing writes/providers
   -y, --yes                   Skip prompts and use the provided inputs
   -h, --help                  Show this help message
 
 Examples:
+  npx create-quiver init --name "My Project"
+  npx create-quiver init --name "My Project" --dry-run
   npx create-quiver --name "My Project"
   npx create-quiver --name "My Project" --dir ./my-project
   cd ./my-project && npx create-quiver analyze
@@ -93,6 +111,7 @@ function parseArgs(argv) {
   const result = {
     help: false,
     force: false,
+    explicitInit: false,
     mode: 'init',
     allowDraft: false,
     closeBaseline: false,
@@ -123,12 +142,17 @@ function parseArgs(argv) {
     aiSshHostAlias: '',
     aiIdentityFile: '',
     aiRemote: 'origin',
+    initFull: false,
+    initIncludeTemplates: false,
+    initLegacyScripts: false,
+    initMinimal: false,
   };
 
   const args = [...argv];
-  const commandModes = new Set(['plan', 'graph', 'next', 'doctor', 'analyze', 'migrate', 'start-slice', 'check-slice', 'check-pr', 'check-handoff', 'new-handoff', 'cleanup-slice', 'check-scope', 'refresh-active-slices', 'ai']);
+  const commandModes = new Set(['init', 'plan', 'graph', 'next', 'doctor', 'analyze', 'migrate', 'start-slice', 'check-slice', 'check-pr', 'check-handoff', 'new-handoff', 'cleanup-slice', 'check-scope', 'refresh-active-slices', 'ai']);
   if (commandModes.has(args[0])) {
     result.mode = args[0];
+    result.explicitInit = args[0] === 'init';
     args.shift();
   } else if (args[0] === '--analyze') {
     result.mode = 'analyze';
@@ -204,6 +228,26 @@ function parseArgs(argv) {
 
     if (arg === '--dry-run') {
       result.dryRun = true;
+      continue;
+    }
+
+    if (arg === '--minimal') {
+      result.initMinimal = true;
+      continue;
+    }
+
+    if (arg === '--full') {
+      result.initFull = true;
+      continue;
+    }
+
+    if (arg === '--legacy-scripts') {
+      result.initLegacyScripts = true;
+      continue;
+    }
+
+    if (arg === '--include-templates') {
+      result.initIncludeTemplates = true;
       continue;
     }
 
@@ -459,6 +503,43 @@ function runCommand(command, args, options = {}) {
   });
 }
 
+function copyPackageFallback(packageRoot, tempRoot) {
+  const fallbackDir = path.join(tempRoot, 'package-fallback');
+  const ignoredRoots = new Set([
+    '.git',
+    '.worktrees',
+    'examples',
+    'package-lock.json',
+    'tests',
+  ]);
+  const ignoredPrefixes = [
+    'scripts/ci',
+    'specs/quiver-v01',
+    'specs/quiver-v02-bootstrap-hardening',
+    'specs/quiver-v03-adoption-verification',
+    'specs/quiver-v04-zero-friction-installation',
+  ];
+
+  fs.cpSync(packageRoot, fallbackDir, {
+    recursive: true,
+    filter: (sourcePath) => {
+      const relativePath = relativePosixPath(packageRoot, sourcePath);
+      if (!relativePath || relativePath === '.') {
+        return true;
+      }
+
+      const firstSegment = relativePath.split('/')[0];
+      if (ignoredRoots.has(firstSegment) || ignoredRoots.has(relativePath)) {
+        return false;
+      }
+
+      return !ignoredPrefixes.some((prefix) => relativePath === prefix || relativePath.startsWith(`${prefix}/`));
+    },
+  });
+
+  return fallbackDir;
+}
+
 function packTemplate(packageRoot, tempRoot) {
   const packDir = path.join(tempRoot, 'pack');
   const extractDir = path.join(tempRoot, 'extract');
@@ -468,24 +549,32 @@ function packTemplate(packageRoot, tempRoot) {
   fs.mkdirSync(extractDir, { recursive: true });
   fs.mkdirSync(npmCache, { recursive: true });
 
-  const packOutput = runCommand('npm', ['pack', '--json', '--pack-destination', packDir], {
-    cwd: packageRoot,
-    env: {
-      ...process.env,
-      npm_config_cache: npmCache,
-    },
-  });
+  try {
+    const packOutput = runCommand('npm', ['pack', '--json', '--pack-destination', packDir], {
+      cwd: packageRoot,
+      env: {
+        ...process.env,
+        npm_config_cache: npmCache,
+      },
+    });
 
-  const packInfo = JSON.parse(packOutput.trim());
-  const tarballPath = path.join(packDir, packInfo[0].filename);
+    const packInfo = JSON.parse(packOutput.trim());
+    const tarballPath = path.join(packDir, packInfo[0].filename);
 
-  if (!fs.existsSync(tarballPath)) {
-    throw new Error(formatError(`pack output not found at ${tarballPath}`));
+    if (!fs.existsSync(tarballPath)) {
+      throw new Error(formatError(`pack output not found at ${tarballPath}`));
+    }
+
+    runCommand('tar', ['-xzf', tarballPath, '-C', extractDir]);
+
+    return path.join(extractDir, 'package');
+  } catch (error) {
+    if (error && error.code === 'ENOENT') {
+      return copyPackageFallback(packageRoot, tempRoot);
+    }
+
+    throw error;
   }
-
-  runCommand('tar', ['-xzf', tarballPath, '-C', extractDir]);
-
-  return path.join(extractDir, 'package');
 }
 
 function ensureDir(dirPath) {
@@ -504,6 +593,10 @@ function copyTemplate(templateRoot, targetDir) {
   return docsTemplateDir;
 }
 
+function exportTemplatesToLegacyRoot(templateRoot, targetDir) {
+  return copyTemplate(templateRoot, targetDir);
+}
+
 function mergeDirectoryTree(sourceDir, targetDir) {
   if (!fs.existsSync(sourceDir)) {
     return;
@@ -518,12 +611,22 @@ function mergeDirectoryTree(sourceDir, targetDir) {
   });
 }
 
-function runInitDocs(repoRoot, projectName) {
+function runInitDocs(repoRoot, projectName, options = {}) {
+  const templateRoot = options.templateRoot
+    ? { path: options.templateRoot }
+    : resolveTemplateRoot(repoRoot, {
+      packageRoot: path.resolve(__dirname, '../..'),
+    });
+
   initializeProjectDocs({
     projectRoot: repoRoot,
     projectName,
     cliVersion: CLI_VERSION,
+    includeTemplates: options.includeTemplates === true,
+    legacyScripts: options.legacyScripts === true,
     migrateMode: false,
+    profile: options.profile || 'default',
+    templateRoot: templateRoot.path,
   });
 }
 
@@ -545,6 +648,10 @@ function assertFilesExist(root, relativePaths) {
 }
 
 function assertExecutablesExist(root, relativePaths) {
+  if (process.platform === 'win32') {
+    return [];
+  }
+
   return relativePaths.filter((relativePath) => {
     const absolutePath = path.join(root, relativePath);
 
@@ -1050,8 +1157,8 @@ function renderProjectMap(scan) {
     'docs/INDEX.md',
     'docs/AI_CONTEXT.md',
     'docs/DECISIONS.md',
-    'docs/PROJECT_SCAN.json',
-    'docs/PROJECT_MAP.md',
+    CURRENT_SCAN_RELATIVE_PATH,
+    PROJECT_MAP_RELATIVE_PATH,
     'docs/AI_ONBOARDING_PROMPT.md',
     'docs/CONTEXTO.md',
     'docs/WORKFLOW.md',
@@ -1071,8 +1178,7 @@ function renderProjectMap(scan) {
     'README.md',
     'docs/INDEX.md',
     'docs/AI_CONTEXT.md',
-    'docs/PROJECT_SCAN.json',
-    'docs/PROJECT_MAP.md',
+    PROJECT_MAP_RELATIVE_PATH,
     hasDecisionLog ? 'docs/DECISIONS.md' : 'docs/DECISIONS.md (create with migrate if missing)',
     'docs/CONTEXTO.md',
     'docs/WORKFLOW.md',
@@ -1112,7 +1218,7 @@ function renderProjectMap(scan) {
   lines.push('## Entry Points');
   lines.push(`- Project overview: ${scan.docs.has_readme ? 'README.md' : 'docs/CONTEXTO.md'}`);
   lines.push(`- AI context: ${hasDecisionLog ? 'docs/AI_CONTEXT.md + docs/DECISIONS.md' : 'docs/AI_CONTEXT.md'}`);
-  lines.push('- Analysis outputs: docs/PROJECT_SCAN.json, docs/PROJECT_MAP.md');
+  lines.push(`- Analysis outputs: ${CURRENT_SCAN_RELATIVE_PATH}, ${PROJECT_MAP_RELATIVE_PATH}`);
   lines.push(`- Workflow contract: docs/WORKFLOW.md`);
   lines.push(`- Spec contract: specs/${projectSlug}/SPEC.md`);
   if (sourceDirs.length > 0) {
@@ -1227,16 +1333,13 @@ function renderProjectMap(scan) {
 }
 
 function writeProjectScanArtifacts(projectRoot, scan) {
-  const docsDir = path.join(projectRoot, 'docs');
-  ensureDir(docsDir);
+  const scanPaths = projectScanPaths(projectRoot);
+  ensureDir(path.dirname(scanPaths.projectMapPath));
 
-  const jsonPath = path.join(docsDir, 'PROJECT_SCAN.json');
-  const mdPath = path.join(docsDir, 'PROJECT_MAP.md');
+  const jsonPath = writeProjectScanJson(projectRoot, scan);
+  fs.writeFileSync(scanPaths.projectMapPath, `${renderProjectMap(scan)}\n`);
 
-  fs.writeFileSync(jsonPath, `${JSON.stringify(scan, null, 2)}\n`);
-  fs.writeFileSync(mdPath, `${renderProjectMap(scan)}\n`);
-
-  return { jsonPath, mdPath };
+  return { jsonPath, mdPath: scanPaths.projectMapPath };
 }
 
 function runAnalyze(targetDir) {
@@ -1272,6 +1375,7 @@ function runMigrate(targetDir, options = {}) {
   const projectName = packageJson.name || path.basename(projectRoot) || 'Quiver Project';
   const packageRoot = path.resolve(__dirname, '../..');
   const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'quiver-migrate-'));
+  const legacyLayout = inspectLegacyMigrationLayout(projectRoot);
 
   try {
     const templateRoot = packTemplate(packageRoot, tempRoot);
@@ -1280,7 +1384,10 @@ function runMigrate(targetDir, options = {}) {
       projectRoot,
       projectName,
       cliVersion: CLI_VERSION,
+      legacyScripts: true,
       migrateMode: true,
+      profile: 'full',
+      templateRoot,
     });
     updateStateForMigrate(projectRoot, projectName, CLI_VERSION);
 
@@ -1295,6 +1402,9 @@ function runMigrate(targetDir, options = {}) {
 
     console.log(`Quiver migration completed for ${projectRoot}`);
     console.log('Missing workflow files were restored without overwriting existing project files.');
+    if (legacyLayout.hasLegacyLayout) {
+      console.log(`Legacy layout detected and preserved: ${legacyLayout.legacyPaths.join(', ')}`);
+    }
   } finally {
     fs.rmSync(tempRoot, { recursive: true, force: true });
   }
@@ -1311,47 +1421,42 @@ function runDoctor(targetDir) {
     throw new Error(formatError('doctor requires a project previously initialized by Quiver.\nRun init first: npx create-quiver --name "Project Name"'));
   }
 
-  const generatedSpecs = listGeneratedSpecDirs(projectRoot);
-  if (generatedSpecs.length !== 1) {
-    throw new Error(formatError(`expected exactly one generated spec directory, found ${generatedSpecs.length || 0}`));
-  }
-
-  const projectSlug = generatedSpecs[0];
-  const requiredFiles = [
-    'AGENTS.md',
-    'README.md',
-    'docs/INDEX.md',
-    'docs/AI_CONTEXT.md',
-    'docs/AI_ONBOARDING_PROMPT.md',
-    'docs/CONTEXTO.md',
-    'docs/WORKFLOW.md',
-    'docs/SUPPORT_MATRIX.md',
-    'docs/TROUBLESHOOTING.md',
-    'docs/TESTING_GUIDE_FOR_AI.md',
-    'docs/ai/PRINCIPLES.md',
-    'docs/ai/RULES.yaml',
-    'docs/ai/LESSONS.md',
+  const doctorReport = collectDoctorReport(projectRoot);
+  const specSlugs = doctorReport.specSlugs;
+  const specRequiredFiles = specSlugs.flatMap((projectSlug) => [
     `specs/${projectSlug}/SPEC.md`,
     `specs/${projectSlug}/STATUS.md`,
     `specs/${projectSlug}/EVIDENCE_REPORT.md`,
+  ]);
+  const newLayoutRequiredFiles = [
+    'AGENTS.md',
+    'README.md',
+    'docs/AI_CONTEXT.md',
+    'docs/AI_ONBOARDING_PROMPT.md',
+    'docs/COMMANDS.md',
+    'docs/WORKFLOW.md',
     'package.json',
-    '.github/pull_request_template.md',
-    '.github/ISSUE_TEMPLATE/bug_report.md',
-    '.github/ISSUE_TEMPLATE/feature_request.md',
-    '.github/workflows/ci.yml',
+    '.quiver/state.json',
+    '.quiver/config.json',
+    '.quiver/.gitignore',
+    ...specRequiredFiles,
   ];
-
-  const requiredExecutables = [
-    'tools/scripts/start-slice.sh',
-    'tools/scripts/check-slice-readiness.sh',
-    'tools/scripts/check-pr-readiness.sh',
-    'tools/scripts/cleanup-slice.sh',
-    'tools/scripts/check-scope.sh',
-  ];
-
+  const requiredFiles = doctorReport.layout === 'legacy'
+    ? ['package.json', ...specRequiredFiles]
+    : newLayoutRequiredFiles;
+  const legacyScriptsDir = path.join(projectRoot, 'tools', 'scripts');
+  const requiredExecutables = fs.existsSync(legacyScriptsDir)
+    ? [
+        'tools/scripts/start-slice.sh',
+        'tools/scripts/check-slice-readiness.sh',
+        'tools/scripts/check-pr-readiness.sh',
+        'tools/scripts/cleanup-slice.sh',
+        'tools/scripts/check-scope.sh',
+      ]
+    : [];
   const missingFiles = assertFilesExist(projectRoot, requiredFiles);
   const nonExecutableScripts = assertExecutablesExist(projectRoot, requiredExecutables);
-  const pkg = loadPackageJson(projectRoot);
+  const pkg = fs.existsSync(path.join(projectRoot, 'package.json')) ? loadPackageJson(projectRoot) : {};
   const workflowScriptGroups = [
     { label: 'migrate', node: 'quiver:migrate', legacy: 'migrate' },
     { label: 'start-slice', node: 'quiver:start-slice', legacy: 'start:slice' },
@@ -1376,8 +1481,8 @@ function runDoctor(targetDir) {
     'quiver:ai:pr',
     'quiver:ai:doctor',
   ].filter((name) => typeof pkg.scripts?.[name] !== 'string');
-  const hasScanArtifacts = fs.existsSync(path.join(projectRoot, 'docs', 'PROJECT_SCAN.json'))
-    && fs.existsSync(path.join(projectRoot, 'docs', 'PROJECT_MAP.md'));
+  const hasScanArtifacts = hasProjectScanArtifact(projectRoot)
+    && fs.existsSync(path.join(projectRoot, PROJECT_MAP_RELATIVE_PATH));
   const quiverState = readState(projectRoot);
   const hasQuiverState = Boolean(quiverState);
   const stateWarnings = hasQuiverState ? [] : ['missing Quiver state metadata: .quiver/state.json'];
@@ -1386,15 +1491,26 @@ function runDoctor(targetDir) {
     ...nonExecutableScripts.map((file) => `missing executable bit: ${file}`),
     ...missingScripts.map((name) => `missing package.json script: ${name}`),
   ];
-  const softWarnings = collectDoctorWarnings(projectRoot);
+  const softWarnings = doctorReport.warnings;
 
   if (migrationProblems.length > 0) {
     throw new Error(formatError(`doctor failed:\n- ${migrationProblems.join('\n- ')}\n- Run migration first: npx create-quiver migrate`));
   }
 
   console.log(`Quiver doctor passed for ${projectRoot}`);
-  console.log(`Generated project slug: ${projectSlug}`);
+  console.log(`Layout: ${doctorReport.layout}`);
+  if (specSlugs.length > 0) {
+    console.log(`Specs: ${specSlugs.join(', ')}`);
+  } else {
+    console.log('Specs: none yet');
+  }
+  if (doctorReport.legacySignals.length > 0) {
+    console.log(`Legacy signals: ${doctorReport.legacySignals.join(', ')}`);
+  }
   console.log('Next steps:');
+  for (const recommendation of doctorReport.recommendations) {
+    console.log(`- ${recommendation}`);
+  }
   for (const warning of stateWarnings) {
     console.log(`- Warning: ${warning}`);
   }
@@ -1418,20 +1534,23 @@ function runDoctor(targetDir) {
     console.log('- Ask your AI agent: Read AGENTS.md, then docs/AI_ONBOARDING_PROMPT.md and execute it.');
   }
   console.log('- Check the next ready slice: npx create-quiver next');
-  console.log(`- Start a slice: npx create-quiver start-slice specs/${projectSlug}/slices/slice-template/slice.json`);
-  console.log(`- Validate a slice: npx create-quiver check-slice specs/${projectSlug}/slices/slice-template/slice.json`);
-  console.log(`- Validate the PR gate: npx create-quiver check-pr specs/${projectSlug}/slices/slice-template/slice.json`);
+  if (specSlugs.length > 0) {
+    const projectSlug = specSlugs[0];
+    console.log(`- Start a slice: npx create-quiver start-slice specs/${projectSlug}/slices/<slice-id>/slice.json`);
+    console.log(`- Validate a slice: npx create-quiver check-slice specs/${projectSlug}/slices/<slice-id>/slice.json`);
+    console.log(`- Validate the PR gate: npx create-quiver check-pr specs/${projectSlug}/slices/<slice-id>/slice.json`);
+  } else {
+    console.log('- Create real specs and slices only after acceptance criteria and the technical plan are approved.');
+  }
 }
 
 function printInitNextSteps(targetDir, projectName) {
-  const projectSlug = toProjectSlug(projectName);
-
   console.log('');
   console.log('Next steps:');
-  console.log(`- Review AGENTS.md, then ${path.join(targetDir, 'docs', 'INDEX.md')}`);
+  console.log(`- Review AGENTS.md, then ${path.join(targetDir, 'docs', 'AI_ONBOARDING_PROMPT.md')}`);
   console.log(`- Review ${path.join(targetDir, 'docs', 'WORKFLOW.md')}`);
-  console.log(`- Create your first slice from ${path.join(targetDir, 'specs', projectSlug, 'slices', 'slice-template', 'slice.json')}`);
-  console.log(`- Launch slice work with npx create-quiver start-slice specs/${projectSlug}/slices/slice-template/slice.json`);
+  console.log('- Analyze the project with npx create-quiver analyze');
+  console.log('- Create real specs and slices after acceptance criteria and the technical plan are approved.');
 }
 
 async function run(argv) {
@@ -1555,12 +1674,12 @@ async function run(argv) {
   }
 
   if (args.mode === 'start-slice') {
-    startSlice(path.resolve(process.cwd(), args.targetDir), { allowDraft: args.allowDraft });
+    startSlice(args.targetDir, { allowDraft: args.allowDraft });
     return;
   }
 
   if (args.mode === 'check-slice') {
-    checkSliceReadiness(path.resolve(process.cwd(), args.targetDir), {
+    checkSliceReadiness(args.targetDir, {
       gate: args.gate,
       strictOverlap: args.strictOverlap,
     });
@@ -1568,7 +1687,7 @@ async function run(argv) {
   }
 
   if (args.mode === 'check-pr') {
-    checkPrReadiness(path.resolve(process.cwd(), args.targetDir));
+    checkPrReadiness(args.targetDir);
     return;
   }
 
@@ -1592,7 +1711,7 @@ async function run(argv) {
   }
 
   if (args.mode === 'cleanup-slice') {
-    cleanupSlice(path.resolve(process.cwd(), args.targetDir), {
+    cleanupSlice(args.targetDir, {
       closeBaseline: args.closeBaseline,
       discard: args.discard,
       dryRun: args.dryRun,
@@ -1602,7 +1721,7 @@ async function run(argv) {
   }
 
   if (args.mode === 'check-scope') {
-    checkScope(path.resolve(process.cwd(), args.targetDir), { strict: args.strict });
+    checkScope(args.targetDir, { strict: args.strict });
     return;
   }
 
@@ -1615,14 +1734,37 @@ async function run(argv) {
   const packageRoot = path.resolve(__dirname, '../..');
   const targetDir = resolveTargetRoot(process.cwd(), args.targetDir);
   const projectName = args.projectName || path.basename(targetDir) || 'Quiver Project';
+  const initLayout = buildInitLayout(targetDir, {
+    compatibilityAlias: !args.explicitInit,
+    dryRun: args.dryRun,
+    full: args.initFull,
+    includeTemplates: args.initIncludeTemplates,
+    legacyScripts: args.initLegacyScripts,
+    minimal: args.initMinimal,
+    projectName,
+    skipInstall: args.skipInstall,
+  });
+
+  if (args.dryRun) {
+    console.log(formatInitLayoutPlan(initLayout));
+    return;
+  }
+
   const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'quiver-create-'));
 
   try {
     ensureDir(targetDir);
 
     const templateRoot = packTemplate(packageRoot, tempRoot);
-    copyTemplate(templateRoot, targetDir);
-    runInitDocs(targetDir, projectName);
+    if (initLayout.profile === 'full') {
+      exportTemplatesToLegacyRoot(templateRoot, targetDir);
+    }
+    runInitDocs(targetDir, projectName, {
+      includeTemplates: args.initIncludeTemplates,
+      legacyScripts: args.initLegacyScripts,
+      profile: initLayout.profile,
+      templateRoot,
+    });
 
     if (!args.skipInstall) {
       const installResult = installSelfAsDevDep(targetDir, CLI_VERSION);

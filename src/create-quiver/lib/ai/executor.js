@@ -88,6 +88,7 @@ function buildExecuteSliceContext({ repoRoot, slicePath, role, context }) {
   const pack = buildContextPackMetadata({
     role: resolvedRole,
     packName: context || DEFAULT_EXECUTE_CONTEXT,
+    repoRoot: canonicalRepoRoot,
   });
   const relativeSlicePath = toRelativePath(canonicalRepoRoot, slice.sliceAbs);
   const relativeBriefPath = toRelativePath(canonicalRepoRoot, briefPath);

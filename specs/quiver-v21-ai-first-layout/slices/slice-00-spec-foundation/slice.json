@@ -1,0 +1,45 @@
+{
+  "slice_id": "slice-00-spec-foundation",
+  "ticket": "QUIVER-21-00",
+  "type": "docs",
+  "title": "Publish AI-first layout spec foundation",
+  "objective": "Commit the approved spec, execution plan, PR body, slice definitions, and handoff briefs for the AI-first layout initiative.",
+  "description": "This slice is mandatory and must land first so every later executor can work from an approved, versioned handoff.",
+  "git": {
+    "branch_type": "docs",
+    "base_branch": "main",
+    "branch_slug": "quiver-21-ai-first-layout-spec-foundation",
+    "branch_name": "docs/QUIVER-21-00-ai-first-layout-spec-foundation"
+  },
+  "files": [
+    "specs/quiver-v21-ai-first-layout/**"
+  ],
+  "depends_on": [],
+  "parallel_safe": "no",
+  "parallel_safe_reason": "Foundation documentation must be reviewed before implementation slices start.",
+  "must": [
+    "Create SPEC.md with approved acceptance criteria and technical plan.",
+    "Create STATUS.md, EVIDENCE_REPORT.md, EXECUTION_PLAN.md, and pr.md.",
+    "Create every slice directory with slice.json, EXECUTION_BRIEF.md, and CLOSURE_BRIEF.md.",
+    "Keep scope limited to documentation artifacts."
+  ],
+  "not_included": [
+    "Product code changes.",
+    "Generated project behavior changes.",
+    "Release or npm publication."
+  ],
+  "acceptance": [
+    "Spec documents the visible-vs-internal layout decision.",
+    "Every slice has an EXECUTION_BRIEF and CLOSURE_BRIEF at its slice root.",
+    "Execution plan names sequential and parallel levels.",
+    "All slice.json files parse as valid JSON."
+  ],
+  "tests": [
+    "find specs/quiver-v21-ai-first-layout/slices -name 'slice.json' -print -exec node -e \"JSON.parse(require('fs').readFileSync(process.argv[1], 'utf8'))\" {} \\;",
+    "git diff --check"
+  ],
+  "estimated_hours": 2,
+  "actual_hours": 2,
+  "status": "completed",
+  "blocked_reason": null
+}

@@ -1,0 +1,62 @@
+{
+  "slice_id": "slice-08-smokes-release-readiness",
+  "ticket": "QUIVER-21-08",
+  "type": "chore",
+  "title": "Finalize smokes and release readiness",
+  "objective": "Run and harden the full validation matrix for the AI-first layout before PR or release work.",
+  "description": "This slice closes cross-profile smoke coverage, evidence, and final consistency checks.",
+  "git": {
+    "branch_type": "chore",
+    "base_branch": "main",
+    "branch_slug": "smokes-release-readiness",
+    "branch_name": "chore/QUIVER-21-08-smokes-release-readiness"
+  },
+  "files": [
+    "scripts/ci/smoke-create-quiver.sh",
+    "scripts/ci/smoke-init-docs.sh",
+    "scripts/ci/smoke-cross-platform.js",
+    "tests/**/*.test.js",
+    "specs/quiver-v21-ai-first-layout/EVIDENCE_REPORT.md",
+    "specs/quiver-v21-ai-first-layout/STATUS.md",
+    "specs/quiver-v21-ai-first-layout/pr.md",
+    "specs/quiver-v21-ai-first-layout/slices/slice-08-smokes-release-readiness/CLOSURE_BRIEF.md",
+    "specs/quiver-v21-ai-first-layout/slices/slice-08-smokes-release-readiness/slice.json"
+  ],
+  "depends_on": [
+    "slice-07-docs-guidance-alignment"
+  ],
+  "parallel_safe": "after_dependencies",
+  "parallel_safe_reason": "Final validation depends on completed behavior and docs.",
+  "must": [
+    "Validate default, minimal, full, legacy-scripts, include-templates, and dry-run profiles.",
+    "Validate analyze scan relocation and visible project map.",
+    "Validate no-spec state for plan, graph, next, and doctor.",
+    "Validate legacy compatibility for scan, docs-template, and tools/scripts where applicable.",
+    "Update evidence report with real commands and outcomes.",
+    "Update PR body with summary, validation, and risks."
+  ],
+  "not_included": [
+    "Publishing to npm.",
+    "Opening the PR unless explicitly requested.",
+    "Changing product behavior beyond smoke fixes required for this spec."
+  ],
+  "acceptance": [
+    "Full Node test suite passes.",
+    "Create-quiver smoke passes.",
+    "Init-docs smoke passes.",
+    "Cross-platform smoke passes.",
+    "Evidence report is updated.",
+    "PR body is ready for review."
+  ],
+  "tests": [
+    "node --test tests/**/*.test.js",
+    "npm run smoke:create-quiver",
+    "bash scripts/ci/smoke-init-docs.sh",
+    "node scripts/ci/smoke-cross-platform.js",
+    "git diff --check"
+  ],
+  "estimated_hours": 4,
+  "actual_hours": 3,
+  "status": "completed",
+  "blocked_reason": null
+}

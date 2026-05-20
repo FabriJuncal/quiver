@@ -176,7 +176,7 @@ fi
 assert_missing "$malformed_target/docs"
 assert_missing "$malformed_target/docs-template"
 
-node "$cli" --name "Smoke Project" --dir "$new_target" >/dev/null
+node "$cli" --name "Smoke Project" --dir "$new_target" --full --skip-install >/dev/null
 node -e 'const fs = require("fs"); const data = JSON.parse(fs.readFileSync(process.argv[1], "utf8")); if (!data.initialized_version || !data.last_initialized_at) { throw new Error("initial metadata missing from new project state"); } if (data.last_analysis_at) { throw new Error("new project state should not have analysis metadata yet"); }' "$new_target/.quiver/state.json"
 doctor_before_analyze="$(cd "$new_target" && node "$cli" doctor)"
 
@@ -210,8 +210,8 @@ if [[ "$doctor_after_analyze" != *"npx create-quiver next"* ]]; then
   echo "Doctor output did not recommend the next command" >&2
   exit 1
 fi
-if [[ "$doctor_after_analyze" != *"npx create-quiver start-slice"* ]]; then
-  echo "Doctor output did not use the Node slice command" >&2
+if [[ "$doctor_after_analyze" != *"Create real specs and slices only after acceptance criteria and the technical plan are approved."* ]]; then
+  echo "Doctor output did not explain the no-spec next step" >&2
   exit 1
 fi
 if [[ "$doctor_after_analyze" == *"bash "* ]]; then
@@ -242,7 +242,7 @@ assert_file "$new_target/docs/ai/PRINCIPLES.md"
 assert_file "$new_target/docs/DECISIONS.md"
 assert_file "$new_target/docs/AI_CONTEXT.md"
 assert_file "$new_target/docs/AI_ONBOARDING_PROMPT.md"
-assert_file "$new_target/docs/PROJECT_SCAN.json"
+assert_file "$new_target/.quiver/scans/PROJECT_SCAN.json"
 assert_file "$new_target/docs/PROJECT_MAP.md"
 assert_file "$new_target/specs/smoke-project/HANDOFF.md"
 assert_project_map_sections "$new_target/docs/PROJECT_MAP.md"
@@ -320,7 +320,7 @@ assert_front_matter "$new_target/docs/ai/DEEP.md"
 assert_front_matter "$new_target/docs/ai/LESSONS.md"
 assert_front_matter "$new_target/docs/ai/PRINCIPLES.md"
 assert_contains "$new_target/docs/AI_ONBOARDING_PROMPT.md" "AI Onboarding Prompt"
-assert_contains "$new_target/docs/AI_ONBOARDING_PROMPT.md" "docs/PROJECT_SCAN.json"
+assert_contains "$new_target/docs/AI_ONBOARDING_PROMPT.md" ".quiver/scans/PROJECT_SCAN.json"
 assert_contains "$new_target/docs/AI_ONBOARDING_PROMPT.md" "Planner"
 assert_contains "$new_target/docs/AI_ONBOARDING_PROMPT.md" "Executor"
 assert_contains "$new_target/specs/smoke-project/HANDOFF.md" "## Background"
@@ -602,26 +602,26 @@ if (!resolved.includes('folder with spaces')) {
   throw new Error('Windows-style path resolution did not preserve the target folder name');
 }
 
-const relative = relativePosixPath('C:\\Users\\Fabricio\\repo', 'C:\\Users\\Fabricio\\repo\\docs\\PROJECT_SCAN.json', path.win32);
-if (relative !== 'docs/PROJECT_SCAN.json') {
+const relative = relativePosixPath('C:\\Users\\Fabricio\\repo', 'C:\\Users\\Fabricio\\repo\\.quiver\\scans\\PROJECT_SCAN.json', path.win32);
+if (relative !== '.quiver/scans/PROJECT_SCAN.json') {
   throw new Error(`Expected portable relative path, got ${relative}`);
 }
 NODE
 node -e 'const fs = require("fs"); const data = JSON.parse(fs.readFileSync(process.argv[1], "utf8")); if (!data.last_analysis_at) { throw new Error("analysis metadata missing after analyze"); }' "$new_target/.quiver/state.json"
 
-node -e 'const fs = require("fs"); const data = JSON.parse(fs.readFileSync(process.argv[1], "utf8")); if (!data.project || !data.stack || !data.commands || !data.structure || !data.ci || !data.docs || !Array.isArray(data.risks) || !Array.isArray(data.skipped_paths)) { throw new Error("invalid project scan shape"); }' "$new_target/docs/PROJECT_SCAN.json"
+node -e 'const fs = require("fs"); const data = JSON.parse(fs.readFileSync(process.argv[1], "utf8")); if (!data.project || !data.stack || !data.commands || !data.structure || !data.ci || !data.docs || !Array.isArray(data.risks) || !Array.isArray(data.skipped_paths)) { throw new Error("invalid project scan shape"); }' "$new_target/.quiver/scans/PROJECT_SCAN.json"
 
 mkdir -p "$existing_target"
 printf 'keep me\n' > "$existing_target/keep.txt"
 
-node "$cli" --name "Existing Repo" --dir "$existing_target" >/dev/null
+node "$cli" --name "Existing Repo" --dir "$existing_target" --full --skip-install >/dev/null
 (
   cd "$existing_target"
   node "$cli" analyze >/dev/null
   node "$cli" doctor >/dev/null
 )
 
-node "$cli" --name "Space Project" --dir "$space_target" >/dev/null
+node "$cli" --name "Space Project" --dir "$space_target" --full --skip-install >/dev/null
 (
   cd "$space_target"
   node "$cli" analyze >/dev/null
@@ -642,7 +642,7 @@ assert_file "$existing_target/docs/ai/PRINCIPLES.md"
 assert_file "$existing_target/docs/DECISIONS.md"
 assert_file "$existing_target/docs/AI_CONTEXT.md"
 assert_file "$existing_target/docs/AI_ONBOARDING_PROMPT.md"
-assert_file "$existing_target/docs/PROJECT_SCAN.json"
+assert_file "$existing_target/.quiver/scans/PROJECT_SCAN.json"
 assert_file "$existing_target/docs/PROJECT_MAP.md"
 assert_file "$existing_target/specs/existing-repo/HANDOFF.md"
 assert_project_map_sections "$existing_target/docs/PROJECT_MAP.md"
@@ -675,7 +675,7 @@ assert_package_scripts "$existing_target/package.json" "existing project" \
   quiver:analyze quiver:plan quiver:graph quiver:next quiver:doctor quiver:ai:onboard quiver:ai:plan quiver:ai:execute-slice quiver:ai:pr quiver:ai:doctor quiver:migrate quiver:start-slice quiver:check-slice quiver:check-pr quiver:check-handoff check-handoff quiver:cleanup-slice quiver:check-scope quiver:refresh-active-slices
 assert_file "$space_target/README.md"
 assert_file "$space_target/AGENTS.md"
-assert_file "$space_target/docs/PROJECT_SCAN.json"
+assert_file "$space_target/.quiver/scans/PROJECT_SCAN.json"
 assert_file "$space_target/docs/PROJECT_MAP.md"
 assert_file "$space_target/docs/COMMANDS.md"
 assert_file "$space_target/specs/space-project/slices/slice-template/slice.json"
@@ -710,7 +710,7 @@ assert_front_matter "$space_target/docs/ai/DEEP.md"
 assert_front_matter "$space_target/docs/ai/LESSONS.md"
 assert_front_matter "$space_target/docs/ai/PRINCIPLES.md"
 
-node "$cli" --name "Legacy Project" --dir "$legacy_target" >/dev/null
+node "$cli" --name "Legacy Project" --dir "$legacy_target" --full --skip-install >/dev/null
 printf 'keep me\n' > "$legacy_target/AGENTS.md"
 printf 'keep me\n' >> "$legacy_target/docs/SEARCH.md"
 node - "$legacy_target/package.json" <<'NODE'
@@ -735,6 +735,8 @@ NODE
 rm "$legacy_target/.quiver/state.json"
 rm "$legacy_target/docs/AI_ONBOARDING_PROMPT.md"
 rm "$legacy_target/tools/scripts/migrate-project.sh"
+(cd "$legacy_target" && node "$cli" analyze >/dev/null)
+cp "$legacy_target/.quiver/scans/PROJECT_SCAN.json" "$legacy_target/docs/PROJECT_SCAN.json"
 
 doctor_before_migrate_output="$(cd "$legacy_target" && node "$cli" doctor 2>&1 || true)"
 
@@ -748,10 +750,18 @@ if [[ "$doctor_before_migrate_output" == *'Run init first: npx create-quiver --n
   exit 1
 fi
 
-migrate_output="$(cd "$legacy_target" && node "$cli" migrate)"
+migrate_output="$(cd "$legacy_target" && node "$cli" migrate --skip-install)"
 
 if [[ "$migrate_output" != *"Quiver migration completed for"* ]]; then
   echo "Migrate output did not report completion" >&2
+  exit 1
+fi
+if [[ "$migrate_output" != *"Legacy layout detected and preserved:"* ]]; then
+  echo "Migrate output did not report legacy layout detection" >&2
+  exit 1
+fi
+if [[ "$migrate_output" != *"docs/PROJECT_SCAN.json"* ]]; then
+  echo "Migrate output did not mention the legacy scan path" >&2
   exit 1
 fi
 
@@ -781,6 +791,7 @@ assert_file "$legacy_target/docs/examples/next.md"
 assert_contains "$legacy_target/docs/COMMANDS.md" "src/create-quiver/lib/slice-graph.js"
 assert_contains "$legacy_target/docs/SUPPORT_MATRIX.md" "## Cross-Platform Authoring Rules"
 assert_contains "$legacy_target/specs/legacy-project/slices/slice-template/slice.json" "// \"depends_on\": ["
+assert_file "$legacy_target/docs/PROJECT_SCAN.json"
 assert_front_matter "$legacy_target/docs/AI_CONTEXT.md"
 assert_front_matter "$legacy_target/docs/AI_ONBOARDING_PROMPT.md"
 assert_front_matter "$legacy_target/docs/CONTEXTO.md"
@@ -814,7 +825,7 @@ tarball_path="$(pack_installer)"
 mkdir -p "$installer_root"
 npm_config_cache="$temp_root/npm-cache" npm install --prefix "$installer_root" "$tarball_path" --ignore-scripts --no-audit --no-fund >/dev/null
 
-node "$installer_root/node_modules/create-quiver/bin/create-quiver.js" --name "Packaged Project" --dir "$release_target" >/dev/null
+node "$installer_root/node_modules/create-quiver/bin/create-quiver.js" --name "Packaged Project" --dir "$release_target" --full --skip-install >/dev/null
 (
   cd "$release_target"
   node "$installer_root/node_modules/create-quiver/bin/create-quiver.js" analyze >/dev/null
@@ -835,7 +846,7 @@ assert_file "$release_target/docs/ai/STANDARD.md"
 assert_file "$release_target/docs/ai/DEEP.md"
 assert_file "$release_target/docs/ai/LESSONS.md"
 assert_file "$release_target/docs/ai/PRINCIPLES.md"
-assert_file "$release_target/docs/PROJECT_SCAN.json"
+assert_file "$release_target/.quiver/scans/PROJECT_SCAN.json"
 assert_file "$release_target/docs/PROJECT_MAP.md"
 assert_file "$release_target/docs/examples/plan.md"
 assert_file "$release_target/docs/examples/graph.md"
@@ -880,7 +891,7 @@ printf 'keep me\n' >> "$release_target/docs/SEARCH.md"
 rm "$release_target/docs/AI_ONBOARDING_PROMPT.md"
 rm "$release_target/tools/scripts/migrate-project.sh"
 
-release_migrate_output="$(cd "$release_target" && node "$installer_root/node_modules/create-quiver/bin/create-quiver.js" migrate)"
+release_migrate_output="$(cd "$release_target" && node "$installer_root/node_modules/create-quiver/bin/create-quiver.js" migrate --skip-install)"
 
 if [[ "$release_migrate_output" != *"Quiver migration completed for"* ]]; then
   echo "Packaged migrate output did not report completion" >&2

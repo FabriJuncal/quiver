@@ -1,6 +1,12 @@
 const fs = require('fs');
 const path = require('path');
 const { execSync } = require('child_process');
+const {
+  buildQuiverConfig,
+  buildQuiverInternalGitignore,
+  quiverInternalPaths,
+  resolveInitPackageScripts,
+} = require('./init-layout');
 const { writeState } = require('./state');
 
 function ensureDir(dirPath) {
@@ -199,7 +205,7 @@ function writeFrontMatter(filePath, fields) {
   return nextContent;
 }
 
-function mergePackageJson(projectRoot, templateRoot, skipIfExists) {
+function mergePackageJson(projectRoot, templateRoot, options = {}) {
   const packageTemplate = path.join(templateRoot, 'package.template.json');
   const packageJsonPath = path.join(projectRoot, 'package.json');
 
@@ -207,8 +213,13 @@ function mergePackageJson(projectRoot, templateRoot, skipIfExists) {
     return 'missing';
   }
 
+  const profile = options.profile || 'default';
+  const scripts = resolveInitPackageScripts(profile, { legacyScripts: options.legacyScripts === true });
+
   if (!fs.existsSync(packageJsonPath)) {
-    fs.copyFileSync(packageTemplate, packageJsonPath);
+    const template = JSON.parse(fs.readFileSync(packageTemplate, 'utf8'));
+    template.scripts = scripts;
+    fs.writeFileSync(packageJsonPath, `${JSON.stringify(template, null, 2)}\n`);
     return 'created';
   }
 
@@ -217,14 +228,125 @@ function mergePackageJson(projectRoot, templateRoot, skipIfExists) {
 
   existing.scripts = {
     ...(existing.scripts || {}),
-    ...(template.scripts || {}),
+    ...scripts,
   };
 
   fs.writeFileSync(packageJsonPath, `${JSON.stringify(existing, null, 2)}\n`);
-  return skipIfExists ? 'merged' : 'updated';
+  return options.migrateMode ? 'merged' : 'updated';
 }
 
-function buildReadme(projectName, projectSlug) {
+function buildReadme(projectName, projectSlug, profile = 'default') {
+  if (profile === 'minimal') {
+    return `# ${projectName}
+
+[Descripción breve del proyecto]
+
+## Quick Start
+
+Run Quiver from this project root. Do not install it globally.
+
+\`\`\`bash
+npm install
+npx create-quiver analyze
+npx create-quiver plan
+npx create-quiver graph
+npx create-quiver doctor
+npx create-quiver next
+\`\`\`
+
+## AI Workflow
+
+Use \`AGENTS.md\` first, then \`docs/AI_CONTEXT.md\` and \`docs/AI_ONBOARDING_PROMPT.md\` for the working contract.
+
+\`\`\`bash
+npm run quiver:ai:onboard -- --dry-run
+npm run quiver:ai:plan -- --phase acceptance --input requirements.md --dry-run
+npm run quiver:ai:plan -- --phase technical-plan --input acceptance-approved.md --dry-run
+npm run quiver:ai:plan -- --phase spec --input technical-plan-approved.md --dry-run
+\`\`\`
+
+When a real spec exists, execute one approved slice at a time:
+
+\`\`\`bash
+npm run quiver:ai:execute-slice -- --slice specs/<spec-slug>/slices/<slice-id>/slice.json --dry-run
+\`\`\`
+
+## Documentation
+
+- [AI Context](./docs/AI_CONTEXT.md)
+- [AI Onboarding Prompt](./docs/AI_ONBOARDING_PROMPT.md)
+- [Commands](./docs/COMMANDS.md)
+- [Workflow](./docs/WORKFLOW.md)
+`;
+  }
+
+  if (profile !== 'full') {
+    return `# ${projectName}
+
+[Descripción breve del proyecto]
+
+## Quick Start
+
+Run Quiver from this project root. Do not install it globally.
+
+\`\`\`bash
+npm install
+npx create-quiver analyze
+npx create-quiver plan
+npx create-quiver graph
+npx create-quiver doctor
+npx create-quiver next
+\`\`\`
+
+After \`analyze\`, use \`docs/PROJECT_MAP.md\` for the detected stack, package manager, and command surface.
+
+## AI-First Workflow
+
+Quiver keeps the visible contract small: start with \`README.md\`, \`AGENTS.md\`, and \`docs/\`. Specs and slices should be created only after a real requirement and an approved technical plan.
+
+Use dry-runs before spending model tokens:
+
+\`\`\`bash
+npm run quiver:ai:onboard -- --dry-run
+npm run quiver:ai:plan -- --phase acceptance --input requirements.md --dry-run
+npm run quiver:ai:plan -- --phase technical-plan --input acceptance-approved.md --dry-run
+npm run quiver:ai:plan -- --phase spec --input technical-plan-approved.md --dry-run
+\`\`\`
+
+When a real spec exists, execute one approved slice at a time:
+
+\`\`\`bash
+npm run quiver:ai:execute-slice -- --slice specs/<spec-slug>/slices/<slice-id>/slice.json --dry-run
+\`\`\`
+
+## Project NPM Scripts
+
+The generated project includes \`quiver:*\` npm scripts that call the Node CLI:
+
+\`\`\`bash
+npm run quiver:analyze
+npm run quiver:plan
+npm run quiver:graph
+npm run quiver:next
+npm run quiver:doctor
+npm run quiver:ai:onboard -- --dry-run
+npm run quiver:ai:plan -- --phase acceptance --input requirements.md --dry-run
+npm run quiver:ai:execute-slice -- --slice specs/<spec-slug>/slices/<slice-id>/slice.json --dry-run
+\`\`\`
+
+## Documentation
+
+- [Agents](./AGENTS.md)
+- [AI Context](./docs/AI_CONTEXT.md)
+- [AI Onboarding Prompt](./docs/AI_ONBOARDING_PROMPT.md)
+- [Commands](./docs/COMMANDS.md)
+- [Workflow](./docs/WORKFLOW.md)
+- [GitFlow PR Guide](./docs/GITFLOW_PR_GUIDE.md)
+- [Support Matrix](./docs/SUPPORT_MATRIX.md)
+- [Troubleshooting](./docs/TROUBLESHOOTING.md)
+`;
+  }
+
   return `# ${projectName}
 
 [Descripción breve del proyecto]
@@ -334,7 +456,7 @@ Use \`{{GRAPH_COMMAND}} --format mermaid\` for GitHub-friendly graph embeds or \
 If the project never ran Quiver initialization before, do not use \`migrate\` as bootstrap. Run:
 
 \`\`\`bash
-npx create-quiver --name "Project Name"
+npx create-quiver init --name "Project Name"
 \`\`\`
 
 If your team prefers a pinned local dependency, update the package first and then run the same flow:
@@ -380,6 +502,8 @@ Record durable decisions in \`docs/DECISIONS.md\` so future AI agents do not re-
 
 ## First Slice Workflow
 
+Use this section only for projects generated with the full compatibility layout. In the default AI-first layout, create real specs and slices with \`npx create-quiver ai plan --phase spec\` after acceptance criteria and the technical plan are approved.
+
 1. Review or refine specs/${projectSlug}/SPEC.md.
 2. Create the first slice from specs/${projectSlug}/slices/slice-template/slice.json.
 3. Review the plan with \`{{PLAN_COMMAND}}\` or \`npm run quiver:plan\`.
@@ -422,10 +546,15 @@ function initializeProjectDocs(options) {
     projectRoot,
     projectName,
     cliVersion,
+    includeTemplates = false,
+    legacyScripts = false,
     migrateMode = false,
+    profile = 'default',
+    templateRoot: providedTemplateRoot = '',
   } = options;
 
-  const templateRoot = path.join(projectRoot, 'docs-template');
+  const templateRoot = providedTemplateRoot || path.join(projectRoot, 'docs-template');
+  const internalPaths = quiverInternalPaths(projectRoot);
   const replacements = {
     projectName,
     projectSlug: toProjectSlug(projectName),
@@ -438,17 +567,48 @@ function initializeProjectDocs(options) {
   const dirs = [
     'docs',
     'docs/ai',
-    'docs/tools',
-    'docs/archive',
-    `specs/${replacements.projectSlug}/slices/slice-template`,
-    'tools/scripts',
+    '.quiver',
+    '.quiver/scans',
   ];
+
+  if (profile === 'full') {
+    dirs.push(
+      'docs/archive',
+      'docs/examples',
+      'docs/tools',
+      `specs/${replacements.projectSlug}/slices/slice-template`,
+      'tools/scripts',
+    );
+  } else if (legacyScripts) {
+    dirs.push('tools/scripts');
+  }
 
   for (const dir of dirs) {
     ensureDir(path.join(projectRoot, dir));
   }
 
   const operations = [];
+  if (!fs.existsSync(internalPaths.configPath)) {
+    fs.writeFileSync(internalPaths.configPath, `${JSON.stringify(buildQuiverConfig(), null, 2)}\n`);
+    operations.push({ source: 'Quiver config', destination: '.quiver/config.json', result: 'created' });
+  } else {
+    operations.push({ source: 'Quiver config', destination: '.quiver/config.json', result: 'skipped' });
+  }
+
+  fs.writeFileSync(internalPaths.gitignorePath, buildQuiverInternalGitignore());
+  operations.push({ source: 'Quiver internal gitignore', destination: '.quiver/.gitignore', result: 'updated' });
+
+  if (includeTemplates) {
+    fs.mkdirSync(internalPaths.templatesDir, { recursive: true });
+    fs.cpSync(templateRoot, internalPaths.templatesDir, {
+      recursive: true,
+      force: false,
+      errorOnExist: false,
+      preserveTimestamps: true,
+    });
+    operations.push({ source: 'packaged templates', destination: '.quiver/templates', result: 'merged' });
+  }
+
   const agentsSourcePath = path.join(templateRoot, 'AGENTS.md.template');
   if (fs.existsSync(agentsSourcePath)) {
     const agentsDestinationPath = path.join(projectRoot, 'AGENTS.md');
@@ -488,13 +648,45 @@ function initializeProjectDocs(options) {
     ['specs/[project-name]/slices/pr.md.template', `specs/${replacements.projectSlug}/slices/slice-template/pr.md.template`],
   ];
 
+  const minimalTemplateDestinations = new Set([
+    'docs/AI_CONTEXT.md',
+    'docs/AI_ONBOARDING_PROMPT.md',
+    'docs/COMMANDS.md',
+    'docs/WORKFLOW.md',
+  ]);
+  const defaultTemplateDestinations = new Set([
+    ...minimalTemplateDestinations,
+    'docs/CONTEXTO.md',
+    'docs/DECISIONS.md',
+    'docs/GITFLOW_PR_GUIDE.md',
+    'docs/INDEX.md',
+    'docs/STATUS.md',
+    'docs/SUPPORT_MATRIX.md',
+    'docs/TESTING_GUIDE_FOR_AI.md',
+    'docs/TROUBLESHOOTING.md',
+    'docs/ai/LESSONS.md',
+  ]);
+
   for (const [source, destination, frontMatterFactory] of templateCopies) {
+    if (profile === 'minimal' && !minimalTemplateDestinations.has(destination)) {
+      continue;
+    }
+
+    if (profile === 'default' && !defaultTemplateDestinations.has(destination)) {
+      continue;
+    }
+
     const sourcePath = path.join(templateRoot, source);
     if (!fs.existsSync(sourcePath)) {
       continue;
     }
 
     const destinationPath = path.join(projectRoot, destination);
+    if (!migrateMode && fs.existsSync(destinationPath)) {
+      operations.push({ source, destination, result: 'skipped' });
+      continue;
+    }
+
     const result = copyRenderedFile(sourcePath, destinationPath, replacements, migrateMode, frontMatterFactory);
     operations.push({ source, destination, result });
   }
@@ -522,31 +714,58 @@ function initializeProjectDocs(options) {
     ['scripts/migrate-project.sh', 'tools/scripts/migrate-project.sh'],
   ];
 
+  const alwaysBinaryDestinations = new Set([
+    'docs/ai/RULES.yaml',
+  ]);
+  const legacyScriptDestinations = new Set([
+    'tools/scripts/start-slice.sh',
+    'tools/scripts/refresh-active-slices.sh',
+    'tools/scripts/check-slice-readiness.sh',
+    'tools/scripts/check-pr-readiness.sh',
+    'tools/scripts/cleanup-slice.sh',
+    'tools/scripts/check-scope.sh',
+    'tools/scripts/migrate-project.sh',
+  ]);
+
   for (const [source, destination] of binaryCopies) {
+    if (
+      profile !== 'full'
+      && !alwaysBinaryDestinations.has(destination)
+      && !(legacyScripts && legacyScriptDestinations.has(destination))
+    ) {
+      continue;
+    }
+
     const sourcePath = path.join(templateRoot, source);
     const destinationPath = path.join(projectRoot, destination);
     if (!fs.existsSync(sourcePath)) {
       continue;
     }
 
-    const result = copyIfSourceExists(sourcePath, destinationPath, migrateMode);
+    const result = copyIfSourceExists(sourcePath, destinationPath, true);
     operations.push({ source, destination, result });
   }
 
   const aiPrinciplesSource = path.join(templateRoot, 'docs/ai/PRINCIPLES.md');
   if (fs.existsSync(aiPrinciplesSource)) {
     const aiPrinciplesDestination = path.join(projectRoot, 'docs/ai/PRINCIPLES.md');
-    const result = copyRenderedFile(
-      aiPrinciplesSource,
-      aiPrinciplesDestination,
-      replacements,
-      migrateMode,
-      frontMatterFor('AI operating principles', 'all AI work'),
-    );
+    const result = !migrateMode && fs.existsSync(aiPrinciplesDestination)
+      ? 'skipped'
+      : copyRenderedFile(
+        aiPrinciplesSource,
+        aiPrinciplesDestination,
+        replacements,
+        migrateMode,
+        frontMatterFor('AI operating principles', 'all AI work'),
+      );
     operations.push({ source: 'docs/ai/PRINCIPLES.md', destination: 'docs/ai/PRINCIPLES.md', result });
   }
 
-  const packageResult = mergePackageJson(projectRoot, templateRoot, migrateMode);
+  const packageResult = mergePackageJson(projectRoot, templateRoot, {
+    legacyScripts,
+    migrateMode,
+    profile,
+  });
   operations.push({ source: 'package.template.json', destination: 'package.json', result: packageResult });
 
   const mergedPackageJsonPath = path.join(projectRoot, 'package.json');
@@ -585,12 +804,21 @@ function initializeProjectDocs(options) {
   ];
 
   for (const [source, destination] of tierCopies) {
+    if (profile !== 'full') {
+      continue;
+    }
+
     const sourcePath = path.join(templateRoot, source);
     if (!fs.existsSync(sourcePath)) {
       continue;
     }
 
     const destinationPath = path.join(projectRoot, destination);
+    if (!migrateMode && fs.existsSync(destinationPath)) {
+      operations.push({ source, destination, result: 'skipped' });
+      continue;
+    }
+
     const result = copyRenderedFile(sourcePath, destinationPath, tierReplacements, migrateMode, ({
       body,
     }) => buildFrontMatterFields({
@@ -638,7 +866,9 @@ function initializeProjectDocs(options) {
   writeState(projectRoot, nextState);
 
   const searchPath = path.join(projectRoot, 'docs', 'SEARCH.md');
-  if (!(migrateMode && fs.existsSync(searchPath))) {
+  if (profile !== 'full') {
+    operations.push({ source: 'docs/SEARCH.md', destination: 'docs/SEARCH.md', result: 'skipped-profile' });
+  } else if (!fs.existsSync(searchPath)) {
     const searchContent = `# Búsqueda por Tema
 
 **Última actualización:** ${replacements.currentDate}
@@ -687,7 +917,7 @@ function initializeProjectDocs(options) {
 
   const readmePath = path.join(projectRoot, 'README.md');
   if (!fs.existsSync(readmePath)) {
-    fs.writeFileSync(readmePath, `${renderTemplate(buildReadme(projectName, replacements.projectSlug), replacements)}\n`);
+    fs.writeFileSync(readmePath, `${renderTemplate(buildReadme(projectName, replacements.projectSlug, profile), replacements)}\n`);
     operations.push({ source: 'README.md template', destination: 'README.md', result: 'created' });
   } else {
     operations.push({ source: 'README.md template', destination: 'README.md', result: 'skipped' });

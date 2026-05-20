@@ -1,8 +1,9 @@
 const fs = require('fs');
 const path = require('path');
+const { quiverInternalPaths } = require('./init-layout');
 
 function statePath(projectRoot) {
-  return path.join(projectRoot, '.quiver', 'state.json');
+  return quiverInternalPaths(projectRoot).statePath;
 }
 
 function ensureDir(dirPath) {
@@ -58,6 +59,21 @@ function hasLegacyQuiverInitializationEvidence(projectRoot) {
 
   return requiredPaths.every((relativePath) => fs.existsSync(path.join(projectRoot, relativePath)))
     && hasGeneratedProjectSpec(projectRoot);
+}
+
+function inspectLegacyMigrationLayout(projectRoot) {
+  const candidates = [
+    'docs-template/',
+    'tools/scripts/',
+    'docs/PROJECT_SCAN.json',
+  ];
+
+  const detected = candidates.filter((relativePath) => fs.existsSync(path.join(projectRoot, relativePath)));
+
+  return {
+    hasLegacyLayout: detected.length > 0,
+    legacyPaths: detected,
+  };
 }
 
 function hasQuiverInitializationEvidence(projectRoot) {
@@ -129,6 +145,7 @@ module.exports = {
   hasGeneratedProjectSpec,
   hasInitializedStateMetadata,
   hasLegacyQuiverInitializationEvidence,
+  inspectLegacyMigrationLayout,
   hasQuiverInitializationEvidence,
   readState,
   statePath,

@@ -39,7 +39,6 @@ slice_input="$1"
 command -v git >/dev/null 2>&1 || fail "git no esta disponible en PATH."
 command -v node >/dev/null 2>&1 || fail "node no esta disponible en PATH."
 
-repo_root="$(git rev-parse --show-toplevel)"
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 [[ -f "$slice_input" ]] || fail "No existe el slice '$slice_input'."
@@ -127,6 +126,7 @@ pass "Al menos un caso de uso documentado."
 grep -Eq 'git revert ' "$pr_abs" || fail "Rollback debe incluir al menos un comando git revert."
 pass "Rollback incluye comando git revert."
 
+# shellcheck disable=SC2016
 grep -Eiq '^\s*-\s*`manual review`$|^\s*-\s*`visual check`$|^\s*-\s*`screen test`$|^\s*-\s*`visual validation`$' "$pr_abs" && fail "How to Test cannot rely only on generic phrases."
 
 node -e "JSON.parse(require('fs').readFileSync(process.argv[1], 'utf8'))" "$slice_abs" >/dev/null

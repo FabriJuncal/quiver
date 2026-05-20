@@ -51,6 +51,7 @@ function buildPlanContext({ role, context, phase, inputText, inputPath, repoRoot
   const pack = buildContextPackMetadata({
     role,
     packName: context || phaseDetails.contextPack,
+    repoRoot,
   });
   const relativeInputPath = inputPath ? path.relative(repoRoot, path.resolve(repoRoot, inputPath)).split(path.sep).join('/') : '';
   const sections = [
@@ -63,6 +64,10 @@ function buildPlanContext({ role, context, phase, inputText, inputPath, repoRoot
 
   if (relativeInputPath) {
     sections.push(`Input file: ${relativeInputPath}`);
+  }
+
+  if (pack.scanArtifact) {
+    sections.push(`Project scan artifact: ${pack.scanArtifact.path} (${pack.scanArtifact.source})`);
   }
 
   if (inputText) {
@@ -80,6 +85,7 @@ function buildOnboardContext({ role, context, inputText, inputPath, repoRoot }) 
   const pack = buildContextPackMetadata({
     role,
     packName: context || DEFAULT_ONBOARD_CONTEXT,
+    repoRoot,
   });
   const relativeInputPath = inputPath ? path.relative(repoRoot, path.resolve(repoRoot, inputPath)).split(path.sep).join('/') : '';
   const sections = [
@@ -91,6 +97,10 @@ function buildOnboardContext({ role, context, inputText, inputPath, repoRoot }) 
 
   if (relativeInputPath) {
     sections.push(`Input file: ${relativeInputPath}`);
+  }
+
+  if (pack.scanArtifact) {
+    sections.push(`Project scan artifact: ${pack.scanArtifact.path} (${pack.scanArtifact.source})`);
   }
 
   if (inputText) {

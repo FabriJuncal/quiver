@@ -3,6 +3,7 @@
 # Script de Inicialización de Documentación
 # Uso: ./init-docs.sh "Nombre del Proyecto"
 
+# shellcheck disable=SC2016
 set -e
 
 # Colores para output
@@ -62,6 +63,7 @@ CHECK_SCOPE_COMMAND="npx create-quiver check-scope <slice.json>"
 REFRESH_ACTIVE_SLICES_COMMAND="npx create-quiver refresh-active-slices"
 
 print_info "Inicializando documentación para: $PROJECT_NAME"
+print_warning "Este script es compatibilidad legacy. Para el flujo AI-first default usá: npx create-quiver init --name \"$PROJECT_NAME\""
 print_info "Project slug: $PROJECT_SLUG"
 print_info "Fecha: $CURRENT_DATE"
 
@@ -92,7 +94,7 @@ copy_template() {
     
     if [ -f "$src" ]; then
         # Remover .template del nombre si existe
-        dest=$(echo "$dest" | sed 's/\.template$//')
+        dest="${dest%.template}"
 
         if [ "$MIGRATE_MODE" = "1" ] && [ -f "$dest" ]; then
             print_info "Saltado: $dest ya existe"
@@ -522,11 +524,16 @@ npm run quiver:ai:onboard -- --dry-run
 npm run quiver:ai:plan -- --phase acceptance --input requirements.md --dry-run
 npm run quiver:ai:plan -- --phase technical-plan --input acceptance-approved.md --dry-run
 npm run quiver:ai:plan -- --phase spec --input technical-plan-approved.md --dry-run
-npm run quiver:ai:execute-slice -- --slice specs/$PROJECT_SLUG/slices/slice-01/slice.json --dry-run
 npm run quiver:ai:pr -- --dry-run --ssh-host-alias github-work --identity-file ~/.ssh/github-work
 \`\`\`
 
 Remove \`--dry-run\` only after the phase output is approved and the local provider CLI is ready.
+
+When a real spec exists, execute one approved slice at a time:
+
+\`\`\`bash
+npm run quiver:ai:execute-slice -- --slice specs/<spec-slug>/slices/<slice-id>/slice.json --dry-run
+\`\`\`
 
 ## Project NPM Scripts
 
@@ -540,7 +547,7 @@ npm run quiver:next
 npm run quiver:doctor
 npm run quiver:ai:onboard -- --dry-run
 npm run quiver:ai:plan -- --phase acceptance --input requirements.md --dry-run
-npm run quiver:ai:execute-slice -- --slice specs/$PROJECT_SLUG/slices/slice-01/slice.json --dry-run
+npm run quiver:ai:execute-slice -- --slice specs/<spec-slug>/slices/<slice-id>/slice.json --dry-run
 npm run quiver:ai:doctor -- --dry-run --ssh-host-alias github-work --identity-file ~/.ssh/github-work
 npm run quiver:ai:pr -- --dry-run --ssh-host-alias github-work --identity-file ~/.ssh/github-work
 npm run quiver:migrate
@@ -589,6 +596,12 @@ $GRAPH_COMMAND --format mermaid
 $GRAPH_COMMAND --format dot
 \`\`\`
 
+If the project never ran Quiver initialization before, do not use \`migrate\` as bootstrap. Run:
+
+\`\`\`bash
+npx create-quiver init --name "Project Name"
+\`\`\`
+
 If your team prefers a pinned local dependency, update the package first and then run the same flow:
 
 \`\`\`bash
@@ -632,6 +645,8 @@ Record durable decisions in \`docs/DECISIONS.md\` so future AI agents do not re-
 
 ## First Slice Workflow
 
+Use this section only for the legacy/full scaffold that includes a placeholder spec. In the default AI-first layout, create real specs and slices with \`npx create-quiver ai plan --phase spec\` after acceptance criteria and the technical plan are approved.
+
 1. Review or refine specs/$PROJECT_SLUG/SPEC.md.
 2. Create the first slice from specs/$PROJECT_SLUG/slices/slice-template/slice.json.
 3. Review the plan with \`$PLAN_COMMAND\` or \`npm run quiver:plan\`.
@@ -674,7 +689,7 @@ fi
 echo ""
 print_success "¡Inicialización completada!"
 echo ""
-echo "📁 Estructura creada:"
+echo "📁 Estructura legacy/full creada:"
 echo "   docs/                    ← Documentación core"
 echo "   docs/ai/                 ← Configuración de IA"
 echo "   docs/tools/              ← Herramientas (vacío)"
@@ -685,10 +700,10 @@ echo "📝 Próximos pasos:"
 echo "   1. Editar docs/AI_CONTEXT.md con el contexto resumido para IA"
 echo "   2. Editar docs/CONTEXTO.md con la información de tu proyecto"
 echo "   3. Editar docs/STATUS.md con el estado actual"
-echo "   4. Crear el primer directorio de slice en specs/$PROJECT_SLUG/slices/[slice-id]/"
-echo "   5. Actualizar docs/SEARCH.md con temas específicos"
+echo "   4. Para el flujo recomendado, crear specs reales con: npx create-quiver ai plan --phase spec"
+echo "   5. Usar tools/scripts solo si necesitás compatibilidad legacy"
 echo ""
 echo "📖 Más información:"
-echo "   - Ver docs-template/TEMPLATE.md para guía de personalización"
-echo "   - Ver docs-template/README.md para documentación del template"
+echo "   - Ver README.md y README_FOR_AI.md para el flujo AI-first actual"
+echo "   - docs-template/ aplica solo a compatibilidad legacy o templates exportados"
 echo ""

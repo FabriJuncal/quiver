@@ -9,6 +9,10 @@ This document is the canonical command reference for the orchestration roadmap.
 
 | Command | Purpose | OS | Since | Example |
 |---------|---------|----|-------|---------|
+| `npx create-quiver init --name "<project>"` | Creates the default AI-first Quiver contract for a project | macOS, Linux, Windows | current | `npx create-quiver init --name "{{PROJECT_NAME}}"` |
+| `npx create-quiver --name "<project>"` | Compatibility alias for the recommended init flow | macOS, Linux, Windows | current | `npx create-quiver --name "{{PROJECT_NAME}}"` |
+| `quiver:analyze` | Writes raw analyzer data to `.quiver/scans/PROJECT_SCAN.json` and the visible project map to `docs/PROJECT_MAP.md` | macOS, Linux, Windows | v0.8 | `npm run quiver:analyze` |
+| `quiver:doctor` | Validates the Quiver contract and reports layout or migration guidance | macOS, Linux, Windows | v0.8 | `npm run quiver:doctor` |
 | `quiver:plan` | Sequential orchestration planning command | macOS, Linux, Windows | v0.8 | [docs/examples/plan.md](./examples/plan.md) |
 | `quiver:graph` | Parallel-level orchestration tree command | macOS, Linux, Windows | v0.8 | [docs/examples/graph.md](./examples/graph.md) |
 | `quiver:next` | Ready-slice suggestion command | macOS, Linux, Windows | v0.8 | [docs/examples/next.md](./examples/next.md) |
@@ -22,6 +26,10 @@ This document is the canonical command reference for the orchestration roadmap.
 
 | Flag | Applies to | Purpose |
 |------|------------|---------|
+| `--minimal` | `init` | Create only the essential onboarding contract |
+| `--full` | `init` | Create the broad legacy-compatible layout explicitly |
+| `--legacy-scripts` | `init` | Add legacy Bash wrappers under `tools/scripts/` |
+| `--include-templates` | `init` | Export packaged templates under `.quiver/templates/` |
 | `--skip-install` | `init`, `migrate` | Skip auto-install of `create-quiver` as dev dependency (useful for CI) |
 | `--json` | `plan`, `graph`, `next` | Emit machine-readable JSON |
 | `--format <tree\|mermaid\|dot>` | `graph` | Output format |

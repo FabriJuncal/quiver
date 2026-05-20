@@ -1,6 +1,6 @@
-# AI Guide for Quiver Docs Template
+# AI Guide for Quiver
 
-Use this guide when initializing a new project from the template or when explaining the workflow to another agent.
+Use this guide when initializing a new project with Quiver or when explaining the workflow to another agent.
 
 The first AI job in a generated project is context preparation, not product implementation.
 
@@ -9,11 +9,12 @@ The canonical installer entrypoint is `npx create-quiver` run from the target pr
 Do not recommend global installation; use `npx` or a project-local devDependency when the team needs a pinned version.
 The post-init contract is validated with `npx create-quiver doctor` from the project root.
 If the project already exists from an older Quiver version and was previously initialized by Quiver, run `npx create-quiver migrate` before `analyze` from the project root.
-If the project was never initialized by Quiver, do not use `migrate` as bootstrap; run `npx create-quiver --name "Project Name"` first.
+If the project was never initialized by Quiver, do not use `migrate` as bootstrap; run `npx create-quiver init --name "Project Name"` first.
 Generated projects also get `quiver:*` npm scripts that call the Node CLI directly; prefer those for repeatable project workflows, including `quiver:plan` for sequential planning, `quiver:graph` for parallel-level inspection, `quiver:next` for the next ready slice, and the AI family `quiver:ai:onboard`, `quiver:ai:plan`, `quiver:ai:execute-slice`, `quiver:ai:pr`, and `quiver:ai:doctor`. Use `quiver:graph --format mermaid` for PR-ready Markdown or `quiver:graph --format dot` for Graphviz source.
 Maintain release notes and package publishing with `scripts/release-quiver.sh`.
 The primary generated project context for agents is `docs/AI_CONTEXT.md`.
 The project map is the single source of truth for stack, package manager, commands, and file hints: `docs/PROJECT_MAP.md`.
+The raw analyzer output is internal machinery at `.quiver/scans/PROJECT_SCAN.json`; read it only when the visible map is not enough.
 The universal router for generated projects is `AGENTS.md`; read it before `docs/AI_CONTEXT.md` and `docs/AI_ONBOARDING_PROMPT.md`.
 Generated projects also get `docs/DECISIONS.md`; use it for durable choices that should not be re-litigated.
 If a generated project has been analyzed, the exact agent handoff prompt is `docs/AI_ONBOARDING_PROMPT.md`.
@@ -26,7 +27,7 @@ During onboarding, after reading `ROADMAP.md`, also read `BACKLOG.md` in the rep
 
 Use the smallest context that still answers the current task.
 
-- **Onboarding:** start from `README.md`, `AGENTS.md` when present, `docs/PROJECT_MAP.md`, `docs/PROJECT_SCAN.json`, `docs/AI_CONTEXT.md`, and `docs/AI_ONBOARDING_PROMPT.md` before opening source files.
+- **Onboarding:** start from `README.md`, `AGENTS.md` when present, `docs/PROJECT_MAP.md`, `.quiver/scans/PROJECT_SCAN.json` when it exists, `docs/AI_CONTEXT.md`, and `docs/AI_ONBOARDING_PROMPT.md` before opening source files.
 - **Onboarding router:** start from `README.md` and `AGENTS.md` first, then the onboarding files above.
 - **Implementation:** start from `docs/ai/ACTIVE_SLICE.md` when it exists; otherwise start from `specs/<project-slug>/slices/<slice-id>/slice.json`, then read only the declared files, nearby tests, and directly related source.
 - **Handoff:** start from `specs/<project-slug>/HANDOFF.md` when the work was explicitly transferred through a handoff artifact.
@@ -38,12 +39,12 @@ Prefer maps, metadata, diffs, and summaries over full file reads when they are e
 
 ## Core Rules
 
-- Never customize `docs-template/` for a specific project.
-- Always use `init-docs.sh` instead of copying files by hand.
-- Treat `docs-template/` as generic and `docs/` as generated project-specific output.
+- Do not treat `docs-template/` as part of the default project contract. It is legacy or exported only when explicitly requested.
+- Use `npx create-quiver init` or `npx create-quiver --name "Project Name"` instead of copying templates by hand.
+- Treat `.quiver/` as Quiver internal machinery and `docs/` as the visible project-specific contract.
 - Not every project needs every optional file.
 - The AI context pack lives in `docs/AI_CONTEXT.md`; `docs/CONTEXTO.md` is the broader project overview; `docs/PROJECT_MAP.md` owns stack and command facts.
-- The onboarding prompt lives in `docs/AI_ONBOARDING_PROMPT.md` and should reference the analyzer outputs.
+- The onboarding prompt lives in `docs/AI_ONBOARDING_PROMPT.md` and should reference `docs/PROJECT_MAP.md`; raw scan details live in `.quiver/scans/PROJECT_SCAN.json`.
 - `specs/<project-slug>/HANDOFF.md` is reserved for exceptional context transfers between agents or phases.
 - Initial onboarding should complete context docs and report assumptions before any feature work starts.
 - The normal workflow runs from the project root without `--dir`; use `--dir` only when targeting another directory explicitly.
@@ -56,47 +57,58 @@ Prefer maps, metadata, diffs, and summaries over full file reads when they are e
 
 ## Initialization Flow
 
-1. Copy the template folder into the target project as `docs-template/`.
-2. Run:
+1. From the target project root, run the default AI-first initializer:
 
 ```bash
-./docs-template/scripts/init-docs.sh "Project Name"
+npx create-quiver init --name "Project Name"
 ```
 
-3. Tell the user to edit:
+The compatibility alias is still valid:
+
+```bash
+npx create-quiver --name "Project Name"
+```
+
+2. Analyze and validate the project contract:
+
+```bash
+npx create-quiver analyze
+npx create-quiver doctor
+```
+
+3. Tell the user to review or complete:
   - `docs/AI_CONTEXT.md`
   - `docs/AI_ONBOARDING_PROMPT.md`
   - `docs/CONTEXTO.md`
   - `docs/STATUS.md`
-  - `docs/SUPPORT_MATRIX.md`
-  - `docs/TROUBLESHOOTING.md`
-  - `specs/{{PROJECT_SLUG}}/SPEC.md`
+  - `docs/PROJECT_MAP.md`
 
-## What the Script Creates
+## What Init Creates
 
+Default init creates the visible AI-first contract and Quiver internal state:
+
+- `AGENTS.md`
 - `docs/`
 - `docs/ai/`
 - `docs/AI_CONTEXT.md`
 - `docs/AI_ONBOARDING_PROMPT.md`
-- `specs/{{PROJECT_SLUG}}/`
-- `tools/scripts/`
-- `docs/SEARCH.md`
-- a merged or copied `package.json` with the required npm scripts
-- the default OSS baseline when those files are missing:
-- `LICENSE`
-- `CONTRIBUTING.md`
-- `CODE_OF_CONDUCT.md`
-- `SECURITY.md`
-- `CHANGELOG.md`
-- `ROADMAP.md`
 - `docs/SUPPORT_MATRIX.md`
 - `docs/TROUBLESHOOTING.md`
-- `.github/pull_request_template.md`
-- `.github/ISSUE_TEMPLATE/bug_report.md`
-- `.github/ISSUE_TEMPLATE/feature_request.md`
-- `.github/workflows/ci.yml`
+- `.quiver/config.json`
+- `.quiver/state.json`
+- `.quiver/.gitignore`
+- a merged or copied `package.json` with `quiver:*` scripts
 
-`init-docs.sh` preserves any existing target files and reports skipped copies instead of overwriting them.
+Default init does not create `docs-template/`, `tools/scripts/`, or a placeholder spec.
+
+Optional compatibility profiles:
+
+- `--minimal` creates only the essential onboarding contract.
+- `--full` preserves the broad legacy-compatible layout, including placeholder spec assets and OSS/community files.
+- `--legacy-scripts` adds Bash wrappers under `tools/scripts/`.
+- `--include-templates` exports packaged templates under `.quiver/templates/`, not root `docs-template/`.
+
+Init preserves existing target files and reports skipped copies instead of overwriting them.
 
 ## Required Follow-Up
 
@@ -106,20 +118,21 @@ After initialization, the user should:
 2. Fill in `docs/AI_ONBOARDING_PROMPT.md`
 3. Fill in `docs/CONTEXTO.md`
 4. Fill in `docs/STATUS.md`
-5. Run `npx create-quiver analyze` if scan artifacts are missing
+5. Run `npx create-quiver analyze` if `docs/PROJECT_MAP.md` or `.quiver/scans/PROJECT_SCAN.json` is missing
 6. If the project already exists from an older Quiver version and was previously initialized by Quiver, run `npx create-quiver migrate`
-7. If the project was never initialized by Quiver, run `npx create-quiver --name "Project Name"` instead of `migrate`
+7. If the project was never initialized by Quiver, run `npx create-quiver init --name "Project Name"` instead of `migrate`
 8. Ask the AI agent to execute `docs/AI_ONBOARDING_PROMPT.md`
 9. Review context docs before creating the first implementation slice
 10. Open and merge the documentation PR that establishes the workflow files
-11. Create the first slice in `specs/{{PROJECT_SLUG}}/slices/[slice-id]/`
-12. Add `ticket` and `git.*`
-13. Run `npx create-quiver plan` or `npm run quiver:plan`
-14. Run `npx create-quiver next` or `npm run quiver:next`
-14. Run `npx create-quiver start-slice [--allow-draft] <slice.json>` or `npm run quiver:start-slice -- [--allow-draft] <slice.json>`
-15. Make one commit per slice
-16. Open one PR per spec
-17. Validate the slice and the final PR with the workflow gates
+11. Use `npx create-quiver ai plan --phase acceptance --input requirements.md --dry-run`
+12. After human approval, use `npx create-quiver ai plan --phase technical-plan --input acceptance-approved.md --dry-run`
+13. After human approval, use `npx create-quiver ai plan --phase spec --input technical-plan-approved.md --dry-run` to create the real spec, slices, handoffs, execution plan, and PR body
+14. Run `npx create-quiver plan` or `npm run quiver:plan`
+15. Run `npx create-quiver next` or `npm run quiver:next`
+16. Run `npx create-quiver start-slice [--allow-draft] <slice.json>` or `npm run quiver:start-slice -- [--allow-draft] <slice.json>`
+17. Make one commit per slice
+18. Open one PR per spec
+19. Validate the slice and the final PR with the workflow gates
 
 Bootstrap note: `start-slice` should resolve paths canonically, prefer a local `develop` or `main` base branch before reaching for `origin`, and reject `draft` slices unless `--allow-draft` is passed intentionally.
 
@@ -130,7 +143,7 @@ Bootstrap note: `start-slice` should resolve paths canonically, prefer a local `
 - `docs/GITFLOW_PR_GUIDE.md` if the team wants a stricter branch workflow
 - `docs/SUPPORT_MATRIX.md` and `docs/TROUBLESHOOTING.md` for first-run support
 - `docs/ai/LESSONS.md` after each slice
-- `docs/AI_ONBOARDING_PROMPT.md` after analysis
+- `.quiver/templates/` only when the team explicitly exports packaged templates
 
 ## Good Defaults
 

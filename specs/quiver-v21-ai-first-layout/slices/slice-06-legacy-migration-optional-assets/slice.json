@@ -1,0 +1,66 @@
+{
+  "slice_id": "slice-06-legacy-migration-optional-assets",
+  "ticket": "QUIVER-21-06",
+  "type": "feature",
+  "title": "Add legacy migration and optional assets",
+  "objective": "Make migration non-destructive for legacy layouts and implement explicit optional generation for legacy scripts and templates.",
+  "description": "This slice handles transition behavior so existing projects can keep working while new projects stay clean by default.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "legacy-migration-optional-assets",
+    "branch_name": "feature/QUIVER-21-06-legacy-migration-optional-assets"
+  },
+  "files": [
+    "src/create-quiver/index.js",
+    "src/create-quiver/lib/init-docs.js",
+    "src/create-quiver/lib/init-layout.js",
+    "src/create-quiver/lib/state.js",
+    "scripts/migrate-project.sh",
+    "scripts/ci/smoke-create-quiver.sh",
+    "scripts/ci/smoke-cross-platform.js",
+    "tests/commands/init-profiles.test.js",
+    "specs/quiver-v21-ai-first-layout/STATUS.md",
+    "specs/quiver-v21-ai-first-layout/EVIDENCE_REPORT.md",
+    "specs/quiver-v21-ai-first-layout/slices/slice-06-legacy-migration-optional-assets/CLOSURE_BRIEF.md",
+    "specs/quiver-v21-ai-first-layout/slices/slice-06-legacy-migration-optional-assets/slice.json"
+  ],
+  "depends_on": [
+    "slice-03-generation-profiles-visible-contract",
+    "slice-04-analyze-scan-relocation"
+  ],
+  "parallel_safe": "after_dependencies",
+  "parallel_safe_reason": "Can run after generation profiles and scan relocation are stable.",
+  "must": [
+    "`migrate` must not delete or move legacy files without explicit user action.",
+    "`migrate` must detect legacy root `docs-template/`, `tools/scripts/`, and `docs/PROJECT_SCAN.json`.",
+    "`--legacy-scripts` must create Bash wrappers and matching package scripts.",
+    "`--include-templates` must export templates under `.quiver/templates/`.",
+    "`--full` must keep broad optional docs and OSS/community files as explicit behavior.",
+    "Migration output must explain recommended next steps for legacy-to-AI-first cleanup."
+  ],
+  "not_included": [
+    "Automatic destructive cleanup of legacy files.",
+    "Publishing package release.",
+    "Long-form documentation rewrite."
+  ],
+  "acceptance": [
+    "Legacy project migration preserves existing files.",
+    "Legacy layout is detected and reported.",
+    "`--legacy-scripts` creates wrappers and scripts that point to real files.",
+    "`--include-templates` creates `.quiver/templates/` and no root `docs-template/`.",
+    "`--full` covers optional broad assets intentionally."
+  ],
+  "tests": [
+    "node --test tests/commands/init-profiles.test.js tests/lib/init-docs.test.js",
+    "node --test tests/**/*.test.js",
+    "bash scripts/ci/smoke-init-docs.sh",
+    "bash scripts/ci/smoke-create-quiver.sh",
+    "node scripts/ci/smoke-cross-platform.js",
+    "git diff --check"
+  ],
+  "estimated_hours": 7,
+  "actual_hours": 6,
+  "status": "completed",
+  "blocked_reason": null
+}

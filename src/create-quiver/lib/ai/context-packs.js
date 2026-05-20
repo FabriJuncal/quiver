@@ -1,5 +1,6 @@
 const { filterContextPaths, shouldExcludeContextPath } = require('./safety');
 const { buildRolePrompt } = require('./prompts');
+const { readProjectScanArtifact } = require('../project-scan');
 
 const ROLES = Object.freeze({
   PLANNER: 'planner',
@@ -100,6 +101,22 @@ function buildPackSelection({ role, packName, paths = [] } = {}) {
   };
 }
 
+function resolveScanArtifactMetadata(repoRoot) {
+  if (!repoRoot) {
+    return null;
+  }
+
+  const artifact = readProjectScanArtifact(repoRoot);
+  if (!artifact) {
+    return null;
+  }
+
+  return {
+    path: artifact.relativePath,
+    source: artifact.source,
+  };
+}
+
 function buildContextPackMetadata(options = {}) {
   const selection = buildPackSelection(options);
 
@@ -111,6 +128,7 @@ function buildContextPackMetadata(options = {}) {
     description: selection.pack.description,
     includedPaths: selection.includedPaths,
     excludedPaths: selection.excludedPaths,
+    scanArtifact: resolveScanArtifactMetadata(options.repoRoot),
     prompt: buildRolePrompt(selection.role, selection.pack),
   };
 }
@@ -133,6 +151,7 @@ module.exports = {
   getDefaultContextPack,
   normalizePackName,
   normalizeRole,
+  resolveScanArtifactMetadata,
   resolveContextPack,
   selectSafePaths,
   shouldExcludeContextPath,

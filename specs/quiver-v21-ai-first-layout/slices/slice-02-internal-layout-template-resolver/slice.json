@@ -1,0 +1,58 @@
+{
+  "slice_id": "slice-02-internal-layout-template-resolver",
+  "ticket": "QUIVER-21-02",
+  "type": "feature",
+  "title": "Add internal .quiver layout and template resolver",
+  "objective": "Create the internal .quiver layout contract and remove default runtime dependence on visible docs-template.",
+  "description": "This slice introduces internal folders, .quiver gitignore policy, config metadata, and packaged template resolution.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "internal-layout-template-resolver",
+    "branch_name": "feature/QUIVER-21-02-internal-layout-template-resolver"
+  },
+  "files": [
+    "src/create-quiver/lib/init-docs.js",
+    "src/create-quiver/lib/init-layout.js",
+    "src/create-quiver/lib/template-resolver.js",
+    "src/create-quiver/lib/state.js",
+    "tests/lib/template-resolver.test.js",
+    "tests/lib/quiver-internal-layout.test.js",
+    "specs/quiver-v21-ai-first-layout/STATUS.md",
+    "specs/quiver-v21-ai-first-layout/EVIDENCE_REPORT.md",
+    "specs/quiver-v21-ai-first-layout/slices/slice-02-internal-layout-template-resolver/CLOSURE_BRIEF.md",
+    "specs/quiver-v21-ai-first-layout/slices/slice-02-internal-layout-template-resolver/slice.json"
+  ],
+  "depends_on": [
+    "slice-01-init-profiles-dry-run"
+  ],
+  "parallel_safe": "after_dependencies",
+  "parallel_safe_reason": "Builds on the layout planner from slice-01.",
+  "must": [
+    "Create `.quiver/state.json` and `.quiver/config.json` as versionable metadata.",
+    "Create `.quiver/.gitignore` that ignores cache, runs, and worktrees.",
+    "Define internal paths for scans, templates, cache, runs, and worktrees.",
+    "Resolve templates from the packaged CLI by default.",
+    "Support `.quiver/templates/` only when templates are explicitly exported.",
+    "Keep legacy `docs-template/` readable as fallback when present."
+  ],
+  "not_included": [
+    "Changing default generated docs set.",
+    "Moving analyze scan output.",
+    "Migrating existing projects."
+  ],
+  "acceptance": [
+    "Default init planning includes `.quiver/state.json`, `.quiver/config.json`, and `.quiver/.gitignore`.",
+    "Runtime ignored folders do not appear as versionable files.",
+    "Commands can resolve templates without a project-level `docs-template/`.",
+    "Legacy `docs-template/` remains readable when present."
+  ],
+  "tests": [
+    "node --test tests/lib/template-resolver.test.js tests/lib/quiver-internal-layout.test.js tests/lib/init-layout.test.js",
+    "git diff --check"
+  ],
+  "estimated_hours": 6,
+  "actual_hours": 6,
+  "status": "completed",
+  "blocked_reason": null
+}

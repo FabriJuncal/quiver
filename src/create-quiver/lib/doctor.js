@@ -1,6 +1,30 @@
 const fs = require('fs');
 const path = require('path');
+const { readAllSlices } = require('./slice-graph');
+const { hasGeneratedProjectSpec, hasInitializedStateMetadata, readState } = require('./state');
 const { worktreeList } = require('./git');
+
+const NEW_LAYOUT_REQUIRED_PATHS = [
+  'README.md',
+  'AGENTS.md',
+  'package.json',
+  'docs/AI_CONTEXT.md',
+  'docs/AI_ONBOARDING_PROMPT.md',
+  'docs/COMMANDS.md',
+  'docs/WORKFLOW.md',
+  '.quiver/state.json',
+  '.quiver/config.json',
+  '.quiver/.gitignore',
+];
+
+const LEGACY_LAYOUT_PROBES = [
+  'docs-template/',
+  'tools/scripts/start-slice.sh',
+  'tools/scripts/check-slice-readiness.sh',
+  'tools/scripts/check-pr-readiness.sh',
+  '.github/pull_request_template.md',
+  'docs/PROJECT_SCAN.json',
+];
 
 function readTextIfExists(filePath) {
   if (!fs.existsSync(filePath)) {
@@ -28,6 +52,18 @@ function hasFrontMatter(text) {
 
 function normalizeRelativePath(root, absolutePath) {
   return path.relative(root, absolutePath).split(path.sep).join('/');
+}
+
+function hasPath(projectRoot, relativePath) {
+  return fs.existsSync(path.join(projectRoot, relativePath));
+}
+
+function collectPresentPaths(projectRoot, relativePaths) {
+  return relativePaths.filter((relativePath) => hasPath(projectRoot, relativePath));
+}
+
+function collectMissingPaths(projectRoot, relativePaths) {
+  return relativePaths.filter((relativePath) => !hasPath(projectRoot, relativePath));
 }
 
 function collectAiMarkdownFiles(projectRoot) {
@@ -174,6 +210,82 @@ function countStackInfoLeaks(projectRoot) {
   return leaks;
 }
 
+function collectLayoutReport(projectRoot) {
+  const hasStateMetadata = hasInitializedStateMetadata(readState(projectRoot));
+  const realSlices = readAllSlices(projectRoot);
+  const specSlugs = Array.from(new Set(realSlices.map((slice) => slice.specSlug))).sort((left, right) => left.localeCompare(right));
+  const newLayoutFiles = collectPresentPaths(projectRoot, NEW_LAYOUT_REQUIRED_PATHS);
+  const missingNewLayoutFiles = collectMissingPaths(projectRoot, NEW_LAYOUT_REQUIRED_PATHS);
+  const legacySignals = collectPresentPaths(projectRoot, LEGACY_LAYOUT_PROBES);
+  const hasLegacyProjectSpec = hasGeneratedProjectSpec(projectRoot);
+
+  if (hasLegacyProjectSpec) {
+    legacySignals.push('specs/<project-slug>/SPEC.md');
+  }
+
+  const hasNewLayout = missingNewLayoutFiles.length === 0;
+  const hasLegacyLayout = legacySignals.length > 0;
+
+  let layout = 'incomplete';
+  if (hasNewLayout && hasLegacyLayout) {
+    layout = 'hybrid';
+  } else if (hasNewLayout) {
+    layout = 'new';
+  } else if (hasLegacyLayout) {
+    layout = 'legacy';
+  }
+
+  const recommendations = [];
+
+  if (layout === 'new') {
+    if (specSlugs.length === 0) {
+      recommendations.push('No specs yet. That is valid after the AI-first init flow.');
+    } else {
+      recommendations.push(`Specs found: ${specSlugs.join(', ')}.`);
+    }
+
+    if (!hasPath(projectRoot, 'docs/PROJECT_MAP.md')) {
+      recommendations.push('Run `npx create-quiver analyze` to generate docs/PROJECT_MAP.md when you want the visible project map.');
+    }
+  } else if (layout === 'legacy') {
+    recommendations.push('Legacy layout detected. Run `npx create-quiver migrate` to add the modern .quiver/ contract and AI-first docs.');
+  } else if (layout === 'hybrid') {
+    recommendations.push('Hybrid layout detected. Keep the new .quiver/ contract as the source of truth and plan cleanup of legacy roots.');
+    recommendations.push('Review any remaining docs-template/, tools/scripts/, or docs/PROJECT_SCAN.json paths and migrate them only if they are still needed.');
+  } else {
+    recommendations.push('Incomplete layout detected. Restore the missing AI-first contract files before relying on this project for onboarding.');
+    if (missingNewLayoutFiles.length > 0) {
+      recommendations.push(`Missing files: ${missingNewLayoutFiles.join(', ')}.`);
+    }
+    if (!hasStateMetadata && !hasLegacyLayout) {
+      recommendations.push('Run `npx create-quiver --name "Project Name"` or `npx create-quiver init` to create the Quiver contract first.');
+    }
+  }
+
+  return {
+    hasLegacyLayout,
+    hasNewLayout,
+    hasStateMetadata,
+    layout,
+    legacySignals,
+    missingNewLayoutFiles,
+    newLayoutFiles,
+    recommendations,
+    realSlices,
+    specSlugs,
+  };
+}
+
+function collectDoctorReport(projectRoot) {
+  const layout = collectLayoutReport(projectRoot);
+  const warnings = collectDoctorWarnings(projectRoot);
+
+  return {
+    ...layout,
+    warnings,
+  };
+}
+
 function collectDoctorWarnings(projectRoot) {
   const warnings = [];
 
@@ -208,5 +320,7 @@ function collectDoctorWarnings(projectRoot) {
 }
 
 module.exports = {
+  collectDoctorReport,
   collectDoctorWarnings,
+  collectLayoutReport,
 };
