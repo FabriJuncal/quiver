@@ -79,12 +79,13 @@ Run migrate/doctor against a legacy layout and confirm `docs-template/`, `tools/
 
 ### Technical Verification
 
-- `node --test tests/**/*.test.js` passed: 140 tests.
+- `node --test tests/**/*.test.js` passed: 143 tests.
 - `npm run smoke:create-quiver` passed.
 - `bash scripts/ci/smoke-init-docs.sh` passed.
 - `node scripts/ci/smoke-cross-platform.js` passed.
 - `npm run smoke:tiered-pack` passed.
 - `git diff --check` passed.
+- GitHub Actions CI passed on validate, macOS, Ubuntu, and Windows: run `26196340530`.
 
 ## Evidence
 
@@ -106,5 +107,4 @@ git revert <merge-commit-sha>
 ## Risks / Notes
 
 - Existing projects that depend on legacy generated paths should use `migrate`, `--full`, `--legacy-scripts`, or `--include-templates` intentionally.
-- CI is still the final multi-OS verification gate before npm publication.
-- Do not publish npm until this PR is merged and CI is green.
+- npm publication should happen only after this PR is merged.

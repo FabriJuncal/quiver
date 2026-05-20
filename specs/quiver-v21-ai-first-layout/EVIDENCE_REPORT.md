@@ -20,11 +20,12 @@ Implementation and release-readiness validation are complete.
 
 ## Final Evidence
 
-- `node --test tests/**/*.test.js` passed: 136 tests.
+- `node --test tests/**/*.test.js` passed: 143 tests.
 - `npm run smoke:create-quiver` passed.
 - `bash scripts/ci/smoke-init-docs.sh` passed.
 - `node scripts/ci/smoke-cross-platform.js` passed.
 - `PATH=/private/tmp/quiver-no-npm-path-bin node bin/create-quiver.js init --name "No Npm Smoke 2" --dir /private/tmp/quiver-no-npm-smoke-2 --full --skip-install` passed, covering init when `npm` is unavailable and install is skipped.
 - `npm run smoke:tiered-pack` passed.
 - `git diff --check` passed.
+- GitHub Actions CI run `26196340530` passed validate plus macOS, Ubuntu, and Windows cross-platform smoke jobs.
 - Default init is covered by tests and smokes that assert no root `docs-template/`, no `tools/scripts/`, and no placeholder spec in the default/minimal profiles.
