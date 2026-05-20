@@ -13,6 +13,13 @@ const { initializeProjectDocs, installSelfAsDevDep } = require('./lib/init-docs'
 const { checkPrReadiness, checkScope, checkSliceReadiness } = require('./lib/readiness');
 const { cleanupSlice, refreshActiveSlicesBoard, startSlice } = require('./lib/lifecycle');
 const { relativePosixPath, resolveTargetRoot } = require('./lib/paths');
+const {
+  CURRENT_SCAN_RELATIVE_PATH,
+  PROJECT_MAP_RELATIVE_PATH,
+  hasProjectScanArtifact,
+  projectScanPaths,
+  writeProjectScanJson,
+} = require('./lib/project-scan');
 const { resolveTemplateRoot } = require('./lib/template-resolver');
 const {
   hasQuiverInitializationEvidence,
@@ -1100,8 +1107,8 @@ function renderProjectMap(scan) {
     'docs/INDEX.md',
     'docs/AI_CONTEXT.md',
     'docs/DECISIONS.md',
-    'docs/PROJECT_SCAN.json',
-    'docs/PROJECT_MAP.md',
+    CURRENT_SCAN_RELATIVE_PATH,
+    PROJECT_MAP_RELATIVE_PATH,
     'docs/AI_ONBOARDING_PROMPT.md',
     'docs/CONTEXTO.md',
     'docs/WORKFLOW.md',
@@ -1121,8 +1128,7 @@ function renderProjectMap(scan) {
     'README.md',
     'docs/INDEX.md',
     'docs/AI_CONTEXT.md',
-    'docs/PROJECT_SCAN.json',
-    'docs/PROJECT_MAP.md',
+    PROJECT_MAP_RELATIVE_PATH,
     hasDecisionLog ? 'docs/DECISIONS.md' : 'docs/DECISIONS.md (create with migrate if missing)',
     'docs/CONTEXTO.md',
     'docs/WORKFLOW.md',
@@ -1162,7 +1168,7 @@ function renderProjectMap(scan) {
   lines.push('## Entry Points');
   lines.push(`- Project overview: ${scan.docs.has_readme ? 'README.md' : 'docs/CONTEXTO.md'}`);
   lines.push(`- AI context: ${hasDecisionLog ? 'docs/AI_CONTEXT.md + docs/DECISIONS.md' : 'docs/AI_CONTEXT.md'}`);
-  lines.push('- Analysis outputs: docs/PROJECT_SCAN.json, docs/PROJECT_MAP.md');
+  lines.push(`- Analysis outputs: ${CURRENT_SCAN_RELATIVE_PATH}, ${PROJECT_MAP_RELATIVE_PATH}`);
   lines.push(`- Workflow contract: docs/WORKFLOW.md`);
   lines.push(`- Spec contract: specs/${projectSlug}/SPEC.md`);
   if (sourceDirs.length > 0) {
@@ -1277,16 +1283,13 @@ function renderProjectMap(scan) {
 }
 
 function writeProjectScanArtifacts(projectRoot, scan) {
-  const docsDir = path.join(projectRoot, 'docs');
-  ensureDir(docsDir);
+  const scanPaths = projectScanPaths(projectRoot);
+  ensureDir(path.dirname(scanPaths.projectMapPath));
 
-  const jsonPath = path.join(docsDir, 'PROJECT_SCAN.json');
-  const mdPath = path.join(docsDir, 'PROJECT_MAP.md');
+  const jsonPath = writeProjectScanJson(projectRoot, scan);
+  fs.writeFileSync(scanPaths.projectMapPath, `${renderProjectMap(scan)}\n`);
 
-  fs.writeFileSync(jsonPath, `${JSON.stringify(scan, null, 2)}\n`);
-  fs.writeFileSync(mdPath, `${renderProjectMap(scan)}\n`);
-
-  return { jsonPath, mdPath };
+  return { jsonPath, mdPath: scanPaths.projectMapPath };
 }
 
 function runAnalyze(targetDir) {
@@ -1429,8 +1432,8 @@ function runDoctor(targetDir) {
     'quiver:ai:pr',
     'quiver:ai:doctor',
   ].filter((name) => typeof pkg.scripts?.[name] !== 'string');
-  const hasScanArtifacts = fs.existsSync(path.join(projectRoot, 'docs', 'PROJECT_SCAN.json'))
-    && fs.existsSync(path.join(projectRoot, 'docs', 'PROJECT_MAP.md'));
+  const hasScanArtifacts = hasProjectScanArtifact(projectRoot)
+    && fs.existsSync(path.join(projectRoot, PROJECT_MAP_RELATIVE_PATH));
   const quiverState = readState(projectRoot);
   const hasQuiverState = Boolean(quiverState);
   const stateWarnings = hasQuiverState ? [] : ['missing Quiver state metadata: .quiver/state.json'];

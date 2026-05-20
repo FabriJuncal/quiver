@@ -13,11 +13,13 @@
   },
   "files": [
     "src/create-quiver/index.js",
-    "src/create-quiver/lib/doctor.js",
+    "src/create-quiver/commands/ai.js",
     "src/create-quiver/lib/ai/context-packs.js",
+    "src/create-quiver/lib/ai/executor.js",
+    "src/create-quiver/lib/project-scan.js",
     "tests/commands/analyze.test.js",
-    "tests/lib/doctor.test.js",
     "tests/lib/ai-context-packs.test.js",
+    "tests/lib/project-scan.test.js",
     "scripts/ci/smoke-create-quiver.sh",
     "scripts/ci/smoke-cross-platform.js",
     "specs/quiver-v21-ai-first-layout/STATUS.md",
@@ -49,12 +51,14 @@
     "Tests cover preference order when both paths exist."
   ],
   "tests": [
-    "node --test tests/commands/analyze.test.js tests/lib/doctor.test.js tests/lib/ai-context-packs.test.js",
+    "node --test tests/commands/analyze.test.js tests/lib/project-scan.test.js tests/lib/ai-context-packs.test.js",
+    "node --test tests/**/*.test.js",
+    "bash scripts/ci/smoke-create-quiver.sh",
     "node scripts/ci/smoke-cross-platform.js",
     "git diff --check"
   ],
   "estimated_hours": 6,
-  "actual_hours": null,
-  "status": "draft",
+  "actual_hours": 5,
+  "status": "completed",
   "blocked_reason": null
 }

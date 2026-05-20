@@ -242,7 +242,7 @@ assert_file "$new_target/docs/ai/PRINCIPLES.md"
 assert_file "$new_target/docs/DECISIONS.md"
 assert_file "$new_target/docs/AI_CONTEXT.md"
 assert_file "$new_target/docs/AI_ONBOARDING_PROMPT.md"
-assert_file "$new_target/docs/PROJECT_SCAN.json"
+assert_file "$new_target/.quiver/scans/PROJECT_SCAN.json"
 assert_file "$new_target/docs/PROJECT_MAP.md"
 assert_file "$new_target/specs/smoke-project/HANDOFF.md"
 assert_project_map_sections "$new_target/docs/PROJECT_MAP.md"
@@ -602,14 +602,14 @@ if (!resolved.includes('folder with spaces')) {
   throw new Error('Windows-style path resolution did not preserve the target folder name');
 }
 
-const relative = relativePosixPath('C:\\Users\\Fabricio\\repo', 'C:\\Users\\Fabricio\\repo\\docs\\PROJECT_SCAN.json', path.win32);
-if (relative !== 'docs/PROJECT_SCAN.json') {
+const relative = relativePosixPath('C:\\Users\\Fabricio\\repo', 'C:\\Users\\Fabricio\\repo\\.quiver\\scans\\PROJECT_SCAN.json', path.win32);
+if (relative !== '.quiver/scans/PROJECT_SCAN.json') {
   throw new Error(`Expected portable relative path, got ${relative}`);
 }
 NODE
 node -e 'const fs = require("fs"); const data = JSON.parse(fs.readFileSync(process.argv[1], "utf8")); if (!data.last_analysis_at) { throw new Error("analysis metadata missing after analyze"); }' "$new_target/.quiver/state.json"
 
-node -e 'const fs = require("fs"); const data = JSON.parse(fs.readFileSync(process.argv[1], "utf8")); if (!data.project || !data.stack || !data.commands || !data.structure || !data.ci || !data.docs || !Array.isArray(data.risks) || !Array.isArray(data.skipped_paths)) { throw new Error("invalid project scan shape"); }' "$new_target/docs/PROJECT_SCAN.json"
+node -e 'const fs = require("fs"); const data = JSON.parse(fs.readFileSync(process.argv[1], "utf8")); if (!data.project || !data.stack || !data.commands || !data.structure || !data.ci || !data.docs || !Array.isArray(data.risks) || !Array.isArray(data.skipped_paths)) { throw new Error("invalid project scan shape"); }' "$new_target/.quiver/scans/PROJECT_SCAN.json"
 
 mkdir -p "$existing_target"
 printf 'keep me\n' > "$existing_target/keep.txt"
@@ -642,7 +642,7 @@ assert_file "$existing_target/docs/ai/PRINCIPLES.md"
 assert_file "$existing_target/docs/DECISIONS.md"
 assert_file "$existing_target/docs/AI_CONTEXT.md"
 assert_file "$existing_target/docs/AI_ONBOARDING_PROMPT.md"
-assert_file "$existing_target/docs/PROJECT_SCAN.json"
+assert_file "$existing_target/.quiver/scans/PROJECT_SCAN.json"
 assert_file "$existing_target/docs/PROJECT_MAP.md"
 assert_file "$existing_target/specs/existing-repo/HANDOFF.md"
 assert_project_map_sections "$existing_target/docs/PROJECT_MAP.md"
@@ -675,7 +675,7 @@ assert_package_scripts "$existing_target/package.json" "existing project" \
   quiver:analyze quiver:plan quiver:graph quiver:next quiver:doctor quiver:ai:onboard quiver:ai:plan quiver:ai:execute-slice quiver:ai:pr quiver:ai:doctor quiver:migrate quiver:start-slice quiver:check-slice quiver:check-pr quiver:check-handoff check-handoff quiver:cleanup-slice quiver:check-scope quiver:refresh-active-slices
 assert_file "$space_target/README.md"
 assert_file "$space_target/AGENTS.md"
-assert_file "$space_target/docs/PROJECT_SCAN.json"
+assert_file "$space_target/.quiver/scans/PROJECT_SCAN.json"
 assert_file "$space_target/docs/PROJECT_MAP.md"
 assert_file "$space_target/docs/COMMANDS.md"
 assert_file "$space_target/specs/space-project/slices/slice-template/slice.json"
@@ -835,7 +835,7 @@ assert_file "$release_target/docs/ai/STANDARD.md"
 assert_file "$release_target/docs/ai/DEEP.md"
 assert_file "$release_target/docs/ai/LESSONS.md"
 assert_file "$release_target/docs/ai/PRINCIPLES.md"
-assert_file "$release_target/docs/PROJECT_SCAN.json"
+assert_file "$release_target/.quiver/scans/PROJECT_SCAN.json"
 assert_file "$release_target/docs/PROJECT_MAP.md"
 assert_file "$release_target/docs/examples/plan.md"
 assert_file "$release_target/docs/examples/graph.md"

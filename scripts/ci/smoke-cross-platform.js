@@ -184,7 +184,7 @@ function packInstaller() {
 }
 
 function initProject(targetRoot, projectName) {
-  runNodeCli(repoRoot, ['--name', projectName, '--dir', targetRoot]);
+  runNodeCli(repoRoot, ['--name', projectName, '--dir', targetRoot, '--full', '--skip-install']);
 }
 
 function assertNodeNativeScripts(packageJsonPath, label) {
@@ -281,7 +281,7 @@ function runSmoke() {
   assertContains(doctorAfter, 'npx create-quiver next', 'doctor after analyze');
   assertContains(doctorAfter, 'npx create-quiver start-slice', 'doctor after analyze');
   assertContains(fs.readFileSync(path.join(newProject, 'AGENTS.md'), 'utf8'), '## Reading Budget', 'AGENTS.md');
-  assertFile(path.join(newProject, 'docs', 'PROJECT_SCAN.json'));
+  assertFile(path.join(newProject, '.quiver', 'scans', 'PROJECT_SCAN.json'));
   assertFile(path.join(newProject, 'docs', 'PROJECT_MAP.md'));
   assertFile(path.join(newProject, 'docs', 'examples', 'next.md'));
   assertFile(path.join(newProject, 'docs', 'examples', 'plan.md'));
@@ -456,7 +456,7 @@ function runSmoke() {
     migrateBefore = String(error.stderr || error.stdout || error.message || '');
   }
   assertContains(migrateBefore, 'Run migration first: npx create-quiver migrate', 'doctor before migrate');
-  runNodeCli(legacyProject, ['migrate']);
+  runNodeCli(legacyProject, ['migrate', '--skip-install']);
   assertPackageScripts(legacyPackage, 'legacy project after migrate', [
     'quiver:migrate',
     'quiver:analyze',
@@ -570,7 +570,7 @@ function runSmoke() {
     env: { ...process.env, npm_config_cache: path.join(tempRoot, 'npm-cache-install') },
   });
 
-  run('node', [path.join(installerRoot, 'node_modules', 'create-quiver', 'bin', 'create-quiver.js'), '--name', 'Packaged Project', '--dir', releaseProject], {
+  run('node', [path.join(installerRoot, 'node_modules', 'create-quiver', 'bin', 'create-quiver.js'), '--name', 'Packaged Project', '--dir', releaseProject, '--full', '--skip-install'], {
     cwd: repoRoot,
   });
   run('node', [path.join(installerRoot, 'node_modules', 'create-quiver', 'bin', 'create-quiver.js'), 'analyze'], {
@@ -580,7 +580,7 @@ function runSmoke() {
     cwd: releaseProject,
   });
   assertContains(releaseDoctor, 'Read AGENTS.md, then docs/AI_ONBOARDING_PROMPT.md and execute it.', 'packaged doctor');
-  assertFile(path.join(releaseProject, 'docs', 'PROJECT_SCAN.json'));
+  assertFile(path.join(releaseProject, '.quiver', 'scans', 'PROJECT_SCAN.json'));
   assertFile(path.join(releaseProject, 'AGENTS.md'));
   assertFile(path.join(releaseProject, 'docs', 'PROJECT_MAP.md'));
   assertFile(path.join(releaseProject, 'docs', 'examples', 'plan.md'));

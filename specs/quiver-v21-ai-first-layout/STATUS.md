@@ -16,7 +16,7 @@ This spec defines the cleanup of Quiver's generated project layout. The default 
 | slice-01 | Init profiles and dry-run planner | Completed | slice-00 |
 | slice-02 | Internal layout and template resolver | Completed | slice-01 |
 | slice-03 | Generation profiles and visible contract | Completed | slice-02 |
-| slice-04 | Analyze scan relocation | Draft | slice-02 |
+| slice-04 | Analyze scan relocation | Completed | slice-02 |
 | slice-05 | Empty specs and layout doctor | Draft | slice-03, slice-04 |
 | slice-06 | Legacy migration and optional assets | Draft | slice-03, slice-04 |
 | slice-07 | Documentation and guidance alignment | Draft | slice-05, slice-06 |
@@ -30,3 +30,4 @@ This spec defines the cleanup of Quiver's generated project layout. The default 
 - `slice-01` completed with init dry-run planner, explicit init/profile flags, and compatibility alias tests.
 - `slice-02` completed with `.quiver/` internal layout helpers and template resolver support.
 - `slice-03` completed with profile-aware generation for default, minimal, full, legacy scripts, and template export.
+- `slice-04` completed with analyze scan relocation to `.quiver/scans/PROJECT_SCAN.json` and legacy scan fallback.
