@@ -1,0 +1,62 @@
+{
+  "slice_id": "slice-05-empty-specs-layout-doctor",
+  "ticket": "QUIVER-21-05",
+  "type": "feature",
+  "title": "Support empty specs state and layout doctor",
+  "objective": "Make plan, graph, next, and doctor treat projects without specs as valid while doctor reports new, legacy, and hybrid layouts.",
+  "description": "Default init no longer creates placeholder specs, so orchestration commands must handle an empty specs directory or no specs directory cleanly.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "empty-specs-layout-doctor",
+    "branch_name": "feature/QUIVER-21-05-empty-specs-layout-doctor"
+  },
+  "files": [
+    "src/create-quiver/commands/plan.js",
+    "src/create-quiver/commands/graph.js",
+    "src/create-quiver/commands/next.js",
+    "src/create-quiver/lib/slice-graph.js",
+    "src/create-quiver/lib/doctor.js",
+    "tests/commands/plan.test.js",
+    "tests/commands/graph.test.js",
+    "tests/commands/next.test.js",
+    "tests/lib/doctor.test.js",
+    "specs/quiver-v21-ai-first-layout/STATUS.md",
+    "specs/quiver-v21-ai-first-layout/EVIDENCE_REPORT.md",
+    "specs/quiver-v21-ai-first-layout/slices/slice-05-empty-specs-layout-doctor/CLOSURE_BRIEF.md",
+    "specs/quiver-v21-ai-first-layout/slices/slice-05-empty-specs-layout-doctor/slice.json"
+  ],
+  "depends_on": [
+    "slice-03-generation-profiles-visible-contract",
+    "slice-04-analyze-scan-relocation"
+  ],
+  "parallel_safe": "after_dependencies",
+  "parallel_safe_reason": "Requires the new default no-spec behavior and scan path compatibility.",
+  "must": [
+    "Make `plan` return a clear valid empty state when no specs exist.",
+    "Make `graph` return a clear valid empty state when no specs exist.",
+    "Make `next` return a clear valid empty state when no specs exist.",
+    "Make `doctor` detect layout type: new, legacy, hybrid, or incomplete.",
+    "Doctor must not treat missing specs as an error immediately after default init.",
+    "Doctor should surface actionable recommendations for legacy files."
+  ],
+  "not_included": [
+    "Migrating legacy files.",
+    "Changing spec generation.",
+    "Documentation copy beyond command output strings."
+  ],
+  "acceptance": [
+    "No-spec projects do not fail `plan`, `graph`, `next`, or `doctor` unexpectedly.",
+    "Doctor reports layout state with clear language.",
+    "Legacy paths are warnings or recommendations, not hard failures.",
+    "Existing behavior for projects with specs remains intact."
+  ],
+  "tests": [
+    "node --test tests/commands/plan.test.js tests/commands/graph.test.js tests/commands/next.test.js tests/lib/doctor.test.js",
+    "git diff --check"
+  ],
+  "estimated_hours": 6,
+  "actual_hours": null,
+  "status": "draft",
+  "blocked_reason": null
+}

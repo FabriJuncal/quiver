@@ -1,0 +1,64 @@
+{
+  "slice_id": "slice-03-generation-profiles-visible-contract",
+  "ticket": "QUIVER-21-03",
+  "type": "feature",
+  "title": "Implement generation profiles and visible contract",
+  "objective": "Change generated output so default and minimal init are clean while full mode preserves the broader current contract.",
+  "description": "This slice updates init writing behavior according to the approved profiles and prevents default placeholder specs, visible templates, and legacy scripts.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "generation-profiles-visible-contract",
+    "branch_name": "feature/QUIVER-21-03-generation-profiles-visible-contract"
+  },
+  "files": [
+    "src/create-quiver/index.js",
+    "src/create-quiver/lib/init-docs.js",
+    "src/create-quiver/lib/init-layout.js",
+    "tests/lib/init-docs.test.js",
+    "tests/commands/init-profiles.test.js",
+    "scripts/ci/smoke-create-quiver.sh",
+    "scripts/ci/smoke-init-docs.sh",
+    "specs/quiver-v21-ai-first-layout/STATUS.md",
+    "specs/quiver-v21-ai-first-layout/EVIDENCE_REPORT.md",
+    "specs/quiver-v21-ai-first-layout/slices/slice-03-generation-profiles-visible-contract/CLOSURE_BRIEF.md",
+    "specs/quiver-v21-ai-first-layout/slices/slice-03-generation-profiles-visible-contract/slice.json"
+  ],
+  "depends_on": [
+    "slice-02-internal-layout-template-resolver"
+  ],
+  "parallel_safe": "after_dependencies",
+  "parallel_safe_reason": "Needs the internal layout and template resolver before changing generation behavior.",
+  "must": [
+    "Default init creates the clean AI-first visible contract.",
+    "Default init does not create `docs-template/`.",
+    "Default init does not create `tools/scripts/`.",
+    "Default init does not create placeholder `specs/<project-slug>/`.",
+    "`--minimal` creates only the minimum AI onboarding contract.",
+    "`--full` preserves the broad current output as explicit behavior.",
+    "Generated package scripts do not point at files that were not created.",
+    "Existing files are skipped by default."
+  ],
+  "not_included": [
+    "Analyze scan relocation.",
+    "Legacy migration recommendations.",
+    "Documentation alignment beyond tests needed for this behavior."
+  ],
+  "acceptance": [
+    "Default smoke asserts no root `docs-template/`, no `tools/scripts/`, and no placeholder spec.",
+    "Minimal smoke asserts only essential files are generated.",
+    "Full smoke asserts broad current docs remain available under `--full`.",
+    "Generated scripts are valid for each profile.",
+    "Existing files are preserved."
+  ],
+  "tests": [
+    "node --test tests/lib/init-docs.test.js tests/commands/init-profiles.test.js",
+    "npm run smoke:create-quiver",
+    "bash scripts/ci/smoke-init-docs.sh",
+    "git diff --check"
+  ],
+  "estimated_hours": 8,
+  "actual_hours": null,
+  "status": "draft",
+  "blocked_reason": null
+}
