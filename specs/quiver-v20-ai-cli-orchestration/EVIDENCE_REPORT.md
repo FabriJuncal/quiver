@@ -2,7 +2,7 @@
 
 ## Status
 
-Slice 06 implemented.
+Slice 08 implemented.
 
 ## Slice Evidence
 
@@ -16,8 +16,8 @@ Slice 06 implemented.
 | slice-05 | Implemented execution plan graphing, slice-00 foundation barriers, ready levels, temporary worktree strategy, and cycle/missing dependency diagnostics. |
 | slice-06 | Implemented `ai execute-slice`, executor prompts, dry-run, provider failure handling, pre/post diff capture, clean-worktree guard, and scope enforcement tests. |
 | slice-07 | Implemented GitHub PR preflight, gh auth checks, worktree/branch validation, GitFlow guide checks, SSH identity handling, and CLI/tests coverage. |
-| slice-08 | Pending. |
+| slice-08 | Updated README, AI onboarding/commands/support/troubleshooting/GitFlow templates, generated npm scripts, init docs, doctor script warnings, and dry-run smoke coverage. |
 
 ## Final Validation
 
-Validated for slice-06 with `node --test tests/commands/ai-execute-slice.test.js tests/lib/ai-executor.test.js`, the existing `ai` command tests, and `git diff --check`.
+Validated for slice-08 with `node --test tests/**/*.test.js`, `npm run smoke:create-quiver`, `node scripts/ci/smoke-cross-platform.js`, package JSON parsing, shell/Node syntax checks, and `git diff --check`.

@@ -195,6 +195,11 @@ function assertNodeNativeScripts(packageJsonPath, label) {
     'quiver:graph',
     'quiver:next',
     'quiver:doctor',
+    'quiver:ai:onboard',
+    'quiver:ai:plan',
+    'quiver:ai:execute-slice',
+    'quiver:ai:pr',
+    'quiver:ai:doctor',
     'quiver:start-slice',
     'quiver:check-slice',
     'quiver:check-pr',
@@ -228,6 +233,7 @@ function runSmoke() {
   const prRepo = path.join(tempRoot, 'pr-repo');
   const installerRoot = path.join(tempRoot, 'installer');
   const releaseProject = path.join(tempRoot, 'release-project');
+  const aiSpaceProject = path.join(tempRoot, 'ai path project');
 
   fs.mkdirSync(newProject, { recursive: true });
   fs.mkdirSync(legacyProject, { recursive: true });
@@ -250,6 +256,11 @@ function runSmoke() {
     'quiver:graph',
     'quiver:next',
     'quiver:doctor',
+    'quiver:ai:onboard',
+    'quiver:ai:plan',
+    'quiver:ai:execute-slice',
+    'quiver:ai:pr',
+    'quiver:ai:doctor',
     'quiver:migrate',
     'check:slice',
     'check:pr',
@@ -288,6 +299,8 @@ function runSmoke() {
   assertContains(fs.readFileSync(path.join(newProject, 'docs', 'COMMANDS.md'), 'utf8'), '| Command | Purpose | OS | Since | Example |', 'COMMANDS.md');
   assertContains(fs.readFileSync(path.join(newProject, 'docs', 'COMMANDS.md'), 'utf8'), '`quiver:plan`', 'COMMANDS.md');
   assertContains(fs.readFileSync(path.join(newProject, 'docs', 'COMMANDS.md'), 'utf8'), '`quiver:graph`', 'COMMANDS.md');
+  assertContains(fs.readFileSync(path.join(newProject, 'docs', 'COMMANDS.md'), 'utf8'), '`quiver:ai:onboard`', 'COMMANDS.md');
+  assertContains(fs.readFileSync(path.join(newProject, 'docs', 'COMMANDS.md'), 'utf8'), '`quiver:ai:execute-slice`', 'COMMANDS.md');
   assertContains(fs.readFileSync(path.join(newProject, 'docs', 'COMMANDS.md'), 'utf8'), 'Mermaid', 'COMMANDS.md');
   assertContains(fs.readFileSync(path.join(newProject, 'docs', 'COMMANDS.md'), 'utf8'), 'DOT', 'COMMANDS.md');
   assertContains(fs.readFileSync(path.join(newProject, 'docs', 'COMMANDS.md'), 'utf8'), 'docs/examples/plan.md', 'COMMANDS.md');
@@ -302,6 +315,39 @@ function runSmoke() {
   assertContains(graphMermaid, '```mermaid', 'graph mermaid output');
   assertContains(graphMermaid, 'flowchart TD', 'graph mermaid output');
   assertContains(graphDot, 'digraph QuiverGraph', 'graph dot output');
+
+  initProject(aiSpaceProject, 'AI Path Project');
+  const aiRequirements = path.join(aiSpaceProject, 'requirements with spaces.md');
+  fs.writeFileSync(aiRequirements, 'Build a dry-run AI path smoke.\n');
+  const aiOnboardDryRun = runNodeCli(aiSpaceProject, ['ai', 'onboard', '--dry-run']);
+  const aiPlanDryRun = runNodeCli(aiSpaceProject, ['ai', 'plan', '--phase', 'acceptance', '--input', 'requirements with spaces.md', '--dry-run']);
+  assertContains(aiOnboardDryRun, 'AI onboard dry-run', 'ai onboard dry-run');
+  assertContains(aiPlanDryRun, 'Phase: acceptance', 'ai plan dry-run');
+  const aiSliceDir = path.join(aiSpaceProject, 'specs', 'ai-path-project', 'slices', 'slice-ai-dry-run');
+  fs.mkdirSync(aiSliceDir, { recursive: true });
+  writeJson(path.join(aiSliceDir, 'slice.json'), {
+    slice_id: 'slice-ai-dry-run',
+    ticket: 'QUIVER-AI',
+    type: 'feature',
+    title: 'AI dry-run smoke',
+    objective: 'Validate execute-slice dry-run in a spaced path',
+    description: 'Cross-platform fixture for ai execute-slice.',
+    git: {
+      branch_type: 'feature',
+      base_branch: 'main',
+      branch_slug: 'ai-dry-run',
+      branch_name: 'feature/QUIVER-AI-ai-dry-run',
+    },
+    files: ['docs/ai-dry-run.md'],
+    acceptance: ['Dry-run prints executor metadata.'],
+    tests: ['node --test tests/**/*.test.js'],
+    status: 'draft',
+  });
+  fs.writeFileSync(path.join(aiSliceDir, 'EXECUTION_BRIEF.md'), '# Execution Brief\n\nValidate dry-run only.\n');
+  const aiExecuteDryRun = runNodeCli(aiSpaceProject, ['ai', 'execute-slice', '--slice', 'specs/ai-path-project/slices/slice-ai-dry-run/slice.json', '--dry-run']);
+  assertContains(aiExecuteDryRun, 'AI execute-slice dry-run', 'ai execute-slice dry-run');
+  assertContains(aiExecuteDryRun, 'Role: executor', 'ai execute-slice dry-run');
+
   const readySlicePath = path.join(newProject, 'specs', 'smoke-project', 'slices', 'slice-01-ready', 'slice.json');
   writeJson(readySlicePath, {
     slice_id: 'slice-01-ready',
@@ -385,6 +431,11 @@ function runSmoke() {
   delete legacyPkg.scripts['quiver:migrate'];
   delete legacyPkg.scripts['quiver:analyze'];
   delete legacyPkg.scripts['quiver:doctor'];
+  delete legacyPkg.scripts['quiver:ai:onboard'];
+  delete legacyPkg.scripts['quiver:ai:plan'];
+  delete legacyPkg.scripts['quiver:ai:execute-slice'];
+  delete legacyPkg.scripts['quiver:ai:pr'];
+  delete legacyPkg.scripts['quiver:ai:doctor'];
   delete legacyPkg.scripts['quiver:next'];
   delete legacyPkg.scripts['quiver:start-slice'];
   delete legacyPkg.scripts['quiver:check-slice'];
@@ -413,6 +464,11 @@ function runSmoke() {
     'quiver:graph',
     'quiver:next',
     'quiver:doctor',
+    'quiver:ai:onboard',
+    'quiver:ai:plan',
+    'quiver:ai:execute-slice',
+    'quiver:ai:pr',
+    'quiver:ai:doctor',
     'quiver:start-slice',
     'quiver:check-slice',
     'quiver:check-pr',

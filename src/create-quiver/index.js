@@ -1369,6 +1369,13 @@ function runDoctor(targetDir) {
     .map((group) => group.label);
   const missingNodeNativeScripts = ['quiver:migrate', 'quiver:analyze', 'quiver:doctor']
     .filter((name) => typeof pkg.scripts?.[name] !== 'string');
+  const missingAiScripts = [
+    'quiver:ai:onboard',
+    'quiver:ai:plan',
+    'quiver:ai:execute-slice',
+    'quiver:ai:pr',
+    'quiver:ai:doctor',
+  ].filter((name) => typeof pkg.scripts?.[name] !== 'string');
   const hasScanArtifacts = fs.existsSync(path.join(projectRoot, 'docs', 'PROJECT_SCAN.json'))
     && fs.existsSync(path.join(projectRoot, 'docs', 'PROJECT_MAP.md'));
   const quiverState = readState(projectRoot);
@@ -1393,6 +1400,9 @@ function runDoctor(targetDir) {
   }
   for (const scriptName of missingNodeNativeScripts) {
     console.log(`- Warning: missing Node-native script: ${scriptName}`);
+  }
+  for (const scriptName of missingAiScripts) {
+    console.log(`- Warning: missing AI orchestration script: ${scriptName}`);
   }
   if (legacyOnlyScripts.length > 0) {
     console.log(`- Warning: legacy Bash workflow scripts detected for ${legacyOnlyScripts.join(', ')}. Run npx create-quiver migrate to add quiver:* npm scripts.`);

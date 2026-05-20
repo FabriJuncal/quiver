@@ -2,28 +2,33 @@
 
 ## Resumen de lo realizado
 
-Pendiente de completar al cerrar la slice.
+Se actualizaron README, README_FOR_AI, templates generados, scripts npm, doctor warnings y smokes para reflejar la familia `quiver ai`: onboarding, planning por fases, execute-slice, PR preflight y doctor. Tambien se agregaron smokes dry-run que no dependen de providers reales ni de autenticacion real de GitHub.
 
 ## Validacion contra criterios de aceptacion
 
-- [ ] README actualizado.
-- [ ] Templates actualizados.
-- [ ] Scripts `quiver:ai:*` generados.
-- [ ] Smokes dry-run agregados.
-- [ ] Cross-platform smoke actualizado.
-- [ ] Suite final documentada.
+- [x] README actualizado.
+- [x] Templates actualizados.
+- [x] Scripts `quiver:ai:*` generados.
+- [x] Smokes dry-run agregados.
+- [x] Cross-platform smoke actualizado.
+- [x] Suite final documentada.
 
 ## Cambios relevantes
 
-Pendiente.
+- `README.md` y `README_FOR_AI.md` documentan comandos AI reales y el flujo planner/executor.
+- `package.template.json` y `package.json` incluyen scripts `quiver:ai:*`.
+- `docs/COMMANDS.md.template`, `docs/AI_ONBOARDING_PROMPT.md.template`, `docs/SUPPORT_MATRIX.md.template`, `docs/TROUBLESHOOTING.md.template` y `docs/GITFLOW_PR_GUIDE.md.template` quedaron alineados con el comportamiento implementado.
+- `src/create-quiver/lib/init-docs.js` y `scripts/init-docs.sh` generan README con scripts AI y guidance planner/executor.
+- `scripts/ci/smoke-create-quiver.sh`, `scripts/ci/smoke-cross-platform.js` y `scripts/ci/smoke-init-docs.sh` validan scripts AI y dry-runs.
 
 ## Pendientes
 
-Pendiente.
+Ninguno para esta slice.
 
 ## Riesgos remanentes
 
-Pendiente.
+- `ai pr` sigue limitado a preflight en esta version; no abre PR real.
+- Los smokes usan dry-run y un `gh` falso para evitar dependencia de autenticacion real.
 
 ## Recomendaciones futuras
 
