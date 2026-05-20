@@ -59,7 +59,6 @@ done
 command -v git >/dev/null 2>&1 || fail "git no esta disponible en PATH."
 command -v node >/dev/null 2>&1 || fail "node no esta disponible en PATH."
 
-repo_root="$(git rev-parse --show-toplevel)"
 [[ -f "$slice_input" ]] || fail "No existe el slice '$slice_input'."
 slice_abs="$(cd "$(dirname "$slice_input")" && pwd)/$(basename "$slice_input")"
 

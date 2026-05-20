@@ -3,6 +3,7 @@
 # Script de Inicialización de Documentación
 # Uso: ./init-docs.sh "Nombre del Proyecto"
 
+# shellcheck disable=SC2016
 set -e
 
 # Colores para output
@@ -93,7 +94,7 @@ copy_template() {
     
     if [ -f "$src" ]; then
         # Remover .template del nombre si existe
-        dest=$(echo "$dest" | sed 's/\.template$//')
+        dest="${dest%.template}"
 
         if [ "$MIGRATE_MODE" = "1" ] && [ -f "$dest" ]; then
             print_info "Saltado: $dest ya existe"

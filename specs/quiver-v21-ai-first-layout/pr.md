@@ -25,6 +25,7 @@ Redesign Quiver's generated project layout so the default init is small, visible
 - `src/create-quiver/lib/doctor.js`
 - `src/create-quiver/lib/state.js`
 - `src/create-quiver/lib/ai/context-packs.js`
+- `scripts/*.sh`
 - `scripts/ci/*`
 - `tests/**/*.test.js`
 - `README.md`
@@ -58,14 +59,21 @@ node bin/create-quiver.js --help
 
 ### Use Cases
 
-- Default init creates the AI-first visible contract without root `docs-template/`, `tools/scripts/`, or placeholder specs.
-- `--minimal` creates only the essential onboarding contract.
-- `--full` preserves broad legacy-compatible assets explicitly.
-- `--legacy-scripts` adds Bash wrappers intentionally.
-- `--include-templates` exports templates under `.quiver/templates/`.
-- `analyze` writes `.quiver/scans/PROJECT_SCAN.json` and keeps `docs/PROJECT_MAP.md` visible.
-- `doctor`, `plan`, `graph`, and `next` handle projects with no specs yet.
-- Legacy scan and layout paths remain readable or migratable.
+#### Case 1: Default AI-first init
+
+Run `npx create-quiver init --name "Smoke Project"` and confirm it creates the visible onboarding contract without root `docs-template/`, `tools/scripts/`, or placeholder specs.
+
+#### Case 2: Explicit compatibility profiles
+
+Run init with `--minimal`, `--full`, `--legacy-scripts`, and `--include-templates` in isolated directories and confirm each profile creates only its intended assets.
+
+#### Case 3: Analyze and no-spec lifecycle
+
+Run `analyze`, `doctor`, `plan`, `graph`, and `next` on a project with no specs yet. Confirm the raw scan is under `.quiver/scans/PROJECT_SCAN.json`, the visible map stays at `docs/PROJECT_MAP.md`, and lifecycle commands return valid no-spec output.
+
+#### Case 4: Legacy compatibility
+
+Run migrate/doctor against a legacy layout and confirm `docs-template/`, `tools/scripts/`, and legacy `docs/PROJECT_SCAN.json` are preserved or reported as compatibility paths.
 
 ### Technical Verification
 
@@ -84,7 +92,12 @@ node bin/create-quiver.js --help
 
 ## Rollback
 
-- Revert this PR to restore the previous generated layout behavior.
+- Revert this PR to restore the previous generated layout behavior:
+
+```bash
+git revert <merge-commit-sha>
+```
+
 - Existing projects can continue using legacy-compatible paths via `migrate`, `--full`, `--legacy-scripts`, or `--include-templates`.
 
 ## Risks / Notes

@@ -503,6 +503,43 @@ function runCommand(command, args, options = {}) {
   });
 }
 
+function copyPackageFallback(packageRoot, tempRoot) {
+  const fallbackDir = path.join(tempRoot, 'package-fallback');
+  const ignoredRoots = new Set([
+    '.git',
+    '.worktrees',
+    'examples',
+    'package-lock.json',
+    'tests',
+  ]);
+  const ignoredPrefixes = [
+    'scripts/ci',
+    'specs/quiver-v01',
+    'specs/quiver-v02-bootstrap-hardening',
+    'specs/quiver-v03-adoption-verification',
+    'specs/quiver-v04-zero-friction-installation',
+  ];
+
+  fs.cpSync(packageRoot, fallbackDir, {
+    recursive: true,
+    filter: (sourcePath) => {
+      const relativePath = relativePosixPath(packageRoot, sourcePath);
+      if (!relativePath || relativePath === '.') {
+        return true;
+      }
+
+      const firstSegment = relativePath.split('/')[0];
+      if (ignoredRoots.has(firstSegment) || ignoredRoots.has(relativePath)) {
+        return false;
+      }
+
+      return !ignoredPrefixes.some((prefix) => relativePath === prefix || relativePath.startsWith(`${prefix}/`));
+    },
+  });
+
+  return fallbackDir;
+}
+
 function packTemplate(packageRoot, tempRoot) {
   const packDir = path.join(tempRoot, 'pack');
   const extractDir = path.join(tempRoot, 'extract');
@@ -512,24 +549,32 @@ function packTemplate(packageRoot, tempRoot) {
   fs.mkdirSync(extractDir, { recursive: true });
   fs.mkdirSync(npmCache, { recursive: true });
 
-  const packOutput = runCommand('npm', ['pack', '--json', '--pack-destination', packDir], {
-    cwd: packageRoot,
-    env: {
-      ...process.env,
-      npm_config_cache: npmCache,
-    },
-  });
+  try {
+    const packOutput = runCommand('npm', ['pack', '--json', '--pack-destination', packDir], {
+      cwd: packageRoot,
+      env: {
+        ...process.env,
+        npm_config_cache: npmCache,
+      },
+    });
 
-  const packInfo = JSON.parse(packOutput.trim());
-  const tarballPath = path.join(packDir, packInfo[0].filename);
+    const packInfo = JSON.parse(packOutput.trim());
+    const tarballPath = path.join(packDir, packInfo[0].filename);
 
-  if (!fs.existsSync(tarballPath)) {
-    throw new Error(formatError(`pack output not found at ${tarballPath}`));
+    if (!fs.existsSync(tarballPath)) {
+      throw new Error(formatError(`pack output not found at ${tarballPath}`));
+    }
+
+    runCommand('tar', ['-xzf', tarballPath, '-C', extractDir]);
+
+    return path.join(extractDir, 'package');
+  } catch (error) {
+    if (error && error.code === 'ENOENT') {
+      return copyPackageFallback(packageRoot, tempRoot);
+    }
+
+    throw error;
   }
-
-  runCommand('tar', ['-xzf', tarballPath, '-C', extractDir]);
-
-  return path.join(extractDir, 'package');
 }
 
 function ensureDir(dirPath) {

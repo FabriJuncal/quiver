@@ -184,7 +184,7 @@ function packInstaller() {
 }
 
 function initProject(targetRoot, projectName) {
-  runNodeCli(repoRoot, ['--name', projectName, '--dir', targetRoot, '--full', '--skip-install']);
+  runNodeCli(repoRoot, ['init', '--name', projectName, '--dir', targetRoot, '--full', '--skip-install']);
 }
 
 function assertNodeNativeScripts(packageJsonPath, label) {

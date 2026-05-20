@@ -14,6 +14,9 @@ Se ejecuto la matriz final de validacion para v21 y se ajusto `smoke-tiered-pack
 ## Cambios relevantes
 
 - `scripts/ci/smoke-tiered-pack.sh` usa `init --full --skip-install` y espera la guia correcta de `doctor` para el estado AI-first sin specs.
+- `scripts/ci/smoke-cross-platform.js` usa `init` explicito para el smoke de perfiles.
+- `src/create-quiver/index.js` tiene fallback sin `npm` para empaquetar templates cuando `--skip-install` evita instalar dependencias.
+- Scripts legacy quedaron alineados con shellcheck y `check-slice` acepta `develop` local en modo sin origin.
 - `specs/quiver-v21-ai-first-layout/EVIDENCE_REPORT.md` registra la matriz final.
 - `specs/quiver-v21-ai-first-layout/STATUS.md` marca la spec como completada.
 - `specs/quiver-v21-ai-first-layout/pr.md` queda listo para copiar al PR.

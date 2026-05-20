@@ -77,7 +77,7 @@ repo_root="$(git rev-parse --show-toplevel)"
 [[ -f "$slice_input" ]] || fail "No existe el slice '$slice_input'."
 
 slice_abs="$(cd "$(dirname "$slice_input")" && pwd)/$(basename "$slice_input")"
-slice_rel="${slice_abs#$repo_root/}"
+slice_rel="${slice_abs#"$repo_root"/}"
 
 slice_meta=()
 while IFS= read -r line; do
@@ -143,11 +143,8 @@ NODE
 
 [[ ${#slice_meta[@]} -eq 10 ]] || fail "No se pudo leer la metadata del slice."
 
-slice_id="${slice_meta[0]}"
-ticket="${slice_meta[1]}"
 branch_name="${slice_meta[2]}"
 slice_status="${slice_meta[3]}"
-is_baseline="${slice_meta[4]}"
 spec_dir_rel="${slice_meta[5]}"
 files_b64="${slice_meta[6]}"
 actual_hours="${slice_meta[7]}"
@@ -161,6 +158,8 @@ pass "El spec local tiene SPEC.md, STATUS.md y EVIDENCE_REPORT.md."
 
 if git cat-file -e "origin/develop:$slice_rel" 2>/dev/null; then
   pass "El slice ya existe en origin/develop (PR base documental mergeado)."
+elif git cat-file -e "develop:$slice_rel" 2>/dev/null; then
+  pass "El slice ya existe en develop local (modo sin origin)."
 else
   if [[ "$gate" == "validation" ]]; then
     warn "El slice no existe todavia en origin/develop. El PR base documental sigue pendiente de merge. Podes abrir el PR del slice igual — el humano mergea en orden."
