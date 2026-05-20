@@ -22,12 +22,11 @@ Se alineo la documentacion humana, la guia para agentes y las plantillas generad
 
 ## Pendientes
 
-Ninguno para este slice. `slice-08` debe decidir si actualiza el smoke `smoke-tiered-pack` o el output de `doctor` para el nuevo estado sin specs.
+Ninguno para este slice.
 
 ## Riesgos remanentes
 
 El script Bash `scripts/init-docs.sh` sigue siendo una ruta legacy amplia y conserva referencias internas a `docs-template/`, `tools/scripts/` y `slice-template` porque ese es su proposito de compatibilidad.
-`npm run smoke:tiered-pack` sigue fallando porque espera una sugerencia de `start-slice` en `doctor`, algo que el layout AI-first sin specs ya no garantiza.
 
 ## Recomendaciones futuras
 

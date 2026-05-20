@@ -407,7 +407,6 @@ npm view create-quiver version
 - `package.json` no declara `engines`; la versión mínima real de Node queda pendiente. La CI usa Node 22.
 - `package.json` está en `0.9.0`, igual que `CHANGELOG.md`.
 - `docs/COMMANDS.md.template` marca algunos comandos de IA como `v0.10`, aunque `package.json` todavía está en `0.9.0`; la próxima publicación debe alinear versión y changelog.
-- `npm run smoke:tiered-pack` falla actualmente porque espera que `doctor` sugiera `npx create-quiver start-slice`, pero el layout AI-first sin specs ya no siempre tiene un slice listo para iniciar.
 - Los scripts legacy de `package.json` que apuntan a `tools/scripts/*` deben confirmarse para este repo fuente o separarse de los scripts pensados para proyectos generados con `--legacy-scripts` o `--full`.
 
 ## Licencia

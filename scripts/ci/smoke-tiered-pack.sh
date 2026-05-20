@@ -81,7 +81,7 @@ assert_count_bounds() {
 
 init_project() {
   mkdir -p "$project_root"
-  node "$cli" --name "$project_name" --dir "$project_root" >/dev/null
+  node "$cli" init --name "$project_name" --dir "$project_root" --full --skip-install >/dev/null
 }
 
 make_git_repo() {
@@ -110,7 +110,7 @@ run_analyze
 doctor_output="$(run_doctor)"
 assert_not_contains "$doctor_output" "Warning:"
 assert_text_contains "$doctor_output" "Read AGENTS.md, then docs/AI_ONBOARDING_PROMPT.md and execute it."
-assert_text_contains "$doctor_output" "npx create-quiver start-slice"
+assert_text_contains "$doctor_output" "Create real specs and slices only after acceptance criteria and the technical plan are approved."
 
 assert_file "$project_root/AGENTS.md"
 assert_file "$project_root/docs/DECISIONS.md"
@@ -129,7 +129,7 @@ assert_contains "$project_root/docs/PROJECT_MAP.md" "## Likely Test Commands"
 assert_contains "$project_root/docs/PROJECT_MAP.md" "## High-Signal Files"
 assert_contains "$project_root/docs/PROJECT_MAP.md" "## Do Not Read First"
 assert_contains "$project_root/docs/AI_ONBOARDING_PROMPT.md" "Onboarding"
-assert_contains "$project_root/docs/AI_ONBOARDING_PROMPT.md" "Implementation"
+assert_contains "$project_root/docs/AI_ONBOARDING_PROMPT.md" "Implementación"
 assert_contains "$project_root/docs/AI_ONBOARDING_PROMPT.md" "Review"
 assert_contains "$project_root/docs/AI_ONBOARDING_PROMPT.md" "Debug"
 assert_contains "$project_root/AGENTS.md" "## Reading Budget"
