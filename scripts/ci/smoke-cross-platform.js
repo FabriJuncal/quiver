@@ -36,6 +36,13 @@ function runNodeCli(cwd, args, options = {}) {
   return run('node', [cli, ...args], { cwd, ...options });
 }
 
+function runNpm(args, options = {}) {
+  return run(npmCommand, args, {
+    shell: process.platform === 'win32',
+    ...options,
+  });
+}
+
 function assert(condition, message) {
   if (!condition) {
     throw new Error(message);
@@ -176,7 +183,7 @@ function packInstaller() {
   const cacheDir = path.join(tempRoot, 'npm-cache');
   fs.mkdirSync(packDir, { recursive: true });
   fs.mkdirSync(cacheDir, { recursive: true });
-  const output = run(npmCommand, ['pack', '--json', '--pack-destination', packDir], {
+  const output = runNpm(['pack', '--json', '--pack-destination', packDir], {
     cwd: repoRoot,
     env: { ...process.env, npm_config_cache: cacheDir },
   });
@@ -566,7 +573,7 @@ function runSmoke() {
 
   const tarball = packInstaller();
   fs.mkdirSync(installerRoot, { recursive: true });
-  run(npmCommand, ['install', '--prefix', installerRoot, tarball, '--ignore-scripts', '--no-audit', '--no-fund'], {
+  runNpm(['install', '--prefix', installerRoot, tarball, '--ignore-scripts', '--no-audit', '--no-fund'], {
     cwd: repoRoot,
     env: { ...process.env, npm_config_cache: path.join(tempRoot, 'npm-cache-install') },
   });
