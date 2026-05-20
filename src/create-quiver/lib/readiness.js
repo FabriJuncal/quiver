@@ -158,6 +158,8 @@ function checkSliceReadiness(sliceInput, options = {}) {
 
   if (catFileExists(repoRoot, `origin/develop:${slice.sliceRel}`)) {
     console.log('PASS: El slice ya existe en origin/develop (PR base documental mergeado).');
+  } else if (catFileExists(repoRoot, `develop:${slice.sliceRel}`)) {
+    console.log('PASS: El slice ya existe en develop local (modo sin origin).');
   } else if (gate === 'validation') {
     console.log('WARN: El slice no existe todavia en origin/develop. El PR base documental sigue pendiente de merge. Podes abrir el PR del slice igual — el humano mergea en orden.');
   } else {

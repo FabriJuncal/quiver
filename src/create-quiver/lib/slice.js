@@ -95,8 +95,9 @@ function validateSliceMetaForStart(slice) {
 }
 
 function resolveSliceContext(repoRoot, slicePath) {
+  const canonicalRepoRoot = canonicalizePath(repoRoot);
   const absSlicePath = resolveSlicePath(slicePath);
-  const relSlicePath = toPosixPath(path.relative(repoRoot, absSlicePath));
+  const relSlicePath = toPosixPath(path.relative(canonicalRepoRoot, absSlicePath));
   const parts = relSlicePath.split('/');
 
   if (parts[0] !== 'specs' && parts[0] !== 'specs-fix') {
@@ -106,7 +107,7 @@ function resolveSliceContext(repoRoot, slicePath) {
   const specFamily = parts[0];
   const specSlug = parts[1];
   const specDirRel = `${specFamily}/${specSlug}`;
-  const specDirAbs = path.join(repoRoot, specDirRel);
+  const specDirAbs = path.join(canonicalRepoRoot, specDirRel);
   const slice = readSliceMeta(absSlicePath);
   slice.specFamily = specFamily;
   slice.specSlug = specSlug;
