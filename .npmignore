@@ -1,8 +1,14 @@
 # Repo-only files and local development noise
 .git
 .worktrees
+.claude
+.codex
+.env
+.env.*
+.npmrc
 .DS_Store
 WORKTREE_CONTEXT.md
+npm-debug.log*
 tests
 examples
 !docs/examples/
