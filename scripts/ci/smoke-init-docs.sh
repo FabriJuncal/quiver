@@ -17,9 +17,9 @@ cleanup() {
 trap cleanup EXIT
 
 mkdir -p "$target_repo"
-node "$cli" --name "$project_name" --dir "$target_repo" >/dev/null
+node "$cli" --name "$project_name" --dir "$target_repo" --full --skip-install >/dev/null
 rm -rf "$target_repo/docs-template"
-node "$cli" --name "$project_name" --dir "$target_repo" >/dev/null
+node "$cli" --name "$project_name" --dir "$target_repo" --full --skip-install >/dev/null
 cd "$target_repo"
 
 assert_file() {
@@ -27,6 +27,15 @@ assert_file() {
 
   if [[ ! -f "$path" ]]; then
     echo "Missing expected file: $path" >&2
+    exit 1
+  fi
+}
+
+assert_missing() {
+  local path="$1"
+
+  if [[ -e "$path" ]]; then
+    echo "Path should not exist: $path" >&2
     exit 1
   fi
 }
@@ -39,6 +48,74 @@ assert_executable() {
     exit 1
   fi
 }
+
+default_repo="$smoke_root/default"
+minimal_repo="$smoke_root/minimal"
+legacy_scripts_repo="$smoke_root/legacy-scripts"
+templates_repo="$smoke_root/templates"
+
+node "$cli" init --name "Default Project" --dir "$default_repo" --skip-install >/dev/null
+assert_file "$default_repo/README.md"
+assert_file "$default_repo/AGENTS.md"
+assert_file "$default_repo/docs/AI_CONTEXT.md"
+assert_file "$default_repo/docs/AI_ONBOARDING_PROMPT.md"
+assert_file "$default_repo/docs/COMMANDS.md"
+assert_file "$default_repo/docs/WORKFLOW.md"
+assert_file "$default_repo/docs/GITFLOW_PR_GUIDE.md"
+assert_file "$default_repo/.quiver/state.json"
+assert_file "$default_repo/.quiver/config.json"
+assert_file "$default_repo/.quiver/.gitignore"
+assert_missing "$default_repo/docs-template"
+assert_missing "$default_repo/tools/scripts"
+assert_missing "$default_repo/specs/default-project"
+
+node "$cli" init --name "Legacy Scripts Project" --dir "$legacy_scripts_repo" --legacy-scripts --skip-install >/dev/null
+assert_file "$legacy_scripts_repo/tools/scripts/start-slice.sh"
+assert_file "$legacy_scripts_repo/tools/scripts/migrate-project.sh"
+assert_missing "$legacy_scripts_repo/docs-template"
+assert_missing "$legacy_scripts_repo/.quiver/templates"
+
+node - "$legacy_scripts_repo/package.json" <<'NODE'
+const fs = require('fs');
+const pkg = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
+const required = ['start:slice', 'migrate', 'quiver:check-slice'];
+const missing = required.filter((name) => typeof pkg.scripts?.[name] !== 'string');
+if (missing.length > 0) {
+  console.error(`Legacy scripts profile is missing npm scripts: ${missing.join(', ')}`);
+  process.exit(1);
+}
+NODE
+
+node "$cli" init --name "Templates Project" --dir "$templates_repo" --include-templates --skip-install >/dev/null
+assert_file "$templates_repo/.quiver/templates/package.template.json"
+assert_missing "$templates_repo/docs-template"
+assert_missing "$templates_repo/tools/scripts"
+
+node - "$default_repo/package.json" <<'NODE'
+const fs = require('fs');
+const pkg = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
+const required = ['quiver:analyze', 'quiver:plan', 'quiver:graph', 'quiver:next', 'quiver:doctor', 'quiver:ai:onboard', 'quiver:ai:plan', 'quiver:ai:execute-slice'];
+const forbidden = ['start:slice', 'check:slice', 'migrate'];
+const missing = required.filter((name) => typeof pkg.scripts?.[name] !== 'string');
+const presentForbidden = forbidden.filter((name) => typeof pkg.scripts?.[name] === 'string');
+if (missing.length > 0 || presentForbidden.length > 0) {
+  console.error(`Default profile script mismatch. Missing: ${missing.join(', ')} Forbidden: ${presentForbidden.join(', ')}`);
+  process.exit(1);
+}
+NODE
+
+node "$cli" init --name "Minimal Project" --dir "$minimal_repo" --minimal --skip-install >/dev/null
+assert_file "$minimal_repo/README.md"
+assert_file "$minimal_repo/AGENTS.md"
+assert_file "$minimal_repo/docs/AI_CONTEXT.md"
+assert_file "$minimal_repo/docs/AI_ONBOARDING_PROMPT.md"
+assert_file "$minimal_repo/docs/COMMANDS.md"
+assert_file "$minimal_repo/docs/WORKFLOW.md"
+assert_missing "$minimal_repo/docs/INDEX.md"
+assert_missing "$minimal_repo/docs/SUPPORT_MATRIX.md"
+assert_missing "$minimal_repo/docs-template"
+assert_missing "$minimal_repo/tools/scripts"
+assert_missing "$minimal_repo/specs/minimal-project"
 
 required_files=(
   "AGENTS.md"
@@ -213,7 +290,7 @@ assert_contains "docs/ai/STANDARD.md" "V13 Mode Guidance"
 assert_contains "docs/ai/DEEP.md" "Deep Context"
 assert_contains "docs/ai/DEEP.md" "What Belongs Here"
 assert_contains "docs/AI_ONBOARDING_PROMPT.md" "AI Onboarding Prompt"
-assert_contains "docs/AI_ONBOARDING_PROMPT.md" "docs/PROJECT_SCAN.json"
+assert_contains "docs/AI_ONBOARDING_PROMPT.md" ".quiver/scans/PROJECT_SCAN.json"
 assert_contains "docs/AI_ONBOARDING_PROMPT.md" "docs/PROJECT_MAP.md"
 assert_contains "docs/AI_ONBOARDING_PROMPT.md" "No modifiques código de producto"
 assert_contains "docs/AI_ONBOARDING_PROMPT.md" "Planner"

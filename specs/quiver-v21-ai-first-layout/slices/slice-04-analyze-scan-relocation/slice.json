@@ -1,0 +1,64 @@
+{
+  "slice_id": "slice-04-analyze-scan-relocation",
+  "ticket": "QUIVER-21-04",
+  "type": "feature",
+  "title": "Relocate analyze scan output",
+  "objective": "Move raw analyze output to `.quiver/scans/PROJECT_SCAN.json` while keeping `docs/PROJECT_MAP.md` visible and supporting legacy reads.",
+  "description": "This slice separates machine-readable scan data from human-facing project map documentation.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "analyze-scan-relocation",
+    "branch_name": "feature/QUIVER-21-04-analyze-scan-relocation"
+  },
+  "files": [
+    "src/create-quiver/index.js",
+    "src/create-quiver/commands/ai.js",
+    "src/create-quiver/lib/ai/context-packs.js",
+    "src/create-quiver/lib/ai/executor.js",
+    "src/create-quiver/lib/project-scan.js",
+    "tests/commands/analyze.test.js",
+    "tests/lib/ai-context-packs.test.js",
+    "tests/lib/project-scan.test.js",
+    "scripts/ci/smoke-create-quiver.sh",
+    "scripts/ci/smoke-cross-platform.js",
+    "specs/quiver-v21-ai-first-layout/STATUS.md",
+    "specs/quiver-v21-ai-first-layout/EVIDENCE_REPORT.md",
+    "specs/quiver-v21-ai-first-layout/slices/slice-04-analyze-scan-relocation/CLOSURE_BRIEF.md",
+    "specs/quiver-v21-ai-first-layout/slices/slice-04-analyze-scan-relocation/slice.json"
+  ],
+  "depends_on": [
+    "slice-02-internal-layout-template-resolver"
+  ],
+  "parallel_safe": "after_dependencies",
+  "parallel_safe_reason": "Depends on `.quiver/` internal path helpers but can run before docs alignment.",
+  "must": [
+    "Write raw scan JSON to `.quiver/scans/PROJECT_SCAN.json`.",
+    "Keep writing `docs/PROJECT_MAP.md` for humans and agents.",
+    "Read legacy `docs/PROJECT_SCAN.json` when present.",
+    "Prefer the new scan path when both new and legacy files exist.",
+    "Update AI context packing and doctor scan detection to support both paths."
+  ],
+  "not_included": [
+    "Changing project map content semantics.",
+    "Removing legacy scan files.",
+    "Changing generated visible docs beyond necessary path references."
+  ],
+  "acceptance": [
+    "`analyze` creates `.quiver/scans/PROJECT_SCAN.json`.",
+    "`analyze` still creates `docs/PROJECT_MAP.md`.",
+    "Doctor and AI onboarding helpers can read legacy scan path.",
+    "Tests cover preference order when both paths exist."
+  ],
+  "tests": [
+    "node --test tests/commands/analyze.test.js tests/lib/project-scan.test.js tests/lib/ai-context-packs.test.js",
+    "node --test tests/**/*.test.js",
+    "bash scripts/ci/smoke-create-quiver.sh",
+    "node scripts/ci/smoke-cross-platform.js",
+    "git diff --check"
+  ],
+  "estimated_hours": 6,
+  "actual_hours": 5,
+  "status": "completed",
+  "blocked_reason": null
+}

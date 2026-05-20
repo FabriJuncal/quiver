@@ -1,0 +1,67 @@
+{
+  "slice_id": "slice-07-docs-guidance-alignment",
+  "ticket": "QUIVER-21-07",
+  "type": "docs",
+  "title": "Align documentation with AI-first layout",
+  "objective": "Update human and AI-facing documentation so every source describes the same visible contract and internal `.quiver/` model.",
+  "description": "Behavior changes need docs alignment to avoid two competing truths about `docs-template/`, `tools/scripts/`, scans, and specs.",
+  "git": {
+    "branch_type": "docs",
+    "base_branch": "main",
+    "branch_slug": "docs-guidance-alignment",
+    "branch_name": "docs/QUIVER-21-07-docs-guidance-alignment"
+  },
+  "files": [
+    "README.md",
+    "README_FOR_AI.md",
+    "docs/AI_ONBOARDING_PROMPT.md.template",
+    "docs/COMMANDS.md.template",
+    "docs/WORKFLOW.md.template",
+    "docs/SUPPORT_MATRIX.md.template",
+    "docs/TROUBLESHOOTING.md.template",
+    "docs/GITFLOW_PR_GUIDE.md.template",
+    "src/create-quiver/lib/init-docs.js",
+    "scripts/init-docs.sh",
+    "scripts/ci/smoke-create-quiver.sh",
+    "scripts/ci/smoke-init-docs.sh",
+    "specs/quiver-v21-ai-first-layout/STATUS.md",
+    "specs/quiver-v21-ai-first-layout/EVIDENCE_REPORT.md",
+    "specs/quiver-v21-ai-first-layout/slices/slice-07-docs-guidance-alignment/CLOSURE_BRIEF.md",
+    "specs/quiver-v21-ai-first-layout/slices/slice-07-docs-guidance-alignment/slice.json"
+  ],
+  "depends_on": [
+    "slice-05-empty-specs-layout-doctor",
+    "slice-06-legacy-migration-optional-assets"
+  ],
+  "parallel_safe": "after_dependencies",
+  "parallel_safe_reason": "Docs must reflect final behavior from previous slices.",
+  "must": [
+    "Update root README to present AI-first layout and init profiles accurately.",
+    "Update README_FOR_AI so `docs-template/` is no longer the normal onboarding flow.",
+    "Update generated README content to explain visible contract vs internal `.quiver/` machinery.",
+    "Update commands/support/troubleshooting templates for new paths and flags.",
+    "Document that real specs are created by `ai plan --phase spec`, not default init.",
+    "Document legacy paths as compatibility, not recommended default."
+  ],
+  "not_included": [
+    "Changing behavior.",
+    "Release publication.",
+    "Large marketing rewrite unrelated to layout."
+  ],
+  "acceptance": [
+    "Docs agree that `.quiver/` is internal.",
+    "Docs agree that default init does not create `docs-template/`, `tools/scripts/`, or placeholder specs.",
+    "Generated README points agents to visible contract first.",
+    "Docs mention `.quiver/scans/PROJECT_SCAN.json` and visible `docs/PROJECT_MAP.md` correctly.",
+    "Legacy guidance is clearly marked as compatibility."
+  ],
+  "tests": [
+    "bash scripts/ci/smoke-init-docs.sh",
+    "npm run smoke:create-quiver",
+    "git diff --check"
+  ],
+  "estimated_hours": 5,
+  "actual_hours": 4,
+  "status": "completed",
+  "blocked_reason": null
+}

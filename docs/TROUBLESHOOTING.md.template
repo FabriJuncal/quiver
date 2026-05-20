@@ -48,7 +48,7 @@ Use this guide when a first-run bootstrap or gate check fails. The recovery path
 
 ### Symptom
 
-- `init-docs.sh` or a slice bootstrap stops because a file already exists
+- `npx create-quiver init` or a slice bootstrap stops because a file already exists
 - The generated project has a partially initialized docs tree
 
 ### Recovery

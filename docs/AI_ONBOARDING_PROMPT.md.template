@@ -13,8 +13,8 @@ Actúa como asistente de onboarding de IA para este proyecto. Tu objetivo es com
    - `README.md`
    - `AGENTS.md`, si existe
    - `docs/AI_ONBOARDING_PROMPT.md`
-   - `docs/PROJECT_SCAN.json`
    - `docs/PROJECT_MAP.md`
+   - `.quiver/scans/PROJECT_SCAN.json`, si existe y el mapa visible no alcanza
    - `docs/AI_CONTEXT.md`
    - `docs/CONTEXTO.md`
    - `docs/WORKFLOW.md`
@@ -66,7 +66,7 @@ Actúa como asistente de onboarding de IA para este proyecto. Tu objetivo es com
 
 Usa el menor contexto que todavía permita resolver la tarea:
 
-- **Onboarding:** usa mapas y metadatos primero. Lee `docs/PROJECT_SCAN.json` y `docs/PROJECT_MAP.md` antes de abrir archivos fuente. Después usa `docs/AI_CONTEXT.md`, `docs/CONTEXTO.md` y `docs/WORKFLOW.md` para completar vacíos.
+- **Onboarding:** usa mapas y metadatos primero. Lee `docs/PROJECT_MAP.md` antes de abrir archivos fuente. Si necesitás el scan crudo, usá `.quiver/scans/PROJECT_SCAN.json`. Después usa `docs/AI_CONTEXT.md`, `docs/CONTEXTO.md` y `docs/WORKFLOW.md` para completar vacíos.
 - **Planner:** usa contexto amplio solo para onboarding y planificación. El planner genera criterios de aceptación, plan técnico, specs, slices, handoffs y cuerpo de PR con aprobación humana entre fases.
 - **Executor:** usa contexto mínimo del slice. El executor parte de `slice.json` y `EXECUTION_BRIEF.md`, puede modificar código solo cuando el usuario lo autoriza y debe mantenerse dentro de `slice.json.files`.
 - **Implementación:** no implementes durante onboarding salvo autorización explícita. Si el usuario autoriza implementación, empieza por `specs/{{PROJECT_SLUG}}/slices/<slice-id>/slice.json`, archivos declarados, pruebas cercanas y código directamente relacionado.
@@ -96,7 +96,7 @@ npm run quiver:ai:execute-slice -- --slice specs/{{PROJECT_SLUG}}/slices/<slice-
 
 ## Validación
 
-- Cita `docs/PROJECT_SCAN.json` y `docs/PROJECT_MAP.md` cuando hagas afirmaciones sobre stack, comandos o estructura.
+- Cita `docs/PROJECT_MAP.md` cuando hagas afirmaciones sobre stack, comandos o estructura. Si usás datos del scan crudo, cita `.quiver/scans/PROJECT_SCAN.json`.
 - Indica rutas omitidas o señales faltantes.
 - Mantén la respuesta enfocada en documentación y contexto de onboarding salvo que el usuario haya autorizado cambios de código de producto.
 - No cambies reglas del workflow de Quiver salvo que el usuario lo pida explícitamente.

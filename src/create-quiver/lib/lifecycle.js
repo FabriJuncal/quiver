@@ -3,7 +3,7 @@ const path = require('path');
 const { branchDelete, catFileExists, currentBranch, fetchBranch, fetchRemote, hasLocalBranch, hasRemoteBranch, lsRemoteHeads, mergeBaseIsAncestor, revListCount, runGit, statusPorcelain, worktreeAdd, worktreeList, worktreePrune, worktreeRemove } = require('./git');
 const { parseJsonWithComments } = require('./json');
 const { writeFrontMatter } = require('./init-docs');
-const { resolveTargetRoot } = require('./paths');
+const { relativePosixPath, resolveTargetRoot } = require('./paths');
 const { activeSlicePath, renderActiveSlice, resolveSliceContext, safeBranchName, toAlias, validateSliceMetaForStart, worktreesRootForRepo } = require('./slice');
 
 function ensureDir(dirPath) {
@@ -73,7 +73,7 @@ function writeWorktreeContext(targetWorktree, slice, branchName) {
     '',
     '## Active Slice Brief',
     '',
-    `- ${activeSlicePath(slice.repoRoot)}`,
+    `- ${relativePosixPath(slice.repoRoot, activeSlicePath(slice.repoRoot))}`,
     '',
     '## Constraints',
     '',

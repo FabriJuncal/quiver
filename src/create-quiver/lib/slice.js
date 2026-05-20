@@ -1,17 +1,18 @@
 const fs = require('fs');
 const path = require('path');
 const { parseJsonWithComments } = require('./json');
-const { resolveTargetRoot, toPosixPath } = require('./paths');
+const { normalizeGitBashDrivePath, relativePosixPath, resolveTargetRoot, specRelativePathFromPath, toPosixPath } = require('./paths');
 
 function readJson(filePath) {
   return JSON.parse(fs.readFileSync(filePath, 'utf8'));
 }
 
 function canonicalizePath(dirPath) {
+  const normalizedPath = normalizeGitBashDrivePath(dirPath);
   try {
-    return fs.realpathSync(dirPath);
+    return normalizeGitBashDrivePath(fs.realpathSync(normalizedPath));
   } catch {
-    return path.resolve(dirPath);
+    return path.resolve(normalizedPath);
   }
 }
 
@@ -94,19 +95,61 @@ function validateSliceMetaForStart(slice) {
   }
 }
 
-function resolveSliceContext(repoRoot, slicePath) {
-  const absSlicePath = resolveSlicePath(slicePath);
-  const relSlicePath = toPosixPath(path.relative(repoRoot, absSlicePath));
-  const parts = relSlicePath.split('/');
+function isSpecRelativePath(parts) {
+  return parts[0] === 'specs' || parts[0] === 'specs-fix';
+}
 
-  if (parts[0] !== 'specs' && parts[0] !== 'specs-fix') {
+function resolveRepoSlicePath(repoRoot, relSlicePath) {
+  const candidate = path.join(repoRoot, relSlicePath);
+  if (!fs.existsSync(candidate)) {
+    return '';
+  }
+
+  return canonicalizePath(candidate);
+}
+
+function resolveSliceContext(repoRoot, slicePath) {
+  const canonicalRepoRoot = canonicalizePath(repoRoot);
+  let absSlicePath = resolveSlicePath(slicePath);
+  let relSlicePath = relativePosixPath(canonicalRepoRoot, absSlicePath);
+  let parts = relSlicePath.split('/');
+
+  if (!isSpecRelativePath(parts)) {
+    const cwdRelSlicePath = relativePosixPath(canonicalizePath(process.cwd()), absSlicePath);
+    const cwdParts = cwdRelSlicePath.split('/');
+    if (isSpecRelativePath(cwdParts)) {
+      relSlicePath = cwdRelSlicePath;
+      parts = cwdParts;
+    }
+  }
+
+  if (!isSpecRelativePath(parts) && !path.isAbsolute(slicePath)) {
+    const inputRelSlicePath = toPosixPath(slicePath).replace(/^\.\/+/, '');
+    const inputParts = inputRelSlicePath.split('/');
+    if (isSpecRelativePath(inputParts)) {
+      relSlicePath = inputRelSlicePath;
+      parts = inputParts;
+    }
+  }
+
+  if (!isSpecRelativePath(parts)) {
+    const candidateRelSlicePath = specRelativePathFromPath(absSlicePath) || specRelativePathFromPath(slicePath);
+    const candidateAbsSlicePath = candidateRelSlicePath ? resolveRepoSlicePath(canonicalRepoRoot, candidateRelSlicePath) : '';
+    if (candidateAbsSlicePath) {
+      relSlicePath = candidateRelSlicePath;
+      parts = relSlicePath.split('/');
+      absSlicePath = candidateAbsSlicePath;
+    }
+  }
+
+  if (!isSpecRelativePath(parts)) {
     throw new Error('create-quiver: el slice debe vivir dentro de specs/ o specs-fix/.');
   }
 
   const specFamily = parts[0];
   const specSlug = parts[1];
   const specDirRel = `${specFamily}/${specSlug}`;
-  const specDirAbs = path.join(repoRoot, specDirRel);
+  const specDirAbs = path.join(canonicalRepoRoot, specDirRel);
   const slice = readSliceMeta(absSlicePath);
   slice.specFamily = specFamily;
   slice.specSlug = specSlug;
