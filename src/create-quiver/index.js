@@ -3,7 +3,7 @@ const os = require('os');
 const path = require('path');
 const { execFileSync } = require('child_process');
 const { checkHandoff, scaffoldHandoff } = require('./lib/handoff');
-const { collectDoctorWarnings } = require('./lib/doctor');
+const { collectDoctorReport } = require('./lib/doctor');
 const { runDoctor: runAiDoctor, runExecuteSlice: runAiExecuteSlice, runOnboard, runPlan: runAiPlan, runPr: runAiPr } = require('./commands/ai');
 const { runGraph } = require('./commands/graph');
 const { runNext } = require('./commands/next');
@@ -1367,47 +1367,42 @@ function runDoctor(targetDir) {
     throw new Error(formatError('doctor requires a project previously initialized by Quiver.\nRun init first: npx create-quiver --name "Project Name"'));
   }
 
-  const generatedSpecs = listGeneratedSpecDirs(projectRoot);
-  if (generatedSpecs.length !== 1) {
-    throw new Error(formatError(`expected exactly one generated spec directory, found ${generatedSpecs.length || 0}`));
-  }
-
-  const projectSlug = generatedSpecs[0];
-  const requiredFiles = [
-    'AGENTS.md',
-    'README.md',
-    'docs/INDEX.md',
-    'docs/AI_CONTEXT.md',
-    'docs/AI_ONBOARDING_PROMPT.md',
-    'docs/CONTEXTO.md',
-    'docs/WORKFLOW.md',
-    'docs/SUPPORT_MATRIX.md',
-    'docs/TROUBLESHOOTING.md',
-    'docs/TESTING_GUIDE_FOR_AI.md',
-    'docs/ai/PRINCIPLES.md',
-    'docs/ai/RULES.yaml',
-    'docs/ai/LESSONS.md',
+  const doctorReport = collectDoctorReport(projectRoot);
+  const specSlugs = doctorReport.specSlugs;
+  const specRequiredFiles = specSlugs.flatMap((projectSlug) => [
     `specs/${projectSlug}/SPEC.md`,
     `specs/${projectSlug}/STATUS.md`,
     `specs/${projectSlug}/EVIDENCE_REPORT.md`,
+  ]);
+  const newLayoutRequiredFiles = [
+    'AGENTS.md',
+    'README.md',
+    'docs/AI_CONTEXT.md',
+    'docs/AI_ONBOARDING_PROMPT.md',
+    'docs/COMMANDS.md',
+    'docs/WORKFLOW.md',
     'package.json',
-    '.github/pull_request_template.md',
-    '.github/ISSUE_TEMPLATE/bug_report.md',
-    '.github/ISSUE_TEMPLATE/feature_request.md',
-    '.github/workflows/ci.yml',
+    '.quiver/state.json',
+    '.quiver/config.json',
+    '.quiver/.gitignore',
+    ...specRequiredFiles,
   ];
-
-  const requiredExecutables = [
-    'tools/scripts/start-slice.sh',
-    'tools/scripts/check-slice-readiness.sh',
-    'tools/scripts/check-pr-readiness.sh',
-    'tools/scripts/cleanup-slice.sh',
-    'tools/scripts/check-scope.sh',
-  ];
-
+  const requiredFiles = doctorReport.layout === 'legacy'
+    ? ['package.json', ...specRequiredFiles]
+    : newLayoutRequiredFiles;
+  const legacyScriptsDir = path.join(projectRoot, 'tools', 'scripts');
+  const requiredExecutables = fs.existsSync(legacyScriptsDir)
+    ? [
+        'tools/scripts/start-slice.sh',
+        'tools/scripts/check-slice-readiness.sh',
+        'tools/scripts/check-pr-readiness.sh',
+        'tools/scripts/cleanup-slice.sh',
+        'tools/scripts/check-scope.sh',
+      ]
+    : [];
   const missingFiles = assertFilesExist(projectRoot, requiredFiles);
   const nonExecutableScripts = assertExecutablesExist(projectRoot, requiredExecutables);
-  const pkg = loadPackageJson(projectRoot);
+  const pkg = fs.existsSync(path.join(projectRoot, 'package.json')) ? loadPackageJson(projectRoot) : {};
   const workflowScriptGroups = [
     { label: 'migrate', node: 'quiver:migrate', legacy: 'migrate' },
     { label: 'start-slice', node: 'quiver:start-slice', legacy: 'start:slice' },
@@ -1442,15 +1437,26 @@ function runDoctor(targetDir) {
     ...nonExecutableScripts.map((file) => `missing executable bit: ${file}`),
     ...missingScripts.map((name) => `missing package.json script: ${name}`),
   ];
-  const softWarnings = collectDoctorWarnings(projectRoot);
+  const softWarnings = doctorReport.warnings;
 
   if (migrationProblems.length > 0) {
     throw new Error(formatError(`doctor failed:\n- ${migrationProblems.join('\n- ')}\n- Run migration first: npx create-quiver migrate`));
   }
 
   console.log(`Quiver doctor passed for ${projectRoot}`);
-  console.log(`Generated project slug: ${projectSlug}`);
+  console.log(`Layout: ${doctorReport.layout}`);
+  if (specSlugs.length > 0) {
+    console.log(`Specs: ${specSlugs.join(', ')}`);
+  } else {
+    console.log('Specs: none yet');
+  }
+  if (doctorReport.legacySignals.length > 0) {
+    console.log(`Legacy signals: ${doctorReport.legacySignals.join(', ')}`);
+  }
   console.log('Next steps:');
+  for (const recommendation of doctorReport.recommendations) {
+    console.log(`- ${recommendation}`);
+  }
   for (const warning of stateWarnings) {
     console.log(`- Warning: ${warning}`);
   }
@@ -1474,9 +1480,14 @@ function runDoctor(targetDir) {
     console.log('- Ask your AI agent: Read AGENTS.md, then docs/AI_ONBOARDING_PROMPT.md and execute it.');
   }
   console.log('- Check the next ready slice: npx create-quiver next');
-  console.log(`- Start a slice: npx create-quiver start-slice specs/${projectSlug}/slices/slice-template/slice.json`);
-  console.log(`- Validate a slice: npx create-quiver check-slice specs/${projectSlug}/slices/slice-template/slice.json`);
-  console.log(`- Validate the PR gate: npx create-quiver check-pr specs/${projectSlug}/slices/slice-template/slice.json`);
+  if (specSlugs.length > 0) {
+    const projectSlug = specSlugs[0];
+    console.log(`- Start a slice: npx create-quiver start-slice specs/${projectSlug}/slices/<slice-id>/slice.json`);
+    console.log(`- Validate a slice: npx create-quiver check-slice specs/${projectSlug}/slices/<slice-id>/slice.json`);
+    console.log(`- Validate the PR gate: npx create-quiver check-pr specs/${projectSlug}/slices/<slice-id>/slice.json`);
+  } else {
+    console.log('- Create real specs and slices only after acceptance criteria and the technical plan are approved.');
+  }
 }
 
 function printInitNextSteps(targetDir, projectName) {

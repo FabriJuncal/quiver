@@ -17,6 +17,8 @@
     "src/create-quiver/commands/next.js",
     "src/create-quiver/lib/slice-graph.js",
     "src/create-quiver/lib/doctor.js",
+    "src/create-quiver/index.js",
+    "tests/commands/doctor.test.js",
     "tests/commands/plan.test.js",
     "tests/commands/graph.test.js",
     "tests/commands/next.test.js",
@@ -52,11 +54,12 @@
     "Existing behavior for projects with specs remains intact."
   ],
   "tests": [
-    "node --test tests/commands/plan.test.js tests/commands/graph.test.js tests/commands/next.test.js tests/lib/doctor.test.js",
+    "node --test tests/commands/doctor.test.js tests/lib/doctor.test.js tests/commands/plan.test.js tests/commands/graph.test.js tests/commands/next.test.js",
+    "node --test tests/**/*.test.js",
     "git diff --check"
   ],
   "estimated_hours": 6,
-  "actual_hours": null,
-  "status": "draft",
+  "actual_hours": 5,
+  "status": "completed",
   "blocked_reason": null
 }

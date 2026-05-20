@@ -2,27 +2,31 @@
 
 ## Resumen de lo realizado
 
-Pendiente.
+Se adapto `doctor` para aceptar proyectos sin specs despues del init AI-first y reportar el estado de layout como `new`, `legacy`, `hybrid` o `incomplete`. `plan`, `graph` y `next` ya devolvian estados vacios validos, y se agrego cobertura para asegurar ese comportamiento junto con el nuevo doctor.
 
 ## Validacion contra criterios de aceptacion
 
-- [ ] No-spec soportado.
-- [ ] Layout nuevo detectado.
-- [ ] Layout legacy detectado.
-- [ ] Proyectos con specs no regresan.
+- [x] No-spec soportado.
+- [x] Layout nuevo detectado.
+- [x] Layout legacy detectado.
+- [x] Proyectos con specs no regresan.
 
 ## Cambios relevantes
 
-Pendiente.
+- `doctor` ya no exige exactamente un spec generado.
+- `doctor` muestra layout, specs detectadas, senales legacy y recomendaciones accionables.
+- Se agrego `collectLayoutReport()` y `collectDoctorReport()` para separar deteccion de layout de presentacion CLI.
+- Los wrappers legacy solo se validan como ejecutables si existen.
+- Se agregaron tests para layouts nuevo sin specs, minimal, legacy, hybrid e incomplete.
 
 ## Pendientes
 
-Pendiente.
+No quedan pendientes dentro de este slice. La limpieza/migracion no destructiva de assets legacy corresponde a `slice-06`.
 
 ## Riesgos remanentes
 
-Pendiente.
+Los mensajes de doctor cambiaron; smokes que esperaban texto exacto del layout viejo deben alinearse en `slice-06`/`slice-08`.
 
 ## Recomendaciones futuras
 
-Pendiente.
+Mantener `doctor` como reporte de estado y recomendaciones; no convertir senales legacy en errores duros salvo que falte un archivo necesario para ejecutar un comando pedido.
