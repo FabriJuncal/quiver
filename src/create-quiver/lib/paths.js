@@ -27,7 +27,32 @@ function toPosixPath(filePath, pathLib = path) {
   return String(filePath).split(pathLib.sep).join('/').replace(/\\/g, '/');
 }
 
+function stripTrailingSlashes(filePath) {
+  const value = String(filePath);
+  if (value === '/') {
+    return value;
+  }
+  if (/^[A-Za-z]:\/+$/.test(value)) {
+    return value.slice(0, 3);
+  }
+  return value.replace(/\/+$/, '');
+}
+
 function relativePosixPath(root, absolutePath, pathLib = path) {
+  const normalizedRoot = stripTrailingSlashes(toPosixPath(normalizeGitBashDrivePath(root, pathLib), pathLib));
+  const normalizedAbsolute = stripTrailingSlashes(toPosixPath(normalizeGitBashDrivePath(absolutePath, pathLib), pathLib));
+  const windowsPath = pathLib === path.win32 || process.platform === 'win32';
+  const comparableRoot = windowsPath ? normalizedRoot.toLowerCase() : normalizedRoot;
+  const comparableAbsolute = windowsPath ? normalizedAbsolute.toLowerCase() : normalizedAbsolute;
+
+  if (comparableAbsolute === comparableRoot) {
+    return '';
+  }
+
+  if (comparableAbsolute.startsWith(`${comparableRoot}/`)) {
+    return normalizedAbsolute.slice(normalizedRoot.length + 1);
+  }
+
   return toPosixPath(pathLib.relative(
     normalizeGitBashDrivePath(root, pathLib),
     normalizeGitBashDrivePath(absolutePath, pathLib),
