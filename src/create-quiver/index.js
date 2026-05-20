@@ -648,6 +648,10 @@ function assertFilesExist(root, relativePaths) {
 }
 
 function assertExecutablesExist(root, relativePaths) {
+  if (process.platform === 'win32') {
+    return [];
+  }
+
   return relativePaths.filter((relativePath) => {
     const absolutePath = path.join(root, relativePath);
 
