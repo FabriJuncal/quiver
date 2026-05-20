@@ -79,7 +79,13 @@ For implementation slices, run the validation commands declared in each slice.
 
 ## Evidence
 
-To be completed by implementation slices.
+- `node --test tests/**/*.test.js`
+- `npm run smoke:create-quiver`
+- `node scripts/ci/smoke-cross-platform.js`
+- `bash scripts/ci/smoke-init-docs.sh`
+- `git diff --check`
+- Provider behavior covered with mocks and dry-runs; no real provider auth required for CI.
+- GitHub PR preflight covered with fake `gh` in smoke coverage; no real PR is opened in tests.
 
 ## Rollback
 
@@ -90,3 +96,5 @@ Revert the spec PR or the affected slice commit. Since each slice maps to one co
 - Provider CLI behavior must be validated carefully during implementation.
 - Windows quoting and paths with spaces are a primary regression risk.
 - `gh` auth and SSH identity can point to different accounts; preflight must report that clearly.
+- `docs/GITFLOW_PR_GUIDE.md` is not present in this source repo; this PR followed `docs/GITFLOW_PR_GUIDE.md.template` as the available canonical guide. Generated projects do materialize `docs/GITFLOW_PR_GUIDE.md`.
+- This PR targets `main` because `develop` is behind `main` and would include unrelated historical commits in the diff.
