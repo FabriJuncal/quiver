@@ -228,8 +228,8 @@ function checkPrReadiness(sliceInput) {
   const current = currentBranch(repoRoot);
   const prPath = path.join(path.dirname(slice.sliceAbs), 'pr.md');
 
-  checkSliceReadiness(slice.sliceAbs, { gate: 'validation' });
-  checkScope(slice.sliceAbs, { strict: true });
+  checkSliceReadiness(slice.sliceRel, { gate: 'validation' });
+  checkScope(slice.sliceRel, { strict: true });
 
   if (!slice.branchName) {
     throw new Error('create-quiver: Falta git.branch_name en el slice.');
