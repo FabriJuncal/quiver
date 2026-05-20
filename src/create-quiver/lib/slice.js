@@ -1,17 +1,18 @@
 const fs = require('fs');
 const path = require('path');
 const { parseJsonWithComments } = require('./json');
-const { resolveTargetRoot, toPosixPath } = require('./paths');
+const { normalizeGitBashDrivePath, relativePosixPath, resolveTargetRoot } = require('./paths');
 
 function readJson(filePath) {
   return JSON.parse(fs.readFileSync(filePath, 'utf8'));
 }
 
 function canonicalizePath(dirPath) {
+  const normalizedPath = normalizeGitBashDrivePath(dirPath);
   try {
-    return fs.realpathSync(dirPath);
+    return fs.realpathSync(normalizedPath);
   } catch {
-    return path.resolve(dirPath);
+    return path.resolve(normalizedPath);
   }
 }
 
@@ -97,7 +98,7 @@ function validateSliceMetaForStart(slice) {
 function resolveSliceContext(repoRoot, slicePath) {
   const canonicalRepoRoot = canonicalizePath(repoRoot);
   const absSlicePath = resolveSlicePath(slicePath);
-  const relSlicePath = toPosixPath(path.relative(canonicalRepoRoot, absSlicePath));
+  const relSlicePath = relativePosixPath(canonicalRepoRoot, absSlicePath);
   const parts = relSlicePath.split('/');
 
   if (parts[0] !== 'specs' && parts[0] !== 'specs-fix') {

@@ -22,6 +22,8 @@ Redesign Quiver's generated project layout so the default init is small, visible
 - `src/create-quiver/lib/init-layout.js`
 - `src/create-quiver/lib/init-docs.js`
 - `src/create-quiver/lib/project-scan.js`
+- `src/create-quiver/lib/paths.js`
+- `src/create-quiver/lib/slice.js`
 - `src/create-quiver/lib/doctor.js`
 - `src/create-quiver/lib/state.js`
 - `src/create-quiver/lib/ai/context-packs.js`
@@ -77,7 +79,7 @@ Run migrate/doctor against a legacy layout and confirm `docs-template/`, `tools/
 
 ### Technical Verification
 
-- `node --test tests/**/*.test.js` passed: 136 tests.
+- `node --test tests/**/*.test.js` passed: 139 tests.
 - `npm run smoke:create-quiver` passed.
 - `bash scripts/ci/smoke-init-docs.sh` passed.
 - `node scripts/ci/smoke-cross-platform.js` passed.
@@ -89,6 +91,7 @@ Run migrate/doctor against a legacy layout and confirm `docs-template/`, `tools/
 - Default/minimal init coverage asserts no root `docs-template/`, no `tools/scripts/`, and no placeholder spec.
 - Evidence details are recorded in `specs/quiver-v21-ai-first-layout/EVIDENCE_REPORT.md`.
 - Slice status is recorded in `specs/quiver-v21-ai-first-layout/STATUS.md`.
+- Windows/Git Bash path handling is covered by `tests/lib/paths.test.js`.
 
 ## Rollback
 
