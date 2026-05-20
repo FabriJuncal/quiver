@@ -59,9 +59,22 @@ function relativePosixPath(root, absolutePath, pathLib = path) {
   ), pathLib);
 }
 
+function specRelativePathFromPath(filePath, pathLib = path) {
+  const normalized = toPosixPath(normalizeGitBashDrivePath(filePath, pathLib), pathLib);
+  const parts = normalized.split('/').filter(Boolean);
+  const specIndex = parts.findIndex((part) => part === 'specs' || part === 'specs-fix');
+
+  if (specIndex === -1 || !parts[specIndex + 1]) {
+    return '';
+  }
+
+  return parts.slice(specIndex).join('/');
+}
+
 module.exports = {
   normalizeGitBashDrivePath,
   relativePosixPath,
   resolveTargetRoot,
+  specRelativePathFromPath,
   toPosixPath,
 };

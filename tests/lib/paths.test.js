@@ -5,6 +5,7 @@ const test = require('node:test');
 const {
   normalizeGitBashDrivePath,
   relativePosixPath,
+  specRelativePathFromPath,
   toPosixPath,
 } = require('../../src/create-quiver/lib/paths');
 
@@ -31,4 +32,20 @@ test('normalizeGitBashDrivePath leaves non-Windows path libs untouched', () => {
   const expected = process.platform === 'win32' ? 'd:/a/quiver/quiver' : '/d/a/quiver/quiver';
 
   assert.equal(normalized, expected);
+});
+
+test('specRelativePathFromPath extracts specs paths from absolute Windows paths', () => {
+  const absolutePath = String.raw`D:\a\_temp\repo\specs\demo\slices\slice-01\slice.json`;
+
+  assert.equal(specRelativePathFromPath(absolutePath, path.win32), 'specs/demo/slices/slice-01/slice.json');
+});
+
+test('specRelativePathFromPath extracts specs-fix paths from Git Bash paths', () => {
+  const absolutePath = '/d/a/_temp/repo/specs-fix/demo/slices/slice-01/slice.json';
+
+  assert.equal(specRelativePathFromPath(absolutePath, path.win32), 'specs-fix/demo/slices/slice-01/slice.json');
+});
+
+test('specRelativePathFromPath returns empty string when no spec family exists', () => {
+  assert.equal(specRelativePathFromPath('/d/a/_temp/repo/docs/slice.json', path.win32), '');
 });

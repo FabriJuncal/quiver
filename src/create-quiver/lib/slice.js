@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const { parseJsonWithComments } = require('./json');
-const { normalizeGitBashDrivePath, relativePosixPath, resolveTargetRoot, toPosixPath } = require('./paths');
+const { normalizeGitBashDrivePath, relativePosixPath, resolveTargetRoot, specRelativePathFromPath, toPosixPath } = require('./paths');
 
 function readJson(filePath) {
   return JSON.parse(fs.readFileSync(filePath, 'utf8'));
@@ -99,9 +99,18 @@ function isSpecRelativePath(parts) {
   return parts[0] === 'specs' || parts[0] === 'specs-fix';
 }
 
+function resolveRepoSlicePath(repoRoot, relSlicePath) {
+  const candidate = path.join(repoRoot, relSlicePath);
+  if (!fs.existsSync(candidate)) {
+    return '';
+  }
+
+  return canonicalizePath(candidate);
+}
+
 function resolveSliceContext(repoRoot, slicePath) {
   const canonicalRepoRoot = canonicalizePath(repoRoot);
-  const absSlicePath = resolveSlicePath(slicePath);
+  let absSlicePath = resolveSlicePath(slicePath);
   let relSlicePath = relativePosixPath(canonicalRepoRoot, absSlicePath);
   let parts = relSlicePath.split('/');
 
@@ -120,6 +129,16 @@ function resolveSliceContext(repoRoot, slicePath) {
     if (isSpecRelativePath(inputParts)) {
       relSlicePath = inputRelSlicePath;
       parts = inputParts;
+    }
+  }
+
+  if (!isSpecRelativePath(parts)) {
+    const candidateRelSlicePath = specRelativePathFromPath(absSlicePath) || specRelativePathFromPath(slicePath);
+    const candidateAbsSlicePath = candidateRelSlicePath ? resolveRepoSlicePath(canonicalRepoRoot, candidateRelSlicePath) : '';
+    if (candidateAbsSlicePath) {
+      relSlicePath = candidateRelSlicePath;
+      parts = relSlicePath.split('/');
+      absSlicePath = candidateAbsSlicePath;
     }
   }
 
