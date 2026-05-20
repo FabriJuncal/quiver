@@ -281,6 +281,8 @@ assert_contains "$new_target/docs/COMMANDS.md" "| Command | Purpose | OS | Since
 assert_contains "$new_target/docs/COMMANDS.md" "\`quiver:plan\`"
 assert_contains "$new_target/docs/COMMANDS.md" "\`quiver:graph\`"
 assert_contains "$new_target/docs/COMMANDS.md" "\`quiver:next\`"
+assert_contains "$new_target/docs/COMMANDS.md" "\`quiver:ai:onboard\`"
+assert_contains "$new_target/docs/COMMANDS.md" "\`quiver:ai:execute-slice\`"
 assert_contains "$new_target/docs/COMMANDS.md" "Mermaid"
 assert_contains "$new_target/docs/COMMANDS.md" "DOT"
 assert_contains "$new_target/docs/COMMANDS.md" "docs/examples/plan.md"
@@ -319,6 +321,8 @@ assert_front_matter "$new_target/docs/ai/LESSONS.md"
 assert_front_matter "$new_target/docs/ai/PRINCIPLES.md"
 assert_contains "$new_target/docs/AI_ONBOARDING_PROMPT.md" "AI Onboarding Prompt"
 assert_contains "$new_target/docs/AI_ONBOARDING_PROMPT.md" "docs/PROJECT_SCAN.json"
+assert_contains "$new_target/docs/AI_ONBOARDING_PROMPT.md" "Planner"
+assert_contains "$new_target/docs/AI_ONBOARDING_PROMPT.md" "Executor"
 assert_contains "$new_target/specs/smoke-project/HANDOFF.md" "## Background"
 assert_contains "$new_target/specs/smoke-project/HANDOFF.md" "## What you will change"
 assert_contains "$new_target/specs/smoke-project/HANDOFF.md" "## Validation checklist"
@@ -341,6 +345,7 @@ assert_contains "$new_target/README.md" "only for projects that were already ini
 assert_contains "$new_target/README.md" 'do not use `migrate` as bootstrap'
 assert_contains "$new_target/README.md" "npm install --save-dev create-quiver@latest"
 assert_contains "$new_target/README.md" "npm run quiver:next"
+assert_contains "$new_target/README.md" "npm run quiver:ai:onboard"
 assert_contains "$new_target/README.md" "npx create-quiver next"
 assert_contains "$new_target/README.md" "graph --format mermaid"
 assert_contains "$new_target/README.md" "graph --format dot"
@@ -409,7 +414,86 @@ if grep -R -nF "Package manager:" "$new_target/docs" | grep -v "docs/PROJECT_MAP
   exit 1
 fi
 assert_package_scripts "$new_target/package.json" "new project" \
-  quiver:analyze quiver:plan quiver:graph quiver:next quiver:doctor quiver:migrate quiver:start-slice quiver:check-slice quiver:check-pr quiver:check-handoff check-handoff quiver:cleanup-slice quiver:check-scope quiver:refresh-active-slices
+  quiver:analyze quiver:plan quiver:graph quiver:next quiver:doctor quiver:ai:onboard quiver:ai:plan quiver:ai:execute-slice quiver:ai:pr quiver:ai:doctor quiver:migrate quiver:start-slice quiver:check-slice quiver:check-pr quiver:check-handoff check-handoff quiver:cleanup-slice quiver:check-scope quiver:refresh-active-slices
+
+printf 'Build AI orchestration dry-run smoke.\n' > "$new_target/requirements.md"
+ai_onboard_dry_run="$(cd "$new_target" && node "$cli" ai onboard --dry-run)"
+ai_plan_dry_run="$(cd "$new_target" && node "$cli" ai plan --phase acceptance --input requirements.md --dry-run)"
+if [[ "$ai_onboard_dry_run" != *"AI onboard dry-run"* ]] || [[ "$ai_onboard_dry_run" != *"Context pack: full"* ]]; then
+  echo "ai onboard dry-run did not expose the expected invocation metadata" >&2
+  exit 1
+fi
+if [[ "$ai_plan_dry_run" != *"AI plan dry-run"* ]] || [[ "$ai_plan_dry_run" != *"Phase: acceptance"* ]]; then
+  echo "ai plan dry-run did not expose the expected phase metadata" >&2
+  exit 1
+fi
+
+ai_exec_dir="$new_target/specs/smoke-project/slices/slice-ai-dry-run"
+mkdir -p "$ai_exec_dir"
+node - "$ai_exec_dir/slice.json" <<'NODE'
+const fs = require('fs');
+const file = process.argv[2];
+fs.writeFileSync(file, `${JSON.stringify({
+  slice_id: 'slice-ai-dry-run',
+  ticket: 'QUIVER-AI',
+  type: 'feature',
+  title: 'AI dry-run smoke',
+  objective: 'Validate execute-slice dry-run',
+  description: 'Smoke fixture for ai execute-slice.',
+  git: {
+    branch_type: 'feature',
+    base_branch: 'main',
+    branch_slug: 'ai-dry-run',
+    branch_name: 'feature/QUIVER-AI-ai-dry-run'
+  },
+  files: ['docs/ai-dry-run.md'],
+  acceptance: ['Dry-run prints executor metadata.'],
+  tests: ['node --test tests/**/*.test.js'],
+  status: 'draft'
+}, null, 2)}\n`);
+NODE
+printf '# Execution Brief\n\nValidate dry-run only.\n' > "$ai_exec_dir/EXECUTION_BRIEF.md"
+ai_execute_dry_run="$(cd "$new_target" && node "$cli" ai execute-slice --slice specs/smoke-project/slices/slice-ai-dry-run/slice.json --dry-run)"
+if [[ "$ai_execute_dry_run" != *"AI execute-slice dry-run"* ]] || [[ "$ai_execute_dry_run" != *"Role: executor"* ]]; then
+  echo "ai execute-slice dry-run did not expose executor metadata" >&2
+  exit 1
+fi
+
+ai_pr_repo="$temp_root/ai-pr-preflight"
+mkdir -p "$ai_pr_repo/docs" "$ai_pr_repo/ssh"
+(
+  cd "$ai_pr_repo"
+  git init >/dev/null
+  git config user.email "smoke@example.com"
+  git config user.name "Quiver Smoke"
+  git checkout -b feature/ai-pr-smoke >/dev/null 2>&1
+  printf '# GitFlow guide\n' > docs/GITFLOW_PR_GUIDE.md
+  printf 'identity\n' > ssh/github-work
+  git add .
+  git commit -m "test: seed ai pr preflight" >/dev/null
+  git remote add origin git@github-work:example/quiver.git
+)
+fake_gh_dir="$temp_root/fake-gh"
+mkdir -p "$fake_gh_dir"
+cat > "$fake_gh_dir/gh" <<'SH'
+#!/usr/bin/env sh
+if [ "$1" = "--version" ]; then
+  echo "gh version 2.0.0"
+  exit 0
+fi
+if [ "$1" = "auth" ] && [ "$2" = "status" ]; then
+  echo "Logged in to github.com as smoke"
+  exit 0
+fi
+echo "unexpected gh args: $*" >&2
+exit 1
+SH
+chmod +x "$fake_gh_dir/gh"
+ai_pr_dry_run="$(cd "$ai_pr_repo" && PATH="$fake_gh_dir:$PATH" node "$cli" ai pr --dry-run --ssh-host-alias github-work --identity-file ssh/github-work)"
+if [[ "$ai_pr_dry_run" != *"GitHub pr dry-run"* ]] || [[ "$ai_pr_dry_run" != *"No PR will be created in dry-run mode."* ]]; then
+  echo "ai pr dry-run did not validate with fake gh" >&2
+  exit 1
+fi
 
 assert_file "$new_target/specs/smoke-project/HANDOFF.md"
 assert_contains "$new_target/specs/smoke-project/HANDOFF.md" "## Background"
@@ -585,7 +669,7 @@ assert_contains "$existing_target/docs/SUPPORT_MATRIX.md" "## Cross-Platform Aut
 assert_contains "$existing_target/docs/COMMANDS.md" "src/create-quiver/lib/slice-graph.js"
 assert_contains "$existing_target/specs/existing-repo/slices/slice-template/slice.json" "// \"depends_on\": ["
 assert_package_scripts "$existing_target/package.json" "existing project" \
-  quiver:analyze quiver:plan quiver:graph quiver:next quiver:doctor quiver:migrate quiver:start-slice quiver:check-slice quiver:check-pr quiver:check-handoff check-handoff quiver:cleanup-slice quiver:check-scope quiver:refresh-active-slices
+  quiver:analyze quiver:plan quiver:graph quiver:next quiver:doctor quiver:ai:onboard quiver:ai:plan quiver:ai:execute-slice quiver:ai:pr quiver:ai:doctor quiver:migrate quiver:start-slice quiver:check-slice quiver:check-pr quiver:check-handoff check-handoff quiver:cleanup-slice quiver:check-scope quiver:refresh-active-slices
 assert_file "$space_target/README.md"
 assert_file "$space_target/AGENTS.md"
 assert_file "$space_target/docs/PROJECT_SCAN.json"
@@ -705,7 +789,7 @@ assert_front_matter "$legacy_target/docs/ai/DEEP.md"
 assert_front_matter "$legacy_target/docs/ai/LESSONS.md"
 assert_front_matter "$legacy_target/docs/ai/PRINCIPLES.md"
 assert_package_scripts "$legacy_target/package.json" "legacy project after migrate" \
-  quiver:analyze quiver:plan quiver:graph quiver:next quiver:doctor quiver:migrate quiver:start-slice quiver:check-slice quiver:check-pr quiver:check-handoff check-handoff quiver:cleanup-slice quiver:check-scope quiver:refresh-active-slices
+  quiver:analyze quiver:plan quiver:graph quiver:next quiver:doctor quiver:ai:onboard quiver:ai:plan quiver:ai:execute-slice quiver:ai:pr quiver:ai:doctor quiver:migrate quiver:start-slice quiver:check-slice quiver:check-pr quiver:check-handoff check-handoff quiver:cleanup-slice quiver:check-scope quiver:refresh-active-slices
 node -e 'const fs = require("fs"); const data = JSON.parse(fs.readFileSync(process.argv[1], "utf8")); if (data.scripts?.lint !== "echo lint") { throw new Error("custom user script was not preserved during migrate"); }' "$legacy_target/package.json"
 CLI_VERSION="$cli_version" node -e 'const fs = require("fs"); const expected = process.env.CLI_VERSION; const data = JSON.parse(fs.readFileSync(process.argv[1], "utf8")); if (data.migrated_version !== expected || !data.last_migration_at) { throw new Error("migration metadata missing"); }' "$legacy_target/.quiver/state.json"
 
@@ -787,7 +871,7 @@ if [[ "$standard_lines" -gt 300 ]]; then
   exit 1
 fi
 assert_package_scripts "$release_target/package.json" "packaged project" \
-  quiver:analyze quiver:plan quiver:graph quiver:next quiver:doctor quiver:migrate quiver:start-slice quiver:check-slice quiver:check-pr quiver:check-handoff check-handoff quiver:cleanup-slice quiver:check-scope quiver:refresh-active-slices
+  quiver:analyze quiver:plan quiver:graph quiver:next quiver:doctor quiver:ai:onboard quiver:ai:plan quiver:ai:execute-slice quiver:ai:pr quiver:ai:doctor quiver:migrate quiver:start-slice quiver:check-slice quiver:check-pr quiver:check-handoff check-handoff quiver:cleanup-slice quiver:check-scope quiver:refresh-active-slices
 
 printf 'keep me\n' >> "$release_target/docs/SEARCH.md"
 rm "$release_target/docs/AI_ONBOARDING_PROMPT.md"

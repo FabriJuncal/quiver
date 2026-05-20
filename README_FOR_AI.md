@@ -10,7 +10,7 @@ Do not recommend global installation; use `npx` or a project-local devDependency
 The post-init contract is validated with `npx create-quiver doctor` from the project root.
 If the project already exists from an older Quiver version and was previously initialized by Quiver, run `npx create-quiver migrate` before `analyze` from the project root.
 If the project was never initialized by Quiver, do not use `migrate` as bootstrap; run `npx create-quiver --name "Project Name"` first.
-Generated projects also get `quiver:*` npm scripts that call the Node CLI directly; prefer those for repeatable project workflows, including `quiver:plan` for sequential planning, `quiver:graph` for parallel-level inspection, and `quiver:next` for the next ready slice. Use `quiver:graph --format mermaid` for PR-ready Markdown or `quiver:graph --format dot` for Graphviz source.
+Generated projects also get `quiver:*` npm scripts that call the Node CLI directly; prefer those for repeatable project workflows, including `quiver:plan` for sequential planning, `quiver:graph` for parallel-level inspection, `quiver:next` for the next ready slice, and the AI family `quiver:ai:onboard`, `quiver:ai:plan`, `quiver:ai:execute-slice`, `quiver:ai:pr`, and `quiver:ai:doctor`. Use `quiver:graph --format mermaid` for PR-ready Markdown or `quiver:graph --format dot` for Graphviz source.
 Maintain release notes and package publishing with `scripts/release-quiver.sh`.
 The primary generated project context for agents is `docs/AI_CONTEXT.md`.
 The project map is the single source of truth for stack, package manager, commands, and file hints: `docs/PROJECT_MAP.md`.

@@ -181,7 +181,8 @@ assert_contains "README.md" "npx create-quiver next"
 assert_contains "README.md" "graph --format mermaid"
 assert_contains "README.md" "graph --format dot"
 assert_contains "README.md" "next --all-ready"
-assert_contains "README.md" "Read docs/AI_ONBOARDING_PROMPT.md and execute it."
+assert_contains "README.md" "Lee \`docs/AI_ONBOARDING_PROMPT.md\` y ejecútalo"
+assert_contains "README.md" "npm run quiver:ai:onboard"
 assert_contains "README.md" "Context docs were reviewed before the first slice"
 assert_contains "README.md" "Upgrading Existing Projects"
 assert_contains "README.md" "npx create-quiver migrate"
@@ -211,7 +212,9 @@ assert_contains "docs/ai/DEEP.md" "What Belongs Here"
 assert_contains "docs/AI_ONBOARDING_PROMPT.md" "AI Onboarding Prompt"
 assert_contains "docs/AI_ONBOARDING_PROMPT.md" "docs/PROJECT_SCAN.json"
 assert_contains "docs/AI_ONBOARDING_PROMPT.md" "docs/PROJECT_MAP.md"
-assert_contains "docs/AI_ONBOARDING_PROMPT.md" "Do not modify product source code"
+assert_contains "docs/AI_ONBOARDING_PROMPT.md" "No modifiques código de producto"
+assert_contains "docs/AI_ONBOARDING_PROMPT.md" "Planner"
+assert_contains "docs/AI_ONBOARDING_PROMPT.md" "Executor"
 assert_contains "specs/$project_slug/slices/slice-template/slice.json" "// \"depends_on\": ["
 assert_contains "specs/$project_slug/slices/slice-template/slice.json" "// \"parallel_safe\": \"never\""
 assert_contains "specs/$project_slug/slices/slice-template/slice.json" "// \"parallel_safe_reason\": \"Explain why this slice cannot run in parallel.\""
@@ -249,6 +252,11 @@ const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
 const required = [
   'quiver:analyze',
   'quiver:doctor',
+  'quiver:ai:onboard',
+  'quiver:ai:plan',
+  'quiver:ai:execute-slice',
+  'quiver:ai:pr',
+  'quiver:ai:doctor',
   'quiver:migrate',
   'quiver:next',
   'quiver:start-slice',

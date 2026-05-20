@@ -1,0 +1,54 @@
+{
+  "slice_id": "slice-00-spec-foundation",
+  "ticket": "QUIVER-20-00",
+  "type": "docs",
+  "title": "Commit AI CLI orchestration spec foundation",
+  "objective": "Create and commit the documentation foundation for the AI CLI orchestration spec before any implementation slice starts.",
+  "description": "Add the spec, status, execution plan, PR body, slice definitions, execution briefs, and closure briefs for the full Quiver v20 AI CLI orchestration work.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "ai-cli-orchestration",
+    "branch_name": "feature/QUIVER-20-ai-cli-orchestration"
+  },
+  "files": [
+    "specs/quiver-v20-ai-cli-orchestration/SPEC.md",
+    "specs/quiver-v20-ai-cli-orchestration/STATUS.md",
+    "specs/quiver-v20-ai-cli-orchestration/EVIDENCE_REPORT.md",
+    "specs/quiver-v20-ai-cli-orchestration/EXECUTION_PLAN.md",
+    "specs/quiver-v20-ai-cli-orchestration/pr.md",
+    "specs/quiver-v20-ai-cli-orchestration/slices/**"
+  ],
+  "depends_on": [],
+  "parallel_safe": "never",
+  "parallel_safe_reason": "slice-00 is the mandatory documentation foundation and must land before every implementation slice.",
+  "must": [
+    "Create SPEC.md with approved requirements, acceptance criteria, scope, risks, and technical plan.",
+    "Create STATUS.md with execution rules and open items.",
+    "Create EVIDENCE_REPORT.md for slice-level evidence tracking.",
+    "Create EXECUTION_PLAN.md with sequential and parallel slice guidance.",
+    "Create pr.md following the repository GitFlow PR structure.",
+    "Create slice.json, EXECUTION_BRIEF.md, and CLOSURE_BRIEF.md for every planned slice.",
+    "Do not modify product code."
+  ],
+  "not_included": [
+    "Implementing quiver ai commands.",
+    "Changing CLI runtime code.",
+    "Changing package scripts or generated templates."
+  ],
+  "acceptance": [
+    "The spec directory exists under specs/quiver-v20-ai-cli-orchestration.",
+    "slice-00 exists and every later slice depends on it directly or indirectly.",
+    "Every slice has slice.json, EXECUTION_BRIEF.md, and CLOSURE_BRIEF.md.",
+    "pr.md exists for the spec.",
+    "All slice.json files parse as valid JSON.",
+    "No product code is modified by slice-00."
+  ],
+  "tests": [
+    "git diff --check",
+    "find specs/quiver-v20-ai-cli-orchestration -name 'slice.json' -print -exec node -e \"JSON.parse(require('fs').readFileSync(process.argv[1], 'utf8'))\" {} \\;"
+  ],
+  "estimated_hours": 1.5,
+  "status": "ready",
+  "blocked_reason": null
+}

@@ -1,0 +1,65 @@
+{
+  "slice_id": "slice-06-ai-execute-slice-scope-enforcement",
+  "ticket": "QUIVER-20-06",
+  "type": "feature",
+  "title": "Add executor command with scope enforcement",
+  "objective": "Allow a low-cost executor agent to run a slice using minimal context, then verify that changes stayed inside the declared handoff scope.",
+  "description": "Implement quiver ai execute-slice with provider selection, executor role defaults, slice context pack, pre-run validation, post-run git diff inspection, and check-scope integration.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "ai-execute-slice-scope-enforcement",
+    "branch_name": "feature/QUIVER-20-06-ai-execute-slice-scope-enforcement"
+  },
+  "files": [
+    "src/create-quiver/commands/ai.js",
+    "src/create-quiver/index.js",
+    "src/create-quiver/lib/ai/executor.js",
+    "src/create-quiver/lib/ai/context-packs.js",
+    "src/create-quiver/lib/scope.js",
+    "tests/commands/ai-execute-slice.test.js",
+    "tests/lib/ai-executor.test.js"
+  ],
+  "depends_on": [
+    "slice-01-ai-provider-runner",
+    "slice-02-context-packs-token-budget",
+    "slice-05-execution-plan-parallel-worktrees"
+  ],
+  "parallel_safe": "after_dependencies",
+  "parallel_safe_reason": "Requires provider runner, context packs, and execution planning.",
+  "must": [
+    "Add npx create-quiver ai execute-slice.",
+    "Default role to executor and context to slice or minimal.",
+    "Require --slice path.",
+    "Require slice.json and EXECUTION_BRIEF.md.",
+    "Build an executor prompt from only the slice context pack.",
+    "Allow executor to modify code directly within declared scope.",
+    "Capture git diff before and after execution.",
+    "Run scope validation after execution.",
+    "Report scope violations clearly and fail the command."
+  ],
+  "not_included": [
+    "Automatically committing the slice.",
+    "Automatically fixing scope violations.",
+    "Running multiple executors concurrently."
+  ],
+  "acceptance": [
+    "execute-slice fails if slice.json is missing.",
+    "execute-slice fails if EXECUTION_BRIEF.md is missing.",
+    "execute-slice --dry-run prints minimal context selection without provider execution.",
+    "Post-run validation detects files outside the slice file list.",
+    "Executor prompt does not include full onboarding context.",
+    "Provider failure exits non-zero and preserves the provider error summary."
+  ],
+  "tests": [
+    "node --test tests/commands/ai-execute-slice.test.js tests/lib/ai-executor.test.js",
+    "npm run smoke:create-quiver",
+    "git diff --check"
+  ],
+  "estimated_hours": 6,
+  "actual_hours": 5,
+  "started_at": "2026-05-19T20:01:48-0300",
+  "completed_at": "2026-05-19T20:01:48-0300",
+  "status": "completed",
+  "blocked_reason": null
+}

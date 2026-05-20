@@ -67,11 +67,21 @@ Actúa como asistente de onboarding de IA para este proyecto. Tu objetivo es com
 Usa el menor contexto que todavía permita resolver la tarea:
 
 - **Onboarding:** usa mapas y metadatos primero. Lee `docs/PROJECT_SCAN.json` y `docs/PROJECT_MAP.md` antes de abrir archivos fuente. Después usa `docs/AI_CONTEXT.md`, `docs/CONTEXTO.md` y `docs/WORKFLOW.md` para completar vacíos.
+- **Planner:** usa contexto amplio solo para onboarding y planificación. El planner genera criterios de aceptación, plan técnico, specs, slices, handoffs y cuerpo de PR con aprobación humana entre fases.
+- **Executor:** usa contexto mínimo del slice. El executor parte de `slice.json` y `EXECUTION_BRIEF.md`, puede modificar código solo cuando el usuario lo autoriza y debe mantenerse dentro de `slice.json.files`.
 - **Implementación:** no implementes durante onboarding salvo autorización explícita. Si el usuario autoriza implementación, empieza por `specs/{{PROJECT_SLUG}}/slices/<slice-id>/slice.json`, archivos declarados, pruebas cercanas y código directamente relacionado.
 - **Review:** empieza por `git diff` y el alcance del slice antes de abrir archivos completos.
 - **Debug:** empieza por el comando, exit code, primer error relevante, stacktrace y código más cercano al cambio.
 
 Prefiere resúmenes, deltas y metadatos antes que lecturas completas cuando sean suficientes.
+
+Si usás los comandos de IA de Quiver, empezá con `--dry-run` para revisar provider, rol, context pack y transporte de prompt antes de ejecutar:
+
+```bash
+npm run quiver:ai:onboard -- --dry-run
+npm run quiver:ai:plan -- --phase acceptance --input requirements.md --dry-run
+npm run quiver:ai:execute-slice -- --slice specs/{{PROJECT_SLUG}}/slices/<slice-id>/slice.json --dry-run
+```
 
 ## Tareas
 

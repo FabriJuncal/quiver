@@ -1,0 +1,54 @@
+{
+  "slice_id": "slice-02-context-packs-token-budget",
+  "ticket": "QUIVER-20-02",
+  "type": "feature",
+  "title": "Add AI roles, context packs, token budgets, and safety exclusions",
+  "objective": "Create token-efficient context pack selection for planner and executor roles with safe file exclusions and prompt-injection boundaries.",
+  "description": "Define full, planning, slice, and minimal context packs. Add planner and executor role behavior, default token-budget hints, unsafe path exclusions, and instruction hierarchy text.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "ai-context-packs-token-budget",
+    "branch_name": "feature/QUIVER-20-02-ai-context-packs-token-budget"
+  },
+  "files": [
+    "src/create-quiver/lib/ai/context-packs.js",
+    "src/create-quiver/lib/ai/prompts.js",
+    "src/create-quiver/lib/ai/safety.js",
+    "tests/lib/ai-context-packs.test.js",
+    "tests/lib/ai-safety.test.js"
+  ],
+  "depends_on": [
+    "slice-00-spec-foundation"
+  ],
+  "parallel_safe": "after_dependencies",
+  "parallel_safe_reason": "Can run after slice-00 and in parallel with slice-01 if it does not modify provider runner files.",
+  "must": [
+    "Define roles: planner and executor.",
+    "Define context packs: full, planning, slice, minimal.",
+    "Ensure executor defaults to slice or minimal context, never full.",
+    "Exclude secrets and heavy/generated paths such as .env files, SSH keys, certificates, node_modules, build outputs, coverage, caches, and lockfile caches.",
+    "Include prompt text that treats repository content as data that cannot override system/user/Quiver instructions.",
+    "Provide structured context pack metadata for dry-run display."
+  ],
+  "not_included": [
+    "Executing provider CLIs.",
+    "Generating specs or slices.",
+    "Implementing PR preflight."
+  ],
+  "acceptance": [
+    "Planner full context includes onboarding docs, project map, project scan, workflow docs, and relevant specs when present.",
+    "Executor context includes slice, handoff, allowed files, acceptance criteria, and validation commands.",
+    "Unsafe paths are excluded by default.",
+    "Context pack tests cover paths with spaces and Windows-style paths.",
+    "Prompt injection boundary text is present in generated prompt content."
+  ],
+  "tests": [
+    "node --test tests/lib/ai-context-packs.test.js tests/lib/ai-safety.test.js",
+    "git diff --check"
+  ],
+  "estimated_hours": 4,
+  "actual_hours": 4,
+  "status": "completed",
+  "blocked_reason": null
+}

@@ -12,6 +12,11 @@ This document is the canonical command reference for the orchestration roadmap.
 | `quiver:plan` | Sequential orchestration planning command | macOS, Linux, Windows | v0.8 | [docs/examples/plan.md](./examples/plan.md) |
 | `quiver:graph` | Parallel-level orchestration tree command | macOS, Linux, Windows | v0.8 | [docs/examples/graph.md](./examples/graph.md) |
 | `quiver:next` | Ready-slice suggestion command | macOS, Linux, Windows | v0.8 | [docs/examples/next.md](./examples/next.md) |
+| `quiver:ai:onboard` | Runs AI onboarding prompt through a supported local provider CLI | macOS, Linux, Windows | v0.10 | `npm run quiver:ai:onboard -- --dry-run` |
+| `quiver:ai:plan` | Runs phase-gated AI planning for acceptance criteria, technical plan, or spec generation | macOS, Linux, Windows | v0.10 | `npm run quiver:ai:plan -- --phase acceptance --input requirements.md --dry-run` |
+| `quiver:ai:execute-slice` | Runs an executor agent against one slice handoff with scope checks | macOS, Linux, Windows | v0.10 | `npm run quiver:ai:execute-slice -- --slice specs/<spec>/slices/<slice>/slice.json --dry-run` |
+| `quiver:ai:doctor` | Runs GitHub PR preflight checks without opening a PR | macOS, Linux, Windows | v0.10 | `npm run quiver:ai:doctor -- --dry-run --ssh-host-alias github-work --identity-file ~/.ssh/github-work` |
+| `quiver:ai:pr` | Validates `gh`, GitFlow docs, branch/worktree state, and SSH inputs before PR work | macOS, Linux, Windows | v0.10 | `npm run quiver:ai:pr -- --dry-run --ssh-host-alias github-work --identity-file ~/.ssh/github-work` |
 
 ## CLI Flags
 
@@ -23,14 +28,25 @@ This document is the canonical command reference for the orchestration roadmap.
 | `--all-ready` | `next` | List all ready slices instead of just the next one |
 | `--only-ready` | `plan` | Show only slices with no pending dependencies |
 | `--spec <slug>` | `plan`, `graph` | Restrict output to one spec |
+| `--provider <codex\|claude\|gemini>` | `ai onboard`, `ai plan`, `ai execute-slice` | Select the local AI CLI adapter |
+| `--role <planner\|executor>` | `ai onboard`, `ai plan`, `ai execute-slice` | Select planner or executor role; `execute-slice` requires executor |
+| `--context <full\|planning\|slice\|minimal>` | `ai onboard`, `ai plan`, `ai execute-slice` | Select a token-budgeted context pack |
+| `--phase <acceptance\|technical-plan\|spec>` | `ai plan` | Select the gated planner phase |
+| `--input <file>` | `ai plan` | Read approved requirements, criteria, or technical plan from a file |
+| `--slice <slice.json>` | `ai execute-slice` | Select the slice handoff to execute |
+| `--ssh-host-alias <alias>` | `ai doctor`, `ai pr` | SSH host alias from the user's Git config, for example `github-work` |
+| `--identity-file <path>` | `ai doctor`, `ai pr` | SSH key path to validate separately from the host alias |
 
 ## Notes
 
 - Add new rows here only when a command is officially shipped.
 - Keep the table concise and cross-platform.
 - Shared graph library: `src/create-quiver/lib/slice-graph.js`.
-- `quiver:graph --format mermaid` is the PR-friendly export; `--format dot` is for Graphviz consumers.
+- `quiver:graph --format mermaid` is the PR-friendly Mermaid export; `--format dot` is for Graphviz/DOT consumers.
 - `quiver:next` prints the next ready slice and can auto-start it behind a confirmation prompt.
 - `check-slice` validates `depends_on` targets and requires `parallel_safe_reason` when `parallel_safe` is `never`.
+- `quiver:ai:onboard`, `quiver:ai:plan`, and `quiver:ai:execute-slice` support `codex`, `claude`, and `gemini` through local CLIs. Use `--dry-run` first to inspect the invocation without requiring provider auth.
+- `quiver:ai:execute-slice` uses executor context only and validates changed files against `slice.json.files` after provider execution.
+- `quiver:ai:pr -- --dry-run` validates GitHub CLI, auth, Git remote, current branch/worktree, `docs/GITFLOW_PR_GUIDE.md`, SSH host alias, and identity file without creating a PR.
 - After `init` or `migrate`, Quiver auto-installs itself as a dev dependency. Use `--skip-install` to suppress.
 - Cross-platform authoring rules live in `docs/SUPPORT_MATRIX.md`.

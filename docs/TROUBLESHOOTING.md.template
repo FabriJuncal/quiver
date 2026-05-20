@@ -82,3 +82,31 @@ Use this guide when a first-run bootstrap or gate check fails. The recovery path
 2. If you are using an intermediate build and need a temporary bridge, use WSL2 or Git Bash manually.
 3. Do not expect Quiver to install Bash, WSL, or MSYS2 for you.
 4. Re-run the command after the cross-platform support slices are merged and the CI matrix is green.
+
+## AI Provider CLI Missing
+
+### Symptom
+
+- `quiver:ai:onboard`, `quiver:ai:plan`, or `quiver:ai:execute-slice` fails before calling the model
+- The error mentions a missing `codex`, `claude`, or `gemini` command
+
+### Recovery
+
+1. Re-run the command with `--dry-run` to validate role, context pack, prompt transport, and paths without provider auth.
+2. Install or authenticate the selected provider CLI outside Quiver.
+3. Use `--provider codex`, `--provider claude`, or `--provider gemini` explicitly if your default is unclear.
+4. Re-run the command from a clean worktree when using `ai execute-slice`.
+
+## GitHub PR Preflight Failure
+
+### Symptom
+
+- `quiver:ai:pr` or `quiver:ai:doctor` reports missing `gh`, failed `gh auth status`, missing `docs/GITFLOW_PR_GUIDE.md`, unsafe branch, dirty worktree, or missing SSH identity file
+
+### Recovery
+
+1. Install `gh` for your OS and run `gh auth login`.
+2. Confirm `docs/GITFLOW_PR_GUIDE.md` exists in the project.
+3. Commit or stash unrelated changes before PR preflight.
+4. Pass the SSH host alias and key path separately, for example `--ssh-host-alias github-work --identity-file ~/.ssh/github-work`.
+5. Re-run with `--dry-run`; Quiver validates the setup but does not open a PR in dry-run mode.

@@ -11,10 +11,21 @@ This guide explains how to open and review spec PRs without breaking the canonic
 
 - One slice = one commit
 - One spec = one PR
+- One spec should be worked from one dedicated worktree/branch.
 - Slice numbers reset per spec. `slice-01` is the first slice in each spec.
 - Do not commit directly to `develop`
 - Open and merge the documentation PR before the first slice starts execution
 - Do not open the spec PR before the documentation PR is merged
+
+## AI PR Preflight
+
+Before asking an AI agent to prepare PR work, validate the local setup:
+
+```bash
+npm run quiver:ai:pr -- --dry-run --ssh-host-alias github-work --identity-file ~/.ssh/github-work
+```
+
+Use the SSH host alias from your Git remote separately from the key path. Quiver validates `gh`, `gh auth status`, the remote, branch/worktree state, this guide, and the identity file. It does not install `gh`, edit SSH config, or create a PR in dry-run mode.
 
 ## Review Guidance
 

@@ -34,6 +34,10 @@ function naturalNumberFromSliceId(sliceId) {
   return match ? Number.parseInt(match[1], 10) : Number.POSITIVE_INFINITY;
 }
 
+function isFoundationSliceId(sliceId) {
+  return naturalNumberFromSliceId(sliceId) === 0;
+}
+
 function compareSliceRefs(a, b) {
   const left = String(a || '');
   const right = String(b || '');
@@ -448,6 +452,8 @@ module.exports = {
   computeLevels,
   detectFileConflicts,
   inferDependencies,
+  isFoundationSliceId,
   readAllSlices,
+  naturalNumberFromSliceId,
   topoSort,
 };

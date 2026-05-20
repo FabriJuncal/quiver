@@ -1,0 +1,139 @@
+const { filterContextPaths, shouldExcludeContextPath } = require('./safety');
+const { buildRolePrompt } = require('./prompts');
+
+const ROLES = Object.freeze({
+  PLANNER: 'planner',
+  EXECUTOR: 'executor',
+});
+
+const CONTEXT_PACKS = Object.freeze({
+  full: Object.freeze({
+    name: 'full',
+    description: 'Broad planner onboarding context.',
+    role: ROLES.PLANNER,
+    tokenBudgetHint: 14000,
+    roleGuidance: 'Use broad onboarding context, project map, workflow docs, and relevant specs.',
+  }),
+  planning: Object.freeze({
+    name: 'planning',
+    description: 'Focused planner context for acceptance criteria and technical planning.',
+    role: ROLES.PLANNER,
+    tokenBudgetHint: 8000,
+    roleGuidance: 'Use project map, workflow docs, and only the specs needed for the current planning step.',
+  }),
+  slice: Object.freeze({
+    name: 'slice',
+    description: 'Executor context for a single slice handoff.',
+    role: ROLES.EXECUTOR,
+    tokenBudgetHint: 3200,
+    roleGuidance: 'Use slice handoff, allowed files, acceptance criteria, and validation commands only.',
+  }),
+  minimal: Object.freeze({
+    name: 'minimal',
+    description: 'Smallest executor context for narrowly-scoped tasks.',
+    role: ROLES.EXECUTOR,
+    tokenBudgetHint: 1200,
+    roleGuidance: 'Use the smallest safe set of slice details and avoid onboarding context.',
+  }),
+});
+
+const DEFAULT_CONTEXT_PACK_BY_ROLE = Object.freeze({
+  [ROLES.PLANNER]: 'planning',
+  [ROLES.EXECUTOR]: 'slice',
+});
+
+const PACK_ORDER = ['full', 'planning', 'slice', 'minimal'];
+
+function normalizeRole(role) {
+  const value = String(role || '').trim().toLowerCase();
+  if (value === ROLES.PLANNER || value === ROLES.EXECUTOR) {
+    return value;
+  }
+  throw new Error(`create-quiver: unsupported role '${role}'. Expected planner or executor.`);
+}
+
+function normalizePackName(packName) {
+  const value = String(packName || '').trim().toLowerCase();
+  if (CONTEXT_PACKS[value]) {
+    return value;
+  }
+  throw new Error(`create-quiver: unsupported context pack '${packName}'. Expected one of: ${PACK_ORDER.join(', ')}`);
+}
+
+function getDefaultContextPack(role) {
+  const normalizedRole = normalizeRole(role);
+  return DEFAULT_CONTEXT_PACK_BY_ROLE[normalizedRole];
+}
+
+function resolveContextPack({ role, packName } = {}) {
+  const normalizedRole = normalizeRole(role);
+  const defaultPack = getDefaultContextPack(normalizedRole);
+  const resolvedPackName = packName ? normalizePackName(packName) : defaultPack;
+
+  if (normalizedRole === ROLES.EXECUTOR && resolvedPackName === 'full') {
+    throw new Error('create-quiver: executor context cannot use the full pack by default.');
+  }
+
+  const pack = CONTEXT_PACKS[resolvedPackName];
+  if (pack.role !== normalizedRole && !(normalizedRole === ROLES.PLANNER && resolvedPackName === 'slice')) {
+    throw new Error(`create-quiver: context pack '${resolvedPackName}' is not valid for role '${normalizedRole}'.`);
+  }
+
+  return {
+    role: normalizedRole,
+    packName: resolvedPackName,
+    defaultPack,
+    isDefault: resolvedPackName === defaultPack,
+    tokenBudgetHint: pack.tokenBudgetHint,
+    pack,
+  };
+}
+
+function buildPackSelection({ role, packName, paths = [] } = {}) {
+  const resolved = resolveContextPack({ role, packName });
+  const { included, excluded } = filterContextPaths(paths);
+
+  return {
+    ...resolved,
+    includedPaths: included,
+    excludedPaths: excluded,
+  };
+}
+
+function buildContextPackMetadata(options = {}) {
+  const selection = buildPackSelection(options);
+
+  return {
+    role: selection.role,
+    packName: selection.packName,
+    isDefault: selection.isDefault,
+    tokenBudgetHint: selection.tokenBudgetHint,
+    description: selection.pack.description,
+    includedPaths: selection.includedPaths,
+    excludedPaths: selection.excludedPaths,
+    prompt: buildRolePrompt(selection.role, selection.pack),
+  };
+}
+
+function selectSafePaths(paths, options = {}) {
+  const selection = buildPackSelection({ ...options, paths });
+  return {
+    included: selection.includedPaths,
+    excluded: selection.excludedPaths,
+  };
+}
+
+module.exports = {
+  CONTEXT_PACKS,
+  DEFAULT_CONTEXT_PACK_BY_ROLE,
+  PACK_ORDER,
+  ROLES,
+  buildContextPackMetadata,
+  buildPackSelection,
+  getDefaultContextPack,
+  normalizePackName,
+  normalizeRole,
+  resolveContextPack,
+  selectSafePaths,
+  shouldExcludeContextPath,
+};
