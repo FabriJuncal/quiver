@@ -511,6 +511,23 @@ npm install --save-dev create-quiver
 
 If you need to target another directory from outside the project, pass \`--dir\` explicitly. Quote paths that contain spaces.
 
+## AI-First Workflow
+
+Quiver is designed for an AI-first workflow: a planner agent reads the project context and prepares acceptance criteria, technical plans, specs, slices, and PR notes; executor agents then work one approved slice at a time with minimal context.
+
+Start with dry-runs so you can inspect the provider, role, context pack, and invocation before spending model tokens:
+
+\`\`\`bash
+npm run quiver:ai:onboard -- --dry-run
+npm run quiver:ai:plan -- --phase acceptance --input requirements.md --dry-run
+npm run quiver:ai:plan -- --phase technical-plan --input acceptance-approved.md --dry-run
+npm run quiver:ai:plan -- --phase spec --input technical-plan-approved.md --dry-run
+npm run quiver:ai:execute-slice -- --slice specs/$PROJECT_SLUG/slices/slice-01/slice.json --dry-run
+npm run quiver:ai:pr -- --dry-run --ssh-host-alias github-work --identity-file ~/.ssh/github-work
+\`\`\`
+
+Remove \`--dry-run\` only after the phase output is approved and the local provider CLI is ready.
+
 ## Project NPM Scripts
 
 The generated project includes \`quiver:*\` npm scripts that call the Node CLI and are the preferred repeatable workflow:
