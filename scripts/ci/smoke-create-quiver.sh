@@ -210,8 +210,8 @@ if [[ "$doctor_after_analyze" != *"npx create-quiver next"* ]]; then
   echo "Doctor output did not recommend the next command" >&2
   exit 1
 fi
-if [[ "$doctor_after_analyze" != *"npx create-quiver start-slice"* ]]; then
-  echo "Doctor output did not use the Node slice command" >&2
+if [[ "$doctor_after_analyze" != *"Create real specs and slices only after acceptance criteria and the technical plan are approved."* ]]; then
+  echo "Doctor output did not explain the no-spec next step" >&2
   exit 1
 fi
 if [[ "$doctor_after_analyze" == *"bash "* ]]; then
@@ -735,6 +735,8 @@ NODE
 rm "$legacy_target/.quiver/state.json"
 rm "$legacy_target/docs/AI_ONBOARDING_PROMPT.md"
 rm "$legacy_target/tools/scripts/migrate-project.sh"
+(cd "$legacy_target" && node "$cli" analyze >/dev/null)
+cp "$legacy_target/.quiver/scans/PROJECT_SCAN.json" "$legacy_target/docs/PROJECT_SCAN.json"
 
 doctor_before_migrate_output="$(cd "$legacy_target" && node "$cli" doctor 2>&1 || true)"
 
@@ -752,6 +754,14 @@ migrate_output="$(cd "$legacy_target" && node "$cli" migrate --skip-install)"
 
 if [[ "$migrate_output" != *"Quiver migration completed for"* ]]; then
   echo "Migrate output did not report completion" >&2
+  exit 1
+fi
+if [[ "$migrate_output" != *"Legacy layout detected and preserved:"* ]]; then
+  echo "Migrate output did not report legacy layout detection" >&2
+  exit 1
+fi
+if [[ "$migrate_output" != *"docs/PROJECT_SCAN.json"* ]]; then
+  echo "Migrate output did not mention the legacy scan path" >&2
   exit 1
 fi
 
@@ -781,6 +791,7 @@ assert_file "$legacy_target/docs/examples/next.md"
 assert_contains "$legacy_target/docs/COMMANDS.md" "src/create-quiver/lib/slice-graph.js"
 assert_contains "$legacy_target/docs/SUPPORT_MATRIX.md" "## Cross-Platform Authoring Rules"
 assert_contains "$legacy_target/specs/legacy-project/slices/slice-template/slice.json" "// \"depends_on\": ["
+assert_file "$legacy_target/docs/PROJECT_SCAN.json"
 assert_front_matter "$legacy_target/docs/AI_CONTEXT.md"
 assert_front_matter "$legacy_target/docs/AI_ONBOARDING_PROMPT.md"
 assert_front_matter "$legacy_target/docs/CONTEXTO.md"

@@ -163,6 +163,40 @@ test('init --full preserves the historical compatibility layout explicitly', () 
   }
 });
 
+test('init --legacy-scripts writes compatibility wrappers and package scripts without full extras', () => {
+  const { dir, cleanup } = makeTmpDir();
+  const target = path.join(dir, 'target');
+  try {
+    runCli(['init', '--name', 'Legacy Scripts Project', '--dir', target, '--legacy-scripts', '--skip-install']);
+
+    assert.equal(fs.existsSync(path.join(target, 'tools', 'scripts', 'start-slice.sh')), true);
+    assert.equal(fs.existsSync(path.join(target, 'tools', 'scripts', 'migrate-project.sh')), true);
+    assert.equal(fs.existsSync(path.join(target, 'docs-template')), false);
+
+    const pkg = readPackageJson(target);
+    assert.equal(typeof pkg.scripts['start:slice'], 'string');
+    assert.equal(typeof pkg.scripts.migrate, 'string');
+    assert.equal(typeof pkg.scripts['quiver:check-slice'], 'string');
+  } finally {
+    cleanup();
+  }
+});
+
+test('init --include-templates exports packaged templates under .quiver/templates only', () => {
+  const { dir, cleanup } = makeTmpDir();
+  const target = path.join(dir, 'target');
+  try {
+    runCli(['init', '--name', 'Templates Project', '--dir', target, '--include-templates', '--skip-install']);
+
+    assert.equal(fs.existsSync(path.join(target, '.quiver', 'templates')), true);
+    assert.equal(fs.existsSync(path.join(target, '.quiver', 'templates', 'package.template.json')), true);
+    assert.equal(fs.existsSync(path.join(target, 'docs-template')), false);
+    assert.equal(fs.existsSync(path.join(target, 'tools', 'scripts')), false);
+  } finally {
+    cleanup();
+  }
+});
+
 test('init preserves existing project files by default', () => {
   const { dir, cleanup } = makeTmpDir();
   const target = path.join(dir, 'target');
@@ -175,6 +209,28 @@ test('init preserves existing project files by default', () => {
 
     assert.equal(fs.readFileSync(path.join(target, 'README.md'), 'utf8'), '# Keep README\n');
     assert.equal(fs.readFileSync(path.join(target, 'docs', 'COMMANDS.md'), 'utf8'), '# Keep Commands\n');
+  } finally {
+    cleanup();
+  }
+});
+
+test('migrate reports legacy layout paths and preserves existing legacy files', () => {
+  const { dir, cleanup } = makeTmpDir();
+  const target = path.join(dir, 'target');
+  try {
+    runCli(['init', '--name', 'Legacy Project', '--dir', target, '--full', '--skip-install']);
+    fs.mkdirSync(path.join(target, 'docs'), { recursive: true });
+    fs.writeFileSync(path.join(target, 'docs', 'PROJECT_SCAN.json'), '{"legacy":true}\n');
+    fs.writeFileSync(path.join(target, 'docs', 'SEARCH.md'), 'keep me\n');
+
+    const output = runCli(['migrate', '--dir', target, '--skip-install']);
+
+    assert.match(output, /Legacy layout detected and preserved:/);
+    assert.match(output, /docs-template\//);
+    assert.match(output, /tools\/scripts\//);
+    assert.match(output, /docs\/PROJECT_SCAN\.json/);
+    assert.equal(fs.readFileSync(path.join(target, 'docs', 'SEARCH.md'), 'utf8'), 'keep me\n');
+    assert.equal(fs.readFileSync(path.join(target, 'docs', 'PROJECT_SCAN.json'), 'utf8'), '{"legacy":true}\n');
   } finally {
     cleanup();
   }

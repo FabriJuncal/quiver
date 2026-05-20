@@ -19,7 +19,6 @@
     "scripts/migrate-project.sh",
     "scripts/ci/smoke-create-quiver.sh",
     "scripts/ci/smoke-cross-platform.js",
-    "tests/commands/migrate.test.js",
     "tests/commands/init-profiles.test.js",
     "specs/quiver-v21-ai-first-layout/STATUS.md",
     "specs/quiver-v21-ai-first-layout/EVIDENCE_REPORT.md",
@@ -53,13 +52,15 @@
     "`--full` covers optional broad assets intentionally."
   ],
   "tests": [
-    "node --test tests/commands/migrate.test.js tests/commands/init-profiles.test.js",
-    "npm run smoke:create-quiver",
+    "node --test tests/commands/init-profiles.test.js tests/lib/init-docs.test.js",
+    "node --test tests/**/*.test.js",
+    "bash scripts/ci/smoke-init-docs.sh",
+    "bash scripts/ci/smoke-create-quiver.sh",
     "node scripts/ci/smoke-cross-platform.js",
     "git diff --check"
   ],
   "estimated_hours": 7,
-  "actual_hours": null,
-  "status": "draft",
+  "actual_hours": 6,
+  "status": "completed",
   "blocked_reason": null
 }

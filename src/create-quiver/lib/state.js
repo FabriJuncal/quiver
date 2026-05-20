@@ -61,6 +61,21 @@ function hasLegacyQuiverInitializationEvidence(projectRoot) {
     && hasGeneratedProjectSpec(projectRoot);
 }
 
+function inspectLegacyMigrationLayout(projectRoot) {
+  const candidates = [
+    'docs-template/',
+    'tools/scripts/',
+    'docs/PROJECT_SCAN.json',
+  ];
+
+  const detected = candidates.filter((relativePath) => fs.existsSync(path.join(projectRoot, relativePath)));
+
+  return {
+    hasLegacyLayout: detected.length > 0,
+    legacyPaths: detected,
+  };
+}
+
 function hasQuiverInitializationEvidence(projectRoot) {
   const state = readState(projectRoot);
   return hasInitializedStateMetadata(state) || hasLegacyQuiverInitializationEvidence(projectRoot);
@@ -130,6 +145,7 @@ module.exports = {
   hasGeneratedProjectSpec,
   hasInitializedStateMetadata,
   hasLegacyQuiverInitializationEvidence,
+  inspectLegacyMigrationLayout,
   hasQuiverInitializationEvidence,
   readState,
   statePath,

@@ -23,6 +23,7 @@ const {
 const { resolveTemplateRoot } = require('./lib/template-resolver');
 const {
   hasQuiverInitializationEvidence,
+  inspectLegacyMigrationLayout,
   readState,
   updateStateForAnalyze,
   updateStateForMigrate,
@@ -1325,6 +1326,7 @@ function runMigrate(targetDir, options = {}) {
   const projectName = packageJson.name || path.basename(projectRoot) || 'Quiver Project';
   const packageRoot = path.resolve(__dirname, '../..');
   const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'quiver-migrate-'));
+  const legacyLayout = inspectLegacyMigrationLayout(projectRoot);
 
   try {
     const templateRoot = packTemplate(packageRoot, tempRoot);
@@ -1351,6 +1353,9 @@ function runMigrate(targetDir, options = {}) {
 
     console.log(`Quiver migration completed for ${projectRoot}`);
     console.log('Missing workflow files were restored without overwriting existing project files.');
+    if (legacyLayout.hasLegacyLayout) {
+      console.log(`Legacy layout detected and preserved: ${legacyLayout.legacyPaths.join(', ')}`);
+    }
   } finally {
     fs.rmSync(tempRoot, { recursive: true, force: true });
   }

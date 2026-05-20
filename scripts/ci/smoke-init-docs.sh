@@ -51,6 +51,8 @@ assert_executable() {
 
 default_repo="$smoke_root/default"
 minimal_repo="$smoke_root/minimal"
+legacy_scripts_repo="$smoke_root/legacy-scripts"
+templates_repo="$smoke_root/templates"
 
 node "$cli" init --name "Default Project" --dir "$default_repo" --skip-install >/dev/null
 assert_file "$default_repo/README.md"
@@ -66,6 +68,28 @@ assert_file "$default_repo/.quiver/.gitignore"
 assert_missing "$default_repo/docs-template"
 assert_missing "$default_repo/tools/scripts"
 assert_missing "$default_repo/specs/default-project"
+
+node "$cli" init --name "Legacy Scripts Project" --dir "$legacy_scripts_repo" --legacy-scripts --skip-install >/dev/null
+assert_file "$legacy_scripts_repo/tools/scripts/start-slice.sh"
+assert_file "$legacy_scripts_repo/tools/scripts/migrate-project.sh"
+assert_missing "$legacy_scripts_repo/docs-template"
+assert_missing "$legacy_scripts_repo/.quiver/templates"
+
+node - "$legacy_scripts_repo/package.json" <<'NODE'
+const fs = require('fs');
+const pkg = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
+const required = ['start:slice', 'migrate', 'quiver:check-slice'];
+const missing = required.filter((name) => typeof pkg.scripts?.[name] !== 'string');
+if (missing.length > 0) {
+  console.error(`Legacy scripts profile is missing npm scripts: ${missing.join(', ')}`);
+  process.exit(1);
+}
+NODE
+
+node "$cli" init --name "Templates Project" --dir "$templates_repo" --include-templates --skip-install >/dev/null
+assert_file "$templates_repo/.quiver/templates/package.template.json"
+assert_missing "$templates_repo/docs-template"
+assert_missing "$templates_repo/tools/scripts"
 
 node - "$default_repo/package.json" <<'NODE'
 const fs = require('fs');

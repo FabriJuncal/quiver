@@ -279,7 +279,7 @@ function runSmoke() {
   const doctorAfter = runNodeCli(newProject, ['doctor']);
   assertContains(doctorAfter, 'Read AGENTS.md, then docs/AI_ONBOARDING_PROMPT.md and execute it.', 'doctor after analyze');
   assertContains(doctorAfter, 'npx create-quiver next', 'doctor after analyze');
-  assertContains(doctorAfter, 'npx create-quiver start-slice', 'doctor after analyze');
+  assertContains(doctorAfter, 'Create real specs and slices only after acceptance criteria and the technical plan are approved.', 'doctor after analyze');
   assertContains(fs.readFileSync(path.join(newProject, 'AGENTS.md'), 'utf8'), '## Reading Budget', 'AGENTS.md');
   assertFile(path.join(newProject, '.quiver', 'scans', 'PROJECT_SCAN.json'));
   assertFile(path.join(newProject, 'docs', 'PROJECT_MAP.md'));
