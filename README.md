@@ -11,7 +11,7 @@ Está pensado para equipos que quieren usar IA de forma ordenada: primero workfl
 Ejecutá Quiver desde la raíz del proyecto donde querés instalar el workflow:
 
 ```bash
-npx create-quiver --name "Mi Proyecto"
+npx create-quiver init --name "Mi Proyecto"
 npx create-quiver analyze
 npx create-quiver doctor
 npx create-quiver ai onboard --dry-run
@@ -23,7 +23,8 @@ Después de eso, revisá:
 - `docs/PROJECT_MAP.md`
 - `docs/AI_CONTEXT.md`
 - `docs/AI_ONBOARDING_PROMPT.md`
-- `specs/<project-slug>/SPEC.md`
+
+La maquinaria interna queda en `.quiver/`. Las specs reales no se crean durante el init: aparecen cuando el planner genera y aprueba una spec con `ai plan --phase spec`.
 
 El flujo normal con IA continúa así:
 
@@ -85,7 +86,7 @@ Usá este camino cuando todavía no existe el proyecto o estás arrancando una c
 ```bash
 mkdir mi-proyecto
 cd mi-proyecto
-npx create-quiver --name "Mi Proyecto"
+npx create-quiver init --name "Mi Proyecto"
 npx create-quiver analyze
 npx create-quiver doctor
 npx create-quiver ai onboard --dry-run
@@ -93,9 +94,9 @@ npx create-quiver ai onboard --dry-run
 
 Qué esperar:
 
-- Quiver crea la estructura base de documentación y specs.
-- Se generan archivos como `AGENTS.md`, `docs/`, `specs/<project-slug>/` y scripts `quiver:*` en `package.json`.
-- `analyze` crea `docs/PROJECT_SCAN.json` y `docs/PROJECT_MAP.md`.
+- Quiver crea un contrato visible chico: `AGENTS.md`, `docs/`, scripts `quiver:*` en `package.json` y configuración interna en `.quiver/`.
+- No crea `docs-template/`, `tools/scripts/` ni una spec placeholder en el flujo default.
+- `analyze` crea el scan crudo en `.quiver/scans/PROJECT_SCAN.json` y el mapa legible en `docs/PROJECT_MAP.md`.
 - `doctor` valida que el contrato inicial esté completo.
 - `ai onboard --dry-run` muestra cómo se incorporaría un agente planner sin ejecutar el provider todavía.
 
@@ -125,7 +126,7 @@ Si hay cambios pendientes, conviene guardarlos, commitearlos o crear una rama de
 Luego inicializá Quiver desde la raíz del proyecto:
 
 ```bash
-npx create-quiver --name "Nombre del Proyecto"
+npx create-quiver init --name "Nombre del Proyecto"
 npx create-quiver analyze
 npx create-quiver doctor
 npx create-quiver ai onboard --dry-run
@@ -134,9 +135,10 @@ git status --short
 
 Qué esperar:
 
-- Quiver agrega documentación, specs, templates, scripts y archivos de soporte.
+- Quiver agrega documentación, scripts `quiver:*` y archivos internos de soporte en `.quiver/`.
 - No deberías mezclar este paso con cambios de producto.
 - `docs/PROJECT_MAP.md` queda como fuente de verdad para stack, package manager, comandos y rutas importantes.
+- Las specs y slices reales se crean después, con `ai plan --phase spec`, cuando ya existen criterios y plan técnico aprobados.
 - El primer trabajo de IA debería ser preparar contexto y planificación, no implementar.
 
 Importante: no uses `migrate` para un proyecto que nunca tuvo Quiver. `migrate` es solo para proyectos previamente inicializados.
@@ -151,8 +153,8 @@ Señales típicas de una instalación previa:
 - `AGENTS.md`
 - `docs/AI_CONTEXT.md`
 - `docs/PROJECT_MAP.md`
-- `docs-template/`
-- `tools/scripts/`
+- `docs-template/` como señal legacy u opcional
+- `tools/scripts/` como señal legacy u opcional
 - scripts `quiver:*` o scripts legacy en `package.json`
 
 Desde la raíz del proyecto:
@@ -229,7 +231,7 @@ No se detectaron archivos `.env`; Quiver no requiere variables de entorno para e
 | `src/create-quiver/commands/` | Comandos `ai`, `graph`, `next` y `plan`. |
 | `src/create-quiver/lib/` | Lógica de análisis, doctor, slices, lifecycle, IA, Git y renderers. |
 | `docs/` | Plantillas que Quiver copia a proyectos destino. |
-| `specs/` | Specs internas del desarrollo de Quiver y templates de specs generadas. |
+| `specs/` | Specs internas del desarrollo de Quiver y templates usados cuando `ai plan --phase spec` crea una spec real. |
 | `scripts/` | Scripts de packaging, release, CI smoke y wrappers legacy. |
 | `tests/` | Tests unitarios y fixtures. |
 | `examples/` | Ejemplo mínimo de spec/slice. |
@@ -256,8 +258,13 @@ Los comandos reales del CLI se ejecutan con `npx create-quiver ...` o, durante d
 
 | Comando | Para qué sirve |
 |---|---|
-| `npx create-quiver --name "Proyecto"` | Inicializa Quiver en un proyecto nuevo o nunca inicializado. |
-| `npx create-quiver analyze` | Genera `docs/PROJECT_SCAN.json` y `docs/PROJECT_MAP.md`. |
+| `npx create-quiver init --name "Proyecto"` | Inicializa Quiver en un proyecto nuevo o nunca inicializado. |
+| `npx create-quiver --name "Proyecto"` | Alias compatible del flujo de init recomendado. |
+| `npx create-quiver init --minimal` | Crea solo el contrato esencial de onboarding. |
+| `npx create-quiver init --full` | Crea el layout amplio de compatibilidad. |
+| `npx create-quiver init --legacy-scripts` | Agrega wrappers Bash legacy bajo `tools/scripts/`. |
+| `npx create-quiver init --include-templates` | Exporta templates empaquetados bajo `.quiver/templates/`. |
+| `npx create-quiver analyze` | Genera `.quiver/scans/PROJECT_SCAN.json` y `docs/PROJECT_MAP.md`. |
 | `npx create-quiver doctor` | Valida que el contrato de Quiver esté completo. |
 | `npx create-quiver migrate` | Actualiza proyectos que ya fueron inicializados con Quiver. |
 | `npx create-quiver plan` | Lista slices pendientes en orden y calcula camino crítico. |
@@ -336,7 +343,7 @@ Notas reales del estado actual:
 | `npm run smoke:tiered-pack` | Smoke de context packs y lifecycle. |
 | `npm run release:quiver` | Release dry-run o publish, según flags. |
 
-`package.json` también contiene scripts legacy como `check:slice`, `check:pr`, `start:slice`, `cleanup:slice` y `migrate` que apuntan a `tools/scripts/*`. En este repo fuente esos archivos viven en `scripts/`; esos wrappers son propios de proyectos generados o requieren revisión antes de usarse acá.
+`package.json` también contiene scripts legacy como `check:slice`, `check:pr`, `start:slice`, `cleanup:slice` y `migrate` que apuntan a `tools/scripts/*`. En proyectos generados esos wrappers aparecen solo cuando se pide compatibilidad con `--legacy-scripts` o el perfil amplio `--full`; en este repo fuente requieren revisión antes de usarse directamente.
 
 ## 🔁 Flujo recomendado
 
@@ -398,10 +405,10 @@ npm view create-quiver version
 ## Información pendiente de confirmar
 
 - `package.json` no declara `engines`; la versión mínima real de Node queda pendiente. La CI usa Node 22.
-- `package.json` está en `0.9.1`, pero `CHANGELOG.md` documenta hasta `0.9.0`.
-- `docs/COMMANDS.md.template` marca algunos comandos de IA como `v0.10`, aunque el código actual los incluye en `0.9.1`.
-- `npm run smoke:tiered-pack` falla actualmente porque espera los textos `Implementation`, `Review` y `Debug` en `docs/AI_ONBOARDING_PROMPT.md`, mientras la plantilla actual usa secciones en español.
-- Los scripts legacy de `package.json` que apuntan a `tools/scripts/*` deben confirmarse para este repo fuente o separarse de los scripts pensados para proyectos generados.
+- `package.json` está en `0.9.0`, igual que `CHANGELOG.md`.
+- `docs/COMMANDS.md.template` marca algunos comandos de IA como `v0.10`, aunque `package.json` todavía está en `0.9.0`; la próxima publicación debe alinear versión y changelog.
+- `npm run smoke:tiered-pack` falla actualmente porque espera que `doctor` sugiera `npx create-quiver start-slice`, pero el layout AI-first sin specs ya no siempre tiene un slice listo para iniciar.
+- Los scripts legacy de `package.json` que apuntan a `tools/scripts/*` deben confirmarse para este repo fuente o separarse de los scripts pensados para proyectos generados con `--legacy-scripts` o `--full`.
 
 ## Licencia
 

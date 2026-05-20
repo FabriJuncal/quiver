@@ -261,7 +261,14 @@ Use \`AGENTS.md\` first, then \`docs/AI_CONTEXT.md\` and \`docs/AI_ONBOARDING_PR
 \`\`\`bash
 npm run quiver:ai:onboard -- --dry-run
 npm run quiver:ai:plan -- --phase acceptance --input requirements.md --dry-run
-npm run quiver:ai:execute-slice -- --slice specs/${projectSlug}/slices/slice-01/slice.json --dry-run
+npm run quiver:ai:plan -- --phase technical-plan --input acceptance-approved.md --dry-run
+npm run quiver:ai:plan -- --phase spec --input technical-plan-approved.md --dry-run
+\`\`\`
+
+When a real spec exists, execute one approved slice at a time:
+
+\`\`\`bash
+npm run quiver:ai:execute-slice -- --slice specs/<spec-slug>/slices/<slice-id>/slice.json --dry-run
 \`\`\`
 
 ## Documentation
@@ -449,7 +456,7 @@ Use \`{{GRAPH_COMMAND}} --format mermaid\` for GitHub-friendly graph embeds or \
 If the project never ran Quiver initialization before, do not use \`migrate\` as bootstrap. Run:
 
 \`\`\`bash
-npx create-quiver --name "Project Name"
+npx create-quiver init --name "Project Name"
 \`\`\`
 
 If your team prefers a pinned local dependency, update the package first and then run the same flow:
@@ -494,6 +501,8 @@ If the work was explicitly transferred through a handoff artifact, read \`specs/
 Record durable decisions in \`docs/DECISIONS.md\` so future AI agents do not re-litigate the same choices.
 
 ## First Slice Workflow
+
+Use this section only for projects generated with the full compatibility layout. In the default AI-first layout, create real specs and slices with \`npx create-quiver ai plan --phase spec\` after acceptance criteria and the technical plan are approved.
 
 1. Review or refine specs/${projectSlug}/SPEC.md.
 2. Create the first slice from specs/${projectSlug}/slices/slice-template/slice.json.

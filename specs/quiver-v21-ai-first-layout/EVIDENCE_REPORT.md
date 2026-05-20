@@ -2,7 +2,7 @@
 
 ## Summary
 
-No implementation evidence yet. This spec is in planning/documentation state.
+Implementation is complete through `slice-07`; final release-readiness validation remains in `slice-08`.
 
 ## Evidence By Slice
 
@@ -15,8 +15,12 @@ No implementation evidence yet. This spec is in planning/documentation state.
 | slice-04 | Completed. Moved raw analyze output to `.quiver/scans/PROJECT_SCAN.json`, kept `docs/PROJECT_MAP.md` visible, added current/legacy scan helpers, and wired context pack metadata plus doctor scan detection to accept the new path with legacy fallback. Evidence: `node --test tests/commands/analyze.test.js tests/lib/project-scan.test.js tests/lib/ai-context-packs.test.js`; `node --test tests/**/*.test.js`; `bash scripts/ci/smoke-create-quiver.sh`; `node scripts/ci/smoke-cross-platform.js`; `git diff --check`. |
 | slice-05 | Completed. Updated doctor so projects initialized with the clean AI-first layout can have no specs yet without failing. Added layout detection for new, legacy, hybrid, and incomplete projects while preserving valid empty states for plan, graph, and next. Evidence: `node --test tests/commands/doctor.test.js tests/lib/doctor.test.js tests/commands/plan.test.js tests/commands/graph.test.js tests/commands/next.test.js`; `node --test tests/**/*.test.js`; `git diff --check`. |
 | slice-06 | Completed. Added non-destructive migrate reporting for legacy `docs-template/`, `tools/scripts/`, and `docs/PROJECT_SCAN.json`, plus explicit optional asset coverage for `--legacy-scripts`, `--include-templates`, and `--full`. Evidence: `node --test tests/commands/init-profiles.test.js tests/lib/init-docs.test.js`; `bash scripts/ci/smoke-init-docs.sh`; `bash scripts/ci/smoke-create-quiver.sh`; `node scripts/ci/smoke-cross-platform.js`; `node --test tests/**/*.test.js`; `git diff --check`. |
-| slice-07 | Pending implementation. |
+| slice-07 | Completed. Aligned root README, AI guide, onboarding/workflow/command templates, generated README text, and smoke assertions with the AI-first layout. Docs now distinguish visible contract from `.quiver/` internals, mark `docs-template/` and `tools/scripts/` as legacy/optional, and point raw scan output to `.quiver/scans/PROJECT_SCAN.json`. Evidence: `node --test tests/commands/init-profiles.test.js tests/lib/init-docs.test.js`; `bash scripts/ci/smoke-init-docs.sh`; `bash scripts/ci/smoke-create-quiver.sh`; `node --test tests/**/*.test.js`; `bash -n scripts/init-docs.sh`; `git diff --check`. |
 | slice-08 | Pending implementation. |
+
+## Known Pending Validation
+
+- `npm run smoke:tiered-pack` currently fails because it still expects `doctor` to print `npx create-quiver start-slice` even when the AI-first layout has no specs yet. This should be resolved in `slice-08`.
 
 ## Required Final Evidence
 
