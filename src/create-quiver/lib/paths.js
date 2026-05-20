@@ -7,8 +7,12 @@ function resolveTargetRoot(cwd, targetDir, pathLib = path) {
 function normalizeGitBashDrivePath(filePath, pathLib = path) {
   const value = String(filePath || '');
   const normalized = value.replace(/\\/g, '/');
-  const match = normalized.match(/^\/([A-Za-z])\/(.*)$/);
+  const withoutNamespace = normalized.replace(/^\/\/\?\/([A-Za-z]:\/)/, '$1');
+  const match = withoutNamespace.match(/^\/([A-Za-z])\/(.*)$/);
   if (!match) {
+    if (withoutNamespace !== normalized && (pathLib === path.win32 || process.platform === 'win32')) {
+      return withoutNamespace;
+    }
     return value;
   }
 

@@ -10,7 +10,7 @@ function readJson(filePath) {
 function canonicalizePath(dirPath) {
   const normalizedPath = normalizeGitBashDrivePath(dirPath);
   try {
-    return fs.realpathSync(normalizedPath);
+    return normalizeGitBashDrivePath(fs.realpathSync(normalizedPath));
   } catch {
     return path.resolve(normalizedPath);
   }

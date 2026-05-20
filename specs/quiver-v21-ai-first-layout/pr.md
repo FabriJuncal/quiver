@@ -79,7 +79,7 @@ Run migrate/doctor against a legacy layout and confirm `docs-template/`, `tools/
 
 ### Technical Verification
 
-- `node --test tests/**/*.test.js` passed: 139 tests.
+- `node --test tests/**/*.test.js` passed: 140 tests.
 - `npm run smoke:create-quiver` passed.
 - `bash scripts/ci/smoke-init-docs.sh` passed.
 - `node scripts/ci/smoke-cross-platform.js` passed.

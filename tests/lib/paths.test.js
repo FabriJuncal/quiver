@@ -19,6 +19,13 @@ test('relativePosixPath handles Git Bash drive paths on Windows', () => {
   assert.equal(relativePosixPath(root, slice, path.win32), 'specs/demo/slices/slice.json');
 });
 
+test('relativePosixPath handles extended Windows path prefixes', () => {
+  const root = String.raw`\\?\D:\a\quiver\quiver`;
+  const slice = String.raw`D:\a\quiver\quiver\specs\demo\slices\slice.json`;
+
+  assert.equal(relativePosixPath(root, slice, path.win32), 'specs/demo/slices/slice.json');
+});
+
 test('normalizeGitBashDrivePath leaves non-Windows path libs untouched', () => {
   const normalized = normalizeGitBashDrivePath('/d/a/quiver/quiver', path.posix);
   const expected = process.platform === 'win32' ? 'd:/a/quiver/quiver' : '/d/a/quiver/quiver';
