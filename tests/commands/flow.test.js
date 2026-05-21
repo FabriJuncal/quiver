@@ -7,6 +7,7 @@ const test = require('node:test');
 
 const packageJson = require('../../package.json');
 const { approvePlannerPhase, savePlannerDraft } = require('../../src/create-quiver/lib/approvals');
+const { savePlanReview } = require('../../src/create-quiver/lib/ai/plan-review');
 const { resolveInitPackageScripts } = require('../../src/create-quiver/lib/init-layout');
 
 const BIN_PATH = path.resolve(__dirname, '../../bin/create-quiver.js');
@@ -143,6 +144,50 @@ test('flow command reports criteria draft approval guidance', () => {
 
     assert.match(output, /Stage: acceptance criteria need approval/);
     assert.match(output, /Next safe command: npx create-quiver ai approve --phase acceptance --input acceptance-approved\.md/);
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('flow command asks for production review before technical-plan approval', () => {
+  const repo = makeRepo();
+
+  try {
+    seedInitializedContext(repo.root);
+    writeFile(repo.root, 'acceptance.md', '# Approved acceptance\n');
+    writeFile(repo.root, 'technical-plan.md', '# Technical plan\n');
+    approvePlannerPhase(repo.root, 'acceptance', 'acceptance.md', '# Approved acceptance\n');
+    savePlannerDraft(repo.root, 'technical-plan', 'technical-plan.md', '# Technical plan draft\n');
+
+    const output = runFlow(repo.root);
+
+    assert.match(output, /Stage: technical plan needs production review/);
+    assert.match(output, /Next safe command: npx create-quiver ai review-plan --dry-run/);
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('flow command asks for technical-plan approval after production review', () => {
+  const repo = makeRepo();
+
+  try {
+    seedInitializedContext(repo.root);
+    writeFile(repo.root, 'acceptance.md', '# Approved acceptance\n');
+    writeFile(repo.root, 'technical-plan.md', '# Technical plan\n');
+    approvePlannerPhase(repo.root, 'acceptance', 'acceptance.md', '# Approved acceptance\n');
+    savePlannerDraft(repo.root, 'technical-plan', 'technical-plan.md', '# Technical plan draft\n');
+    savePlanReview(repo.root, {
+      contents: 'review\n',
+      inputPath: '.quiver/approvals/technical-plan/drafts/001.md',
+      inputKind: 'draft',
+      inputVersion: 1,
+    });
+
+    const output = runFlow(repo.root);
+
+    assert.match(output, /Stage: technical plan needs approval/);
+    assert.match(output, /Next safe command: npx create-quiver ai approve --phase technical-plan --version <n>/);
   } finally {
     repo.cleanup();
   }

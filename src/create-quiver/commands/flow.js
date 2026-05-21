@@ -2,6 +2,7 @@ const fs = require('fs');
 const path = require('path');
 
 const { readPhaseApproval } = require('../lib/approvals');
+const { readPlanReview } = require('../lib/ai/plan-review');
 const { listAgentProfiles } = require('../lib/agent-profiles');
 const { buildGraph, naturalNumberFromSliceId, readAllSlices } = require('../lib/slice-graph');
 const { hasQuiverInitializationEvidence, readState } = require('../lib/state');
@@ -30,6 +31,17 @@ function safeReadApproval(projectRoot, phase) {
   } catch (error) {
     return {
       phase,
+      status: 'invalid',
+      error: error.message,
+    };
+  }
+}
+
+function safeReadPlanReview(projectRoot) {
+  try {
+    return readPlanReview(projectRoot);
+  } catch (error) {
+    return {
       status: 'invalid',
       error: error.message,
     };
@@ -65,7 +77,7 @@ function summarizeAgentProfiles(projectRoot) {
   };
 }
 
-function buildFacts({ initialized, docs, approvals, agents, specSlugs, state, slices = null }) {
+function buildFacts({ initialized, docs, approvals, planReview, agents, specSlugs, state, slices = null }) {
   return {
     initialized,
     hasProjectMap: docs.hasProjectMap,
@@ -74,6 +86,7 @@ function buildFacts({ initialized, docs, approvals, agents, specSlugs, state, sl
     approvals: {
       acceptance: approvals.acceptance.status,
       technicalPlan: approvals.technicalPlan.status,
+      planReview: planReview.status,
     },
     agents,
     specSlugs,
@@ -192,9 +205,10 @@ function detectFlowState(projectRoot) {
     acceptance: safeReadApproval(projectRoot, 'acceptance'),
     technicalPlan: safeReadApproval(projectRoot, 'technical-plan'),
   };
+  const planReview = safeReadPlanReview(projectRoot);
   const agents = summarizeAgentProfiles(projectRoot);
   const specSlugs = listSpecSlugs(projectRoot);
-  const facts = buildFacts({ initialized, docs, approvals, agents, specSlugs, state });
+  const facts = buildFacts({ initialized, docs, approvals, planReview, agents, specSlugs, state });
 
   if (!initialized) {
     return baseReport({
@@ -232,6 +246,20 @@ function detectFlowState(projectRoot) {
       stage: 'approval-state-invalid',
       label: 'approval state needs repair',
       blockers: invalidApprovals.map((approval) => approval.error),
+      nextCommand: 'npx create-quiver ai approvals',
+      suggestedCommands: [
+        'npx create-quiver ai approvals',
+        'npx create-quiver doctor',
+      ],
+      facts,
+    });
+  }
+
+  if (planReview.status === 'invalid') {
+    return baseReport({
+      stage: 'plan-review-state-invalid',
+      label: 'plan review state needs repair',
+      blockers: [planReview.error],
       nextCommand: 'npx create-quiver ai approvals',
       suggestedCommands: [
         'npx create-quiver ai approvals',
@@ -299,28 +327,58 @@ function detectFlowState(projectRoot) {
   }
 
   if (approvals.technicalPlan.status === 'draft') {
+    if (planReview.status !== 'unapproved') {
+      return baseReport({
+        stage: 'technical-plan-review-needed',
+        label: 'technical plan needs production review',
+        blockers: ['Technical plan draft exists but has not been reviewed for production readiness.'],
+        nextCommand: 'npx create-quiver ai review-plan --dry-run',
+        suggestedCommands: [
+          'npx create-quiver ai approvals',
+          'npx create-quiver ai review-plan --dry-run',
+          'npx create-quiver ai review-plan',
+        ],
+        facts,
+      });
+    }
+
     return baseReport({
       stage: 'technical-plan-draft',
       label: 'technical plan needs approval',
-      blockers: ['Technical plan draft exists but is not approved.'],
-      nextCommand: 'npx create-quiver ai approve --phase technical-plan --input technical-plan-approved.md',
+      blockers: ['Technical plan draft was reviewed but is not approved.'],
+      nextCommand: 'npx create-quiver ai approve --phase technical-plan --version <n>',
       suggestedCommands: [
         'npx create-quiver ai approvals',
-        'npx create-quiver ai approve --phase technical-plan --input technical-plan-approved.md',
+        'npx create-quiver ai approve --phase technical-plan --version <n>',
       ],
       facts,
     });
   }
 
   if (approvals.technicalPlan.status === 'stale') {
+    if (planReview.status !== 'unapproved') {
+      return baseReport({
+        stage: 'technical-plan-review-needed',
+        label: 'technical plan needs production review',
+        blockers: ['Technical plan changed after approval and needs a fresh production review.'],
+        nextCommand: 'npx create-quiver ai review-plan --dry-run',
+        suggestedCommands: [
+          'npx create-quiver ai approvals',
+          'npx create-quiver ai review-plan --dry-run',
+          'npx create-quiver ai review-plan',
+        ],
+        facts,
+      });
+    }
+
     return baseReport({
       stage: 'technical-plan-stale',
       label: 'technical plan approval is stale',
-      blockers: ['Technical plan changed after approval.'],
-      nextCommand: 'npx create-quiver ai approve --phase technical-plan --input technical-plan-approved.md',
+      blockers: ['Technical plan changed after approval and the latest draft was reviewed.'],
+      nextCommand: 'npx create-quiver ai approve --phase technical-plan --version <n>',
       suggestedCommands: [
         'npx create-quiver ai approvals',
-        'npx create-quiver ai approve --phase technical-plan --input technical-plan-approved.md',
+        'npx create-quiver ai approve --phase technical-plan --version <n>',
       ],
       facts,
     });
@@ -334,7 +392,22 @@ function detectFlowState(projectRoot) {
       nextCommand: 'npx create-quiver ai plan --phase technical-plan --dry-run',
       suggestedCommands: [
         'npx create-quiver ai plan --phase technical-plan --dry-run',
-        'npx create-quiver ai approve --phase technical-plan --input technical-plan-approved.md',
+        'npx create-quiver ai review-plan --dry-run',
+      ],
+      facts,
+    });
+  }
+
+  if (specSlugs.length === 0 && planReview.status !== 'reviewed') {
+    return baseReport({
+      stage: 'technical-plan-review-needed',
+      label: 'technical plan needs production review',
+      blockers: [`Plan review status is ${planReview.status}.`],
+      nextCommand: 'npx create-quiver ai review-plan --dry-run',
+      suggestedCommands: [
+        'npx create-quiver ai review-plan --dry-run',
+        'npx create-quiver ai review-plan',
+        'npx create-quiver ai approve --phase technical-plan --version <n>',
       ],
       facts,
     });
@@ -356,7 +429,7 @@ function detectFlowState(projectRoot) {
   }
 
   const slices = summarizeSlices(projectRoot, specSlugs);
-  const sliceFacts = buildFacts({ initialized, docs, approvals, agents, specSlugs, state, slices: {
+  const sliceFacts = buildFacts({ initialized, docs, approvals, planReview, agents, specSlugs, state, slices: {
     completed: slices.completedCount,
     pending: slices.pendingCount,
     ready: slices.ready.map((slice) => slice.ref),

@@ -17,7 +17,8 @@ This spec productizes the user's current prompt-driven workflow into first-class
 - `slice-03`: completed. Added reusable planner, executor, reviewer, and researcher agent profiles under `.quiver/agents/profiles.json`.
 - `slice-04`: completed. Added packaged index-first onboarding prompt generation and context preparation reporting.
 - `slice-05`: completed. Added versioned planner draft history and explicit approval by draft version.
-- `slice-06` through `slice-10`: draft.
+- `slice-06`: completed. Added `ai review-plan`, persisted plan review state, flow guidance, and spec-generation gating for reviewed and approved technical plans.
+- `slice-07` through `slice-10`: draft.
 
 ## Execution Rules
 
@@ -31,5 +32,5 @@ This spec productizes the user's current prompt-driven workflow into first-class
 
 ## Open Items
 
-- Decide whether plan review creates a new approval phase or annotates the technical-plan approval.
+- Decide whether future UX should add a dedicated `ai approve --phase plan-review` command, or keep the current model where the reviewed technical-plan draft is approved by version.
 - Validate provider-specific model argument handling for Codex, Claude, and Gemini before model labels are used as invocation arguments.

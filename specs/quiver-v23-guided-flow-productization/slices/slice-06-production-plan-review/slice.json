@@ -25,7 +25,7 @@
   "parallel_safe": "no",
   "parallel_safe_reason": "Adds a new planner gate consumed by spec generation.",
   "must": [
-    "Review approved technical plans before spec generation.",
+    "Review technical-plan drafts before plan approval and spec generation.",
     "Report fragile assumptions, uncovered cases, ambiguous criteria, risks, and recommended fixes.",
     "Do not question approved scope.",
     "Persist the review result.",
@@ -40,7 +40,7 @@
     "Dry-run prints review prompt metadata.",
     "Review output is stored as a draft/review artifact.",
     "The command never modifies product code.",
-    "Spec generation can require reviewed and approved plan state.",
+    "Spec generation requires reviewed and approved plan state.",
     "Tests cover missing plan, dry-run, provider failure, and persisted review."
   ],
   "tests": [
@@ -48,6 +48,7 @@
     "git diff --check"
   ],
   "estimated_hours": 8,
-  "status": "draft",
+  "status": "completed",
+  "completed_at": "2026-05-21",
   "blocked_reason": null
 }

@@ -187,6 +187,7 @@ function resolveInitPackageScripts(profile, options = {}) {
     'quiver:ai:agent': 'npx create-quiver ai agent',
     'quiver:ai:onboard': 'npx create-quiver ai onboard',
     'quiver:ai:plan': 'npx create-quiver ai plan',
+    'quiver:ai:review-plan': 'npx create-quiver ai review-plan',
     'quiver:ai:approve': 'npx create-quiver ai approve',
     'quiver:ai:execute-slice': 'npx create-quiver ai execute-slice',
     'quiver:ai:execute-plan': 'npx create-quiver ai execute-plan',

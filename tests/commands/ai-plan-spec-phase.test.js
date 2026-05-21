@@ -5,6 +5,8 @@ const path = require('node:path');
 const { execFileSync } = require('node:child_process');
 const test = require('node:test');
 
+const { savePlanReview } = require('../../src/create-quiver/lib/ai/plan-review');
+
 const BIN_PATH = path.resolve(__dirname, '../../bin/create-quiver.js');
 
 function writeFile(filePath, contents) {
@@ -81,6 +83,11 @@ test('ai plan spec phase dry-run reports the generated spec tree and does not wr
 
   try {
     execAiSubcommand(repo.root, ['approve', '--phase', 'technical-plan', '--input', 'technical-plan.md']);
+    savePlanReview(repo.root, {
+      contents: 'production review\n',
+      inputPath: 'technical-plan.md',
+      inputKind: 'approved',
+    });
     const output = execAi(repo.root, ['--phase', 'spec', '--dry-run']);
     assert.ok(output.includes('AI plan dry-run'));
     assert.ok(output.includes('Phase: spec'));
@@ -100,6 +107,11 @@ test('ai plan spec phase can infer the spec slug from approved technical-plan in
 
   try {
     execAiSubcommand(repo.root, ['approve', '--phase', 'technical-plan', '--input', 'technical-plan.md']);
+    savePlanReview(repo.root, {
+      contents: 'production review\n',
+      inputPath: 'technical-plan.md',
+      inputKind: 'approved',
+    });
     const output = execAi(repo.root, ['--phase', 'spec']);
     const specDir = path.join(repo.root, 'specs', 'quiver-v21-cli-spec');
 

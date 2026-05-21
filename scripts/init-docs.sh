@@ -522,8 +522,11 @@ Start with dry-runs so you can inspect the provider, role, context pack, and inv
 \`\`\`bash
 npm run quiver:ai:onboard -- --dry-run
 npm run quiver:ai:plan -- --phase acceptance --input requirements.md --dry-run
-npm run quiver:ai:plan -- --phase technical-plan --input acceptance-approved.md --dry-run
-npm run quiver:ai:plan -- --phase spec --input technical-plan-approved.md --dry-run
+npm run quiver:ai:approve -- --phase acceptance --input acceptance-approved.md
+npm run quiver:ai:plan -- --phase technical-plan --dry-run
+npm run quiver:ai:review-plan -- --dry-run
+npm run quiver:ai:approve -- --phase technical-plan --version <n>
+npm run quiver:ai:plan -- --phase spec --dry-run
 npm run quiver:ai:pr -- --dry-run --ssh-host-alias github-work --identity-file ~/.ssh/github-work
 \`\`\`
 
@@ -645,7 +648,7 @@ Record durable decisions in \`docs/DECISIONS.md\` so future AI agents do not re-
 
 ## First Slice Workflow
 
-Use this section only for the legacy/full scaffold that includes a placeholder spec. In the default AI-first layout, create real specs and slices with \`npx create-quiver ai plan --phase spec\` after acceptance criteria and the technical plan are approved.
+Use this section only for the legacy/full scaffold that includes a placeholder spec. In the default AI-first layout, create real specs and slices with \`npx create-quiver ai plan --phase spec\` after acceptance criteria are approved and the technical plan is reviewed and approved.
 
 1. Review or refine specs/$PROJECT_SLUG/SPEC.md.
 2. Create the first slice from specs/$PROJECT_SLUG/slices/slice-template/slice.json.

@@ -36,13 +36,15 @@ Use maps, metadata, diffs, and summaries first. Open full files only when the sm
 2. Triage the request.
 3. Save reusable planner/executor provider choices with `ai agent set` when the team has preferred local AI CLIs.
 4. Use `ai plan --phase acceptance` to draft criteria, then save the approved version with `ai approve --phase acceptance`.
-5. Use `ai plan --phase technical-plan` to draft the plan, then save the approved version with `ai approve --phase technical-plan`.
-6. Use `ai plan --phase spec` to generate the spec, mandatory `slice-00`, implementation slices, handoffs, execution plan, and `pr.md`.
-7. Open and merge the documentation PR or commit that establishes `slice-00` before running implementation slices.
-8. Read the AI context pack, support matrix, and troubleshooting guide before the first slice if the environment is new or uncertain.
-9. If the project already existed before this Quiver version, run `migrate` before `analyze`.
-10. If the project was analyzed, read `AI_ONBOARDING_PROMPT.md` before making documentation updates.
-11. Prefer the generated `quiver:*` npm scripts for repeatable project workflows once the package has been initialized or migrated.
+5. Use `ai plan --phase technical-plan` to draft the plan.
+6. Use `ai review-plan` to review the technical-plan draft for production readiness without changing product code.
+7. Save the reviewed plan version with `ai approve --phase technical-plan --version <n>`.
+8. Use `ai plan --phase spec` to generate the spec, mandatory `slice-00`, implementation slices, handoffs, execution plan, and `pr.md`.
+9. Open and merge the documentation PR or commit that establishes `slice-00` before running implementation slices.
+10. Read the AI context pack, support matrix, and troubleshooting guide before the first slice if the environment is new or uncertain.
+11. If the project already existed before this Quiver version, run `migrate` before `analyze`.
+12. If the project was analyzed, read `AI_ONBOARDING_PROMPT.md` before making documentation updates.
+13. Prefer the generated `quiver:*` npm scripts for repeatable project workflows once the package has been initialized or migrated.
 
 ## Execution
 

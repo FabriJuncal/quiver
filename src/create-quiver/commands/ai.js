@@ -6,6 +6,14 @@ const { runExecuteSlice } = require('../lib/ai/executor');
 const { runExecutePlan } = require('../lib/ai/execution-plan');
 const { buildPrCreatePlan, formatPreflightReport, formatPrCreateReport, preflightGitHubPr, runGhPrCreate } = require('../lib/ai/github');
 const { buildPlannerOnboardingPrompt } = require('../lib/ai/onboarding-template');
+const {
+  PLAN_REVIEW_PROMPT_SOURCE,
+  buildPlanReviewPrompt,
+  resolveReviewedTechnicalPlanInput,
+  resolveTechnicalPlanReviewInput,
+  savePlanReview,
+  summarizePlanReview,
+} = require('../lib/ai/plan-review');
 const { buildSpecGenerationManifest, describeSpecGeneration, generateSpecArtifacts } = require('../lib/ai/spec-generator');
 const { buildProviderInvocation, runProvider } = require('../lib/ai/providers');
 const {
@@ -237,6 +245,7 @@ function formatApprovalStatusReport(repoRoot) {
   for (const phase of PLANNER_APPROVAL_PHASES) {
     sections.push(summarizePlannerApproval(repoRoot, phase).trimEnd());
   }
+  sections.push(summarizePlanReview(repoRoot).trimEnd());
   return `${sections.join('\n\n')}\n`;
 }
 
@@ -335,7 +344,7 @@ async function runPlan(repoRoot, options = {}) {
   let inputPath = options.input || '';
 
   if (phase === 'spec') {
-    const resolved = resolveApprovedPlannerInput(repoRoot, phase, inputPath || undefined);
+    const resolved = resolveReviewedTechnicalPlanInput(repoRoot, inputPath || undefined);
     inputPath = resolved.inputPath;
     const inputText = readTextFileOrEmpty(inputPath, repoRoot);
     const manifest = buildSpecGenerationManifest({
@@ -448,6 +457,111 @@ async function runPlan(repoRoot, options = {}) {
     role,
     contextPack: contextInfo.pack.packName,
     phase,
+    invocation,
+    result,
+  };
+}
+
+async function runReviewPlan(repoRoot, options = {}) {
+  const role = 'planner';
+  const provider = resolveProviderForProfile(repoRoot, 'reviewer', options.provider, options.providerExplicit, DEFAULT_PLAN_PROVIDER);
+  const context = options.context || DEFAULT_PLAN_CONTEXT;
+  const timeoutMs = normalizeTimeout(options.timeout);
+  const resolved = resolveTechnicalPlanReviewInput(repoRoot, options.input || undefined);
+  const inputPath = resolved.inputPath;
+  const inputText = readTextFile(inputPath, repoRoot);
+  const pack = buildContextPackMetadata({
+    role,
+    packName: context,
+    repoRoot,
+  });
+  const built = buildPlanReviewPrompt({
+    pack,
+    inputText,
+    inputPath,
+  });
+  let invocation;
+
+  try {
+    invocation = buildProviderInvocation(provider, {
+      prompt: built.prompt,
+      cwd: repoRoot,
+      timeoutMs,
+    });
+  } catch (error) {
+    throw annotateProviderError(error, 'review-plan');
+  }
+
+  if (options.dryRun) {
+    const report = {
+      task: 'review-plan',
+      provider,
+      role: 'reviewer',
+      contextPack: pack.packName,
+      invocation,
+      promptSource: built.promptSource,
+      inputPath,
+      inputKind: resolved.kind,
+      inputVersion: resolved.version,
+    };
+    process.stdout.write(formatDryRunReport({
+      task: 'review-plan',
+      provider,
+      role: 'reviewer',
+      contextPack: pack.packName,
+      phase: 'plan-review',
+      invocation,
+    }));
+    process.stdout.write(`Prompt source: ${built.promptSource}\n`);
+    process.stdout.write(`Input file: ${inputPath}\n`);
+    process.stdout.write(`Input kind: ${resolved.kind}\n`);
+    if (resolved.version) {
+      process.stdout.write(`Input version: v${resolved.version}\n`);
+    }
+    return report;
+  }
+
+  let result;
+  try {
+    result = await (options.runProviderFn || runProvider)(provider, {
+      prompt: built.prompt,
+      cwd: repoRoot,
+      timeoutMs,
+      dryRun: false,
+      probe: options.probe,
+      spawn: options.spawn,
+      tempRoot: options.tempRoot,
+      tempFileName: options.tempFileName,
+      tempFilePrefix: options.tempFilePrefix,
+    });
+  } catch (error) {
+    throw annotateProviderError(error, 'review-plan');
+  }
+
+  writeProviderOutput(result);
+
+  if (!result.ok) {
+    throw annotateProviderError(result.error || new Error('provider run failed'), 'review-plan');
+  }
+
+  const saved = savePlanReview(repoRoot, {
+    contents: [result.stdout, result.stderr].filter(Boolean).join(''),
+    inputPath,
+    inputKind: resolved.kind,
+    inputVersion: resolved.version,
+  });
+  const relativePath = path.relative(repoRoot, saved.filePath).split(path.sep).join('/');
+  process.stdout.write(`AI plan review saved\nArtifact: ${relativePath}\nPrompt source: ${PLAN_REVIEW_PROMPT_SOURCE}\n`);
+
+  return {
+    task: 'review-plan',
+    provider,
+    role: 'reviewer',
+    contextPack: pack.packName,
+    inputPath,
+    inputKind: resolved.kind,
+    inputVersion: resolved.version,
+    filePath: relativePath,
     invocation,
     result,
   };
@@ -709,6 +823,7 @@ module.exports = {
   runExecuteSlice,
   runApprove,
   runApprovalStatus,
+  runReviewPlan,
   runPr,
   runOnboard,
   runPlan,

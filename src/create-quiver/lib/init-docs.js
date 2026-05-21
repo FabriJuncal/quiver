@@ -264,7 +264,8 @@ npm run quiver:ai:onboard -- --dry-run
 npm run quiver:ai:plan -- --phase acceptance --input requirements.md --dry-run
 npm run quiver:ai:approve -- --phase acceptance --input acceptance-approved.md
 npm run quiver:ai:plan -- --phase technical-plan --dry-run
-npm run quiver:ai:approve -- --phase technical-plan --input technical-plan-approved.md
+npm run quiver:ai:review-plan -- --dry-run
+npm run quiver:ai:approve -- --phase technical-plan --version <n>
 npm run quiver:ai:plan -- --phase spec --dry-run
 \`\`\`
 
@@ -306,7 +307,7 @@ After \`analyze\`, use \`docs/PROJECT_MAP.md\` for the detected stack, package m
 
 ## AI-First Workflow
 
-Quiver keeps the visible contract small: start with \`README.md\`, \`AGENTS.md\`, and \`docs/\`. Specs and slices should be created only after a real requirement and an approved technical plan.
+Quiver keeps the visible contract small: start with \`README.md\`, \`AGENTS.md\`, and \`docs/\`. Specs and slices should be created only after a real requirement and a reviewed, approved technical plan.
 
 Use dry-runs before spending model tokens:
 
@@ -316,7 +317,8 @@ npm run quiver:ai:onboard -- --dry-run
 npm run quiver:ai:plan -- --phase acceptance --input requirements.md --dry-run
 npm run quiver:ai:approve -- --phase acceptance --input acceptance-approved.md
 npm run quiver:ai:plan -- --phase technical-plan --dry-run
-npm run quiver:ai:approve -- --phase technical-plan --input technical-plan-approved.md
+npm run quiver:ai:review-plan -- --dry-run
+npm run quiver:ai:approve -- --phase technical-plan --version <n>
 npm run quiver:ai:plan -- --phase spec --dry-run
 \`\`\`
 
@@ -342,7 +344,8 @@ npm run quiver:ai:onboard -- --dry-run
 npm run quiver:ai:plan -- --phase acceptance --input requirements.md --dry-run
 npm run quiver:ai:approve -- --phase acceptance --input acceptance-approved.md
 npm run quiver:ai:plan -- --phase technical-plan --dry-run
-npm run quiver:ai:approve -- --phase technical-plan --input technical-plan-approved.md
+npm run quiver:ai:review-plan -- --dry-run
+npm run quiver:ai:approve -- --phase technical-plan --version <n>
 npm run quiver:ai:plan -- --phase spec --dry-run
 npm run quiver:ai:execute-slice -- --slice specs/<spec-slug>/slices/<slice-id>/slice.json --dry-run --commit
 npm run quiver:ai:execute-plan -- --dry-run --commit
@@ -411,7 +414,8 @@ npm run quiver:ai:onboard -- --dry-run
 npm run quiver:ai:plan -- --phase acceptance --input requirements.md --dry-run
 npm run quiver:ai:approve -- --phase acceptance --input acceptance-approved.md
 npm run quiver:ai:plan -- --phase technical-plan --dry-run
-npm run quiver:ai:approve -- --phase technical-plan --input technical-plan-approved.md
+npm run quiver:ai:review-plan -- --dry-run
+npm run quiver:ai:approve -- --phase technical-plan --version <n>
 npm run quiver:ai:plan -- --phase spec --dry-run
 npm run quiver:spec:start -- specs/${projectSlug}
 npm run quiver:ai:execute-slice -- --slice specs/${projectSlug}/slices/slice-01/slice.json --dry-run --commit
@@ -436,7 +440,8 @@ npm run quiver:ai:onboard -- --dry-run
 npm run quiver:ai:plan -- --phase acceptance --input requirements.md --dry-run
 npm run quiver:ai:approve -- --phase acceptance --input acceptance-approved.md
 npm run quiver:ai:plan -- --phase technical-plan --dry-run
-npm run quiver:ai:approve -- --phase technical-plan --input technical-plan-approved.md
+npm run quiver:ai:review-plan -- --dry-run
+npm run quiver:ai:approve -- --phase technical-plan --version <n>
 npm run quiver:ai:plan -- --phase spec --dry-run
 npm run quiver:ai:execute-slice -- --slice specs/${projectSlug}/slices/slice-01/slice.json --dry-run --commit
 npm run quiver:ai:execute-plan -- --dry-run --commit
@@ -535,7 +540,7 @@ Record durable decisions in \`docs/DECISIONS.md\` so future AI agents do not re-
 
 ## First Slice Workflow
 
-Use this section only for projects generated with the full compatibility layout. In the default AI-first layout, create real specs and slices with \`npx create-quiver ai plan --phase spec\` after acceptance criteria and the technical plan are approved.
+Use this section only for projects generated with the full compatibility layout. In the default AI-first layout, create real specs and slices with \`npx create-quiver ai plan --phase spec\` after acceptance criteria are approved and the technical plan is reviewed and approved.
 
 1. Review or refine specs/${projectSlug}/SPEC.md.
 2. Create the first slice from specs/${projectSlug}/slices/slice-template/slice.json.

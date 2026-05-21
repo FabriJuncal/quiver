@@ -210,7 +210,7 @@ if [[ "$doctor_after_analyze" != *"npx create-quiver next"* ]]; then
   echo "Doctor output did not recommend the next command" >&2
   exit 1
 fi
-if [[ "$doctor_after_analyze" != *"Create real specs and slices only after acceptance criteria and the technical plan are approved."* ]]; then
+if [[ "$doctor_after_analyze" != *"Create real specs and slices only after acceptance criteria are approved and the technical plan is reviewed and approved."* ]]; then
   echo "Doctor output did not explain the no-spec next step" >&2
   exit 1
 fi

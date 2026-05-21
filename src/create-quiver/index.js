@@ -4,7 +4,7 @@ const path = require('path');
 const { execFileSync } = require('child_process');
 const { checkHandoff, scaffoldHandoff } = require('./lib/handoff');
 const { collectDoctorReport } = require('./lib/doctor');
-const { runAgent: runAiAgent, runApprovalStatus: runAiApprovalStatus, runApprove: runAiApprove, runDoctor: runAiDoctor, runExecutePlan: runAiExecutePlan, runExecuteSlice: runAiExecuteSlice, runOnboard, runPlan: runAiPlan, runPr: runAiPr } = require('./commands/ai');
+const { runAgent: runAiAgent, runApprovalStatus: runAiApprovalStatus, runApprove: runAiApprove, runDoctor: runAiDoctor, runExecutePlan: runAiExecutePlan, runExecuteSlice: runAiExecuteSlice, runOnboard, runPlan: runAiPlan, runPr: runAiPr, runReviewPlan: runAiReviewPlan } = require('./commands/ai');
 const { runPrepare } = require('./commands/prepare');
 const { runFlow } = require('./commands/flow');
 const { runGraph } = require('./commands/graph');
@@ -110,6 +110,9 @@ Examples:
   cd ./my-project && npx create-quiver ai agent list
   cd ./my-project && npx create-quiver ai plan --phase acceptance --input requirements.md --dry-run
   cd ./my-project && npx create-quiver ai approve --phase acceptance --input acceptance.md
+  cd ./my-project && npx create-quiver ai plan --phase technical-plan --dry-run
+  cd ./my-project && npx create-quiver ai review-plan --dry-run
+  cd ./my-project && npx create-quiver ai approve --phase technical-plan --version 1
   cd ./my-project && npx create-quiver ai approvals
   cd ./my-project && npx create-quiver ai execute-slice --slice specs/my-project/slices/slice-01/slice.json --dry-run
   cd ./my-project && npx create-quiver ai execute-slice --slice specs/my-project/slices/slice-01/slice.json --commit
@@ -1677,9 +1680,13 @@ function runDoctor(targetDir) {
   const missingNodeNativeScripts = ['quiver:migrate', 'quiver:analyze', 'quiver:doctor']
     .filter((name) => typeof pkg.scripts?.[name] !== 'string');
   const missingAiScripts = [
+    'quiver:ai:agent',
     'quiver:ai:onboard',
     'quiver:ai:plan',
+    'quiver:ai:review-plan',
+    'quiver:ai:approve',
     'quiver:ai:execute-slice',
+    'quiver:ai:execute-plan',
     'quiver:ai:pr',
     'quiver:ai:doctor',
   ].filter((name) => typeof pkg.scripts?.[name] !== 'string');
@@ -1742,7 +1749,7 @@ function runDoctor(targetDir) {
     console.log(`- Validate a slice: npx create-quiver check-slice specs/${projectSlug}/slices/<slice-id>/slice.json`);
     console.log(`- Validate the PR gate: npx create-quiver check-pr specs/${projectSlug}/slices/<slice-id>/slice.json`);
   } else {
-    console.log('- Create real specs and slices only after acceptance criteria and the technical plan are approved.');
+    console.log('- Create real specs and slices only after acceptance criteria are approved and the technical plan is reviewed and approved.');
   }
 }
 
@@ -1752,7 +1759,7 @@ function printInitNextSteps(targetDir, projectName) {
   console.log(`- Review AGENTS.md, then ${path.join(targetDir, 'docs', 'AI_ONBOARDING_PROMPT.md')}`);
   console.log(`- Review ${path.join(targetDir, 'docs', 'WORKFLOW.md')}`);
   console.log('- Analyze the project with npx create-quiver analyze');
-  console.log('- Create real specs and slices after acceptance criteria and the technical plan are approved.');
+  console.log('- Create real specs and slices after acceptance criteria are approved and the technical plan is reviewed and approved.');
 }
 
 async function run(argv) {
@@ -1797,7 +1804,7 @@ async function run(argv) {
 
   if (args.mode === 'ai') {
     if (!args.aiCommand) {
-      throw new Error(formatError('missing ai subcommand. Use: npx create-quiver ai onboard | plan | approve | approvals | agent | execute-slice | execute-plan | doctor | pr'));
+      throw new Error(formatError('missing ai subcommand. Use: npx create-quiver ai onboard | plan | review-plan | approve | approvals | agent | execute-slice | execute-plan | doctor | pr'));
     }
 
     if (args.aiCommand === 'agent') {
@@ -1835,6 +1842,18 @@ async function run(argv) {
         providerExplicit: args.aiProviderExplicit,
         role: args.aiRole,
         specSlug: args.specSlug || undefined,
+        timeout: args.aiTimeout,
+      });
+      return;
+    }
+
+    if (args.aiCommand === 'review-plan') {
+      await runAiReviewPlan(process.cwd(), {
+        context: args.aiContext || undefined,
+        dryRun: args.dryRun,
+        input: args.aiInput || undefined,
+        provider: args.aiProvider,
+        providerExplicit: args.aiProviderExplicit,
         timeout: args.aiTimeout,
       });
       return;
@@ -1911,7 +1930,7 @@ async function run(argv) {
       return;
     }
 
-    throw new Error(formatError(`unsupported ai subcommand: ${args.aiCommand}. Supported tasks: onboard, plan, approve, approvals, agent, execute-slice, execute-plan, doctor, pr`));
+    throw new Error(formatError(`unsupported ai subcommand: ${args.aiCommand}. Supported tasks: onboard, plan, review-plan, approve, approvals, agent, execute-slice, execute-plan, doctor, pr`));
   }
 
   if (args.mode === 'graph') {

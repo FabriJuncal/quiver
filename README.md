@@ -38,7 +38,8 @@ npx create-quiver ai plan --phase acceptance --input requirements.md --dry-run
 npx create-quiver ai approve --phase acceptance --input acceptance-approved.md
 npx create-quiver ai approvals
 npx create-quiver ai plan --phase technical-plan --dry-run
-npx create-quiver ai approve --phase technical-plan --input technical-plan-approved.md
+npx create-quiver ai review-plan --dry-run
+npx create-quiver ai approve --phase technical-plan --version <n>
 npx create-quiver ai plan --phase spec --dry-run
 npx create-quiver spec start specs/<project-slug>
 npx create-quiver next
@@ -80,7 +81,8 @@ npx create-quiver ai onboard --dry-run
 npx create-quiver ai plan --phase acceptance --input requirements.md --dry-run
 npx create-quiver ai approve --phase acceptance --input acceptance-approved.md
 npx create-quiver ai plan --phase technical-plan --dry-run
-npx create-quiver ai approve --phase technical-plan --input technical-plan-approved.md
+npx create-quiver ai review-plan --dry-run
+npx create-quiver ai approve --phase technical-plan --version <n>
 npx create-quiver ai plan --phase spec --dry-run
 npx create-quiver spec start specs/<project-slug>
 npx create-quiver graph
@@ -123,7 +125,8 @@ Después del bootstrap, revisá:
 npx create-quiver ai plan --phase acceptance --input requirements.md --dry-run
 npx create-quiver ai approve --phase acceptance --input acceptance-approved.md
 npx create-quiver ai plan --phase technical-plan --dry-run
-npx create-quiver ai approve --phase technical-plan --input technical-plan-approved.md
+npx create-quiver ai review-plan --dry-run
+npx create-quiver ai approve --phase technical-plan --version <n>
 npx create-quiver ai plan --phase spec --dry-run
 npx create-quiver plan
 npx create-quiver graph
@@ -160,7 +163,7 @@ Qué esperar:
 - Quiver agrega documentación, scripts `quiver:*` y archivos internos de soporte en `.quiver/`.
 - No deberías mezclar este paso con cambios de producto.
 - `docs/PROJECT_MAP.md` queda como fuente de verdad para stack, package manager, comandos y rutas importantes.
-- Las specs y slices reales se crean después, con `ai plan --phase spec`, cuando ya existen criterios y plan técnico aprobados.
+- Las specs y slices reales se crean después, con `ai plan --phase spec`, cuando ya existen criterios aprobados y un plan técnico revisado y aprobado.
 - El primer trabajo de IA debería ser preparar contexto y planificación, no implementar.
 
 Importante: no uses `migrate` para un proyecto que nunca tuvo Quiver. `migrate` es solo para proyectos previamente inicializados.
@@ -323,7 +326,8 @@ npx create-quiver ai agent list
 npx create-quiver ai plan --phase acceptance --input requirements.md --dry-run
 npx create-quiver ai approve --phase acceptance --input acceptance-approved.md
 npx create-quiver ai plan --phase technical-plan --dry-run
-npx create-quiver ai approve --phase technical-plan --input technical-plan-approved.md
+npx create-quiver ai review-plan --dry-run
+npx create-quiver ai approve --phase technical-plan --version <n>
 npx create-quiver ai plan --phase spec --dry-run
 npx create-quiver ai execute-slice --slice specs/<project-slug>/slices/slice-01/slice.json --dry-run --commit
 npx create-quiver ai execute-plan --dry-run --commit
@@ -339,12 +343,13 @@ Orden recomendado:
 1. `ai onboard`: el planner entiende el repo y el workflow.
 2. `ai plan --phase acceptance`: convierte requerimientos en criterios de aceptación.
 3. `ai plan --phase technical-plan`: propone el plan técnico.
-4. `ai approve`: guarda criterios o plan técnico aprobados.
-5. `ai plan --phase spec`: genera spec, slices, handoffs y PR body.
-6. `spec start`: prepara un worktree por spec.
-7. `ai execute-slice` / `ai execute-plan`: ejecuta slices aprobados, con commit opt-in.
-8. `ai doctor` / `ai pr`: valida GitHub y crea el PR solo con `--create`.
-9. `spec close`: cierra el worktree después del merge.
+4. `ai review-plan`: revisa el plan como si fuera a producción, sin tocar código ni cuestionar el alcance aprobado.
+5. `ai approve`: guarda criterios o la versión revisada del plan técnico.
+6. `ai plan --phase spec`: genera spec, slices, handoffs y PR body.
+7. `spec start`: prepara un worktree por spec.
+8. `ai execute-slice` / `ai execute-plan`: ejecuta slices aprobados, con commit opt-in.
+9. `ai doctor` / `ai pr`: valida GitHub y crea el PR solo con `--create`.
+10. `spec close`: cierra el worktree después del merge.
 
 ## 🧪 Cómo probar que funciona
 
@@ -384,6 +389,7 @@ Notas reales del estado actual:
 | `npm run quiver:ai:agent` | Ejecuta `npx create-quiver ai agent`. |
 | `npm run quiver:ai:onboard` | Ejecuta onboarding de IA. |
 | `npm run quiver:ai:plan` | Ejecuta planificación IA por fases. |
+| `npm run quiver:ai:review-plan` | Revisa el plan técnico antes de aprobarlo y crear la spec. |
 | `npm run quiver:ai:approve` | Guarda criterios o planes aprobados. |
 | `npm run quiver:ai:execute-slice` | Ejecuta un slice con rol executor. |
 | `npm run quiver:ai:execute-plan` | Imprime o ejecuta olas de slices. |
@@ -406,7 +412,7 @@ Notas reales del estado actual:
 2. Corré `analyze` para generar el mapa técnico.
 3. Corré `doctor` para validar el contrato.
 4. Incorporá al planner con `ai onboard --dry-run`.
-5. Convertí requerimientos en criterios, plan técnico y spec con `ai plan`, usando `ai approve` entre fases.
+5. Convertí requerimientos en criterios, plan técnico y spec con `ai plan`; revisá el plan con `ai review-plan` antes de aprobarlo.
 6. Prepará el worktree de la spec con `spec start`.
 7. Revisá dependencias con `graph`, `next` o `ai execute-plan --dry-run`.
 8. Ejecutá slices con `ai execute-slice --commit` o `ai execute-plan --execute --commit`.

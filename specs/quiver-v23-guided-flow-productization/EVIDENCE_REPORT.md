@@ -2,7 +2,7 @@
 
 ## Status
 
-Spec foundation is created. `slice-00` through `slice-05` are completed.
+Spec foundation is created. `slice-00` through `slice-06` are completed.
 
 ## Slice Evidence
 
@@ -14,7 +14,7 @@ Spec foundation is created. `slice-00` through `slice-05` are completed.
 | slice-03 | Added `.quiver/agents/profiles.json`, `ai agent set/list/show`, provider validation, free-form model labels, profile-backed provider defaults, docs, and tests. |
 | slice-04 | Added a packaged planner onboarding template, shared context plan, prepare report selected docs/debt/omissions, index-first generated prompt, and tests. |
 | slice-05 | Added versioned drafts under `.quiver/approvals/<phase>/drafts/`, `ai approve --version`, status history output, and approval blocking against stale versions. |
-| slice-06 | Pending. |
+| slice-06 | Added `ai review-plan`, review prompt metadata, persisted `.quiver/approvals/plan-review/` artifacts, flow guidance before technical-plan approval, and a spec-generation gate that requires the reviewed technical-plan version to be approved. |
 | slice-07 | Pending. |
 | slice-08 | Pending. |
 | slice-09 | Pending. |
@@ -34,6 +34,13 @@ Spec foundation is created. `slice-00` through `slice-05` are completed.
 - 2026-05-21: `git diff --check`
 - 2026-05-21: `node --test tests/lib/approvals.test.js tests/commands/ai-plan.test.js tests/commands/ai-plan-spec-phase.test.js`
 - 2026-05-21: `git diff --check`
+- 2026-05-21: `node --test tests/commands/ai-review-plan.test.js`
+- 2026-05-21: `node --test tests/commands/doctor.test.js tests/lib/init-docs.test.js tests/lib/init-layout.test.js tests/lib/package-safety.test.js tests/commands/flow.test.js tests/commands/ai-review-plan.test.js tests/commands/ai-plan-spec-phase.test.js tests/commands/ai-plan.test.js`
+- 2026-05-21: `node --test tests/**/*.test.js`
+- 2026-05-21: `git diff --check`
+- 2026-05-21: `find specs/quiver-v23-guided-flow-productization -name slice.json -print -exec node -e "JSON.parse(require('fs').readFileSync(process.argv[1], 'utf8'))" {} \;`
+- 2026-05-21: `npm run smoke:create-quiver`
+- 2026-05-21: `npm run smoke:tiered-pack`
 
 ## Notes
 

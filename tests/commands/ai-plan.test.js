@@ -6,6 +6,7 @@ const { execFileSync } = require('node:child_process');
 const test = require('node:test');
 
 const { runPlan } = require('../../src/create-quiver/commands/ai');
+const { savePlanReview } = require('../../src/create-quiver/lib/ai/plan-review');
 
 const BIN_PATH = path.resolve(__dirname, '../../bin/create-quiver.js');
 
@@ -301,6 +302,11 @@ test('ai plan spec phase dry-run reports spec generation instead of provider inv
 
   try {
     execAiSubcommand(repo.root, ['approve', '--phase', 'technical-plan', '--input', 'technical-plan.md']);
+    savePlanReview(repo.root, {
+      contents: 'production review\n',
+      inputPath: 'technical-plan.md',
+      inputKind: 'approved',
+    });
     const output = execAi(repo.root, ['--phase', 'spec', '--dry-run']);
     assert.ok(output.includes('AI plan dry-run'));
     assert.ok(output.includes('Phase: spec'));
