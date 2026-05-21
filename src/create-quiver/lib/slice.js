@@ -74,19 +74,19 @@ function validateSliceMetaForStart(slice) {
     throw new Error('create-quiver: el bloque "git" debe incluir "branch_type", "base_branch", "branch_slug" y "branch_name".');
   }
 
-  const expectedBaseByType = {
-    feature: 'develop',
-    bugfix: 'develop',
-    hotfix: 'main',
+  const allowedBaseByType = {
+    feature: ['main', 'develop'],
+    bugfix: ['main', 'develop'],
+    hotfix: ['main'],
   };
 
-  if (!expectedBaseByType[slice.branchType]) {
+  if (!allowedBaseByType[slice.branchType]) {
     throw new Error(`create-quiver: git.branch_type invalido: "${slice.branchType}". Usa "feature", "bugfix" o "hotfix".`);
   }
 
-  const expectedBaseBranch = expectedBaseByType[slice.branchType];
-  if (slice.baseBranch !== expectedBaseBranch) {
-    throw new Error(`create-quiver: git.base_branch invalido para ${slice.branchType}. Esperado: "${expectedBaseBranch}".`);
+  const allowedBaseBranches = allowedBaseByType[slice.branchType];
+  if (!allowedBaseBranches.includes(slice.baseBranch)) {
+    throw new Error(`create-quiver: git.base_branch invalido para ${slice.branchType}. Usa "${allowedBaseBranches.join('" o "')}".`);
   }
 
   const expectedBranchName = `${slice.branchType}/${slice.ticket}-${slice.branchSlug}`;

@@ -196,12 +196,12 @@ If a short `quiver` binary is introduced, it must be documented as an alias or p
 
 | Slice | Title | Status | Dependencies |
 |-------|-------|--------|--------------|
-| slice-00 | Spec foundation and guided workflow planning artifacts | Ready | none |
-| slice-01 | Documentation source-of-truth sync | Draft | slice-00 |
-| slice-02 | Prepare command and setup diagnostics | Draft | slice-01 |
-| slice-03 | Context documentation refresh and safe analyzer output | Draft | slice-02 |
-| slice-04 | Planner approval state for criteria and technical plans | Draft | slice-03 |
-| slice-05 | Spec worktree lifecycle | Draft | slice-04 |
+| slice-00 | Spec foundation and guided workflow planning artifacts | Completed | none |
+| slice-01 | Documentation source-of-truth sync | Completed | slice-00 |
+| slice-02 | Prepare command and setup diagnostics | Completed | slice-01 |
+| slice-03 | Context documentation refresh and safe analyzer output | Completed | slice-02 |
+| slice-04 | Planner approval state for criteria and technical plans | Completed | slice-03 |
+| slice-05 | Spec worktree lifecycle | Completed | slice-04 |
 | slice-06 | Executor validation, recovery, and commit per slice | Draft | slice-05 |
 | slice-07 | Execution waves and safe delegation | Draft | slice-06 |
 | slice-08 | PR creation with gh and SSH guidance | Draft | slice-05 |

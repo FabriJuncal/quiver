@@ -13,6 +13,7 @@ const { buildInitLayout, formatInitLayoutPlan } = require('./lib/init-layout');
 const { initializeProjectDocs, installSelfAsDevDep, refreshAiContextDoc } = require('./lib/init-docs');
 const { checkPrReadiness, checkScope, checkSliceReadiness } = require('./lib/readiness');
 const { cleanupSlice, refreshActiveSlicesBoard, startSlice } = require('./lib/lifecycle');
+const { buildSpecStatus, formatSpecStartResult, formatSpecStatus, startSpecWorktree } = require('./lib/spec-worktrees');
 const { getContextPathExclusionReason } = require('./lib/ai/safety');
 const { relativePosixPath, resolveTargetRoot } = require('./lib/paths');
 const {
@@ -57,6 +58,8 @@ function printUsage() {
   npx create-quiver cleanup-slice [options] <slice.json>
   npx create-quiver check-scope [options] <slice.json>
   npx create-quiver refresh-active-slices
+  npx create-quiver spec start <spec-dir>
+  npx create-quiver spec status <spec-dir>
 
 Options:
   -n, --name <project-name>   Project name to generate
@@ -112,6 +115,8 @@ Examples:
   cd ./my-project && npx create-quiver cleanup-slice specs/my-project/slices/slice-01/slice.json
   cd ./my-project && npx create-quiver check-scope specs/my-project/slices/slice-01/slice.json
   cd ./my-project && npx create-quiver refresh-active-slices
+  cd ./my-project && npx create-quiver spec start specs/my-project
+  cd ./my-project && npx create-quiver spec status specs/my-project
   node bin/create-quiver.js doctor --dir ./my-project
 `);
 }
@@ -156,14 +161,18 @@ function parseArgs(argv) {
     initIncludeTemplates: false,
     initLegacyScripts: false,
     initMinimal: false,
+    specCommand: '',
   };
 
   const args = [...argv];
-  const commandModes = new Set(['init', 'plan', 'graph', 'next', 'doctor', 'prepare', 'analyze', 'migrate', 'start-slice', 'check-slice', 'check-pr', 'check-handoff', 'new-handoff', 'cleanup-slice', 'check-scope', 'refresh-active-slices', 'ai']);
+  const commandModes = new Set(['init', 'plan', 'graph', 'next', 'doctor', 'prepare', 'analyze', 'migrate', 'start-slice', 'check-slice', 'check-pr', 'check-handoff', 'new-handoff', 'cleanup-slice', 'check-scope', 'refresh-active-slices', 'spec', 'ai']);
   if (commandModes.has(args[0])) {
     result.mode = args[0];
     result.explicitInit = args[0] === 'init';
     args.shift();
+    if (result.mode === 'spec') {
+      result.specCommand = args.shift() || '';
+    }
   } else if (args[0] === '--analyze') {
     result.mode = 'analyze';
     args.shift();
@@ -487,6 +496,16 @@ function parseArgs(argv) {
   } else if (result.mode === 'refresh-active-slices') {
     if (positional.length > 0) {
       throw new Error(formatError('refresh-active-slices does not accept positional arguments'));
+    }
+  } else if (result.mode === 'spec') {
+    if (!result.specCommand && positional.length > 0) {
+      result.specCommand = positional.shift();
+    }
+    if (!result.specCommand) {
+      throw new Error(formatError('missing spec subcommand. Use: npx create-quiver spec <start|status> <spec-dir>'));
+    }
+    if (positional.length > 0) {
+      result.targetDir = positional.shift();
     }
   } else {
     if (positional.length > 0) {
@@ -1826,6 +1845,26 @@ async function run(argv) {
     const outputPath = refreshActiveSlicesBoard(path.resolve(process.cwd(), '.'));
     console.log(`Active slices refreshed: ${outputPath}`);
     return;
+  }
+
+  if (args.mode === 'spec') {
+    if (!args.targetDir || args.targetDir === '.') {
+      throw new Error(formatError('missing spec directory. Use: npx create-quiver spec <start|status> <spec-dir>'));
+    }
+
+    if (args.specCommand === 'start') {
+      const report = startSpecWorktree(process.cwd(), args.targetDir);
+      process.stdout.write(formatSpecStartResult(report));
+      return;
+    }
+
+    if (args.specCommand === 'status') {
+      const report = buildSpecStatus(process.cwd(), args.targetDir);
+      process.stdout.write(formatSpecStatus(report));
+      return;
+    }
+
+    throw new Error(formatError(`unsupported spec subcommand: ${args.specCommand}. Supported tasks: start, status`));
   }
 
   const packageRoot = path.resolve(__dirname, '../..');

@@ -1,6 +1,6 @@
 # Quiver v22 - Guided AI Workflow Status
 
-**Status:** Draft
+**Status:** In progress
 **Created:** 2026-05-21
 
 ## Summary
@@ -17,7 +17,8 @@ This spec defines the guided AI workflow needed to move from project preparation
 - `slice-02`: completed.
 - `slice-03`: completed.
 - `slice-04`: completed.
-- `slice-05` through `slice-10`: draft.
+- `slice-05`: completed.
+- `slice-06` through `slice-10`: draft.
 
 ## Execution Rules
 
