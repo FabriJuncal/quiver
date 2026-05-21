@@ -1,0 +1,54 @@
+{
+  "slice_id": "slice-05-spec-worktree-lifecycle",
+  "ticket": "QUIVER-22-05",
+  "type": "feature",
+  "title": "Spec worktree lifecycle",
+  "objective": "Formalize one dedicated worktree per spec and make slice-00 the first executable step.",
+  "description": "Add commands and guardrails for starting, inspecting, and managing a spec-level worktree before slice execution.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "spec-worktree-lifecycle",
+    "branch_name": "feature/QUIVER-22-05-spec-worktree-lifecycle"
+  },
+  "files": [
+    "src/create-quiver/index.js",
+    "src/create-quiver/lib/lifecycle.js",
+    "src/create-quiver/lib/slice.js",
+    "src/create-quiver/lib/git.js",
+    "src/create-quiver/lib/spec-worktrees.js",
+    "tests/lib/lifecycle.test.js",
+    "tests/commands/spec-worktree.test.js"
+  ],
+  "depends_on": [
+    "slice-04-planner-approval-state"
+  ],
+  "parallel_safe": "no",
+  "parallel_safe_reason": "Spec worktree behavior is required before execution and PR automation.",
+  "must": [
+    "Represent one spec as one worktree and one PR branch.",
+    "Start the spec worktree from the correct base branch.",
+    "Require slice-00 to be first.",
+    "Show spec status, worktree path, branch, and pending slices.",
+    "Avoid deleting or overwriting active worktrees."
+  ],
+  "not_included": [
+    "Post-merge cleanup.",
+    "PR creation.",
+    "Parallel slice execution."
+  ],
+  "acceptance": [
+    "Spec start creates or reuses one dedicated worktree for the spec.",
+    "Spec status shows branch, path, slice-00 status, and pending slices.",
+    "Commands refuse to start later slices before slice-00 is complete.",
+    "Base branch selection supports main or develop without hardcoding the wrong target.",
+    "Existing dirty worktrees are not overwritten."
+  ],
+  "tests": [
+    "node --test tests/lib/lifecycle.test.js tests/commands/spec-worktree.test.js",
+    "git diff --check"
+  ],
+  "estimated_hours": 8,
+  "status": "completed",
+  "blocked_reason": null
+}

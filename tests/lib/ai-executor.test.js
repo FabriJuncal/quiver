@@ -7,6 +7,8 @@ const test = require('node:test');
 
 const {
   buildExecuteSliceContext,
+  buildManualExecutorPrompt,
+  buildSliceCommitMessage,
   resolveSliceJsonPath,
   runExecuteSlice,
 } = require('../../src/create-quiver/lib/ai/executor');
@@ -51,7 +53,14 @@ function createRepo(options = {}) {
   if (options.withBrief !== false) {
     writeFile(path.join(sliceDir, 'EXECUTION_BRIEF.md'), '# Execution Brief\n\nChange the allowed file only.\n');
   }
+  if (options.withClosure !== false) {
+    writeFile(path.join(sliceDir, 'CLOSURE_BRIEF.md'), '# Closure Brief\n\nUse the final report format.\n');
+  }
+  writeFile(path.join(root, 'specs/demo/SPEC.md'), '# Demo Spec\n\n## Objective\n\nImplement the demo feature.\n\n## Details\n\nFULL SPEC BODY SENTINEL SHOULD NOT APPEAR.\n');
   writeFile(path.join(root, allowedFile), 'module.exports = 1;\n');
+  if (options.withValidation !== false) {
+    writeFile(path.join(root, 'tests/demo.test.js'), "const test = require('node:test');\nconst assert = require('node:assert/strict');\ntest('demo', () => assert.equal(1, 1));\n");
+  }
 
   git(root, ['init']);
   git(root, ['config', 'user.email', 'test@example.com']);
@@ -126,6 +135,43 @@ test('buildExecuteSliceContext fails when EXECUTION_BRIEF.md is missing', () => 
   }
 });
 
+test('buildManualExecutorPrompt uses minimal slice context and final report format', () => {
+  const repo = createRepo();
+  try {
+    const built = buildManualExecutorPrompt({
+      repoRoot: repo.root,
+      slicePath: repo.slicePath,
+    });
+
+    assert.ok(built.prompt.includes('Act as a WDD + SDD executor agent.'));
+    assert.ok(built.prompt.includes('Allowed files:'));
+    assert.ok(built.prompt.includes(repo.allowedFile));
+    assert.ok(built.prompt.includes('Required final report format:'));
+    assert.ok(built.prompt.includes('## Cambios realizados'));
+    assert.ok(built.prompt.includes('Execution brief content:'));
+    assert.ok(built.prompt.includes('Closure brief content:'));
+    assert.ok(built.prompt.includes('Title: Demo Spec'));
+    assert.ok(!built.prompt.includes('FULL SPEC BODY SENTINEL'));
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('buildManualExecutorPrompt fails when CLOSURE_BRIEF.md is missing', () => {
+  const repo = createRepo({ withClosure: false });
+  try {
+    assert.throws(
+      () => buildManualExecutorPrompt({
+        repoRoot: repo.root,
+        slicePath: repo.slicePath,
+      }),
+      /missing required file: specs\/demo\/slices\/slice-01-demo\/CLOSURE_BRIEF\.md/,
+    );
+  } finally {
+    repo.cleanup();
+  }
+});
+
 test('runExecuteSlice dry-run does not execute the provider', async () => {
   const repo = createRepo();
   try {
@@ -164,7 +210,9 @@ test('runExecuteSlice fails clearly when the provider fails', async () => {
           },
         }),
       }),
-      (error) => error.code === 'PROVIDER_FAILED' && error.message.includes('provider exploded'),
+      (error) => error.code === 'PROVIDER_FAILED'
+        && error.message.includes('provider exploded')
+        && error.message.includes('Recovery:'),
     );
   } finally {
     repo.cleanup();
@@ -176,6 +224,7 @@ test('runExecuteSlice detects files outside slice scope after provider execution
   try {
     await assert.rejects(
       runExecuteSlice(repo.root, {
+        commit: true,
         provider: 'codex',
         slice: repo.slicePath,
         runProviderFn: async () => {
@@ -185,6 +234,7 @@ test('runExecuteSlice detects files outside slice scope after provider execution
       }),
       (error) => error.code === 'SCOPE_VIOLATION'
         && error.message.includes('src/out-of-scope.js')
+        && error.message.includes('Recovery:')
         && error.details.outOfScopeFiles.includes('src/out-of-scope.js'),
     );
   } finally {
@@ -206,6 +256,62 @@ test('runExecuteSlice passes scope validation for allowed files', async () => {
 
     assert.equal(result.scopeResult.ok, true);
     assert.deepEqual(result.scopeResult.changedFiles, [repo.allowedFile]);
+    assert.equal(result.commitResult, null);
+    assert.equal(result.validationResults.length, 1);
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('runExecuteSlice blocks commit when validation fails', async () => {
+  const repo = createRepo();
+  try {
+    const sliceJson = JSON.parse(fs.readFileSync(repo.slicePath, 'utf8'));
+    sliceJson.tests = ['node -e "process.exit(1)"'];
+    writeFile(repo.slicePath, `${JSON.stringify(sliceJson, null, 2)}\n`);
+    git(repo.root, ['add', repo.slicePath]);
+    git(repo.root, ['commit', '-m', 'make validation fail']);
+    const beforeCount = Number(git(repo.root, ['rev-list', '--count', 'HEAD']));
+
+    await assert.rejects(
+      runExecuteSlice(repo.root, {
+        commit: true,
+        provider: 'codex',
+        slice: repo.slicePath,
+        runProviderFn: async () => {
+          writeFile(path.join(repo.root, repo.allowedFile), 'module.exports = 5;\n');
+          return { ok: true, stdout: '', stderr: '' };
+        },
+      }),
+      (error) => error.code === 'VALIDATION_FAILED'
+        && error.message.includes('validation command failed')
+        && error.message.includes('Recovery:'),
+    );
+
+    assert.equal(Number(git(repo.root, ['rev-list', '--count', 'HEAD'])), beforeCount);
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('runExecuteSlice creates one slice commit when commit is enabled', async () => {
+  const repo = createRepo();
+  try {
+    const beforeCount = Number(git(repo.root, ['rev-list', '--count', 'HEAD']));
+    const result = await runExecuteSlice(repo.root, {
+      commit: true,
+      provider: 'codex',
+      slice: repo.slicePath,
+      runProviderFn: async () => {
+        writeFile(path.join(repo.root, repo.allowedFile), 'module.exports = 6;\n');
+        return { ok: true, stdout: '', stderr: '' };
+      },
+    });
+
+    assert.equal(Number(git(repo.root, ['rev-list', '--count', 'HEAD'])), beforeCount + 1);
+    assert.equal(git(repo.root, ['status', '--porcelain']), '');
+    assert.equal(result.commitResult.message, buildSliceCommitMessage({ json: { title: 'Demo slice', type: 'feature' }, ticket: 'QUIVER-01', sliceId: 'slice-01-demo' }));
+    assert.match(git(repo.root, ['log', '-1', '--pretty=%s']), /^feat: QUIVER-01 Demo slice$/);
   } finally {
     repo.cleanup();
   }

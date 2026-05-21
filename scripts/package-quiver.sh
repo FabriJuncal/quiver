@@ -34,6 +34,21 @@ contents="$(
   tar -tzf "$tarball_path"
 )"
 
+cd "$repo_root"
+printf '%s\n' "$contents" | node -e '
+  const fs = require("node:fs");
+  const { assertPackageSafety } = require("./src/create-quiver/lib/package-safety");
+
+  const paths = fs.readFileSync(0, "utf8").split(/\r?\n/).filter(Boolean);
+
+  try {
+    assertPackageSafety(paths);
+  } catch (error) {
+    process.stderr.write(`${error.message}\n`);
+    process.exit(1);
+  }
+'
+
 require_present() {
   local path="$1"
 

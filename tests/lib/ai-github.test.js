@@ -6,9 +6,13 @@ const { execFileSync } = require('node:child_process');
 const test = require('node:test');
 
 const {
+  buildPrCreatePlan,
   DEFAULT_GITFLOW_GUIDE_PATH,
+  extractPrTitle,
   preflightGitHubPr,
+  resolvePrBodyPath,
   resolveConfiguredPath,
+  runGhPrCreate,
 } = require('../../src/create-quiver/lib/ai/github');
 
 function writeFile(filePath, contents) {
@@ -181,4 +185,83 @@ test('preflightGitHubPr keeps sshHostAlias and identityFile as separate inputs',
   } finally {
     repo.cleanup();
   }
+});
+
+test('resolvePrBodyPath finds a single generated pr.md and rejects ambiguous bodies', () => {
+  const repo = createRepo({
+    [DEFAULT_GITFLOW_GUIDE_PATH]: '# GitFlow guide\n',
+    'specs/demo/pr.md': '## Title\nDemo PR\n',
+  });
+
+  try {
+    assert.equal(resolvePrBodyPath(repo.root, ''), path.join(repo.root, 'specs/demo/pr.md'));
+    writeFile(path.join(repo.root, 'specs/other/pr.md'), '## Title\nOther PR\n');
+
+    assert.throws(
+      () => resolvePrBodyPath(repo.root, ''),
+      (error) => error.code === 'AMBIGUOUS_PR_BODY'
+        && error.message.includes('specs/demo/pr.md')
+        && error.message.includes('specs/other/pr.md'),
+    );
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('buildPrCreatePlan reads pr.md title and builds safe gh args', () => {
+  const repo = createRepo({
+    [DEFAULT_GITFLOW_GUIDE_PATH]: '# GitFlow guide\n',
+    'specs/demo/pr.md': '## Title\nDemo PR\n\n## Summary\nBody\n',
+  });
+
+  try {
+    const preflight = {
+      ok: true,
+      repoRoot: repo.root,
+      remote: 'origin',
+      branchName: 'feature/demo',
+      guidePath: path.join(repo.root, DEFAULT_GITFLOW_GUIDE_PATH),
+    };
+    const plan = buildPrCreatePlan(repo.root, preflight, {
+      baseBranch: 'main',
+      input: 'specs/demo/pr.md',
+    });
+
+    assert.equal(plan.title, 'Demo PR');
+    assert.equal(plan.baseBranch, 'main');
+    assert.deepEqual(plan.args.slice(0, 6), ['pr', 'create', '--base', 'main', '--head', 'feature/demo']);
+    assert.ok(plan.args.includes('--body-file'));
+    assert.ok(plan.args.includes(path.join(repo.root, 'specs/demo/pr.md')));
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('runGhPrCreate reports gh pr create failures without merging', () => {
+  const plan = {
+    args: ['pr', 'create', '--base', 'main', '--head', 'feature/demo', '--title', 'Demo', '--body-file', 'pr.md'],
+    ghCommand: 'gh',
+    repoRoot: '/tmp/quiver-repo',
+  };
+
+  assert.throws(
+    () => runGhPrCreate(plan, {
+      ghCreateRunner() {
+        return {
+          status: 1,
+          stdout: '',
+          stderr: 'failed to create pr',
+        };
+      },
+    }),
+    (error) => error.code === 'GH_PR_CREATE_FAILED'
+      && error.message.includes('gh pr create failed')
+      && error.message.includes('failed to create pr'),
+  );
+});
+
+test('extractPrTitle falls back predictably', () => {
+  assert.equal(extractPrTitle('## Title\nMy PR\n', 'fallback'), 'My PR');
+  assert.equal(extractPrTitle('# Heading PR\n', 'fallback'), 'Heading PR');
+  assert.equal(extractPrTitle('No heading\n', 'fallback'), 'fallback');
 });

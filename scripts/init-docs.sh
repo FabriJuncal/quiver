@@ -522,8 +522,12 @@ Start with dry-runs so you can inspect the provider, role, context pack, and inv
 \`\`\`bash
 npm run quiver:ai:onboard -- --dry-run
 npm run quiver:ai:plan -- --phase acceptance --input requirements.md --dry-run
-npm run quiver:ai:plan -- --phase technical-plan --input acceptance-approved.md --dry-run
-npm run quiver:ai:plan -- --phase spec --input technical-plan-approved.md --dry-run
+npm run quiver:ai:approve -- --phase acceptance --input acceptance-approved.md
+npm run quiver:ai:plan -- --phase technical-plan --dry-run
+npm run quiver:ai:review-plan -- --dry-run
+npm run quiver:ai:approve -- --phase technical-plan --version <n>
+npm run quiver:spec:create -- --dry-run
+npm run quiver:ai:prompt-slice -- --slice specs/<spec-slug>/slices/<slice-id>/slice.json --dry-run
 npm run quiver:ai:pr -- --dry-run --ssh-host-alias github-work --identity-file ~/.ssh/github-work
 \`\`\`
 
@@ -532,7 +536,9 @@ Remove \`--dry-run\` only after the phase output is approved and the local provi
 When a real spec exists, execute one approved slice at a time:
 
 \`\`\`bash
+npm run quiver:ai:prompt-slice -- --slice specs/<spec-slug>/slices/<slice-id>/slice.json --dry-run
 npm run quiver:ai:execute-slice -- --slice specs/<spec-slug>/slices/<slice-id>/slice.json --dry-run
+npm run quiver:ai:execute-plan -- --dry-run --commit --mode delegated
 \`\`\`
 
 ## Project NPM Scripts
@@ -547,6 +553,7 @@ npm run quiver:next
 npm run quiver:doctor
 npm run quiver:ai:onboard -- --dry-run
 npm run quiver:ai:plan -- --phase acceptance --input requirements.md --dry-run
+npm run quiver:ai:prompt-slice -- --slice specs/<spec-slug>/slices/<slice-id>/slice.json --dry-run
 npm run quiver:ai:execute-slice -- --slice specs/<spec-slug>/slices/<slice-id>/slice.json --dry-run
 npm run quiver:ai:doctor -- --dry-run --ssh-host-alias github-work --identity-file ~/.ssh/github-work
 npm run quiver:ai:pr -- --dry-run --ssh-host-alias github-work --identity-file ~/.ssh/github-work
@@ -645,7 +652,7 @@ Record durable decisions in \`docs/DECISIONS.md\` so future AI agents do not re-
 
 ## First Slice Workflow
 
-Use this section only for the legacy/full scaffold that includes a placeholder spec. In the default AI-first layout, create real specs and slices with \`npx create-quiver ai plan --phase spec\` after acceptance criteria and the technical plan are approved.
+Use this section only for the legacy/full scaffold that includes a placeholder spec. In the default AI-first layout, create real specs and slices with \`npx create-quiver spec create\` after acceptance criteria are approved and the technical plan is reviewed and approved.
 
 1. Review or refine specs/$PROJECT_SLUG/SPEC.md.
 2. Create the first slice from specs/$PROJECT_SLUG/slices/slice-template/slice.json.
@@ -700,7 +707,7 @@ echo "📝 Próximos pasos:"
 echo "   1. Editar docs/AI_CONTEXT.md con el contexto resumido para IA"
 echo "   2. Editar docs/CONTEXTO.md con la información de tu proyecto"
 echo "   3. Editar docs/STATUS.md con el estado actual"
-echo "   4. Para el flujo recomendado, crear specs reales con: npx create-quiver ai plan --phase spec"
+echo "   4. Para el flujo recomendado, crear specs reales con: npx create-quiver spec create"
 echo "   5. Usar tools/scripts solo si necesitás compatibilidad legacy"
 echo ""
 echo "📖 Más información:"

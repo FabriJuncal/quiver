@@ -1,0 +1,51 @@
+{
+  "slice_id": "slice-00-spec-foundation",
+  "ticket": "QUIVER-23-00",
+  "type": "docs",
+  "title": "Spec foundation and guided flow planning artifacts",
+  "objective": "Create the complete documentation foundation for the guided flow productization spec.",
+  "description": "Publish the spec, status, evidence report, execution plan, PR body, slice definitions, and handoffs before product implementation starts.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "guided-flow-productization-spec-foundation",
+    "branch_name": "feature/QUIVER-23-00-guided-flow-productization-spec-foundation"
+  },
+  "files": [
+    "specs/quiver-v23-guided-flow-productization/**"
+  ],
+  "depends_on": [],
+  "parallel_safe": "no",
+  "parallel_safe_reason": "slice-00 must land before every other slice.",
+  "must": [
+    "Create SPEC.md.",
+    "Create STATUS.md.",
+    "Create EVIDENCE_REPORT.md.",
+    "Create EXECUTION_PLAN.md.",
+    "Create pr.md.",
+    "Create slice.json, EXECUTION_BRIEF.md, and CLOSURE_BRIEF.md for every slice.",
+    "Avoid product code changes."
+  ],
+  "not_included": [
+    "Implementing commands.",
+    "Changing package behavior.",
+    "Running AI providers.",
+    "Opening a PR."
+  ],
+  "acceptance": [
+    "Spec folder exists under specs/quiver-v23-guided-flow-productization.",
+    "Mandatory slice-00 exists.",
+    "Every slice has slice.json, EXECUTION_BRIEF.md, and CLOSURE_BRIEF.md.",
+    "Every slice.json parses successfully.",
+    "No product code is modified."
+  ],
+  "tests": [
+    "git diff --check",
+    "find specs/quiver-v23-guided-flow-productization -name \"slice.json\" -print -exec node -e \"JSON.parse(require('fs').readFileSync(process.argv[1], 'utf8'))\" {} \\;"
+  ],
+  "estimated_hours": 2,
+  "status": "completed",
+  "blocked_reason": null,
+  "actual_hours": 2,
+  "completed_at": "2026-05-21T00:00:00-0300"
+}

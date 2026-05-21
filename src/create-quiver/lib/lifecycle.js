@@ -4,6 +4,7 @@ const { branchDelete, catFileExists, currentBranch, fetchBranch, fetchRemote, ha
 const { parseJsonWithComments } = require('./json');
 const { writeFrontMatter } = require('./init-docs');
 const { relativePosixPath, resolveTargetRoot } = require('./paths');
+const { ensureSpecSliceZeroComplete } = require('./spec-worktrees');
 const { activeSlicePath, renderActiveSlice, resolveSliceContext, safeBranchName, toAlias, validateSliceMetaForStart, worktreesRootForRepo } = require('./slice');
 
 function ensureDir(dirPath) {
@@ -299,6 +300,11 @@ function startSlice(sliceInput, options = {}) {
   const repoRoot = runGit(['rev-parse', '--show-toplevel'], process.cwd());
   const slice = resolveSliceContext(repoRoot, sliceInput);
   slice.repoRoot = repoRoot;
+
+  if (!slice.isBaseline) {
+    ensureSpecSliceZeroComplete(repoRoot, slice.specDirAbs);
+  }
+
   validateSliceMetaForStart(slice);
 
   if (slice.status === 'blocked') {

@@ -2,6 +2,7 @@ const path = require('node:path');
 
 const SENSITIVE_SEGMENTS = [
   '.ssh',
+  '.quiver',
   'node_modules',
   'dist',
   'build',
@@ -93,6 +94,10 @@ function getContextPathExclusionReason(filePath) {
 
   if (!normalized) {
     return 'empty-path';
+  }
+
+  if (normalized === '.quiver/scans/PROJECT_SCAN.json') {
+    return null;
   }
 
   if (segments.some((segment) => SENSITIVE_SEGMENTS.includes(segment))) {

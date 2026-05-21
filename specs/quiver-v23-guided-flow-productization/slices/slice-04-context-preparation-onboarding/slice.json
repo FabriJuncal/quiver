@@ -1,0 +1,59 @@
+{
+  "slice_id": "slice-04-context-preparation-onboarding",
+  "ticket": "QUIVER-23-04",
+  "type": "feature",
+  "title": "Context preparation and onboarding prompt productization",
+  "objective": "Turn the long planner onboarding prompt into a maintained token-efficient Quiver flow.",
+  "description": "Productize context preparation so the planner reads the index first, selects relevant docs, reports assumptions, and avoids unnecessary docs.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "context-preparation-onboarding",
+    "branch_name": "feature/QUIVER-23-04-context-preparation-onboarding"
+  },
+  "files": [
+    "src/create-quiver/commands/prepare.js",
+    "src/create-quiver/commands/ai.js",
+    "src/create-quiver/lib/init-docs.js",
+    "src/create-quiver/lib/ai/**",
+    "docs/AI_ONBOARDING_PROMPT.md.template",
+    "docs/AI_CONTEXT.md.template",
+    "docs/INDEX.md.template",
+    "tests/commands/*.test.js",
+    "tests/lib/*.test.js"
+  ],
+  "depends_on": [
+    "slice-03-agent-profiles"
+  ],
+  "parallel_safe": "no",
+  "parallel_safe_reason": "Touches onboarding templates and AI command behavior.",
+  "must": [
+    "Keep onboarding token-efficient.",
+    "Start from docs/INDEX.md when present.",
+    "Report selected docs and why.",
+    "Avoid reading all docs by default.",
+    "Keep WDD/SDD constraints explicit.",
+    "Preserve no-product-code rule during onboarding."
+  ],
+  "not_included": [
+    "Plan review command.",
+    "Executor prompt generation.",
+    "Delegated execution."
+  ],
+  "acceptance": [
+    "Generated onboarding prompt includes index-first navigation.",
+    "Dry-run shows prompt source and context pack.",
+    "Missing referenced docs are reported as documentation debt.",
+    "Context preparation excludes secrets and noisy paths.",
+    "README snippets remain short."
+  ],
+  "tests": [
+    "node --test tests/commands/prepare.test.js tests/commands/ai-onboard.test.js tests/lib/ai-safety.test.js",
+    "git diff --check"
+  ],
+  "estimated_hours": 8,
+  "status": "completed",
+  "blocked_reason": null,
+  "actual_hours": 4,
+  "completed_at": "2026-05-21T14:59:09-0300"
+}

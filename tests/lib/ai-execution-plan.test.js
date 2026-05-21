@@ -4,7 +4,7 @@ const os = require('node:os');
 const path = require('node:path');
 const test = require('node:test');
 
-const { collectExecutionPlan, formatHumanExecutionPlan } = require('../../src/create-quiver/lib/ai/execution-plan');
+const { collectExecutionPlan, formatExecutePlanDryRun, formatHumanExecutionPlan } = require('../../src/create-quiver/lib/ai/execution-plan');
 
 function writeJson(filePath, data) {
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
@@ -89,6 +89,11 @@ test('collectExecutionPlan groups slice-00 first and parallel slices by ready le
     assert.equal(report.ready_levels[1].parallel_ready, true);
     assert.equal(report.ready_levels[1].requires_temporary_worktrees, true);
     assert.equal(report.ready_levels[1].worktree_strategy.mode, 'temporary-per-slice');
+    assert.deepEqual(report.ready_levels[1].execution_groups, [{
+      mode: 'parallel',
+      reason: 'No file-scope conflicts detected.',
+      slice_refs: ['spec-a/slice-01-alpha', 'spec-b/slice-01-delta'],
+    }]);
     assert.deepEqual(report.integration_order, [
       'spec-a/slice-00-spec-foundation',
       'spec-b/slice-00-spec-foundation',
@@ -97,6 +102,55 @@ test('collectExecutionPlan groups slice-00 first and parallel slices by ready le
       'spec-a/slice-02-beta',
     ]);
     assert.deepEqual(report.execution_order, report.sequential_order);
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('collectExecutionPlan falls back to sequential mode when same-level files overlap', () => {
+  const repo = makeRepo({
+    'specs/spec-a/slices/slice-00-spec-foundation/slice.json': slice('spec-a/slice-00-spec-foundation', ['docs/foundation.md'], {
+      status: 'completed',
+      type: 'docs',
+    }),
+    'specs/spec-a/slices/slice-01-alpha/slice.json': slice('spec-a/slice-01-alpha', ['src/shared.js'], {
+      depends_on: [],
+    }),
+    'specs/spec-a/slices/slice-02-beta/slice.json': slice('spec-a/slice-02-beta', ['src/shared.js'], {
+      depends_on: [],
+    }),
+  });
+
+  try {
+    const report = collectExecutionPlan(repo.root);
+    const level = report.ready_levels[0];
+
+    assert.equal(level.parallel_ready, false);
+    assert.equal(level.worktree_strategy.mode, 'sequential-fallback');
+    assert.ok(level.fallback_reason.includes('File conflicts'));
+    assert.deepEqual(level.execution_groups.map((group) => group.mode), ['sequential', 'sequential']);
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('collectExecutionPlan falls back to sequential mode when file scope is unknown', () => {
+  const repo = makeRepo({
+    'specs/spec-a/slices/slice-00-spec-foundation/slice.json': slice('spec-a/slice-00-spec-foundation', ['docs/foundation.md'], {
+      status: 'completed',
+      type: 'docs',
+    }),
+    'specs/spec-a/slices/slice-01-alpha/slice.json': slice('spec-a/slice-01-alpha', []),
+    'specs/spec-a/slices/slice-02-beta/slice.json': slice('spec-a/slice-02-beta', ['src/beta.js']),
+  });
+
+  try {
+    const report = collectExecutionPlan(repo.root);
+    const level = report.ready_levels[0];
+
+    assert.equal(level.parallel_ready, false);
+    assert.ok(level.fallback_reason.includes('Unknown file scope'));
+    assert.deepEqual(level.unknown_scope_slices, ['spec-a/slice-01-alpha']);
   } finally {
     repo.cleanup();
   }
@@ -111,6 +165,43 @@ test('formatHumanExecutionPlan includes worktree guidance and level ordering', (
     assert.ok(output.includes('Worktree strategy: temporary-per-slice'));
     assert.ok(output.includes('spec-a/slice-00-spec-foundation'));
     assert.ok(output.includes('Integration order'));
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('formatExecutePlanDryRun prints commands without executing providers', () => {
+  const repo = planFixture();
+  try {
+    const report = collectExecutionPlan(repo.root);
+    const output = formatExecutePlanDryRun(report, {
+      commit: true,
+      provider: 'codex',
+    });
+
+    assert.ok(output.includes('AI execute-plan dry-run'));
+    assert.ok(output.includes('Execution mode: auto'));
+    assert.ok(output.includes('Commit after each slice: enabled'));
+    assert.ok(output.includes('Wave 1: parallel-ready'));
+    assert.ok(output.includes('npx create-quiver ai prompt-slice --slice "specs/spec-a/slices/slice-01-alpha/slice.json" --dry-run'));
+    assert.ok(output.includes('npx create-quiver ai execute-slice --slice "specs/spec-a/slices/slice-01-alpha/slice.json" --provider codex --commit'));
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('formatExecutePlanDryRun manual mode prints prompts without execute commands', () => {
+  const repo = planFixture();
+  try {
+    const report = collectExecutionPlan(repo.root);
+    const output = formatExecutePlanDryRun(report, {
+      mode: 'manual',
+      provider: 'codex',
+    });
+
+    assert.ok(output.includes('Execution mode: manual'));
+    assert.ok(output.includes('npx create-quiver ai prompt-slice --slice "specs/spec-a/slices/slice-01-alpha/slice.json" --dry-run'));
+    assert.ok(!output.includes('npx create-quiver ai execute-slice --slice'));
   } finally {
     repo.cleanup();
   }

@@ -1,0 +1,55 @@
+{
+  "slice_id": "slice-08-executor-prompt-generation",
+  "ticket": "QUIVER-23-08",
+  "type": "feature",
+  "title": "Executor prompt generation for manual slice assignment",
+  "objective": "Generate minimal executor prompts from slice artifacts so users can assign slices without pasting long custom prompts.",
+  "description": "Productize the user's executor prompt as a generated, slice-specific prompt with minimal context and strict output contract.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "executor-prompt-generation",
+    "branch_name": "feature/QUIVER-23-08-executor-prompt-generation"
+  },
+  "files": [
+    "src/create-quiver/commands/ai.js",
+    "src/create-quiver/lib/ai/executor.js",
+    "src/create-quiver/lib/**",
+    "docs/AI_ONBOARDING_PROMPT.md.template",
+    "docs/COMMANDS.md.template",
+    "tests/commands/*.test.js",
+    "tests/lib/*.test.js"
+  ],
+  "depends_on": [
+    "slice-07-spec-create-experience"
+  ],
+  "parallel_safe": "no",
+  "parallel_safe_reason": "Depends on final generated slice artifact shape.",
+  "must": [
+    "Generate a prompt for one slice from `slice.json`, `EXECUTION_BRIEF.md`, and `CLOSURE_BRIEF.md`.",
+    "Include minimal SPEC excerpts only when needed.",
+    "Include allowed files, restrictions, acceptance criteria, validation commands, and output format.",
+    "Support dry-run output to console.",
+    "Avoid exposing secrets or full repo context."
+  ],
+  "not_included": [
+    "Executing the provider.",
+    "Delegating multiple slices.",
+    "Opening PRs."
+  ],
+  "acceptance": [
+    "Prompt generation works for a valid slice path.",
+    "Missing brief files fail clearly.",
+    "Output does not include full SPEC by default.",
+    "Prompt includes final report format.",
+    "Tests cover minimal context and path handling."
+  ],
+  "tests": [
+    "node --test tests/commands/ai-execute-slice.test.js tests/lib/ai-executor.test.js",
+    "git diff --check"
+  ],
+  "estimated_hours": 6,
+  "status": "completed",
+  "completed_at": "2026-05-21",
+  "blocked_reason": null
+}

@@ -60,6 +60,9 @@ test('ai onboard CLI dry-run prints provider, role, context pack, and invocation
     assert.ok(output.includes('Command: claude -p'));
     assert.ok(output.includes('Timeout: 120ms'));
     assert.ok(output.includes('Prompt transport: stdin'));
+    assert.ok(output.includes('Prompt source: packaged planner onboarding template'));
+    assert.ok(output.includes('Selected docs:'));
+    assert.ok(output.includes('Documentation debt:'));
   } finally {
     repo.cleanup();
   }
@@ -105,6 +108,9 @@ test('ai onboard forwards custom provider, role, context, input, and timeout to 
     assert.ok(captured.options.prompt.includes('onboarding notes'));
     assert.ok(captured.options.prompt.includes('Do not modify product code.'));
     assert.ok(captured.options.prompt.includes('Context pack: full'));
+    assert.ok(captured.options.prompt.includes('Then read docs/INDEX.md as the navigation map when present.'));
+    assert.ok(captured.options.prompt.includes('Do not read all docs/ recursively by default.'));
+    assert.ok(captured.options.prompt.includes('Documentation debt to report if relevant:'));
   } finally {
     repo.cleanup();
   }

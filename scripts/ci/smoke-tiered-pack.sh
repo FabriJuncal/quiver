@@ -110,7 +110,7 @@ run_analyze
 doctor_output="$(run_doctor)"
 assert_not_contains "$doctor_output" "Warning:"
 assert_text_contains "$doctor_output" "Read AGENTS.md, then docs/AI_ONBOARDING_PROMPT.md and execute it."
-assert_text_contains "$doctor_output" "Create real specs and slices only after acceptance criteria and the technical plan are approved."
+assert_text_contains "$doctor_output" "Create real specs and slices only after acceptance criteria are approved and the technical plan is reviewed and approved."
 
 assert_file "$project_root/AGENTS.md"
 assert_file "$project_root/docs/DECISIONS.md"
@@ -149,6 +149,18 @@ assert_front_matter "$project_root/docs/ai/LESSONS.md"
 assert_front_matter "$project_root/docs/ai/PRINCIPLES.md"
 assert_count_bounds "$project_root/docs/ai/QUICK.md" 50
 assert_count_bounds "$project_root/docs/ai/STANDARD.md" 300
+
+slice00_dir="$project_root/specs/$project_slug/slices/slice-00-docs-foundation"
+mkdir -p "$slice00_dir"
+node - "$slice00_dir/slice.json" <<'NODE'
+const fs = require('fs');
+const file = process.argv[2];
+fs.writeFileSync(file, `${JSON.stringify({
+  slice_id: 'slice-00-docs-foundation',
+  title: 'Documentation foundation',
+  status: 'completed'
+}, null, 2)}\n`);
+NODE
 
 make_git_repo
 export SLICE_WORKTREES_DIR="$worktrees_root"

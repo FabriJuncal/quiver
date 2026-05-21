@@ -1,0 +1,53 @@
+{
+  "slice_id": "slice-05-planner-iteration-history",
+  "ticket": "QUIVER-23-05",
+  "type": "feature",
+  "title": "Planner iteration history for criteria and plans",
+  "objective": "Make acceptance criteria and technical-plan iterations explicit, versioned, and approvable.",
+  "description": "Persist drafts, revisions, approved versions, and status for criteria and technical plans.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "planner-iteration-history",
+    "branch_name": "feature/QUIVER-23-05-planner-iteration-history"
+  },
+  "files": [
+    "src/create-quiver/commands/ai.js",
+    "src/create-quiver/lib/approvals.js",
+    "src/create-quiver/lib/**",
+    "docs/COMMANDS.md.template",
+    "tests/lib/approvals.test.js",
+    "tests/commands/ai-plan.test.js"
+  ],
+  "depends_on": [
+    "slice-04-context-preparation-onboarding"
+  ],
+  "parallel_safe": "no",
+  "parallel_safe_reason": "Extends planner approval state consumed by later slices.",
+  "must": [
+    "Store multiple criteria drafts.",
+    "Store multiple technical plan drafts.",
+    "Show draft history and approved version.",
+    "Approve a selected version explicitly.",
+    "Block later phases on missing approval."
+  ],
+  "not_included": [
+    "Production plan review.",
+    "Spec generation changes beyond using approved versions."
+  ],
+  "acceptance": [
+    "Multiple drafts can exist without overwriting approved artifacts.",
+    "Status output shows draft, approved, stale, and missing states.",
+    "Technical plan uses approved criteria by default.",
+    "Spec generation blocks without approved plan."
+  ],
+  "tests": [
+    "node --test tests/lib/approvals.test.js tests/commands/ai-plan.test.js",
+    "git diff --check"
+  ],
+  "estimated_hours": 7,
+  "status": "completed",
+  "blocked_reason": null,
+  "actual_hours": 4,
+  "completed_at": "2026-05-21T15:03:43-0300"
+}

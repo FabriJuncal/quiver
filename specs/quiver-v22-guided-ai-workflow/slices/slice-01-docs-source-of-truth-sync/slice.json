@@ -1,0 +1,55 @@
+{
+  "slice_id": "slice-01-docs-source-of-truth-sync",
+  "ticket": "QUIVER-22-01",
+  "type": "docs",
+  "title": "Documentation source-of-truth sync",
+  "objective": "Synchronize Quiver's visible documentation with the current 0.10.0 AI-first workflow before behavior changes.",
+  "description": "Update README, CHANGELOG, ROADMAP, BACKLOG, and AI guidance so future agents do not plan from stale information.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "guided-ai-docs-sync",
+    "branch_name": "feature/QUIVER-22-01-guided-ai-docs-sync"
+  },
+  "files": [
+    "README.md",
+    "README_FOR_AI.md",
+    "CHANGELOG.md",
+    "ROADMAP.md",
+    "BACKLOG.md",
+    "i18n/es/README.md",
+    "i18n/es/README_FOR_AI.md"
+  ],
+  "depends_on": [
+    "slice-00-spec-foundation"
+  ],
+  "parallel_safe": "no",
+  "parallel_safe_reason": "Documentation source of truth must be corrected before later slices depend on it.",
+  "must": [
+    "Remove stale references that contradict package version 0.10.0.",
+    "Explain the guided AI workflow as planned work, not already shipped behavior.",
+    "Keep README_FOR_AI aligned with README guidance.",
+    "Mark unresolved decisions explicitly instead of inventing them."
+  ],
+  "not_included": [
+    "Implementing commands.",
+    "Changing package version.",
+    "Publishing npm."
+  ],
+  "acceptance": [
+    "Root docs no longer say package.json is still 0.9.0.",
+    "CHANGELOG includes the 0.10.0 release status or clearly marks the missing entry as resolved.",
+    "ROADMAP and BACKLOG do not present shipped v20/v21 behavior as merely future work.",
+    "README explains current AI-first commands and clearly separates future guided workflow work.",
+    "No product code is modified."
+  ],
+  "tests": [
+    "git diff --check",
+    "node --test tests/commands/analyze.test.js tests/commands/ai-plan.test.js tests/commands/ai-pr.test.js"
+  ],
+  "estimated_hours": 3,
+  "status": "completed",
+  "blocked_reason": null,
+  "actual_hours": 1,
+  "completed_at": "2026-05-21T11:21:08-0300"
+}

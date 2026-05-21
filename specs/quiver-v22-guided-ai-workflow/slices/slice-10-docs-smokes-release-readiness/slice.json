@@ -1,0 +1,60 @@
+{
+  "slice_id": "slice-10-docs-smokes-release-readiness",
+  "ticket": "QUIVER-22-10",
+  "type": "docs-test",
+  "title": "Final docs, smokes, and release readiness",
+  "objective": "Finish the guided workflow with updated user docs, generated templates, smoke coverage, and release readiness evidence.",
+  "description": "Update public docs and generated project templates, add end-to-end smoke coverage, and confirm the feature is ready for release without publishing.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "guided-workflow-release-readiness",
+    "branch_name": "feature/QUIVER-22-10-guided-workflow-release-readiness"
+  },
+  "files": [
+    "README.md",
+    "README_FOR_AI.md",
+    "CHANGELOG.md",
+    "src/create-quiver/lib/init-docs.js",
+    "src/create-quiver/lib/init-layout.js",
+    "tests/commands/*.test.js",
+    "scripts/ci/*.sh",
+    "specs/quiver-v22-guided-ai-workflow/STATUS.md",
+    "specs/quiver-v22-guided-ai-workflow/EVIDENCE_REPORT.md"
+  ],
+  "depends_on": [
+    "slice-09-post-merge-cleanup-release-safety"
+  ],
+  "parallel_safe": "no",
+  "parallel_safe_reason": "Final docs and smokes must run after all behavior slices are complete.",
+  "must": [
+    "Document the finished guided workflow in root docs.",
+    "Update generated project docs/templates where users see commands.",
+    "Add smoke coverage for the happy path and major failure paths.",
+    "Update STATUS and EVIDENCE_REPORT.",
+    "Run full relevant test suite.",
+    "Do not publish npm in this slice."
+  ],
+  "not_included": [
+    "Changing feature behavior after acceptance unless a blocking bug is found.",
+    "Publishing a release.",
+    "Merging PR."
+  ],
+  "acceptance": [
+    "README shows the guided AI workflow as available behavior.",
+    "Generated docs mention prepare, approvals, executor commits, PR creation, and cleanup.",
+    "Smoke tests cover dry-run preparation, approvals, execution waves, PR dry-run, cleanup dry-run, and package safety.",
+    "STATUS and EVIDENCE_REPORT reflect completed slices.",
+    "Release checklist is ready but no npm publish is performed."
+  ],
+  "tests": [
+    "node --test tests/**/*.test.js",
+    "npm run smoke:create-quiver",
+    "npm run smoke:tiered-pack",
+    "npm pack --dry-run",
+    "git diff --check"
+  ],
+  "estimated_hours": 6,
+  "status": "completed",
+  "blocked_reason": null
+}

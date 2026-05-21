@@ -4,6 +4,31 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Guided AI workflow commands: `prepare`, agent profiles, planner onboarding, approval persistence, `review-plan`, `spec create`, executor prompt generation, delegated execution waves, PR creation with `gh`, spec worktree start/status/close, and package safety.
+- `quiver:prepare`, `quiver:flow`, `quiver:ai:agent`, `quiver:ai:review-plan`, `quiver:ai:prompt-slice`, `quiver:ai:execute-plan`, `quiver:spec:create`, `quiver:spec:start`, `quiver:spec:status`, and `quiver:spec:close` npm scripts for generated projects.
+- Guided workflow smoke coverage for flow status, profiles, onboarding, approvals, review-plan, spec create, executor prompts, delegated execution dry-runs, PR dry-run/create mocks, cleanup, and package safety.
+
+### Changed
+
+- Root and generated docs now present Quiver as AI-first guided workflow tooling, not only scaffolding.
+- `ai execute-plan` now documents manual prompt mode and delegated worktree mode.
+- Refreshed AI context docs keep front matter after `analyze`.
+- Package smoke now fails when local AI/tool state, env files, npm credentials, or worktree state would enter the npm tarball.
+
+## [0.10.0] - 2026-05-21
+
+### Added
+
+- AI CLI orchestration commands for provider dry-runs, planner phases, executor slice runs, and GitHub PR preflight.
+- AI-first default project layout with visible onboarding docs and internal `.quiver/` machinery.
+- Generated spec/slice/handoff/PR artifacts with mandatory `slice-00`.
+
+### Changed
+
+- Published `create-quiver` 0.10.0 and aligned the root docs with the current release line.
+
 ## [0.9.0] - 2026-05-14
 
 ### Added

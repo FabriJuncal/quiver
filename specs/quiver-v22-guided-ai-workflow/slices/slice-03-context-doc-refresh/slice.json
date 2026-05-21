@@ -1,0 +1,56 @@
+{
+  "slice_id": "slice-03-context-doc-refresh",
+  "ticket": "QUIVER-22-03",
+  "type": "feature",
+  "title": "Context documentation refresh and safe analyzer output",
+  "objective": "Improve project context generation so AI onboarding can use concise, safe, updated docs.",
+  "description": "Enhance analysis/preparation to refresh AI-facing context docs while excluding secrets, generated files, dependency folders, large artifacts, and local AI tool state.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "context-doc-refresh",
+    "branch_name": "feature/QUIVER-22-03-context-doc-refresh"
+  },
+  "files": [
+    "src/create-quiver/index.js",
+    "src/create-quiver/lib/project-scan.js",
+    "src/create-quiver/lib/init-docs.js",
+    "src/create-quiver/lib/ai/context-packs.js",
+    "src/create-quiver/lib/ai/safety.js",
+    "tests/commands/analyze.test.js",
+    "tests/lib/ai-context-packs.test.js"
+  ],
+  "depends_on": [
+    "slice-02-prepare-command-diagnostics"
+  ],
+  "parallel_safe": "no",
+  "parallel_safe_reason": "Context generation feeds planner phases and must be stable first.",
+  "must": [
+    "Refresh useful AI context docs from detected project facts.",
+    "Keep raw scan under .quiver/scans.",
+    "Exclude secrets, env files, build outputs, dependency folders, package caches, and local AI tool state.",
+    "Report assumptions and information that still needs human completion.",
+    "Avoid pretending analysis understands business rules not present in the repo."
+  ],
+  "not_included": [
+    "Planner approval persistence.",
+    "Spec generation changes.",
+    "Provider execution changes."
+  ],
+  "acceptance": [
+    "analyze or prepare refreshes concise AI context docs without exposing unsafe paths.",
+    "docs/PROJECT_MAP.md remains the visible stack and command source.",
+    ".quiver/scans/PROJECT_SCAN.json remains internal raw scan output.",
+    "Generated context includes assumptions and missing information.",
+    "Large/noisy/secret paths are excluded by tests."
+  ],
+  "tests": [
+    "node --test tests/commands/analyze.test.js tests/lib/ai-context-packs.test.js",
+    "git diff --check"
+  ],
+  "estimated_hours": 7,
+  "status": "completed",
+  "blocked_reason": null,
+  "actual_hours": 2,
+  "completed_at": "2026-05-21T11:37:41-0300"
+}

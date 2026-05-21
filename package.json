@@ -5,7 +5,8 @@
   "description": "Quiver CLI for scaffolding projects from the packaged template",
   "license": "MIT",
   "bin": {
-    "create-quiver": "bin/create-quiver.js"
+    "create-quiver": "bin/create-quiver.js",
+    "quiver": "bin/create-quiver.js"
   },
   "scripts": {
     "check:slice": "bash tools/scripts/check-slice-readiness.sh",
@@ -13,17 +14,31 @@
     "start:slice": "bash tools/scripts/start-slice.sh",
     "cleanup:slice": "bash tools/scripts/cleanup-slice.sh",
     "migrate": "bash tools/scripts/migrate-project.sh",
+    "quiver:analyze": "npx create-quiver analyze",
+    "quiver:flow": "npx create-quiver flow",
+    "quiver:prepare": "npx create-quiver prepare",
     "quiver:plan": "npx create-quiver plan",
     "quiver:graph": "npx create-quiver graph",
     "quiver:next": "npx create-quiver next",
+    "quiver:doctor": "npx create-quiver doctor",
+    "quiver:ai:agent": "npx create-quiver ai agent",
     "quiver:ai:onboard": "npx create-quiver ai onboard",
     "quiver:ai:plan": "npx create-quiver ai plan",
+    "quiver:ai:review-plan": "npx create-quiver ai review-plan",
+    "quiver:ai:approve": "npx create-quiver ai approve",
+    "quiver:ai:prompt-slice": "npx create-quiver ai prompt-slice",
     "quiver:ai:execute-slice": "npx create-quiver ai execute-slice",
+    "quiver:ai:execute-plan": "npx create-quiver ai execute-plan",
     "quiver:ai:pr": "npx create-quiver ai pr",
     "quiver:ai:doctor": "npx create-quiver ai doctor",
+    "quiver:spec:create": "npx create-quiver spec create",
+    "quiver:spec:start": "npx create-quiver spec start",
+    "quiver:spec:status": "npx create-quiver spec status",
+    "quiver:spec:close": "npx create-quiver spec close",
     "package:quiver": "bash scripts/package-quiver.sh",
     "smoke:create-quiver": "bash scripts/ci/smoke-create-quiver.sh",
     "smoke:tiered-pack": "bash scripts/ci/smoke-tiered-pack.sh",
+    "smoke:guided-workflow": "bash scripts/ci/smoke-guided-workflow.sh",
     "release:quiver": "bash scripts/release-quiver.sh"
   }
 }

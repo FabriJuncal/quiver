@@ -309,6 +309,7 @@ module.exports = {
   ProviderRunnerError,
   assertSupportedProvider,
   buildProviderInvocation,
+  formatProviderList,
   getProviderDefinition,
   runProvider,
 };

@@ -39,17 +39,21 @@ test('context pack selection preserves POSIX, Windows, and spaced paths', () => 
   const result = selectSafePaths([
     'specs/quiver-v20-ai-cli-orchestration/slices/slice-02/hand off.md',
     'C:\\Repo With Spaces\\docs\\AI_CONTEXT.md',
+    '.quiver/scans/PROJECT_SCAN.json',
     '/Users/test/project/.env.local',
     'C:\\Users\\test\\project\\node_modules\\pkg\\index.js',
+    '/Users/test/project/.quiver/state.json',
   ], { role: 'planner', packName: 'planning' });
 
   assert.deepEqual(result.included, [
     'specs/quiver-v20-ai-cli-orchestration/slices/slice-02/hand off.md',
     'C:/Repo With Spaces/docs/AI_CONTEXT.md',
+    '.quiver/scans/PROJECT_SCAN.json',
   ]);
-  assert.equal(result.excluded.length, 2);
+  assert.equal(result.excluded.length, 3);
   assert.equal(result.excluded[0].reason, 'env-file');
   assert.match(result.excluded[1].reason, /unsafe-segment:node_modules/);
+  assert.match(result.excluded[2].reason, /unsafe-segment:\.quiver/);
 });
 
 test('planner can request the full pack explicitly while executor cannot', () => {

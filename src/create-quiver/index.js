@@ -4,14 +4,19 @@ const path = require('path');
 const { execFileSync } = require('child_process');
 const { checkHandoff, scaffoldHandoff } = require('./lib/handoff');
 const { collectDoctorReport } = require('./lib/doctor');
-const { runDoctor: runAiDoctor, runExecuteSlice: runAiExecuteSlice, runOnboard, runPlan: runAiPlan, runPr: runAiPr } = require('./commands/ai');
+const { runAgent: runAiAgent, runApprovalStatus: runAiApprovalStatus, runApprove: runAiApprove, runDoctor: runAiDoctor, runExecutePlan: runAiExecutePlan, runExecuteSlice: runAiExecuteSlice, runOnboard, runPlan: runAiPlan, runPr: runAiPr, runPromptSlice: runAiPromptSlice, runReviewPlan: runAiReviewPlan } = require('./commands/ai');
+const { runPrepare } = require('./commands/prepare');
+const { runFlow } = require('./commands/flow');
 const { runGraph } = require('./commands/graph');
 const { runNext } = require('./commands/next');
 const { runPlan } = require('./commands/plan');
+const { runCreateSpec } = require('./commands/spec');
 const { buildInitLayout, formatInitLayoutPlan } = require('./lib/init-layout');
-const { initializeProjectDocs, installSelfAsDevDep } = require('./lib/init-docs');
+const { initializeProjectDocs, installSelfAsDevDep, refreshAiContextDoc } = require('./lib/init-docs');
 const { checkPrReadiness, checkScope, checkSliceReadiness } = require('./lib/readiness');
 const { cleanupSlice, refreshActiveSlicesBoard, startSlice } = require('./lib/lifecycle');
+const { buildSpecStatus, closeSpecWorktree, formatSpecCloseResult, formatSpecStartResult, formatSpecStatus, startSpecWorktree } = require('./lib/spec-worktrees');
+const { getContextPathExclusionReason } = require('./lib/ai/safety');
 const { relativePosixPath, resolveTargetRoot } = require('./lib/paths');
 const {
   CURRENT_SCAN_RELATIVE_PATH,
@@ -40,12 +45,15 @@ function printUsage() {
   npx create-quiver [options]
   npx create-quiver init [options]
   npx create-quiver analyze [options]
+  npx create-quiver flow [options]
   npx create-quiver plan [options]
   npx create-quiver ai <task> [options]
+  npx create-quiver ai agent <set|list|show> [role] [options]
   npx create-quiver graph [options]
   npx create-quiver next [options]
   npx create-quiver migrate [options]
   npx create-quiver doctor [options]
+  npx create-quiver prepare [options]
   npx create-quiver start-slice [options] <slice.json>
   npx create-quiver check-slice [options] <slice.json>
   npx create-quiver check-pr <slice.json>
@@ -54,6 +62,10 @@ function printUsage() {
   npx create-quiver cleanup-slice [options] <slice.json>
   npx create-quiver check-scope [options] <slice.json>
   npx create-quiver refresh-active-slices
+  npx create-quiver spec create [options]
+  npx create-quiver spec start <spec-dir>
+  npx create-quiver spec status <spec-dir>
+  npx create-quiver spec close <spec-dir>
 
 Options:
   -n, --name <project-name>   Project name to generate
@@ -71,7 +83,20 @@ Options:
       --full                  Plan or run the full compatibility init profile
       --legacy-scripts        Include legacy Bash wrappers in init profile
       --include-templates     Export packaged templates in init profile
-      --dry-run               Preview init or AI work without executing writes/providers
+      --dry-run               Preview init, prepare, spec create, or AI work without executing writes/providers
+      --execute               For ai execute-plan, run the planned slices instead of printing commands
+      --create                For ai pr, create the PR after preflight instead of printing the plan only
+      --commit                For ai execute-slice, commit validated slice changes after provider, scope, and tests pass
+      --allow-dirty           For ai execute-slice, allow pre-existing dirty files and ignore them for scope diff
+      --mode <name>           Execution mode for ai execute-plan (auto, manual, delegated)
+      --provider <name>       Provider CLI to preflight for prepare or AI commands
+      --model <label>         Free-form model label for AI agent profiles
+      --version <n>           Draft version to approve for AI planner phases
+      --ssh-host-alias <name> SSH host alias to validate for prepare or AI commands
+      --identity-file <path>  SSH identity file to validate for prepare or AI commands
+      --remote <name>         Git remote name for AI PR checks
+      --base <branch>         Base branch for ai pr create (default: main)
+      --title <text>          Override PR title for ai pr create
   -y, --yes                   Skip prompts and use the provided inputs
   -h, --help                  Show this help message
 
@@ -80,13 +105,27 @@ Examples:
   npx create-quiver init --name "My Project" --dry-run
   npx create-quiver --name "My Project"
   npx create-quiver --name "My Project" --dir ./my-project
+  cd ./my-project && npx create-quiver flow
   cd ./my-project && npx create-quiver analyze
   cd ./my-project && npx create-quiver plan --json
   cd ./my-project && npx create-quiver ai onboard --dry-run
+  cd ./my-project && npx create-quiver ai agent set planner --provider codex --model gpt-5.5
+  cd ./my-project && npx create-quiver ai agent list
   cd ./my-project && npx create-quiver ai plan --phase acceptance --input requirements.md --dry-run
+  cd ./my-project && npx create-quiver ai approve --phase acceptance --input acceptance.md
+  cd ./my-project && npx create-quiver ai plan --phase technical-plan --dry-run
+  cd ./my-project && npx create-quiver ai review-plan --dry-run
+  cd ./my-project && npx create-quiver ai approve --phase technical-plan --version 1
+  cd ./my-project && npx create-quiver spec create --dry-run
+  cd ./my-project && npx create-quiver ai approvals
+  cd ./my-project && npx create-quiver ai prompt-slice --slice specs/my-project/slices/slice-01/slice.json --dry-run
   cd ./my-project && npx create-quiver ai execute-slice --slice specs/my-project/slices/slice-01/slice.json --dry-run
+  cd ./my-project && npx create-quiver ai execute-slice --slice specs/my-project/slices/slice-01/slice.json --commit
+  cd ./my-project && npx create-quiver ai execute-plan --dry-run --commit
   cd ./my-project && npx create-quiver ai doctor --dry-run --ssh-host-alias github-work --identity-file ~/.ssh/github-work
   cd ./my-project && npx create-quiver ai pr --dry-run --ssh-host-alias github-work --identity-file ~/.ssh/github-work
+  cd ./my-project && npx create-quiver ai pr --create --input specs/my-project/pr.md --ssh-host-alias github-work --identity-file ~/.ssh/github-work
+  cd ./my-project && npx create-quiver prepare --dry-run --provider codex --ssh-host-alias github-work --identity-file ~/.ssh/github-work
   cd ./my-project && npx create-quiver graph --show-conflicts
   cd ./my-project && npx create-quiver graph --format mermaid
   cd ./my-project && npx create-quiver graph --format dot
@@ -103,6 +142,9 @@ Examples:
   cd ./my-project && npx create-quiver cleanup-slice specs/my-project/slices/slice-01/slice.json
   cd ./my-project && npx create-quiver check-scope specs/my-project/slices/slice-01/slice.json
   cd ./my-project && npx create-quiver refresh-active-slices
+  cd ./my-project && npx create-quiver spec start specs/my-project
+  cd ./my-project && npx create-quiver spec status specs/my-project
+  cd ./my-project && npx create-quiver spec close specs/my-project --dry-run
   node bin/create-quiver.js doctor --dir ./my-project
 `);
 }
@@ -132,13 +174,27 @@ function parseArgs(argv) {
     level: null,
     unicode: false,
     aiCommand: '',
+    aiAgentCommand: '',
+    aiAgentRole: '',
     aiPhase: 'acceptance',
     aiProvider: 'codex',
+    aiProviderExplicit: false,
+    aiModel: '',
+    aiLabel: '',
+    aiVersion: '',
+    prepareProvider: '',
     aiRole: '',
     aiContext: '',
     aiInput: '',
     aiSlice: '',
     aiTimeout: null,
+    aiCommit: false,
+    aiAllowDirty: false,
+    aiExecute: false,
+    aiExecutionMode: 'auto',
+    aiCreate: false,
+    aiBaseBranch: 'main',
+    aiTitle: '',
     aiSshHostAlias: '',
     aiIdentityFile: '',
     aiRemote: 'origin',
@@ -146,14 +202,18 @@ function parseArgs(argv) {
     initIncludeTemplates: false,
     initLegacyScripts: false,
     initMinimal: false,
+    specCommand: '',
   };
 
   const args = [...argv];
-  const commandModes = new Set(['init', 'plan', 'graph', 'next', 'doctor', 'analyze', 'migrate', 'start-slice', 'check-slice', 'check-pr', 'check-handoff', 'new-handoff', 'cleanup-slice', 'check-scope', 'refresh-active-slices', 'ai']);
+  const commandModes = new Set(['init', 'flow', 'plan', 'graph', 'next', 'doctor', 'prepare', 'analyze', 'migrate', 'start-slice', 'check-slice', 'check-pr', 'check-handoff', 'new-handoff', 'cleanup-slice', 'check-scope', 'refresh-active-slices', 'spec', 'ai']);
   if (commandModes.has(args[0])) {
     result.mode = args[0];
     result.explicitInit = args[0] === 'init';
     args.shift();
+    if (result.mode === 'spec') {
+      result.specCommand = args.shift() || '';
+    }
   } else if (args[0] === '--analyze') {
     result.mode = 'analyze';
     args.shift();
@@ -228,6 +288,35 @@ function parseArgs(argv) {
 
     if (arg === '--dry-run') {
       result.dryRun = true;
+      continue;
+    }
+
+    if (arg === '--commit') {
+      result.aiCommit = true;
+      continue;
+    }
+
+    if (arg === '--execute') {
+      result.aiExecute = true;
+      continue;
+    }
+
+    if (arg === '--create') {
+      result.aiCreate = true;
+      continue;
+    }
+
+    if (arg === '--mode') {
+      const value = args[++index];
+      if (!value) {
+        throw new Error(formatError('missing value for --mode'));
+      }
+      result.aiExecutionMode = value;
+      continue;
+    }
+
+    if (arg === '--allow-dirty') {
+      result.aiAllowDirty = true;
       continue;
     }
 
@@ -319,6 +408,35 @@ function parseArgs(argv) {
         throw new Error(formatError('missing value for --provider'));
       }
       result.aiProvider = value;
+      result.prepareProvider = value;
+      result.aiProviderExplicit = true;
+      continue;
+    }
+
+    if (arg === '--model') {
+      const value = args[++index];
+      if (!value) {
+        throw new Error(formatError('missing value for --model'));
+      }
+      result.aiModel = value;
+      continue;
+    }
+
+    if (arg === '--label') {
+      const value = args[++index];
+      if (!value) {
+        throw new Error(formatError('missing value for --label'));
+      }
+      result.aiLabel = value;
+      continue;
+    }
+
+    if (arg === '--version') {
+      const value = args[++index];
+      if (!value) {
+        throw new Error(formatError('missing value for --version'));
+      }
+      result.aiVersion = value;
       continue;
     }
 
@@ -398,6 +516,24 @@ function parseArgs(argv) {
       continue;
     }
 
+    if (arg === '--base') {
+      const value = args[++index];
+      if (!value) {
+        throw new Error(formatError('missing value for --base'));
+      }
+      result.aiBaseBranch = value;
+      continue;
+    }
+
+    if (arg === '--title') {
+      const value = args[++index];
+      if (!value) {
+        throw new Error(formatError('missing value for --title'));
+      }
+      result.aiTitle = value;
+      continue;
+    }
+
     if (arg === '--phase') {
       const value = args[++index];
       if (!value) {
@@ -462,16 +598,45 @@ function parseArgs(argv) {
     if (positional.length > 0) {
       throw new Error(formatError('plan does not accept positional arguments; use --spec <slug>'));
     }
+  } else if (result.mode === 'flow') {
+    if (positional.length > 0) {
+      throw new Error(formatError('flow does not accept positional arguments'));
+    }
   } else if (result.mode === 'ai') {
     if (!result.aiCommand && positional.length > 0) {
       result.aiCommand = positional.shift();
     }
+    if (result.aiCommand === 'agent') {
+      if (!result.aiAgentCommand && positional.length > 0) {
+        result.aiAgentCommand = positional.shift();
+      }
+      if (!result.aiAgentRole && positional.length > 0) {
+        result.aiAgentRole = positional.shift();
+      }
+    }
     if (positional.length > 0) {
       throw new Error(formatError('ai does not accept extra positional arguments'));
+    }
+  } else if (result.mode === 'prepare') {
+    if (positional.length > 0) {
+      throw new Error(formatError('prepare does not accept positional arguments'));
     }
   } else if (result.mode === 'refresh-active-slices') {
     if (positional.length > 0) {
       throw new Error(formatError('refresh-active-slices does not accept positional arguments'));
+    }
+  } else if (result.mode === 'spec') {
+    if (!result.specCommand && positional.length > 0) {
+      result.specCommand = positional.shift();
+    }
+    if (!result.specCommand) {
+      throw new Error(formatError('missing spec subcommand. Use: npx create-quiver spec <create|start|status|close>'));
+    }
+    if (result.specCommand !== 'create' && positional.length > 0) {
+      result.targetDir = positional.shift();
+    }
+    if (result.specCommand === 'create' && positional.length > 0) {
+      throw new Error(formatError('spec create does not accept positional arguments; use --input <file> or --spec <slug>'));
     }
   } else {
     if (positional.length > 0) {
@@ -698,6 +863,43 @@ function escapeMarkdownCell(value) {
   return String(value).replace(/\|/g, '\\|');
 }
 
+function summarizeSkippedPaths(scan) {
+  const details = Array.isArray(scan.skipped_path_details) && scan.skipped_path_details.length > 0
+    ? scan.skipped_path_details
+    : (Array.isArray(scan.skipped_paths) ? scan.skipped_paths.map((item) => ({ reason: 'excluded path', path: item })) : []);
+  const counts = new Map();
+  const dependencySegments = new Set(['node_modules', '.pnpm-store', '.npm', '.yarn']);
+  const outputSegments = new Set(['dist', 'build', 'coverage', 'out', 'tmp', 'temp', 'cache', '.cache', '.turbo', '.next', '.nuxt', '.parcel-cache', 'generated', 'gen', 'artifacts', 'reports', 'vendor', 'target']);
+
+  for (const item of details) {
+    const reason = item.reason || 'excluded path';
+    let label = reason;
+    if (reason === 'env-file') {
+      label = 'env files';
+    } else if (reason === 'git-metadata') {
+      label = 'git metadata';
+    } else if (reason === 'hidden-directory') {
+      label = 'hidden directories';
+    } else if (reason.startsWith('secret-file:')) {
+      label = 'secret files';
+    } else if (reason.startsWith('unsafe-segment:')) {
+      const segment = reason.slice('unsafe-segment:'.length);
+      if (segment === '.quiver') {
+        label = 'local AI state';
+      } else if (dependencySegments.has(segment)) {
+        label = 'dependency folders';
+      } else if (outputSegments.has(segment)) {
+        label = 'generated/output/cache folders';
+      } else {
+        label = segment;
+      }
+    }
+    counts.set(label, (counts.get(label) || 0) + 1);
+  }
+
+  return Array.from(counts.entries()).map(([reason, count]) => ({ reason, count }));
+}
+
 function collectPackageManagers(projectRoot) {
   const packageManagerField = readJsonIfExists(path.join(projectRoot, 'package.json'))?.packageManager;
 
@@ -725,6 +927,7 @@ function collectPackageManagers(projectRoot) {
 function collectProjectFiles(projectRoot, maxDepth = 2) {
   const files = [];
   const skippedPaths = [];
+  const skippedPathDetails = [];
   const ignoredDirs = new Set([
     '.git',
     'node_modules',
@@ -741,6 +944,12 @@ function collectProjectFiles(projectRoot, maxDepth = 2) {
   ]);
   const allowedHiddenDirs = new Set(['.github', '.vscode', '.devcontainer']);
 
+  function skipPath(relativePath, reason) {
+    const normalized = relativePath.split(path.sep).join('/');
+    skippedPaths.push(normalized);
+    skippedPathDetails.push({ path: normalized, reason });
+  }
+
   function walk(currentDir, depth, relativeDir = '') {
     const entries = fs.readdirSync(currentDir, { withFileTypes: true });
 
@@ -750,12 +959,18 @@ function collectProjectFiles(projectRoot, maxDepth = 2) {
 
       if (entry.isDirectory()) {
         if (ignoredDirs.has(entry.name)) {
-          skippedPaths.push(entryRelativePath);
+          skipPath(entryRelativePath, `unsafe-segment:${entry.name}`);
+          continue;
+        }
+
+        const directoryReason = getContextPathExclusionReason(entryRelativePath);
+        if (directoryReason) {
+          skipPath(entryRelativePath, directoryReason);
           continue;
         }
 
         if (entry.name.startsWith('.') && !allowedHiddenDirs.has(entry.name)) {
-          skippedPaths.push(entryRelativePath);
+          skipPath(entryRelativePath, 'hidden-directory');
           continue;
         }
 
@@ -766,13 +981,19 @@ function collectProjectFiles(projectRoot, maxDepth = 2) {
         continue;
       }
 
+      const fileReason = getContextPathExclusionReason(entryRelativePath);
+      if (fileReason) {
+        skipPath(entryRelativePath, fileReason);
+        continue;
+      }
+
       files.push(entryRelativePath);
     }
   }
 
   walk(projectRoot, 0);
 
-  return { files, skippedPaths };
+  return { files, skipped_path_details: skippedPathDetails, skippedPaths };
 }
 
 function collectRootEntries(projectRoot) {
@@ -1076,7 +1297,7 @@ function detectRisks(projectRoot, scan) {
 function buildProjectScan(projectRoot) {
   const packageJson = readJsonIfExists(path.join(projectRoot, 'package.json'));
   const rootEntries = collectRootEntries(projectRoot);
-  const { files, skippedPaths } = collectProjectFiles(projectRoot);
+  const { files, skippedPaths, skipped_path_details } = collectProjectFiles(projectRoot);
   const topLevelDirectories = rootEntries.filter((entry) => entry.type === 'directory' && !entry.name.startsWith('.')).map((entry) => entry.name);
   const sourceDirectories = detectSourceDirectories(rootEntries);
   const configFiles = detectConfigFiles(rootEntries);
@@ -1134,6 +1355,7 @@ function buildProjectScan(projectRoot) {
     },
     risks: [],
     skipped_paths: skippedPaths,
+    skipped_path_details,
   };
 
   scan.risks = detectRisks(projectRoot, scan);
@@ -1310,9 +1532,10 @@ function renderProjectMap(scan) {
 
   lines.push('');
   lines.push('## Skipped Paths');
-  if (scan.skipped_paths.length > 0) {
-    for (const skippedPath of scan.skipped_paths) {
-      lines.push(`- ${skippedPath}`);
+  const skippedSummaries = summarizeSkippedPaths(scan);
+  if (skippedSummaries.length > 0) {
+    for (const skippedPath of skippedSummaries) {
+      lines.push(`- ${skippedPath.reason}: ${skippedPath.count}`);
     }
   } else {
     lines.push('- None');
@@ -1320,10 +1543,8 @@ function renderProjectMap(scan) {
 
   lines.push('');
   lines.push('## Do Not Read First');
-  if (scan.skipped_paths.length > 0) {
-    for (const skippedPath of scan.skipped_paths) {
-      lines.push(`- ${skippedPath}`);
-    }
+  if (skippedSummaries.length > 0) {
+    lines.push('- Hidden, generated, secret, and cache paths are excluded from the analysis scan.');
   } else {
     lines.push('- None detected, but still prioritize docs and config files before source trees.');
   }
@@ -1351,11 +1572,13 @@ function runAnalyze(targetDir) {
 
   const scan = buildProjectScan(projectRoot);
   const artifacts = writeProjectScanArtifacts(projectRoot, scan);
+  const aiContextPath = refreshAiContextDoc(projectRoot, scan);
   updateStateForAnalyze(projectRoot, CLI_VERSION);
 
   console.log(`Project analysis completed for ${projectRoot}`);
   console.log(`Wrote ${relativePosixPath(projectRoot, artifacts.jsonPath)}`);
   console.log(`Wrote ${relativePosixPath(projectRoot, artifacts.mdPath)}`);
+  console.log(`Wrote ${relativePosixPath(projectRoot, aiContextPath)}`);
   console.log(`Detected primary stack: ${scan.stack.primary}`);
   console.log(`Detected package manager: ${scan.project.package_manager}`);
 }
@@ -1475,9 +1698,14 @@ function runDoctor(targetDir) {
   const missingNodeNativeScripts = ['quiver:migrate', 'quiver:analyze', 'quiver:doctor']
     .filter((name) => typeof pkg.scripts?.[name] !== 'string');
   const missingAiScripts = [
+    'quiver:ai:agent',
     'quiver:ai:onboard',
     'quiver:ai:plan',
+    'quiver:ai:review-plan',
+    'quiver:ai:approve',
+    'quiver:ai:prompt-slice',
     'quiver:ai:execute-slice',
+    'quiver:ai:execute-plan',
     'quiver:ai:pr',
     'quiver:ai:doctor',
   ].filter((name) => typeof pkg.scripts?.[name] !== 'string');
@@ -1540,7 +1768,7 @@ function runDoctor(targetDir) {
     console.log(`- Validate a slice: npx create-quiver check-slice specs/${projectSlug}/slices/<slice-id>/slice.json`);
     console.log(`- Validate the PR gate: npx create-quiver check-pr specs/${projectSlug}/slices/<slice-id>/slice.json`);
   } else {
-    console.log('- Create real specs and slices only after acceptance criteria and the technical plan are approved.');
+    console.log('- Create real specs and slices only after acceptance criteria are approved and the technical plan is reviewed and approved.');
   }
 }
 
@@ -1550,7 +1778,7 @@ function printInitNextSteps(targetDir, projectName) {
   console.log(`- Review AGENTS.md, then ${path.join(targetDir, 'docs', 'AI_ONBOARDING_PROMPT.md')}`);
   console.log(`- Review ${path.join(targetDir, 'docs', 'WORKFLOW.md')}`);
   console.log('- Analyze the project with npx create-quiver analyze');
-  console.log('- Create real specs and slices after acceptance criteria and the technical plan are approved.');
+  console.log('- Create real specs and slices after acceptance criteria are approved and the technical plan is reviewed and approved.');
 }
 
 async function run(argv) {
@@ -1566,6 +1794,13 @@ async function run(argv) {
     return;
   }
 
+  if (args.mode === 'flow') {
+    await runFlow(process.cwd(), {
+      json: args.json,
+    });
+    return;
+  }
+
   if (args.mode === 'plan') {
     runPlan(process.cwd(), {
       json: args.json,
@@ -1576,9 +1811,31 @@ async function run(argv) {
     return;
   }
 
+  if (args.mode === 'prepare') {
+    await runPrepare(process.cwd(), {
+      dryRun: args.dryRun,
+      identityFile: args.aiIdentityFile || undefined,
+      provider: args.prepareProvider || undefined,
+      sshHostAlias: args.aiSshHostAlias || undefined,
+    });
+    return;
+  }
+
   if (args.mode === 'ai') {
     if (!args.aiCommand) {
-      throw new Error(formatError('missing ai subcommand. Use: npx create-quiver ai onboard | plan | execute-slice | doctor | pr'));
+      throw new Error(formatError('missing ai subcommand. Use: npx create-quiver ai onboard | plan | review-plan | approve | approvals | agent | prompt-slice | execute-slice | execute-plan | doctor | pr'));
+    }
+
+    if (args.aiCommand === 'agent') {
+      runAiAgent(process.cwd(), {
+        command: args.aiAgentCommand,
+        context: args.aiContext || undefined,
+        label: args.aiLabel || undefined,
+        model: args.aiModel || undefined,
+        provider: args.aiProviderExplicit ? args.aiProvider : undefined,
+        role: args.aiAgentRole || undefined,
+      });
+      return;
     }
 
     if (args.aiCommand === 'onboard') {
@@ -1587,6 +1844,7 @@ async function run(argv) {
         dryRun: args.dryRun,
         input: args.aiInput || undefined,
         provider: args.aiProvider,
+        providerExplicit: args.aiProviderExplicit,
         role: args.aiRole,
         timeout: args.aiTimeout,
       });
@@ -1600,6 +1858,7 @@ async function run(argv) {
         input: args.aiInput || undefined,
         phase: args.aiPhase,
         provider: args.aiProvider,
+        providerExplicit: args.aiProviderExplicit,
         role: args.aiRole,
         specSlug: args.specSlug || undefined,
         timeout: args.aiTimeout,
@@ -1607,13 +1866,68 @@ async function run(argv) {
       return;
     }
 
+    if (args.aiCommand === 'review-plan') {
+      await runAiReviewPlan(process.cwd(), {
+        context: args.aiContext || undefined,
+        dryRun: args.dryRun,
+        input: args.aiInput || undefined,
+        provider: args.aiProvider,
+        providerExplicit: args.aiProviderExplicit,
+        timeout: args.aiTimeout,
+      });
+      return;
+    }
+
+    if (args.aiCommand === 'approve') {
+      await runAiApprove(process.cwd(), {
+        dryRun: args.dryRun,
+        input: args.aiInput || undefined,
+        phase: args.aiPhase,
+        version: args.aiVersion || undefined,
+      });
+      return;
+    }
+
+    if (args.aiCommand === 'approvals' || args.aiCommand === 'approval-status') {
+      await runAiApprovalStatus(process.cwd());
+      return;
+    }
+
     if (args.aiCommand === 'execute-slice') {
       await runAiExecuteSlice(process.cwd(), {
+        allowDirty: args.aiAllowDirty,
+        commit: args.aiCommit,
         context: args.aiContext || undefined,
         dryRun: args.dryRun,
         provider: args.aiProvider,
+        providerExplicit: args.aiProviderExplicit,
         role: args.aiRole,
         slice: args.aiSlice || undefined,
+        timeout: args.aiTimeout,
+      });
+      return;
+    }
+
+    if (args.aiCommand === 'prompt-slice' || args.aiCommand === 'executor-prompt') {
+      runAiPromptSlice(process.cwd(), {
+        slice: args.aiSlice || undefined,
+      });
+      return;
+    }
+
+    if (args.aiCommand === 'execute-plan') {
+      await runAiExecutePlan(process.cwd(), {
+        allowDirty: args.aiAllowDirty,
+        commit: args.aiCommit,
+        context: args.aiContext || undefined,
+        dryRun: args.dryRun,
+        execute: args.aiExecute,
+        json: args.json,
+        mode: args.aiExecutionMode,
+        provider: args.aiProvider,
+        providerExplicit: args.aiProviderExplicit,
+        role: args.aiRole,
+        specSlug: args.specSlug || undefined,
         timeout: args.aiTimeout,
       });
       return;
@@ -1631,15 +1945,19 @@ async function run(argv) {
 
     if (args.aiCommand === 'pr') {
       await runAiPr(process.cwd(), {
+        baseBranch: args.aiBaseBranch,
+        create: args.aiCreate,
         dryRun: args.dryRun,
+        input: args.aiInput || undefined,
         remote: args.aiRemote || undefined,
         sshHostAlias: args.aiSshHostAlias || undefined,
         identityFile: args.aiIdentityFile || undefined,
+        title: args.aiTitle || undefined,
       });
       return;
     }
 
-    throw new Error(formatError(`unsupported ai subcommand: ${args.aiCommand}. Supported tasks: onboard, plan, execute-slice, doctor, pr`));
+    throw new Error(formatError(`unsupported ai subcommand: ${args.aiCommand}. Supported tasks: onboard, plan, review-plan, approve, approvals, agent, prompt-slice, execute-slice, execute-plan, doctor, pr`));
   }
 
   if (args.mode === 'graph') {
@@ -1731,6 +2049,47 @@ async function run(argv) {
     return;
   }
 
+  if (args.mode === 'spec') {
+    if (args.specCommand === 'create') {
+      runCreateSpec(process.cwd(), {
+        dryRun: args.dryRun,
+        input: args.aiInput || undefined,
+        specSlug: args.specSlug || undefined,
+      });
+      return;
+    }
+
+    if (!args.targetDir || args.targetDir === '.') {
+      throw new Error(formatError('missing spec directory. Use: npx create-quiver spec <start|status|close> <spec-dir>'));
+    }
+
+    if (args.specCommand === 'start') {
+      const report = startSpecWorktree(process.cwd(), args.targetDir);
+      process.stdout.write(formatSpecStartResult(report));
+      return;
+    }
+
+    if (args.specCommand === 'status') {
+      const report = buildSpecStatus(process.cwd(), args.targetDir);
+      process.stdout.write(formatSpecStatus(report));
+      return;
+    }
+
+    if (args.specCommand === 'close') {
+      const report = closeSpecWorktree(process.cwd(), args.targetDir, {
+        baseBranch: args.aiBaseBranch,
+        discard: args.discard,
+        dryRun: args.dryRun,
+        force: args.force,
+        remote: args.aiRemote,
+      });
+      process.stdout.write(formatSpecCloseResult(report));
+      return;
+    }
+
+    throw new Error(formatError(`unsupported spec subcommand: ${args.specCommand}. Supported tasks: create, start, status, close`));
+  }
+
   const packageRoot = path.resolve(__dirname, '../..');
   const targetDir = resolveTargetRoot(process.cwd(), args.targetDir);
   const projectName = args.projectName || path.basename(targetDir) || 'Quiver Project';
@@ -1785,6 +2144,8 @@ async function run(argv) {
 module.exports = {
   runAnalyze,
   runDoctor,
+  runFlow,
   runMigrate,
+  runPrepare,
   run,
 };

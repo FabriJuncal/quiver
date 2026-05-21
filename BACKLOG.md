@@ -40,25 +40,24 @@
 ### Slice Orchestration and Tooling Commands
 
 - **Observed:** 2026-04-23
-- **Status:** planned
-- **Evidence so far:** 0 real cases. Drafted by the maintainer anticipating multi-model coordination (Opus/GPT-5.4 planning, Sonnet/GPT-5.4 Mini/Qwen Code execution) and visibility pain once specs accumulate.
-- **Problem it solves:** Today coordinating multiple agents across pending slices requires ad-hoc grep, ls, and git commands. There is no canonical way to ask "what runs next", "what can run in parallel", "what is this repo's state", or "how expensive is this slice to load".
+- **Status:** promoted
+- **Evidence so far:** The core orchestration line shipped through v18, v20, v21, v22, and v23. Guided workflow is implemented in `specs/quiver-v22-guided-ai-workflow/` and productized in `specs/quiver-v23-guided-flow-productization/`.
+- **Problem it solves:** Coordinating multiple agents across slices needs canonical answers for what runs next, what can run in parallel, what context each agent needs, and when work is ready for PR.
 - **Proposed shape:**
-  - v17 Orchestration Foundation (CI matrix, `lib/slice-graph.js`, `depends_on` validation)
-  - v18 Slice Orchestration (`plan`, `graph`, `next`)
-  - v19 Project Visibility (`status`, `estimate`, `lint-spec`)
-  - v20 Context Diagnostics (`cost`, `diff-pack`, `replay`)
-  - v21 Slice Archaeology (`archive`, `blame-slice`)
-  - v22 Deferred Tooling (`fork-slice`, `squash-spec`, `share`, evidence-gated per slice)
-- **Cost to formalize:** ~55h across 15 slices in 4 specs (v19–v22). Spec/slice files drafted under `drafts/v19-v22-orchestration-followups`.
-- **Reasons to wait:** v17 and v18 shipped. v18 must pass its validation checkpoint (≥1 week real use) before v19 starts. Building orchestration before validating the existing commands risks reinforcing a design that does not earn its place.
-- **Trigger to promote (per spec):**
-  - v19: immediately after v18 checkpoint passes (≥1 week real use of `plan`, `graph`, `next`)
-  - v20–v21: previous spec validation checkpoint passed (≥1 week real use)
-  - v22 per slice: explicit occurrence recorded in this file for each of `fork-slice`, `squash-spec`, `share`
+  - v18 Slice Orchestration (`plan`, `graph`, `next`) shipped.
+  - v20 AI CLI Orchestration shipped.
+  - v21 AI-First Layout shipped.
+  - v22 Guided AI Workflow shipped in this branch.
+  - v23 Guided Flow Productization shipped in this branch.
+- **Cost to formalize:** Completed in `specs/quiver-v22-guided-ai-workflow/` and `specs/quiver-v23-guided-flow-productization/`, both with mandatory `slice-00`.
+- **Reasons to wait:** No wait for the guided workflow; it has been implemented. Deferred tooling such as `fork-slice`, `squash-spec`, and `share` still requires real demand before separate implementation.
+- **Trigger to promote:** Fulfilled for guided workflow on 2026-05-21.
 - **Related:**
-  - `drafts/v19-v22-orchestration-followups` (parked spec drafts)
-  - `ROADMAP.md` Orchestration and Tooling section
+  - `specs/quiver-v18-slice-orchestration/`
+  - `specs/quiver-v20-ai-cli-orchestration/`
+  - `specs/quiver-v21-ai-first-layout/`
+  - `specs/quiver-v22-guided-ai-workflow/`
+  - `specs/quiver-v23-guided-flow-productization/`
 
 ### Handoff Contract
 
