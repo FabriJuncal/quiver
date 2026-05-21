@@ -2,27 +2,30 @@
 
 ## Resumen de lo realizado
 
-Pendiente.
+Se extendio `npx create-quiver flow` para funcionar como wizard read-only: detecta estado de inicializacion, contexto, approvals, specs y slices, reporta blockers y muestra el proximo comando seguro.
 
 ## Validacion contra criterios de aceptacion
 
-- [ ] Estado detectado.
-- [ ] Bloqueos reportados.
-- [ ] Proximo comando sugerido.
-- [ ] Tests pasan.
+- [x] Estado detectado.
+- [x] Bloqueos reportados.
+- [x] Proximo comando sugerido.
+- [x] Tests pasan.
 
 ## Cambios relevantes
 
-Pendiente.
+- `src/create-quiver/commands/flow.js`: agrega lectura segura de approvals, docs, specs y slice graph.
+- `tests/commands/flow.test.js`: cubre proyecto no inicializado, contexto faltante, criterios draft, slices listos y salida JSON.
+- `docs/WORKFLOW.md.template`: recomienda `flow` cuando el siguiente paso seguro no esta claro.
+- `SPEC.md`, `STATUS.md` y `EVIDENCE_REPORT.md`: estado del slice actualizado.
 
 ## Pendientes
 
-Pendiente.
+Ninguno para este slice.
 
 ## Riesgos remanentes
 
-Pendiente.
+El wizard usa heuristicas conservadoras; si el grafo de slices esta roto, bloquea y deriva a `spec status`/`plan` en vez de intentar continuar.
 
 ## Recomendaciones futuras
 
-Pendiente.
+Conectar perfiles de agentes en `slice-03` para que el wizard pueda mostrar provider/model configurados sin pedirlos en cada comando.

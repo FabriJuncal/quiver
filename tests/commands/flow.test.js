@@ -6,6 +6,7 @@ const { execFileSync } = require('node:child_process');
 const test = require('node:test');
 
 const packageJson = require('../../package.json');
+const { approvePlannerPhase, savePlannerDraft } = require('../../src/create-quiver/lib/approvals');
 const { resolveInitPackageScripts } = require('../../src/create-quiver/lib/init-layout');
 
 const BIN_PATH = path.resolve(__dirname, '../../bin/create-quiver.js');
@@ -55,6 +56,17 @@ function runFlow(repoRoot, args = []) {
   });
 }
 
+function seedInitializedContext(repoRoot) {
+  writeFile(repoRoot, '.quiver/state.json', JSON.stringify({
+    initialized_version: '0.10.0',
+    last_initialized_at: '2026-05-21T00:00:00.000Z',
+    quiver_version: '0.10.0',
+  }, null, 2));
+  writeFile(repoRoot, 'docs/PROJECT_MAP.md', '# Project Map\n');
+  writeFile(repoRoot, 'docs/AI_CONTEXT.md', '# AI Context\n');
+  writeFile(repoRoot, 'docs/AI_ONBOARDING_PROMPT.md', '# Prompt\n');
+}
+
 test('package exposes quiver as an alias to the create-quiver binary', () => {
   assert.equal(packageJson.bin['create-quiver'], 'bin/create-quiver.js');
   assert.equal(packageJson.bin.quiver, 'bin/create-quiver.js');
@@ -85,23 +97,85 @@ test('flow command is read-only and guides uninitialized projects to init', () =
   }
 });
 
-test('flow command reports planning readiness when context docs exist', () => {
+test('flow command reports analysis guidance when initialized context docs are missing', () => {
   const repo = makeRepo({
     '.quiver/state.json': JSON.stringify({
       initialized_version: '0.10.0',
       last_initialized_at: '2026-05-21T00:00:00.000Z',
       quiver_version: '0.10.0',
     }, null, 2),
-    'docs/PROJECT_MAP.md': '# Project Map\n',
-    'docs/AI_CONTEXT.md': '# AI Context\n',
-    'docs/AI_ONBOARDING_PROMPT.md': '# Prompt\n',
   });
 
   try {
     const output = runFlow(repo.root);
 
-    assert.match(output, /Stage: ready for planner onboarding/);
+    assert.match(output, /Stage: context needs refresh/);
+    assert.match(output, /Next safe command: npx create-quiver analyze/);
+    assert.match(output, /Missing docs\/PROJECT_MAP\.md\./);
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('flow command reports planning readiness when context docs exist', () => {
+  const repo = makeRepo();
+
+  try {
+    seedInitializedContext(repo.root);
+    const output = runFlow(repo.root);
+
+    assert.match(output, /Stage: ready for acceptance criteria/);
     assert.match(output, /Next safe command: npx create-quiver ai onboard --dry-run/);
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('flow command reports criteria draft approval guidance', () => {
+  const repo = makeRepo();
+
+  try {
+    seedInitializedContext(repo.root);
+    writeFile(repo.root, 'requirements.md', '# Requirements\n');
+    savePlannerDraft(repo.root, 'acceptance', 'requirements.md', '# Draft criteria\n');
+
+    const output = runFlow(repo.root);
+
+    assert.match(output, /Stage: acceptance criteria need approval/);
+    assert.match(output, /Next safe command: npx create-quiver ai approve --phase acceptance --input acceptance-approved\.md/);
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('flow command reports ready slice execution after approved plan and completed slice-00', () => {
+  const repo = makeRepo();
+
+  try {
+    seedInitializedContext(repo.root);
+    writeFile(repo.root, 'acceptance.md', '# Approved acceptance\n');
+    writeFile(repo.root, 'technical-plan.md', '# Approved plan\n');
+    approvePlannerPhase(repo.root, 'acceptance', 'acceptance.md', '# Approved acceptance\n');
+    approvePlannerPhase(repo.root, 'technical-plan', 'technical-plan.md', '# Approved plan\n');
+    writeFile(repo.root, 'specs/my-spec/SPEC.md', '# Spec\n');
+    writeFile(repo.root, 'specs/my-spec/slices/slice-00/slice.json', JSON.stringify({
+      slice_id: 'slice-00',
+      status: 'completed',
+      files: ['specs/my-spec/SPEC.md'],
+      depends_on: [],
+    }, null, 2));
+    writeFile(repo.root, 'specs/my-spec/slices/slice-01/slice.json', JSON.stringify({
+      slice_id: 'slice-01',
+      status: 'draft',
+      files: ['src/index.js'],
+      depends_on: ['slice-00'],
+    }, null, 2));
+
+    const output = runFlow(repo.root);
+
+    assert.match(output, /Stage: ready for slice execution/);
+    assert.match(output, /Next safe command: npx create-quiver ai execute-slice --slice specs\/my-spec\/slices\/slice-01\/slice\.json --dry-run --commit/);
+    assert.match(output, /Specs found: my-spec/);
   } finally {
     repo.cleanup();
   }

@@ -1,6 +1,8 @@
 const fs = require('fs');
 const path = require('path');
 
+const { readPhaseApproval } = require('../lib/approvals');
+const { buildGraph, naturalNumberFromSliceId, readAllSlices } = require('../lib/slice-graph');
 const { hasQuiverInitializationEvidence, readState } = require('../lib/state');
 
 function exists(projectRoot, relativePath) {
@@ -21,16 +23,168 @@ function listSpecSlugs(projectRoot) {
     .sort((left, right) => left.localeCompare(right));
 }
 
+function safeReadApproval(projectRoot, phase) {
+  try {
+    return readPhaseApproval(projectRoot, phase);
+  } catch (error) {
+    return {
+      phase,
+      status: 'invalid',
+      error: error.message,
+    };
+  }
+}
+
+function summarizeDocs(projectRoot) {
+  const docs = {
+    hasProjectMap: exists(projectRoot, 'docs/PROJECT_MAP.md'),
+    hasAiContext: exists(projectRoot, 'docs/AI_CONTEXT.md'),
+    hasOnboardingPrompt: exists(projectRoot, 'docs/AI_ONBOARDING_PROMPT.md'),
+  };
+  const missing = [
+    ['docs/PROJECT_MAP.md', docs.hasProjectMap],
+    ['docs/AI_CONTEXT.md', docs.hasAiContext],
+    ['docs/AI_ONBOARDING_PROMPT.md', docs.hasOnboardingPrompt],
+  ].filter(([, present]) => !present).map(([file]) => file);
+
+  return {
+    ...docs,
+    missing,
+    ready: missing.length === 0,
+  };
+}
+
+function buildFacts({ initialized, docs, approvals, specSlugs, state, slices = null }) {
+  return {
+    initialized,
+    hasProjectMap: docs.hasProjectMap,
+    hasAiContext: docs.hasAiContext,
+    hasOnboardingPrompt: docs.hasOnboardingPrompt,
+    approvals: {
+      acceptance: approvals.acceptance.status,
+      technicalPlan: approvals.technicalPlan.status,
+    },
+    specSlugs,
+    slices,
+    quiverVersion: state?.quiver_version || null,
+  };
+}
+
+function firstSpecPath(specSlugs) {
+  return `specs/${specSlugs[0]}`;
+}
+
+function formatSliceCommand(slice) {
+  return `npx create-quiver ai execute-slice --slice ${path.relative(slice.repoRoot, slice.slicePath).split(path.sep).join('/')} --dry-run --commit`;
+}
+
+function summarizeSlices(projectRoot, specSlugs) {
+  if (specSlugs.length === 0) {
+    return {
+      allCompleted: false,
+      blockers: [],
+      completedCount: 0,
+      graphError: null,
+      pendingCount: 0,
+      ready: [],
+      slice00: null,
+      totalCount: 0,
+    };
+  }
+
+  let allSlices = [];
+  try {
+    allSlices = readAllSlices(projectRoot)
+      .filter((slice) => specSlugs.includes(slice.specSlug))
+      .map((slice) => ({ ...slice, repoRoot: projectRoot }));
+  } catch (error) {
+    return {
+      allCompleted: false,
+      blockers: [`Could not read slices: ${error.message}`],
+      completedCount: 0,
+      graphError: error.message,
+      pendingCount: 0,
+      ready: [],
+      slice00: null,
+      totalCount: 0,
+    };
+  }
+
+  if (allSlices.length === 0) {
+    return {
+      allCompleted: false,
+      blockers: ['No slice.json files found for the detected specs.'],
+      completedCount: 0,
+      graphError: null,
+      pendingCount: 0,
+      ready: [],
+      slice00: null,
+      totalCount: 0,
+    };
+  }
+
+  let graph;
+  try {
+    graph = buildGraph(allSlices);
+  } catch (error) {
+    return {
+      allCompleted: false,
+      blockers: [`Slice graph is not ready: ${error.message}`],
+      completedCount: allSlices.filter((slice) => slice.status === 'completed').length,
+      graphError: error.message,
+      pendingCount: allSlices.filter((slice) => slice.status !== 'completed').length,
+      ready: [],
+      slice00: allSlices.find((slice) => naturalNumberFromSliceId(slice.sliceId) === 0) || null,
+      totalCount: allSlices.length,
+    };
+  }
+
+  const nodes = graph.nodes.map((slice) => ({ ...slice, repoRoot: projectRoot }));
+  const completedRefs = new Set(nodes.filter((slice) => slice.status === 'completed').map((slice) => slice.ref));
+  const pending = nodes.filter((slice) => slice.status !== 'completed');
+  const slice00 = nodes.find((slice) => naturalNumberFromSliceId(slice.sliceId) === 0) || null;
+  let ready = pending.filter((slice) => slice.depends_on.every((dep) => completedRefs.has(dep)));
+
+  if (slice00 && slice00.status !== 'completed') {
+    ready = ready.filter((slice) => slice.ref === slice00.ref);
+  }
+
+  return {
+    allCompleted: pending.length === 0,
+    blockers: [],
+    completedCount: completedRefs.size,
+    graphError: null,
+    pendingCount: pending.length,
+    ready,
+    slice00,
+    totalCount: nodes.length,
+  };
+}
+
+function baseReport({ stage, label, blockers = [], nextCommand, suggestedCommands, facts }) {
+  return {
+    stage,
+    label,
+    blockers,
+    nextCommand,
+    suggestedCommands,
+    facts,
+  };
+}
+
 function detectFlowState(projectRoot) {
   const initialized = hasQuiverInitializationEvidence(projectRoot);
   const state = readState(projectRoot);
-  const hasProjectMap = exists(projectRoot, 'docs/PROJECT_MAP.md');
-  const hasAiContext = exists(projectRoot, 'docs/AI_CONTEXT.md');
-  const hasOnboardingPrompt = exists(projectRoot, 'docs/AI_ONBOARDING_PROMPT.md');
+  const docs = summarizeDocs(projectRoot);
+  const approvals = {
+    acceptance: safeReadApproval(projectRoot, 'acceptance'),
+    technicalPlan: safeReadApproval(projectRoot, 'technical-plan'),
+  };
   const specSlugs = listSpecSlugs(projectRoot);
+  const facts = buildFacts({ initialized, docs, approvals, specSlugs, state });
 
   if (!initialized) {
-    return {
+    return baseReport({
       stage: 'not-initialized',
       label: 'not initialized',
       blockers: ['Quiver has not been initialized in this project.'],
@@ -40,86 +194,217 @@ function detectFlowState(projectRoot) {
         'npx create-quiver analyze',
         'npx create-quiver doctor',
       ],
-      facts: {
-        initialized,
-        hasProjectMap,
-        hasAiContext,
-        hasOnboardingPrompt,
-        specSlugs,
-        quiverVersion: state?.quiver_version || null,
-      },
-    };
+      facts,
+    });
   }
 
-  if (!hasProjectMap || !hasAiContext || !hasOnboardingPrompt) {
-    const missingDocs = [
-      ['docs/PROJECT_MAP.md', hasProjectMap],
-      ['docs/AI_CONTEXT.md', hasAiContext],
-      ['docs/AI_ONBOARDING_PROMPT.md', hasOnboardingPrompt],
-    ].filter(([, present]) => !present).map(([file]) => file);
-
-    return {
+  if (!docs.ready) {
+    return baseReport({
       stage: 'context-needed',
       label: 'context needs refresh',
-      blockers: missingDocs.map((file) => `Missing ${file}.`),
+      blockers: docs.missing.map((file) => `Missing ${file}.`),
       nextCommand: 'npx create-quiver analyze',
       suggestedCommands: [
+        'npx create-quiver prepare --dry-run',
         'npx create-quiver analyze',
         'npx create-quiver doctor',
-        'npx create-quiver ai onboard --dry-run',
       ],
-      facts: {
-        initialized,
-        hasProjectMap,
-        hasAiContext,
-        hasOnboardingPrompt,
-        specSlugs,
-        quiverVersion: state?.quiver_version || null,
-      },
-    };
+      facts,
+    });
   }
 
-  if (specSlugs.length === 0) {
-    return {
+  const invalidApprovals = Object.values(approvals).filter((approval) => approval.status === 'invalid');
+  if (invalidApprovals.length > 0) {
+    return baseReport({
+      stage: 'approval-state-invalid',
+      label: 'approval state needs repair',
+      blockers: invalidApprovals.map((approval) => approval.error),
+      nextCommand: 'npx create-quiver ai approvals',
+      suggestedCommands: [
+        'npx create-quiver ai approvals',
+        'npx create-quiver doctor',
+      ],
+      facts,
+    });
+  }
+
+  if (approvals.acceptance.status === 'draft') {
+    return baseReport({
+      stage: 'criteria-draft',
+      label: 'acceptance criteria need approval',
+      blockers: ['Acceptance criteria draft exists but is not approved.'],
+      nextCommand: 'npx create-quiver ai approve --phase acceptance --input acceptance-approved.md',
+      suggestedCommands: [
+        'npx create-quiver ai approvals',
+        'npx create-quiver ai approve --phase acceptance --input acceptance-approved.md',
+      ],
+      facts,
+    });
+  }
+
+  if (approvals.acceptance.status === 'stale') {
+    return baseReport({
+      stage: 'criteria-stale',
+      label: 'acceptance criteria approval is stale',
+      blockers: ['Acceptance criteria changed after approval.'],
+      nextCommand: 'npx create-quiver ai approve --phase acceptance --input acceptance-approved.md',
+      suggestedCommands: [
+        'npx create-quiver ai approvals',
+        'npx create-quiver ai approve --phase acceptance --input acceptance-approved.md',
+      ],
+      facts,
+    });
+  }
+
+  if (approvals.acceptance.status !== 'approved') {
+    return baseReport({
       stage: 'planning-ready',
-      label: 'ready for planner onboarding',
+      label: 'ready for acceptance criteria',
       blockers: [],
       nextCommand: 'npx create-quiver ai onboard --dry-run',
       suggestedCommands: [
         'npx create-quiver ai onboard --dry-run',
         'npx create-quiver ai plan --phase acceptance --input requirements.md --dry-run',
-        'npx create-quiver ai approve --phase acceptance --input acceptance-approved.md',
       ],
-      facts: {
-        initialized,
-        hasProjectMap,
-        hasAiContext,
-        hasOnboardingPrompt,
-        specSlugs,
-        quiverVersion: state?.quiver_version || null,
-      },
-    };
+      facts,
+    });
   }
 
-  return {
+  if (approvals.technicalPlan.status === 'draft') {
+    return baseReport({
+      stage: 'technical-plan-draft',
+      label: 'technical plan needs approval',
+      blockers: ['Technical plan draft exists but is not approved.'],
+      nextCommand: 'npx create-quiver ai approve --phase technical-plan --input technical-plan-approved.md',
+      suggestedCommands: [
+        'npx create-quiver ai approvals',
+        'npx create-quiver ai approve --phase technical-plan --input technical-plan-approved.md',
+      ],
+      facts,
+    });
+  }
+
+  if (approvals.technicalPlan.status === 'stale') {
+    return baseReport({
+      stage: 'technical-plan-stale',
+      label: 'technical plan approval is stale',
+      blockers: ['Technical plan changed after approval.'],
+      nextCommand: 'npx create-quiver ai approve --phase technical-plan --input technical-plan-approved.md',
+      suggestedCommands: [
+        'npx create-quiver ai approvals',
+        'npx create-quiver ai approve --phase technical-plan --input technical-plan-approved.md',
+      ],
+      facts,
+    });
+  }
+
+  if (approvals.technicalPlan.status !== 'approved') {
+    return baseReport({
+      stage: 'technical-plan-ready',
+      label: 'ready for technical plan',
+      blockers: [],
+      nextCommand: 'npx create-quiver ai plan --phase technical-plan --dry-run',
+      suggestedCommands: [
+        'npx create-quiver ai plan --phase technical-plan --dry-run',
+        'npx create-quiver ai approve --phase technical-plan --input technical-plan-approved.md',
+      ],
+      facts,
+    });
+  }
+
+  if (specSlugs.length === 0) {
+    return baseReport({
+      stage: 'spec-ready',
+      label: 'ready for spec generation',
+      blockers: [],
+      nextCommand: 'npx create-quiver ai plan --phase spec --dry-run',
+      suggestedCommands: [
+        'npx create-quiver ai plan --phase spec --dry-run',
+        'npx create-quiver ai plan --phase spec',
+        'npx create-quiver spec start specs/<spec-slug>',
+      ],
+      facts,
+    });
+  }
+
+  const slices = summarizeSlices(projectRoot, specSlugs);
+  const sliceFacts = buildFacts({ initialized, docs, approvals, specSlugs, state, slices: {
+    completed: slices.completedCount,
+    pending: slices.pendingCount,
+    ready: slices.ready.map((slice) => slice.ref),
+    total: slices.totalCount,
+  } });
+
+  if (slices.blockers.length > 0) {
+    return baseReport({
+      stage: 'slice-state-blocked',
+      label: 'slice state has blockers',
+      blockers: slices.blockers,
+      nextCommand: `npx create-quiver spec status ${firstSpecPath(specSlugs)}`,
+      suggestedCommands: [
+        `npx create-quiver spec status ${firstSpecPath(specSlugs)}`,
+        'npx create-quiver plan',
+      ],
+      facts: sliceFacts,
+    });
+  }
+
+  if (slices.allCompleted) {
+    return baseReport({
+      stage: 'pr-ready',
+      label: 'ready for PR preparation',
+      blockers: [],
+      nextCommand: `npx create-quiver ai pr --dry-run --input ${firstSpecPath(specSlugs)}/pr.md`,
+      suggestedCommands: [
+        `npx create-quiver ai pr --dry-run --input ${firstSpecPath(specSlugs)}/pr.md`,
+        `npx create-quiver spec status ${firstSpecPath(specSlugs)}`,
+      ],
+      facts: sliceFacts,
+    });
+  }
+
+  const nextSlice = slices.ready[0] || null;
+  if (nextSlice && slices.slice00 && slices.slice00.status !== 'completed') {
+    return baseReport({
+      stage: 'slice-00-ready',
+      label: 'slice-00 must be executed first',
+      blockers: ['Later slices are blocked until slice-00 is completed and committed.'],
+      nextCommand: formatSliceCommand(nextSlice),
+      suggestedCommands: [
+        `npx create-quiver spec status ${firstSpecPath(specSlugs)}`,
+        formatSliceCommand(nextSlice),
+      ],
+      facts: sliceFacts,
+    });
+  }
+
+  if (nextSlice) {
+    return baseReport({
+      stage: 'slice-execution-ready',
+      label: 'ready for slice execution',
+      blockers: [],
+      nextCommand: formatSliceCommand(nextSlice),
+      suggestedCommands: [
+        'npx create-quiver plan',
+        'npx create-quiver next',
+        formatSliceCommand(nextSlice),
+      ],
+      facts: sliceFacts,
+    });
+  }
+
+  return baseReport({
     stage: 'slices-ready',
-    label: 'ready for slice planning',
-    blockers: [],
-    nextCommand: 'npx create-quiver next',
+    label: 'slice planning needs review',
+    blockers: ['No ready slice was found. Review dependencies and statuses.'],
+    nextCommand: 'npx create-quiver plan',
     suggestedCommands: [
       'npx create-quiver plan',
       'npx create-quiver graph',
       'npx create-quiver next',
     ],
-    facts: {
-      initialized,
-      hasProjectMap,
-      hasAiContext,
-      hasOnboardingPrompt,
-      specSlugs,
-      quiverVersion: state?.quiver_version || null,
-    },
-  };
+    facts: sliceFacts,
+  });
 }
 
 function formatFlowReport(report) {

@@ -13,7 +13,8 @@ This spec productizes the user's current prompt-driven workflow into first-class
 - Spec and slice handoffs: created in this documentation pass.
 - `slice-00`: completed.
 - `slice-01`: completed. Added the `quiver` binary alias, read-only `flow` command, docs, generated script, and tests.
-- `slice-02` through `slice-10`: draft.
+- `slice-02`: completed. Expanded `flow` into a read-only wizard that reads context docs, approvals, specs, slices, and blockers.
+- `slice-03` through `slice-10`: draft.
 
 ## Execution Rules
 
