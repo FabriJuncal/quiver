@@ -100,6 +100,10 @@ exit 0
     assert.ok(output.includes('Docs source: README_FOR_AI.md present'));
     assert.ok(output.includes('GitHub CLI:'));
     assert.ok(output.includes('Provider CLI (codex):'));
+    assert.ok(output.includes('Onboarding context:'));
+    assert.ok(output.includes('prompt source: packaged planner onboarding template'));
+    assert.ok(output.includes('documentation debt:'));
+    assert.ok(output.includes('omitted by default:'));
     assert.ok(output.includes('Next safe commands:'));
     assert.ok(output.includes('npx create-quiver ai onboard --dry-run'));
     assert.ok(output.includes('Dry-run note: this command does not write files.'));

@@ -9,23 +9,15 @@ Actúa como asistente de onboarding de IA para este proyecto. Tu objetivo es com
 
 ## Reglas de ejecución
 
-1. Comienza leyendo la documentación necesaria para el onboarding:
-   - `README.md`
-   - `AGENTS.md`, si existe
-   - `docs/AI_ONBOARDING_PROMPT.md`
-   - `docs/PROJECT_MAP.md`
-   - `.quiver/scans/PROJECT_SCAN.json`, si existe y el mapa visible no alcanza
-   - `docs/AI_CONTEXT.md`
-   - `docs/CONTEXTO.md`
-   - `docs/WORKFLOW.md`
-   - `docs/STATUS.md`
-   - `docs/DECISIONS.md`, si existe
-   - `specs/{{PROJECT_SLUG}}/SPEC.md`
-   - `specs/{{PROJECT_SLUG}}/STATUS.md`
-   - `specs/{{PROJECT_SLUG}}/EVIDENCE_REPORT.md`
-   - `specs/{{PROJECT_SLUG}}/HANDOFF.md`, si este trabajo fue transferido mediante un handoff
-   - cualquier documento sobre WDD o SDD referenciado por la documentación de onboarding
-   - cualquier archivo de estructura, contexto o convenciones del proyecto referenciado por esos documentos
+1. Comienza con navegación index-first y lectura selectiva:
+   - Lee `README.md`.
+   - Lee `AGENTS.md`, si existe.
+   - Lee `docs/INDEX.md`, si existe, y úsalo como mapa para decidir qué abrir después.
+   - Lee `docs/PROJECT_MAP.md` para stack, comandos y estructura. Usa `.quiver/scans/PROJECT_SCAN.json` solo si el mapa visible no alcanza.
+   - Lee `docs/AI_CONTEXT.md`, `docs/AI_ONBOARDING_PROMPT.md`, `docs/WORKFLOW.md`, `docs/STATUS.md` y `docs/DECISIONS.md` solo cuando existan y sean relevantes para la tarea.
+   - Lee specs, slices o handoffs solo si la tarea actual lo requiere.
+   - No leas todo `docs/` por defecto.
+   - Si un documento referenciado no existe, repórtalo como deuda documental.
 
 2. Sigue las instrucciones definidas en `docs/AI_ONBOARDING_PROMPT.md`, salvo que entren en conflicto con las restricciones de este prompt.
 

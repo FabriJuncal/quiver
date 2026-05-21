@@ -3,6 +3,7 @@ const path = require('node:path');
 
 const { collectDoctorReport } = require('../lib/doctor');
 const { ensureGhAuthenticated, ensureGhInstalled, ensureIdentityFile } = require('../lib/ai/github');
+const { collectOnboardingContextPlan } = require('../lib/ai/onboarding-template');
 const { preflightProvider } = require('../lib/ai/preflight');
 
 function formatError(message) {
@@ -80,6 +81,16 @@ function formatPrepareReport(report) {
 
   lines.push('Checks: project docs, GitHub CLI, GitHub auth when SSH inputs are provided, SSH identity file when passed, provider CLI when passed');
 
+  lines.push('Onboarding context:');
+  lines.push(`- prompt source: ${report.onboarding.promptSource}`);
+  lines.push(`- selected docs: ${report.onboarding.selectedDocs.length > 0 ? report.onboarding.selectedDocs.map((item) => item.path).join(', ') : 'none'}`);
+  lines.push(`- documentation debt: ${report.onboarding.missingDocs.length > 0 ? report.onboarding.missingDocs.map((item) => item.path).join(', ') : 'none'}`);
+  lines.push(`- omitted by default: ${report.onboarding.omittedByDefault.join(' | ')}`);
+
+  if (report.onboarding.risks.length > 0) {
+    lines.push(`- onboarding risks: ${report.onboarding.risks.join(' | ')}`);
+  }
+
   lines.push('GitHub CLI:');
   if (report.gh.status === 'ok') {
     lines.push(`- available (${report.gh.value.command})`);
@@ -131,11 +142,13 @@ function formatPrepareReport(report) {
 async function runPrepare(repoRoot, options = {}) {
   const doctorReport = collectDoctorReport(repoRoot);
   const workflowSourcePath = path.join(repoRoot, 'README_FOR_AI.md');
+  const onboarding = collectOnboardingContextPlan(repoRoot);
   const report = {
     dryRun: options.dryRun === true,
     doctor: doctorReport,
     gh: { status: 'skipped', value: null, error: null },
     nextSteps: [],
+    onboarding,
     projectRoot: repoRoot,
     provider: { name: '', status: 'skipped', value: null, error: null },
     ssh: {

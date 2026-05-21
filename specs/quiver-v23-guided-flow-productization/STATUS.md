@@ -15,7 +15,8 @@ This spec productizes the user's current prompt-driven workflow into first-class
 - `slice-01`: completed. Added the `quiver` binary alias, read-only `flow` command, docs, generated script, and tests.
 - `slice-02`: completed. Expanded `flow` into a read-only wizard that reads context docs, approvals, specs, slices, and blockers.
 - `slice-03`: completed. Added reusable planner, executor, reviewer, and researcher agent profiles under `.quiver/agents/profiles.json`.
-- `slice-04` through `slice-10`: draft.
+- `slice-04`: completed. Added packaged index-first onboarding prompt generation and context preparation reporting.
+- `slice-05` through `slice-10`: draft.
 
 ## Execution Rules
 

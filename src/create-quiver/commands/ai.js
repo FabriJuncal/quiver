@@ -5,6 +5,7 @@ const { buildContextPackMetadata, normalizeRole } = require('../lib/ai/context-p
 const { runExecuteSlice } = require('../lib/ai/executor');
 const { runExecutePlan } = require('../lib/ai/execution-plan');
 const { buildPrCreatePlan, formatPreflightReport, formatPrCreateReport, preflightGitHubPr, runGhPrCreate } = require('../lib/ai/github');
+const { buildPlannerOnboardingPrompt } = require('../lib/ai/onboarding-template');
 const { buildSpecGenerationManifest, describeSpecGeneration, generateSpecArtifacts } = require('../lib/ai/spec-generator');
 const { buildProviderInvocation, runProvider } = require('../lib/ai/providers');
 const {
@@ -118,32 +119,21 @@ function buildOnboardContext({ role, context, inputText, inputPath, repoRoot }) 
     repoRoot,
   });
   const relativeInputPath = inputPath ? path.relative(repoRoot, path.resolve(repoRoot, inputPath)).split(path.sep).join('/') : '';
-  const sections = [
-    pack.prompt,
-    'Task: onboard the project context for planning.',
-    'Read Quiver context, the WDD/SDD workflow, the project scan/map, assumptions, risks, and relevant docs.',
-    'Do not modify product code.',
-  ];
-
-  if (relativeInputPath) {
-    sections.push(`Input file: ${relativeInputPath}`);
-  }
-
-  if (pack.scanArtifact) {
-    sections.push(`Project scan artifact: ${pack.scanArtifact.path} (${pack.scanArtifact.source})`);
-  }
-
-  if (inputText) {
-    sections.push('Input:', inputText.trimEnd());
-  }
+  const built = buildPlannerOnboardingPrompt({
+    pack,
+    inputText,
+    inputPath: relativeInputPath,
+    repoRoot,
+  });
 
   return {
     pack,
-    prompt: sections.join('\n\n'),
+    plan: built.plan,
+    prompt: built.prompt,
   };
 }
 
-function formatDryRunReport({ task, provider, role, contextPack, phase, invocation }) {
+function formatDryRunReport({ task, provider, role, contextPack, phase, invocation, onboardingPlan }) {
   const lines = [
     `AI ${task} dry-run`,
     `Provider: ${provider}`,
@@ -159,6 +149,12 @@ function formatDryRunReport({ task, provider, role, contextPack, phase, invocati
   lines.push(`Timeout: ${invocation.timeoutMs}ms`);
   lines.push(`Prompt transport: ${invocation.promptTransport.mode}`);
   lines.push(`Prompt length: ${invocation.promptLength} bytes`);
+
+  if (onboardingPlan) {
+    lines.push(`Prompt source: ${onboardingPlan.promptSource}`);
+    lines.push(`Selected docs: ${onboardingPlan.selectedDocs.length}`);
+    lines.push(`Documentation debt: ${onboardingPlan.missingDocs.length}`);
+  }
 
   return `${lines.join('\n')}\n`;
 }
@@ -259,7 +255,8 @@ async function runOnboard(repoRoot, options = {}) {
   const context = options.context || DEFAULT_ONBOARD_CONTEXT;
   const timeoutMs = normalizeTimeout(options.timeout);
   const inputText = readTextFile(options.input, repoRoot);
-  const prompt = buildOnboardContext({ role, context, inputText, inputPath: options.input, repoRoot }).prompt;
+  const contextInfo = buildOnboardContext({ role, context, inputText, inputPath: options.input, repoRoot });
+  const prompt = contextInfo.prompt;
   let invocation;
 
   try {
@@ -279,6 +276,7 @@ async function runOnboard(repoRoot, options = {}) {
       role,
       contextPack: context,
       invocation,
+      onboardingPlan: contextInfo.plan,
     };
     process.stdout.write(formatDryRunReport(report));
     return report;
@@ -313,6 +311,7 @@ async function runOnboard(repoRoot, options = {}) {
     role,
     contextPack: context,
     invocation,
+    onboardingPlan: contextInfo.plan,
     result,
   };
 }
