@@ -26,7 +26,7 @@ Cerrar la feature con docs completas, pruebas y readiness de release sin publica
 
 ## Checklist de finalizacion
 
-- [ ] Docs finales actualizadas.
-- [ ] Templates actualizados.
-- [ ] Smokes agregados.
-- [ ] Evidencia final registrada.
+- [x] Docs finales actualizadas.
+- [x] Templates actualizados.
+- [x] Smokes agregados.
+- [x] Evidencia final registrada.

@@ -283,9 +283,12 @@ assert_contains "$new_target/docs/COMMANDS.md" "\`quiver:plan\`"
 assert_contains "$new_target/docs/COMMANDS.md" "\`quiver:graph\`"
 assert_contains "$new_target/docs/COMMANDS.md" "\`quiver:next\`"
 assert_contains "$new_target/docs/COMMANDS.md" "\`quiver:ai:onboard\`"
+assert_contains "$new_target/docs/COMMANDS.md" "\`quiver:ai:review-plan\`"
 assert_contains "$new_target/docs/COMMANDS.md" "\`quiver:ai:approve\`"
+assert_contains "$new_target/docs/COMMANDS.md" "\`quiver:ai:prompt-slice\`"
 assert_contains "$new_target/docs/COMMANDS.md" "\`quiver:ai:execute-slice\`"
 assert_contains "$new_target/docs/COMMANDS.md" "\`quiver:ai:execute-plan\`"
+assert_contains "$new_target/docs/COMMANDS.md" "\`quiver:spec:create\`"
 assert_contains "$new_target/docs/COMMANDS.md" "\`quiver:spec:start\`"
 assert_contains "$new_target/docs/COMMANDS.md" "Mermaid"
 assert_contains "$new_target/docs/COMMANDS.md" "DOT"
@@ -421,7 +424,7 @@ if grep -R -nF "Package manager:" "$new_target/docs" | grep -v "docs/PROJECT_MAP
   exit 1
 fi
 assert_package_scripts "$new_target/package.json" "new project" \
-  quiver:analyze quiver:prepare quiver:plan quiver:graph quiver:next quiver:doctor quiver:ai:onboard quiver:ai:plan quiver:ai:approve quiver:ai:execute-slice quiver:ai:execute-plan quiver:ai:pr quiver:ai:doctor quiver:spec:start quiver:spec:status quiver:spec:close quiver:migrate quiver:start-slice quiver:check-slice quiver:check-pr quiver:check-handoff check-handoff quiver:cleanup-slice quiver:check-scope quiver:refresh-active-slices
+  quiver:analyze quiver:flow quiver:prepare quiver:plan quiver:graph quiver:next quiver:doctor quiver:ai:agent quiver:ai:onboard quiver:ai:plan quiver:ai:review-plan quiver:ai:approve quiver:ai:prompt-slice quiver:ai:execute-slice quiver:ai:execute-plan quiver:ai:pr quiver:ai:doctor quiver:spec:create quiver:spec:start quiver:spec:status quiver:spec:close quiver:migrate quiver:start-slice quiver:check-slice quiver:check-pr quiver:check-handoff check-handoff quiver:cleanup-slice quiver:check-scope quiver:refresh-active-slices
 
 printf 'Build AI orchestration dry-run smoke.\n' > "$new_target/requirements.md"
 ai_onboard_dry_run="$(cd "$new_target" && node "$cli" ai onboard --dry-run)"
@@ -689,7 +692,7 @@ assert_contains "$existing_target/docs/SUPPORT_MATRIX.md" "## Cross-Platform Aut
 assert_contains "$existing_target/docs/COMMANDS.md" "src/create-quiver/lib/slice-graph.js"
 assert_contains "$existing_target/specs/existing-repo/slices/slice-template/slice.json" "// \"depends_on\": ["
 assert_package_scripts "$existing_target/package.json" "existing project" \
-  quiver:analyze quiver:prepare quiver:plan quiver:graph quiver:next quiver:doctor quiver:ai:onboard quiver:ai:plan quiver:ai:approve quiver:ai:execute-slice quiver:ai:execute-plan quiver:ai:pr quiver:ai:doctor quiver:spec:start quiver:spec:status quiver:spec:close quiver:migrate quiver:start-slice quiver:check-slice quiver:check-pr quiver:check-handoff check-handoff quiver:cleanup-slice quiver:check-scope quiver:refresh-active-slices
+  quiver:analyze quiver:flow quiver:prepare quiver:plan quiver:graph quiver:next quiver:doctor quiver:ai:agent quiver:ai:onboard quiver:ai:plan quiver:ai:review-plan quiver:ai:approve quiver:ai:prompt-slice quiver:ai:execute-slice quiver:ai:execute-plan quiver:ai:pr quiver:ai:doctor quiver:spec:create quiver:spec:start quiver:spec:status quiver:spec:close quiver:migrate quiver:start-slice quiver:check-slice quiver:check-pr quiver:check-handoff check-handoff quiver:cleanup-slice quiver:check-scope quiver:refresh-active-slices
 assert_file "$space_target/README.md"
 assert_file "$space_target/AGENTS.md"
 assert_file "$space_target/.quiver/scans/PROJECT_SCAN.json"
@@ -820,7 +823,7 @@ assert_front_matter "$legacy_target/docs/ai/DEEP.md"
 assert_front_matter "$legacy_target/docs/ai/LESSONS.md"
 assert_front_matter "$legacy_target/docs/ai/PRINCIPLES.md"
 assert_package_scripts "$legacy_target/package.json" "legacy project after migrate" \
-  quiver:analyze quiver:prepare quiver:plan quiver:graph quiver:next quiver:doctor quiver:ai:onboard quiver:ai:plan quiver:ai:approve quiver:ai:execute-slice quiver:ai:execute-plan quiver:ai:pr quiver:ai:doctor quiver:spec:start quiver:spec:status quiver:spec:close quiver:migrate quiver:start-slice quiver:check-slice quiver:check-pr quiver:check-handoff check-handoff quiver:cleanup-slice quiver:check-scope quiver:refresh-active-slices
+  quiver:analyze quiver:flow quiver:prepare quiver:plan quiver:graph quiver:next quiver:doctor quiver:ai:agent quiver:ai:onboard quiver:ai:plan quiver:ai:review-plan quiver:ai:approve quiver:ai:prompt-slice quiver:ai:execute-slice quiver:ai:execute-plan quiver:ai:pr quiver:ai:doctor quiver:spec:create quiver:spec:start quiver:spec:status quiver:spec:close quiver:migrate quiver:start-slice quiver:check-slice quiver:check-pr quiver:check-handoff check-handoff quiver:cleanup-slice quiver:check-scope quiver:refresh-active-slices
 node -e 'const fs = require("fs"); const data = JSON.parse(fs.readFileSync(process.argv[1], "utf8")); if (data.scripts?.lint !== "echo lint") { throw new Error("custom user script was not preserved during migrate"); }' "$legacy_target/package.json"
 CLI_VERSION="$cli_version" node -e 'const fs = require("fs"); const expected = process.env.CLI_VERSION; const data = JSON.parse(fs.readFileSync(process.argv[1], "utf8")); if (data.migrated_version !== expected || !data.last_migration_at) { throw new Error("migration metadata missing"); }' "$legacy_target/.quiver/state.json"
 
@@ -902,7 +905,7 @@ if [[ "$standard_lines" -gt 300 ]]; then
   exit 1
 fi
 assert_package_scripts "$release_target/package.json" "packaged project" \
-  quiver:analyze quiver:prepare quiver:plan quiver:graph quiver:next quiver:doctor quiver:ai:onboard quiver:ai:plan quiver:ai:approve quiver:ai:execute-slice quiver:ai:execute-plan quiver:ai:pr quiver:ai:doctor quiver:spec:start quiver:spec:status quiver:spec:close quiver:migrate quiver:start-slice quiver:check-slice quiver:check-pr quiver:check-handoff check-handoff quiver:cleanup-slice quiver:check-scope quiver:refresh-active-slices
+  quiver:analyze quiver:flow quiver:prepare quiver:plan quiver:graph quiver:next quiver:doctor quiver:ai:agent quiver:ai:onboard quiver:ai:plan quiver:ai:review-plan quiver:ai:approve quiver:ai:prompt-slice quiver:ai:execute-slice quiver:ai:execute-plan quiver:ai:pr quiver:ai:doctor quiver:spec:create quiver:spec:start quiver:spec:status quiver:spec:close quiver:migrate quiver:start-slice quiver:check-slice quiver:check-pr quiver:check-handoff check-handoff quiver:cleanup-slice quiver:check-scope quiver:refresh-active-slices
 
 printf 'keep me\n' >> "$release_target/docs/SEARCH.md"
 rm "$release_target/docs/AI_ONBOARDING_PROMPT.md"

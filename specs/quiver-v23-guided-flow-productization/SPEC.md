@@ -1,7 +1,7 @@
 # Quiver v23 - Guided Flow Productization
 
 **Date:** 2026-05-21
-**Status:** Draft
+**Status:** Completed
 
 Slice numbering resets here. This spec intentionally starts at `slice-00`.
 
@@ -185,7 +185,7 @@ The existing `npx create-quiver ...` commands must continue working.
 | slice-07 | Spec creation experience from approved plans | Completed | slice-06 |
 | slice-08 | Executor prompt generation for manual slice assignment | Completed | slice-07 |
 | slice-09 | Delegated slice execution with safe workspaces | Completed | slice-08 |
-| slice-10 | Final docs, smokes, and release readiness | Draft | slice-09 |
+| slice-10 | Final docs, smokes, and release readiness | Completed | slice-09 |
 
 ## Risks
 

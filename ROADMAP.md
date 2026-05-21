@@ -52,21 +52,23 @@
 - Published package `0.10.0`.
 - Shipped v20 AI CLI orchestration: provider runner, planner/executor roles, context packs, phase-gated planning, spec/slice/handoff generation, execution planning, executor scope checks, and GitHub PR preflight.
 - Shipped v21 AI-first layout: smaller default init, `.quiver/` internal machinery, analyze scan relocation, optional legacy/full assets, and no placeholder specs by default.
-- Shipped v22 Guided AI Workflow after `0.10.0`: preparation diagnostics, approval state, spec worktrees, executor commits, execution waves, PR creation, post-merge cleanup, and release/package safety are implemented on the release branch and ready for the next package release.
+- Shipped v22 Guided AI Workflow after `0.10.0`: preparation diagnostics, approval state, spec worktrees, executor commits, execution waves, PR creation, post-merge cleanup, and release/package safety are implemented on the release branch.
+- Shipped v23 Guided Flow Productization after `0.10.0`: short `quiver` entrypoint, flow status, agent profiles, token-efficient onboarding, versioned planner drafts, production plan review, spec create, executor prompts, delegated worktrees, and final smoke/readiness coverage are implemented on the release branch and ready for the next package release.
 
 ## Post-Checkpoint Plan (do not execute before validating v14)
 
 > This section now records the follow-up line from the v14-era plan.
 > Earlier speculative v20/v21 names were superseded by the actual shipped
-> specs listed below. v22 is now complete and awaits the next package release.
+> specs listed below. v22 and v23 are now complete and await the next package release.
 
 ### Orchestration and Tooling
 
 - **v20 — AI CLI Orchestration** (completed): `quiver ai ...`, planner/executor roles, phase gates, context packs, executor scope checks, execution plans, and PR preflight.
 - **v21 — AI-First Layout** (completed): clean default init, `.quiver/` internals, analyze scan relocation, optional legacy assets, and no-spec-safe commands.
 - **v22 — Guided AI Workflow** (completed): guided preparation, approvals, spec worktrees, executor commits, execution waves, PR creation, cleanup, and release/package safety live in `specs/quiver-v22-guided-ai-workflow/`.
+- **v23 — Guided Flow Productization** (completed): AI-first flow command, agent profiles, compact onboarding/planning prompts, production plan review, explicit `spec create`, manual executor prompts, delegated worktree execution, and release readiness live in `specs/quiver-v23-guided-flow-productization/`.
 
-The shipped v20/v21/v22 work is no longer pending. The older context-diagnostics and slice-archaeology ideas remain deferred until real demand justifies them.
+The shipped v20/v21/v22/v23 work is no longer pending. The older context-diagnostics and slice-archaeology ideas remain deferred until real demand justifies them.
 
 ### v0.8 — Slice Orchestration Commands (shipped 2026-05-13)
 

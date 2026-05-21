@@ -365,6 +365,7 @@ Validación rápida del repo:
 node bin/create-quiver.js --help
 node --test tests/**/*.test.js
 npm run package:quiver
+npm pack --dry-run
 ```
 
 Validaciones adicionales disponibles:
@@ -379,7 +380,7 @@ Notas reales del estado actual:
 
 - No hay script `npm test`; el comando verificado para tests es `node --test tests/**/*.test.js`.
 - `npm run package:quiver` valida el contenido del paquete npm generado.
-- `npm run smoke:tiered-pack` existe, pero revisar la sección "Información pendiente de confirmar" antes de usarlo como gate obligatorio.
+- `npm run smoke:guided-workflow` cubre el flujo guiado con IA sin llamadas reales pagas a providers.
 
 ## 📜 Scripts npm
 
@@ -462,6 +463,15 @@ Antes de publicar, verificá autenticación y estado del paquete:
 npm whoami
 npm view create-quiver version
 ```
+
+Checklist de release:
+
+1. `node --test tests/**/*.test.js`
+2. `npm run smoke:create-quiver`
+3. `npm run smoke:guided-workflow`
+4. `npm run smoke:tiered-pack`
+5. `npm pack --dry-run`
+6. Confirmar que el PR esta aprobado antes de publicar.
 
 ## 📚 Documentación útil
 

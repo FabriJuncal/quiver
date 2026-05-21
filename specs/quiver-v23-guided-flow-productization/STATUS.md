@@ -1,6 +1,6 @@
 # Quiver v23 - Guided Flow Productization Status
 
-**Status:** Draft
+**Status:** Completed
 **Created:** 2026-05-21
 
 ## Summary
@@ -21,7 +21,7 @@ This spec productizes the user's current prompt-driven workflow into first-class
 - `slice-07`: completed. Added explicit `spec create` command, generated `quiver:spec:create` script, next-command output, docs, and tests.
 - `slice-08`: completed. Added `ai prompt-slice` / `executor-prompt` to print minimal manual executor prompts from slice artifacts without calling providers.
 - `slice-09`: completed. Added manual/delegated execution modes, prompt commands in dry-runs, delegated temporary worktrees for parallel-ready waves, and commit integration back into the active checkout.
-- `slice-10`: draft.
+- `slice-10`: completed. Updated root docs, generated docs/templates, roadmap/backlog/changelog, smoke coverage, release readiness evidence, and no-publish release checklist.
 
 ## Execution Rules
 

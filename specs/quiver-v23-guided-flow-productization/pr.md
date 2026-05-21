@@ -33,28 +33,37 @@ Future implementation slices are expected to touch CLI routing, AI commands, pro
 
 ## How to Test (DETAILED - REQUIRED)
 
-### Documentation-only `slice-00`
+### Required Environment
+
+- Node.js compatible with the current repo setup. The CI line uses Node 22.
+- npm available locally.
+- Git worktree on `feature/QUIVER-22-guided-ai-workflow`.
+- No real paid provider calls are required for the automated checks.
+
+### Worktree Access
+
+Run from the repo root:
 
 ```bash
-git diff --check
-find specs/quiver-v23-guided-flow-productization -name "slice.json" -print -exec node -e "JSON.parse(require('fs').readFileSync(process.argv[1], 'utf8'))" {} \;
+git status --short
+git branch --show-current
 ```
 
-### Implementation Slices
+Expected:
 
-Run the validation commands declared in each slice's `slice.json` and `EXECUTION_BRIEF.md`.
+- Worktree is clean before PR creation.
+- Current branch is `feature/QUIVER-22-guided-ai-workflow`.
 
-Expected full validation by final slice:
+### Run the Project
+
+Quiver is a CLI package. Use the local binary for inspection:
 
 ```bash
-node --test tests/**/*.test.js
-npm run smoke:create-quiver
-npm run smoke:guided-workflow
-npm run smoke:tiered-pack
-npm run package:quiver
+node bin/create-quiver.js --help
+node bin/create-quiver.js flow --json
 ```
 
-## Use Cases
+### Use Cases
 
 - A user asks Quiver what step comes next.
 - A user configures planner and executor agent profiles.
@@ -66,6 +75,37 @@ npm run package:quiver
 - Quiver delegates or prints safe execution commands for slices.
 - Quiver opens the PR from `pr.md` after checks pass.
 - Quiver closes the spec worktree after merge.
+
+### Technical Verification
+
+Documentation-only `slice-00`:
+
+```bash
+git diff --check
+find specs/quiver-v23-guided-flow-productization -name "slice.json" -print -exec node -e "JSON.parse(require('fs').readFileSync(process.argv[1], 'utf8'))" {} \;
+```
+
+Full validation:
+
+```bash
+node --test tests/**/*.test.js
+npm run smoke:create-quiver
+npm run smoke:guided-workflow
+npm run smoke:tiered-pack
+npm run package:quiver
+npm --cache /private/tmp/quiver-npm-cache pack --dry-run
+```
+
+## Evidence
+
+- `node --test tests/**/*.test.js` passed with 223 tests.
+- `git diff --check` passed.
+- All `slice.json` files under `specs/quiver-v23-guided-flow-productization/` parse successfully.
+- `npm run smoke:create-quiver` passed.
+- `npm run smoke:guided-workflow` passed.
+- `npm run smoke:tiered-pack` passed.
+- `npm --cache /private/tmp/quiver-npm-cache pack --dry-run` passed.
+- Plain `npm pack --dry-run` was blocked by root-owned files in the user's global npm cache; the package was validated with an isolated temporary cache.
 
 ## Rollback
 

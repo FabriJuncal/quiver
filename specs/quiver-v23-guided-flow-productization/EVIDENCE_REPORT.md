@@ -2,7 +2,7 @@
 
 ## Status
 
-Spec foundation is created. `slice-00` through `slice-09` are completed.
+Spec foundation is created. `slice-00` through `slice-10` are completed.
 
 ## Slice Evidence
 
@@ -18,7 +18,7 @@ Spec foundation is created. `slice-00` through `slice-09` are completed.
 | slice-07 | Added `npx create-quiver spec create`, generated `quiver:spec:create` scripts, dry-run preview, collision checks, next safe commands, and docs/tests for creating specs from reviewed approved technical plans. |
 | slice-08 | Added `npx create-quiver ai prompt-slice`, generated `quiver:ai:prompt-slice` scripts, minimal SPEC excerpts, required closure brief handling, final report format, docs/templates, and tests for manual executor prompts. |
 | slice-09 | Added `--mode manual` and `--mode delegated` for `ai execute-plan`, dry-run prompt/execute commands, delegated temporary worktrees for parallel-ready waves, sequential fallback for unsafe scopes, one-commit integration, recovery guidance, docs, and tests. |
-| slice-10 | Pending. |
+| slice-10 | Updated README, README_FOR_AI, CHANGELOG, ROADMAP, BACKLOG, generated docs/templates, smoke coverage, release readiness checklist, final status/evidence, and confirmed no npm publish was performed. |
 
 ## Validation Log
 
@@ -41,6 +41,19 @@ Spec foundation is created. `slice-00` through `slice-09` are completed.
 - 2026-05-21: `find specs/quiver-v23-guided-flow-productization -name slice.json -print -exec node -e "JSON.parse(require('fs').readFileSync(process.argv[1], 'utf8'))" {} \;`
 - 2026-05-21: `npm run smoke:create-quiver`
 - 2026-05-21: `npm run smoke:tiered-pack`
+- 2026-05-21: `npm run smoke:guided-workflow`
+- 2026-05-21: `npm run smoke:create-quiver`
+- 2026-05-21: `npm pack --dry-run` failed because the user npm cache under `~/.npm` contains root-owned files.
+- 2026-05-21: `npm --cache /private/tmp/quiver-npm-cache pack --dry-run`
+- 2026-05-21: `npm run smoke:tiered-pack`
+
+## Release Readiness Checklist
+
+- [x] Root README documents the guided flow as available behavior.
+- [x] Generated docs mention flow status, profiles, onboarding, review-plan, spec create, executor prompts, delegated execution, PR creation, and cleanup.
+- [x] Guided workflow smoke covers flow status, profiles, onboarding, planner iterations, review-plan, spec create, executor prompt dry-run, delegated execution dry-run, PR dry-run, cleanup dry-run, and package safety.
+- [x] Package dry-run succeeded with an isolated npm cache.
+- [x] No npm publish was performed in this slice.
 - 2026-05-21: `node --test tests/lib/ai-execution-plan.test.js tests/commands/ai-execute-plan.test.js tests/commands/ai-execute-slice.test.js`
 - 2026-05-21: `node --test tests/lib/ai-execution-plan.test.js tests/commands/ai-execute-plan.test.js tests/commands/ai-execute-slice.test.js tests/lib/init-docs.test.js tests/lib/init-layout.test.js`
 - 2026-05-21: `node --test tests/**/*.test.js`
