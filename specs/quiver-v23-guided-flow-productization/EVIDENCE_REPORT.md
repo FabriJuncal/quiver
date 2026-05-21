@@ -2,14 +2,14 @@
 
 ## Status
 
-Spec foundation is created. Only `slice-00` is completed.
+Spec foundation is created. `slice-00` and `slice-01` are completed.
 
 ## Slice Evidence
 
 | Slice | Evidence |
 |-------|----------|
 | slice-00 | Spec foundation files created. All `slice.json` files parse successfully and `git diff --check` passed. |
-| slice-01 | Pending. |
+| slice-01 | Added `quiver` as a package binary alias, added read-only `flow` command, generated `quiver:flow` script, docs, and command tests. |
 | slice-02 | Pending. |
 | slice-03 | Pending. |
 | slice-04 | Pending. |
@@ -24,6 +24,8 @@ Spec foundation is created. Only `slice-00` is completed.
 
 - 2026-05-21: `find specs/quiver-v23-guided-flow-productization -name "slice.json" -print -exec node -e "JSON.parse(require('fs').readFileSync(process.argv[1], 'utf8'))" {} \;`
 - 2026-05-21: `git diff --check`
+- 2026-05-21: `node --test tests/commands/flow.test.js tests/commands/init-profiles.test.js tests/commands/prepare.test.js`
+- 2026-05-21: `node bin/create-quiver.js flow --json`
 
 ## Notes
 

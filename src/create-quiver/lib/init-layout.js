@@ -178,6 +178,7 @@ function resolveInitPackageScripts(profile, options = {}) {
   const baseScripts = {
     'quiver:migrate': 'npx create-quiver migrate',
     'quiver:analyze': 'npx create-quiver analyze',
+    'quiver:flow': 'npx create-quiver flow',
     'quiver:prepare': 'npx create-quiver prepare',
     'quiver:plan': 'npx create-quiver plan',
     'quiver:graph': 'npx create-quiver graph',

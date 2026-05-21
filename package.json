@@ -5,7 +5,8 @@
   "description": "Quiver CLI for scaffolding projects from the packaged template",
   "license": "MIT",
   "bin": {
-    "create-quiver": "bin/create-quiver.js"
+    "create-quiver": "bin/create-quiver.js",
+    "quiver": "bin/create-quiver.js"
   },
   "scripts": {
     "check:slice": "bash tools/scripts/check-slice-readiness.sh",
@@ -14,6 +15,7 @@
     "cleanup:slice": "bash tools/scripts/cleanup-slice.sh",
     "migrate": "bash tools/scripts/migrate-project.sh",
     "quiver:analyze": "npx create-quiver analyze",
+    "quiver:flow": "npx create-quiver flow",
     "quiver:prepare": "npx create-quiver prepare",
     "quiver:plan": "npx create-quiver plan",
     "quiver:graph": "npx create-quiver graph",

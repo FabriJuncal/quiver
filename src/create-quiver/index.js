@@ -6,6 +6,7 @@ const { checkHandoff, scaffoldHandoff } = require('./lib/handoff');
 const { collectDoctorReport } = require('./lib/doctor');
 const { runApprovalStatus: runAiApprovalStatus, runApprove: runAiApprove, runDoctor: runAiDoctor, runExecutePlan: runAiExecutePlan, runExecuteSlice: runAiExecuteSlice, runOnboard, runPlan: runAiPlan, runPr: runAiPr } = require('./commands/ai');
 const { runPrepare } = require('./commands/prepare');
+const { runFlow } = require('./commands/flow');
 const { runGraph } = require('./commands/graph');
 const { runNext } = require('./commands/next');
 const { runPlan } = require('./commands/plan');
@@ -43,6 +44,7 @@ function printUsage() {
   npx create-quiver [options]
   npx create-quiver init [options]
   npx create-quiver analyze [options]
+  npx create-quiver flow [options]
   npx create-quiver plan [options]
   npx create-quiver ai <task> [options]
   npx create-quiver graph [options]
@@ -97,6 +99,7 @@ Examples:
   npx create-quiver init --name "My Project" --dry-run
   npx create-quiver --name "My Project"
   npx create-quiver --name "My Project" --dir ./my-project
+  cd ./my-project && npx create-quiver flow
   cd ./my-project && npx create-quiver analyze
   cd ./my-project && npx create-quiver plan --json
   cd ./my-project && npx create-quiver ai onboard --dry-run
@@ -183,7 +186,7 @@ function parseArgs(argv) {
   };
 
   const args = [...argv];
-  const commandModes = new Set(['init', 'plan', 'graph', 'next', 'doctor', 'prepare', 'analyze', 'migrate', 'start-slice', 'check-slice', 'check-pr', 'check-handoff', 'new-handoff', 'cleanup-slice', 'check-scope', 'refresh-active-slices', 'spec', 'ai']);
+  const commandModes = new Set(['init', 'flow', 'plan', 'graph', 'next', 'doctor', 'prepare', 'analyze', 'migrate', 'start-slice', 'check-slice', 'check-pr', 'check-handoff', 'new-handoff', 'cleanup-slice', 'check-scope', 'refresh-active-slices', 'spec', 'ai']);
   if (commandModes.has(args[0])) {
     result.mode = args[0];
     result.explicitInit = args[0] === 'init';
@@ -537,6 +540,10 @@ function parseArgs(argv) {
   } else if (result.mode === 'plan') {
     if (positional.length > 0) {
       throw new Error(formatError('plan does not accept positional arguments; use --spec <slug>'));
+    }
+  } else if (result.mode === 'flow') {
+    if (positional.length > 0) {
+      throw new Error(formatError('flow does not accept positional arguments'));
     }
   } else if (result.mode === 'ai') {
     if (!result.aiCommand && positional.length > 0) {
@@ -1714,6 +1721,13 @@ async function run(argv) {
     return;
   }
 
+  if (args.mode === 'flow') {
+    await runFlow(process.cwd(), {
+      json: args.json,
+    });
+    return;
+  }
+
   if (args.mode === 'plan') {
     runPlan(process.cwd(), {
       json: args.json,
@@ -2011,6 +2025,7 @@ async function run(argv) {
 module.exports = {
   runAnalyze,
   runDoctor,
+  runFlow,
   runMigrate,
   runPrepare,
   run,

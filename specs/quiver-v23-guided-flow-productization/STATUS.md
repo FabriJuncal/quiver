@@ -12,7 +12,8 @@ This spec productizes the user's current prompt-driven workflow into first-class
 - Requirements and product direction: approved in conversation.
 - Spec and slice handoffs: created in this documentation pass.
 - `slice-00`: completed.
-- `slice-01` through `slice-10`: draft.
+- `slice-01`: completed. Added the `quiver` binary alias, read-only `flow` command, docs, generated script, and tests.
+- `slice-02` through `slice-10`: draft.
 
 ## Execution Rules
 
@@ -26,7 +27,6 @@ This spec productizes the user's current prompt-driven workflow into first-class
 
 ## Open Items
 
-- Decide whether the short command is a real package binary alias or a generated local script.
 - Decide the exact persisted shape for agent profiles under `.quiver/`.
 - Decide whether plan review creates a new approval phase or annotates the technical-plan approval.
 - Validate provider-specific model argument handling for Codex, Claude, and Gemini.

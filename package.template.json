@@ -4,6 +4,7 @@
   "scripts": {
     "quiver:migrate": "npx create-quiver migrate",
     "quiver:analyze": "npx create-quiver analyze",
+    "quiver:flow": "npx create-quiver flow",
     "quiver:plan": "npx create-quiver plan",
     "quiver:graph": "npx create-quiver graph",
     "quiver:next": "npx create-quiver next",

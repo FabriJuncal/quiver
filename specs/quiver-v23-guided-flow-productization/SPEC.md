@@ -176,7 +176,7 @@ The existing `npx create-quiver ...` commands must continue working.
 | Slice | Title | Status | Dependencies |
 |-------|-------|--------|--------------|
 | slice-00 | Spec foundation and guided flow planning artifacts | Completed | none |
-| slice-01 | Short command and guided flow entrypoint | Draft | slice-00 |
+| slice-01 | Short command and guided flow entrypoint | Completed | slice-00 |
 | slice-02 | Flow status and next-step wizard | Draft | slice-01 |
 | slice-03 | Agent profiles for planner, executor, reviewer, and researcher | Draft | slice-02 |
 | slice-04 | Context preparation and onboarding prompt productization | Draft | slice-03 |

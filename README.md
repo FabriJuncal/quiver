@@ -12,6 +12,7 @@ Ejecutá Quiver desde la raíz del proyecto donde querés instalar el workflow:
 
 ```bash
 npx create-quiver init --name "Mi Proyecto"
+npx create-quiver flow
 npx create-quiver prepare --dry-run
 npx create-quiver analyze
 npx create-quiver doctor
@@ -30,6 +31,7 @@ La maquinaria interna queda en `.quiver/`. Las specs reales no se crean durante 
 El flujo normal con IA continúa así:
 
 ```bash
+npx create-quiver flow
 npx create-quiver ai plan --phase acceptance --input requirements.md --dry-run
 npx create-quiver ai approve --phase acceptance --input acceptance-approved.md
 npx create-quiver ai plan --phase technical-plan --dry-run
@@ -69,6 +71,7 @@ Flujo recomendado:
 
 ```bash
 npx create-quiver analyze
+npx create-quiver flow
 npx create-quiver doctor
 npx create-quiver ai onboard --dry-run
 npx create-quiver ai plan --phase acceptance --input requirements.md --dry-run
@@ -96,6 +99,7 @@ Usá este camino cuando todavía no existe el proyecto o estás arrancando una c
 mkdir mi-proyecto
 cd mi-proyecto
 npx create-quiver init --name "Mi Proyecto"
+npx create-quiver flow
 npx create-quiver prepare --dry-run
 npx create-quiver analyze
 npx create-quiver doctor
@@ -139,6 +143,7 @@ Luego inicializá Quiver desde la raíz del proyecto:
 
 ```bash
 npx create-quiver init --name "Nombre del Proyecto"
+npx create-quiver flow
 npx create-quiver analyze
 npx create-quiver doctor
 npx create-quiver ai onboard --dry-run
@@ -215,7 +220,7 @@ La idea práctica: primero contexto, después plan, después código.
 | Runtime | Node.js CLI |
 | Lenguaje | JavaScript CommonJS |
 | Package manager | npm (`package-lock.json`) |
-| Binario npm | `create-quiver` -> `bin/create-quiver.js` |
+| Binario npm | `create-quiver` y alias `quiver` -> `bin/create-quiver.js` |
 | Tests | Node built-in test runner (`node:test`) |
 | CI/CD | GitHub Actions |
 | Distribución | Paquete npm público `create-quiver` |
@@ -267,11 +272,13 @@ Para IA sin `--dry-run`, la autenticación depende del proveedor local que uses 
 ## 🧭 Comandos principales
 
 Los comandos reales del CLI se ejecutan con `npx create-quiver ...` o, durante desarrollo local, con `node bin/create-quiver.js ...`.
+El paquete también publica el alias binario `quiver`, que apunta al mismo CLI. Usalo cuando el paquete ya esté instalado localmente; para bootstrap remoto, seguí usando `npx create-quiver`.
 
 | Comando | Para qué sirve |
 |---|---|
 | `npx create-quiver init --name "Proyecto"` | Inicializa Quiver en un proyecto nuevo o nunca inicializado. |
 | `npx create-quiver --name "Proyecto"` | Alias compatible del flujo de init recomendado. |
+| `npx create-quiver flow` | Muestra el estado inicial del flujo guiado y el próximo comando seguro sin escribir estado ni llamar providers. |
 | `npx create-quiver init --minimal` | Crea solo el contrato esencial de onboarding. |
 | `npx create-quiver init --full` | Crea el layout amplio de compatibilidad. |
 | `npx create-quiver init --legacy-scripts` | Agrega wrappers Bash legacy bajo `tools/scripts/`. |
@@ -355,6 +362,7 @@ Notas reales del estado actual:
 | Script | Uso |
 |---|---|
 | `npm run quiver:analyze` | Ejecuta `npx create-quiver analyze`. |
+| `npm run quiver:flow` | Ejecuta `npx create-quiver flow`. |
 | `npm run quiver:plan` | Ejecuta `npx create-quiver plan`. |
 | `npm run quiver:prepare` | Ejecuta preparación guiada y diagnósticos. |
 | `npm run quiver:graph` | Ejecuta `npx create-quiver graph`. |

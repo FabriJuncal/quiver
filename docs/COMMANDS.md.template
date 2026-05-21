@@ -11,7 +11,9 @@ This document is the canonical command reference for the orchestration roadmap.
 |---------|---------|----|-------|---------|
 | `npx create-quiver init --name "<project>"` | Creates the default AI-first Quiver contract for a project | macOS, Linux, Windows | current | `npx create-quiver init --name "{{PROJECT_NAME}}"` |
 | `npx create-quiver --name "<project>"` | Compatibility alias for the recommended init flow | macOS, Linux, Windows | current | `npx create-quiver --name "{{PROJECT_NAME}}"` |
+| `npx create-quiver flow` | Shows the read-only guided flow entrypoint and next safe command | macOS, Linux, Windows | v0.11 | `npx create-quiver flow` |
 | `quiver:analyze` | Writes raw analyzer data to `.quiver/scans/PROJECT_SCAN.json` and the visible project map to `docs/PROJECT_MAP.md` | macOS, Linux, Windows | v0.8 | `npm run quiver:analyze` |
+| `quiver:flow` | Runs the guided flow entrypoint through the generated npm script | macOS, Linux, Windows | v0.11 | `npm run quiver:flow` |
 | `quiver:prepare` | Runs guided setup diagnostics and context preparation | macOS, Linux, Windows | v0.10 | `npm run quiver:prepare -- --dry-run --provider codex` |
 | `quiver:doctor` | Validates the Quiver contract and reports layout or migration guidance | macOS, Linux, Windows | v0.8 | `npm run quiver:doctor` |
 | `quiver:plan` | Sequential orchestration planning command | macOS, Linux, Windows | v0.8 | [docs/examples/plan.md](./examples/plan.md) |
@@ -59,6 +61,7 @@ This document is the canonical command reference for the orchestration roadmap.
 ## Notes
 
 - Add new rows here only when a command is officially shipped.
+- The `quiver` binary is an alias to the same package CLI after local installation. Keep `npx create-quiver` as the bootstrap command.
 - Keep the table concise and cross-platform.
 - Shared graph library: `src/create-quiver/lib/slice-graph.js`.
 - `quiver:graph --format mermaid` is the PR-friendly Mermaid export; `--format dot` is for Graphviz/DOT consumers.
