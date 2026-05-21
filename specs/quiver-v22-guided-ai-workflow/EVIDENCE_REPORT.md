@@ -9,7 +9,7 @@ Spec foundation created. Implementation has not started.
 | Slice | Evidence |
 |-------|----------|
 | slice-00 | Spec foundation files created. All `slice.json` files parse successfully and `git diff --check` passed. Documentation commit is still pending. |
-| slice-01 | Pending. |
+| slice-01 | Documentation source-of-truth sync completed. README no longer claims `package.json`/CHANGELOG are at 0.9.0, CHANGELOG includes 0.10.0, ROADMAP/BACKLOG distinguish shipped v20/v21 work from planned v22 work, and targeted tests passed. |
 | slice-02 | Pending. |
 | slice-03 | Pending. |
 | slice-04 | Pending. |
@@ -24,6 +24,7 @@ Spec foundation created. Implementation has not started.
 
 - 2026-05-21: `find specs/quiver-v22-guided-ai-workflow -name "slice.json" -print -exec node -e "JSON.parse(require('fs').readFileSync(process.argv[1], 'utf8'))" {} \;`
 - 2026-05-21: `git diff --check`
+- 2026-05-21: `node --test tests/commands/analyze.test.js tests/commands/ai-plan.test.js tests/commands/ai-pr.test.js`
 
 ## Notes
 

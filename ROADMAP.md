@@ -47,22 +47,26 @@
 - v13 slice-04 reconciled into v14 slice-05 (2026-04-23); v13 slice-02 narrowed to `DECISIONS.md` only
 - Validation checkpoint passed after real-world use and spec completion
 
+## v0.10 (shipped 2026-05-21)
+
+- Published package `0.10.0`.
+- Shipped v20 AI CLI orchestration: provider runner, planner/executor roles, context packs, phase-gated planning, spec/slice/handoff generation, execution planning, executor scope checks, and GitHub PR preflight.
+- Shipped v21 AI-first layout: smaller default init, `.quiver/` internal machinery, analyze scan relocation, optional legacy/full assets, and no placeholder specs by default.
+
 ## Post-Checkpoint Plan (do not execute before validating v14)
 
-> This section is intentionally speculative. Every item below is pending
-> evidence from v14 in real use. Rescope or drop anything that does not
-> respond to observed friction.
+> This section now records the follow-up line from the v14-era plan.
+> Earlier speculative v20/v21 names were superseded by the actual shipped
+> specs listed below. The remaining v22 work stays planned until its spec
+> and slices complete.
 
-### Orchestration and Tooling (v19–v22, spec drafts created 2026-04-23)
+### Orchestration and Tooling
 
-Draft specs exist but are **not executed until v18 passes its validation checkpoint**. Each subsequent spec requires the previous one to pass its own checkpoint before it starts.
+- **v20 — AI CLI Orchestration** (completed): `quiver ai ...`, planner/executor roles, phase gates, context packs, executor scope checks, execution plans, and PR preflight.
+- **v21 — AI-First Layout** (completed): clean default init, `.quiver/` internals, analyze scan relocation, optional legacy assets, and no-spec-safe commands.
+- **v22 — Guided AI Workflow** (planned, draft spec): guided preparation, approvals, execution waves, PR creation, cleanup, and release/package safety live in `specs/quiver-v22-guided-ai-workflow/`.
 
-- **v19 — Project Visibility** (3 slices, ~11h): `quiver:status`, `quiver:estimate`, `quiver:lint-spec`
-- **v20 — Context Diagnostics** (3 slices, ~13h): `quiver:cost`, `quiver:diff-pack`, `quiver:replay`
-- **v21 — Slice Archaeology** (2 slices, ~7h): `quiver:archive`, `quiver:blame-slice`; `bisect-slice` documented via `git bisect run` in TROUBLESHOOTING
-- **v22 — Deferred Tooling** (3 slices, ~10h, evidence-gated): `quiver:fork-slice`, `quiver:squash-spec`, `quiver:share`
-
-Plan total: ~41h across 11 slices. Drafts parked on `drafts/v19-v22-orchestration-followups`. v22 stays deferred until BACKLOG.md records ≥1 occurrence per slice.
+The shipped v20/v21 work is no longer pending. The older context-diagnostics and slice-archaeology ideas remain deferred until real demand justifies them.
 
 ### v0.8 — Slice Orchestration Commands (shipped 2026-05-13)
 

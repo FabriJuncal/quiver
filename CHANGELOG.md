@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-05-21
+
+### Added
+
+- AI CLI orchestration commands for provider dry-runs, planner phases, executor slice runs, and GitHub PR preflight.
+- AI-first default project layout with visible onboarding docs and internal `.quiver/` machinery.
+- Generated spec/slice/handoff/PR artifacts with mandatory `slice-00`.
+
+### Changed
+
+- Published `create-quiver` 0.10.0 and aligned the root docs with the current release line.
+
 ## [0.9.0] - 2026-05-14
 
 ### Added

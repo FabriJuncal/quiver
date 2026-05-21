@@ -402,11 +402,11 @@ npm view create-quiver version
 - [Contribución](./CONTRIBUTING.md)
 - [Seguridad](./SECURITY.md)
 
-## Información pendiente de confirmar
+## Información confirmada y pendiente
 
+- `package.json` está en `0.10.0` y `CHANGELOG.md` reconoce `0.10.0`.
 - `package.json` no declara `engines`; la versión mínima real de Node queda pendiente. La CI usa Node 22.
-- `package.json` está en `0.9.0`, igual que `CHANGELOG.md`.
-- `docs/COMMANDS.md.template` marca algunos comandos de IA como `v0.10`, aunque `package.json` todavía está en `0.9.0`; la próxima publicación debe alinear versión y changelog.
+- Si aparece alguna referencia vieja a `0.9.0`, hay que actualizarla al contrato actual antes de seguir.
 - Los scripts legacy de `package.json` que apuntan a `tools/scripts/*` deben confirmarse para este repo fuente o separarse de los scripts pensados para proyectos generados con `--legacy-scripts` o `--full`.
 
 ## Licencia
