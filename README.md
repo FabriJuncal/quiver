@@ -49,6 +49,23 @@ npx create-quiver ai execute-plan --dry-run --commit --mode delegated
 
 Usá `--dry-run` para validar provider, rol, contexto, paths y olas sin ejecutar el modelo. `--mode manual` imprime prompts para asignar slices a mano; `--mode delegated` prepara la ejecución con workspaces seguros cuando hay paralelismo.
 
+### Compatibilidad: macOS, Linux y Windows
+
+El camino principal de Quiver está pensado para ser portable: usa `npx create-quiver ...`, `npm run quiver:*` y `node ...`. Esos comandos funcionan en macOS, Linux y Windows siempre que tengas Node.js, npm y Git instalados.
+
+Reglas prácticas por sistema:
+
+- macOS y Linux: podés copiar los ejemplos tal como están. Las rutas SSH suelen verse como `~/.ssh/github-work`.
+- Windows con PowerShell: usá los mismos comandos `npx`, `npm` y `node`, pero adaptá rutas a formato Windows, por ejemplo `C:\Users\<usuario>\ssh\github-work`.
+- Windows con Git Bash o WSL: podés usar rutas tipo Unix, por ejemplo `~/.ssh/github-work`.
+- Los wrappers Bash bajo `tools/scripts/` son compatibilidad legacy u opcional. Para trabajo nuevo, preferí el CLI Node y los scripts `quiver:*`.
+
+Cuando uses GitHub o PRs:
+
+- `--ssh-host-alias` recibe el alias del host en tu configuración SSH, por ejemplo `github-work` o `github-personal`.
+- `--identity-file` recibe la ruta al archivo de clave, que cambia según el sistema operativo.
+- `gh` debe estar instalado y autenticado; Quiver lo valida con `ai doctor` o `ai pr --dry-run`.
+
 ### Desarrollar este repositorio
 
 ```bash

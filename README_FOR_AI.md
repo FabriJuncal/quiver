@@ -54,7 +54,7 @@ Prefer maps, metadata, diffs, and summaries over full file reads when they are e
 - `specs/<project-slug>/HANDOFF.md` is reserved for exceptional context transfers between agents or phases.
 - Initial onboarding should complete context docs and report assumptions before any feature work starts.
 - The normal workflow runs from the project root without `--dir`; use `--dir` only when targeting another directory explicitly.
-- The cross-platform work targets native macOS, Linux, and Windows shells; Bash is a legacy compatibility path until the runtime slices land, and Windows support is only considered verified once the CI matrix is green.
+- The cross-platform contract targets native macOS, Linux, and Windows users through the Node CLI (`npx create-quiver ...`) and generated `quiver:*` npm scripts. Bash wrappers are legacy or optional compatibility, not the primary path. Keep root README examples clear about adapting SSH identity paths on Windows PowerShell, Git Bash, WSL, macOS, and Linux.
 - The support contract lives in `docs/SUPPORT_MATRIX.md` and `docs/TROUBLESHOOTING.md`.
 - Generated project npm scripts should prefer `quiver:*` names such as `quiver:analyze`, `quiver:flow`, `quiver:plan`, `quiver:graph`, `quiver:next`, `quiver:doctor`, `quiver:ai:agent`, `quiver:ai:plan`, `quiver:ai:review-plan`, `quiver:ai:approve`, `quiver:ai:prompt-slice`, `quiver:ai:execute-slice`, `quiver:ai:execute-plan`, `quiver:spec:create`, `quiver:spec:start`, `quiver:spec:status`, `quiver:spec:close`, `quiver:start-slice`, `quiver:check-slice`, and `quiver:check-pr`.
 - `quiver:graph` defaults to the tree view; choose `--format mermaid` or `--format dot` when you need exportable graph artifacts.
