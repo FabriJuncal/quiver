@@ -274,7 +274,7 @@ When a real spec exists, execute one approved slice at a time:
 \`\`\`bash
 npm run quiver:ai:prompt-slice -- --slice specs/<spec-slug>/slices/<slice-id>/slice.json --dry-run
 npm run quiver:ai:execute-slice -- --slice specs/<spec-slug>/slices/<slice-id>/slice.json --dry-run --commit
-npm run quiver:ai:execute-plan -- --dry-run --commit
+npm run quiver:ai:execute-plan -- --dry-run --commit --mode delegated
 \`\`\`
 
 ## Documentation
@@ -328,7 +328,7 @@ When a real spec exists, execute one approved slice at a time:
 \`\`\`bash
 npm run quiver:ai:prompt-slice -- --slice specs/<spec-slug>/slices/<slice-id>/slice.json --dry-run
 npm run quiver:ai:execute-slice -- --slice specs/<spec-slug>/slices/<slice-id>/slice.json --dry-run --commit
-npm run quiver:ai:execute-plan -- --dry-run --commit
+npm run quiver:ai:execute-plan -- --dry-run --commit --mode delegated
 \`\`\`
 
 ## Project NPM Scripts
@@ -351,7 +351,7 @@ npm run quiver:ai:approve -- --phase technical-plan --version <n>
 npm run quiver:spec:create -- --dry-run
 npm run quiver:ai:prompt-slice -- --slice specs/<spec-slug>/slices/<slice-id>/slice.json --dry-run
 npm run quiver:ai:execute-slice -- --slice specs/<spec-slug>/slices/<slice-id>/slice.json --dry-run --commit
-npm run quiver:ai:execute-plan -- --dry-run --commit
+npm run quiver:ai:execute-plan -- --dry-run --commit --mode delegated
 npm run quiver:ai:pr -- --dry-run --input specs/<spec-slug>/pr.md --ssh-host-alias github-work --identity-file ~/.ssh/github-work
 npm run quiver:spec:start -- specs/<spec-slug>
 npm run quiver:spec:status -- specs/<spec-slug>
@@ -423,7 +423,7 @@ npm run quiver:spec:create -- --dry-run
 npm run quiver:spec:start -- specs/${projectSlug}
 npm run quiver:ai:prompt-slice -- --slice specs/${projectSlug}/slices/slice-01/slice.json --dry-run
 npm run quiver:ai:execute-slice -- --slice specs/${projectSlug}/slices/slice-01/slice.json --dry-run --commit
-npm run quiver:ai:execute-plan -- --dry-run --commit
+npm run quiver:ai:execute-plan -- --dry-run --commit --mode delegated
 npm run quiver:ai:pr -- --dry-run --input specs/${projectSlug}/pr.md --ssh-host-alias github-work --identity-file ~/.ssh/github-work
 \`\`\`
 
@@ -449,7 +449,7 @@ npm run quiver:ai:approve -- --phase technical-plan --version <n>
 npm run quiver:spec:create -- --dry-run
 npm run quiver:ai:prompt-slice -- --slice specs/${projectSlug}/slices/slice-01/slice.json --dry-run
 npm run quiver:ai:execute-slice -- --slice specs/${projectSlug}/slices/slice-01/slice.json --dry-run --commit
-npm run quiver:ai:execute-plan -- --dry-run --commit
+npm run quiver:ai:execute-plan -- --dry-run --commit --mode delegated
 npm run quiver:ai:doctor -- --dry-run --ssh-host-alias github-work --identity-file ~/.ssh/github-work
 npm run quiver:ai:pr -- --dry-run --input specs/${projectSlug}/pr.md --ssh-host-alias github-work --identity-file ~/.ssh/github-work
 npm run quiver:spec:start -- specs/${projectSlug}
@@ -467,7 +467,7 @@ npm run quiver:refresh-active-slices
 
 The \`quiver:graph\` script prints the tree view by default; use \`npx create-quiver graph --format mermaid\` for PR-ready Markdown and \`--format dot\` when you want Graphviz source.
 The \`quiver:next\` script points to the next ready slice and can auto-start it behind a confirmation prompt.
-The \`quiver:ai:*\` scripts standardize planner/executor AI flows. Use dry-run first: onboarding and planning dry-runs do not require provider auth, \`quiver:ai:execute-plan -- --dry-run --commit\` prints safe waves, and \`quiver:ai:pr -- --dry-run\` validates \`gh\`, GitFlow docs, branch/worktree state, SSH inputs, and \`pr.md\` without creating a PR. Add \`--create\` only after reviewing the plan.
+The \`quiver:ai:*\` scripts standardize planner/executor AI flows. Use dry-run first: onboarding and planning dry-runs do not require provider auth, \`quiver:ai:execute-plan -- --dry-run --commit --mode manual\` prints manual prompts, \`--mode delegated\` prints safe waves, and \`quiver:ai:pr -- --dry-run\` validates \`gh\`, GitFlow docs, branch/worktree state, SSH inputs, and \`pr.md\` without creating a PR. Add \`--create\` only after reviewing the plan.
 Use \`quiver:spec:create\`, \`quiver:spec:start\`, \`quiver:spec:status\`, and \`quiver:spec:close\` for one spec generation and worktree per spec.
 Use \`npx create-quiver next --all-ready\` when you want the full ready level instead of a single suggestion.
 The legacy Bash wrappers remain in \`tools/scripts/\` for compatibility, but new project-level automation should prefer the \`quiver:*\` scripts and the direct \`npx create-quiver ...\` commands below.

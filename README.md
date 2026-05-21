@@ -43,10 +43,11 @@ npx create-quiver ai approve --phase technical-plan --version <n>
 npx create-quiver spec create --dry-run
 npx create-quiver spec start specs/<project-slug>
 npx create-quiver next
-npx create-quiver ai execute-plan --dry-run --commit
+npx create-quiver ai execute-plan --dry-run --commit --mode manual
+npx create-quiver ai execute-plan --dry-run --commit --mode delegated
 ```
 
-Usá `--dry-run` para validar provider, rol, contexto y paths sin ejecutar el modelo. Cuando el output esté revisado y aprobado, quitá `--dry-run`.
+Usá `--dry-run` para validar provider, rol, contexto, paths y olas sin ejecutar el modelo. `--mode manual` imprime prompts para asignar slices a mano; `--mode delegated` prepara la ejecución con workspaces seguros cuando hay paralelismo.
 
 ### Desarrollar este repositorio
 
@@ -89,7 +90,7 @@ npx create-quiver graph
 npx create-quiver next
 npx create-quiver ai prompt-slice --slice specs/<project-slug>/slices/slice-01/slice.json --dry-run
 npx create-quiver ai execute-slice --slice specs/<project-slug>/slices/slice-01/slice.json --dry-run --commit
-npx create-quiver ai execute-plan --dry-run --commit
+npx create-quiver ai execute-plan --dry-run --commit --mode delegated
 npx create-quiver ai pr --dry-run --input specs/<project-slug>/pr.md --ssh-host-alias github-work --identity-file ~/.ssh/github-work
 ```
 
@@ -333,7 +334,8 @@ npx create-quiver ai approve --phase technical-plan --version <n>
 npx create-quiver spec create --dry-run
 npx create-quiver ai prompt-slice --slice specs/<project-slug>/slices/slice-01/slice.json --dry-run
 npx create-quiver ai execute-slice --slice specs/<project-slug>/slices/slice-01/slice.json --dry-run --commit
-npx create-quiver ai execute-plan --dry-run --commit
+npx create-quiver ai execute-plan --dry-run --commit --mode manual
+npx create-quiver ai execute-plan --dry-run --commit --mode delegated
 npx create-quiver ai doctor --dry-run --ssh-host-alias github-work --identity-file ~/.ssh/github-work
 npx create-quiver ai pr --dry-run --input specs/<project-slug>/pr.md --ssh-host-alias github-work --identity-file ~/.ssh/github-work
 ```
@@ -351,7 +353,7 @@ Orden recomendado:
 6. `spec create`: genera spec, slices, handoffs y PR body desde el plan revisado y aprobado.
 7. `spec start`: prepara un worktree por spec.
 8. `ai prompt-slice`: imprime el prompt mínimo para asignar un slice manualmente.
-9. `ai execute-slice` / `ai execute-plan`: ejecuta slices aprobados, con commit opt-in.
+9. `ai execute-slice` / `ai execute-plan`: ejecuta slices aprobados, con commit opt-in. Usá `--mode manual` para prompts y `--mode delegated` para worktrees temporales en olas paralelas.
 10. `ai doctor` / `ai pr`: valida GitHub y crea el PR solo con `--create`.
 11. `spec close`: cierra el worktree después del merge.
 
@@ -397,7 +399,7 @@ Notas reales del estado actual:
 | `npm run quiver:ai:approve` | Guarda criterios o planes aprobados. |
 | `npm run quiver:ai:prompt-slice` | Imprime un prompt mínimo para asignar un slice a un executor. |
 | `npm run quiver:ai:execute-slice` | Ejecuta un slice con rol executor. |
-| `npm run quiver:ai:execute-plan` | Imprime o ejecuta olas de slices. |
+| `npm run quiver:ai:execute-plan` | Imprime o ejecuta olas de slices; soporta `--mode manual` y `--mode delegated`. |
 | `npm run quiver:ai:doctor` | Ejecuta preflight IA/GitHub. |
 | `npm run quiver:ai:pr` | Ejecuta preflight de PR y crea PR con `--create`. |
 | `npm run quiver:spec:create` | Ejecuta `npx create-quiver spec create`. |
@@ -420,9 +422,9 @@ Notas reales del estado actual:
 4. Incorporá al planner con `ai onboard --dry-run`.
 5. Convertí requerimientos en criterios, plan técnico y spec con `ai plan`; revisá el plan con `ai review-plan` antes de aprobarlo.
 6. Creá la spec real con `spec create` y prepará su worktree con `spec start`.
-7. Revisá dependencias con `graph`, `next` o `ai execute-plan --dry-run`.
+7. Revisá dependencias con `graph`, `next` o `ai execute-plan --dry-run --mode manual`.
 8. Para ejecución manual, generá el prompt con `ai prompt-slice --slice <slice.json> --dry-run`.
-9. Ejecutá slices con `ai execute-slice --commit` o `ai execute-plan --execute --commit`.
+9. Ejecutá slices con `ai execute-slice --commit` o `ai execute-plan --execute --commit --mode delegated`.
 10. Abrí el PR con `ai pr --create` después de revisar el dry-run.
 11. Después del merge, cerrá el worktree con `spec close`.
 

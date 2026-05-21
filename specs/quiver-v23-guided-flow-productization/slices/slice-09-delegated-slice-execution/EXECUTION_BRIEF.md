@@ -28,7 +28,7 @@ Permitir ejecucion delegada de slices con seguridad de scopes, workspaces y comm
 
 ## Checklist de finalizacion
 
-- [ ] Dry-run validado.
-- [ ] Ejecucion con mocks validada.
-- [ ] Fallos recuperables.
-- [ ] Tests pasan.
+- [x] Dry-run validado.
+- [x] Ejecucion con mocks validada.
+- [x] Fallos recuperables.
+- [x] Tests pasan.

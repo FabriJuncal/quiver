@@ -81,7 +81,8 @@ npm run quiver:spec:create -- --dry-run
 npm run quiver:spec:start -- specs/{{PROJECT_SLUG}}
 npm run quiver:ai:prompt-slice -- --slice specs/{{PROJECT_SLUG}}/slices/<slice-id>/slice.json --dry-run
 npm run quiver:ai:execute-slice -- --slice specs/{{PROJECT_SLUG}}/slices/<slice-id>/slice.json --dry-run --commit
-npm run quiver:ai:execute-plan -- --dry-run --commit
+npm run quiver:ai:execute-plan -- --dry-run --commit --mode manual
+npm run quiver:ai:execute-plan -- --dry-run --commit --mode delegated
 npm run quiver:ai:pr -- --dry-run --input specs/{{PROJECT_SLUG}}/pr.md --ssh-host-alias github-work --identity-file ~/.ssh/github-work
 npm run quiver:spec:close -- specs/{{PROJECT_SLUG}} --dry-run
 ```

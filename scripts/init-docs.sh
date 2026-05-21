@@ -538,6 +538,7 @@ When a real spec exists, execute one approved slice at a time:
 \`\`\`bash
 npm run quiver:ai:prompt-slice -- --slice specs/<spec-slug>/slices/<slice-id>/slice.json --dry-run
 npm run quiver:ai:execute-slice -- --slice specs/<spec-slug>/slices/<slice-id>/slice.json --dry-run
+npm run quiver:ai:execute-plan -- --dry-run --commit --mode delegated
 \`\`\`
 
 ## Project NPM Scripts

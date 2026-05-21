@@ -26,7 +26,7 @@ This document is the canonical command reference for the orchestration roadmap.
 | `quiver:ai:approve` | Persists approved acceptance criteria or technical plans for the next planner phase | macOS, Linux, Windows | v0.10 | `npm run quiver:ai:approve -- --phase acceptance --input acceptance-approved.md` |
 | `quiver:ai:prompt-slice` | Prints a minimal executor prompt for manual slice assignment without calling a provider | macOS, Linux, Windows | v0.11 | `npm run quiver:ai:prompt-slice -- --slice specs/<spec>/slices/<slice>/slice.json --dry-run` |
 | `quiver:ai:execute-slice` | Runs an executor agent against one slice handoff with scope checks and optional commit | macOS, Linux, Windows | v0.10 | `npm run quiver:ai:execute-slice -- --slice specs/<spec>/slices/<slice>/slice.json --dry-run --commit` |
-| `quiver:ai:execute-plan` | Prints or executes dependency-safe waves of slices | macOS, Linux, Windows | v0.10 | `npm run quiver:ai:execute-plan -- --dry-run --commit` |
+| `quiver:ai:execute-plan` | Prints or executes dependency-safe waves of slices, with manual prompts or delegated worktrees | macOS, Linux, Windows | v0.10 | `npm run quiver:ai:execute-plan -- --dry-run --commit --mode delegated` |
 | `quiver:ai:doctor` | Runs GitHub PR preflight checks without opening a PR | macOS, Linux, Windows | v0.10 | `npm run quiver:ai:doctor -- --dry-run --ssh-host-alias github-work --identity-file ~/.ssh/github-work` |
 | `quiver:ai:pr` | Validates `gh`, reads `pr.md`, prints a PR plan, and creates a PR only with `--create` | macOS, Linux, Windows | v0.10 | `npm run quiver:ai:pr -- --dry-run --input specs/<spec>/pr.md --ssh-host-alias github-work --identity-file ~/.ssh/github-work` |
 | `quiver:spec:create` | Creates the real spec tree from the reviewed approved technical plan | macOS, Linux, Windows | v0.11 | `npm run quiver:spec:create -- --dry-run` |
@@ -59,6 +59,7 @@ This document is the canonical command reference for the orchestration roadmap.
 | `--slice <slice.json>` | `ai prompt-slice`, `ai execute-slice` | Select the slice handoff to print or execute |
 | `--commit` | `ai execute-slice`, `ai execute-plan` | Commit validated slice changes after provider, scope, and tests pass |
 | `--execute` | `ai execute-plan` | Execute the planned waves instead of printing commands |
+| `--mode <auto\|manual\|delegated>` | `ai execute-plan` | Choose compatible sequential execution, manual prompt output, or delegated worktree execution |
 | `--create` | `ai pr` | Create the GitHub PR after preflight and plan review |
 | `--base <branch>` | `ai pr`, `spec close` | Select PR base or cleanup base branch |
 | `--allow-dirty` | `ai execute-slice`, `ai execute-plan` | Allow pre-existing dirty files and ignore them for scope diff |
@@ -79,7 +80,9 @@ This document is the canonical command reference for the orchestration roadmap.
 - Planner drafts are versioned under `.quiver/approvals/<phase>/drafts/`; use `quiver:ai:review-plan -- --dry-run` before approving a technical-plan draft, then `quiver:ai:approve -- --phase technical-plan --version 1` to approve the reviewed version.
 - `quiver:ai:prompt-slice -- --dry-run` prints a paste-ready manual executor prompt and does not call a provider.
 - `quiver:ai:execute-slice -- --commit` creates exactly one commit only after provider, scope, and validation commands pass.
-- `quiver:ai:execute-plan -- --dry-run --commit` prints safe execution waves and falls back to sequential mode when file scope is missing or overlapping.
+- `quiver:ai:execute-plan -- --dry-run --commit --mode manual` prints paste-ready executor prompt commands without provider execution.
+- `quiver:ai:execute-plan -- --dry-run --commit --mode delegated` prints safe delegated waves and falls back to sequential mode when file scope is missing or overlapping.
+- `quiver:ai:execute-plan -- --execute --commit --mode delegated` uses temporary worktrees for parallel-ready waves and integrates one validated commit per slice.
 - `quiver:ai:pr -- --dry-run` validates GitHub CLI, auth, Git remote, current branch/worktree, `docs/GITFLOW_PR_GUIDE.md`, SSH host alias, identity file, and `pr.md` without creating a PR. Add `--create` only after reviewing the plan.
 - `quiver:spec:close` refuses dirty or unmerged spec worktrees unless discard behavior is explicitly requested.
 - After `init` or `migrate`, Quiver auto-installs itself as a dev dependency. Use `--skip-install` to suppress.

@@ -88,6 +88,7 @@ Options:
       --create                For ai pr, create the PR after preflight instead of printing the plan only
       --commit                For ai execute-slice, commit validated slice changes after provider, scope, and tests pass
       --allow-dirty           For ai execute-slice, allow pre-existing dirty files and ignore them for scope diff
+      --mode <name>           Execution mode for ai execute-plan (auto, manual, delegated)
       --provider <name>       Provider CLI to preflight for prepare or AI commands
       --model <label>         Free-form model label for AI agent profiles
       --version <n>           Draft version to approve for AI planner phases
@@ -190,6 +191,7 @@ function parseArgs(argv) {
     aiCommit: false,
     aiAllowDirty: false,
     aiExecute: false,
+    aiExecutionMode: 'auto',
     aiCreate: false,
     aiBaseBranch: 'main',
     aiTitle: '',
@@ -301,6 +303,15 @@ function parseArgs(argv) {
 
     if (arg === '--create') {
       result.aiCreate = true;
+      continue;
+    }
+
+    if (arg === '--mode') {
+      const value = args[++index];
+      if (!value) {
+        throw new Error(formatError('missing value for --mode'));
+      }
+      result.aiExecutionMode = value;
       continue;
     }
 
@@ -1912,6 +1923,7 @@ async function run(argv) {
         dryRun: args.dryRun,
         execute: args.aiExecute,
         json: args.json,
+        mode: args.aiExecutionMode,
         provider: args.aiProvider,
         providerExplicit: args.aiProviderExplicit,
         role: args.aiRole,

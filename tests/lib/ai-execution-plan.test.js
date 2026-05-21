@@ -180,9 +180,28 @@ test('formatExecutePlanDryRun prints commands without executing providers', () =
     });
 
     assert.ok(output.includes('AI execute-plan dry-run'));
+    assert.ok(output.includes('Execution mode: auto'));
     assert.ok(output.includes('Commit after each slice: enabled'));
     assert.ok(output.includes('Wave 1: parallel-ready'));
+    assert.ok(output.includes('npx create-quiver ai prompt-slice --slice "specs/spec-a/slices/slice-01-alpha/slice.json" --dry-run'));
     assert.ok(output.includes('npx create-quiver ai execute-slice --slice "specs/spec-a/slices/slice-01-alpha/slice.json" --provider codex --commit'));
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('formatExecutePlanDryRun manual mode prints prompts without execute commands', () => {
+  const repo = planFixture();
+  try {
+    const report = collectExecutionPlan(repo.root);
+    const output = formatExecutePlanDryRun(report, {
+      mode: 'manual',
+      provider: 'codex',
+    });
+
+    assert.ok(output.includes('Execution mode: manual'));
+    assert.ok(output.includes('npx create-quiver ai prompt-slice --slice "specs/spec-a/slices/slice-01-alpha/slice.json" --dry-run'));
+    assert.ok(!output.includes('npx create-quiver ai execute-slice --slice'));
   } finally {
     repo.cleanup();
   }

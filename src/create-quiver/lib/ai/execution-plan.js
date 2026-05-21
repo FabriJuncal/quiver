@@ -1,10 +1,14 @@
+const fs = require('node:fs');
 const path = require('node:path');
 
 const { resolveProfileProvider } = require('../agent-profiles');
+const { branchDelete, runGit, statusPorcelain, worktreeAdd, worktreePrune, worktreeRemove } = require('../git');
+const { safeBranchName, worktreesRootForRepo } = require('../slice');
 const { buildGraph, computeLevels, detectFileConflicts, isFoundationSliceId, readAllSlices, topoSort, SliceGraphError } = require('../slice-graph');
 const { runExecuteSlice } = require('./executor');
 
 const EXCLUDED_STATUSES = new Set(['completed', 'skipped', 'cancelled']);
+const EXECUTION_MODES = new Set(['auto', 'manual', 'delegated']);
 
 function formatError(message) {
   return `create-quiver: ${message}`;
@@ -12,6 +16,14 @@ function formatError(message) {
 
 function toRelativePath(repoRoot, filePath) {
   return path.relative(repoRoot, filePath).split(path.sep).join('/');
+}
+
+function normalizeExecutionMode(mode) {
+  const value = String(mode || 'auto').trim().toLowerCase() || 'auto';
+  if (!EXECUTION_MODES.has(value)) {
+    throw new Error(formatError(`unsupported execution mode: ${mode}. Use auto, manual, or delegated.`));
+  }
+  return value;
 }
 
 function summarizeSlice(node, repoRoot) {
@@ -300,8 +312,10 @@ function formatHumanExecutionPlan(report) {
 function formatExecutePlanDryRun(report, options = {}) {
   const provider = options.resolvedProvider || options.provider || 'codex';
   const commitEnabled = options.commit === true;
+  const executionMode = normalizeExecutionMode(options.mode || options.executionMode);
   const lines = [
     'AI execute-plan dry-run',
+    `Execution mode: ${executionMode}`,
     `Provider: ${provider}`,
     `Commit after each slice: ${commitEnabled ? 'enabled' : 'disabled'}`,
     `Total slices: ${report.summary.total_slices}`,
@@ -320,9 +334,15 @@ function formatExecutePlanDryRun(report, options = {}) {
     }
     return parts.join(' ');
   };
+  const promptCommandForSlice = (slice) => [
+    'npx create-quiver ai prompt-slice',
+    `--slice ${JSON.stringify(slice.slice_path)}`,
+    '--dry-run',
+  ].join(' ');
 
   for (const level of report.ready_levels) {
     lines.push(`Wave ${level.index}: ${level.parallel_ready ? 'parallel-ready' : 'sequential'}`);
+    lines.push(`Workspace strategy: ${level.worktree_strategy.mode}`);
     if (level.fallback_reason) {
       lines.push(`Fallback: ${level.fallback_reason}`);
     }
@@ -330,7 +350,10 @@ function formatExecutePlanDryRun(report, options = {}) {
       lines.push(`Group: ${group.mode}`);
       for (const ref of group.slice_refs) {
         const slice = level.slices.find((item) => item.ref === ref);
-        lines.push(`- ${commandForSlice(slice)}`);
+        lines.push(`- Prompt: ${promptCommandForSlice(slice)}`);
+        if (executionMode !== 'manual') {
+          lines.push(`  Execute: ${commandForSlice(slice)}`);
+        }
       }
     }
   }
@@ -338,14 +361,193 @@ function formatExecutePlanDryRun(report, options = {}) {
   return `${lines.join('\n')}\n`;
 }
 
+function buildRecoveryGuidance(ref, workspaces = []) {
+  const lines = [
+    'Recovery:',
+    `- Retry slice: npx create-quiver ai prompt-slice --slice <slice.json> --dry-run, then rerun only ${ref}.`,
+    '- Abort: inspect the active checkout and temporary worktrees before reverting, stashing, or removing anything.',
+  ];
+
+  if (workspaces.length > 0) {
+    lines.push('- Temporary worktrees left for inspection:');
+    for (const workspace of workspaces) {
+      lines.push(`  - ${workspace.worktreePath}`);
+    }
+  }
+
+  return lines.join('\n');
+}
+
+function appendRecovery(error, ref, workspaces = []) {
+  const message = error && error.message ? error.message : String(error);
+  if (message.includes('Recovery:')) {
+    return error;
+  }
+
+  const wrapped = new Error(`${message}\n\n${buildRecoveryGuidance(ref, workspaces)}`);
+  wrapped.cause = error;
+  wrapped.code = error && error.code ? error.code : undefined;
+  wrapped.details = error && error.details ? error.details : undefined;
+  return wrapped;
+}
+
+function ensureCleanIntegrationWorktree(repoRoot) {
+  const status = statusPorcelain(repoRoot);
+  if (status !== '') {
+    throw new Error(formatError(`delegated parallel execution requires a clean active worktree before integration. Dirty files: ${status.split('\n').join(', ')}`));
+  }
+}
+
+function buildDelegatedRunId() {
+  return new Date().toISOString().replace(/[^0-9A-Za-z]/g, '');
+}
+
+function buildDelegatedWorkspace(repoRoot, slice, runId, index, options = {}) {
+  const safeRef = safeBranchName(slice.ref).slice(0, 80);
+  const branchName = `quiver-exec-${runId}-${index + 1}-${safeRef}`;
+  const worktreesRoot = options.worktreesRoot || path.join(worktreesRootForRepo(repoRoot, branchName), 'execute-plan');
+  const worktreePath = path.join(worktreesRoot, runId, safeRef);
+
+  return {
+    branchName,
+    ref: slice.ref,
+    slice,
+    worktreePath,
+  };
+}
+
+function createDelegatedWorkspace(repoRoot, workspace, baseRef) {
+  if (fs.existsSync(workspace.worktreePath)) {
+    throw new Error(formatError(`temporary worktree path already exists: ${workspace.worktreePath}`));
+  }
+
+  fs.mkdirSync(path.dirname(workspace.worktreePath), { recursive: true });
+  worktreeAdd(repoRoot, workspace.worktreePath, baseRef, { branch: workspace.branchName });
+}
+
+function cleanupDelegatedWorkspace(repoRoot, workspace) {
+  try {
+    worktreeRemove(repoRoot, workspace.worktreePath);
+  } catch {
+    // Keep cleanup best-effort after successful integration.
+  }
+  try {
+    branchDelete(repoRoot, workspace.branchName, true);
+  } catch {
+    // The committed changes were already integrated; a leftover temp branch is non-blocking.
+  }
+}
+
+async function runSequentialGroup(repoRoot, level, group, options = {}) {
+  const runSlice = options.runExecuteSliceFn || runExecuteSlice;
+  const results = [];
+
+  for (const ref of group.slice_refs) {
+    const slice = level.slices.find((item) => item.ref === ref);
+    try {
+      const result = await runSlice(repoRoot, {
+        allowDirty: options.allowDirty === true,
+        commit: true,
+        context: options.context,
+        dryRun: false,
+        provider: options.provider,
+        providerExplicit: options.providerExplicit,
+        role: options.role,
+        slice: slice.slice_path,
+        timeout: options.timeout,
+      });
+      results.push({
+        level: level.index,
+        mode: 'sequential',
+        ref,
+        ok: true,
+        result,
+        workspace: repoRoot,
+      });
+    } catch (error) {
+      throw appendRecovery(error, ref);
+    }
+  }
+
+  return results;
+}
+
+async function runParallelGroupInWorktrees(repoRoot, level, group, options = {}) {
+  ensureCleanIntegrationWorktree(repoRoot);
+
+  const runSlice = options.runExecuteSliceFn || runExecuteSlice;
+  const baseRef = runGit(['rev-parse', 'HEAD'], repoRoot);
+  const runId = options.runId || buildDelegatedRunId();
+  const slices = group.slice_refs.map((ref) => level.slices.find((item) => item.ref === ref));
+  const workspaces = slices.map((slice, index) => buildDelegatedWorkspace(repoRoot, slice, runId, index, options));
+
+  let runResults;
+  try {
+    worktreePrune(repoRoot);
+    for (const workspace of workspaces) {
+      createDelegatedWorkspace(repoRoot, workspace, baseRef);
+    }
+
+    runResults = await Promise.all(workspaces.map(async (workspace) => {
+      const result = await runSlice(workspace.worktreePath, {
+        allowDirty: false,
+        commit: true,
+        context: options.context,
+        dryRun: false,
+        provider: options.provider,
+        providerExplicit: options.providerExplicit,
+        role: options.role,
+        slice: workspace.slice.slice_path,
+        timeout: options.timeout,
+      });
+      const commit = runGit(['rev-parse', 'HEAD'], workspace.worktreePath);
+      if (commit === baseRef) {
+        throw new Error(formatError(`delegated slice ${workspace.ref} finished without creating a slice commit.`));
+      }
+      return {
+        commit,
+        level: level.index,
+        mode: 'parallel-worktree',
+        ok: true,
+        ref: workspace.ref,
+        result,
+        workspace,
+      };
+    }));
+
+    ensureCleanIntegrationWorktree(repoRoot);
+    for (const item of runResults) {
+      runGit(['cherry-pick', item.commit], repoRoot);
+    }
+
+    for (const workspace of workspaces) {
+      cleanupDelegatedWorkspace(repoRoot, workspace);
+    }
+  } catch (error) {
+    throw appendRecovery(error, group.slice_refs.join(', '), workspaces);
+  }
+
+  return runResults.map((item) => ({
+    level: item.level,
+    mode: item.mode,
+    ref: item.ref,
+    ok: item.ok,
+    result: item.result,
+    workspace: item.workspace.worktreePath,
+    integratedCommit: item.commit,
+  }));
+}
+
 async function runExecutePlan(repoRoot, options = {}) {
   const report = collectExecutionPlan(repoRoot, options);
   const execute = options.execute === true;
+  const executionMode = normalizeExecutionMode(options.mode || options.executionMode);
   const provider = options.providerExplicit === true || (options.provider && options.providerExplicit !== false)
     ? options.provider
     : resolveProfileProvider(repoRoot, options.role || 'executor', 'codex');
   const resolvedOptions = {
     ...options,
+    mode: executionMode,
     provider,
     resolvedProvider: provider,
   };
@@ -360,37 +562,29 @@ async function runExecutePlan(repoRoot, options = {}) {
     return { task: 'execute-plan', dryRun: true, report };
   }
 
+  if (executionMode === 'manual') {
+    throw new Error(formatError('ai execute-plan --execute does not support --mode manual. Use the printed prompt-slice commands, or choose --mode delegated.'));
+  }
+
   if (options.commit !== true) {
     throw new Error(formatError('ai execute-plan --execute requires --commit so each successful slice creates one commit.'));
   }
 
-  const runSlice = options.runExecuteSliceFn || runExecuteSlice;
   const results = [];
 
   for (const level of report.ready_levels) {
     for (const group of level.execution_groups) {
-      for (const ref of group.slice_refs) {
-        const slice = level.slices.find((item) => item.ref === ref);
-        try {
-          const result = await runSlice(repoRoot, {
-            allowDirty: options.allowDirty === true,
-            commit: true,
-            context: options.context,
-            dryRun: false,
-            provider,
-            providerExplicit: options.providerExplicit,
-            role: options.role,
-            slice: slice.slice_path,
-            timeout: options.timeout,
-          });
-          results.push({ level: level.index, ref, ok: true, result });
-        } catch (error) {
-          const wrapped = new Error(formatError(`ai execute-plan stopped at wave ${level.index} slice ${ref}: ${error.message || error}`));
-          wrapped.cause = error;
-          wrapped.code = error.code || 'AI_EXECUTE_PLAN_FAILED';
-          wrapped.details = { level: level.index, ref, results };
-          throw wrapped;
-        }
+      try {
+        const groupResults = executionMode === 'delegated' && group.mode === 'parallel' && group.slice_refs.length > 1
+          ? await runParallelGroupInWorktrees(repoRoot, level, group, resolvedOptions)
+          : await runSequentialGroup(repoRoot, level, group, resolvedOptions);
+        results.push(...groupResults);
+      } catch (error) {
+        const wrapped = new Error(formatError(`ai execute-plan stopped at wave ${level.index} group ${group.slice_refs.join(', ')}: ${error.message || error}`));
+        wrapped.cause = error;
+        wrapped.code = error.code || 'AI_EXECUTE_PLAN_FAILED';
+        wrapped.details = { level: level.index, group, results };
+        throw wrapped;
       }
     }
   }
@@ -414,6 +608,7 @@ module.exports = {
   collectExecutionPlan,
   formatExecutePlanDryRun,
   formatHumanExecutionPlan,
+  normalizeExecutionMode,
   runExecutePlan,
   runExecutionPlan,
 };

@@ -14,6 +14,19 @@ function writeJson(filePath, data) {
   fs.writeFileSync(filePath, `${JSON.stringify(data, null, 2)}\n`);
 }
 
+function writeFile(filePath, contents) {
+  fs.mkdirSync(path.dirname(filePath), { recursive: true });
+  fs.writeFileSync(filePath, contents);
+}
+
+function git(cwd, args) {
+  return execFileSync('git', args, {
+    cwd,
+    encoding: 'utf8',
+    stdio: ['ignore', 'pipe', 'pipe'],
+  }).trim();
+}
+
 function slice(sliceId, files, extra = {}) {
   return {
     slice_id: sliceId,
@@ -55,6 +68,19 @@ function makeProject() {
   };
 }
 
+function makeGitProject() {
+  const project = makeProject();
+  writeFile(path.join(project.root, 'src/alpha.js'), 'module.exports = "base-alpha";\n');
+  writeFile(path.join(project.root, 'src/beta.js'), 'module.exports = "base-beta";\n');
+  git(project.root, ['init']);
+  git(project.root, ['config', 'user.email', 'test@example.com']);
+  git(project.root, ['config', 'user.name', 'Test User']);
+  git(project.root, ['checkout', '-b', 'feature/execute-plan']);
+  git(project.root, ['add', '.']);
+  git(project.root, ['commit', '-m', 'init']);
+  return project;
+}
+
 test('ai execute-plan CLI dry-run prints commands without calling providers', () => {
   const project = makeProject();
   try {
@@ -64,8 +90,26 @@ test('ai execute-plan CLI dry-run prints commands without calling providers', ()
     });
 
     assert.ok(output.includes('AI execute-plan dry-run'));
+    assert.ok(output.includes('Execution mode: auto'));
     assert.ok(output.includes('Wave 0: parallel-ready'));
+    assert.ok(output.includes('npx create-quiver ai prompt-slice --slice "specs/demo/slices/slice-01-alpha/slice.json" --dry-run'));
     assert.ok(output.includes('npx create-quiver ai execute-slice --slice "specs/demo/slices/slice-01-alpha/slice.json" --provider codex --commit'));
+  } finally {
+    project.cleanup();
+  }
+});
+
+test('ai execute-plan CLI dry-run supports manual mode', () => {
+  const project = makeProject();
+  try {
+    const output = execFileSync('node', [BIN_PATH, 'ai', 'execute-plan', '--dry-run', '--mode', 'manual'], {
+      cwd: project.root,
+      encoding: 'utf8',
+    });
+
+    assert.ok(output.includes('Execution mode: manual'));
+    assert.ok(output.includes('npx create-quiver ai prompt-slice --slice "specs/demo/slices/slice-01-alpha/slice.json" --dry-run'));
+    assert.ok(!output.includes('npx create-quiver ai execute-slice --slice'));
   } finally {
     project.cleanup();
   }
@@ -120,5 +164,46 @@ test('runExecutePlan requires --commit for real execution', async () => {
     );
   } finally {
     project.cleanup();
+  }
+});
+
+test('runExecutePlan delegated mode uses temporary worktrees for parallel slices and integrates commits', async () => {
+  const project = makeGitProject();
+  const worktreesRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'quiver-ai-execute-worktrees-'));
+  const calls = [];
+  try {
+    const result = await runExecutePlan(project.root, {
+      commit: true,
+      execute: true,
+      mode: 'delegated',
+      provider: 'codex',
+      runId: 'testrun',
+      worktreesRoot,
+      runExecuteSliceFn: async (worktreeRoot, options) => {
+        calls.push({ options, worktreeRoot });
+        const target = options.slice.includes('slice-01-alpha') ? 'src/alpha.js' : 'src/beta.js';
+        writeFile(path.join(worktreeRoot, target), `module.exports = ${JSON.stringify(path.basename(target))};\n`);
+        git(worktreeRoot, ['add', target]);
+        git(worktreeRoot, ['commit', '-m', `feat: update ${path.basename(target)}`]);
+        return {
+          commitResult: {
+            hash: git(worktreeRoot, ['rev-parse', '--short', 'HEAD']),
+          },
+        };
+      },
+    });
+
+    assert.equal(result.results.length, 2);
+    assert.ok(result.results.every((item) => item.mode === 'parallel-worktree'));
+    assert.equal(calls.length, 2);
+    assert.ok(calls.every((call) => call.worktreeRoot !== project.root));
+    assert.notEqual(calls[0].worktreeRoot, calls[1].worktreeRoot);
+    assert.equal(fs.readFileSync(path.join(project.root, 'src/alpha.js'), 'utf8'), 'module.exports = "alpha.js";\n');
+    assert.equal(fs.readFileSync(path.join(project.root, 'src/beta.js'), 'utf8'), 'module.exports = "beta.js";\n');
+    assert.equal(git(project.root, ['status', '--porcelain']), '');
+    assert.equal(git(project.root, ['log', '--format=%s', '-2']), 'feat: update beta.js\nfeat: update alpha.js');
+  } finally {
+    project.cleanup();
+    fs.rmSync(worktreesRoot, { recursive: true, force: true });
   }
 });
