@@ -1,0 +1,53 @@
+{
+  "slice_id": "slice-02-flow-status-wizard",
+  "ticket": "QUIVER-23-02",
+  "type": "feature",
+  "title": "Flow status and next-step wizard",
+  "objective": "Tell the user where they are in the Quiver workflow and what the next safe command is.",
+  "description": "Add a status/wizard layer that reads project state, docs, approvals, specs, slices, and worktrees to produce actionable next steps.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "flow-status-wizard",
+    "branch_name": "feature/QUIVER-23-02-flow-status-wizard"
+  },
+  "files": [
+    "src/create-quiver/commands/flow.js",
+    "src/create-quiver/lib/**",
+    "src/create-quiver/index.js",
+    "docs/WORKFLOW.md.template",
+    "docs/COMMANDS.md.template",
+    "tests/commands/*.test.js"
+  ],
+  "depends_on": [
+    "slice-01-short-command-and-flow-entrypoint"
+  ],
+  "parallel_safe": "no",
+  "parallel_safe_reason": "Depends on command routing and shared workflow state inspection.",
+  "must": [
+    "Report current workflow stage.",
+    "Report blockers.",
+    "Print the next safe command.",
+    "Handle uninitialized projects gracefully.",
+    "Avoid provider calls."
+  ],
+  "not_included": [
+    "Agent profile management.",
+    "Executing provider commands.",
+    "Creating specs."
+  ],
+  "acceptance": [
+    "Uninitialized project receives init guidance.",
+    "Initialized project without analysis receives analyze/prepare guidance.",
+    "Project with draft criteria receives approval guidance.",
+    "Project with ready slices receives execution guidance.",
+    "Output is concise and copy-pasteable."
+  ],
+  "tests": [
+    "node --test tests/commands/flow*.test.js tests/lib/doctor.test.js",
+    "git diff --check"
+  ],
+  "estimated_hours": 6,
+  "status": "draft",
+  "blocked_reason": null
+}

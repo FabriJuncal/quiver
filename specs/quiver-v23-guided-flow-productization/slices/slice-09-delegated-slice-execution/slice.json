@@ -1,0 +1,56 @@
+{
+  "slice_id": "slice-09-delegated-slice-execution",
+  "ticket": "QUIVER-23-09",
+  "type": "feature",
+  "title": "Delegated slice execution with safe workspaces",
+  "objective": "Support delegated slice execution while preserving one commit per slice and avoiding overlapping writes.",
+  "description": "Add a higher-level execution mode that can run or print safe delegated slice execution using executor profiles, waves, and isolated workspaces.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "delegated-slice-execution",
+    "branch_name": "feature/QUIVER-23-09-delegated-slice-execution"
+  },
+  "files": [
+    "src/create-quiver/commands/ai.js",
+    "src/create-quiver/lib/ai/execution-plan.js",
+    "src/create-quiver/lib/ai/executor.js",
+    "src/create-quiver/lib/spec-worktrees.js",
+    "src/create-quiver/lib/**",
+    "docs/WORKFLOW.md.template",
+    "tests/commands/*.test.js",
+    "tests/lib/*.test.js"
+  ],
+  "depends_on": [
+    "slice-08-executor-prompt-generation"
+  ],
+  "parallel_safe": "no",
+  "parallel_safe_reason": "Highest-risk orchestration slice; must integrate after prompts, profiles, and flow state are stable.",
+  "must": [
+    "Support manual and delegated modes.",
+    "Use executor profile by default.",
+    "Preserve one commit per slice.",
+    "Fall back to sequential execution on conflicts or unknown scopes.",
+    "Use isolated workspaces for parallel execution.",
+    "Stop on validation failure without hiding local changes."
+  ],
+  "not_included": [
+    "Autonomous PR merge.",
+    "Silent provider installation.",
+    "Real provider calls in CI."
+  ],
+  "acceptance": [
+    "Dry-run prints execution waves and executor prompts/commands.",
+    "Real execution requires explicit flags and commit opt-in.",
+    "Parallel mode only runs when scopes are disjoint and workspaces are safe.",
+    "Each successful slice creates exactly one commit.",
+    "Failures report retry/abort guidance."
+  ],
+  "tests": [
+    "node --test tests/lib/ai-execution-plan.test.js tests/commands/ai-execute-plan.test.js tests/commands/ai-execute-slice.test.js",
+    "git diff --check"
+  ],
+  "estimated_hours": 12,
+  "status": "draft",
+  "blocked_reason": null
+}

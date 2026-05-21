@@ -1,0 +1,54 @@
+{
+  "slice_id": "slice-01-short-command-and-flow-entrypoint",
+  "ticket": "QUIVER-23-01",
+  "type": "feature",
+  "title": "Short command and guided flow entrypoint",
+  "objective": "Expose a user-friendly guided flow entrypoint while preserving the existing create-quiver CLI.",
+  "description": "Add or document a `quiver` command path and introduce the first flow command surface without changing existing behavior.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "short-command-flow-entrypoint",
+    "branch_name": "feature/QUIVER-23-01-short-command-flow-entrypoint"
+  },
+  "files": [
+    "package.json",
+    "bin/**",
+    "src/create-quiver/index.js",
+    "src/create-quiver/commands/**",
+    "docs/COMMANDS.md.template",
+    "README.md",
+    "README_FOR_AI.md",
+    "tests/commands/*.test.js",
+    "scripts/ci/*.sh"
+  ],
+  "depends_on": [
+    "slice-00-spec-foundation"
+  ],
+  "parallel_safe": "no",
+  "parallel_safe_reason": "Establishes the user-facing command surface and likely touches shared CLI routing.",
+  "must": [
+    "Preserve all existing `npx create-quiver` commands.",
+    "Define whether `quiver` is a binary alias or generated local script.",
+    "Add a flow entrypoint with dry-run-safe behavior.",
+    "Document the command decision clearly."
+  ],
+  "not_included": [
+    "Agent profile storage.",
+    "Planner iteration history.",
+    "Delegated execution."
+  ],
+  "acceptance": [
+    "Existing `create-quiver` CLI tests remain green.",
+    "The short command path is documented and tested.",
+    "The flow entrypoint prints clear guidance without requiring provider auth.",
+    "README_FOR_AI.md does not contradict the command decision."
+  ],
+  "tests": [
+    "node --test tests/commands/init-profiles.test.js tests/commands/prepare.test.js",
+    "git diff --check"
+  ],
+  "estimated_hours": 4,
+  "status": "draft",
+  "blocked_reason": null
+}

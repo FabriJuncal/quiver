@@ -1,0 +1,52 @@
+{
+  "slice_id": "slice-03-agent-profiles",
+  "ticket": "QUIVER-23-03",
+  "type": "feature",
+  "title": "Agent profiles for planner, executor, reviewer, and researcher",
+  "objective": "Persist reusable AI agent profiles so users do not repeat provider/model choices in every command.",
+  "description": "Add profile commands and state for planner, executor, reviewer, and optional researcher roles.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "agent-profiles",
+    "branch_name": "feature/QUIVER-23-03-agent-profiles"
+  },
+  "files": [
+    "src/create-quiver/commands/ai.js",
+    "src/create-quiver/lib/ai/providers.js",
+    "src/create-quiver/lib/**",
+    "docs/COMMANDS.md.template",
+    "tests/lib/*.test.js",
+    "tests/commands/*.test.js"
+  ],
+  "depends_on": [
+    "slice-02-flow-status-wizard"
+  ],
+  "parallel_safe": "no",
+  "parallel_safe_reason": "Defines shared AI state consumed by later prompts and execution commands.",
+  "must": [
+    "Persist planner, executor, reviewer, and researcher profile settings.",
+    "Support provider and model-like free-form fields without hardcoding unstable model names.",
+    "Validate provider support.",
+    "Never store secrets.",
+    "Expose list/show/set commands."
+  ],
+  "not_included": [
+    "Calling providers.",
+    "Plan review behavior.",
+    "Delegated execution."
+  ],
+  "acceptance": [
+    "Profiles can be set, listed, and read.",
+    "Unknown providers are rejected with supported provider guidance.",
+    "Free-form model labels are preserved as configuration, not treated as verified availability.",
+    "No secrets are requested or stored."
+  ],
+  "tests": [
+    "node --test tests/lib/agent-profiles.test.js tests/commands/ai*.test.js",
+    "git diff --check"
+  ],
+  "estimated_hours": 6,
+  "status": "draft",
+  "blocked_reason": null
+}

@@ -1,0 +1,54 @@
+{
+  "slice_id": "slice-07-spec-create-experience",
+  "ticket": "QUIVER-23-07",
+  "type": "feature",
+  "title": "Spec creation experience from approved plans",
+  "objective": "Make spec generation feel like an explicit product step after reviewed approved plans.",
+  "description": "Add a higher-level spec create command or wrapper that consumes approved/reviewed inputs and creates spec artifacts predictably.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "spec-create-experience",
+    "branch_name": "feature/QUIVER-23-07-spec-create-experience"
+  },
+  "files": [
+    "src/create-quiver/commands/ai.js",
+    "src/create-quiver/commands/spec.js",
+    "src/create-quiver/lib/ai/spec-generator.js",
+    "src/create-quiver/lib/ai/spec-templates.js",
+    "docs/WORKFLOW.md.template",
+    "tests/commands/*.test.js",
+    "tests/lib/*.test.js"
+  ],
+  "depends_on": [
+    "slice-06-production-plan-review"
+  ],
+  "parallel_safe": "no",
+  "parallel_safe_reason": "Touches spec generation and command routing.",
+  "must": [
+    "Consume approved and reviewed plan input by default.",
+    "Generate `SPEC.md`, `STATUS.md`, `EVIDENCE_REPORT.md`, `EXECUTION_PLAN.md`, `pr.md`, `slice-00`, and slice handoffs.",
+    "Fail safely if target spec exists.",
+    "Keep `slice-00` mandatory.",
+    "Print next commands after generation."
+  ],
+  "not_included": [
+    "Executing slices.",
+    "Opening PRs.",
+    "Delegating agents."
+  ],
+  "acceptance": [
+    "Spec creation blocks on missing approved/reviewed plan.",
+    "Generated spec includes mandatory slice-00.",
+    "Generated `pr.md` exists.",
+    "Generated JSON parses.",
+    "Next safe commands are printed."
+  ],
+  "tests": [
+    "node --test tests/commands/ai-plan-spec-phase.test.js tests/lib/ai/spec-generator*.test.js",
+    "git diff --check"
+  ],
+  "estimated_hours": 7,
+  "status": "draft",
+  "blocked_reason": null
+}

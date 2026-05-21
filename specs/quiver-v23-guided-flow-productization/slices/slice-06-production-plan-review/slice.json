@@ -1,0 +1,53 @@
+{
+  "slice_id": "slice-06-production-plan-review",
+  "ticket": "QUIVER-23-06",
+  "type": "feature",
+  "title": "Production-readiness plan review phase",
+  "objective": "Add a review phase that checks the technical plan for fragile assumptions, missing cases, and ambiguity before spec creation.",
+  "description": "Productize the user's plan-review prompt as a Quiver command and persisted review artifact.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "production-plan-review",
+    "branch_name": "feature/QUIVER-23-06-production-plan-review"
+  },
+  "files": [
+    "src/create-quiver/commands/ai.js",
+    "src/create-quiver/lib/ai/**",
+    "src/create-quiver/lib/**",
+    "docs/COMMANDS.md.template",
+    "tests/commands/*.test.js",
+    "tests/lib/*.test.js"
+  ],
+  "depends_on": [
+    "slice-05-planner-iteration-history"
+  ],
+  "parallel_safe": "no",
+  "parallel_safe_reason": "Adds a new planner gate consumed by spec generation.",
+  "must": [
+    "Review approved technical plans before spec generation.",
+    "Report fragile assumptions, uncovered cases, ambiguous criteria, risks, and recommended fixes.",
+    "Do not question approved scope.",
+    "Persist the review result.",
+    "Block spec creation if required review is missing when configured as mandatory."
+  ],
+  "not_included": [
+    "Implementing the plan.",
+    "Creating specs directly.",
+    "Changing provider API integration."
+  ],
+  "acceptance": [
+    "Dry-run prints review prompt metadata.",
+    "Review output is stored as a draft/review artifact.",
+    "The command never modifies product code.",
+    "Spec generation can require reviewed and approved plan state.",
+    "Tests cover missing plan, dry-run, provider failure, and persisted review."
+  ],
+  "tests": [
+    "node --test tests/commands/ai-plan*.test.js tests/lib/approvals.test.js",
+    "git diff --check"
+  ],
+  "estimated_hours": 8,
+  "status": "draft",
+  "blocked_reason": null
+}
