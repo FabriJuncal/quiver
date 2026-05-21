@@ -14,6 +14,7 @@
     "quiver:ai:plan": "npx create-quiver ai plan",
     "quiver:ai:review-plan": "npx create-quiver ai review-plan",
     "quiver:ai:approve": "npx create-quiver ai approve",
+    "quiver:ai:prompt-slice": "npx create-quiver ai prompt-slice",
     "quiver:ai:execute-slice": "npx create-quiver ai execute-slice",
     "quiver:ai:execute-plan": "npx create-quiver ai execute-plan",
     "quiver:ai:pr": "npx create-quiver ai pr",

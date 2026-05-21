@@ -13,7 +13,7 @@ If the project already exists from an older Quiver version and was previously in
 If the project was never initialized by Quiver, do not use `migrate` as bootstrap; run `npx create-quiver init --name "Project Name"` first.
 The v20, v21, and v22 specs are completed. The active draft spec is `specs/quiver-v23-guided-flow-productization/`, which productizes the manual planner/executor prompt workflow into guided Quiver commands, profiles, compact prompts, safe approvals, and slice execution ergonomics.
 Guided AI workflow behavior is available: prepare, approvals, production-readiness plan review, spec worktrees, executor commits, execution waves, PR creation, spec close, and package safety.
-Generated projects also get `quiver:*` npm scripts that call the Node CLI directly; prefer those for repeatable project workflows, including `quiver:flow` for the read-only guided entrypoint, `quiver:plan` for sequential planning, `quiver:graph` for parallel-level inspection, `quiver:next` for the next ready slice, `quiver:spec:create` for real spec generation, and the AI family `quiver:ai:agent`, `quiver:ai:onboard`, `quiver:ai:plan`, `quiver:ai:review-plan`, `quiver:ai:approve`, `quiver:ai:execute-slice`, `quiver:ai:execute-plan`, `quiver:ai:pr`, and `quiver:ai:doctor`. Use `quiver:graph --format mermaid` for PR-ready Markdown or `quiver:graph --format dot` for Graphviz source.
+Generated projects also get `quiver:*` npm scripts that call the Node CLI directly; prefer those for repeatable project workflows, including `quiver:flow` for the read-only guided entrypoint, `quiver:plan` for sequential planning, `quiver:graph` for parallel-level inspection, `quiver:next` for the next ready slice, `quiver:spec:create` for real spec generation, and the AI family `quiver:ai:agent`, `quiver:ai:onboard`, `quiver:ai:plan`, `quiver:ai:review-plan`, `quiver:ai:approve`, `quiver:ai:prompt-slice`, `quiver:ai:execute-slice`, `quiver:ai:execute-plan`, `quiver:ai:pr`, and `quiver:ai:doctor`. Use `quiver:graph --format mermaid` for PR-ready Markdown or `quiver:graph --format dot` for Graphviz source.
 Agent profiles live in `.quiver/agents/profiles.json`; they store role, provider, model label, context label, and display label only. Do not store API keys, tokens, or credentials there.
 Planner drafts are versioned under `.quiver/approvals/<phase>/drafts/`; review the technical-plan draft with `npx create-quiver ai review-plan --dry-run` before approving it, then approve a concrete version with `npx create-quiver ai approve --phase <phase> --version <n>` when reviewing iterations.
 Maintain release notes and package publishing with `scripts/release-quiver.sh`.
@@ -55,7 +55,7 @@ Prefer maps, metadata, diffs, and summaries over full file reads when they are e
 - The normal workflow runs from the project root without `--dir`; use `--dir` only when targeting another directory explicitly.
 - The cross-platform work targets native macOS, Linux, and Windows shells; Bash is a legacy compatibility path until the runtime slices land, and Windows support is only considered verified once the CI matrix is green.
 - The support contract lives in `docs/SUPPORT_MATRIX.md` and `docs/TROUBLESHOOTING.md`.
-- Generated project npm scripts should prefer `quiver:*` names such as `quiver:analyze`, `quiver:flow`, `quiver:plan`, `quiver:graph`, `quiver:next`, `quiver:doctor`, `quiver:ai:agent`, `quiver:ai:plan`, `quiver:ai:review-plan`, `quiver:ai:approve`, `quiver:ai:execute-plan`, `quiver:spec:create`, `quiver:spec:start`, `quiver:spec:status`, `quiver:spec:close`, `quiver:start-slice`, `quiver:check-slice`, and `quiver:check-pr`.
+- Generated project npm scripts should prefer `quiver:*` names such as `quiver:analyze`, `quiver:flow`, `quiver:plan`, `quiver:graph`, `quiver:next`, `quiver:doctor`, `quiver:ai:agent`, `quiver:ai:plan`, `quiver:ai:review-plan`, `quiver:ai:approve`, `quiver:ai:prompt-slice`, `quiver:ai:execute-slice`, `quiver:ai:execute-plan`, `quiver:spec:create`, `quiver:spec:start`, `quiver:spec:status`, `quiver:spec:close`, `quiver:start-slice`, `quiver:check-slice`, and `quiver:check-pr`.
 - `quiver:graph` defaults to the tree view; choose `--format mermaid` or `--format dot` when you need exportable graph artifacts.
 - `quiver:next` prints the next ready slice and can auto-start it behind a confirmation prompt.
 - `quiver:next --all-ready` prints the whole ready level when you want to inspect every actionable slice at once.
@@ -142,11 +142,12 @@ After initialization, the user should:
 20. Run `npx create-quiver plan` or `npm run quiver:plan`
 21. Run `npx create-quiver next` or `npm run quiver:next`
 22. Run `npx create-quiver ai execute-plan --dry-run --commit` to inspect execution waves
-23. Execute one slice with `npx create-quiver ai execute-slice --slice <slice.json> --commit` or execute the plan with `npx create-quiver ai execute-plan --execute --commit`
-24. Keep one commit per slice
-25. Open one PR per spec with `npx create-quiver ai pr --dry-run --input specs/<spec-slug>/pr.md ...`, then `--create` only after review
-26. After merge, close the worktree with `npx create-quiver spec close specs/<spec-slug>`
-27. Validate the slice and the final PR with the workflow gates
+23. For manual assignment, print a minimal executor prompt with `npx create-quiver ai prompt-slice --slice <slice.json> --dry-run`
+24. Execute one slice with `npx create-quiver ai execute-slice --slice <slice.json> --commit` or execute the plan with `npx create-quiver ai execute-plan --execute --commit`
+25. Keep one commit per slice
+26. Open one PR per spec with `npx create-quiver ai pr --dry-run --input specs/<spec-slug>/pr.md ...`, then `--create` only after review
+27. After merge, close the worktree with `npx create-quiver spec close specs/<spec-slug>`
+28. Validate the slice and the final PR with the workflow gates
 
 Bootstrap note: `start-slice` should resolve paths canonically, prefer a local `develop` or `main` base branch before reaching for `origin`, and reject `draft` slices unless `--allow-draft` is passed intentionally.
 Release note: `scripts/package-quiver.sh` runs package safety against the npm tarball and must fail if local AI state, env files, npm credentials, or worktree state would be published.

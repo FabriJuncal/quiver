@@ -272,6 +272,7 @@ npm run quiver:spec:create -- --dry-run
 When a real spec exists, execute one approved slice at a time:
 
 \`\`\`bash
+npm run quiver:ai:prompt-slice -- --slice specs/<spec-slug>/slices/<slice-id>/slice.json --dry-run
 npm run quiver:ai:execute-slice -- --slice specs/<spec-slug>/slices/<slice-id>/slice.json --dry-run --commit
 npm run quiver:ai:execute-plan -- --dry-run --commit
 \`\`\`
@@ -325,6 +326,7 @@ npm run quiver:spec:create -- --dry-run
 When a real spec exists, execute one approved slice at a time:
 
 \`\`\`bash
+npm run quiver:ai:prompt-slice -- --slice specs/<spec-slug>/slices/<slice-id>/slice.json --dry-run
 npm run quiver:ai:execute-slice -- --slice specs/<spec-slug>/slices/<slice-id>/slice.json --dry-run --commit
 npm run quiver:ai:execute-plan -- --dry-run --commit
 \`\`\`
@@ -347,6 +349,7 @@ npm run quiver:ai:plan -- --phase technical-plan --dry-run
 npm run quiver:ai:review-plan -- --dry-run
 npm run quiver:ai:approve -- --phase technical-plan --version <n>
 npm run quiver:spec:create -- --dry-run
+npm run quiver:ai:prompt-slice -- --slice specs/<spec-slug>/slices/<slice-id>/slice.json --dry-run
 npm run quiver:ai:execute-slice -- --slice specs/<spec-slug>/slices/<slice-id>/slice.json --dry-run --commit
 npm run quiver:ai:execute-plan -- --dry-run --commit
 npm run quiver:ai:pr -- --dry-run --input specs/<spec-slug>/pr.md --ssh-host-alias github-work --identity-file ~/.ssh/github-work
@@ -418,6 +421,7 @@ npm run quiver:ai:review-plan -- --dry-run
 npm run quiver:ai:approve -- --phase technical-plan --version <n>
 npm run quiver:spec:create -- --dry-run
 npm run quiver:spec:start -- specs/${projectSlug}
+npm run quiver:ai:prompt-slice -- --slice specs/${projectSlug}/slices/slice-01/slice.json --dry-run
 npm run quiver:ai:execute-slice -- --slice specs/${projectSlug}/slices/slice-01/slice.json --dry-run --commit
 npm run quiver:ai:execute-plan -- --dry-run --commit
 npm run quiver:ai:pr -- --dry-run --input specs/${projectSlug}/pr.md --ssh-host-alias github-work --identity-file ~/.ssh/github-work
@@ -443,6 +447,7 @@ npm run quiver:ai:plan -- --phase technical-plan --dry-run
 npm run quiver:ai:review-plan -- --dry-run
 npm run quiver:ai:approve -- --phase technical-plan --version <n>
 npm run quiver:spec:create -- --dry-run
+npm run quiver:ai:prompt-slice -- --slice specs/${projectSlug}/slices/slice-01/slice.json --dry-run
 npm run quiver:ai:execute-slice -- --slice specs/${projectSlug}/slices/slice-01/slice.json --dry-run --commit
 npm run quiver:ai:execute-plan -- --dry-run --commit
 npm run quiver:ai:doctor -- --dry-run --ssh-host-alias github-work --identity-file ~/.ssh/github-work

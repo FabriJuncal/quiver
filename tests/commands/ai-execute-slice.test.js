@@ -38,6 +38,8 @@ function createProject() {
 
   writeFile(path.join(sliceDir, 'slice.json'), `${JSON.stringify(sliceJson, null, 2)}\n`);
   writeFile(path.join(sliceDir, 'EXECUTION_BRIEF.md'), '# Execution Brief\n\nChange the allowed file only.\n');
+  writeFile(path.join(sliceDir, 'CLOSURE_BRIEF.md'), '# Closure Brief\n\nReport what changed.\n');
+  writeFile(path.join(root, 'specs/demo/SPEC.md'), '# Demo Spec\n\n## Objective\n\nImplement the demo feature.\n\n## Details\n\nFULL SPEC BODY SENTINEL SHOULD NOT APPEAR.\n');
   writeFile(path.join(root, 'src/app.js'), 'module.exports = 1;\n');
 
   return {
@@ -78,6 +80,27 @@ test('ai execute-slice CLI dry-run shows opt-in commit mode', () => {
 
     assert.ok(output.includes('AI execute-slice dry-run'));
     assert.ok(output.includes('Commit after validation: enabled'));
+  } finally {
+    project.cleanup();
+  }
+});
+
+test('ai prompt-slice CLI prints a minimal manual executor prompt', () => {
+  const project = createProject();
+  try {
+    const output = execFileSync('node', [BIN_PATH, 'ai', 'prompt-slice', '--slice', project.slicePath, '--dry-run'], {
+      cwd: project.root,
+      encoding: 'utf8',
+    });
+
+    assert.ok(output.includes('Act as a WDD + SDD executor agent.'));
+    assert.ok(output.includes('Slice: slice-01-demo'));
+    assert.ok(output.includes('Allowed files:'));
+    assert.ok(output.includes('src/app.js'));
+    assert.ok(output.includes('Required final report format:'));
+    assert.ok(output.includes('## Cambios realizados'));
+    assert.ok(output.includes('Closure brief content:'));
+    assert.ok(!output.includes('FULL SPEC BODY SENTINEL'));
   } finally {
     project.cleanup();
   }

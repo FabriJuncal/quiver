@@ -4,7 +4,7 @@ const path = require('path');
 const { execFileSync } = require('child_process');
 const { checkHandoff, scaffoldHandoff } = require('./lib/handoff');
 const { collectDoctorReport } = require('./lib/doctor');
-const { runAgent: runAiAgent, runApprovalStatus: runAiApprovalStatus, runApprove: runAiApprove, runDoctor: runAiDoctor, runExecutePlan: runAiExecutePlan, runExecuteSlice: runAiExecuteSlice, runOnboard, runPlan: runAiPlan, runPr: runAiPr, runReviewPlan: runAiReviewPlan } = require('./commands/ai');
+const { runAgent: runAiAgent, runApprovalStatus: runAiApprovalStatus, runApprove: runAiApprove, runDoctor: runAiDoctor, runExecutePlan: runAiExecutePlan, runExecuteSlice: runAiExecuteSlice, runOnboard, runPlan: runAiPlan, runPr: runAiPr, runPromptSlice: runAiPromptSlice, runReviewPlan: runAiReviewPlan } = require('./commands/ai');
 const { runPrepare } = require('./commands/prepare');
 const { runFlow } = require('./commands/flow');
 const { runGraph } = require('./commands/graph');
@@ -117,6 +117,7 @@ Examples:
   cd ./my-project && npx create-quiver ai approve --phase technical-plan --version 1
   cd ./my-project && npx create-quiver spec create --dry-run
   cd ./my-project && npx create-quiver ai approvals
+  cd ./my-project && npx create-quiver ai prompt-slice --slice specs/my-project/slices/slice-01/slice.json --dry-run
   cd ./my-project && npx create-quiver ai execute-slice --slice specs/my-project/slices/slice-01/slice.json --dry-run
   cd ./my-project && npx create-quiver ai execute-slice --slice specs/my-project/slices/slice-01/slice.json --commit
   cd ./my-project && npx create-quiver ai execute-plan --dry-run --commit
@@ -1691,6 +1692,7 @@ function runDoctor(targetDir) {
     'quiver:ai:plan',
     'quiver:ai:review-plan',
     'quiver:ai:approve',
+    'quiver:ai:prompt-slice',
     'quiver:ai:execute-slice',
     'quiver:ai:execute-plan',
     'quiver:ai:pr',
@@ -1810,7 +1812,7 @@ async function run(argv) {
 
   if (args.mode === 'ai') {
     if (!args.aiCommand) {
-      throw new Error(formatError('missing ai subcommand. Use: npx create-quiver ai onboard | plan | review-plan | approve | approvals | agent | execute-slice | execute-plan | doctor | pr'));
+      throw new Error(formatError('missing ai subcommand. Use: npx create-quiver ai onboard | plan | review-plan | approve | approvals | agent | prompt-slice | execute-slice | execute-plan | doctor | pr'));
     }
 
     if (args.aiCommand === 'agent') {
@@ -1895,6 +1897,13 @@ async function run(argv) {
       return;
     }
 
+    if (args.aiCommand === 'prompt-slice' || args.aiCommand === 'executor-prompt') {
+      runAiPromptSlice(process.cwd(), {
+        slice: args.aiSlice || undefined,
+      });
+      return;
+    }
+
     if (args.aiCommand === 'execute-plan') {
       await runAiExecutePlan(process.cwd(), {
         allowDirty: args.aiAllowDirty,
@@ -1936,7 +1945,7 @@ async function run(argv) {
       return;
     }
 
-    throw new Error(formatError(`unsupported ai subcommand: ${args.aiCommand}. Supported tasks: onboard, plan, review-plan, approve, approvals, agent, execute-slice, execute-plan, doctor, pr`));
+    throw new Error(formatError(`unsupported ai subcommand: ${args.aiCommand}. Supported tasks: onboard, plan, review-plan, approve, approvals, agent, prompt-slice, execute-slice, execute-plan, doctor, pr`));
   }
 
   if (args.mode === 'graph') {

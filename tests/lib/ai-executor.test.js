@@ -7,6 +7,7 @@ const test = require('node:test');
 
 const {
   buildExecuteSliceContext,
+  buildManualExecutorPrompt,
   buildSliceCommitMessage,
   resolveSliceJsonPath,
   runExecuteSlice,
@@ -52,6 +53,10 @@ function createRepo(options = {}) {
   if (options.withBrief !== false) {
     writeFile(path.join(sliceDir, 'EXECUTION_BRIEF.md'), '# Execution Brief\n\nChange the allowed file only.\n');
   }
+  if (options.withClosure !== false) {
+    writeFile(path.join(sliceDir, 'CLOSURE_BRIEF.md'), '# Closure Brief\n\nUse the final report format.\n');
+  }
+  writeFile(path.join(root, 'specs/demo/SPEC.md'), '# Demo Spec\n\n## Objective\n\nImplement the demo feature.\n\n## Details\n\nFULL SPEC BODY SENTINEL SHOULD NOT APPEAR.\n');
   writeFile(path.join(root, allowedFile), 'module.exports = 1;\n');
   if (options.withValidation !== false) {
     writeFile(path.join(root, 'tests/demo.test.js'), "const test = require('node:test');\nconst assert = require('node:assert/strict');\ntest('demo', () => assert.equal(1, 1));\n");
@@ -124,6 +129,43 @@ test('buildExecuteSliceContext fails when EXECUTION_BRIEF.md is missing', () => 
         context: 'slice',
       }),
       /missing required file: specs\/demo\/slices\/slice-01-demo\/EXECUTION_BRIEF\.md/,
+    );
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('buildManualExecutorPrompt uses minimal slice context and final report format', () => {
+  const repo = createRepo();
+  try {
+    const built = buildManualExecutorPrompt({
+      repoRoot: repo.root,
+      slicePath: repo.slicePath,
+    });
+
+    assert.ok(built.prompt.includes('Act as a WDD + SDD executor agent.'));
+    assert.ok(built.prompt.includes('Allowed files:'));
+    assert.ok(built.prompt.includes(repo.allowedFile));
+    assert.ok(built.prompt.includes('Required final report format:'));
+    assert.ok(built.prompt.includes('## Cambios realizados'));
+    assert.ok(built.prompt.includes('Execution brief content:'));
+    assert.ok(built.prompt.includes('Closure brief content:'));
+    assert.ok(built.prompt.includes('Title: Demo Spec'));
+    assert.ok(!built.prompt.includes('FULL SPEC BODY SENTINEL'));
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('buildManualExecutorPrompt fails when CLOSURE_BRIEF.md is missing', () => {
+  const repo = createRepo({ withClosure: false });
+  try {
+    assert.throws(
+      () => buildManualExecutorPrompt({
+        repoRoot: repo.root,
+        slicePath: repo.slicePath,
+      }),
+      /missing required file: specs\/demo\/slices\/slice-01-demo\/CLOSURE_BRIEF\.md/,
     );
   } finally {
     repo.cleanup();

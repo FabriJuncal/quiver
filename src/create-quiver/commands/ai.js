@@ -2,7 +2,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const { buildContextPackMetadata, normalizeRole } = require('../lib/ai/context-packs');
-const { runExecuteSlice } = require('../lib/ai/executor');
+const { runExecuteSlice, runPromptSlice } = require('../lib/ai/executor');
 const { runExecutePlan } = require('../lib/ai/execution-plan');
 const { buildPrCreatePlan, formatPreflightReport, formatPrCreateReport, preflightGitHubPr, runGhPrCreate } = require('../lib/ai/github');
 const { buildPlannerOnboardingPrompt } = require('../lib/ai/onboarding-template');
@@ -821,6 +821,7 @@ module.exports = {
   runDoctor,
   runExecutePlan,
   runExecuteSlice,
+  runPromptSlice,
   runApprove,
   runApprovalStatus,
   runReviewPlan,

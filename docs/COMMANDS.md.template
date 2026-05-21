@@ -24,6 +24,7 @@ This document is the canonical command reference for the orchestration roadmap.
 | `quiver:ai:plan` | Runs phase-gated AI planning for acceptance criteria, technical plan, or spec generation | macOS, Linux, Windows | v0.10 | `npm run quiver:ai:plan -- --phase acceptance --input requirements.md --dry-run` |
 | `quiver:ai:review-plan` | Reviews the technical-plan draft for production readiness before approval and spec generation | macOS, Linux, Windows | v0.11 | `npm run quiver:ai:review-plan -- --dry-run` |
 | `quiver:ai:approve` | Persists approved acceptance criteria or technical plans for the next planner phase | macOS, Linux, Windows | v0.10 | `npm run quiver:ai:approve -- --phase acceptance --input acceptance-approved.md` |
+| `quiver:ai:prompt-slice` | Prints a minimal executor prompt for manual slice assignment without calling a provider | macOS, Linux, Windows | v0.11 | `npm run quiver:ai:prompt-slice -- --slice specs/<spec>/slices/<slice>/slice.json --dry-run` |
 | `quiver:ai:execute-slice` | Runs an executor agent against one slice handoff with scope checks and optional commit | macOS, Linux, Windows | v0.10 | `npm run quiver:ai:execute-slice -- --slice specs/<spec>/slices/<slice>/slice.json --dry-run --commit` |
 | `quiver:ai:execute-plan` | Prints or executes dependency-safe waves of slices | macOS, Linux, Windows | v0.10 | `npm run quiver:ai:execute-plan -- --dry-run --commit` |
 | `quiver:ai:doctor` | Runs GitHub PR preflight checks without opening a PR | macOS, Linux, Windows | v0.10 | `npm run quiver:ai:doctor -- --dry-run --ssh-host-alias github-work --identity-file ~/.ssh/github-work` |
@@ -55,7 +56,7 @@ This document is the canonical command reference for the orchestration roadmap.
 | `--phase <acceptance\|technical-plan\|spec>` | `ai plan` | Select the gated planner phase |
 | `--input <file>` | `ai plan`, `ai review-plan`, `ai approve`, `ai pr`, `spec create` | Read approved requirements/plans or select the generated PR body |
 | `--version <n>` | `ai approve` | Approve a specific saved draft version |
-| `--slice <slice.json>` | `ai execute-slice` | Select the slice handoff to execute |
+| `--slice <slice.json>` | `ai prompt-slice`, `ai execute-slice` | Select the slice handoff to print or execute |
 | `--commit` | `ai execute-slice`, `ai execute-plan` | Commit validated slice changes after provider, scope, and tests pass |
 | `--execute` | `ai execute-plan` | Execute the planned waves instead of printing commands |
 | `--create` | `ai pr` | Create the GitHub PR after preflight and plan review |
@@ -76,6 +77,7 @@ This document is the canonical command reference for the orchestration roadmap.
 - `quiver:ai:onboard`, `quiver:ai:plan`, `quiver:ai:review-plan`, and `quiver:ai:execute-slice` support `codex`, `claude`, and `gemini` through local CLIs. Use `--dry-run` first to inspect the invocation without requiring provider auth.
 - `quiver:ai:agent` stores provider/model labels under `.quiver/agents/profiles.json`; credentials stay in the provider CLI or OS credential store.
 - Planner drafts are versioned under `.quiver/approvals/<phase>/drafts/`; use `quiver:ai:review-plan -- --dry-run` before approving a technical-plan draft, then `quiver:ai:approve -- --phase technical-plan --version 1` to approve the reviewed version.
+- `quiver:ai:prompt-slice -- --dry-run` prints a paste-ready manual executor prompt and does not call a provider.
 - `quiver:ai:execute-slice -- --commit` creates exactly one commit only after provider, scope, and validation commands pass.
 - `quiver:ai:execute-plan -- --dry-run --commit` prints safe execution waves and falls back to sequential mode when file scope is missing or overlapping.
 - `quiver:ai:pr -- --dry-run` validates GitHub CLI, auth, Git remote, current branch/worktree, `docs/GITFLOW_PR_GUIDE.md`, SSH host alias, identity file, and `pr.md` without creating a PR. Add `--create` only after reviewing the plan.

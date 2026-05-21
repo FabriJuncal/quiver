@@ -50,18 +50,19 @@ Use maps, metadata, diffs, and summaries first. Open full files only when the sm
 
 1. Create or reuse the spec worktree with `npx create-quiver spec start specs/<spec-slug>` or `npm run quiver:spec:start -- specs/<spec-slug>`.
 2. Inspect waves with `npx create-quiver ai execute-plan --dry-run --commit` or `npm run quiver:ai:execute-plan -- --dry-run --commit`.
-3. Bootstrap a single slice with `npx create-quiver start-slice <slice.json>` or `npm run quiver:start-slice -- <slice.json>` when manual execution is preferred.
+3. Print a minimal manual executor prompt with `npx create-quiver ai prompt-slice --slice <slice.json> --dry-run` when assigning the slice to another agent.
+4. Bootstrap a single slice with `npx create-quiver start-slice <slice.json>` or `npm run quiver:start-slice -- <slice.json>` when manual execution is preferred.
    - The bootstrap step should work with canonical paths and a local base branch when `origin` is absent.
    - Draft slices require `--allow-draft`; otherwise `npx create-quiver start-slice` exits before execution.
    - Legacy Bash wrappers remain available for compatibility, but generated projects should prefer the Node CLI and `quiver:*` npm scripts.
    - `start-slice` generates `docs/ai/ACTIVE_SLICE.md` and `WORKTREE_CONTEXT.md`; use the active slice brief as the source of truth for execution.
-4. Implement only what the slice declares.
-5. Make one commit for that slice, or let `ai execute-slice --commit` / `ai execute-plan --execute --commit` create it after provider, scope, and validation pass.
-6. Validate with `npx create-quiver check-slice <slice.json>` or `npm run quiver:check-slice -- <slice.json>`.
-7. Write evidence.
-8. Repeat for the next slice until the spec is complete.
-9. Open one PR for the spec. Use `npx create-quiver ai pr --dry-run --input specs/<spec-slug>/pr.md ...` first, then add `--create` only after review.
-10. After the PR is merged and the spec worktree is clean, close it with `npx create-quiver spec close specs/<spec-slug>`.
+5. Implement only what the slice declares.
+6. Make one commit for that slice, or let `ai execute-slice --commit` / `ai execute-plan --execute --commit` create it after provider, scope, and validation pass.
+7. Validate with `npx create-quiver check-slice <slice.json>` or `npm run quiver:check-slice -- <slice.json>`.
+8. Write evidence.
+9. Repeat for the next slice until the spec is complete.
+10. Open one PR for the spec. Use `npx create-quiver ai pr --dry-run --input specs/<spec-slug>/pr.md ...` first, then add `--create` only after review.
+11. After the PR is merged and the spec worktree is clean, close it with `npx create-quiver spec close specs/<spec-slug>`.
 
 ## Support Contract
 

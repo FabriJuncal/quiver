@@ -20,10 +20,11 @@ Generar prompts minimos para agentes ejecutores a partir de artefactos de un sli
 ## Restricciones
 
 - No ejecutar provider.
-- No modificar codigo.
+- No ejecutar el prompt generado contra proveedores dentro de este slice.
+- Mantener la implementacion dentro de los archivos declarados en `slice.json`.
 
 ## Checklist de finalizacion
 
-- [ ] Prompt generado.
-- [ ] Contexto minimizado.
-- [ ] Tests pasan.
+- [x] Prompt generado.
+- [x] Contexto minimizado.
+- [x] Tests pasan.

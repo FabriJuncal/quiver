@@ -527,6 +527,7 @@ npm run quiver:ai:plan -- --phase technical-plan --dry-run
 npm run quiver:ai:review-plan -- --dry-run
 npm run quiver:ai:approve -- --phase technical-plan --version <n>
 npm run quiver:spec:create -- --dry-run
+npm run quiver:ai:prompt-slice -- --slice specs/<spec-slug>/slices/<slice-id>/slice.json --dry-run
 npm run quiver:ai:pr -- --dry-run --ssh-host-alias github-work --identity-file ~/.ssh/github-work
 \`\`\`
 
@@ -535,6 +536,7 @@ Remove \`--dry-run\` only after the phase output is approved and the local provi
 When a real spec exists, execute one approved slice at a time:
 
 \`\`\`bash
+npm run quiver:ai:prompt-slice -- --slice specs/<spec-slug>/slices/<slice-id>/slice.json --dry-run
 npm run quiver:ai:execute-slice -- --slice specs/<spec-slug>/slices/<slice-id>/slice.json --dry-run
 \`\`\`
 
@@ -550,6 +552,7 @@ npm run quiver:next
 npm run quiver:doctor
 npm run quiver:ai:onboard -- --dry-run
 npm run quiver:ai:plan -- --phase acceptance --input requirements.md --dry-run
+npm run quiver:ai:prompt-slice -- --slice specs/<spec-slug>/slices/<slice-id>/slice.json --dry-run
 npm run quiver:ai:execute-slice -- --slice specs/<spec-slug>/slices/<slice-id>/slice.json --dry-run
 npm run quiver:ai:doctor -- --dry-run --ssh-host-alias github-work --identity-file ~/.ssh/github-work
 npm run quiver:ai:pr -- --dry-run --ssh-host-alias github-work --identity-file ~/.ssh/github-work

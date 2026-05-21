@@ -19,7 +19,8 @@ This spec productizes the user's current prompt-driven workflow into first-class
 - `slice-05`: completed. Added versioned planner draft history and explicit approval by draft version.
 - `slice-06`: completed. Added `ai review-plan`, persisted plan review state, flow guidance, and spec-generation gating for reviewed and approved technical plans.
 - `slice-07`: completed. Added explicit `spec create` command, generated `quiver:spec:create` script, next-command output, docs, and tests.
-- `slice-08` through `slice-10`: draft.
+- `slice-08`: completed. Added `ai prompt-slice` / `executor-prompt` to print minimal manual executor prompts from slice artifacts without calling providers.
+- `slice-09` through `slice-10`: draft.
 
 ## Execution Rules
 

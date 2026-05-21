@@ -77,6 +77,177 @@ function formatList(items) {
   return items.map((item) => `- ${item}`);
 }
 
+function extractMarkdownHeading(text) {
+  const match = String(text || '').match(/^#\s+(.+)$/m);
+  return match ? match[1].trim() : '';
+}
+
+function extractMarkdownSection(text, headings) {
+  const lines = String(text || '').split(/\r?\n/);
+  const normalized = new Set(headings.map((heading) => String(heading).trim().toLowerCase()));
+  const section = [];
+  let capture = false;
+
+  for (const line of lines) {
+    const heading = line.match(/^##\s+(.+)$/);
+    if (heading) {
+      const key = heading[1].trim().toLowerCase();
+      if (normalized.has(key)) {
+        capture = true;
+        continue;
+      }
+      if (capture) {
+        break;
+      }
+    }
+
+    if (capture) {
+      section.push(line);
+    }
+  }
+
+  return section.join('\n').trim();
+}
+
+function buildSpecExcerpt(repoRoot, slice) {
+  const specPath = path.join(slice.specDirAbs, 'SPEC.md');
+  if (!fs.existsSync(specPath)) {
+    return {
+      path: toRelativePath(repoRoot, specPath),
+      lines: ['- n/a'],
+    };
+  }
+
+  const text = fs.readFileSync(specPath, 'utf8');
+  const title = extractMarkdownHeading(text);
+  const objective = extractMarkdownSection(text, ['Objective', 'Objetivo']);
+  const lines = [];
+
+  if (title) {
+    lines.push(`- Title: ${title}`);
+  }
+  if (objective) {
+    lines.push(`- Objective: ${objective.replace(/\s+/g, ' ').slice(0, 500)}`);
+  }
+  if (lines.length === 0) {
+    lines.push('- SPEC.md exists, but no short title/objective excerpt was found.');
+  }
+
+  return {
+    path: toRelativePath(repoRoot, specPath),
+    lines,
+  };
+}
+
+function buildManualExecutorPrompt({ repoRoot, slicePath, role, context, tokenLimit } = {}) {
+  const executorContext = buildExecuteSliceContext({
+    repoRoot,
+    slicePath,
+    role: role || DEFAULT_EXECUTE_ROLE,
+    context: context || DEFAULT_EXECUTE_CONTEXT,
+  });
+  const canonicalRepoRoot = canonicalizeRepoRoot(repoRoot);
+  const closurePath = path.join(path.dirname(executorContext.slice.sliceAbs), 'CLOSURE_BRIEF.md');
+  const closureText = readTextFile(closurePath, canonicalRepoRoot);
+  const relativeClosurePath = toRelativePath(canonicalRepoRoot, closurePath);
+  const specExcerpt = buildSpecExcerpt(canonicalRepoRoot, executorContext.slice);
+  const slice = executorContext.slice;
+  const objective = String(slice.json.objective || slice.json.description || slice.sliceId).trim();
+  const restrictions = [
+    'Do not read the whole repo.',
+    'Do not modify files outside the allowed files.',
+    'Before editing, list the files you will read and the files you expect to modify.',
+    'Do not add unrequested features.',
+    'Do not refactor architecture unless the slice explicitly requires it.',
+    'If another file is needed, justify why before reading it.',
+    'If blocked, stop and report the blocker before improvising.',
+  ];
+  const outputFormat = [
+    '## Cambios realizados',
+    '## Archivos modificados',
+    '## Comandos ejecutados',
+    '## Validaciones',
+    '## Riesgos pendientes',
+    '## Proximo paso recomendado',
+  ];
+  const promptLines = [
+    'Act as a WDD + SDD executor agent.',
+    '',
+    'MODE: controlled SLICE execution.',
+    '',
+    'Slice objective:',
+    objective || 'n/a',
+    '',
+    'Minimal context:',
+    `- Spec: ${slice.specSlug}`,
+    `- Slice: ${slice.sliceId}`,
+    `- Slice file: ${slice.sliceRel}`,
+    `- Execution brief: ${executorContext.briefPath}`,
+    `- Closure brief: ${relativeClosurePath}`,
+    '',
+    'Relevant SPEC excerpts:',
+    `- Source: ${specExcerpt.path}`,
+    ...specExcerpt.lines,
+    '',
+    'Allowed files:',
+    ...formatList(executorContext.allowedFiles),
+    '',
+    'Restrictions:',
+    ...formatList(restrictions),
+    '',
+    'Acceptance criteria:',
+    ...formatList(slice.acceptance),
+    '',
+    'Validation commands:',
+    ...formatList(executorContext.validationCommands),
+    '',
+    'Exact deliverable expected:',
+    '- Implement only this slice.',
+    '- Keep the change inside the allowed files.',
+    '- Leave evidence in the final report.',
+    '',
+    'Required final report format:',
+    ...outputFormat.map((line) => `- ${line}`),
+    '',
+    `Suggested token limit: ${Number(tokenLimit) > 0 ? Number(tokenLimit) : 3000}`,
+    '',
+    'Execution brief content:',
+    executorContext.briefText.trimEnd(),
+    '',
+    'Closure brief content:',
+    closureText.trimEnd(),
+  ];
+
+  return {
+    allowedFiles: executorContext.allowedFiles,
+    closurePath: relativeClosurePath,
+    prompt: `${promptLines.join('\n')}\n`,
+    slice,
+    specExcerpt,
+    validationCommands: executorContext.validationCommands,
+  };
+}
+
+function runPromptSlice(repoRoot, options = {}) {
+  if (!options.slice) {
+    throw new Error(formatError('missing required --slice path for ai prompt-slice'));
+  }
+
+  const built = buildManualExecutorPrompt({
+    repoRoot,
+    slicePath: options.slice,
+    tokenLimit: options.tokenLimit,
+  });
+  process.stdout.write(built.prompt);
+
+  return {
+    task: 'prompt-slice',
+    slice: built.slice.sliceId,
+    specSlug: built.slice.specSlug,
+    prompt: built.prompt,
+  };
+}
+
 function buildRecoveryGuidance(slice) {
   const sliceRef = slice && slice.sliceRel ? slice.sliceRel : '<slice.json>';
   return [
@@ -494,6 +665,7 @@ module.exports = {
   annotateProviderError,
   appendRecovery,
   buildExecuteSliceContext,
+  buildManualExecutorPrompt,
   buildRecoveryGuidance,
   buildSliceCommitMessage,
   canonicalizeRepoRoot,
@@ -506,4 +678,5 @@ module.exports = {
   readTextFile,
   resolveSliceJsonPath,
   runExecuteSlice,
+  runPromptSlice,
 };

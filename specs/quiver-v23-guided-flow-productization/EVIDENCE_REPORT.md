@@ -2,7 +2,7 @@
 
 ## Status
 
-Spec foundation is created. `slice-00` through `slice-07` are completed.
+Spec foundation is created. `slice-00` through `slice-08` are completed.
 
 ## Slice Evidence
 
@@ -16,7 +16,7 @@ Spec foundation is created. `slice-00` through `slice-07` are completed.
 | slice-05 | Added versioned drafts under `.quiver/approvals/<phase>/drafts/`, `ai approve --version`, status history output, and approval blocking against stale versions. |
 | slice-06 | Added `ai review-plan`, review prompt metadata, persisted `.quiver/approvals/plan-review/` artifacts, flow guidance before technical-plan approval, and a spec-generation gate that requires the reviewed technical-plan version to be approved. |
 | slice-07 | Added `npx create-quiver spec create`, generated `quiver:spec:create` scripts, dry-run preview, collision checks, next safe commands, and docs/tests for creating specs from reviewed approved technical plans. |
-| slice-08 | Pending. |
+| slice-08 | Added `npx create-quiver ai prompt-slice`, generated `quiver:ai:prompt-slice` scripts, minimal SPEC excerpts, required closure brief handling, final report format, docs/templates, and tests for manual executor prompts. |
 | slice-09 | Pending. |
 | slice-10 | Pending. |
 
@@ -36,6 +36,12 @@ Spec foundation is created. `slice-00` through `slice-07` are completed.
 - 2026-05-21: `git diff --check`
 - 2026-05-21: `node --test tests/commands/ai-review-plan.test.js`
 - 2026-05-21: `node --test tests/commands/doctor.test.js tests/lib/init-docs.test.js tests/lib/init-layout.test.js tests/lib/package-safety.test.js tests/commands/flow.test.js tests/commands/ai-review-plan.test.js tests/commands/ai-plan-spec-phase.test.js tests/commands/ai-plan.test.js`
+- 2026-05-21: `node --test tests/**/*.test.js`
+- 2026-05-21: `git diff --check`
+- 2026-05-21: `find specs/quiver-v23-guided-flow-productization -name slice.json -print -exec node -e "JSON.parse(require('fs').readFileSync(process.argv[1], 'utf8'))" {} \;`
+- 2026-05-21: `npm run smoke:create-quiver`
+- 2026-05-21: `npm run smoke:tiered-pack`
+- 2026-05-21: `node --test tests/commands/ai-execute-slice.test.js tests/lib/ai-executor.test.js tests/lib/init-docs.test.js tests/lib/init-layout.test.js`
 - 2026-05-21: `node --test tests/**/*.test.js`
 - 2026-05-21: `git diff --check`
 - 2026-05-21: `find specs/quiver-v23-guided-flow-productization -name slice.json -print -exec node -e "JSON.parse(require('fs').readFileSync(process.argv[1], 'utf8'))" {} \;`
