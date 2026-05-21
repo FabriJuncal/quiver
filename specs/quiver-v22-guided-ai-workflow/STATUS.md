@@ -15,7 +15,8 @@ This spec defines the guided AI workflow needed to move from project preparation
 - `slice-00`: completed.
 - `slice-01`: completed.
 - `slice-02`: completed.
-- `slice-03` through `slice-10`: draft.
+- `slice-03`: completed.
+- `slice-04` through `slice-10`: draft.
 
 ## Execution Rules
 

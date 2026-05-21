@@ -963,8 +963,141 @@ function installSelfAsDevDep(projectRoot, version) {
   }
 }
 
+function normalizeSkippedReason(reason) {
+  if (!reason) {
+    return 'excluded path';
+  }
+
+  if (reason === 'env-file') {
+    return 'env files';
+  }
+
+  if (reason === 'git-metadata') {
+    return '.git metadata';
+  }
+
+  if (reason === 'hidden-directory') {
+    return 'hidden directories';
+  }
+
+  if (reason.startsWith('secret-file:')) {
+    return 'secret files';
+  }
+
+  if (reason.startsWith('unsafe-segment:')) {
+    const segment = reason.slice('unsafe-segment:'.length);
+    const dependencySegments = new Set(['node_modules', '.pnpm-store', '.npm', '.yarn']);
+    const outputSegments = new Set(['dist', 'build', 'coverage', 'out', 'tmp', 'temp', 'cache', '.cache', '.turbo', '.next', '.nuxt', '.parcel-cache', 'generated', 'gen', 'artifacts', 'reports', 'vendor', 'target']);
+
+    if (segment === '.quiver') {
+      return 'local AI state';
+    }
+
+    if (dependencySegments.has(segment)) {
+      return 'dependency folders';
+    }
+
+    if (outputSegments.has(segment)) {
+      return 'generated/output/cache folders';
+    }
+
+    return segment;
+  }
+
+  return reason;
+}
+
+function summarizeSkippedPaths(skippedPathDetails = [], skippedPaths = []) {
+  const counts = new Map();
+
+  const items = Array.isArray(skippedPathDetails) && skippedPathDetails.length > 0
+    ? skippedPathDetails
+    : skippedPaths.map((item) => ({ path: item, reason: 'excluded path' }));
+
+  for (const item of items) {
+    const label = normalizeSkippedReason(item.reason);
+    counts.set(label, (counts.get(label) || 0) + 1);
+  }
+
+  return Array.from(counts.entries()).map(([label, count]) => ({ label, count }));
+}
+
+function renderAiContextDoc(scan, options = {}) {
+  const projectName = scan?.project?.name || 'Quiver Project';
+  const projectSlug = options.projectSlug || toProjectSlug(projectName);
+  const packageManager = scan?.project?.package_manager || 'unknown';
+  const stack = scan?.stack || {};
+  const commands = scan?.commands || {};
+  const common = commands.common || {};
+  const summaries = summarizeSkippedPaths(scan?.skipped_path_details, scan?.skipped_paths);
+  const risks = Array.isArray(scan?.risks) ? scan.risks : [];
+  const hasReadme = scan?.docs?.has_readme ? 'yes' : 'no';
+  const hasWorkflow = scan?.ci?.has_ci ? 'yes' : 'no';
+  const sourceDirs = Array.isArray(scan?.structure?.source_directories) ? scan.structure.source_directories : [];
+
+  const lines = [];
+  lines.push(`# ${projectName} AI Context`);
+  lines.push('');
+  lines.push('This file is refreshed by `npx create-quiver analyze`.');
+  lines.push('Use `docs/PROJECT_MAP.md` for stack and command details, and `.quiver/scans/PROJECT_SCAN.json` only when raw analyzer data is needed.');
+  lines.push('');
+  lines.push('## Snapshot');
+  lines.push(`- Primary stack: ${stack.primary || 'unknown'}`);
+  lines.push(`- Package manager: ${packageManager}`);
+  lines.push(`- Install: ${commands.install || 'not defined'}`);
+  lines.push(`- Dev: ${common.dev || 'not defined'}`);
+  lines.push(`- Build: ${common.build || 'not defined'}`);
+  lines.push(`- Test: ${common.test || 'not defined'}`);
+  lines.push(`- README present: ${hasReadme}`);
+  lines.push(`- GitHub Actions workflows: ${hasWorkflow}`);
+  lines.push(`- Source directories: ${sourceDirs.length > 0 ? sourceDirs.join(', ') : 'none detected'}`);
+  lines.push('');
+  lines.push('## Read First');
+  lines.push('- `docs/PROJECT_MAP.md`');
+  lines.push('- `docs/WORKFLOW.md`');
+  lines.push('- `docs/AI_ONBOARDING_PROMPT.md`');
+  lines.push('- `docs/CONTEXTO.md`');
+  lines.push('- `docs/DECISIONS.md`');
+  lines.push(`- specs/${projectSlug}/SPEC.md`);
+  lines.push('');
+  lines.push('## Assumptions and Missing Info');
+  if (risks.length > 0) {
+    for (const risk of risks) {
+      lines.push(`- ${risk}`);
+    }
+  } else {
+    lines.push('- No major repository signals are missing.');
+  }
+  lines.push('- Do not infer product or business rules that are not present in the repository.');
+  lines.push('');
+  lines.push('## Exclusions');
+  if (summaries.length > 0) {
+    for (const item of summaries) {
+      lines.push(`- ${item.label}: ${item.count}`);
+    }
+  } else {
+    lines.push('- No exclusions were needed.');
+  }
+  lines.push('');
+  lines.push('## Internal Artifacts');
+  lines.push('- Visible source: `docs/PROJECT_MAP.md`');
+  lines.push('- Internal raw scan: `.quiver/scans/PROJECT_SCAN.json`');
+  lines.push('');
+  return lines.join('\n');
+}
+
+function refreshAiContextDoc(projectRoot, scan, options = {}) {
+  const destinationPath = path.join(projectRoot, 'docs', 'AI_CONTEXT.md');
+  fs.mkdirSync(path.dirname(destinationPath), { recursive: true });
+  fs.writeFileSync(destinationPath, `${renderAiContextDoc(scan, options)}\n`);
+  return destinationPath;
+}
+
 module.exports = {
   initializeProjectDocs,
+  refreshAiContextDoc,
+  renderAiContextDoc,
+  summarizeSkippedPaths,
   writeFrontMatter,
   toProjectSlug,
   detectPackageManager,

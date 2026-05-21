@@ -10,9 +10,10 @@ const { runGraph } = require('./commands/graph');
 const { runNext } = require('./commands/next');
 const { runPlan } = require('./commands/plan');
 const { buildInitLayout, formatInitLayoutPlan } = require('./lib/init-layout');
-const { initializeProjectDocs, installSelfAsDevDep } = require('./lib/init-docs');
+const { initializeProjectDocs, installSelfAsDevDep, refreshAiContextDoc } = require('./lib/init-docs');
 const { checkPrReadiness, checkScope, checkSliceReadiness } = require('./lib/readiness');
 const { cleanupSlice, refreshActiveSlicesBoard, startSlice } = require('./lib/lifecycle');
+const { getContextPathExclusionReason } = require('./lib/ai/safety');
 const { relativePosixPath, resolveTargetRoot } = require('./lib/paths');
 const {
   CURRENT_SCAN_RELATIVE_PATH,
@@ -710,6 +711,43 @@ function escapeMarkdownCell(value) {
   return String(value).replace(/\|/g, '\\|');
 }
 
+function summarizeSkippedPaths(scan) {
+  const details = Array.isArray(scan.skipped_path_details) && scan.skipped_path_details.length > 0
+    ? scan.skipped_path_details
+    : (Array.isArray(scan.skipped_paths) ? scan.skipped_paths.map((item) => ({ reason: 'excluded path', path: item })) : []);
+  const counts = new Map();
+  const dependencySegments = new Set(['node_modules', '.pnpm-store', '.npm', '.yarn']);
+  const outputSegments = new Set(['dist', 'build', 'coverage', 'out', 'tmp', 'temp', 'cache', '.cache', '.turbo', '.next', '.nuxt', '.parcel-cache', 'generated', 'gen', 'artifacts', 'reports', 'vendor', 'target']);
+
+  for (const item of details) {
+    const reason = item.reason || 'excluded path';
+    let label = reason;
+    if (reason === 'env-file') {
+      label = 'env files';
+    } else if (reason === 'git-metadata') {
+      label = 'git metadata';
+    } else if (reason === 'hidden-directory') {
+      label = 'hidden directories';
+    } else if (reason.startsWith('secret-file:')) {
+      label = 'secret files';
+    } else if (reason.startsWith('unsafe-segment:')) {
+      const segment = reason.slice('unsafe-segment:'.length);
+      if (segment === '.quiver') {
+        label = 'local AI state';
+      } else if (dependencySegments.has(segment)) {
+        label = 'dependency folders';
+      } else if (outputSegments.has(segment)) {
+        label = 'generated/output/cache folders';
+      } else {
+        label = segment;
+      }
+    }
+    counts.set(label, (counts.get(label) || 0) + 1);
+  }
+
+  return Array.from(counts.entries()).map(([reason, count]) => ({ reason, count }));
+}
+
 function collectPackageManagers(projectRoot) {
   const packageManagerField = readJsonIfExists(path.join(projectRoot, 'package.json'))?.packageManager;
 
@@ -737,6 +775,7 @@ function collectPackageManagers(projectRoot) {
 function collectProjectFiles(projectRoot, maxDepth = 2) {
   const files = [];
   const skippedPaths = [];
+  const skippedPathDetails = [];
   const ignoredDirs = new Set([
     '.git',
     'node_modules',
@@ -753,6 +792,12 @@ function collectProjectFiles(projectRoot, maxDepth = 2) {
   ]);
   const allowedHiddenDirs = new Set(['.github', '.vscode', '.devcontainer']);
 
+  function skipPath(relativePath, reason) {
+    const normalized = relativePath.split(path.sep).join('/');
+    skippedPaths.push(normalized);
+    skippedPathDetails.push({ path: normalized, reason });
+  }
+
   function walk(currentDir, depth, relativeDir = '') {
     const entries = fs.readdirSync(currentDir, { withFileTypes: true });
 
@@ -762,12 +807,18 @@ function collectProjectFiles(projectRoot, maxDepth = 2) {
 
       if (entry.isDirectory()) {
         if (ignoredDirs.has(entry.name)) {
-          skippedPaths.push(entryRelativePath);
+          skipPath(entryRelativePath, `unsafe-segment:${entry.name}`);
+          continue;
+        }
+
+        const directoryReason = getContextPathExclusionReason(entryRelativePath);
+        if (directoryReason) {
+          skipPath(entryRelativePath, directoryReason);
           continue;
         }
 
         if (entry.name.startsWith('.') && !allowedHiddenDirs.has(entry.name)) {
-          skippedPaths.push(entryRelativePath);
+          skipPath(entryRelativePath, 'hidden-directory');
           continue;
         }
 
@@ -778,13 +829,19 @@ function collectProjectFiles(projectRoot, maxDepth = 2) {
         continue;
       }
 
+      const fileReason = getContextPathExclusionReason(entryRelativePath);
+      if (fileReason) {
+        skipPath(entryRelativePath, fileReason);
+        continue;
+      }
+
       files.push(entryRelativePath);
     }
   }
 
   walk(projectRoot, 0);
 
-  return { files, skippedPaths };
+  return { files, skipped_path_details: skippedPathDetails, skippedPaths };
 }
 
 function collectRootEntries(projectRoot) {
@@ -1088,7 +1145,7 @@ function detectRisks(projectRoot, scan) {
 function buildProjectScan(projectRoot) {
   const packageJson = readJsonIfExists(path.join(projectRoot, 'package.json'));
   const rootEntries = collectRootEntries(projectRoot);
-  const { files, skippedPaths } = collectProjectFiles(projectRoot);
+  const { files, skippedPaths, skipped_path_details } = collectProjectFiles(projectRoot);
   const topLevelDirectories = rootEntries.filter((entry) => entry.type === 'directory' && !entry.name.startsWith('.')).map((entry) => entry.name);
   const sourceDirectories = detectSourceDirectories(rootEntries);
   const configFiles = detectConfigFiles(rootEntries);
@@ -1146,6 +1203,7 @@ function buildProjectScan(projectRoot) {
     },
     risks: [],
     skipped_paths: skippedPaths,
+    skipped_path_details,
   };
 
   scan.risks = detectRisks(projectRoot, scan);
@@ -1322,9 +1380,10 @@ function renderProjectMap(scan) {
 
   lines.push('');
   lines.push('## Skipped Paths');
-  if (scan.skipped_paths.length > 0) {
-    for (const skippedPath of scan.skipped_paths) {
-      lines.push(`- ${skippedPath}`);
+  const skippedSummaries = summarizeSkippedPaths(scan);
+  if (skippedSummaries.length > 0) {
+    for (const skippedPath of skippedSummaries) {
+      lines.push(`- ${skippedPath.reason}: ${skippedPath.count}`);
     }
   } else {
     lines.push('- None');
@@ -1332,10 +1391,8 @@ function renderProjectMap(scan) {
 
   lines.push('');
   lines.push('## Do Not Read First');
-  if (scan.skipped_paths.length > 0) {
-    for (const skippedPath of scan.skipped_paths) {
-      lines.push(`- ${skippedPath}`);
-    }
+  if (skippedSummaries.length > 0) {
+    lines.push('- Hidden, generated, secret, and cache paths are excluded from the analysis scan.');
   } else {
     lines.push('- None detected, but still prioritize docs and config files before source trees.');
   }
@@ -1363,11 +1420,13 @@ function runAnalyze(targetDir) {
 
   const scan = buildProjectScan(projectRoot);
   const artifacts = writeProjectScanArtifacts(projectRoot, scan);
+  const aiContextPath = refreshAiContextDoc(projectRoot, scan);
   updateStateForAnalyze(projectRoot, CLI_VERSION);
 
   console.log(`Project analysis completed for ${projectRoot}`);
   console.log(`Wrote ${relativePosixPath(projectRoot, artifacts.jsonPath)}`);
   console.log(`Wrote ${relativePosixPath(projectRoot, artifacts.mdPath)}`);
+  console.log(`Wrote ${relativePosixPath(projectRoot, aiContextPath)}`);
   console.log(`Detected primary stack: ${scan.stack.primary}`);
   console.log(`Detected package manager: ${scan.project.package_manager}`);
 }
