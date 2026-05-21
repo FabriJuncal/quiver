@@ -6,6 +6,13 @@ const { runExecuteSlice } = require('../lib/ai/executor');
 const { formatPreflightReport, preflightGitHubPr } = require('../lib/ai/github');
 const { buildSpecGenerationManifest, describeSpecGeneration, generateSpecArtifacts } = require('../lib/ai/spec-generator');
 const { buildProviderInvocation, runProvider } = require('../lib/ai/providers');
+const {
+  PLANNER_APPROVAL_PHASES,
+  approvePlannerPhase,
+  resolveApprovedPlannerInput,
+  savePlannerDraft,
+  summarizePlannerApproval,
+} = require('../lib/approvals');
 const { assertPlannerPhaseReady, getPlannerPhaseDetails, normalizePlannerPhase, PlannerPhaseError } = require('../lib/ai/phase-gates');
 
 const DEFAULT_ONBOARD_PROVIDER = 'codex';
@@ -31,6 +38,14 @@ function readTextFile(filePath, repoRoot) {
   }
 
   return fs.readFileSync(resolved, 'utf8');
+}
+
+function readTextFileOrEmpty(filePath, repoRoot) {
+  if (!filePath) {
+    return '';
+  }
+
+  return readTextFile(filePath, repoRoot);
 }
 
 function normalizeTimeout(timeoutMs) {
@@ -178,6 +193,32 @@ function formatSpecGenerationResult(result, repoRoot) {
   return `${lines.join('\n')}\n`;
 }
 
+function formatApprovalResult(result, repoRoot) {
+  const relativePath = path.relative(repoRoot, result.filePath).split(path.sep).join('/');
+  const lines = [
+    'AI approval saved',
+    `Phase: ${result.phase}`,
+    `Status: approved`,
+    `Artifact: ${relativePath}`,
+    `Source file: ${result.sourceFile}`,
+    `Timestamp: ${result.createdAt}`,
+  ];
+
+  return `${lines.join('\n')}\n`;
+}
+
+function formatApprovalDryRunResult({ phase, input }) {
+  return `AI approval dry-run\nPhase: ${phase}\nInput file: ${input}\n`;
+}
+
+function formatApprovalStatusReport(repoRoot) {
+  const sections = ['AI approvals status'];
+  for (const phase of PLANNER_APPROVAL_PHASES) {
+    sections.push(summarizePlannerApproval(repoRoot, phase).trimEnd());
+  }
+  return `${sections.join('\n\n')}\n`;
+}
+
 function annotateProviderError(error, scope, phase) {
   const phaseLabel = phase ? ` phase '${phase}'` : '';
   const message = error && error.message ? error.message : String(error);
@@ -267,15 +308,14 @@ async function runPlan(repoRoot, options = {}) {
   const provider = String(options.provider || DEFAULT_PLAN_PROVIDER).trim().toLowerCase();
   const context = options.context || DEFAULT_PLAN_CONTEXT;
   const timeoutMs = normalizeTimeout(options.timeout);
-
-  if (!options.input) {
-    throw new Error(formatError(`missing input file for ai plan phase '${phase}'`));
-  }
+  let inputPath = options.input || '';
 
   if (phase === 'spec') {
-    const inputText = readTextFile(options.input, repoRoot);
+    const resolved = resolveApprovedPlannerInput(repoRoot, phase, inputPath || undefined);
+    inputPath = resolved.inputPath;
+    const inputText = readTextFileOrEmpty(inputPath, repoRoot);
     const manifest = buildSpecGenerationManifest({
-      inputPath: options.input,
+      inputPath,
       inputText,
       repoRoot,
       specSlug: options.specSlug,
@@ -292,7 +332,7 @@ async function runPlan(repoRoot, options = {}) {
     }
 
     const result = generateSpecArtifacts(repoRoot, {
-      input: options.input,
+      input: inputPath,
       specSlug: options.specSlug,
     });
     process.stdout.write(formatSpecGenerationResult(result, repoRoot));
@@ -309,13 +349,22 @@ async function runPlan(repoRoot, options = {}) {
 
   assertPlannerPhaseReady(phase);
 
-  const inputText = readTextFile(options.input, repoRoot);
+  if (phase === 'technical-plan') {
+    const resolved = resolveApprovedPlannerInput(repoRoot, phase, inputPath || undefined);
+    inputPath = resolved.inputPath;
+  }
+
+  if (!inputPath) {
+    throw new Error(formatError(`missing input file for ai plan phase '${phase}'`));
+  }
+
+  const inputText = readTextFile(inputPath, repoRoot);
   const contextInfo = buildPlanContext({
     role,
     context,
     phase,
     inputText,
-    inputPath: options.input,
+    inputPath,
     repoRoot,
   });
   const prompt = contextInfo.prompt;
@@ -367,6 +416,8 @@ async function runPlan(repoRoot, options = {}) {
     throw annotateProviderError(result.error || new Error('provider run failed'), 'plan', phase);
   }
 
+  savePlannerDraft(repoRoot, phase, inputPath, [result.stdout, result.stderr].filter(Boolean).join(''));
+
   return {
     task: 'plan',
     provider,
@@ -375,6 +426,52 @@ async function runPlan(repoRoot, options = {}) {
     phase,
     invocation,
     result,
+  };
+}
+
+async function runApprove(repoRoot, options = {}) {
+  const phase = normalizePlannerPhase(options.phase || DEFAULT_PLAN_PHASE);
+  if (phase === 'spec') {
+    throw new Error(formatError(`ai approve does not support phase '${phase}'`));
+  }
+
+  if (!options.input) {
+    throw new Error(formatError(`missing input file for ai approve phase '${phase}'`));
+  }
+
+  const inputText = readTextFile(options.input, repoRoot);
+
+  if (options.dryRun) {
+    process.stdout.write(formatApprovalDryRunResult({ phase, input: options.input }));
+    return {
+      task: 'approve',
+      phase,
+      input: options.input,
+      dryRun: true,
+    };
+  }
+
+  const result = approvePlannerPhase(repoRoot, phase, options.input, inputText);
+  process.stdout.write(formatApprovalResult({
+    ...result,
+    sourceFile: options.input,
+  }, repoRoot));
+
+  return {
+    task: 'approve',
+    phase,
+    input: options.input,
+    filePath: path.relative(repoRoot, result.filePath).split(path.sep).join('/'),
+    createdAt: result.createdAt,
+  };
+}
+
+async function runApprovalStatus(repoRoot) {
+  const report = formatApprovalStatusReport(repoRoot);
+  process.stdout.write(report);
+  return {
+    task: 'approval-status',
+    report,
   };
 }
 
@@ -435,6 +532,8 @@ module.exports = {
   readTextFile,
   runDoctor,
   runExecuteSlice,
+  runApprove,
+  runApprovalStatus,
   runPr,
   runOnboard,
   runPlan,

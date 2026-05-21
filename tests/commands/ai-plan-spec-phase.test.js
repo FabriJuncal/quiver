@@ -34,6 +34,14 @@ function execAi(repoRoot, args = [], env = {}) {
   });
 }
 
+function execAiSubcommand(repoRoot, args = [], env = {}) {
+  return execFileSync('node', [BIN_PATH, 'ai', ...args], {
+    cwd: repoRoot,
+    encoding: 'utf8',
+    env: { ...process.env, ...env },
+  });
+}
+
 function approvedPlanManifest() {
   return {
     spec: {
@@ -68,11 +76,12 @@ function approvedPlanManifest() {
 
 test('ai plan spec phase dry-run reports the generated spec tree and does not write files', () => {
   const repo = makeRepo({
-    'docs/approved-plan.json': `${JSON.stringify(approvedPlanManifest(), null, 2)}\n`,
+    'technical-plan.md': `${JSON.stringify(approvedPlanManifest(), null, 2)}\n`,
   });
 
   try {
-    const output = execAi(repo.root, ['--phase', 'spec', '--input', 'docs/approved-plan.json', '--dry-run']);
+    execAiSubcommand(repo.root, ['approve', '--phase', 'technical-plan', '--input', 'technical-plan.md']);
+    const output = execAi(repo.root, ['--phase', 'spec', '--dry-run']);
     assert.ok(output.includes('AI plan dry-run'));
     assert.ok(output.includes('Phase: spec'));
     assert.ok(output.includes('Spec slug: quiver-v21-cli-spec'));
@@ -84,13 +93,14 @@ test('ai plan spec phase dry-run reports the generated spec tree and does not wr
   }
 });
 
-test('ai plan spec phase can infer the spec slug from the approved input and write artifacts', () => {
+test('ai plan spec phase can infer the spec slug from approved technical-plan input and write artifacts', () => {
   const repo = makeRepo({
-    'docs/approved-plan.json': `${JSON.stringify(approvedPlanManifest(), null, 2)}\n`,
+    'technical-plan.md': `${JSON.stringify(approvedPlanManifest(), null, 2)}\n`,
   });
 
   try {
-    const output = execAi(repo.root, ['--phase', 'spec', '--input', 'docs/approved-plan.json']);
+    execAiSubcommand(repo.root, ['approve', '--phase', 'technical-plan', '--input', 'technical-plan.md']);
+    const output = execAi(repo.root, ['--phase', 'spec']);
     const specDir = path.join(repo.root, 'specs', 'quiver-v21-cli-spec');
 
     assert.ok(output.includes('AI plan spec generation completed'));
@@ -106,6 +116,21 @@ test('ai plan spec phase can infer the spec slug from the approved input and wri
 
     const sliceJson = JSON.parse(fs.readFileSync(path.join(specDir, 'slices', 'slice-01-generator-core', 'slice.json'), 'utf8'));
     assert.deepEqual(sliceJson.depends_on, ['slice-00-spec-foundation']);
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('ai plan spec phase rejects unapproved technical-plan input', () => {
+  const repo = makeRepo({
+    'technical-plan.md': `${JSON.stringify(approvedPlanManifest(), null, 2)}\n`,
+  });
+
+  try {
+    assert.throws(
+      () => execAi(repo.root, ['--phase', 'spec', '--input', 'technical-plan.md']),
+      (error) => error.stderr.includes("requires approved technical-plan input") && error.stderr.includes("current status: missing"),
+    );
   } finally {
     repo.cleanup();
   }
