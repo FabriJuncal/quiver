@@ -19,6 +19,7 @@ This document is the canonical command reference for the orchestration roadmap.
 | `quiver:plan` | Sequential orchestration planning command | macOS, Linux, Windows | v0.8 | [docs/examples/plan.md](./examples/plan.md) |
 | `quiver:graph` | Parallel-level orchestration tree command | macOS, Linux, Windows | v0.8 | [docs/examples/graph.md](./examples/graph.md) |
 | `quiver:next` | Ready-slice suggestion command | macOS, Linux, Windows | v0.8 | [docs/examples/next.md](./examples/next.md) |
+| `quiver:ai:agent` | Stores reusable planner/executor/reviewer/researcher provider profiles without secrets | macOS, Linux, Windows | v0.11 | `npm run quiver:ai:agent -- set planner --provider codex --model "planner-model"` |
 | `quiver:ai:onboard` | Runs AI onboarding prompt through a supported local provider CLI | macOS, Linux, Windows | v0.10 | `npm run quiver:ai:onboard -- --dry-run` |
 | `quiver:ai:plan` | Runs phase-gated AI planning for acceptance criteria, technical plan, or spec generation | macOS, Linux, Windows | v0.10 | `npm run quiver:ai:plan -- --phase acceptance --input requirements.md --dry-run` |
 | `quiver:ai:approve` | Persists approved acceptance criteria or technical plans for the next planner phase | macOS, Linux, Windows | v0.10 | `npm run quiver:ai:approve -- --phase acceptance --input acceptance-approved.md` |
@@ -45,6 +46,8 @@ This document is the canonical command reference for the orchestration roadmap.
 | `--only-ready` | `plan` | Show only slices with no pending dependencies |
 | `--spec <slug>` | `plan`, `graph` | Restrict output to one spec |
 | `--provider <codex\|claude\|gemini>` | `ai onboard`, `ai plan`, `ai execute-slice`, `ai execute-plan` | Select the local AI CLI adapter |
+| `--model <label>` | `ai agent set` | Store a free-form model label in an agent profile; Quiver does not verify model availability |
+| `--label <label>` | `ai agent set` | Store a display label for the profile |
 | `--role <planner\|executor>` | `ai onboard`, `ai plan`, `ai execute-slice`, `ai execute-plan` | Select planner or executor role; execution requires executor |
 | `--context <full\|planning\|slice\|minimal>` | `ai onboard`, `ai plan`, `ai execute-slice`, `ai execute-plan` | Select a token-budgeted context pack |
 | `--phase <acceptance\|technical-plan\|spec>` | `ai plan` | Select the gated planner phase |
@@ -68,6 +71,7 @@ This document is the canonical command reference for the orchestration roadmap.
 - `quiver:next` prints the next ready slice and can auto-start it behind a confirmation prompt.
 - `check-slice` validates `depends_on` targets and requires `parallel_safe_reason` when `parallel_safe` is `never`.
 - `quiver:ai:onboard`, `quiver:ai:plan`, and `quiver:ai:execute-slice` support `codex`, `claude`, and `gemini` through local CLIs. Use `--dry-run` first to inspect the invocation without requiring provider auth.
+- `quiver:ai:agent` stores provider/model labels under `.quiver/agents/profiles.json`; credentials stay in the provider CLI or OS credential store.
 - `quiver:ai:execute-slice -- --commit` creates exactly one commit only after provider, scope, and validation commands pass.
 - `quiver:ai:execute-plan -- --dry-run --commit` prints safe execution waves and falls back to sequential mode when file scope is missing or overlapping.
 - `quiver:ai:pr -- --dry-run` validates GitHub CLI, auth, Git remote, current branch/worktree, `docs/GITFLOW_PR_GUIDE.md`, SSH host alias, identity file, and `pr.md` without creating a PR. Add `--create` only after reviewing the plan.

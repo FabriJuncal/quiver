@@ -2,6 +2,7 @@ const fs = require('fs');
 const path = require('path');
 
 const { readPhaseApproval } = require('../lib/approvals');
+const { listAgentProfiles } = require('../lib/agent-profiles');
 const { buildGraph, naturalNumberFromSliceId, readAllSlices } = require('../lib/slice-graph');
 const { hasQuiverInitializationEvidence, readState } = require('../lib/state');
 
@@ -54,7 +55,17 @@ function summarizeDocs(projectRoot) {
   };
 }
 
-function buildFacts({ initialized, docs, approvals, specSlugs, state, slices = null }) {
+function summarizeAgentProfiles(projectRoot) {
+  const profiles = listAgentProfiles(projectRoot);
+  return {
+    configured: profiles.filter((item) => item.configured).map((item) => item.role),
+    missingCore: profiles
+      .filter((item) => ['planner', 'executor'].includes(item.role) && !item.configured)
+      .map((item) => item.role),
+  };
+}
+
+function buildFacts({ initialized, docs, approvals, agents, specSlugs, state, slices = null }) {
   return {
     initialized,
     hasProjectMap: docs.hasProjectMap,
@@ -64,6 +75,7 @@ function buildFacts({ initialized, docs, approvals, specSlugs, state, slices = n
       acceptance: approvals.acceptance.status,
       technicalPlan: approvals.technicalPlan.status,
     },
+    agents,
     specSlugs,
     slices,
     quiverVersion: state?.quiver_version || null,
@@ -180,8 +192,9 @@ function detectFlowState(projectRoot) {
     acceptance: safeReadApproval(projectRoot, 'acceptance'),
     technicalPlan: safeReadApproval(projectRoot, 'technical-plan'),
   };
+  const agents = summarizeAgentProfiles(projectRoot);
   const specSlugs = listSpecSlugs(projectRoot);
-  const facts = buildFacts({ initialized, docs, approvals, specSlugs, state });
+  const facts = buildFacts({ initialized, docs, approvals, agents, specSlugs, state });
 
   if (!initialized) {
     return baseReport({
@@ -223,6 +236,21 @@ function detectFlowState(projectRoot) {
       suggestedCommands: [
         'npx create-quiver ai approvals',
         'npx create-quiver doctor',
+      ],
+      facts,
+    });
+  }
+
+  if (approvals.acceptance.status === 'missing' && approvals.technicalPlan.status === 'missing' && specSlugs.length === 0 && agents.missingCore.length > 0) {
+    const role = agents.missingCore[0];
+    return baseReport({
+      stage: 'agent-profiles-needed',
+      label: 'agent profiles need setup',
+      blockers: [`Missing ${agents.missingCore.join(' and ')} agent profile${agents.missingCore.length > 1 ? 's' : ''}.`],
+      nextCommand: `npx create-quiver ai agent set ${role} --provider codex --model "<model-label>"`,
+      suggestedCommands: [
+        'npx create-quiver ai agent list',
+        `npx create-quiver ai agent set ${role} --provider codex --model "<model-label>"`,
       ],
       facts,
     });
@@ -328,7 +356,7 @@ function detectFlowState(projectRoot) {
   }
 
   const slices = summarizeSlices(projectRoot, specSlugs);
-  const sliceFacts = buildFacts({ initialized, docs, approvals, specSlugs, state, slices: {
+  const sliceFacts = buildFacts({ initialized, docs, approvals, agents, specSlugs, state, slices: {
     completed: slices.completedCount,
     pending: slices.pendingCount,
     ready: slices.ready.map((slice) => slice.ref),

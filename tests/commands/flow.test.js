@@ -117,15 +117,15 @@ test('flow command reports analysis guidance when initialized context docs are m
   }
 });
 
-test('flow command reports planning readiness when context docs exist', () => {
+test('flow command reports agent profile guidance before planning when context docs exist', () => {
   const repo = makeRepo();
 
   try {
     seedInitializedContext(repo.root);
     const output = runFlow(repo.root);
 
-    assert.match(output, /Stage: ready for acceptance criteria/);
-    assert.match(output, /Next safe command: npx create-quiver ai onboard --dry-run/);
+    assert.match(output, /Stage: agent profiles need setup/);
+    assert.match(output, /Next safe command: npx create-quiver ai agent set planner --provider codex --model "<model-label>"/);
   } finally {
     repo.cleanup();
   }

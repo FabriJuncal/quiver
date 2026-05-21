@@ -178,7 +178,7 @@ The existing `npx create-quiver ...` commands must continue working.
 | slice-00 | Spec foundation and guided flow planning artifacts | Completed | none |
 | slice-01 | Short command and guided flow entrypoint | Completed | slice-00 |
 | slice-02 | Flow status and next-step wizard | Completed | slice-01 |
-| slice-03 | Agent profiles for planner, executor, reviewer, and researcher | Draft | slice-02 |
+| slice-03 | Agent profiles for planner, executor, reviewer, and researcher | Completed | slice-02 |
 | slice-04 | Context preparation and onboarding prompt productization | Draft | slice-03 |
 | slice-05 | Planner iteration history for criteria and plans | Draft | slice-04 |
 | slice-06 | Production-readiness plan review phase | Draft | slice-05 |
@@ -198,7 +198,6 @@ The existing `npx create-quiver ...` commands must continue working.
 
 ## Open Questions
 
-- Should model names be free-form strings, provider-specific presets, or both?
 - Should reviewed technical plans require a separate approval artifact, or can the approved plan include the review result?
 - Should delegated execution create temporary worktrees per slice by default, even for sequential slices?
 - Should final PR creation be owned by the planner profile, the default CLI, or a dedicated reviewer profile?

@@ -14,7 +14,8 @@ This spec productizes the user's current prompt-driven workflow into first-class
 - `slice-00`: completed.
 - `slice-01`: completed. Added the `quiver` binary alias, read-only `flow` command, docs, generated script, and tests.
 - `slice-02`: completed. Expanded `flow` into a read-only wizard that reads context docs, approvals, specs, slices, and blockers.
-- `slice-03` through `slice-10`: draft.
+- `slice-03`: completed. Added reusable planner, executor, reviewer, and researcher agent profiles under `.quiver/agents/profiles.json`.
+- `slice-04` through `slice-10`: draft.
 
 ## Execution Rules
 
@@ -28,6 +29,5 @@ This spec productizes the user's current prompt-driven workflow into first-class
 
 ## Open Items
 
-- Decide the exact persisted shape for agent profiles under `.quiver/`.
 - Decide whether plan review creates a new approval phase or annotates the technical-plan approval.
-- Validate provider-specific model argument handling for Codex, Claude, and Gemini.
+- Validate provider-specific model argument handling for Codex, Claude, and Gemini before model labels are used as invocation arguments.

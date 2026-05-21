@@ -16,6 +16,8 @@ npx create-quiver flow
 npx create-quiver prepare --dry-run
 npx create-quiver analyze
 npx create-quiver doctor
+npx create-quiver ai agent set planner --provider codex --model "planner-model"
+npx create-quiver ai agent set executor --provider codex --model "executor-model"
 npx create-quiver ai onboard --dry-run
 ```
 
@@ -146,6 +148,8 @@ npx create-quiver init --name "Nombre del Proyecto"
 npx create-quiver flow
 npx create-quiver analyze
 npx create-quiver doctor
+npx create-quiver ai agent set planner --provider codex --model "planner-model"
+npx create-quiver ai agent set executor --provider codex --model "executor-model"
 npx create-quiver ai onboard --dry-run
 git status --short
 ```
@@ -279,6 +283,9 @@ El paquete también publica el alias binario `quiver`, que apunta al mismo CLI. 
 | `npx create-quiver init --name "Proyecto"` | Inicializa Quiver en un proyecto nuevo o nunca inicializado. |
 | `npx create-quiver --name "Proyecto"` | Alias compatible del flujo de init recomendado. |
 | `npx create-quiver flow` | Muestra el estado inicial del flujo guiado y el próximo comando seguro sin escribir estado ni llamar providers. |
+| `npx create-quiver ai agent set <role> --provider <provider> --model <label>` | Guarda perfiles reutilizables para planner, executor, reviewer o researcher sin guardar secretos. |
+| `npx create-quiver ai agent list` | Lista los perfiles configurados. |
+| `npx create-quiver ai agent show <role>` | Muestra un perfil específico. |
 | `npx create-quiver init --minimal` | Crea solo el contrato esencial de onboarding. |
 | `npx create-quiver init --full` | Crea el layout amplio de compatibilidad. |
 | `npx create-quiver init --legacy-scripts` | Agrega wrappers Bash legacy bajo `tools/scripts/`. |
@@ -307,6 +314,9 @@ El paquete también publica el alias binario `quiver`, que apunta al mismo CLI. 
 
 ```bash
 npx create-quiver ai onboard --dry-run
+npx create-quiver ai agent set planner --provider codex --model "planner-model"
+npx create-quiver ai agent set executor --provider codex --model "executor-model"
+npx create-quiver ai agent list
 npx create-quiver ai plan --phase acceptance --input requirements.md --dry-run
 npx create-quiver ai approve --phase acceptance --input acceptance-approved.md
 npx create-quiver ai plan --phase technical-plan --dry-run
@@ -368,6 +378,7 @@ Notas reales del estado actual:
 | `npm run quiver:graph` | Ejecuta `npx create-quiver graph`. |
 | `npm run quiver:next` | Ejecuta `npx create-quiver next`. |
 | `npm run quiver:doctor` | Ejecuta `npx create-quiver doctor`. |
+| `npm run quiver:ai:agent` | Ejecuta `npx create-quiver ai agent`. |
 | `npm run quiver:ai:onboard` | Ejecuta onboarding de IA. |
 | `npm run quiver:ai:plan` | Ejecuta planificación IA por fases. |
 | `npm run quiver:ai:approve` | Guarda criterios o planes aprobados. |

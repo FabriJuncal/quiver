@@ -4,6 +4,7 @@ const cp = require('node:child_process');
 
 const { buildContextPackMetadata, normalizeRole } = require('./context-packs');
 const { buildProviderInvocation, runProvider } = require('./providers');
+const { resolveProfileProvider } = require('../agent-profiles');
 const { runGit } = require('../git');
 const { captureWorktreeSnapshot, validateScopeSnapshot } = require('../scope');
 const { resolveSliceContext } = require('../slice');
@@ -321,8 +322,10 @@ function commitSliceChanges(repoRoot, slice, changedFiles, options = {}) {
 }
 
 async function runExecuteSlice(repoRoot, options = {}) {
-  const provider = String(options.provider || DEFAULT_EXECUTE_PROVIDER).trim().toLowerCase();
   const role = normalizeRole(options.role || DEFAULT_EXECUTE_ROLE);
+  const provider = options.providerExplicit === true || (options.provider && options.providerExplicit !== false)
+    ? String(options.provider || DEFAULT_EXECUTE_PROVIDER).trim().toLowerCase()
+    : resolveProfileProvider(repoRoot, role, DEFAULT_EXECUTE_PROVIDER);
   const context = options.context || DEFAULT_EXECUTE_CONTEXT;
   const timeoutMs = normalizeTimeout(options.timeout);
 

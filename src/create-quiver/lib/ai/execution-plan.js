@@ -1,5 +1,6 @@
 const path = require('node:path');
 
+const { resolveProfileProvider } = require('../agent-profiles');
 const { buildGraph, computeLevels, detectFileConflicts, isFoundationSliceId, readAllSlices, topoSort, SliceGraphError } = require('../slice-graph');
 const { runExecuteSlice } = require('./executor');
 
@@ -297,7 +298,7 @@ function formatHumanExecutionPlan(report) {
 }
 
 function formatExecutePlanDryRun(report, options = {}) {
-  const provider = options.provider || 'codex';
+  const provider = options.resolvedProvider || options.provider || 'codex';
   const commitEnabled = options.commit === true;
   const lines = [
     'AI execute-plan dry-run',
@@ -340,6 +341,14 @@ function formatExecutePlanDryRun(report, options = {}) {
 async function runExecutePlan(repoRoot, options = {}) {
   const report = collectExecutionPlan(repoRoot, options);
   const execute = options.execute === true;
+  const provider = options.providerExplicit === true || (options.provider && options.providerExplicit !== false)
+    ? options.provider
+    : resolveProfileProvider(repoRoot, options.role || 'executor', 'codex');
+  const resolvedOptions = {
+    ...options,
+    provider,
+    resolvedProvider: provider,
+  };
 
   if (options.json && !execute) {
     process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
@@ -347,7 +356,7 @@ async function runExecutePlan(repoRoot, options = {}) {
   }
 
   if (!execute || options.dryRun === true) {
-    process.stdout.write(formatExecutePlanDryRun(report, options));
+    process.stdout.write(formatExecutePlanDryRun(report, resolvedOptions));
     return { task: 'execute-plan', dryRun: true, report };
   }
 
@@ -368,7 +377,8 @@ async function runExecutePlan(repoRoot, options = {}) {
             commit: true,
             context: options.context,
             dryRun: false,
-            provider: options.provider,
+            provider,
+            providerExplicit: options.providerExplicit,
             role: options.role,
             slice: slice.slice_path,
             timeout: options.timeout,

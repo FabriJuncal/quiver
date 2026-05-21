@@ -184,6 +184,7 @@ function resolveInitPackageScripts(profile, options = {}) {
     'quiver:graph': 'npx create-quiver graph',
     'quiver:next': 'npx create-quiver next',
     'quiver:doctor': 'npx create-quiver doctor',
+    'quiver:ai:agent': 'npx create-quiver ai agent',
     'quiver:ai:onboard': 'npx create-quiver ai onboard',
     'quiver:ai:plan': 'npx create-quiver ai plan',
     'quiver:ai:approve': 'npx create-quiver ai approve',

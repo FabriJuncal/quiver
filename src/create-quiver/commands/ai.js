@@ -8,6 +8,13 @@ const { buildPrCreatePlan, formatPreflightReport, formatPrCreateReport, prefligh
 const { buildSpecGenerationManifest, describeSpecGeneration, generateSpecArtifacts } = require('../lib/ai/spec-generator');
 const { buildProviderInvocation, runProvider } = require('../lib/ai/providers');
 const {
+  agentProfilesPath,
+  getAgentProfile,
+  listAgentProfiles,
+  resolveProfileProvider,
+  setAgentProfile,
+} = require('../lib/agent-profiles');
+const {
   PLANNER_APPROVAL_PHASES,
   approvePlannerPhase,
   resolveApprovedPlannerInput,
@@ -60,6 +67,13 @@ function normalizeTimeout(timeoutMs) {
   }
 
   return parsed;
+}
+
+function resolveProviderForProfile(repoRoot, role, provider, providerExplicit, fallbackProvider) {
+  if (providerExplicit === true || (provider && providerExplicit !== false)) {
+    return String(provider || fallbackProvider).trim().toLowerCase();
+  }
+  return resolveProfileProvider(repoRoot, role, fallbackProvider);
 }
 
 function buildPlanContext({ role, context, phase, inputText, inputPath, repoRoot }) {
@@ -240,8 +254,8 @@ function annotateGitHubError(error, scope) {
 }
 
 async function runOnboard(repoRoot, options = {}) {
-  const provider = String(options.provider || DEFAULT_ONBOARD_PROVIDER).trim().toLowerCase();
   const role = normalizeRole(options.role || DEFAULT_ONBOARD_ROLE);
+  const provider = resolveProviderForProfile(repoRoot, role, options.provider, options.providerExplicit, DEFAULT_ONBOARD_PROVIDER);
   const context = options.context || DEFAULT_ONBOARD_CONTEXT;
   const timeoutMs = normalizeTimeout(options.timeout);
   const inputText = readTextFile(options.input, repoRoot);
@@ -306,7 +320,7 @@ async function runOnboard(repoRoot, options = {}) {
 async function runPlan(repoRoot, options = {}) {
   const phase = normalizePlannerPhase(options.phase || DEFAULT_PLAN_PHASE);
   const role = normalizeRole(options.role || DEFAULT_PLAN_ROLE);
-  const provider = String(options.provider || DEFAULT_PLAN_PROVIDER).trim().toLowerCase();
+  const provider = resolveProviderForProfile(repoRoot, role, options.provider, options.providerExplicit, DEFAULT_PLAN_PROVIDER);
   const context = options.context || DEFAULT_PLAN_CONTEXT;
   const timeoutMs = normalizeTimeout(options.timeout);
   let inputPath = options.input || '';
@@ -476,6 +490,89 @@ async function runApprovalStatus(repoRoot) {
   };
 }
 
+function formatAgentProfile(profile) {
+  const lines = [
+    `Role: ${profile.role}`,
+    `Provider: ${profile.provider}`,
+    `Model: ${profile.model || '(not set)'}`,
+    `Label: ${profile.label || '(not set)'}`,
+    `Context: ${profile.context || '(not set)'}`,
+    `Updated: ${profile.updated_at}`,
+  ];
+  return `${lines.join('\n')}\n`;
+}
+
+function formatAgentProfileList(profiles) {
+  const lines = ['AI agent profiles'];
+  for (const item of profiles) {
+    if (!item.configured) {
+      lines.push(`- ${item.role}: not configured`);
+      continue;
+    }
+    const model = item.profile.model ? ` model=${item.profile.model}` : '';
+    const label = item.profile.label ? ` label=${item.profile.label}` : '';
+    lines.push(`- ${item.role}: provider=${item.profile.provider}${model}${label}`);
+  }
+  return `${lines.join('\n')}\n`;
+}
+
+function runAgent(repoRoot, options = {}) {
+  const command = String(options.command || '').trim().toLowerCase();
+
+  if (command === 'set') {
+    if (!options.role) {
+      throw new Error(formatError('missing agent role. Use: npx create-quiver ai agent set <planner|executor|reviewer|researcher> --provider <provider>'));
+    }
+    if (!options.provider) {
+      throw new Error(formatError('ai agent set requires --provider. Supported providers: codex, claude, gemini.'));
+    }
+    const result = setAgentProfile(repoRoot, options.role, {
+      context: options.context,
+      label: options.label,
+      model: options.model,
+      provider: options.provider,
+    });
+    process.stdout.write('AI agent profile saved\n');
+    process.stdout.write(formatAgentProfile(result.profile));
+    process.stdout.write(`State: ${path.relative(repoRoot, result.filePath).split(path.sep).join('/')}\n`);
+    return {
+      task: 'agent',
+      command,
+      profile: result.profile,
+      filePath: path.relative(repoRoot, result.filePath).split(path.sep).join('/'),
+    };
+  }
+
+  if (command === 'show') {
+    if (!options.role) {
+      throw new Error(formatError('missing agent role. Use: npx create-quiver ai agent show <planner|executor|reviewer|researcher>'));
+    }
+    const profile = getAgentProfile(repoRoot, options.role);
+    if (!profile) {
+      throw new Error(formatError(`agent profile '${options.role}' is not configured. Run: npx create-quiver ai agent set ${options.role} --provider <provider> --model <label>`));
+    }
+    process.stdout.write(formatAgentProfile(profile));
+    return {
+      task: 'agent',
+      command,
+      profile,
+    };
+  }
+
+  if (command === 'list' || command === 'ls' || command === '') {
+    const profiles = listAgentProfiles(repoRoot);
+    process.stdout.write(formatAgentProfileList(profiles));
+    process.stdout.write(`State: ${path.relative(repoRoot, agentProfilesPath(repoRoot)).split(path.sep).join('/')}\n`);
+    return {
+      task: 'agent',
+      command: 'list',
+      profiles,
+    };
+  }
+
+  throw new Error(formatError(`unsupported ai agent subcommand: ${command}. Supported tasks: set, list, show`));
+}
+
 async function runGitHubTask(repoRoot, options = {}, mode = 'pr') {
   const dryRun = options.dryRun === true;
   let report;
@@ -593,6 +690,7 @@ module.exports = {
   formatSpecDryRunReport,
   normalizeTimeout,
   readTextFile,
+  runAgent,
   runDoctor,
   runExecutePlan,
   runExecuteSlice,

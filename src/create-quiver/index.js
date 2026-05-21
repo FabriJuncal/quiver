@@ -4,7 +4,7 @@ const path = require('path');
 const { execFileSync } = require('child_process');
 const { checkHandoff, scaffoldHandoff } = require('./lib/handoff');
 const { collectDoctorReport } = require('./lib/doctor');
-const { runApprovalStatus: runAiApprovalStatus, runApprove: runAiApprove, runDoctor: runAiDoctor, runExecutePlan: runAiExecutePlan, runExecuteSlice: runAiExecuteSlice, runOnboard, runPlan: runAiPlan, runPr: runAiPr } = require('./commands/ai');
+const { runAgent: runAiAgent, runApprovalStatus: runAiApprovalStatus, runApprove: runAiApprove, runDoctor: runAiDoctor, runExecutePlan: runAiExecutePlan, runExecuteSlice: runAiExecuteSlice, runOnboard, runPlan: runAiPlan, runPr: runAiPr } = require('./commands/ai');
 const { runPrepare } = require('./commands/prepare');
 const { runFlow } = require('./commands/flow');
 const { runGraph } = require('./commands/graph');
@@ -47,6 +47,7 @@ function printUsage() {
   npx create-quiver flow [options]
   npx create-quiver plan [options]
   npx create-quiver ai <task> [options]
+  npx create-quiver ai agent <set|list|show> [role] [options]
   npx create-quiver graph [options]
   npx create-quiver next [options]
   npx create-quiver migrate [options]
@@ -86,6 +87,7 @@ Options:
       --commit                For ai execute-slice, commit validated slice changes after provider, scope, and tests pass
       --allow-dirty           For ai execute-slice, allow pre-existing dirty files and ignore them for scope diff
       --provider <name>       Provider CLI to preflight for prepare or AI commands
+      --model <label>         Free-form model label for AI agent profiles
       --ssh-host-alias <name> SSH host alias to validate for prepare or AI commands
       --identity-file <path>  SSH identity file to validate for prepare or AI commands
       --remote <name>         Git remote name for AI PR checks
@@ -103,6 +105,8 @@ Examples:
   cd ./my-project && npx create-quiver analyze
   cd ./my-project && npx create-quiver plan --json
   cd ./my-project && npx create-quiver ai onboard --dry-run
+  cd ./my-project && npx create-quiver ai agent set planner --provider codex --model gpt-5.5
+  cd ./my-project && npx create-quiver ai agent list
   cd ./my-project && npx create-quiver ai plan --phase acceptance --input requirements.md --dry-run
   cd ./my-project && npx create-quiver ai approve --phase acceptance --input acceptance.md
   cd ./my-project && npx create-quiver ai approvals
@@ -161,8 +165,13 @@ function parseArgs(argv) {
     level: null,
     unicode: false,
     aiCommand: '',
+    aiAgentCommand: '',
+    aiAgentRole: '',
     aiPhase: 'acceptance',
     aiProvider: 'codex',
+    aiProviderExplicit: false,
+    aiModel: '',
+    aiLabel: '',
     prepareProvider: '',
     aiRole: '',
     aiContext: '',
@@ -380,6 +389,25 @@ function parseArgs(argv) {
       }
       result.aiProvider = value;
       result.prepareProvider = value;
+      result.aiProviderExplicit = true;
+      continue;
+    }
+
+    if (arg === '--model') {
+      const value = args[++index];
+      if (!value) {
+        throw new Error(formatError('missing value for --model'));
+      }
+      result.aiModel = value;
+      continue;
+    }
+
+    if (arg === '--label') {
+      const value = args[++index];
+      if (!value) {
+        throw new Error(formatError('missing value for --label'));
+      }
+      result.aiLabel = value;
       continue;
     }
 
@@ -548,6 +576,14 @@ function parseArgs(argv) {
   } else if (result.mode === 'ai') {
     if (!result.aiCommand && positional.length > 0) {
       result.aiCommand = positional.shift();
+    }
+    if (result.aiCommand === 'agent') {
+      if (!result.aiAgentCommand && positional.length > 0) {
+        result.aiAgentCommand = positional.shift();
+      }
+      if (!result.aiAgentRole && positional.length > 0) {
+        result.aiAgentRole = positional.shift();
+      }
     }
     if (positional.length > 0) {
       throw new Error(formatError('ai does not accept extra positional arguments'));
@@ -1750,7 +1786,19 @@ async function run(argv) {
 
   if (args.mode === 'ai') {
     if (!args.aiCommand) {
-      throw new Error(formatError('missing ai subcommand. Use: npx create-quiver ai onboard | plan | approve | approvals | execute-slice | execute-plan | doctor | pr'));
+      throw new Error(formatError('missing ai subcommand. Use: npx create-quiver ai onboard | plan | approve | approvals | agent | execute-slice | execute-plan | doctor | pr'));
+    }
+
+    if (args.aiCommand === 'agent') {
+      runAiAgent(process.cwd(), {
+        command: args.aiAgentCommand,
+        context: args.aiContext || undefined,
+        label: args.aiLabel || undefined,
+        model: args.aiModel || undefined,
+        provider: args.aiProviderExplicit ? args.aiProvider : undefined,
+        role: args.aiAgentRole || undefined,
+      });
+      return;
     }
 
     if (args.aiCommand === 'onboard') {
@@ -1759,6 +1807,7 @@ async function run(argv) {
         dryRun: args.dryRun,
         input: args.aiInput || undefined,
         provider: args.aiProvider,
+        providerExplicit: args.aiProviderExplicit,
         role: args.aiRole,
         timeout: args.aiTimeout,
       });
@@ -1772,6 +1821,7 @@ async function run(argv) {
         input: args.aiInput || undefined,
         phase: args.aiPhase,
         provider: args.aiProvider,
+        providerExplicit: args.aiProviderExplicit,
         role: args.aiRole,
         specSlug: args.specSlug || undefined,
         timeout: args.aiTimeout,
@@ -1800,6 +1850,7 @@ async function run(argv) {
         context: args.aiContext || undefined,
         dryRun: args.dryRun,
         provider: args.aiProvider,
+        providerExplicit: args.aiProviderExplicit,
         role: args.aiRole,
         slice: args.aiSlice || undefined,
         timeout: args.aiTimeout,
@@ -1816,6 +1867,7 @@ async function run(argv) {
         execute: args.aiExecute,
         json: args.json,
         provider: args.aiProvider,
+        providerExplicit: args.aiProviderExplicit,
         role: args.aiRole,
         specSlug: args.specSlug || undefined,
         timeout: args.aiTimeout,
@@ -1847,7 +1899,7 @@ async function run(argv) {
       return;
     }
 
-    throw new Error(formatError(`unsupported ai subcommand: ${args.aiCommand}. Supported tasks: onboard, plan, approve, approvals, execute-slice, execute-plan, doctor, pr`));
+    throw new Error(formatError(`unsupported ai subcommand: ${args.aiCommand}. Supported tasks: onboard, plan, approve, approvals, agent, execute-slice, execute-plan, doctor, pr`));
   }
 
   if (args.mode === 'graph') {
