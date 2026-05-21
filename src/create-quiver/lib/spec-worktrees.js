@@ -3,13 +3,18 @@ const path = require('path');
 
 const {
   currentBranch,
+  fetchRemote,
   hasLocalBranch,
   hasRemoteBranch,
   isCleanWorktree,
   lsRemoteHeads,
+  mergeBaseIsAncestor,
+  runGit,
+  statusPorcelain,
   worktreeAdd,
   worktreeList,
   worktreePrune,
+  worktreeRemove,
 } = require('./git');
 const { parseJsonWithComments } = require('./json');
 const { safeBranchName, worktreesRootForRepo } = require('./slice');
@@ -97,6 +102,27 @@ function resolveBaseRef(repoRoot, preferred = '') {
     }
   }
   throw new Error(formatError('missing base branch. Expected local or remote main/develop.'));
+}
+
+function resolveMergedBaseRef(repoRoot, preferred = '', remote = 'origin') {
+  const candidates = [preferred, 'main', 'develop'].filter(Boolean);
+  for (const candidate of candidates) {
+    if (hasRemoteBranch(repoRoot, candidate, remote)) {
+      return {
+        baseBranch: candidate,
+        baseRef: `${remote}/${candidate}`,
+        remote,
+      };
+    }
+    if (hasLocalBranch(repoRoot, candidate)) {
+      return {
+        baseBranch: candidate,
+        baseRef: candidate,
+        remote: '',
+      };
+    }
+  }
+  throw new Error(formatError('missing merge base branch. Expected local or remote main/develop.'));
 }
 
 function buildSpecStatus(repoRoot, specInput) {
@@ -202,6 +228,99 @@ function formatSpecStartResult(result) {
   ].join('\n')}\n`;
 }
 
+function closeSpecWorktree(repoRoot, specInput, options = {}) {
+  const specDir = findSpecDir(repoRoot, specInput);
+  const identity = resolveSpecIdentity(repoRoot, specDir);
+  const existingWorktree = findExistingWorktree(repoRoot, identity.branchName);
+  const discard = options.discard === true;
+  const dryRun = options.dryRun === true;
+  const force = options.force === true;
+  const remote = options.remote || 'origin';
+  const base = resolveMergedBaseRef(repoRoot, options.baseBranch, remote);
+
+  if (!existingWorktree) {
+    throw new Error(formatError(`missing spec worktree for branch ${identity.branchName}.`));
+  }
+
+  if (!discard && !isCleanWorktree(existingWorktree)) {
+    throw new Error(formatError(`spec worktree is dirty: ${existingWorktree}. Commit or stash before closing, or pass --discard intentionally.`));
+  }
+
+  if (!discard) {
+    const branch = currentBranch(repoRoot);
+    if (branch !== base.baseBranch) {
+      throw new Error(formatError(`spec close must run from ${base.baseBranch}. Current branch: ${branch || '(detached)'}.`));
+    }
+    if (statusPorcelain(repoRoot) !== '') {
+      throw new Error(formatError('main checkout is dirty. Commit or stash before closing the spec worktree.'));
+    }
+    if (base.remote) {
+      try {
+        fetchRemote(repoRoot, base.remote, [base.baseBranch]);
+      } catch {
+        // Local-only test repos and offline environments can still validate against the current remote ref.
+      }
+    }
+    if (hasLocalBranch(repoRoot, identity.branchName) && !mergeBaseIsAncestor(repoRoot, identity.branchName, base.baseRef)) {
+      throw new Error(formatError(`spec branch ${identity.branchName} is not merged into ${base.baseRef}. Merge the PR before cleanup, or pass --discard intentionally.`));
+    }
+  }
+
+  if (dryRun) {
+    return {
+      ...identity,
+      baseBranch: base.baseBranch,
+      baseRef: base.baseRef,
+      discarded: discard,
+      dryRun: true,
+      pulled: false,
+      remote: base.remote,
+      removed: false,
+      worktreePath: existingWorktree,
+    };
+  }
+
+  worktreeRemove(repoRoot, existingWorktree, force || discard);
+  if (!discard && base.remote) {
+    runGit(['pull', '--ff-only', remote, base.baseBranch], repoRoot);
+  }
+
+  return {
+    ...identity,
+    baseBranch: base.baseBranch,
+    baseRef: base.baseRef,
+    discarded: discard,
+    dryRun: false,
+    pulled: !discard && Boolean(base.remote),
+    remote: base.remote,
+    removed: true,
+    worktreePath: existingWorktree,
+  };
+}
+
+function formatSpecCloseResult(result) {
+  const lines = [
+    result.dryRun ? 'Spec close dry-run' : 'Spec worktree closed',
+    `Spec: ${result.relativeSpecDir}`,
+    `Branch: ${result.branchName}`,
+    `Base: ${result.baseRef}`,
+    `Worktree: ${result.worktreePath}`,
+    `Discard: ${result.discarded ? 'yes' : 'no'}`,
+  ];
+
+  if (result.dryRun) {
+    lines.push(`Would remove worktree: ${result.worktreePath}`);
+    if (!result.discarded && result.remote) {
+      lines.push(`Would pull: git pull --ff-only ${result.remote} ${result.baseBranch}`);
+    }
+  } else {
+    lines.push(`Removed worktree: ${result.removed ? 'yes' : 'no'}`);
+    lines.push(`Pulled main checkout: ${result.pulled ? 'yes' : 'no'}`);
+  }
+
+  return `${lines.join('\n')}\n`;
+}
+
 function ensureSpecSliceZeroComplete(repoRoot, specInput) {
   const status = buildSpecStatus(repoRoot, specInput);
   if (!status.slice00) {
@@ -215,12 +334,16 @@ function ensureSpecSliceZeroComplete(repoRoot, specInput) {
 
 module.exports = {
   buildSpecStatus,
+  closeSpecWorktree,
   ensureSpecSliceZeroComplete,
   findSpecDir,
+  findExistingWorktree,
+  formatSpecCloseResult,
   formatSpecStartResult,
   formatSpecStatus,
   listSpecSlices,
   resolveBaseRef,
+  resolveMergedBaseRef,
   resolveSpecIdentity,
   startSpecWorktree,
 };

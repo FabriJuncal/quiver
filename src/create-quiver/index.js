@@ -13,7 +13,7 @@ const { buildInitLayout, formatInitLayoutPlan } = require('./lib/init-layout');
 const { initializeProjectDocs, installSelfAsDevDep, refreshAiContextDoc } = require('./lib/init-docs');
 const { checkPrReadiness, checkScope, checkSliceReadiness } = require('./lib/readiness');
 const { cleanupSlice, refreshActiveSlicesBoard, startSlice } = require('./lib/lifecycle');
-const { buildSpecStatus, formatSpecStartResult, formatSpecStatus, startSpecWorktree } = require('./lib/spec-worktrees');
+const { buildSpecStatus, closeSpecWorktree, formatSpecCloseResult, formatSpecStartResult, formatSpecStatus, startSpecWorktree } = require('./lib/spec-worktrees');
 const { getContextPathExclusionReason } = require('./lib/ai/safety');
 const { relativePosixPath, resolveTargetRoot } = require('./lib/paths');
 const {
@@ -60,6 +60,7 @@ function printUsage() {
   npx create-quiver refresh-active-slices
   npx create-quiver spec start <spec-dir>
   npx create-quiver spec status <spec-dir>
+  npx create-quiver spec close <spec-dir>
 
 Options:
   -n, --name <project-name>   Project name to generate
@@ -127,6 +128,7 @@ Examples:
   cd ./my-project && npx create-quiver refresh-active-slices
   cd ./my-project && npx create-quiver spec start specs/my-project
   cd ./my-project && npx create-quiver spec status specs/my-project
+  cd ./my-project && npx create-quiver spec close specs/my-project --dry-run
   node bin/create-quiver.js doctor --dir ./my-project
 `);
 }
@@ -556,7 +558,7 @@ function parseArgs(argv) {
       result.specCommand = positional.shift();
     }
     if (!result.specCommand) {
-      throw new Error(formatError('missing spec subcommand. Use: npx create-quiver spec <start|status> <spec-dir>'));
+      throw new Error(formatError('missing spec subcommand. Use: npx create-quiver spec <start|status|close> <spec-dir>'));
     }
     if (positional.length > 0) {
       result.targetDir = positional.shift();
@@ -1925,7 +1927,7 @@ async function run(argv) {
 
   if (args.mode === 'spec') {
     if (!args.targetDir || args.targetDir === '.') {
-      throw new Error(formatError('missing spec directory. Use: npx create-quiver spec <start|status> <spec-dir>'));
+      throw new Error(formatError('missing spec directory. Use: npx create-quiver spec <start|status|close> <spec-dir>'));
     }
 
     if (args.specCommand === 'start') {
@@ -1940,7 +1942,19 @@ async function run(argv) {
       return;
     }
 
-    throw new Error(formatError(`unsupported spec subcommand: ${args.specCommand}. Supported tasks: start, status`));
+    if (args.specCommand === 'close') {
+      const report = closeSpecWorktree(process.cwd(), args.targetDir, {
+        baseBranch: args.aiBaseBranch,
+        discard: args.discard,
+        dryRun: args.dryRun,
+        force: args.force,
+        remote: args.aiRemote,
+      });
+      process.stdout.write(formatSpecCloseResult(report));
+      return;
+    }
+
+    throw new Error(formatError(`unsupported spec subcommand: ${args.specCommand}. Supported tasks: start, status, close`));
   }
 
   const packageRoot = path.resolve(__dirname, '../..');

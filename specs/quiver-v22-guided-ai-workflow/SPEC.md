@@ -205,7 +205,7 @@ If a short `quiver` binary is introduced, it must be documented as an alias or p
 | slice-06 | Executor validation, recovery, and commit per slice | Completed | slice-05 |
 | slice-07 | Execution waves and safe delegation | Completed | slice-06 |
 | slice-08 | PR creation with gh and SSH guidance | Completed | slice-05 |
-| slice-09 | Post-merge cleanup and release safety | Draft | slice-07, slice-08 |
+| slice-09 | Post-merge cleanup and release safety | Completed | slice-07, slice-08 |
 | slice-10 | Final docs, smokes, and release readiness | Draft | slice-09 |
 
 ## Risks
