@@ -1,8 +1,10 @@
 const fs = require('node:fs');
 const path = require('node:path');
+const cp = require('node:child_process');
 
 const { buildContextPackMetadata, normalizeRole } = require('./context-packs');
 const { buildProviderInvocation, runProvider } = require('./providers');
+const { runGit } = require('../git');
 const { captureWorktreeSnapshot, validateScopeSnapshot } = require('../scope');
 const { resolveSliceContext } = require('../slice');
 
@@ -74,6 +76,28 @@ function formatList(items) {
   return items.map((item) => `- ${item}`);
 }
 
+function buildRecoveryGuidance(slice) {
+  const sliceRef = slice && slice.sliceRel ? slice.sliceRel : '<slice.json>';
+  return [
+    'Recovery:',
+    `- Retry: npx create-quiver ai execute-slice --slice ${sliceRef}`,
+    '- Abort: inspect the local changes, then manually revert or stash anything you do not want to keep.',
+    '- Commit: rerun with --commit only after provider, scope, and validation pass.',
+  ].join('\n');
+}
+
+function appendRecovery(error, slice) {
+  if (!error || !error.message || error.message.includes('Recovery:')) {
+    return error;
+  }
+
+  const wrapped = new Error(`${error.message}\n\n${buildRecoveryGuidance(slice)}`);
+  wrapped.cause = error;
+  wrapped.code = error.code;
+  wrapped.details = error.details;
+  return wrapped;
+}
+
 function buildExecuteSliceContext({ repoRoot, slicePath, role, context }) {
   const canonicalRepoRoot = canonicalizeRepoRoot(repoRoot);
   const resolvedRole = normalizeRole(role || DEFAULT_EXECUTE_ROLE);
@@ -123,7 +147,7 @@ function buildExecuteSliceContext({ repoRoot, slicePath, role, context }) {
 
   sections.push(
     'Constraints:',
-    '- Do not commit automatically.',
+    '- Do not commit manually. Quiver can create the slice commit after scope and validation pass when the user enables --commit.',
     '- Do not fix scope violations automatically.',
     '- Do not run multiple executors concurrently.',
     '- Stay inside the allowed files declared by slice.json.',
@@ -142,7 +166,7 @@ function buildExecuteSliceContext({ repoRoot, slicePath, role, context }) {
   };
 }
 
-function formatExecuteSliceDryRunReport({ provider, role, contextPack, slice, briefPath, invocation, validationCommands, allowedFiles }) {
+function formatExecuteSliceDryRunReport({ provider, role, contextPack, slice, briefPath, invocation, validationCommands, allowedFiles, commitEnabled }) {
   const lines = [
     'AI execute-slice dry-run',
     `Provider: ${provider}`,
@@ -155,6 +179,7 @@ function formatExecuteSliceDryRunReport({ provider, role, contextPack, slice, br
     `Timeout: ${invocation.timeoutMs}ms`,
     `Prompt transport: ${invocation.promptTransport.mode}`,
     `Prompt length: ${invocation.promptLength} bytes`,
+    `Commit after validation: ${commitEnabled ? 'enabled' : 'disabled'}`,
     'Allowed files:',
     ...formatList(allowedFiles),
     'Validation commands:',
@@ -164,7 +189,7 @@ function formatExecuteSliceDryRunReport({ provider, role, contextPack, slice, br
   return `${lines.join('\n')}\n`;
 }
 
-function formatExecuteSliceResult({ slice, changedFiles, scopeResult }) {
+function formatExecuteSliceResult({ slice, changedFiles, scopeResult, validationResults, commitResult, commitEnabled }) {
   const lines = [
     'AI execute-slice completed',
     `Slice: ${slice.sliceId}`,
@@ -177,6 +202,17 @@ function formatExecuteSliceResult({ slice, changedFiles, scopeResult }) {
   }
 
   lines.push(`Scope validation: ${scopeResult.ok ? 'passed' : 'failed'}`);
+  if (!Array.isArray(validationResults) || validationResults.length === 0) {
+    lines.push('Validation commands: skipped (none declared)');
+  } else {
+    lines.push(`Validation commands: passed (${validationResults.length})`);
+  }
+  if (commitResult) {
+    lines.push(`Commit: created ${commitResult.hash}`);
+    lines.push(`Commit message: ${commitResult.message}`);
+  } else {
+    lines.push(`Commit: ${commitEnabled ? 'not created' : 'skipped'}`);
+  }
 
   return `${lines.join('\n')}\n`;
 }
@@ -188,6 +224,100 @@ function annotateProviderError(error, scope) {
   wrapped.code = error && error.code ? error.code : 'AI_PROVIDER_ERROR';
   wrapped.details = error && error.details ? error.details : undefined;
   return wrapped;
+}
+
+function runValidationCommand(command, repoRoot) {
+  try {
+    const stdout = cp.execSync(command, {
+      cwd: repoRoot,
+      encoding: 'utf8',
+      shell: true,
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    return {
+      command,
+      ok: true,
+      stdout,
+      stderr: '',
+      exitCode: 0,
+    };
+  } catch (error) {
+    return {
+      command,
+      ok: false,
+      stdout: error.stdout ? String(error.stdout) : '',
+      stderr: error.stderr ? String(error.stderr) : '',
+      exitCode: Number.isInteger(error.status) ? error.status : 1,
+      error,
+    };
+  }
+}
+
+function runValidationCommands(repoRoot, commands, runner = runValidationCommand) {
+  const results = [];
+  for (const command of commands) {
+    const result = runner(command, repoRoot);
+    results.push(result);
+    if (!result.ok) {
+      const details = [
+        formatError(`validation command failed: ${command}`),
+        `Exit code: ${result.exitCode}`,
+      ];
+      if (result.stderr) {
+        details.push(`stderr:\n${result.stderr.trimEnd()}`);
+      }
+      if (result.stdout) {
+        details.push(`stdout:\n${result.stdout.trimEnd()}`);
+      }
+      const error = new Error(details.join('\n'));
+      error.code = 'VALIDATION_FAILED';
+      error.details = { command, result, results };
+      throw error;
+    }
+  }
+  return results;
+}
+
+function commitTypeForSlice(slice) {
+  const type = String(slice.json.type || slice.json.git?.branch_type || '').trim().toLowerCase();
+  if (type === 'bugfix' || type === 'hotfix' || type === 'fix') {
+    return 'fix';
+  }
+  if (type === 'docs' || type === 'documentation') {
+    return 'docs';
+  }
+  if (type === 'test' || type === 'tests') {
+    return 'test';
+  }
+  if (type === 'chore') {
+    return 'chore';
+  }
+  return 'feat';
+}
+
+function buildSliceCommitMessage(slice) {
+  const title = String(slice.json.title || slice.sliceId || 'slice').trim();
+  const ticket = String(slice.ticket || '').trim();
+  const subject = ticket ? `${ticket} ${title}` : title;
+  return `${commitTypeForSlice(slice)}: ${subject}`;
+}
+
+function commitSliceChanges(repoRoot, slice, changedFiles, options = {}) {
+  if (!Array.isArray(changedFiles) || changedFiles.length === 0) {
+    const error = new Error(formatError('commit requested but provider produced no changed files.'));
+    error.code = 'NO_CHANGES_TO_COMMIT';
+    throw error;
+  }
+
+  const message = options.message || buildSliceCommitMessage(slice);
+  runGit(['add', '--', ...changedFiles], repoRoot);
+  runGit(['commit', '-m', message], repoRoot);
+
+  return {
+    files: changedFiles,
+    hash: runGit(['rev-parse', '--short', 'HEAD'], repoRoot),
+    message,
+  };
 }
 
 async function runExecuteSlice(repoRoot, options = {}) {
@@ -231,6 +361,7 @@ async function runExecuteSlice(repoRoot, options = {}) {
       briefPath: executorContext.briefPath,
       allowedFiles: executorContext.allowedFiles,
       validationCommands: executorContext.validationCommands,
+      commitEnabled: options.commit === true,
     };
     process.stdout.write(formatExecuteSliceDryRunReport({
       provider,
@@ -241,13 +372,14 @@ async function runExecuteSlice(repoRoot, options = {}) {
       invocation,
       validationCommands: executorContext.validationCommands,
       allowedFiles: executorContext.allowedFiles,
+      commitEnabled: options.commit === true,
     }));
     return report;
   }
 
   const beforeSnapshot = captureWorktreeSnapshot(repoRoot);
   if (beforeSnapshot.files.length > 0 && options.allowDirty !== true) {
-    throw new Error(formatError(`ai execute-slice requires a clean worktree before running. Commit or stash first: ${beforeSnapshot.files.join(', ')}`));
+    throw appendRecovery(new Error(formatError(`ai execute-slice requires a clean worktree before running. Commit or stash first: ${beforeSnapshot.files.join(', ')}`)), executorContext.slice);
   }
 
   let result;
@@ -264,7 +396,7 @@ async function runExecuteSlice(repoRoot, options = {}) {
       tempFilePrefix: options.tempFilePrefix,
     });
   } catch (error) {
-    throw annotateProviderError(error, 'execute-slice');
+    throw appendRecovery(annotateProviderError(error, 'execute-slice'), executorContext.slice);
   }
 
   if (result.stdout) {
@@ -275,21 +407,64 @@ async function runExecuteSlice(repoRoot, options = {}) {
   }
 
   if (!result.ok) {
-    throw annotateProviderError(result.error || new Error('provider run failed'), 'execute-slice');
+    throw appendRecovery(annotateProviderError(result.error || new Error('provider run failed'), 'execute-slice'), executorContext.slice);
   }
 
   const afterSnapshot = captureWorktreeSnapshot(repoRoot);
-  const scopeResult = validateScopeSnapshot({
-    allowedFiles: executorContext.allowedFiles,
-    beforeSnapshot,
-    afterSnapshot,
-    strict: true,
-  });
+  let scopeResult;
+  try {
+    scopeResult = validateScopeSnapshot({
+      allowedFiles: executorContext.allowedFiles,
+      beforeSnapshot,
+      afterSnapshot,
+      strict: true,
+    });
+  } catch (error) {
+    throw appendRecovery(error, executorContext.slice);
+  }
+
+  let validationResults = [];
+  try {
+    validationResults = runValidationCommands(
+      repoRoot,
+      executorContext.validationCommands,
+      options.runValidationCommandFn,
+    );
+  } catch (error) {
+    throw appendRecovery(error, executorContext.slice);
+  }
+
+  const finalSnapshot = captureWorktreeSnapshot(repoRoot);
+  let finalScopeResult;
+  try {
+    finalScopeResult = validateScopeSnapshot({
+      allowedFiles: executorContext.allowedFiles,
+      beforeSnapshot,
+      afterSnapshot: finalSnapshot,
+      strict: true,
+    });
+  } catch (error) {
+    throw appendRecovery(error, executorContext.slice);
+  }
+
+  let commitResult = null;
+  if (options.commit === true) {
+    try {
+      commitResult = commitSliceChanges(repoRoot, executorContext.slice, finalScopeResult.changedFiles, {
+        message: options.commitMessage,
+      });
+    } catch (error) {
+      throw appendRecovery(error, executorContext.slice);
+    }
+  }
 
   process.stdout.write(formatExecuteSliceResult({
     slice: executorContext.slice,
-    changedFiles: scopeResult.changedFiles,
-    scopeResult,
+    changedFiles: finalScopeResult.changedFiles,
+    scopeResult: finalScopeResult,
+    validationResults,
+    commitResult,
+    commitEnabled: options.commit === true,
   }));
 
   return {
@@ -302,8 +477,10 @@ async function runExecuteSlice(repoRoot, options = {}) {
     invocation,
     result,
     beforeSnapshot,
-    afterSnapshot,
-    scopeResult,
+    afterSnapshot: finalSnapshot,
+    scopeResult: finalScopeResult,
+    validationResults,
+    commitResult,
   };
 }
 
@@ -312,10 +489,16 @@ module.exports = {
   DEFAULT_EXECUTE_PROVIDER,
   DEFAULT_EXECUTE_ROLE,
   annotateProviderError,
+  appendRecovery,
   buildExecuteSliceContext,
+  buildRecoveryGuidance,
+  buildSliceCommitMessage,
   canonicalizeRepoRoot,
+  commitSliceChanges,
   formatExecuteSliceDryRunReport,
   formatExecuteSliceResult,
+  runValidationCommand,
+  runValidationCommands,
   normalizeTimeout,
   readTextFile,
   resolveSliceJsonPath,

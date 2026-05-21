@@ -78,6 +78,8 @@ Options:
       --legacy-scripts        Include legacy Bash wrappers in init profile
       --include-templates     Export packaged templates in init profile
       --dry-run               Preview init, prepare, or AI work without executing writes/providers
+      --commit                For ai execute-slice, commit validated slice changes after provider, scope, and tests pass
+      --allow-dirty           For ai execute-slice, allow pre-existing dirty files and ignore them for scope diff
       --provider <name>       Provider CLI to preflight for prepare or AI commands
       --ssh-host-alias <name> SSH host alias to validate for prepare or AI commands
       --identity-file <path>  SSH identity file to validate for prepare or AI commands
@@ -96,6 +98,7 @@ Examples:
   cd ./my-project && npx create-quiver ai approve --phase acceptance --input acceptance.md
   cd ./my-project && npx create-quiver ai approvals
   cd ./my-project && npx create-quiver ai execute-slice --slice specs/my-project/slices/slice-01/slice.json --dry-run
+  cd ./my-project && npx create-quiver ai execute-slice --slice specs/my-project/slices/slice-01/slice.json --commit
   cd ./my-project && npx create-quiver ai doctor --dry-run --ssh-host-alias github-work --identity-file ~/.ssh/github-work
   cd ./my-project && npx create-quiver ai pr --dry-run --ssh-host-alias github-work --identity-file ~/.ssh/github-work
   cd ./my-project && npx create-quiver prepare --dry-run --provider codex --ssh-host-alias github-work --identity-file ~/.ssh/github-work
@@ -154,6 +157,8 @@ function parseArgs(argv) {
     aiInput: '',
     aiSlice: '',
     aiTimeout: null,
+    aiCommit: false,
+    aiAllowDirty: false,
     aiSshHostAlias: '',
     aiIdentityFile: '',
     aiRemote: 'origin',
@@ -247,6 +252,16 @@ function parseArgs(argv) {
 
     if (arg === '--dry-run') {
       result.dryRun = true;
+      continue;
+    }
+
+    if (arg === '--commit') {
+      result.aiCommit = true;
+      continue;
+    }
+
+    if (arg === '--allow-dirty') {
+      result.aiAllowDirty = true;
       continue;
     }
 
@@ -1725,6 +1740,8 @@ async function run(argv) {
 
     if (args.aiCommand === 'execute-slice') {
       await runAiExecuteSlice(process.cwd(), {
+        allowDirty: args.aiAllowDirty,
+        commit: args.aiCommit,
         context: args.aiContext || undefined,
         dryRun: args.dryRun,
         provider: args.aiProvider,

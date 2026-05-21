@@ -61,7 +61,23 @@ test('ai execute-slice CLI dry-run prints executor context and does not call pro
     assert.ok(output.includes('Role: executor'));
     assert.ok(output.includes('Context pack: slice'));
     assert.ok(output.includes('Slice: slice-01-demo'));
+    assert.ok(output.includes('Commit after validation: disabled'));
     assert.ok(output.includes('src/app.js'));
+  } finally {
+    project.cleanup();
+  }
+});
+
+test('ai execute-slice CLI dry-run shows opt-in commit mode', () => {
+  const project = createProject();
+  try {
+    const output = execFileSync('node', [BIN_PATH, 'ai', 'execute-slice', '--slice', project.slicePath, '--dry-run', '--commit'], {
+      cwd: project.root,
+      encoding: 'utf8',
+    });
+
+    assert.ok(output.includes('AI execute-slice dry-run'));
+    assert.ok(output.includes('Commit after validation: enabled'));
   } finally {
     project.cleanup();
   }

@@ -2,7 +2,7 @@
 
 ## Status
 
-Implementation is in progress. Slices `slice-00` through `slice-05` are completed.
+Implementation is in progress. Slices `slice-00` through `slice-06` are completed.
 
 ## Slice Evidence
 
@@ -14,7 +14,7 @@ Implementation is in progress. Slices `slice-00` through `slice-05` are complete
 | slice-03 | Analyze now refreshes `docs/AI_CONTEXT.md`, keeps `docs/PROJECT_MAP.md` visible, keeps raw scan under `.quiver/scans/PROJECT_SCAN.json`, summarizes missing/assumed context, and excludes secret/noisy paths from AI-facing context. Targeted tests passed. |
 | slice-04 | Planner approval state implemented under `.quiver/approvals`, with draft persistence, explicit approvals, default use of approved acceptance/technical-plan inputs, `ai approvals` status, and blocking of unapproved/stale inputs. Targeted tests passed. |
 | slice-05 | Spec-level worktree lifecycle implemented with `spec start/status`, safe main/develop base selection, dirty worktree protection, and `slice-00` completion guard for later `start-slice` executions. Targeted tests passed. |
-| slice-06 | Pending. |
+| slice-06 | `ai execute-slice` now keeps executor context bounded, validates scope, runs declared validation commands, reports retry/abort guidance on failure, and creates exactly one commit when `--commit` is enabled after successful provider, scope, and validation stages. Targeted tests passed. |
 | slice-07 | Pending. |
 | slice-08 | Pending. |
 | slice-09 | Pending. |
@@ -30,6 +30,8 @@ Implementation is in progress. Slices `slice-00` through `slice-05` are complete
 - 2026-05-21: `node --test tests/commands/ai-plan.test.js tests/commands/ai-plan-spec-phase.test.js tests/lib/approvals.test.js`
 - 2026-05-21: `node --test tests/lib/lifecycle.test.js tests/commands/spec-worktree.test.js`
 - 2026-05-21: `node --test tests/lib/check-slice.test.js tests/commands/next.test.js`
+- 2026-05-21: `git diff --check`
+- 2026-05-21: `node --test tests/commands/ai-execute-slice.test.js tests/lib/ai-executor.test.js tests/lib/scope.test.js`
 - 2026-05-21: `git diff --check`
 
 ## Notes
