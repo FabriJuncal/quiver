@@ -5,6 +5,7 @@ const { execFileSync } = require('child_process');
 const { checkHandoff, scaffoldHandoff } = require('./lib/handoff');
 const { collectDoctorReport } = require('./lib/doctor');
 const { runDoctor: runAiDoctor, runExecuteSlice: runAiExecuteSlice, runOnboard, runPlan: runAiPlan, runPr: runAiPr } = require('./commands/ai');
+const { runPrepare } = require('./commands/prepare');
 const { runGraph } = require('./commands/graph');
 const { runNext } = require('./commands/next');
 const { runPlan } = require('./commands/plan');
@@ -46,6 +47,7 @@ function printUsage() {
   npx create-quiver next [options]
   npx create-quiver migrate [options]
   npx create-quiver doctor [options]
+  npx create-quiver prepare [options]
   npx create-quiver start-slice [options] <slice.json>
   npx create-quiver check-slice [options] <slice.json>
   npx create-quiver check-pr <slice.json>
@@ -71,7 +73,10 @@ Options:
       --full                  Plan or run the full compatibility init profile
       --legacy-scripts        Include legacy Bash wrappers in init profile
       --include-templates     Export packaged templates in init profile
-      --dry-run               Preview init or AI work without executing writes/providers
+      --dry-run               Preview init, prepare, or AI work without executing writes/providers
+      --provider <name>       Provider CLI to preflight for prepare or AI commands
+      --ssh-host-alias <name> SSH host alias to validate for prepare or AI commands
+      --identity-file <path>  SSH identity file to validate for prepare or AI commands
   -y, --yes                   Skip prompts and use the provided inputs
   -h, --help                  Show this help message
 
@@ -87,6 +92,7 @@ Examples:
   cd ./my-project && npx create-quiver ai execute-slice --slice specs/my-project/slices/slice-01/slice.json --dry-run
   cd ./my-project && npx create-quiver ai doctor --dry-run --ssh-host-alias github-work --identity-file ~/.ssh/github-work
   cd ./my-project && npx create-quiver ai pr --dry-run --ssh-host-alias github-work --identity-file ~/.ssh/github-work
+  cd ./my-project && npx create-quiver prepare --dry-run --provider codex --ssh-host-alias github-work --identity-file ~/.ssh/github-work
   cd ./my-project && npx create-quiver graph --show-conflicts
   cd ./my-project && npx create-quiver graph --format mermaid
   cd ./my-project && npx create-quiver graph --format dot
@@ -134,6 +140,7 @@ function parseArgs(argv) {
     aiCommand: '',
     aiPhase: 'acceptance',
     aiProvider: 'codex',
+    prepareProvider: '',
     aiRole: '',
     aiContext: '',
     aiInput: '',
@@ -149,7 +156,7 @@ function parseArgs(argv) {
   };
 
   const args = [...argv];
-  const commandModes = new Set(['init', 'plan', 'graph', 'next', 'doctor', 'analyze', 'migrate', 'start-slice', 'check-slice', 'check-pr', 'check-handoff', 'new-handoff', 'cleanup-slice', 'check-scope', 'refresh-active-slices', 'ai']);
+  const commandModes = new Set(['init', 'plan', 'graph', 'next', 'doctor', 'prepare', 'analyze', 'migrate', 'start-slice', 'check-slice', 'check-pr', 'check-handoff', 'new-handoff', 'cleanup-slice', 'check-scope', 'refresh-active-slices', 'ai']);
   if (commandModes.has(args[0])) {
     result.mode = args[0];
     result.explicitInit = args[0] === 'init';
@@ -319,6 +326,7 @@ function parseArgs(argv) {
         throw new Error(formatError('missing value for --provider'));
       }
       result.aiProvider = value;
+      result.prepareProvider = value;
       continue;
     }
 
@@ -468,6 +476,10 @@ function parseArgs(argv) {
     }
     if (positional.length > 0) {
       throw new Error(formatError('ai does not accept extra positional arguments'));
+    }
+  } else if (result.mode === 'prepare') {
+    if (positional.length > 0) {
+      throw new Error(formatError('prepare does not accept positional arguments'));
     }
   } else if (result.mode === 'refresh-active-slices') {
     if (positional.length > 0) {
@@ -1576,6 +1588,16 @@ async function run(argv) {
     return;
   }
 
+  if (args.mode === 'prepare') {
+    await runPrepare(process.cwd(), {
+      dryRun: args.dryRun,
+      identityFile: args.aiIdentityFile || undefined,
+      provider: args.prepareProvider || undefined,
+      sshHostAlias: args.aiSshHostAlias || undefined,
+    });
+    return;
+  }
+
   if (args.mode === 'ai') {
     if (!args.aiCommand) {
       throw new Error(formatError('missing ai subcommand. Use: npx create-quiver ai onboard | plan | execute-slice | doctor | pr'));
@@ -1786,5 +1808,6 @@ module.exports = {
   runAnalyze,
   runDoctor,
   runMigrate,
+  runPrepare,
   run,
 };
