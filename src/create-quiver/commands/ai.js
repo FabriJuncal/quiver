@@ -4,7 +4,7 @@ const path = require('node:path');
 const { buildContextPackMetadata, normalizeRole } = require('../lib/ai/context-packs');
 const { runExecuteSlice } = require('../lib/ai/executor');
 const { runExecutePlan } = require('../lib/ai/execution-plan');
-const { formatPreflightReport, preflightGitHubPr } = require('../lib/ai/github');
+const { buildPrCreatePlan, formatPreflightReport, formatPrCreateReport, preflightGitHubPr, runGhPrCreate } = require('../lib/ai/github');
 const { buildSpecGenerationManifest, describeSpecGeneration, generateSpecArtifacts } = require('../lib/ai/spec-generator');
 const { buildProviderInvocation, runProvider } = require('../lib/ai/providers');
 const {
@@ -507,7 +507,69 @@ async function runGitHubTask(repoRoot, options = {}, mode = 'pr') {
 }
 
 async function runPr(repoRoot, options = {}) {
-  return runGitHubTask(repoRoot, options, 'pr');
+  const dryRun = options.dryRun === true;
+  const create = options.create === true;
+  let preflight;
+
+  try {
+    preflight = await (options.preflightFn || preflightGitHubPr)(repoRoot, {
+      remote: options.remote,
+      sshHostAlias: options.sshHostAlias,
+      identityFile: options.identityFile,
+      gitFlowGuidePath: options.gitFlowGuidePath,
+      ghCommand: options.ghCommand,
+      ghProbe: options.ghProbe,
+      ghAuthProbe: options.ghAuthProbe,
+      ghProbeArgs: options.ghProbeArgs,
+      ghAuthArgs: options.ghAuthArgs,
+      blockedBranches: options.blockedBranches,
+    });
+  } catch (error) {
+    throw annotateGitHubError(error, 'pr');
+  }
+
+  let plan;
+  try {
+    plan = buildPrCreatePlan(repoRoot, preflight, {
+      baseBranch: options.baseBranch,
+      ghCommand: options.ghCommand,
+      input: options.input,
+      prBodyPath: options.prBodyPath,
+      title: options.title,
+    });
+  } catch (error) {
+    throw annotateGitHubError(error, 'pr');
+  }
+
+  if (dryRun || !create) {
+    process.stdout.write(formatPrCreateReport({ preflight, plan }, { dryRun, create }));
+    return {
+      task: 'pr',
+      dryRun,
+      create,
+      preflight,
+      plan,
+    };
+  }
+
+  let result;
+  try {
+    result = runGhPrCreate(plan, {
+      ghCreateRunner: options.ghCreateRunner,
+    });
+  } catch (error) {
+    throw annotateGitHubError(error, 'pr');
+  }
+
+  process.stdout.write(formatPrCreateReport({ preflight, plan, result }, { dryRun: false, create: true }));
+  return {
+    task: 'pr',
+    dryRun: false,
+    create: true,
+    preflight,
+    plan,
+    result,
+  };
 }
 
 async function runDoctor(repoRoot, options = {}) {

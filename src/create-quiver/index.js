@@ -79,11 +79,15 @@ Options:
       --include-templates     Export packaged templates in init profile
       --dry-run               Preview init, prepare, or AI work without executing writes/providers
       --execute               For ai execute-plan, run the planned slices instead of printing commands
+      --create                For ai pr, create the PR after preflight instead of printing the plan only
       --commit                For ai execute-slice, commit validated slice changes after provider, scope, and tests pass
       --allow-dirty           For ai execute-slice, allow pre-existing dirty files and ignore them for scope diff
       --provider <name>       Provider CLI to preflight for prepare or AI commands
       --ssh-host-alias <name> SSH host alias to validate for prepare or AI commands
       --identity-file <path>  SSH identity file to validate for prepare or AI commands
+      --remote <name>         Git remote name for AI PR checks
+      --base <branch>         Base branch for ai pr create (default: main)
+      --title <text>          Override PR title for ai pr create
   -y, --yes                   Skip prompts and use the provided inputs
   -h, --help                  Show this help message
 
@@ -103,6 +107,7 @@ Examples:
   cd ./my-project && npx create-quiver ai execute-plan --dry-run --commit
   cd ./my-project && npx create-quiver ai doctor --dry-run --ssh-host-alias github-work --identity-file ~/.ssh/github-work
   cd ./my-project && npx create-quiver ai pr --dry-run --ssh-host-alias github-work --identity-file ~/.ssh/github-work
+  cd ./my-project && npx create-quiver ai pr --create --input specs/my-project/pr.md --ssh-host-alias github-work --identity-file ~/.ssh/github-work
   cd ./my-project && npx create-quiver prepare --dry-run --provider codex --ssh-host-alias github-work --identity-file ~/.ssh/github-work
   cd ./my-project && npx create-quiver graph --show-conflicts
   cd ./my-project && npx create-quiver graph --format mermaid
@@ -162,6 +167,9 @@ function parseArgs(argv) {
     aiCommit: false,
     aiAllowDirty: false,
     aiExecute: false,
+    aiCreate: false,
+    aiBaseBranch: 'main',
+    aiTitle: '',
     aiSshHostAlias: '',
     aiIdentityFile: '',
     aiRemote: 'origin',
@@ -265,6 +273,11 @@ function parseArgs(argv) {
 
     if (arg === '--execute') {
       result.aiExecute = true;
+      continue;
+    }
+
+    if (arg === '--create') {
+      result.aiCreate = true;
       continue;
     }
 
@@ -438,6 +451,24 @@ function parseArgs(argv) {
         throw new Error(formatError('missing value for --remote'));
       }
       result.aiRemote = value;
+      continue;
+    }
+
+    if (arg === '--base') {
+      const value = args[++index];
+      if (!value) {
+        throw new Error(formatError('missing value for --base'));
+      }
+      result.aiBaseBranch = value;
+      continue;
+    }
+
+    if (arg === '--title') {
+      const value = args[++index];
+      if (!value) {
+        throw new Error(formatError('missing value for --title'));
+      }
+      result.aiTitle = value;
       continue;
     }
 
@@ -1788,10 +1819,14 @@ async function run(argv) {
 
     if (args.aiCommand === 'pr') {
       await runAiPr(process.cwd(), {
+        baseBranch: args.aiBaseBranch,
+        create: args.aiCreate,
         dryRun: args.dryRun,
+        input: args.aiInput || undefined,
         remote: args.aiRemote || undefined,
         sshHostAlias: args.aiSshHostAlias || undefined,
         identityFile: args.aiIdentityFile || undefined,
+        title: args.aiTitle || undefined,
       });
       return;
     }

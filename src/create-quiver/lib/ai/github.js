@@ -249,6 +249,157 @@ function ensureIdentityFile(repoRoot, identityFile) {
   return resolved;
 }
 
+function findPrBodyCandidates(repoRoot) {
+  const candidates = [];
+  const rootPr = path.join(repoRoot, 'pr.md');
+  if (fs.existsSync(rootPr)) {
+    candidates.push(rootPr);
+  }
+
+  const specsDir = path.join(repoRoot, 'specs');
+  if (fs.existsSync(specsDir)) {
+    for (const entry of fs.readdirSync(specsDir, { withFileTypes: true })) {
+      if (!entry.isDirectory()) {
+        continue;
+      }
+      const candidate = path.join(specsDir, entry.name, 'pr.md');
+      if (fs.existsSync(candidate)) {
+        candidates.push(candidate);
+      }
+    }
+  }
+
+  return candidates.sort((left, right) => left.localeCompare(right));
+}
+
+function resolvePrBodyPath(repoRoot, prBodyPath) {
+  const configured = String(prBodyPath || '').trim();
+  if (configured) {
+    const resolved = resolveConfiguredPath(repoRoot, configured);
+    if (!fs.existsSync(resolved)) {
+      throw createError('MISSING_PR_BODY', formatError(`missing PR body file at ${resolved}. Pass --input specs/<spec-slug>/pr.md or generate pr.md first.`), {
+        prBodyPath: configured,
+        resolvedPrBodyPath: resolved,
+      });
+    }
+    return resolved;
+  }
+
+  const candidates = findPrBodyCandidates(repoRoot);
+  if (candidates.length === 1) {
+    return candidates[0];
+  }
+  if (candidates.length === 0) {
+    throw createError('MISSING_PR_BODY', formatError('missing PR body file. Pass --input specs/<spec-slug>/pr.md or generate pr.md first.'), {
+      candidates,
+    });
+  }
+
+  throw createError('AMBIGUOUS_PR_BODY', formatError(`multiple pr.md files found: ${candidates.map((item) => path.relative(repoRoot, item).split(path.sep).join('/')).join(', ')}. Pass --input with the intended PR body.`), {
+    candidates,
+  });
+}
+
+function readPrBody(repoRoot, prBodyPath) {
+  const resolved = resolvePrBodyPath(repoRoot, prBodyPath);
+  const body = fs.readFileSync(resolved, 'utf8');
+  if (!body.trim()) {
+    throw createError('EMPTY_PR_BODY', formatError(`PR body file is empty: ${path.relative(repoRoot, resolved).split(path.sep).join('/')}`), {
+      prBodyPath: resolved,
+    });
+  }
+  return {
+    body,
+    path: resolved,
+  };
+}
+
+function extractPrTitle(prBody, fallbackTitle) {
+  const lines = String(prBody || '').split(/\r?\n/);
+  const titleIndex = lines.findIndex((line) => /^##\s+Title\s*$/i.test(line.trim()));
+  if (titleIndex !== -1) {
+    for (const line of lines.slice(titleIndex + 1)) {
+      const value = line.trim().replace(/^#+\s*/, '');
+      if (value) {
+        return value;
+      }
+    }
+  }
+
+  const firstHeading = lines.find((line) => /^#\s+\S/.test(line.trim()));
+  if (firstHeading) {
+    return firstHeading.trim().replace(/^#\s+/, '');
+  }
+
+  return fallbackTitle || 'Quiver PR';
+}
+
+function buildPrCreateArgs(plan) {
+  const args = [
+    'pr',
+    'create',
+    '--base',
+    plan.baseBranch,
+    '--head',
+    plan.branchName,
+    '--title',
+    plan.title,
+    '--body-file',
+    plan.prBodyPath,
+  ];
+  return args;
+}
+
+function buildPrCreatePlan(repoRoot, preflightReport, options = {}) {
+  const prBody = readPrBody(repoRoot, options.prBodyPath || options.input);
+  const baseBranch = String(options.baseBranch || 'main').trim() || 'main';
+  const title = String(options.title || '').trim() || extractPrTitle(prBody.body, preflightReport.branchName);
+  const plan = {
+    baseBranch,
+    branchName: preflightReport.branchName,
+    ghCommand: options.ghCommand || DEFAULT_GH_COMMAND,
+    prBodyPath: prBody.path,
+    prBodyRelativePath: path.relative(repoRoot, prBody.path).split(path.sep).join('/'),
+    remote: preflightReport.remote,
+    repoRoot,
+    title,
+  };
+  plan.args = buildPrCreateArgs(plan);
+  return plan;
+}
+
+function runGhPrCreate(plan, options = {}) {
+  const result = runCommand(plan.ghCommand, plan.args, {
+    cwd: plan.repoRoot,
+    runner: options.runner || options.ghCreateRunner || spawnSync,
+  });
+
+  if (result && result.error) {
+    throw createError('GH_PR_CREATE_FAILED', formatError(`gh pr create could not be executed. ${result.error.message}`), {
+      args: plan.args,
+      errorCode: result.error.code,
+      errorMessage: result.error.message,
+    });
+  }
+
+  if (!result || typeof result.status !== 'number' || result.status !== 0) {
+    const stderr = result && typeof result.stderr === 'string' ? result.stderr.trim() : '';
+    const stdout = result && typeof result.stdout === 'string' ? result.stdout.trim() : '';
+    throw createError('GH_PR_CREATE_FAILED', `${formatError('gh pr create failed.')}${[stderr, stdout].filter(Boolean).length > 0 ? `\n${[stderr, stdout].filter(Boolean).join('\n')}` : ''}`, {
+      args: plan.args,
+      status: result && result.status,
+      stderr,
+      stdout,
+    });
+  }
+
+  return {
+    status: result.status,
+    stdout: typeof result.stdout === 'string' ? result.stdout : '',
+    stderr: typeof result.stderr === 'string' ? result.stderr : '',
+  };
+}
+
 function buildPreflightReport(repoRoot, options = {}, checks = {}) {
   return {
     ok: true,
@@ -310,20 +461,65 @@ function formatPreflightReport(report, options = {}) {
   return `${lines.join('\n')}\n`;
 }
 
+function quoteCommandArg(arg) {
+  const value = String(arg);
+  return /^[A-Za-z0-9_./:=@-]+$/.test(value) ? value : JSON.stringify(value);
+}
+
+function formatPrCreateReport({ preflight, plan, result }, options = {}) {
+  const dryRun = options.dryRun === true;
+  const create = options.create === true;
+  const lines = [
+    `GitHub pr ${dryRun ? 'dry-run' : create ? 'created' : 'preflight'}`,
+    `Remote: ${preflight.remote}`,
+    `Branch: ${preflight.branchName}`,
+    `Base: ${plan.baseBranch}`,
+    `PR body: ${plan.prBodyRelativePath}`,
+    `Title: ${plan.title}`,
+    `Command: ${plan.ghCommand} ${plan.args.map(quoteCommandArg).join(' ')}`,
+  ];
+
+  if (preflight.sshHostAlias) {
+    lines.push(`SSH host alias: ${preflight.sshHostAlias}`);
+  }
+
+  if (preflight.identityFile) {
+    lines.push(`Identity file: ${preflight.identityFile}`);
+  }
+
+  if (dryRun) {
+    lines.push('No PR will be created in dry-run mode.');
+  } else if (!create) {
+    lines.push('No PR was created. Re-run with --create after reviewing the plan.');
+  } else if (result && result.stdout) {
+    lines.push(result.stdout.trimEnd());
+  }
+
+  return `${lines.join('\n')}\n`;
+}
+
 module.exports = {
   DEFAULT_GH_COMMAND,
   DEFAULT_GITFLOW_GUIDE_PATH,
   DEFAULT_REMOTE,
   GitHubPreflightError,
+  buildPrCreateArgs,
+  buildPrCreatePlan,
   buildPreflightReport,
+  extractPrTitle,
   ensureGhAuthenticated,
   ensureGhInstalled,
   ensureGitFlowGuide,
   ensureIdentityFile,
   ensureRemote,
   ensureWorktreeReady,
+  findPrBodyCandidates,
   formatGhInstallGuidance,
   formatPreflightReport,
+  formatPrCreateReport,
   preflightGitHubPr,
+  readPrBody,
   resolveConfiguredPath,
+  resolvePrBodyPath,
+  runGhPrCreate,
 };
