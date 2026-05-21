@@ -1,0 +1,51 @@
+{
+  "slice_id": "slice-00-spec-foundation",
+  "ticket": "QUIVER-22-00",
+  "type": "docs",
+  "title": "Spec foundation and guided workflow planning artifacts",
+  "objective": "Create the complete documentation foundation for the guided AI workflow spec.",
+  "description": "Publish the spec, status, evidence report, execution plan, PR body, slice definitions, and handoffs before product implementation starts.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "guided-ai-workflow-spec-foundation",
+    "branch_name": "feature/QUIVER-22-00-guided-ai-workflow-spec-foundation"
+  },
+  "files": [
+    "specs/quiver-v22-guided-ai-workflow/**"
+  ],
+  "depends_on": [],
+  "parallel_safe": "no",
+  "parallel_safe_reason": "slice-00 must land before every other slice.",
+  "must": [
+    "Create SPEC.md.",
+    "Create STATUS.md.",
+    "Create EVIDENCE_REPORT.md.",
+    "Create EXECUTION_PLAN.md.",
+    "Create pr.md.",
+    "Create slice.json, EXECUTION_BRIEF.md, and CLOSURE_BRIEF.md for every slice.",
+    "Avoid product code changes."
+  ],
+  "not_included": [
+    "Implementing commands.",
+    "Changing README or CHANGELOG.",
+    "Running AI providers.",
+    "Creating commits automatically."
+  ],
+  "acceptance": [
+    "Spec folder exists under specs/quiver-v22-guided-ai-workflow.",
+    "Mandatory slice-00 exists.",
+    "Every slice has slice.json, EXECUTION_BRIEF.md, and CLOSURE_BRIEF.md.",
+    "Every slice.json parses successfully.",
+    "No product code is modified."
+  ],
+  "tests": [
+    "git diff --check",
+    "find specs/quiver-v22-guided-ai-workflow -name \"slice.json\" -print -exec node -e \"JSON.parse(require('fs').readFileSync(process.argv[1], 'utf8'))\" {} \\;"
+  ],
+  "estimated_hours": 2,
+  "status": "completed",
+  "blocked_reason": null,
+  "actual_hours": 2,
+  "completed_at": "2026-05-21T11:16:22-0300"
+}

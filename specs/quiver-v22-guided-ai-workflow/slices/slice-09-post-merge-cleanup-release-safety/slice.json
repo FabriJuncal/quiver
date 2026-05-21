@@ -1,0 +1,59 @@
+{
+  "slice_id": "slice-09-post-merge-cleanup-release-safety",
+  "ticket": "QUIVER-22-09",
+  "type": "feature",
+  "title": "Post-merge cleanup and release safety",
+  "objective": "Safely close merged spec worktrees and prevent local AI/tool state from entering npm packages.",
+  "description": "Add post-merge lifecycle checks and release/package safety guards for secrets, env files, npm credentials, and local AI tool directories.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "post-merge-cleanup-release-safety",
+    "branch_name": "feature/QUIVER-22-09-post-merge-cleanup-release-safety"
+  },
+  "files": [
+    "src/create-quiver/index.js",
+    "src/create-quiver/lib/lifecycle.js",
+    "src/create-quiver/lib/git.js",
+    "src/create-quiver/lib/spec-worktrees.js",
+    "src/create-quiver/lib/package-safety.js",
+    "scripts/release-quiver.sh",
+    ".npmignore",
+    "tests/commands/spec-close.test.js",
+    "tests/lib/package-safety.test.js"
+  ],
+  "depends_on": [
+    "slice-07-execution-waves-delegation",
+    "slice-08-pr-create-gh-ssh"
+  ],
+  "parallel_safe": "no",
+  "parallel_safe_reason": "Cleanup and release safety must integrate final workflow state and PR behavior.",
+  "must": [
+    "Refuse normal cleanup before PR merge is confirmed.",
+    "Refuse cleanup when the worktree is dirty unless explicit discard behavior is used.",
+    "Remove the spec worktree after safe confirmation.",
+    "Pull merged changes into the main local checkout.",
+    "Fail package/release safety if local settings, env files, npm credentials, or AI tool local state would enter the tarball.",
+    "Keep destructive operations explicit and recoverable."
+  ],
+  "not_included": [
+    "Merging PRs.",
+    "Deleting remote branches without explicit existing workflow support.",
+    "Publishing a new npm version."
+  ],
+  "acceptance": [
+    "Unmerged PR blocks normal spec cleanup.",
+    "Dirty worktree blocks normal spec cleanup.",
+    "Merged clean spec can be closed and main checkout can be pulled.",
+    "Release/package safety fails when unsafe local files would be packaged.",
+    "Release/package safety passes when unsafe paths are ignored or absent."
+  ],
+  "tests": [
+    "node --test tests/commands/spec-close.test.js tests/lib/package-safety.test.js",
+    "npm pack --dry-run",
+    "git diff --check"
+  ],
+  "estimated_hours": 8,
+  "status": "draft",
+  "blocked_reason": null
+}

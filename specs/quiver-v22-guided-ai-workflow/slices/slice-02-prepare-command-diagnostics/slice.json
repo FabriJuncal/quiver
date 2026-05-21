@@ -1,0 +1,55 @@
+{
+  "slice_id": "slice-02-prepare-command-diagnostics",
+  "ticket": "QUIVER-22-02",
+  "type": "feature",
+  "title": "Prepare command and setup diagnostics",
+  "objective": "Add a guided preparation command that tells users whether the project is ready for AI-assisted work.",
+  "description": "Create the safe first command for project preparation: analysis, diagnostics, missing-tool guidance, dry-run, and next-step reporting.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "guided-prepare-diagnostics",
+    "branch_name": "feature/QUIVER-22-02-guided-prepare-diagnostics"
+  },
+  "files": [
+    "src/create-quiver/index.js",
+    "src/create-quiver/commands/prepare.js",
+    "src/create-quiver/lib/doctor.js",
+    "src/create-quiver/lib/ai/preflight.js",
+    "src/create-quiver/lib/ai/github.js",
+    "src/create-quiver/lib/init-layout.js",
+    "tests/commands/prepare.test.js",
+    "tests/lib/doctor.test.js"
+  ],
+  "depends_on": [
+    "slice-01-docs-source-of-truth-sync"
+  ],
+  "parallel_safe": "no",
+  "parallel_safe_reason": "This establishes the public entrypoint used by later workflow slices.",
+  "must": [
+    "Add a dry-run mode that writes nothing.",
+    "Report project readiness, missing docs, missing tools, provider CLI availability, gh availability, gh auth, and SSH alias guidance.",
+    "Support macOS, Linux, and Windows guidance.",
+    "Print clear next commands.",
+    "Avoid installing tools or editing credentials automatically."
+  ],
+  "not_included": [
+    "Refreshing rich context docs.",
+    "Persisting approvals.",
+    "Creating specs or worktrees."
+  ],
+  "acceptance": [
+    "prepare dry-run reports planned checks and writes nothing.",
+    "prepare reports missing gh with OS-specific guidance.",
+    "prepare reports missing provider CLI with actionable guidance.",
+    "prepare does not install tools or edit SSH config.",
+    "prepare recommends the next safe command after success."
+  ],
+  "tests": [
+    "node --test tests/commands/prepare.test.js tests/lib/doctor.test.js tests/lib/ai-github.test.js tests/lib/ai-providers.test.js",
+    "git diff --check"
+  ],
+  "estimated_hours": 6,
+  "status": "draft",
+  "blocked_reason": null
+}

@@ -1,0 +1,53 @@
+{
+  "slice_id": "slice-08-pr-create-gh-ssh",
+  "ticket": "QUIVER-22-08",
+  "type": "feature",
+  "title": "PR creation with gh and SSH guidance",
+  "objective": "Create GitHub PRs from generated pr.md after validating gh, auth, branch, worktree, remote, and SSH inputs.",
+  "description": "Upgrade GitHub PR preflight into PR creation while keeping dry-run, explicit confirmation, and cross-platform setup guidance.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "pr-create-gh-ssh",
+    "branch_name": "feature/QUIVER-22-08-pr-create-gh-ssh"
+  },
+  "files": [
+    "src/create-quiver/commands/ai.js",
+    "src/create-quiver/lib/ai/github.js",
+    "src/create-quiver/lib/pr-create.js",
+    "tests/commands/ai-pr.test.js",
+    "tests/lib/ai-github.test.js"
+  ],
+  "depends_on": [
+    "slice-05-spec-worktree-lifecycle"
+  ],
+  "parallel_safe": "conditional",
+  "parallel_safe_reason": "Conceptually independent after spec worktree lifecycle, but it currently overlaps command-router files with executor and execution-wave slices. Run sequentially unless file ownership is split first.",
+  "must": [
+    "Read the generated pr.md body.",
+    "Validate gh is installed and authenticated.",
+    "Validate remote, branch, worktree, clean state, SSH alias, and identity file.",
+    "Support dry-run without creating a PR.",
+    "Create a PR with gh only after checks pass and user intent is explicit.",
+    "Keep PR merge out of scope."
+  ],
+  "not_included": [
+    "Merging PRs.",
+    "Post-merge cleanup.",
+    "Installing gh automatically."
+  ],
+  "acceptance": [
+    "Dry-run prints the gh command plan and creates no PR.",
+    "Missing gh/auth/identity/GitFlow guide/remote/dirty worktree blocks creation with clear guidance.",
+    "Valid setup creates a PR using pr.md.",
+    "The command never merges the PR.",
+    "Tests mock gh and do not require real GitHub auth."
+  ],
+  "tests": [
+    "node --test tests/commands/ai-pr.test.js tests/lib/ai-github.test.js",
+    "git diff --check"
+  ],
+  "estimated_hours": 7,
+  "status": "draft",
+  "blocked_reason": null
+}

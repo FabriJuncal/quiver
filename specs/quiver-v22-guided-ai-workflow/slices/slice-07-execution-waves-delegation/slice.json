@@ -1,0 +1,55 @@
+{
+  "slice_id": "slice-07-execution-waves-delegation",
+  "ticket": "QUIVER-22-07",
+  "type": "feature",
+  "title": "Execution waves and safe delegation",
+  "objective": "Execute or print execution waves that respect dependencies, slice-00, and file-scope conflicts.",
+  "description": "Turn the existing execution plan into a guided flow that can run sequential waves and safely identify parallel-ready slices for cheaper executor agents.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "execution-waves-delegation",
+    "branch_name": "feature/QUIVER-22-07-execution-waves-delegation"
+  },
+  "files": [
+    "src/create-quiver/commands/ai.js",
+    "src/create-quiver/lib/ai/execution-plan.js",
+    "src/create-quiver/lib/ai/executor.js",
+    "src/create-quiver/lib/slice-graph.js",
+    "src/create-quiver/lib/slice-runner.js",
+    "tests/lib/ai-execution-plan.test.js",
+    "tests/commands/ai-execute-plan.test.js"
+  ],
+  "depends_on": [
+    "slice-06-executor-commit-recovery"
+  ],
+  "parallel_safe": "no",
+  "parallel_safe_reason": "This slice coordinates multi-slice execution and should not be developed alongside executor changes.",
+  "must": [
+    "Always put slice-00 before all implementation slices.",
+    "Group ready slices into waves.",
+    "Detect file-scope conflicts before suggesting parallel execution.",
+    "Fall back to sequential execution when scope is unknown or conflicting.",
+    "Support a dry-run or print-only mode before real execution.",
+    "Keep one commit per slice when execution is enabled."
+  ],
+  "not_included": [
+    "Provider account billing controls.",
+    "Fully autonomous merge.",
+    "PR creation."
+  ],
+  "acceptance": [
+    "Execution plan shows waves with sequential and parallel groups.",
+    "Unknown or overlapping file scopes force sequential mode.",
+    "Dry-run prints commands and does not call providers.",
+    "Real execution stops the wave on failed required slice.",
+    "Successful slices keep one commit per slice."
+  ],
+  "tests": [
+    "node --test tests/lib/ai-execution-plan.test.js tests/commands/ai-execute-plan.test.js",
+    "git diff --check"
+  ],
+  "estimated_hours": 9,
+  "status": "draft",
+  "blocked_reason": null
+}

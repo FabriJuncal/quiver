@@ -1,0 +1,57 @@
+{
+  "slice_id": "slice-06-executor-commit-recovery",
+  "ticket": "QUIVER-22-06",
+  "type": "feature",
+  "title": "Executor validation, recovery, and commit per slice",
+  "objective": "Let executor agents modify approved slice scope and create one commit after validation passes.",
+  "description": "Extend slice execution with recoverable failure reporting, retry/abort guidance, optional commit automation, and strict one-slice-one-commit behavior.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "executor-commit-recovery",
+    "branch_name": "feature/QUIVER-22-06-executor-commit-recovery"
+  },
+  "files": [
+    "src/create-quiver/commands/ai.js",
+    "src/create-quiver/lib/ai/executor.js",
+    "src/create-quiver/lib/scope.js",
+    "src/create-quiver/lib/git.js",
+    "src/create-quiver/lib/slice-runner.js",
+    "tests/commands/ai-execute-slice.test.js",
+    "tests/lib/ai-executor.test.js",
+    "tests/lib/scope.test.js"
+  ],
+  "depends_on": [
+    "slice-05-spec-worktree-lifecycle"
+  ],
+  "parallel_safe": "after_dependencies",
+  "parallel_safe_reason": "Can run in parallel with PR creation only if file scopes remain separate.",
+  "must": [
+    "Keep executor context limited to approved slice data.",
+    "Require a clean worktree before execution unless explicitly overridden by existing safe options.",
+    "Validate changed files against slice scope after execution.",
+    "Run declared validation commands or report why they were skipped.",
+    "Create exactly one commit when validation passes and commit automation is enabled.",
+    "Write or print a recovery report when execution fails."
+  ],
+  "not_included": [
+    "Parallel execution waves.",
+    "PR creation.",
+    "Post-merge cleanup."
+  ],
+  "acceptance": [
+    "Executor refuses to run with dirty worktree by default.",
+    "Executor reports provider failure without hiding local changes.",
+    "Scope violations block commit automation.",
+    "Validation failures block commit automation.",
+    "Successful execution with commit enabled creates one slice commit.",
+    "Retry and abort guidance is shown after failures."
+  ],
+  "tests": [
+    "node --test tests/commands/ai-execute-slice.test.js tests/lib/ai-executor.test.js tests/lib/scope.test.js",
+    "git diff --check"
+  ],
+  "estimated_hours": 8,
+  "status": "draft",
+  "blocked_reason": null
+}

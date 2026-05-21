@@ -1,0 +1,56 @@
+{
+  "slice_id": "slice-04-planner-approval-state",
+  "ticket": "QUIVER-22-04",
+  "type": "feature",
+  "title": "Planner approval state for criteria and technical plans",
+  "objective": "Persist draft and approved planner outputs so each phase consumes an explicit approved input.",
+  "description": "Add approval state for acceptance criteria and technical plans, preventing Quiver from generating specs from unapproved or ambiguous outputs.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "planner-approval-state",
+    "branch_name": "feature/QUIVER-22-04-planner-approval-state"
+  },
+  "files": [
+    "src/create-quiver/commands/ai.js",
+    "src/create-quiver/lib/ai/phase-gates.js",
+    "src/create-quiver/lib/ai/spec-generator.js",
+    "src/create-quiver/lib/state.js",
+    "src/create-quiver/lib/approvals.js",
+    "tests/commands/ai-plan.test.js",
+    "tests/commands/ai-plan-spec-phase.test.js",
+    "tests/lib/approvals.test.js"
+  ],
+  "depends_on": [
+    "slice-03-context-doc-refresh"
+  ],
+  "parallel_safe": "no",
+  "parallel_safe_reason": "Approval state is the contract consumed by spec generation.",
+  "must": [
+    "Persist draft acceptance criteria.",
+    "Persist approved acceptance criteria only after explicit approval.",
+    "Persist draft technical plan.",
+    "Persist approved technical plan only after explicit approval.",
+    "Block spec generation when the approved plan is missing.",
+    "Show status of draft versus approved artifacts."
+  ],
+  "not_included": [
+    "Creating worktrees.",
+    "Executing slices.",
+    "Opening PRs."
+  ],
+  "acceptance": [
+    "Unapproved acceptance criteria cannot feed the technical-plan phase.",
+    "Unapproved technical plans cannot feed spec generation.",
+    "Approvals are stored with timestamp, source file or run id, and phase.",
+    "A status command shows what is draft, approved, missing, or stale.",
+    "Spec generation consumes approved input by default."
+  ],
+  "tests": [
+    "node --test tests/commands/ai-plan.test.js tests/commands/ai-plan-spec-phase.test.js tests/lib/approvals.test.js",
+    "git diff --check"
+  ],
+  "estimated_hours": 8,
+  "status": "draft",
+  "blocked_reason": null
+}
