@@ -7,6 +7,7 @@ const test = require('node:test');
 const {
   approvePlannerPhase,
   approvalApprovedPath,
+  approvalDraftVersionPath,
   approvalDraftPath,
   readPhaseApproval,
   resolveApprovedPlannerInput,
@@ -37,21 +38,54 @@ test('planner approvals persist draft and approved metadata with status summarie
 
     const draft = savePlannerDraft(repo.root, 'acceptance', 'acceptance.md', 'draft text\n');
     assert.equal(fs.existsSync(draft.filePath), true);
+    assert.equal(draft.version, 1);
+    assert.equal(fs.existsSync(approvalDraftVersionPath(repo.root, 'acceptance', 1)), true);
 
     const draftState = readPhaseApproval(repo.root, 'acceptance');
     assert.equal(draftState.status, 'draft');
     assert.equal(draftState.draft.path, '.quiver/approvals/acceptance/draft.md');
+    assert.equal(draftState.meta.draft.version, 1);
+    assert.equal(draftState.meta.drafts.length, 1);
     assert.match(summarizePlannerApproval(repo.root, 'acceptance'), /Status: draft/);
 
     const approved = approvePlannerPhase(repo.root, 'acceptance', 'acceptance.md', 'approved text\n');
     assert.equal(fs.existsSync(approved.filePath), true);
+    assert.equal(approved.version, 1);
     assert.equal(approvalApprovedPath(repo.root, 'acceptance'), approved.filePath);
 
     const approvedState = readPhaseApproval(repo.root, 'acceptance');
     assert.equal(approvedState.status, 'approved');
     assert.equal(approvedState.meta.approved.phase, 'acceptance');
     assert.equal(approvedState.meta.approved.source_file, 'acceptance.md');
+    assert.equal(approvedState.meta.approved.version, 1);
     assert.equal(typeof approvedState.meta.approved.approved_at, 'string');
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('planner approvals keep multiple drafts and approve a selected version', () => {
+  const repo = makeRepo();
+
+  try {
+    writeFile(path.join(repo.root, 'requirements.md'), '# Requirements\n');
+
+    const first = savePlannerDraft(repo.root, 'acceptance', 'requirements.md', 'draft v1\n');
+    const second = savePlannerDraft(repo.root, 'acceptance', 'requirements.md', 'draft v2\n');
+
+    assert.equal(first.version, 1);
+    assert.equal(second.version, 2);
+
+    const approved = approvePlannerPhase(repo.root, 'acceptance', '', '', { version: 1 });
+    const state = readPhaseApproval(repo.root, 'acceptance');
+
+    assert.equal(approved.version, 1);
+    assert.equal(state.status, 'stale');
+    assert.equal(state.approved.contents, 'draft v1\n');
+    assert.equal(state.meta.drafts.length, 2);
+    assert.match(summarizePlannerApproval(repo.root, 'acceptance'), /- v1: \.quiver\/approvals\/acceptance\/drafts\/001\.md/);
+    assert.match(summarizePlannerApproval(repo.root, 'acceptance'), /- v2: \.quiver\/approvals\/acceptance\/drafts\/002\.md/);
+    assert.match(summarizePlannerApproval(repo.root, 'acceptance'), /Approved v1/);
   } finally {
     repo.cleanup();
   }

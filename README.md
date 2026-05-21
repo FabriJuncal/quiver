@@ -36,6 +36,7 @@ El flujo normal con IA continúa así:
 npx create-quiver flow
 npx create-quiver ai plan --phase acceptance --input requirements.md --dry-run
 npx create-quiver ai approve --phase acceptance --input acceptance-approved.md
+npx create-quiver ai approvals
 npx create-quiver ai plan --phase technical-plan --dry-run
 npx create-quiver ai approve --phase technical-plan --input technical-plan-approved.md
 npx create-quiver ai plan --phase spec --dry-run
@@ -286,6 +287,8 @@ El paquete también publica el alias binario `quiver`, que apunta al mismo CLI. 
 | `npx create-quiver ai agent set <role> --provider <provider> --model <label>` | Guarda perfiles reutilizables para planner, executor, reviewer o researcher sin guardar secretos. |
 | `npx create-quiver ai agent list` | Lista los perfiles configurados. |
 | `npx create-quiver ai agent show <role>` | Muestra un perfil específico. |
+| `npx create-quiver ai approvals` | Muestra drafts versionados y aprobados por fase. |
+| `npx create-quiver ai approve --phase acceptance --version <n>` | Aprueba una versión concreta de un draft guardado. |
 | `npx create-quiver init --minimal` | Crea solo el contrato esencial de onboarding. |
 | `npx create-quiver init --full` | Crea el layout amplio de compatibilidad. |
 | `npx create-quiver init --legacy-scripts` | Agrega wrappers Bash legacy bajo `tools/scripts/`. |

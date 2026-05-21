@@ -101,7 +101,70 @@ test('ai plan acceptance persists a draft approval state', async () => {
     assert.equal(meta.phase, 'acceptance');
     assert.equal(meta.draft.source_file, 'requirements.md');
     assert.equal(meta.draft.path, '.quiver/approvals/acceptance/draft.md');
+    assert.equal(meta.draft.version, 1);
+    assert.equal(meta.drafts.length, 1);
     assert.equal(typeof meta.draft.created_at, 'string');
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('ai approve can approve a selected draft version from history', async () => {
+  const repo = makeRepo({
+    'requirements.md': '# requirements\n- Iterate criteria.',
+  });
+
+  try {
+    await runPlan(repo.root, {
+      input: 'requirements.md',
+      phase: 'acceptance',
+      runProviderFn: async (provider) => ({
+        ok: true,
+        dryRun: false,
+        provider,
+        command: 'codex',
+        args: ['exec'],
+        cwd: repo.root,
+        timeoutMs: 0,
+        promptTransport: { mode: 'stdin' },
+        exitCode: 0,
+        stdout: 'acceptance draft v1\n',
+        stderr: '',
+        error: null,
+        preflight: { ok: true },
+      }),
+    });
+    await runPlan(repo.root, {
+      input: 'requirements.md',
+      phase: 'acceptance',
+      runProviderFn: async (provider) => ({
+        ok: true,
+        dryRun: false,
+        provider,
+        command: 'codex',
+        args: ['exec'],
+        cwd: repo.root,
+        timeoutMs: 0,
+        promptTransport: { mode: 'stdin' },
+        exitCode: 0,
+        stdout: 'acceptance draft v2\n',
+        stderr: '',
+        error: null,
+        preflight: { ok: true },
+      }),
+    });
+
+    const output = execAiSubcommand(repo.root, ['approve', '--phase', 'acceptance', '--version', '1']);
+    const approvedPath = path.join(repo.root, '.quiver', 'approvals', 'acceptance', 'approved.md');
+    const status = execAiSubcommand(repo.root, ['approvals']);
+    const meta = JSON.parse(fs.readFileSync(path.join(repo.root, '.quiver', 'approvals', 'acceptance', 'meta.json'), 'utf8'));
+
+    assert.ok(output.includes('Version: v1'));
+    assert.equal(fs.readFileSync(approvedPath, 'utf8'), 'acceptance draft v1\n');
+    assert.equal(meta.approved.version, 1);
+    assert.equal(meta.drafts.length, 2);
+    assert.ok(status.includes('Draft history:'));
+    assert.ok(status.includes('Status: stale'));
   } finally {
     repo.cleanup();
   }

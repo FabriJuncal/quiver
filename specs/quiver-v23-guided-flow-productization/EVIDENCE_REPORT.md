@@ -2,7 +2,7 @@
 
 ## Status
 
-Spec foundation is created. `slice-00` through `slice-04` are completed.
+Spec foundation is created. `slice-00` through `slice-05` are completed.
 
 ## Slice Evidence
 
@@ -13,7 +13,7 @@ Spec foundation is created. `slice-00` through `slice-04` are completed.
 | slice-02 | Expanded `flow` into a status wizard that reports uninitialized, context-needed, criteria approval, technical-plan approval, spec generation, slice execution, blocked slice graph, and PR-ready states. |
 | slice-03 | Added `.quiver/agents/profiles.json`, `ai agent set/list/show`, provider validation, free-form model labels, profile-backed provider defaults, docs, and tests. |
 | slice-04 | Added a packaged planner onboarding template, shared context plan, prepare report selected docs/debt/omissions, index-first generated prompt, and tests. |
-| slice-05 | Pending. |
+| slice-05 | Added versioned drafts under `.quiver/approvals/<phase>/drafts/`, `ai approve --version`, status history output, and approval blocking against stale versions. |
 | slice-06 | Pending. |
 | slice-07 | Pending. |
 | slice-08 | Pending. |
@@ -31,6 +31,8 @@ Spec foundation is created. `slice-00` through `slice-04` are completed.
 - 2026-05-21: `node --test tests/lib/agent-profiles.test.js tests/commands/ai-agent.test.js tests/commands/flow.test.js tests/commands/ai-onboard.test.js tests/commands/ai-plan.test.js tests/commands/ai-execute-slice.test.js tests/commands/ai-execute-plan.test.js`
 - 2026-05-21: `git diff --check`
 - 2026-05-21: `node --test tests/commands/prepare.test.js tests/commands/ai-onboard.test.js tests/lib/ai-safety.test.js`
+- 2026-05-21: `git diff --check`
+- 2026-05-21: `node --test tests/lib/approvals.test.js tests/commands/ai-plan.test.js tests/commands/ai-plan-spec-phase.test.js`
 - 2026-05-21: `git diff --check`
 
 ## Notes

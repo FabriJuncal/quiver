@@ -30,6 +30,15 @@ function approvalDraftPath(projectRoot, phase) {
   return path.join(approvalRoot(projectRoot, phase), 'draft.md');
 }
 
+function approvalDraftsDir(projectRoot, phase) {
+  return path.join(approvalRoot(projectRoot, phase), 'drafts');
+}
+
+function approvalDraftVersionPath(projectRoot, phase, version) {
+  const padded = String(version).padStart(3, '0');
+  return path.join(approvalDraftsDir(projectRoot, phase), `${padded}.md`);
+}
+
 function approvalApprovedPath(projectRoot, phase) {
   return path.join(approvalRoot(projectRoot, phase), 'approved.md');
 }
@@ -65,6 +74,25 @@ function readApprovalMeta(projectRoot, phase) {
   } catch (error) {
     throw new Error(formatError(`invalid approval metadata at ${toRelativePosix(projectRoot, metaPath)}: ${error.message}`));
   }
+}
+
+function normalizeDrafts(meta) {
+  return Array.isArray(meta?.drafts) ? meta.drafts.filter((item) => item && typeof item === 'object') : [];
+}
+
+function nextDraftVersion(meta) {
+  const versions = normalizeDrafts(meta)
+    .map((item) => Number(item.version))
+    .filter((value) => Number.isInteger(value) && value > 0);
+  return versions.length > 0 ? Math.max(...versions) + 1 : 1;
+}
+
+function findDraftVersion(meta, version) {
+  const parsed = Number(version);
+  if (!Number.isInteger(parsed) || parsed <= 0) {
+    throw new Error(formatError(`invalid draft version: ${version}`));
+  }
+  return normalizeDrafts(meta).find((item) => Number(item.version) === parsed) || null;
 }
 
 function readPhaseApproval(projectRoot, phase) {
@@ -107,6 +135,10 @@ function readPhaseApproval(projectRoot, phase) {
     draftSource?.created_at
     && approvedSource?.approved_at
     && new Date(draftSource.created_at).getTime() > new Date(approvedSource.approved_at).getTime(),
+  ) || Boolean(
+    draftSource?.version
+    && approvedSource?.version
+    && Number(draftSource.version) > Number(approvedSource.version),
   );
 
   let status = 'missing';
@@ -141,7 +173,7 @@ function renderApprovalStatus(report) {
   return `approved ${report.phase}`;
 }
 
-function writeApprovalArtifacts(projectRoot, phase, kind, sourceFile, contents) {
+function writeApprovalArtifacts(projectRoot, phase, kind, sourceFile, contents, options = {}) {
   const normalizedPhase = normalizePhase(phase);
   const root = approvalRoot(projectRoot, normalizedPhase);
   ensureDir(root);
@@ -149,20 +181,55 @@ function writeApprovalArtifacts(projectRoot, phase, kind, sourceFile, contents) 
   const filePath = kind === 'approved'
     ? approvalApprovedPath(projectRoot, normalizedPhase)
     : approvalDraftPath(projectRoot, normalizedPhase);
-  fs.writeFileSync(filePath, `${contents}`);
-
   const now = new Date().toISOString();
   const current = readApprovalMeta(projectRoot, normalizedPhase) || {};
   const nextMeta = {
     phase: normalizedPhase,
+    drafts: normalizeDrafts(current),
     draft: current.draft || null,
     approved: current.approved || null,
   };
+  let finalContents = `${contents}`;
+  let version = null;
+
+  if (kind === 'approved' && options.version) {
+    const selectedDraft = findDraftVersion(current, options.version);
+    if (!selectedDraft) {
+      throw new Error(formatError(`missing ${normalizedPhase} draft version ${options.version}`));
+    }
+    const draftPath = path.resolve(projectRoot, selectedDraft.path);
+    if (!fs.existsSync(draftPath)) {
+      throw new Error(formatError(`missing ${normalizedPhase} draft artifact: ${selectedDraft.path}`));
+    }
+    finalContents = fs.readFileSync(draftPath, 'utf8');
+    sourceFile = selectedDraft.path;
+    version = Number(selectedDraft.version);
+  } else if (kind === 'approved' && current.draft?.version) {
+    version = Number(current.draft.version);
+  }
+
+  if (kind === 'draft') {
+    version = nextDraftVersion(current);
+    const versionPath = approvalDraftVersionPath(projectRoot, normalizedPhase, version);
+    ensureDir(path.dirname(versionPath));
+    fs.writeFileSync(versionPath, finalContents);
+
+    nextMeta.drafts = nextMeta.drafts.concat({
+      version,
+      phase: normalizedPhase,
+      source_file: toRelativePosix(projectRoot, path.resolve(projectRoot, sourceFile)),
+      path: toRelativePosix(projectRoot, versionPath),
+      created_at: now,
+    });
+  }
+
+  fs.writeFileSync(filePath, finalContents);
 
   nextMeta[kind] = {
     phase: normalizedPhase,
     source_file: toRelativePosix(projectRoot, path.resolve(projectRoot, sourceFile)),
     path: toRelativePosix(projectRoot, filePath),
+    version,
     created_at: now,
     ...(kind === 'approved' ? { approved_at: now } : {}),
   };
@@ -181,6 +248,7 @@ function writeApprovalArtifacts(projectRoot, phase, kind, sourceFile, contents) 
     filePath,
     metaPath: approvalMetaPath(projectRoot, normalizedPhase),
     createdAt: now,
+    version,
   };
 }
 
@@ -188,8 +256,8 @@ function savePlannerDraft(projectRoot, phase, sourceFile, contents) {
   return writeApprovalArtifacts(projectRoot, phase, 'draft', sourceFile, contents);
 }
 
-function approvePlannerPhase(projectRoot, phase, sourceFile, contents) {
-  return writeApprovalArtifacts(projectRoot, phase, 'approved', sourceFile, contents);
+function approvePlannerPhase(projectRoot, phase, sourceFile, contents, options = {}) {
+  return writeApprovalArtifacts(projectRoot, phase, 'approved', sourceFile, contents, options);
 }
 
 function resolveApprovedPlannerInput(projectRoot, phase, explicitInput) {
@@ -240,10 +308,19 @@ function summarizePlannerApproval(projectRoot, phase) {
   const lines = [`Phase: ${report.phase}`, `Status: ${report.status}`];
 
   if (report.draft) {
-    lines.push(`Draft: ${report.draft.path}`);
+    const version = report.meta?.draft?.version ? ` v${report.meta.draft.version}` : '';
+    lines.push(`Draft${version}: ${report.draft.path}`);
+  }
+  const drafts = normalizeDrafts(report.meta);
+  if (drafts.length > 0) {
+    lines.push('Draft history:');
+    for (const draft of drafts) {
+      lines.push(`- v${draft.version}: ${draft.path}`);
+    }
   }
   if (report.approved) {
-    lines.push(`Approved: ${report.approved.path}`);
+    const version = report.meta?.approved?.version ? ` v${report.meta.approved.version}` : '';
+    lines.push(`Approved${version}: ${report.approved.path}`);
   }
   if (report.meta?.approved?.source_file) {
     lines.push(`Source file: ${report.meta.approved.source_file}`);
@@ -259,8 +336,11 @@ module.exports = {
   PLANNER_APPROVAL_PHASES,
   approvalApprovedPath,
   approvalDraftPath,
+  approvalDraftsDir,
+  approvalDraftVersionPath,
   approvalMetaPath,
   approvePlannerPhase,
+  findDraftVersion,
   normalizePhase,
   readPhaseApproval,
   renderApprovalStatus,

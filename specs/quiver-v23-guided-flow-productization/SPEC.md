@@ -180,7 +180,7 @@ The existing `npx create-quiver ...` commands must continue working.
 | slice-02 | Flow status and next-step wizard | Completed | slice-01 |
 | slice-03 | Agent profiles for planner, executor, reviewer, and researcher | Completed | slice-02 |
 | slice-04 | Context preparation and onboarding prompt productization | Completed | slice-03 |
-| slice-05 | Planner iteration history for criteria and plans | Draft | slice-04 |
+| slice-05 | Planner iteration history for criteria and plans | Completed | slice-04 |
 | slice-06 | Production-readiness plan review phase | Draft | slice-05 |
 | slice-07 | Spec creation experience from approved plans | Draft | slice-06 |
 | slice-08 | Executor prompt generation for manual slice assignment | Draft | slice-07 |

@@ -214,12 +214,22 @@ function formatApprovalResult(result, repoRoot) {
     `Source file: ${result.sourceFile}`,
     `Timestamp: ${result.createdAt}`,
   ];
+  if (result.version) {
+    lines.push(`Version: v${result.version}`);
+  }
 
   return `${lines.join('\n')}\n`;
 }
 
-function formatApprovalDryRunResult({ phase, input }) {
-  return `AI approval dry-run\nPhase: ${phase}\nInput file: ${input}\n`;
+function formatApprovalDryRunResult({ phase, input, version }) {
+  const lines = ['AI approval dry-run', `Phase: ${phase}`];
+  if (version) {
+    lines.push(`Version: v${version}`);
+  }
+  if (input) {
+    lines.push(`Input file: ${input}`);
+  }
+  return `${lines.join('\n')}\n`;
 }
 
 function formatApprovalStatusReport(repoRoot) {
@@ -449,26 +459,29 @@ async function runApprove(repoRoot, options = {}) {
     throw new Error(formatError(`ai approve does not support phase '${phase}'`));
   }
 
-  if (!options.input) {
+  if (!options.input && !options.version) {
     throw new Error(formatError(`missing input file for ai approve phase '${phase}'`));
   }
 
-  const inputText = readTextFile(options.input, repoRoot);
+  const inputText = options.version ? '' : readTextFile(options.input, repoRoot);
 
   if (options.dryRun) {
-    process.stdout.write(formatApprovalDryRunResult({ phase, input: options.input }));
+    process.stdout.write(formatApprovalDryRunResult({ phase, input: options.input, version: options.version }));
     return {
       task: 'approve',
       phase,
       input: options.input,
+      version: options.version || null,
       dryRun: true,
     };
   }
 
-  const result = approvePlannerPhase(repoRoot, phase, options.input, inputText);
+  const result = approvePlannerPhase(repoRoot, phase, options.input || '', inputText, {
+    version: options.version || undefined,
+  });
   process.stdout.write(formatApprovalResult({
     ...result,
-    sourceFile: options.input,
+    sourceFile: options.input || `draft version ${options.version}`,
   }, repoRoot));
 
   return {
@@ -477,6 +490,7 @@ async function runApprove(repoRoot, options = {}) {
     input: options.input,
     filePath: path.relative(repoRoot, result.filePath).split(path.sep).join('/'),
     createdAt: result.createdAt,
+    version: result.version || null,
   };
 }
 

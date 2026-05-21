@@ -88,6 +88,7 @@ Options:
       --allow-dirty           For ai execute-slice, allow pre-existing dirty files and ignore them for scope diff
       --provider <name>       Provider CLI to preflight for prepare or AI commands
       --model <label>         Free-form model label for AI agent profiles
+      --version <n>           Draft version to approve for AI planner phases
       --ssh-host-alias <name> SSH host alias to validate for prepare or AI commands
       --identity-file <path>  SSH identity file to validate for prepare or AI commands
       --remote <name>         Git remote name for AI PR checks
@@ -172,6 +173,7 @@ function parseArgs(argv) {
     aiProviderExplicit: false,
     aiModel: '',
     aiLabel: '',
+    aiVersion: '',
     prepareProvider: '',
     aiRole: '',
     aiContext: '',
@@ -408,6 +410,15 @@ function parseArgs(argv) {
         throw new Error(formatError('missing value for --label'));
       }
       result.aiLabel = value;
+      continue;
+    }
+
+    if (arg === '--version') {
+      const value = args[++index];
+      if (!value) {
+        throw new Error(formatError('missing value for --version'));
+      }
+      result.aiVersion = value;
       continue;
     }
 
@@ -1834,6 +1845,7 @@ async function run(argv) {
         dryRun: args.dryRun,
         input: args.aiInput || undefined,
         phase: args.aiPhase,
+        version: args.aiVersion || undefined,
       });
       return;
     }

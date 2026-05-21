@@ -15,6 +15,7 @@ The v20, v21, and v22 specs are completed. The active draft spec is `specs/quive
 Guided AI workflow behavior is available: prepare, approvals, spec worktrees, executor commits, execution waves, PR creation, spec close, and package safety.
 Generated projects also get `quiver:*` npm scripts that call the Node CLI directly; prefer those for repeatable project workflows, including `quiver:flow` for the read-only guided entrypoint, `quiver:plan` for sequential planning, `quiver:graph` for parallel-level inspection, `quiver:next` for the next ready slice, and the AI family `quiver:ai:agent`, `quiver:ai:onboard`, `quiver:ai:plan`, `quiver:ai:approve`, `quiver:ai:execute-slice`, `quiver:ai:execute-plan`, `quiver:ai:pr`, and `quiver:ai:doctor`. Use `quiver:graph --format mermaid` for PR-ready Markdown or `quiver:graph --format dot` for Graphviz source.
 Agent profiles live in `.quiver/agents/profiles.json`; they store role, provider, model label, context label, and display label only. Do not store API keys, tokens, or credentials there.
+Planner drafts are versioned under `.quiver/approvals/<phase>/drafts/`; approve a concrete version with `npx create-quiver ai approve --phase <phase> --version <n>` when reviewing iterations.
 Maintain release notes and package publishing with `scripts/release-quiver.sh`.
 The primary generated project context for agents is `docs/AI_CONTEXT.md`.
 The project map is the single source of truth for stack, package manager, commands, and file hints: `docs/PROJECT_MAP.md`.
