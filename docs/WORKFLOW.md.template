@@ -9,7 +9,7 @@ This document is the canonical implementation workflow for the project.
 - Do not implement without a slice.
 - One slice maps to one commit.
 - One spec maps to one PR.
-- Slice numbering is local to each spec. Every spec starts at `slice-01`.
+- Slice numbering is local to each spec. Every spec starts with mandatory `slice-00` as the documentary foundation; `slice-01` is the first implementation slice.
 - The spec defines the plan; the slice defines the execution.
 - No slice should enter execution until it is `ready`.
 - The documentation PR establishes the workflow files before the first slice executes.
@@ -33,10 +33,10 @@ Use maps, metadata, diffs, and summaries first. Open full files only when the sm
 ## Planning
 
 1. Triage the request.
-2. Decide whether to create a new spec or reuse an existing one.
-3. Split the work into slices.
-4. Mark each slice `ready` before execution.
-5. Open and merge the documentation PR before running the first slice bootstrap.
+2. Use `ai plan --phase acceptance` to draft criteria, then save the approved version with `ai approve --phase acceptance`.
+3. Use `ai plan --phase technical-plan` to draft the plan, then save the approved version with `ai approve --phase technical-plan`.
+4. Use `ai plan --phase spec` to generate the spec, mandatory `slice-00`, implementation slices, handoffs, execution plan, and `pr.md`.
+5. Open and merge the documentation PR or commit that establishes `slice-00` before running implementation slices.
 6. Read the AI context pack, support matrix, and troubleshooting guide before the first slice if the environment is new or uncertain.
 7. If the project already existed before this Quiver version, run `migrate` before `analyze`.
 8. If the project was analyzed, read `AI_ONBOARDING_PROMPT.md` before making documentation updates.
@@ -44,17 +44,20 @@ Use maps, metadata, diffs, and summaries first. Open full files only when the sm
 
 ## Execution
 
-1. Bootstrap the slice with `npx create-quiver start-slice <slice.json>` or `npm run quiver:start-slice -- <slice.json>`.
+1. Create or reuse the spec worktree with `npx create-quiver spec start specs/<spec-slug>` or `npm run quiver:spec:start -- specs/<spec-slug>`.
+2. Inspect waves with `npx create-quiver ai execute-plan --dry-run --commit` or `npm run quiver:ai:execute-plan -- --dry-run --commit`.
+3. Bootstrap a single slice with `npx create-quiver start-slice <slice.json>` or `npm run quiver:start-slice -- <slice.json>` when manual execution is preferred.
    - The bootstrap step should work with canonical paths and a local base branch when `origin` is absent.
    - Draft slices require `--allow-draft`; otherwise `npx create-quiver start-slice` exits before execution.
    - Legacy Bash wrappers remain available for compatibility, but generated projects should prefer the Node CLI and `quiver:*` npm scripts.
    - `start-slice` generates `docs/ai/ACTIVE_SLICE.md` and `WORKTREE_CONTEXT.md`; use the active slice brief as the source of truth for execution.
-2. Implement only what the slice declares.
-3. Make one commit for that slice.
-4. Validate with `npx create-quiver check-slice <slice.json>` or `npm run quiver:check-slice -- <slice.json>`.
-5. Write evidence.
-6. Repeat for the next slice until the spec is complete.
-7. Open one PR for the spec and use `npx create-quiver check-pr <slice.json>` or `npm run quiver:check-pr -- <slice.json>` as the pre-merge gate.
+4. Implement only what the slice declares.
+5. Make one commit for that slice, or let `ai execute-slice --commit` / `ai execute-plan --execute --commit` create it after provider, scope, and validation pass.
+6. Validate with `npx create-quiver check-slice <slice.json>` or `npm run quiver:check-slice -- <slice.json>`.
+7. Write evidence.
+8. Repeat for the next slice until the spec is complete.
+9. Open one PR for the spec. Use `npx create-quiver ai pr --dry-run --input specs/<spec-slug>/pr.md ...` first, then add `--create` only after review.
+10. After the PR is merged and the spec worktree is clean, close it with `npx create-quiver spec close specs/<spec-slug>`.
 
 ## Support Contract
 

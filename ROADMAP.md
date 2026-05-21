@@ -52,21 +52,21 @@
 - Published package `0.10.0`.
 - Shipped v20 AI CLI orchestration: provider runner, planner/executor roles, context packs, phase-gated planning, spec/slice/handoff generation, execution planning, executor scope checks, and GitHub PR preflight.
 - Shipped v21 AI-first layout: smaller default init, `.quiver/` internal machinery, analyze scan relocation, optional legacy/full assets, and no placeholder specs by default.
+- Shipped v22 Guided AI Workflow after `0.10.0`: preparation diagnostics, approval state, spec worktrees, executor commits, execution waves, PR creation, post-merge cleanup, and release/package safety are implemented on the release branch and ready for the next package release.
 
 ## Post-Checkpoint Plan (do not execute before validating v14)
 
 > This section now records the follow-up line from the v14-era plan.
 > Earlier speculative v20/v21 names were superseded by the actual shipped
-> specs listed below. The remaining v22 work stays planned until its spec
-> and slices complete.
+> specs listed below. v22 is now complete and awaits the next package release.
 
 ### Orchestration and Tooling
 
 - **v20 — AI CLI Orchestration** (completed): `quiver ai ...`, planner/executor roles, phase gates, context packs, executor scope checks, execution plans, and PR preflight.
 - **v21 — AI-First Layout** (completed): clean default init, `.quiver/` internals, analyze scan relocation, optional legacy assets, and no-spec-safe commands.
-- **v22 — Guided AI Workflow** (planned, draft spec): guided preparation, approvals, execution waves, PR creation, cleanup, and release/package safety live in `specs/quiver-v22-guided-ai-workflow/`.
+- **v22 — Guided AI Workflow** (completed): guided preparation, approvals, spec worktrees, executor commits, execution waves, PR creation, cleanup, and release/package safety live in `specs/quiver-v22-guided-ai-workflow/`.
 
-The shipped v20/v21 work is no longer pending. The older context-diagnostics and slice-archaeology ideas remain deferred until real demand justifies them.
+The shipped v20/v21/v22 work is no longer pending. The older context-diagnostics and slice-archaeology ideas remain deferred until real demand justifies them.
 
 ### v0.8 — Slice Orchestration Commands (shipped 2026-05-13)
 

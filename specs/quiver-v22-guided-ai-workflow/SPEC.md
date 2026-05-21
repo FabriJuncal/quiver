@@ -1,7 +1,7 @@
 # Quiver v22 - Guided AI Workflow
 
 **Date:** 2026-05-21
-**Status:** Draft
+**Status:** Completed
 
 Slice numbering resets here. This spec intentionally starts at `slice-00`.
 
@@ -206,7 +206,7 @@ If a short `quiver` binary is introduced, it must be documented as an alias or p
 | slice-07 | Execution waves and safe delegation | Completed | slice-06 |
 | slice-08 | PR creation with gh and SSH guidance | Completed | slice-05 |
 | slice-09 | Post-merge cleanup and release safety | Completed | slice-07, slice-08 |
-| slice-10 | Final docs, smokes, and release readiness | Draft | slice-09 |
+| slice-10 | Final docs, smokes, and release readiness | Completed | slice-09 |
 
 ## Risks
 

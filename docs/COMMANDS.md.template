@@ -12,15 +12,21 @@ This document is the canonical command reference for the orchestration roadmap.
 | `npx create-quiver init --name "<project>"` | Creates the default AI-first Quiver contract for a project | macOS, Linux, Windows | current | `npx create-quiver init --name "{{PROJECT_NAME}}"` |
 | `npx create-quiver --name "<project>"` | Compatibility alias for the recommended init flow | macOS, Linux, Windows | current | `npx create-quiver --name "{{PROJECT_NAME}}"` |
 | `quiver:analyze` | Writes raw analyzer data to `.quiver/scans/PROJECT_SCAN.json` and the visible project map to `docs/PROJECT_MAP.md` | macOS, Linux, Windows | v0.8 | `npm run quiver:analyze` |
+| `quiver:prepare` | Runs guided setup diagnostics and context preparation | macOS, Linux, Windows | v0.10 | `npm run quiver:prepare -- --dry-run --provider codex` |
 | `quiver:doctor` | Validates the Quiver contract and reports layout or migration guidance | macOS, Linux, Windows | v0.8 | `npm run quiver:doctor` |
 | `quiver:plan` | Sequential orchestration planning command | macOS, Linux, Windows | v0.8 | [docs/examples/plan.md](./examples/plan.md) |
 | `quiver:graph` | Parallel-level orchestration tree command | macOS, Linux, Windows | v0.8 | [docs/examples/graph.md](./examples/graph.md) |
 | `quiver:next` | Ready-slice suggestion command | macOS, Linux, Windows | v0.8 | [docs/examples/next.md](./examples/next.md) |
 | `quiver:ai:onboard` | Runs AI onboarding prompt through a supported local provider CLI | macOS, Linux, Windows | v0.10 | `npm run quiver:ai:onboard -- --dry-run` |
 | `quiver:ai:plan` | Runs phase-gated AI planning for acceptance criteria, technical plan, or spec generation | macOS, Linux, Windows | v0.10 | `npm run quiver:ai:plan -- --phase acceptance --input requirements.md --dry-run` |
-| `quiver:ai:execute-slice` | Runs an executor agent against one slice handoff with scope checks | macOS, Linux, Windows | v0.10 | `npm run quiver:ai:execute-slice -- --slice specs/<spec>/slices/<slice>/slice.json --dry-run` |
+| `quiver:ai:approve` | Persists approved acceptance criteria or technical plans for the next planner phase | macOS, Linux, Windows | v0.10 | `npm run quiver:ai:approve -- --phase acceptance --input acceptance-approved.md` |
+| `quiver:ai:execute-slice` | Runs an executor agent against one slice handoff with scope checks and optional commit | macOS, Linux, Windows | v0.10 | `npm run quiver:ai:execute-slice -- --slice specs/<spec>/slices/<slice>/slice.json --dry-run --commit` |
+| `quiver:ai:execute-plan` | Prints or executes dependency-safe waves of slices | macOS, Linux, Windows | v0.10 | `npm run quiver:ai:execute-plan -- --dry-run --commit` |
 | `quiver:ai:doctor` | Runs GitHub PR preflight checks without opening a PR | macOS, Linux, Windows | v0.10 | `npm run quiver:ai:doctor -- --dry-run --ssh-host-alias github-work --identity-file ~/.ssh/github-work` |
-| `quiver:ai:pr` | Validates `gh`, GitFlow docs, branch/worktree state, and SSH inputs before PR work | macOS, Linux, Windows | v0.10 | `npm run quiver:ai:pr -- --dry-run --ssh-host-alias github-work --identity-file ~/.ssh/github-work` |
+| `quiver:ai:pr` | Validates `gh`, reads `pr.md`, prints a PR plan, and creates a PR only with `--create` | macOS, Linux, Windows | v0.10 | `npm run quiver:ai:pr -- --dry-run --input specs/<spec>/pr.md --ssh-host-alias github-work --identity-file ~/.ssh/github-work` |
+| `quiver:spec:start` | Creates or reuses the dedicated worktree for one spec | macOS, Linux, Windows | v0.10 | `npm run quiver:spec:start -- specs/<spec>` |
+| `quiver:spec:status` | Shows spec worktree, branch, `slice-00`, and pending slices | macOS, Linux, Windows | v0.10 | `npm run quiver:spec:status -- specs/<spec>` |
+| `quiver:spec:close` | Closes a merged clean spec worktree and pulls the main checkout | macOS, Linux, Windows | v0.10 | `npm run quiver:spec:close -- specs/<spec> --dry-run` |
 
 ## CLI Flags
 
@@ -36,12 +42,17 @@ This document is the canonical command reference for the orchestration roadmap.
 | `--all-ready` | `next` | List all ready slices instead of just the next one |
 | `--only-ready` | `plan` | Show only slices with no pending dependencies |
 | `--spec <slug>` | `plan`, `graph` | Restrict output to one spec |
-| `--provider <codex\|claude\|gemini>` | `ai onboard`, `ai plan`, `ai execute-slice` | Select the local AI CLI adapter |
-| `--role <planner\|executor>` | `ai onboard`, `ai plan`, `ai execute-slice` | Select planner or executor role; `execute-slice` requires executor |
-| `--context <full\|planning\|slice\|minimal>` | `ai onboard`, `ai plan`, `ai execute-slice` | Select a token-budgeted context pack |
+| `--provider <codex\|claude\|gemini>` | `ai onboard`, `ai plan`, `ai execute-slice`, `ai execute-plan` | Select the local AI CLI adapter |
+| `--role <planner\|executor>` | `ai onboard`, `ai plan`, `ai execute-slice`, `ai execute-plan` | Select planner or executor role; execution requires executor |
+| `--context <full\|planning\|slice\|minimal>` | `ai onboard`, `ai plan`, `ai execute-slice`, `ai execute-plan` | Select a token-budgeted context pack |
 | `--phase <acceptance\|technical-plan\|spec>` | `ai plan` | Select the gated planner phase |
-| `--input <file>` | `ai plan` | Read approved requirements, criteria, or technical plan from a file |
+| `--input <file>` | `ai plan`, `ai approve`, `ai pr` | Read approved requirements/plans or select the generated PR body |
 | `--slice <slice.json>` | `ai execute-slice` | Select the slice handoff to execute |
+| `--commit` | `ai execute-slice`, `ai execute-plan` | Commit validated slice changes after provider, scope, and tests pass |
+| `--execute` | `ai execute-plan` | Execute the planned waves instead of printing commands |
+| `--create` | `ai pr` | Create the GitHub PR after preflight and plan review |
+| `--base <branch>` | `ai pr`, `spec close` | Select PR base or cleanup base branch |
+| `--allow-dirty` | `ai execute-slice`, `ai execute-plan` | Allow pre-existing dirty files and ignore them for scope diff |
 | `--ssh-host-alias <alias>` | `ai doctor`, `ai pr` | SSH host alias from the user's Git config, for example `github-work` |
 | `--identity-file <path>` | `ai doctor`, `ai pr` | SSH key path to validate separately from the host alias |
 
@@ -54,7 +65,9 @@ This document is the canonical command reference for the orchestration roadmap.
 - `quiver:next` prints the next ready slice and can auto-start it behind a confirmation prompt.
 - `check-slice` validates `depends_on` targets and requires `parallel_safe_reason` when `parallel_safe` is `never`.
 - `quiver:ai:onboard`, `quiver:ai:plan`, and `quiver:ai:execute-slice` support `codex`, `claude`, and `gemini` through local CLIs. Use `--dry-run` first to inspect the invocation without requiring provider auth.
-- `quiver:ai:execute-slice` uses executor context only and validates changed files against `slice.json.files` after provider execution.
-- `quiver:ai:pr -- --dry-run` validates GitHub CLI, auth, Git remote, current branch/worktree, `docs/GITFLOW_PR_GUIDE.md`, SSH host alias, and identity file without creating a PR.
+- `quiver:ai:execute-slice -- --commit` creates exactly one commit only after provider, scope, and validation commands pass.
+- `quiver:ai:execute-plan -- --dry-run --commit` prints safe execution waves and falls back to sequential mode when file scope is missing or overlapping.
+- `quiver:ai:pr -- --dry-run` validates GitHub CLI, auth, Git remote, current branch/worktree, `docs/GITFLOW_PR_GUIDE.md`, SSH host alias, identity file, and `pr.md` without creating a PR. Add `--create` only after reviewing the plan.
+- `quiver:spec:close` refuses dirty or unmerged spec worktrees unless discard behavior is explicitly requested.
 - After `init` or `migrate`, Quiver auto-installs itself as a dev dependency. Use `--skip-install` to suppress.
 - Cross-platform authoring rules live in `docs/SUPPORT_MATRIX.md`.

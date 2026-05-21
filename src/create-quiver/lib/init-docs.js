@@ -259,16 +259,20 @@ npx create-quiver next
 Use \`AGENTS.md\` first, then \`docs/AI_CONTEXT.md\` and \`docs/AI_ONBOARDING_PROMPT.md\` for the working contract.
 
 \`\`\`bash
+npm run quiver:prepare -- --dry-run
 npm run quiver:ai:onboard -- --dry-run
 npm run quiver:ai:plan -- --phase acceptance --input requirements.md --dry-run
-npm run quiver:ai:plan -- --phase technical-plan --input acceptance-approved.md --dry-run
-npm run quiver:ai:plan -- --phase spec --input technical-plan-approved.md --dry-run
+npm run quiver:ai:approve -- --phase acceptance --input acceptance-approved.md
+npm run quiver:ai:plan -- --phase technical-plan --dry-run
+npm run quiver:ai:approve -- --phase technical-plan --input technical-plan-approved.md
+npm run quiver:ai:plan -- --phase spec --dry-run
 \`\`\`
 
 When a real spec exists, execute one approved slice at a time:
 
 \`\`\`bash
-npm run quiver:ai:execute-slice -- --slice specs/<spec-slug>/slices/<slice-id>/slice.json --dry-run
+npm run quiver:ai:execute-slice -- --slice specs/<spec-slug>/slices/<slice-id>/slice.json --dry-run --commit
+npm run quiver:ai:execute-plan -- --dry-run --commit
 \`\`\`
 
 ## Documentation
@@ -307,16 +311,20 @@ Quiver keeps the visible contract small: start with \`README.md\`, \`AGENTS.md\`
 Use dry-runs before spending model tokens:
 
 \`\`\`bash
+npm run quiver:prepare -- --dry-run
 npm run quiver:ai:onboard -- --dry-run
 npm run quiver:ai:plan -- --phase acceptance --input requirements.md --dry-run
-npm run quiver:ai:plan -- --phase technical-plan --input acceptance-approved.md --dry-run
-npm run quiver:ai:plan -- --phase spec --input technical-plan-approved.md --dry-run
+npm run quiver:ai:approve -- --phase acceptance --input acceptance-approved.md
+npm run quiver:ai:plan -- --phase technical-plan --dry-run
+npm run quiver:ai:approve -- --phase technical-plan --input technical-plan-approved.md
+npm run quiver:ai:plan -- --phase spec --dry-run
 \`\`\`
 
 When a real spec exists, execute one approved slice at a time:
 
 \`\`\`bash
-npm run quiver:ai:execute-slice -- --slice specs/<spec-slug>/slices/<slice-id>/slice.json --dry-run
+npm run quiver:ai:execute-slice -- --slice specs/<spec-slug>/slices/<slice-id>/slice.json --dry-run --commit
+npm run quiver:ai:execute-plan -- --dry-run --commit
 \`\`\`
 
 ## Project NPM Scripts
@@ -325,13 +333,23 @@ The generated project includes \`quiver:*\` npm scripts that call the Node CLI:
 
 \`\`\`bash
 npm run quiver:analyze
+npm run quiver:prepare -- --dry-run
 npm run quiver:plan
 npm run quiver:graph
 npm run quiver:next
 npm run quiver:doctor
 npm run quiver:ai:onboard -- --dry-run
 npm run quiver:ai:plan -- --phase acceptance --input requirements.md --dry-run
-npm run quiver:ai:execute-slice -- --slice specs/<spec-slug>/slices/<slice-id>/slice.json --dry-run
+npm run quiver:ai:approve -- --phase acceptance --input acceptance-approved.md
+npm run quiver:ai:plan -- --phase technical-plan --dry-run
+npm run quiver:ai:approve -- --phase technical-plan --input technical-plan-approved.md
+npm run quiver:ai:plan -- --phase spec --dry-run
+npm run quiver:ai:execute-slice -- --slice specs/<spec-slug>/slices/<slice-id>/slice.json --dry-run --commit
+npm run quiver:ai:execute-plan -- --dry-run --commit
+npm run quiver:ai:pr -- --dry-run --input specs/<spec-slug>/pr.md --ssh-host-alias github-work --identity-file ~/.ssh/github-work
+npm run quiver:spec:start -- specs/<spec-slug>
+npm run quiver:spec:status -- specs/<spec-slug>
+npm run quiver:spec:close -- specs/<spec-slug> --dry-run
 \`\`\`
 
 ## Documentation
@@ -388,12 +406,17 @@ Quiver is designed for an AI-first workflow: a planner agent reads the project c
 Start with dry-runs so you can inspect the provider, role, context pack, and invocation before spending model tokens:
 
 \`\`\`bash
+npm run quiver:prepare -- --dry-run
 npm run quiver:ai:onboard -- --dry-run
 npm run quiver:ai:plan -- --phase acceptance --input requirements.md --dry-run
-npm run quiver:ai:plan -- --phase technical-plan --input acceptance-approved.md --dry-run
-npm run quiver:ai:plan -- --phase spec --input technical-plan-approved.md --dry-run
-npm run quiver:ai:execute-slice -- --slice specs/${projectSlug}/slices/slice-01/slice.json --dry-run
-npm run quiver:ai:pr -- --dry-run --ssh-host-alias github-work --identity-file ~/.ssh/github-work
+npm run quiver:ai:approve -- --phase acceptance --input acceptance-approved.md
+npm run quiver:ai:plan -- --phase technical-plan --dry-run
+npm run quiver:ai:approve -- --phase technical-plan --input technical-plan-approved.md
+npm run quiver:ai:plan -- --phase spec --dry-run
+npm run quiver:spec:start -- specs/${projectSlug}
+npm run quiver:ai:execute-slice -- --slice specs/${projectSlug}/slices/slice-01/slice.json --dry-run --commit
+npm run quiver:ai:execute-plan -- --dry-run --commit
+npm run quiver:ai:pr -- --dry-run --input specs/${projectSlug}/pr.md --ssh-host-alias github-work --identity-file ~/.ssh/github-work
 \`\`\`
 
 Remove \`--dry-run\` only after the phase output is approved and the local provider CLI is ready.
@@ -404,15 +427,24 @@ The generated project includes \`quiver:*\` npm scripts that call the Node CLI a
 
 \`\`\`bash
 npm run quiver:analyze
+npm run quiver:prepare -- --dry-run
 npm run quiver:plan
 npm run quiver:graph
 npm run quiver:next
 npm run quiver:doctor
 npm run quiver:ai:onboard -- --dry-run
 npm run quiver:ai:plan -- --phase acceptance --input requirements.md --dry-run
-npm run quiver:ai:execute-slice -- --slice specs/${projectSlug}/slices/slice-01/slice.json --dry-run
+npm run quiver:ai:approve -- --phase acceptance --input acceptance-approved.md
+npm run quiver:ai:plan -- --phase technical-plan --dry-run
+npm run quiver:ai:approve -- --phase technical-plan --input technical-plan-approved.md
+npm run quiver:ai:plan -- --phase spec --dry-run
+npm run quiver:ai:execute-slice -- --slice specs/${projectSlug}/slices/slice-01/slice.json --dry-run --commit
+npm run quiver:ai:execute-plan -- --dry-run --commit
 npm run quiver:ai:doctor -- --dry-run --ssh-host-alias github-work --identity-file ~/.ssh/github-work
-npm run quiver:ai:pr -- --dry-run --ssh-host-alias github-work --identity-file ~/.ssh/github-work
+npm run quiver:ai:pr -- --dry-run --input specs/${projectSlug}/pr.md --ssh-host-alias github-work --identity-file ~/.ssh/github-work
+npm run quiver:spec:start -- specs/${projectSlug}
+npm run quiver:spec:status -- specs/${projectSlug}
+npm run quiver:spec:close -- specs/${projectSlug} --dry-run
 npm run quiver:migrate
 npm run quiver:start-slice -- specs/${projectSlug}/slices/slice-01/slice.json
 npm run quiver:check-slice -- specs/${projectSlug}/slices/slice-01/slice.json
@@ -425,7 +457,8 @@ npm run quiver:refresh-active-slices
 
 The \`quiver:graph\` script prints the tree view by default; use \`npx create-quiver graph --format mermaid\` for PR-ready Markdown and \`--format dot\` when you want Graphviz source.
 The \`quiver:next\` script points to the next ready slice and can auto-start it behind a confirmation prompt.
-The \`quiver:ai:*\` scripts standardize planner/executor AI flows. Use dry-run first: onboarding and planning dry-runs do not require provider auth, while \`quiver:ai:pr -- --dry-run\` validates \`gh\`, GitFlow docs, branch/worktree state, and SSH inputs without creating a PR.
+The \`quiver:ai:*\` scripts standardize planner/executor AI flows. Use dry-run first: onboarding and planning dry-runs do not require provider auth, \`quiver:ai:execute-plan -- --dry-run --commit\` prints safe waves, and \`quiver:ai:pr -- --dry-run\` validates \`gh\`, GitFlow docs, branch/worktree state, SSH inputs, and \`pr.md\` without creating a PR. Add \`--create\` only after reviewing the plan.
+Use \`quiver:spec:start\`, \`quiver:spec:status\`, and \`quiver:spec:close\` for one worktree per spec.
 Use \`npx create-quiver next --all-ready\` when you want the full ready level instead of a single suggestion.
 The legacy Bash wrappers remain in \`tools/scripts/\` for compatibility, but new project-level automation should prefer the \`quiver:*\` scripts and the direct \`npx create-quiver ...\` commands below.
 \`npm run quiver:migrate\` is only for projects that were already initialized by Quiver.
@@ -1025,7 +1058,6 @@ function summarizeSkippedPaths(skippedPathDetails = [], skippedPaths = []) {
 function renderAiContextDoc(scan, options = {}) {
   const projectName = scan?.project?.name || 'Quiver Project';
   const projectSlug = options.projectSlug || toProjectSlug(projectName);
-  const packageManager = scan?.project?.package_manager || 'unknown';
   const stack = scan?.stack || {};
   const commands = scan?.commands || {};
   const common = commands.common || {};
@@ -1043,7 +1075,7 @@ function renderAiContextDoc(scan, options = {}) {
   lines.push('');
   lines.push('## Snapshot');
   lines.push(`- Primary stack: ${stack.primary || 'unknown'}`);
-  lines.push(`- Package manager: ${packageManager}`);
+  lines.push('- Package manager source: `docs/PROJECT_MAP.md`');
   lines.push(`- Install: ${commands.install || 'not defined'}`);
   lines.push(`- Dev: ${common.dev || 'not defined'}`);
   lines.push(`- Build: ${common.build || 'not defined'}`);
@@ -1083,7 +1115,15 @@ function renderAiContextDoc(scan, options = {}) {
   lines.push('- Visible source: `docs/PROJECT_MAP.md`');
   lines.push('- Internal raw scan: `.quiver/scans/PROJECT_SCAN.json`');
   lines.push('');
-  return lines.join('\n');
+  const body = lines.join('\n');
+  const frontMatter = serializeFrontMatter(buildFrontMatterFields({
+    purpose: 'Agent-facing project context pack',
+    appliesWhen: 'after analyze, onboarding, implementation, review',
+    body,
+    currentDate: options.currentDate || new Date().toISOString().slice(0, 10),
+  }));
+
+  return `${frontMatter}\n\n${body}`;
 }
 
 function refreshAiContextDoc(projectRoot, scan, options = {}) {

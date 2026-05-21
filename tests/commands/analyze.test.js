@@ -53,6 +53,7 @@ test('analyze writes raw scan under .quiver and keeps project map visible', () =
     assert.ok(scan.skipped_path_details.some((item) => item.reason === 'unsafe-segment:.quiver'));
 
     const aiContext = fs.readFileSync(path.join(projectRoot, 'docs', 'AI_CONTEXT.md'), 'utf8');
+    assert.match(aiContext, /^---\npurpose: "Agent-facing project context pack"/);
     assert.match(aiContext, /AI Context/);
     assert.match(aiContext, /Assumptions and Missing Info/);
     assert.match(aiContext, /README\.md is missing/);

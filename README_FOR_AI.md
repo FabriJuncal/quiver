@@ -4,14 +4,14 @@ Use this guide when initializing a new project with Quiver or when explaining th
 
 The first AI job in a generated project is context preparation, not product implementation.
 
-Important: slice numbering resets inside each spec. `slice-01` is the first slice of that spec, not a global repo counter.
+Important: slice numbering resets inside each spec. `slice-00` is the mandatory documentary foundation for a spec; `slice-01` is the first implementation slice, not a global repo counter.
 The canonical installer entrypoint is `npx create-quiver` run from the target project root.
 Do not recommend global installation; use `npx` or a project-local devDependency when the team needs a pinned version.
 The post-init contract is validated with `npx create-quiver doctor` from the project root.
 If the project already exists from an older Quiver version and was previously initialized by Quiver, run `npx create-quiver migrate` before `analyze` from the project root.
 If the project was never initialized by Quiver, do not use `migrate` as bootstrap; run `npx create-quiver init --name "Project Name"` first.
-The v20 and v21 specs are already completed; `specs/quiver-v22-guided-ai-workflow/` is planned work and must not be described as shipped until its slices are complete.
-Generated projects also get `quiver:*` npm scripts that call the Node CLI directly; prefer those for repeatable project workflows, including `quiver:plan` for sequential planning, `quiver:graph` for parallel-level inspection, `quiver:next` for the next ready slice, and the AI family `quiver:ai:onboard`, `quiver:ai:plan`, `quiver:ai:execute-slice`, `quiver:ai:pr`, and `quiver:ai:doctor`. Use `quiver:graph --format mermaid` for PR-ready Markdown or `quiver:graph --format dot` for Graphviz source.
+The v20, v21, and v22 specs are completed. Guided AI workflow behavior is available: prepare, approvals, spec worktrees, executor commits, execution waves, PR creation, spec close, and package safety.
+Generated projects also get `quiver:*` npm scripts that call the Node CLI directly; prefer those for repeatable project workflows, including `quiver:plan` for sequential planning, `quiver:graph` for parallel-level inspection, `quiver:next` for the next ready slice, and the AI family `quiver:ai:onboard`, `quiver:ai:plan`, `quiver:ai:approve`, `quiver:ai:execute-slice`, `quiver:ai:execute-plan`, `quiver:ai:pr`, and `quiver:ai:doctor`. Use `quiver:graph --format mermaid` for PR-ready Markdown or `quiver:graph --format dot` for Graphviz source.
 Maintain release notes and package publishing with `scripts/release-quiver.sh`.
 The primary generated project context for agents is `docs/AI_CONTEXT.md`.
 The project map is the single source of truth for stack, package manager, commands, and file hints: `docs/PROJECT_MAP.md`.
@@ -51,7 +51,7 @@ Prefer maps, metadata, diffs, and summaries over full file reads when they are e
 - The normal workflow runs from the project root without `--dir`; use `--dir` only when targeting another directory explicitly.
 - The cross-platform work targets native macOS, Linux, and Windows shells; Bash is a legacy compatibility path until the runtime slices land, and Windows support is only considered verified once the CI matrix is green.
 - The support contract lives in `docs/SUPPORT_MATRIX.md` and `docs/TROUBLESHOOTING.md`.
-- Generated project npm scripts should prefer `quiver:*` names such as `quiver:analyze`, `quiver:plan`, `quiver:graph`, `quiver:next`, `quiver:doctor`, `quiver:start-slice`, `quiver:check-slice`, and `quiver:check-pr`.
+- Generated project npm scripts should prefer `quiver:*` names such as `quiver:analyze`, `quiver:plan`, `quiver:graph`, `quiver:next`, `quiver:doctor`, `quiver:ai:approve`, `quiver:ai:execute-plan`, `quiver:spec:start`, `quiver:spec:status`, `quiver:spec:close`, `quiver:start-slice`, `quiver:check-slice`, and `quiver:check-pr`.
 - `quiver:graph` defaults to the tree view; choose `--format mermaid` or `--format dot` when you need exportable graph artifacts.
 - `quiver:next` prints the next ready slice and can auto-start it behind a confirmation prompt.
 - `quiver:next --all-ready` prints the whole ready level when you want to inspect every actionable slice at once.
@@ -126,16 +126,22 @@ After initialization, the user should:
 9. Review context docs before creating the first implementation slice
 10. Open and merge the documentation PR that establishes the workflow files
 11. Use `npx create-quiver ai plan --phase acceptance --input requirements.md --dry-run`
-12. After human approval, use `npx create-quiver ai plan --phase technical-plan --input acceptance-approved.md --dry-run`
-13. After human approval, use `npx create-quiver ai plan --phase spec --input technical-plan-approved.md --dry-run` to create the real spec, slices, handoffs, execution plan, and PR body
-14. Run `npx create-quiver plan` or `npm run quiver:plan`
-15. Run `npx create-quiver next` or `npm run quiver:next`
-16. Run `npx create-quiver start-slice [--allow-draft] <slice.json>` or `npm run quiver:start-slice -- [--allow-draft] <slice.json>`
-17. Make one commit per slice
-18. Open one PR per spec
-19. Validate the slice and the final PR with the workflow gates
+12. After human approval, save approved criteria with `npx create-quiver ai approve --phase acceptance --input acceptance-approved.md`
+13. Use `npx create-quiver ai plan --phase technical-plan --dry-run`
+14. After human approval, save the approved plan with `npx create-quiver ai approve --phase technical-plan --input technical-plan-approved.md`
+15. Use `npx create-quiver ai plan --phase spec --dry-run` to preview the real spec, slices, handoffs, execution plan, and PR body, then run it without `--dry-run` when ready
+16. Run `npx create-quiver spec start specs/<spec-slug>` to create or reuse the spec worktree
+17. Run `npx create-quiver plan` or `npm run quiver:plan`
+18. Run `npx create-quiver next` or `npm run quiver:next`
+19. Run `npx create-quiver ai execute-plan --dry-run --commit` to inspect execution waves
+20. Execute one slice with `npx create-quiver ai execute-slice --slice <slice.json> --commit` or execute the plan with `npx create-quiver ai execute-plan --execute --commit`
+21. Keep one commit per slice
+22. Open one PR per spec with `npx create-quiver ai pr --dry-run --input specs/<spec-slug>/pr.md ...`, then `--create` only after review
+23. After merge, close the worktree with `npx create-quiver spec close specs/<spec-slug>`
+24. Validate the slice and the final PR with the workflow gates
 
 Bootstrap note: `start-slice` should resolve paths canonically, prefer a local `develop` or `main` base branch before reaching for `origin`, and reject `draft` slices unless `--allow-draft` is passed intentionally.
+Release note: `scripts/package-quiver.sh` runs package safety against the npm tarball and must fail if local AI state, env files, npm credentials, or worktree state would be published.
 
 ## Optional Files
 

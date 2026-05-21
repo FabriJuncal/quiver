@@ -1,11 +1,11 @@
 # Quiver v22 - Guided AI Workflow Status
 
-**Status:** In progress
+**Status:** Completed
 **Created:** 2026-05-21
 
 ## Summary
 
-This spec defines the guided AI workflow needed to move from project preparation to planner approvals, spec generation, slice execution, PR creation, and post-merge cleanup.
+This spec implemented the guided AI workflow needed to move from project preparation to planner approvals, spec generation, slice execution, PR creation, and post-merge cleanup.
 
 ## Current State
 
@@ -22,7 +22,7 @@ This spec defines the guided AI workflow needed to move from project preparation
 - `slice-07`: completed.
 - `slice-08`: completed.
 - `slice-09`: completed.
-- `slice-10`: draft.
+- `slice-10`: completed.
 
 ## Execution Rules
 
@@ -36,6 +36,7 @@ This spec defines the guided AI workflow needed to move from project preparation
 
 ## Open Items
 
-- Decide whether `quiver` becomes a real command or remains documentation sugar for `npx create-quiver`.
-- Decide where approved planner artifacts live before spec generation.
-- Decide whether commit automation is opt-in or confirmation-based.
+- The canonical executable remains `npx create-quiver`; a short `quiver` binary was not introduced in this spec.
+- Approved planner artifacts are persisted under `.quiver/approvals` until generated specs and slices become versioned repo artifacts.
+- Commit automation is opt-in through `--commit`; real execution waves also require `--execute`.
+- Package publication is intentionally outside this slice and should be handled by the release workflow after review.

@@ -150,6 +150,18 @@ assert_front_matter "$project_root/docs/ai/PRINCIPLES.md"
 assert_count_bounds "$project_root/docs/ai/QUICK.md" 50
 assert_count_bounds "$project_root/docs/ai/STANDARD.md" 300
 
+slice00_dir="$project_root/specs/$project_slug/slices/slice-00-docs-foundation"
+mkdir -p "$slice00_dir"
+node - "$slice00_dir/slice.json" <<'NODE'
+const fs = require('fs');
+const file = process.argv[2];
+fs.writeFileSync(file, `${JSON.stringify({
+  slice_id: 'slice-00-docs-foundation',
+  title: 'Documentation foundation',
+  status: 'completed'
+}, null, 2)}\n`);
+NODE
+
 make_git_repo
 export SLICE_WORKTREES_DIR="$worktrees_root"
 

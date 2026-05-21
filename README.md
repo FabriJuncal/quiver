@@ -12,6 +12,7 @@ Ejecutá Quiver desde la raíz del proyecto donde querés instalar el workflow:
 
 ```bash
 npx create-quiver init --name "Mi Proyecto"
+npx create-quiver prepare --dry-run
 npx create-quiver analyze
 npx create-quiver doctor
 npx create-quiver ai onboard --dry-run
@@ -30,10 +31,13 @@ El flujo normal con IA continúa así:
 
 ```bash
 npx create-quiver ai plan --phase acceptance --input requirements.md --dry-run
-npx create-quiver ai plan --phase technical-plan --input acceptance-approved.md --dry-run
-npx create-quiver ai plan --phase spec --input technical-plan-approved.md --dry-run
+npx create-quiver ai approve --phase acceptance --input acceptance-approved.md
+npx create-quiver ai plan --phase technical-plan --dry-run
+npx create-quiver ai approve --phase technical-plan --input technical-plan-approved.md
+npx create-quiver ai plan --phase spec --dry-run
+npx create-quiver spec start specs/<project-slug>
 npx create-quiver next
-npx create-quiver ai execute-slice --slice specs/<project-slug>/slices/slice-01/slice.json --dry-run
+npx create-quiver ai execute-plan --dry-run --commit
 ```
 
 Usá `--dry-run` para validar provider, rol, contexto y paths sin ejecutar el modelo. Cuando el output esté revisado y aprobado, quitá `--dry-run`.
@@ -68,11 +72,16 @@ npx create-quiver analyze
 npx create-quiver doctor
 npx create-quiver ai onboard --dry-run
 npx create-quiver ai plan --phase acceptance --input requirements.md --dry-run
-npx create-quiver ai plan --phase technical-plan --input acceptance-approved.md --dry-run
-npx create-quiver ai plan --phase spec --input technical-plan-approved.md --dry-run
+npx create-quiver ai approve --phase acceptance --input acceptance-approved.md
+npx create-quiver ai plan --phase technical-plan --dry-run
+npx create-quiver ai approve --phase technical-plan --input technical-plan-approved.md
+npx create-quiver ai plan --phase spec --dry-run
+npx create-quiver spec start specs/<project-slug>
 npx create-quiver graph
 npx create-quiver next
-npx create-quiver ai execute-slice --slice specs/<project-slug>/slices/slice-01/slice.json --dry-run
+npx create-quiver ai execute-slice --slice specs/<project-slug>/slices/slice-01/slice.json --dry-run --commit
+npx create-quiver ai execute-plan --dry-run --commit
+npx create-quiver ai pr --dry-run --input specs/<project-slug>/pr.md --ssh-host-alias github-work --identity-file ~/.ssh/github-work
 ```
 
 Regla práctica: el planner no modifica código de producto; el executor solo trabaja sobre un slice aprobado y dentro de los archivos declarados en `slice.json`.
@@ -87,6 +96,7 @@ Usá este camino cuando todavía no existe el proyecto o estás arrancando una c
 mkdir mi-proyecto
 cd mi-proyecto
 npx create-quiver init --name "Mi Proyecto"
+npx create-quiver prepare --dry-run
 npx create-quiver analyze
 npx create-quiver doctor
 npx create-quiver ai onboard --dry-run
@@ -104,8 +114,10 @@ Después del bootstrap, revisá:
 
 ```bash
 npx create-quiver ai plan --phase acceptance --input requirements.md --dry-run
-npx create-quiver ai plan --phase technical-plan --input acceptance-approved.md --dry-run
-npx create-quiver ai plan --phase spec --input technical-plan-approved.md --dry-run
+npx create-quiver ai approve --phase acceptance --input acceptance-approved.md
+npx create-quiver ai plan --phase technical-plan --dry-run
+npx create-quiver ai approve --phase technical-plan --input technical-plan-approved.md
+npx create-quiver ai plan --phase spec --dry-run
 npx create-quiver plan
 npx create-quiver graph
 npx create-quiver next
@@ -266,10 +278,15 @@ Los comandos reales del CLI se ejecutan con `npx create-quiver ...` o, durante d
 | `npx create-quiver init --include-templates` | Exporta templates empaquetados bajo `.quiver/templates/`. |
 | `npx create-quiver analyze` | Genera `.quiver/scans/PROJECT_SCAN.json` y `docs/PROJECT_MAP.md`. |
 | `npx create-quiver doctor` | Valida que el contrato de Quiver esté completo. |
+| `npx create-quiver prepare --dry-run` | Ejecuta diagnóstico guiado de preparación sin escribir archivos. |
+| `npx create-quiver prepare` | Refresca contexto y muestra riesgos, supuestos y próximos comandos. |
 | `npx create-quiver migrate` | Actualiza proyectos que ya fueron inicializados con Quiver. |
 | `npx create-quiver plan` | Lista slices pendientes en orden y calcula camino crítico. |
 | `npx create-quiver graph` | Muestra el grafo de dependencias (`tree`, `mermaid` o `dot`). |
 | `npx create-quiver next` | Sugiere el próximo slice listo para trabajar. |
+| `npx create-quiver spec start <spec-dir>` | Crea o reutiliza el worktree dedicado de una spec. |
+| `npx create-quiver spec status <spec-dir>` | Muestra branch, path, `slice-00` y slices pendientes. |
+| `npx create-quiver spec close <spec-dir>` | Cierra un worktree de spec ya mergeado y limpio. |
 | `npx create-quiver start-slice <slice.json>` | Prepara worktree y contexto para ejecutar un slice. |
 | `npx create-quiver check-slice <slice.json>` | Valida readiness del slice. |
 | `npx create-quiver check-pr <slice.json>` | Valida estructura esperada para PR. |
@@ -284,11 +301,14 @@ Los comandos reales del CLI se ejecutan con `npx create-quiver ...` o, durante d
 ```bash
 npx create-quiver ai onboard --dry-run
 npx create-quiver ai plan --phase acceptance --input requirements.md --dry-run
-npx create-quiver ai plan --phase technical-plan --input acceptance-approved.md --dry-run
-npx create-quiver ai plan --phase spec --input technical-plan-approved.md --dry-run
-npx create-quiver ai execute-slice --slice specs/<project-slug>/slices/slice-01/slice.json --dry-run
+npx create-quiver ai approve --phase acceptance --input acceptance-approved.md
+npx create-quiver ai plan --phase technical-plan --dry-run
+npx create-quiver ai approve --phase technical-plan --input technical-plan-approved.md
+npx create-quiver ai plan --phase spec --dry-run
+npx create-quiver ai execute-slice --slice specs/<project-slug>/slices/slice-01/slice.json --dry-run --commit
+npx create-quiver ai execute-plan --dry-run --commit
 npx create-quiver ai doctor --dry-run --ssh-host-alias github-work --identity-file ~/.ssh/github-work
-npx create-quiver ai pr --dry-run --ssh-host-alias github-work --identity-file ~/.ssh/github-work
+npx create-quiver ai pr --dry-run --input specs/<project-slug>/pr.md --ssh-host-alias github-work --identity-file ~/.ssh/github-work
 ```
 
 Providers soportados: `codex`, `claude` y `gemini`, siempre vía CLI local.
@@ -299,9 +319,12 @@ Orden recomendado:
 1. `ai onboard`: el planner entiende el repo y el workflow.
 2. `ai plan --phase acceptance`: convierte requerimientos en criterios de aceptación.
 3. `ai plan --phase technical-plan`: propone el plan técnico.
-4. `ai plan --phase spec`: genera spec, slices, handoffs y PR body.
-5. `ai execute-slice`: ejecuta un slice aprobado con rol executor.
-6. `ai doctor` / `ai pr`: valida preflight de GitHub y PR.
+4. `ai approve`: guarda criterios o plan técnico aprobados.
+5. `ai plan --phase spec`: genera spec, slices, handoffs y PR body.
+6. `spec start`: prepara un worktree por spec.
+7. `ai execute-slice` / `ai execute-plan`: ejecuta slices aprobados, con commit opt-in.
+8. `ai doctor` / `ai pr`: valida GitHub y crea el PR solo con `--create`.
+9. `spec close`: cierra el worktree después del merge.
 
 ## 🧪 Cómo probar que funciona
 
@@ -317,6 +340,7 @@ Validaciones adicionales disponibles:
 
 ```bash
 npm run smoke:create-quiver
+npm run smoke:guided-workflow
 npm run smoke:tiered-pack
 ```
 
@@ -330,16 +354,25 @@ Notas reales del estado actual:
 
 | Script | Uso |
 |---|---|
+| `npm run quiver:analyze` | Ejecuta `npx create-quiver analyze`. |
 | `npm run quiver:plan` | Ejecuta `npx create-quiver plan`. |
+| `npm run quiver:prepare` | Ejecuta preparación guiada y diagnósticos. |
 | `npm run quiver:graph` | Ejecuta `npx create-quiver graph`. |
 | `npm run quiver:next` | Ejecuta `npx create-quiver next`. |
+| `npm run quiver:doctor` | Ejecuta `npx create-quiver doctor`. |
 | `npm run quiver:ai:onboard` | Ejecuta onboarding de IA. |
 | `npm run quiver:ai:plan` | Ejecuta planificación IA por fases. |
+| `npm run quiver:ai:approve` | Guarda criterios o planes aprobados. |
 | `npm run quiver:ai:execute-slice` | Ejecuta un slice con rol executor. |
+| `npm run quiver:ai:execute-plan` | Imprime o ejecuta olas de slices. |
 | `npm run quiver:ai:doctor` | Ejecuta preflight IA/GitHub. |
-| `npm run quiver:ai:pr` | Ejecuta preflight de PR. |
+| `npm run quiver:ai:pr` | Ejecuta preflight de PR y crea PR con `--create`. |
+| `npm run quiver:spec:start` | Ejecuta `npx create-quiver spec start`. |
+| `npm run quiver:spec:status` | Ejecuta `npx create-quiver spec status`. |
+| `npm run quiver:spec:close` | Ejecuta `npx create-quiver spec close`. |
 | `npm run package:quiver` | Empaqueta y valida el tarball npm. |
 | `npm run smoke:create-quiver` | Smoke del instalador `create-quiver`. |
+| `npm run smoke:guided-workflow` | Smoke del flujo guiado con IA, PR, cleanup y package safety. |
 | `npm run smoke:tiered-pack` | Smoke de context packs y lifecycle. |
 | `npm run release:quiver` | Release dry-run o publish, según flags. |
 
@@ -351,11 +384,12 @@ Notas reales del estado actual:
 2. Corré `analyze` para generar el mapa técnico.
 3. Corré `doctor` para validar el contrato.
 4. Incorporá al planner con `ai onboard --dry-run`.
-5. Convertí requerimientos en criterios, plan técnico y spec con `ai plan`.
-6. Revisá dependencias con `graph` y elegí el próximo trabajo con `next`.
-7. Ejecutá el slice con `ai execute-slice` o con tu agente usando el handoff generado.
-8. Validá con `check-slice`, `check-scope` y `check-pr`.
-9. Cerrá el trabajo con evidencia en el PR.
+5. Convertí requerimientos en criterios, plan técnico y spec con `ai plan`, usando `ai approve` entre fases.
+6. Prepará el worktree de la spec con `spec start`.
+7. Revisá dependencias con `graph`, `next` o `ai execute-plan --dry-run`.
+8. Ejecutá slices con `ai execute-slice --commit` o `ai execute-plan --execute --commit`.
+9. Abrí el PR con `ai pr --create` después de revisar el dry-run.
+10. Después del merge, cerrá el worktree con `spec close`.
 
 ## 🤝 Contribuir
 

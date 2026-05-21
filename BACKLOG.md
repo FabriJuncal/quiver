@@ -41,15 +41,15 @@
 
 - **Observed:** 2026-04-23
 - **Status:** promoted
-- **Evidence so far:** The core orchestration line shipped through v18, v20, and v21. The remaining guided workflow is now tracked in `specs/quiver-v22-guided-ai-workflow/`.
+- **Evidence so far:** The core orchestration line shipped through v18, v20, v21, and v22. Guided workflow is implemented in `specs/quiver-v22-guided-ai-workflow/`.
 - **Problem it solves:** Coordinating multiple agents across slices needs canonical answers for what runs next, what can run in parallel, what context each agent needs, and when work is ready for PR.
 - **Proposed shape:**
   - v18 Slice Orchestration (`plan`, `graph`, `next`) shipped.
   - v20 AI CLI Orchestration shipped.
   - v21 AI-First Layout shipped.
-  - v22 Guided AI Workflow is now planned as an active spec.
-- **Cost to formalize:** Tracked in `specs/quiver-v22-guided-ai-workflow/` as 11 slices including mandatory `slice-00`.
-- **Reasons to wait:** No wait for the guided workflow; it has been promoted to a spec. Deferred tooling such as `fork-slice`, `squash-spec`, and `share` still requires real demand before separate implementation.
+  - v22 Guided AI Workflow shipped in this branch.
+- **Cost to formalize:** Completed in `specs/quiver-v22-guided-ai-workflow/` as 11 slices including mandatory `slice-00`.
+- **Reasons to wait:** No wait for the guided workflow; it has been implemented. Deferred tooling such as `fork-slice`, `squash-spec`, and `share` still requires real demand before separate implementation.
 - **Trigger to promote:** Fulfilled for guided workflow on 2026-05-21.
 - **Related:**
   - `specs/quiver-v18-slice-orchestration/`

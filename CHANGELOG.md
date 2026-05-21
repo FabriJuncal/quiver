@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Guided AI workflow commands: `prepare`, approval persistence, spec worktree start/status/close, executor commits, execution waves, PR creation with `gh`, and package safety.
+- `quiver:prepare`, `quiver:ai:approve`, `quiver:ai:execute-plan`, `quiver:spec:start`, `quiver:spec:status`, and `quiver:spec:close` npm scripts for generated projects.
+- Guided workflow smoke coverage for prepare, approvals, execution, PR dry-run/create mocks, cleanup, and package safety.
+
+### Changed
+
+- Root and generated docs now present Quiver as AI-first guided workflow tooling, not only scaffolding.
+- Refreshed AI context docs keep front matter after `analyze`.
+- Package smoke now fails when local AI/tool state, env files, npm credentials, or worktree state would enter the npm tarball.
+
 ## [0.10.0] - 2026-05-21
 
 ### Added
