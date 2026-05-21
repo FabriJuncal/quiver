@@ -4,7 +4,7 @@ const path = require('path');
 const { execFileSync } = require('child_process');
 const { checkHandoff, scaffoldHandoff } = require('./lib/handoff');
 const { collectDoctorReport } = require('./lib/doctor');
-const { runApprovalStatus: runAiApprovalStatus, runApprove: runAiApprove, runDoctor: runAiDoctor, runExecuteSlice: runAiExecuteSlice, runOnboard, runPlan: runAiPlan, runPr: runAiPr } = require('./commands/ai');
+const { runApprovalStatus: runAiApprovalStatus, runApprove: runAiApprove, runDoctor: runAiDoctor, runExecutePlan: runAiExecutePlan, runExecuteSlice: runAiExecuteSlice, runOnboard, runPlan: runAiPlan, runPr: runAiPr } = require('./commands/ai');
 const { runPrepare } = require('./commands/prepare');
 const { runGraph } = require('./commands/graph');
 const { runNext } = require('./commands/next');
@@ -78,6 +78,7 @@ Options:
       --legacy-scripts        Include legacy Bash wrappers in init profile
       --include-templates     Export packaged templates in init profile
       --dry-run               Preview init, prepare, or AI work without executing writes/providers
+      --execute               For ai execute-plan, run the planned slices instead of printing commands
       --commit                For ai execute-slice, commit validated slice changes after provider, scope, and tests pass
       --allow-dirty           For ai execute-slice, allow pre-existing dirty files and ignore them for scope diff
       --provider <name>       Provider CLI to preflight for prepare or AI commands
@@ -99,6 +100,7 @@ Examples:
   cd ./my-project && npx create-quiver ai approvals
   cd ./my-project && npx create-quiver ai execute-slice --slice specs/my-project/slices/slice-01/slice.json --dry-run
   cd ./my-project && npx create-quiver ai execute-slice --slice specs/my-project/slices/slice-01/slice.json --commit
+  cd ./my-project && npx create-quiver ai execute-plan --dry-run --commit
   cd ./my-project && npx create-quiver ai doctor --dry-run --ssh-host-alias github-work --identity-file ~/.ssh/github-work
   cd ./my-project && npx create-quiver ai pr --dry-run --ssh-host-alias github-work --identity-file ~/.ssh/github-work
   cd ./my-project && npx create-quiver prepare --dry-run --provider codex --ssh-host-alias github-work --identity-file ~/.ssh/github-work
@@ -159,6 +161,7 @@ function parseArgs(argv) {
     aiTimeout: null,
     aiCommit: false,
     aiAllowDirty: false,
+    aiExecute: false,
     aiSshHostAlias: '',
     aiIdentityFile: '',
     aiRemote: 'origin',
@@ -257,6 +260,11 @@ function parseArgs(argv) {
 
     if (arg === '--commit') {
       result.aiCommit = true;
+      continue;
+    }
+
+    if (arg === '--execute') {
+      result.aiExecute = true;
       continue;
     }
 
@@ -1695,7 +1703,7 @@ async function run(argv) {
 
   if (args.mode === 'ai') {
     if (!args.aiCommand) {
-      throw new Error(formatError('missing ai subcommand. Use: npx create-quiver ai onboard | plan | approve | approvals | execute-slice | doctor | pr'));
+      throw new Error(formatError('missing ai subcommand. Use: npx create-quiver ai onboard | plan | approve | approvals | execute-slice | execute-plan | doctor | pr'));
     }
 
     if (args.aiCommand === 'onboard') {
@@ -1752,6 +1760,22 @@ async function run(argv) {
       return;
     }
 
+    if (args.aiCommand === 'execute-plan') {
+      await runAiExecutePlan(process.cwd(), {
+        allowDirty: args.aiAllowDirty,
+        commit: args.aiCommit,
+        context: args.aiContext || undefined,
+        dryRun: args.dryRun,
+        execute: args.aiExecute,
+        json: args.json,
+        provider: args.aiProvider,
+        role: args.aiRole,
+        specSlug: args.specSlug || undefined,
+        timeout: args.aiTimeout,
+      });
+      return;
+    }
+
     if (args.aiCommand === 'doctor') {
       await runAiDoctor(process.cwd(), {
         dryRun: args.dryRun,
@@ -1772,7 +1796,7 @@ async function run(argv) {
       return;
     }
 
-    throw new Error(formatError(`unsupported ai subcommand: ${args.aiCommand}. Supported tasks: onboard, plan, approve, approvals, execute-slice, doctor, pr`));
+    throw new Error(formatError(`unsupported ai subcommand: ${args.aiCommand}. Supported tasks: onboard, plan, approve, approvals, execute-slice, execute-plan, doctor, pr`));
   }
 
   if (args.mode === 'graph') {

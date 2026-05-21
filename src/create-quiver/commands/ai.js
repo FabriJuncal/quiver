@@ -3,6 +3,7 @@ const path = require('node:path');
 
 const { buildContextPackMetadata, normalizeRole } = require('../lib/ai/context-packs');
 const { runExecuteSlice } = require('../lib/ai/executor');
+const { runExecutePlan } = require('../lib/ai/execution-plan');
 const { formatPreflightReport, preflightGitHubPr } = require('../lib/ai/github');
 const { buildSpecGenerationManifest, describeSpecGeneration, generateSpecArtifacts } = require('../lib/ai/spec-generator');
 const { buildProviderInvocation, runProvider } = require('../lib/ai/providers');
@@ -531,6 +532,7 @@ module.exports = {
   normalizeTimeout,
   readTextFile,
   runDoctor,
+  runExecutePlan,
   runExecuteSlice,
   runApprove,
   runApprovalStatus,

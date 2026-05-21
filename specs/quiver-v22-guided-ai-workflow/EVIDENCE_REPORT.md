@@ -2,7 +2,7 @@
 
 ## Status
 
-Implementation is in progress. Slices `slice-00` through `slice-06` are completed.
+Implementation is in progress. Slices `slice-00` through `slice-07` are completed.
 
 ## Slice Evidence
 
@@ -15,7 +15,7 @@ Implementation is in progress. Slices `slice-00` through `slice-06` are complete
 | slice-04 | Planner approval state implemented under `.quiver/approvals`, with draft persistence, explicit approvals, default use of approved acceptance/technical-plan inputs, `ai approvals` status, and blocking of unapproved/stale inputs. Targeted tests passed. |
 | slice-05 | Spec-level worktree lifecycle implemented with `spec start/status`, safe main/develop base selection, dirty worktree protection, and `slice-00` completion guard for later `start-slice` executions. Targeted tests passed. |
 | slice-06 | `ai execute-slice` now keeps executor context bounded, validates scope, runs declared validation commands, reports retry/abort guidance on failure, and creates exactly one commit when `--commit` is enabled after successful provider, scope, and validation stages. Targeted tests passed. |
-| slice-07 | Pending. |
+| slice-07 | Execution waves now distinguish parallel-ready groups from sequential fallback, block parallel suggestions on unknown or overlapping file scopes, print dry-run executor commands without provider calls, and support explicit `ai execute-plan --execute --commit` with stop-on-failure behavior. Targeted tests passed. |
 | slice-08 | Pending. |
 | slice-09 | Pending. |
 | slice-10 | Pending. |
@@ -32,6 +32,9 @@ Implementation is in progress. Slices `slice-00` through `slice-06` are complete
 - 2026-05-21: `node --test tests/lib/check-slice.test.js tests/commands/next.test.js`
 - 2026-05-21: `git diff --check`
 - 2026-05-21: `node --test tests/commands/ai-execute-slice.test.js tests/lib/ai-executor.test.js tests/lib/scope.test.js`
+- 2026-05-21: `git diff --check`
+- 2026-05-21: `node --test tests/lib/ai-execution-plan.test.js tests/commands/ai-execute-plan.test.js`
+- 2026-05-21: `node --test tests/commands/ai-execute-slice.test.js tests/lib/ai-executor.test.js`
 - 2026-05-21: `git diff --check`
 
 ## Notes

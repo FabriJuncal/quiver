@@ -50,6 +50,6 @@
     "git diff --check"
   ],
   "estimated_hours": 9,
-  "status": "draft",
+  "status": "completed",
   "blocked_reason": null
 }

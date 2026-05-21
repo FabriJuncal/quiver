@@ -1,4 +1,7 @@
+const path = require('node:path');
+
 const { buildGraph, computeLevels, detectFileConflicts, isFoundationSliceId, readAllSlices, topoSort, SliceGraphError } = require('../slice-graph');
+const { runExecuteSlice } = require('./executor');
 
 const EXCLUDED_STATUSES = new Set(['completed', 'skipped', 'cancelled']);
 
@@ -6,11 +9,16 @@ function formatError(message) {
   return `create-quiver: ${message}`;
 }
 
-function summarizeSlice(node) {
+function toRelativePath(repoRoot, filePath) {
+  return path.relative(repoRoot, filePath).split(path.sep).join('/');
+}
+
+function summarizeSlice(node, repoRoot) {
   return {
     ref: node.ref,
     spec_slug: node.specSlug,
     slice_id: node.sliceId,
+    slice_path: node.slicePath ? toRelativePath(repoRoot, node.slicePath) : '',
     title: node.title || node.sliceId,
     status: node.status || 'draft',
     files: Array.isArray(node.files) ? node.files : [],
@@ -92,12 +100,30 @@ function buildPendingGraph(graph, options = {}) {
   };
 }
 
-function buildLevelStrategy(levelNodes) {
-  if (levelNodes.length > 1) {
+function buildFallbackReason({ conflicts, unknownScopeSlices }) {
+  if (unknownScopeSlices.length > 0) {
+    return `Unknown file scope: ${unknownScopeSlices.join(', ')}`;
+  }
+  if (conflicts.length > 0) {
+    return `File conflicts: ${conflicts.map((conflict) => conflict.slices.join(', ')).join('; ')}`;
+  }
+  return '';
+}
+
+function buildLevelStrategy(levelNodes, { parallelReady, conflicts, unknownScopeSlices }) {
+  if (parallelReady) {
     return {
       mode: 'temporary-per-slice',
       temporary_worktrees: true,
       reason: 'Run each ready slice in its own temporary worktree, then integrate the commits in stable level order.',
+    };
+  }
+
+  if (levelNodes.length > 1) {
+    return {
+      mode: 'sequential-fallback',
+      temporary_worktrees: false,
+      reason: buildFallbackReason({ conflicts, unknownScopeSlices }) || 'Run sequentially because this level is not parallel-ready.',
     };
   }
 
@@ -108,21 +134,45 @@ function buildLevelStrategy(levelNodes) {
   };
 }
 
-function summarizeLevel(levelNodes, index) {
-  const slices = levelNodes.map(summarizeSlice);
+function buildExecutionGroups(slices, parallelReady, fallbackReason) {
+  if (parallelReady) {
+    return [{
+      mode: 'parallel',
+      reason: 'No file-scope conflicts detected.',
+      slice_refs: slices.map((slice) => slice.ref),
+    }];
+  }
+
+  return slices.map((slice) => ({
+    mode: 'sequential',
+    reason: fallbackReason || 'Sequential execution is the safe default.',
+    slice_refs: [slice.ref],
+  }));
+}
+
+function summarizeLevel(levelNodes, index, repoRoot) {
+  const slices = levelNodes.map((node) => summarizeSlice(node, repoRoot));
   const sliceRefs = slices.map((slice) => slice.ref);
   const conflicts = detectFileConflicts(levelNodes).map((group) => ({
     files: group.files,
     slices: group.slices,
   }));
+  const unknownScopeSlices = slices
+    .filter((slice) => !Array.isArray(slice.files) || slice.files.length === 0)
+    .map((slice) => slice.ref);
+  const fallbackReason = buildFallbackReason({ conflicts, unknownScopeSlices });
+  const parallelReady = levelNodes.length > 1 && conflicts.length === 0 && unknownScopeSlices.length === 0;
 
   return {
     index,
     slice_refs: sliceRefs,
-    parallel_ready: levelNodes.length > 1,
-    requires_temporary_worktrees: levelNodes.length > 1,
-    worktree_strategy: buildLevelStrategy(levelNodes),
+    parallel_ready: parallelReady,
+    requires_temporary_worktrees: parallelReady,
+    worktree_strategy: buildLevelStrategy(levelNodes, { parallelReady, conflicts, unknownScopeSlices }),
     conflicts,
+    unknown_scope_slices: unknownScopeSlices,
+    fallback_reason: fallbackReason || null,
+    execution_groups: buildExecutionGroups(slices, parallelReady, fallbackReason),
     slices,
   };
 }
@@ -153,7 +203,7 @@ function collectExecutionPlan(repoRoot, options = {}) {
     }
 
     const readyLevels = computeLevels(pendingGraph);
-    const readyLevelReports = readyLevels.map((levelNodes, index) => summarizeLevel(levelNodes, index));
+    const readyLevelReports = readyLevels.map((levelNodes, index) => summarizeLevel(levelNodes, index, repoRoot));
     const executionOrder = topoSort(pendingGraph).map((node) => node.ref);
     const integrationOrder = readyLevelReports.flatMap((level) => level.slice_refs);
     const foundationRefs = pendingGraph.foundationRefs;
@@ -210,9 +260,12 @@ function formatHumanExecutionPlan(report) {
   }
 
   for (const level of report.ready_levels) {
-    const modeLabel = level.parallel_ready ? 'parallel' : 'sequential';
+    const modeLabel = level.parallel_ready ? 'parallel-ready' : 'sequential';
     lines.push(`Level ${level.index} (${modeLabel})`);
     lines.push(`Worktree strategy: ${level.worktree_strategy.mode}`);
+    if (level.fallback_reason) {
+      lines.push(`Fallback: ${level.fallback_reason}`);
+    }
 
     for (const slice of level.slices) {
       lines.push(`- ${slice.ref} [${slice.status}]`);
@@ -225,6 +278,13 @@ function formatHumanExecutionPlan(report) {
       }
     }
 
+    if (level.unknown_scope_slices.length > 0) {
+      lines.push('Unknown scope:');
+      for (const ref of level.unknown_scope_slices) {
+        lines.push(`- ${ref}`);
+      }
+    }
+
     lines.push('');
   }
 
@@ -234,6 +294,99 @@ function formatHumanExecutionPlan(report) {
   }
 
   return `${lines.join('\n')}\n`;
+}
+
+function formatExecutePlanDryRun(report, options = {}) {
+  const provider = options.provider || 'codex';
+  const commitEnabled = options.commit === true;
+  const lines = [
+    'AI execute-plan dry-run',
+    `Provider: ${provider}`,
+    `Commit after each slice: ${commitEnabled ? 'enabled' : 'disabled'}`,
+    `Total slices: ${report.summary.total_slices}`,
+    '',
+    'Waves',
+  ];
+
+  const commandForSlice = (slice) => {
+    const parts = [
+      'npx create-quiver ai execute-slice',
+      `--slice ${JSON.stringify(slice.slice_path)}`,
+      `--provider ${provider}`,
+    ];
+    if (commitEnabled) {
+      parts.push('--commit');
+    }
+    return parts.join(' ');
+  };
+
+  for (const level of report.ready_levels) {
+    lines.push(`Wave ${level.index}: ${level.parallel_ready ? 'parallel-ready' : 'sequential'}`);
+    if (level.fallback_reason) {
+      lines.push(`Fallback: ${level.fallback_reason}`);
+    }
+    for (const group of level.execution_groups) {
+      lines.push(`Group: ${group.mode}`);
+      for (const ref of group.slice_refs) {
+        const slice = level.slices.find((item) => item.ref === ref);
+        lines.push(`- ${commandForSlice(slice)}`);
+      }
+    }
+  }
+
+  return `${lines.join('\n')}\n`;
+}
+
+async function runExecutePlan(repoRoot, options = {}) {
+  const report = collectExecutionPlan(repoRoot, options);
+  const execute = options.execute === true;
+
+  if (options.json && !execute) {
+    process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
+    return { task: 'execute-plan', dryRun: true, report };
+  }
+
+  if (!execute || options.dryRun === true) {
+    process.stdout.write(formatExecutePlanDryRun(report, options));
+    return { task: 'execute-plan', dryRun: true, report };
+  }
+
+  if (options.commit !== true) {
+    throw new Error(formatError('ai execute-plan --execute requires --commit so each successful slice creates one commit.'));
+  }
+
+  const runSlice = options.runExecuteSliceFn || runExecuteSlice;
+  const results = [];
+
+  for (const level of report.ready_levels) {
+    for (const group of level.execution_groups) {
+      for (const ref of group.slice_refs) {
+        const slice = level.slices.find((item) => item.ref === ref);
+        try {
+          const result = await runSlice(repoRoot, {
+            allowDirty: options.allowDirty === true,
+            commit: true,
+            context: options.context,
+            dryRun: false,
+            provider: options.provider,
+            role: options.role,
+            slice: slice.slice_path,
+            timeout: options.timeout,
+          });
+          results.push({ level: level.index, ref, ok: true, result });
+        } catch (error) {
+          const wrapped = new Error(formatError(`ai execute-plan stopped at wave ${level.index} slice ${ref}: ${error.message || error}`));
+          wrapped.cause = error;
+          wrapped.code = error.code || 'AI_EXECUTE_PLAN_FAILED';
+          wrapped.details = { level: level.index, ref, results };
+          throw wrapped;
+        }
+      }
+    }
+  }
+
+  process.stdout.write(`AI execute-plan completed\nSlices executed: ${results.length}\n`);
+  return { task: 'execute-plan', dryRun: false, report, results };
 }
 
 function runExecutionPlan(repoRoot, options = {}) {
@@ -249,6 +402,8 @@ function runExecutionPlan(repoRoot, options = {}) {
 
 module.exports = {
   collectExecutionPlan,
+  formatExecutePlanDryRun,
   formatHumanExecutionPlan,
+  runExecutePlan,
   runExecutionPlan,
 };
