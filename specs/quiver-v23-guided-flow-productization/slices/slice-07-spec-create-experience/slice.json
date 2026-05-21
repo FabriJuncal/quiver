@@ -45,10 +45,11 @@
     "Next safe commands are printed."
   ],
   "tests": [
-    "node --test tests/commands/ai-plan-spec-phase.test.js tests/lib/ai/spec-generator*.test.js",
+    "node --test tests/commands/spec-create.test.js tests/commands/ai-plan-spec-phase.test.js tests/lib/ai-spec-generator.test.js",
     "git diff --check"
   ],
   "estimated_hours": 7,
-  "status": "draft",
+  "status": "completed",
+  "completed_at": "2026-05-21",
   "blocked_reason": null
 }

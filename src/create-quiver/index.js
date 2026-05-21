@@ -10,6 +10,7 @@ const { runFlow } = require('./commands/flow');
 const { runGraph } = require('./commands/graph');
 const { runNext } = require('./commands/next');
 const { runPlan } = require('./commands/plan');
+const { runCreateSpec } = require('./commands/spec');
 const { buildInitLayout, formatInitLayoutPlan } = require('./lib/init-layout');
 const { initializeProjectDocs, installSelfAsDevDep, refreshAiContextDoc } = require('./lib/init-docs');
 const { checkPrReadiness, checkScope, checkSliceReadiness } = require('./lib/readiness');
@@ -61,6 +62,7 @@ function printUsage() {
   npx create-quiver cleanup-slice [options] <slice.json>
   npx create-quiver check-scope [options] <slice.json>
   npx create-quiver refresh-active-slices
+  npx create-quiver spec create [options]
   npx create-quiver spec start <spec-dir>
   npx create-quiver spec status <spec-dir>
   npx create-quiver spec close <spec-dir>
@@ -81,7 +83,7 @@ Options:
       --full                  Plan or run the full compatibility init profile
       --legacy-scripts        Include legacy Bash wrappers in init profile
       --include-templates     Export packaged templates in init profile
-      --dry-run               Preview init, prepare, or AI work without executing writes/providers
+      --dry-run               Preview init, prepare, spec create, or AI work without executing writes/providers
       --execute               For ai execute-plan, run the planned slices instead of printing commands
       --create                For ai pr, create the PR after preflight instead of printing the plan only
       --commit                For ai execute-slice, commit validated slice changes after provider, scope, and tests pass
@@ -113,6 +115,7 @@ Examples:
   cd ./my-project && npx create-quiver ai plan --phase technical-plan --dry-run
   cd ./my-project && npx create-quiver ai review-plan --dry-run
   cd ./my-project && npx create-quiver ai approve --phase technical-plan --version 1
+  cd ./my-project && npx create-quiver spec create --dry-run
   cd ./my-project && npx create-quiver ai approvals
   cd ./my-project && npx create-quiver ai execute-slice --slice specs/my-project/slices/slice-01/slice.json --dry-run
   cd ./my-project && npx create-quiver ai execute-slice --slice specs/my-project/slices/slice-01/slice.json --commit
@@ -615,10 +618,13 @@ function parseArgs(argv) {
       result.specCommand = positional.shift();
     }
     if (!result.specCommand) {
-      throw new Error(formatError('missing spec subcommand. Use: npx create-quiver spec <start|status|close> <spec-dir>'));
+      throw new Error(formatError('missing spec subcommand. Use: npx create-quiver spec <create|start|status|close>'));
     }
-    if (positional.length > 0) {
+    if (result.specCommand !== 'create' && positional.length > 0) {
       result.targetDir = positional.shift();
+    }
+    if (result.specCommand === 'create' && positional.length > 0) {
+      throw new Error(formatError('spec create does not accept positional arguments; use --input <file> or --spec <slug>'));
     }
   } else {
     if (positional.length > 0) {
@@ -2023,6 +2029,15 @@ async function run(argv) {
   }
 
   if (args.mode === 'spec') {
+    if (args.specCommand === 'create') {
+      runCreateSpec(process.cwd(), {
+        dryRun: args.dryRun,
+        input: args.aiInput || undefined,
+        specSlug: args.specSlug || undefined,
+      });
+      return;
+    }
+
     if (!args.targetDir || args.targetDir === '.') {
       throw new Error(formatError('missing spec directory. Use: npx create-quiver spec <start|status|close> <spec-dir>'));
     }
@@ -2051,7 +2066,7 @@ async function run(argv) {
       return;
     }
 
-    throw new Error(formatError(`unsupported spec subcommand: ${args.specCommand}. Supported tasks: start, status, close`));
+    throw new Error(formatError(`unsupported spec subcommand: ${args.specCommand}. Supported tasks: create, start, status, close`));
   }
 
   const packageRoot = path.resolve(__dirname, '../..');

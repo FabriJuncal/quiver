@@ -418,10 +418,10 @@ function detectFlowState(projectRoot) {
       stage: 'spec-ready',
       label: 'ready for spec generation',
       blockers: [],
-      nextCommand: 'npx create-quiver ai plan --phase spec --dry-run',
+      nextCommand: 'npx create-quiver spec create --dry-run',
       suggestedCommands: [
-        'npx create-quiver ai plan --phase spec --dry-run',
-        'npx create-quiver ai plan --phase spec',
+        'npx create-quiver spec create --dry-run',
+        'npx create-quiver spec create',
         'npx create-quiver spec start specs/<spec-slug>',
       ],
       facts,

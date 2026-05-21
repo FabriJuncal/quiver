@@ -2,7 +2,7 @@
 
 ## Resumen de lo realizado
 
-Se agrego la fase `ai review-plan` para revisar el draft del plan tecnico antes de aprobarlo y antes de generar specs. El review usa el perfil `reviewer`, imprime metadata en dry-run, persiste el resultado en `.quiver/approvals/plan-review/` y bloquea `ai plan --phase spec` si el plan tecnico no esta revisado y aprobado.
+Se agrego la fase `ai review-plan` para revisar el draft del plan tecnico antes de aprobarlo y antes de generar specs. El review usa el perfil `reviewer`, imprime metadata en dry-run, persiste el resultado en `.quiver/approvals/plan-review/` y bloquea la generacion de spec si el plan tecnico no esta revisado y aprobado.
 
 ## Validacion contra criterios de aceptacion
 
@@ -17,7 +17,7 @@ Se agrego la fase `ai review-plan` para revisar el draft del plan tecnico antes 
 - Nuevo subcomando `npx create-quiver ai review-plan`.
 - `flow` ahora guia al usuario a revisar el plan tecnico antes de aprobarlo.
 - `ai approvals` muestra el estado `plan-review`.
-- `ai plan --phase spec` exige plan tecnico revisado y aprobado.
+- La generacion de spec exige plan tecnico revisado y aprobado.
 - README, templates, generated docs y smokes quedaron alineados con el nuevo paso.
 
 ## Pendientes

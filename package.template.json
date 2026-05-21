@@ -18,6 +18,7 @@
     "quiver:ai:execute-plan": "npx create-quiver ai execute-plan",
     "quiver:ai:pr": "npx create-quiver ai pr",
     "quiver:ai:doctor": "npx create-quiver ai doctor",
+    "quiver:spec:create": "npx create-quiver spec create",
     "quiver:spec:start": "npx create-quiver spec start",
     "quiver:spec:status": "npx create-quiver spec status",
     "quiver:spec:close": "npx create-quiver spec close",

@@ -77,7 +77,7 @@ npm run quiver:ai:approve -- --phase acceptance --input acceptance-approved.md
 npm run quiver:ai:plan -- --phase technical-plan --dry-run
 npm run quiver:ai:review-plan -- --dry-run
 npm run quiver:ai:approve -- --phase technical-plan --version <n>
-npm run quiver:ai:plan -- --phase spec --dry-run
+npm run quiver:spec:create -- --dry-run
 npm run quiver:spec:start -- specs/{{PROJECT_SLUG}}
 npm run quiver:ai:execute-slice -- --slice specs/{{PROJECT_SLUG}}/slices/<slice-id>/slice.json --dry-run --commit
 npm run quiver:ai:execute-plan -- --dry-run --commit

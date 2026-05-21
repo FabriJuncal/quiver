@@ -266,7 +266,7 @@ npm run quiver:ai:approve -- --phase acceptance --input acceptance-approved.md
 npm run quiver:ai:plan -- --phase technical-plan --dry-run
 npm run quiver:ai:review-plan -- --dry-run
 npm run quiver:ai:approve -- --phase technical-plan --version <n>
-npm run quiver:ai:plan -- --phase spec --dry-run
+npm run quiver:spec:create -- --dry-run
 \`\`\`
 
 When a real spec exists, execute one approved slice at a time:
@@ -319,7 +319,7 @@ npm run quiver:ai:approve -- --phase acceptance --input acceptance-approved.md
 npm run quiver:ai:plan -- --phase technical-plan --dry-run
 npm run quiver:ai:review-plan -- --dry-run
 npm run quiver:ai:approve -- --phase technical-plan --version <n>
-npm run quiver:ai:plan -- --phase spec --dry-run
+npm run quiver:spec:create -- --dry-run
 \`\`\`
 
 When a real spec exists, execute one approved slice at a time:
@@ -346,7 +346,7 @@ npm run quiver:ai:approve -- --phase acceptance --input acceptance-approved.md
 npm run quiver:ai:plan -- --phase technical-plan --dry-run
 npm run quiver:ai:review-plan -- --dry-run
 npm run quiver:ai:approve -- --phase technical-plan --version <n>
-npm run quiver:ai:plan -- --phase spec --dry-run
+npm run quiver:spec:create -- --dry-run
 npm run quiver:ai:execute-slice -- --slice specs/<spec-slug>/slices/<slice-id>/slice.json --dry-run --commit
 npm run quiver:ai:execute-plan -- --dry-run --commit
 npm run quiver:ai:pr -- --dry-run --input specs/<spec-slug>/pr.md --ssh-host-alias github-work --identity-file ~/.ssh/github-work
@@ -416,7 +416,7 @@ npm run quiver:ai:approve -- --phase acceptance --input acceptance-approved.md
 npm run quiver:ai:plan -- --phase technical-plan --dry-run
 npm run quiver:ai:review-plan -- --dry-run
 npm run quiver:ai:approve -- --phase technical-plan --version <n>
-npm run quiver:ai:plan -- --phase spec --dry-run
+npm run quiver:spec:create -- --dry-run
 npm run quiver:spec:start -- specs/${projectSlug}
 npm run quiver:ai:execute-slice -- --slice specs/${projectSlug}/slices/slice-01/slice.json --dry-run --commit
 npm run quiver:ai:execute-plan -- --dry-run --commit
@@ -442,7 +442,7 @@ npm run quiver:ai:approve -- --phase acceptance --input acceptance-approved.md
 npm run quiver:ai:plan -- --phase technical-plan --dry-run
 npm run quiver:ai:review-plan -- --dry-run
 npm run quiver:ai:approve -- --phase technical-plan --version <n>
-npm run quiver:ai:plan -- --phase spec --dry-run
+npm run quiver:spec:create -- --dry-run
 npm run quiver:ai:execute-slice -- --slice specs/${projectSlug}/slices/slice-01/slice.json --dry-run --commit
 npm run quiver:ai:execute-plan -- --dry-run --commit
 npm run quiver:ai:doctor -- --dry-run --ssh-host-alias github-work --identity-file ~/.ssh/github-work
@@ -463,7 +463,7 @@ npm run quiver:refresh-active-slices
 The \`quiver:graph\` script prints the tree view by default; use \`npx create-quiver graph --format mermaid\` for PR-ready Markdown and \`--format dot\` when you want Graphviz source.
 The \`quiver:next\` script points to the next ready slice and can auto-start it behind a confirmation prompt.
 The \`quiver:ai:*\` scripts standardize planner/executor AI flows. Use dry-run first: onboarding and planning dry-runs do not require provider auth, \`quiver:ai:execute-plan -- --dry-run --commit\` prints safe waves, and \`quiver:ai:pr -- --dry-run\` validates \`gh\`, GitFlow docs, branch/worktree state, SSH inputs, and \`pr.md\` without creating a PR. Add \`--create\` only after reviewing the plan.
-Use \`quiver:spec:start\`, \`quiver:spec:status\`, and \`quiver:spec:close\` for one worktree per spec.
+Use \`quiver:spec:create\`, \`quiver:spec:start\`, \`quiver:spec:status\`, and \`quiver:spec:close\` for one spec generation and worktree per spec.
 Use \`npx create-quiver next --all-ready\` when you want the full ready level instead of a single suggestion.
 The legacy Bash wrappers remain in \`tools/scripts/\` for compatibility, but new project-level automation should prefer the \`quiver:*\` scripts and the direct \`npx create-quiver ...\` commands below.
 \`npm run quiver:migrate\` is only for projects that were already initialized by Quiver.
@@ -540,7 +540,7 @@ Record durable decisions in \`docs/DECISIONS.md\` so future AI agents do not re-
 
 ## First Slice Workflow
 
-Use this section only for projects generated with the full compatibility layout. In the default AI-first layout, create real specs and slices with \`npx create-quiver ai plan --phase spec\` after acceptance criteria are approved and the technical plan is reviewed and approved.
+Use this section only for projects generated with the full compatibility layout. In the default AI-first layout, create real specs and slices with \`npx create-quiver spec create\` after acceptance criteria are approved and the technical plan is reviewed and approved.
 
 1. Review or refine specs/${projectSlug}/SPEC.md.
 2. Create the first slice from specs/${projectSlug}/slices/slice-template/slice.json.
