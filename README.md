@@ -331,6 +331,7 @@ El paquete también publica el alias binario `quiver`, que apunta al mismo CLI. 
 | `npx create-quiver spec close <spec-dir>` | Cierra un worktree de spec ya mergeado y limpio. |
 | `npx create-quiver start-slice <slice.json>` | Prepara worktree y contexto para ejecutar un slice. |
 | `npx create-quiver check-slice <slice.json>` | Valida readiness del slice. |
+| `npx create-quiver check-slice --local <slice.json>` | Valida estructura local sin exigir remoto/base. |
 | `npx create-quiver check-pr <slice.json>` | Valida estructura esperada para PR. |
 | `npx create-quiver check-scope <slice.json>` | Verifica que los archivos modificados estén dentro del alcance declarado. |
 | `npx create-quiver cleanup-slice <slice.json>` | Limpia worktree/branch local asociado a un slice. |

@@ -28,6 +28,7 @@ If a generated project has been analyzed, the exact agent handoff prompt is `doc
 Keep README copy-paste prompts short; the detailed onboarding contract lives in `docs/AI_ONBOARDING_PROMPT.md` generated from `docs/AI_ONBOARDING_PROMPT.md.template`.
 If a new bounded transfer is needed, scaffold `specs/<project-slug>/HANDOFF.md` with `npx create-quiver new-handoff <spec-slug>` and validate it with `npx create-quiver check-handoff specs/<project-slug>/HANDOFF.md`.
 Use `npx create-quiver check-handoff specs/<project-slug>/HANDOFF.md` to validate a transferred handoff before execution.
+Use `npx create-quiver check-slice --local <slice.json>` for structural validation in a new repo without remote/base branches; run normal `check-slice` before PR readiness so base/remote checks still happen.
 During onboarding, after reading `ROADMAP.md`, also read `BACKLOG.md` in the repository root: it tracks emerging patterns that are not yet scoped as specs. Before proposing a new spec, confirm the idea is not already parked or emerging there.
 
 ## Token-Efficient Reading Rules

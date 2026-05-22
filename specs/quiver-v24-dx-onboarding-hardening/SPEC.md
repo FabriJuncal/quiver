@@ -127,7 +127,7 @@ Implement in small vertical slices:
 | slice-02 | CLI command routing and version mismatch errors | Completed | slice-00 |
 | slice-03 | Doctor fixes and documentation link checks | Completed | slice-01, slice-02 |
 | slice-04 | Prepare output and AI context preparation drafts | Planned | slice-01, slice-02 |
-| slice-05 | Local slice validation and base branch guidance | Planned | slice-02 |
+| slice-05 | Local slice validation and base branch guidance | Completed | slice-02 |
 | slice-06 | Historical plan, graph, and next views | Planned | slice-05 |
 | slice-07 | Analyzer command map hardening | Completed | slice-01 |
 | slice-08 | Evidence run command | Planned | slice-03 |

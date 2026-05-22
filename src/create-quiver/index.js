@@ -132,6 +132,7 @@ Options:
       --only-ready            Show only slices with no pending dependencies
       --all-ready             List every ready slice returned by next
       --auto-start            Prompt for confirmation and run start-slice on next
+      --local                 For check-slice, run structural validation without remote/base checks
       --unicode               Prefer Unicode output when supported
       --minimal               Plan or run the minimal init profile
       --full                  Plan or run the full compatibility init profile
@@ -149,8 +150,8 @@ Options:
       --version <n>           Draft version to approve for AI planner phases
       --ssh-host-alias <name> SSH host alias to validate for prepare or AI commands
       --identity-file <path>  SSH identity file to validate for prepare or AI commands
-      --remote <name>         Git remote name for AI PR checks
-      --base <branch>         Base branch for ai pr create (default: main)
+      --remote <name>         Git remote name for check-slice or AI PR checks
+      --base <branch>         Base branch for check-slice, ai pr, or spec close (default: main)
       --title <text>          Override PR title for ai pr create
   -y, --yes                   Skip prompts and use the provided inputs
   -h, --help                  Show this help message
@@ -211,6 +212,7 @@ function parseArgs(argv) {
     explicitInit: false,
     mode: 'init',
     allowDraft: false,
+    checkSliceLocal: false,
     closeBaseline: false,
     discard: false,
     doctorFix: false,
@@ -250,6 +252,7 @@ function parseArgs(argv) {
     aiExecutionMode: 'auto',
     aiCreate: false,
     aiBaseBranch: 'main',
+    baseBranchExplicit: false,
     aiTitle: '',
     aiSshHostAlias: '',
     aiIdentityFile: '',
@@ -330,6 +333,11 @@ function parseArgs(argv) {
 
     if (arg === '--allow-draft') {
       result.allowDraft = true;
+      continue;
+    }
+
+    if (arg === '--local') {
+      result.checkSliceLocal = true;
       continue;
     }
 
@@ -584,6 +592,7 @@ function parseArgs(argv) {
         throw new Error(formatError('missing value for --base'));
       }
       result.aiBaseBranch = value;
+      result.baseBranchExplicit = true;
       continue;
     }
 
@@ -2151,7 +2160,10 @@ async function run(argv) {
 
   if (args.mode === 'check-slice') {
     checkSliceReadiness(args.targetDir, {
+      baseBranch: args.baseBranchExplicit ? args.aiBaseBranch : '',
       gate: args.gate,
+      local: args.checkSliceLocal,
+      remote: args.aiRemote,
       strictOverlap: args.strictOverlap,
     });
     return;

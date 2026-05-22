@@ -13,7 +13,7 @@
 | slice-02 | CLI command routing and version mismatch errors | Completed | 100% | slice-00 |
 | slice-03 | Doctor fixes and documentation link checks | Completed | 100% | slice-01, slice-02 |
 | slice-04 | Prepare output and AI context preparation drafts | Planned | 0% | slice-01, slice-02 |
-| slice-05 | Local slice validation and base branch guidance | Planned | 0% | slice-02 |
+| slice-05 | Local slice validation and base branch guidance | Completed | 100% | slice-02 |
 | slice-06 | Historical plan, graph, and next views | Planned | 0% | slice-05 |
 | slice-07 | Analyzer command map hardening | Completed | 100% | slice-01 |
 | slice-08 | Evidence run command | Planned | 0% | slice-03 |

@@ -2,7 +2,7 @@
 
 ## Status
 
-`slice-00` documentation foundation, `slice-01` init/template hygiene, `slice-02` CLI routing/version diagnostics, `slice-03` doctor fixes/link checks, and `slice-07` analyzer command map hardening are completed. Remaining implementation slices are pending.
+`slice-00` documentation foundation, `slice-01` init/template hygiene, `slice-02` CLI routing/version diagnostics, `slice-03` doctor fixes/link checks, `slice-05` local slice validation, and `slice-07` analyzer command map hardening are completed. Remaining implementation slices are pending.
 
 ## Required Final Evidence
 
@@ -26,4 +26,5 @@
 | slice-01 | `npm run smoke:create-quiver` | Pass | Generated-project smoke passed after aligning full-profile index expectations with actual generated extras. |
 | slice-02 | `node --test tests/commands/init-profiles.test.js tests/commands/doctor.test.js tests/commands/flow.test.js` | Pass | 29 tests passed, covering unsupported command routing, legacy `--name`, doctor script mismatch warnings, and flow regressions. |
 | slice-03 | `node --test tests/lib/doctor.test.js tests/commands/doctor.test.js tests/commands/prepare.test.js` | Pass | 15 tests passed, covering fix dry-run, idempotent fixes, local docs link warnings, and prepare regressions. |
+| slice-05 | `node --test tests/lib/check-slice.test.js tests/commands/flow.test.js` | Pass | 18 tests passed, covering `check-slice --local`, omitted-check reporting, missing-base guidance, explicit base branch, and flow regressions. |
 | slice-07 | `node --test tests/commands/analyze.test.js tests/lib/project-scan.test.js` | Pass | 6 tests passed, covering plain Node/JavaScript analysis, language dedupe, useful script surfacing, and scan artifact helpers. |
