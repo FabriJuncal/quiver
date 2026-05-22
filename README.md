@@ -321,6 +321,12 @@ El paquete también publica el alias binario `quiver`, que apunta al mismo CLI. 
 | `npx create-quiver ai run create --input requirements.md` | Crea un run persistente en `.quiver/runs/` para un requerimiento. |
 | `npx create-quiver ai status` | Muestra la fase actual del run AI y el próximo comando seguro. |
 | `npx create-quiver ai resume` | Reanuda el run AI desde la última fase válida sin depender del historial del chat. |
+| `npx create-quiver ai inspect` | Resume specs, slices, runs, agentes, layout y próximos comandos accionables. |
+| `npx create-quiver ai export --format json` | Exporta estado de specs, slices, runs, agentes, dependencias y migración para dashboards o agentes. |
+| `npx create-quiver ai export --format markdown` | Exporta el mismo estado en Markdown legible para PRs o docs. |
+| `npx create-quiver ai specs list` | Lista specs con estado, progreso y cantidad de slices. |
+| `npx create-quiver ai slices list` | Lista slices con estado, progreso, dependencias y bloqueos. |
+| `npx create-quiver ai trace report` | Muestra runs, olas de ejecución y estado de migración en formato humano. |
 | `npx create-quiver ai approvals` | Muestra drafts versionados y aprobados por fase. |
 | `npx create-quiver ai approve --phase acceptance --version <n>` | Aprueba una versión concreta de un draft guardado. |
 | `npx create-quiver init --minimal` | Crea solo el contrato esencial de onboarding. |
@@ -335,6 +341,7 @@ El paquete también publica el alias binario `quiver`, que apunta al mismo CLI. 
 | `npx create-quiver prepare` | Refresca contexto y muestra riesgos, supuestos y próximos comandos. |
 | `npx create-quiver ai prepare-context --dry-run` | Previsualiza docs de onboarding, diffs, supuestos, riesgos, contradicciones y rutas omitidas sin escribir. |
 | `npx create-quiver migrate` | Actualiza proyectos que ya fueron inicializados con Quiver. |
+| `npx create-quiver migrate --dry-run` | Muestra qué actualizaría la migración sin escribir archivos. |
 | `npx create-quiver plan` | Lista slices pendientes en orden y calcula camino crítico. |
 | `npx create-quiver graph` | Muestra el grafo de dependencias (`tree`, `mermaid` o `dot`). |
 | `npx create-quiver next` | Sugiere el próximo slice listo para trabajar. |
@@ -400,8 +407,9 @@ Orden recomendado:
 8. `spec start`: prepara un worktree por spec.
 9. `ai prompt-slice`: imprime el prompt mínimo para asignar un slice manualmente.
 10. `ai execute-slice` / `ai execute-plan`: ejecuta slices aprobados, con commit opt-in. `ai execute-slice` exige worktree/rama correctos, bloquea cambios fuera del alcance declarado, redacta logs sensibles y actualiza `CLOSURE_BRIEF.md`, `EVIDENCE_REPORT.md`, `COMMAND_LOG.md`, `STATUS.md` y `slice.json` cuando la ejecución pasa. Usá `--mode manual` para prompts y `--mode delegated` para worktrees temporales en olas paralelas.
-11. `ai doctor` / `ai pr`: valida GitHub y crea el PR solo con `--create`.
-12. `spec close`: cierra el worktree después del merge.
+11. `ai inspect` / `ai export`: exponen estado accionable y formatos JSON/Markdown para humanos, agentes o dashboards.
+12. `ai doctor` / `ai pr`: valida GitHub y crea el PR solo con `--create`.
+13. `spec close`: cierra el worktree después del merge.
 
 ## 🧪 Cómo probar que funciona
 
@@ -460,6 +468,11 @@ Notas reales del estado actual:
 | `npm run quiver:doctor` | Ejecuta `npx create-quiver doctor`. |
 | `npm run quiver:evidence` | Ejecuta `npx create-quiver evidence`; usalo como `npm run quiver:evidence -- run -- <comando>`. |
 | `npm run quiver:ai:agent` | Ejecuta `npx create-quiver ai agent`. |
+| `npm run quiver:ai:inspect` | Ejecuta `npx create-quiver ai inspect`. |
+| `npm run quiver:ai:export` | Ejecuta `npx create-quiver ai export`. |
+| `npm run quiver:ai:specs` | Ejecuta `npx create-quiver ai specs list`. |
+| `npm run quiver:ai:slices` | Ejecuta `npx create-quiver ai slices list`. |
+| `npm run quiver:ai:trace` | Ejecuta `npx create-quiver ai trace report`. |
 | `npm run quiver:ai:onboard` | Ejecuta onboarding de IA. |
 | `npm run quiver:ai:prepare-context` | Prepara docs de contexto IA solo en documentación; usalo primero con `-- --dry-run` para revisar diffs y contradicciones. |
 | `npm run quiver:ai:plan` | Ejecuta planificación IA por fases. |

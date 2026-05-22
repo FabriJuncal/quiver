@@ -263,3 +263,31 @@ Each implementation slice must append:
 
 - Doctor environment checks are warnings, not hard failures, to avoid blocking offline or partially configured projects.
 - The validation fixture matrix is a contract manifest; individual deep fixtures should continue to grow as new bugs are found.
+
+## slice-11 - Export, dashboard-friendly output, and migration
+
+### Completed
+
+- Added `ai inspect`, `ai export`, `ai specs list`, `ai slices list`, and `ai trace report` surfaces.
+- Added `src/create-quiver/lib/ai/export-state.js` with a versioned lifecycle export shape for specs, slices, runs, agents, dependencies, blockers, progress, migration findings, and dashboard consumers.
+- Added JSON export as the default `ai export` output and Markdown export for PR/docs usage.
+- Added generated npm scripts for `quiver:ai:inspect`, `quiver:ai:export`, `quiver:ai:specs`, `quiver:ai:slices`, and `quiver:ai:trace`.
+- Added `migrate --dry-run` so older Quiver projects can preview planned migration changes without writing files.
+- Hardened `parseJsonWithComments` so JSON strings containing `//`, `/* ... */`, or glob patterns such as `src/**` are preserved.
+- Updated README, README_FOR_AI, command templates, workflow template, onboarding prompt template, and generated README text.
+
+### Validation
+
+- `node --test tests/lib/json.test.js tests/lib/ai-export-state.test.js tests/commands/ai-export.test.js tests/commands/init-profiles.test.js` passed: 20 tests.
+- `node --test tests/lib/init-layout.test.js tests/lib/json.test.js tests/lib/ai-export-state.test.js tests/commands/ai-export.test.js tests/commands/init-profiles.test.js` passed: 28 tests.
+- `node --test tests/**/*.test.js` passed: 301 tests.
+- `npm run smoke:create-quiver` passed.
+- `npm run smoke:guided-workflow` passed: 128 tests plus guided workflow smoke.
+- `npm run smoke:doctor-fixtures` passed: 10 fixture states.
+- `git diff --check` passed.
+- `node -e "JSON.parse(require('fs').readFileSync('package.json','utf8')); JSON.parse(require('fs').readFileSync('specs/quiver-v25-ai-first-lifecycle-orchestrator/slices/slice-11-export-dashboard-migration/slice.json','utf8'));"` passed.
+
+### Risks
+
+- The JSON export is intentionally versioned with `schema_version: 1`; dashboards should treat it as a stable-but-young contract and pin expectations.
+- The core package remains UI-free. Any visual dashboard should consume `ai export --format json` externally rather than adding heavy dependencies to core.

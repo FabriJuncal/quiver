@@ -74,6 +74,11 @@ Si usás los comandos de IA de Quiver, empezá con `--dry-run` para revisar prov
 npm run quiver:prepare -- --dry-run
 npm run quiver:ai:prepare-context -- --dry-run
 npm run quiver:ai:onboard -- --dry-run
+npm run quiver:ai:inspect
+npm run quiver:ai:export -- --format json
+npm run quiver:ai:specs
+npm run quiver:ai:slices
+npm run quiver:ai:trace
 npm run quiver:ai:plan -- --phase acceptance --input requirements.md --dry-run
 npm run quiver:ai:revise -- --phase acceptance --input feedback.md --dry-run
 npm run quiver:ai:approve -- --phase acceptance --version <n>

@@ -1,12 +1,12 @@
 # Status - Quiver v25 AI-First Lifecycle Orchestrator
 
-**Overall status:** In progress
+**Overall status:** Implementation complete; pending PR/release
 **Created:** 2026-05-22
-**Current slice:** slice-10 completed
+**Current slice:** slice-11 completed
 
 ## Summary
 
-The documentation foundation and first implementation slices are in progress. The CLI contract, run state, safe onboarding docs, provider profile adapter contract, planner approval gates, generated spec/slice artifact contract, execution planning safety, controlled slice execution closure, Git/worktree/PR lifecycle hardening, and validation fixture hardening are implemented.
+The v25 implementation slices are complete. The CLI contract, run state, safe onboarding docs, provider profile adapter contract, planner approval gates, generated spec/slice artifact contract, execution planning safety, controlled slice execution closure, Git/worktree/PR lifecycle hardening, validation fixture hardening, lifecycle export, dashboard-friendly state, and migration dry-run support are implemented.
 
 ## Slice Status
 
@@ -23,13 +23,13 @@ The documentation foundation and first implementation slices are in progress. Th
 | slice-08-controlled-slice-execution | Completed | Direct slice execution now validates branch/worktree, scope, writes closure/evidence/status artifacts, and redacts logs. |
 | slice-09-git-worktree-pr-lifecycle | Completed | Spec worktree dry-run, commit cleanliness, PR alias/body/open-slice preflight, and close guidance hardened. |
 | slice-10-validation-errors-fixtures | Completed | Actionable errors, doctor environment warnings, fixture matrix, and smoke coverage added. |
-| slice-11-export-dashboard-migration | Planned | Not started. |
+| slice-11-export-dashboard-migration | Completed | AI inspection/export/list/trace surfaces, dashboard-friendly state, migration dry-run, docs, parser hardening, and tests added. |
 
 ## Current Blockers
 
 - The release status docs need sync: `npm view create-quiver version` returned `0.12.0`, while `CHANGELOG.md` still keeps the latest shipped work under `Unreleased` and `ROADMAP.md` still says v24/v0.11 is pending package release.
-- `npm run quiver:plan -- --spec quiver-v25-ai-first-lifecycle-orchestrator --include-completed` failed with Node out-of-memory during validation. Track as a CLI hardening issue for `slice-10`.
+- `npm run quiver:plan -- --spec quiver-v25-ai-first-lifecycle-orchestrator --include-completed` previously failed with Node out-of-memory during validation. Keep this as a follow-up CLI hardening issue for large historical planning output.
 
 ## Next Step
 
-Continue with `slice-11-export-dashboard-migration`.
+Open the PR for the completed v25 package, then plan release documentation/version sync before publishing.

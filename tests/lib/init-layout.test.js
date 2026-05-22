@@ -157,6 +157,8 @@ test('default generated package scripts target supported CLI commands', () => {
     'doctor',
     'execute-plan',
     'execute-slice',
+    'export',
+    'inspect',
     'onboard',
     'plan',
     'prepare-context',
@@ -166,7 +168,10 @@ test('default generated package scripts target supported CLI commands', () => {
     'revise',
     'resume',
     'run',
+    'slices',
+    'specs',
     'status',
+    'trace',
   ]);
   const supportedSpecCommands = new Set(['close', 'create', 'start', 'status']);
 

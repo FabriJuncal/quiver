@@ -9,6 +9,14 @@ const { runExecutePlan } = require('../lib/ai/execution-plan');
 const { buildPrCreatePlan, formatPreflightReport, formatPrCreateReport, preflightGitHubPr, runGhPrCreate } = require('../lib/ai/github');
 const { buildContextPreparationDrafts, buildPlannerOnboardingPrompt } = require('../lib/ai/onboarding-template');
 const {
+  collectLifecycleExport,
+  formatLifecycleExportMarkdown,
+  formatLifecycleInspect,
+  formatSlicesList,
+  formatSpecsList,
+  formatTraceReport,
+} = require('../lib/ai/export-state');
+const {
   PLAN_REVIEW_PROMPT_SOURCE,
   buildPlanReviewPrompt,
   readPlanReview,
@@ -1124,6 +1132,85 @@ function runLifecycleResume(repoRoot, options = {}) {
   };
 }
 
+function runInspect(repoRoot, options = {}) {
+  const report = collectLifecycleExport(repoRoot, {
+    includeCompleted: options.includeCompleted === true,
+  });
+  process.stdout.write(formatLifecycleInspect(report));
+  return {
+    task: 'inspect',
+    report,
+  };
+}
+
+function runExport(repoRoot, options = {}) {
+  const report = collectLifecycleExport(repoRoot, {
+    includeCompleted: options.includeCompleted === true,
+  });
+  const format = String(options.format || 'json').trim().toLowerCase();
+
+  if (format === 'json') {
+    process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
+    return {
+      task: 'export',
+      format,
+      report,
+    };
+  }
+
+  if (format === 'markdown' || format === 'md') {
+    process.stdout.write(formatLifecycleExportMarkdown(report));
+    return {
+      task: 'export',
+      format: 'markdown',
+      report,
+    };
+  }
+
+  throw new Error(formatError(`unsupported ai export format: ${format}. Supported formats: json, markdown`));
+}
+
+function runSpecsList(repoRoot, options = {}) {
+  const report = collectLifecycleExport(repoRoot, {
+    includeCompleted: options.includeCompleted === true,
+  });
+  if (options.json === true) {
+    process.stdout.write(`${JSON.stringify({ specs: report.specs }, null, 2)}\n`);
+  } else {
+    process.stdout.write(formatSpecsList(report));
+  }
+  return {
+    task: 'specs',
+    specs: report.specs,
+  };
+}
+
+function runSlicesList(repoRoot, options = {}) {
+  const report = collectLifecycleExport(repoRoot, {
+    includeCompleted: options.includeCompleted === true,
+  });
+  if (options.json === true) {
+    process.stdout.write(`${JSON.stringify({ slices: report.slices }, null, 2)}\n`);
+  } else {
+    process.stdout.write(formatSlicesList(report));
+  }
+  return {
+    task: 'slices',
+    slices: report.slices,
+  };
+}
+
+function runTraceReport(repoRoot, options = {}) {
+  const report = collectLifecycleExport(repoRoot, {
+    includeCompleted: options.includeCompleted === true,
+  });
+  process.stdout.write(formatTraceReport(report));
+  return {
+    task: 'trace',
+    report,
+  };
+}
+
 function runLifecycleRun(repoRoot, options = {}) {
   const command = String(options.command || '').trim().toLowerCase();
   if (command !== 'create') {
@@ -1360,6 +1447,8 @@ module.exports = {
   runLifecycleResume,
   runLifecycleRun,
   runLifecycleStatus,
+  runExport,
+  runInspect,
   runPromptSlice,
   runApprove,
   runApprovalStatus,
@@ -1367,6 +1456,9 @@ module.exports = {
   runReviewPlan,
   runRevise,
   runPr,
+  runSlicesList,
+  runSpecsList,
+  runTraceReport,
   runOnboard,
   runPlan,
   writeProviderOutput,

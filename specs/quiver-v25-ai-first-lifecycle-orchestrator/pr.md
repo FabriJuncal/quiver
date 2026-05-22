@@ -3,41 +3,75 @@ Quiver v25 - AI-First Lifecycle Orchestrator
 
 ## Summary
 
-- Adds the planning package for the next Quiver AI-first lifecycle spec.
-- Defines the production-ready workflow from onboarding docs through planner approvals, spec/slice generation, controlled slice execution, commits, PR creation, merge cleanup, validation, and migration.
-- Introduces slices for CLI compatibility, persistent run state, phase locks, safe AI onboarding docs, provider adapters, approval gates, artifact generation, execution planning, controlled execution, worktrees/PRs, hardening, export, and migration.
+- Implements the Quiver v25 AI-first lifecycle orchestrator across CLI, state, planner approval gates, generated artifacts, controlled execution, worktrees/PRs, validation hardening, export, and migration dry-runs.
+- Adds durable `.quiver/` run state, agent profiles, prompt-only/provider adapter flows, phase-gated planning, reviewed technical-plan approval, generated specs/slices/handoffs/PR body, and one-slice execution closure.
+- Adds dashboard/agent-friendly lifecycle inspection and export commands for specs, slices, runs, agents, dependencies, blockers, progress, and migration state.
 
 ## Scope
 
-- Documentation and planning artifacts only in `slice-00`.
-- Future implementation slices cover CLI, state, AI adapters, validation, worktrees, PRs, and export.
-- No product code is changed by the foundation slice.
+- Product implementation for all v25 slices from `slice-01` through `slice-11`.
+- Documentation, templates, tests, smoke coverage, CLI help, generated npm scripts, and spec evidence.
 - No package release is included.
 
 ## Files
 
+- `README.md`
 - `README_FOR_AI.md`
-- `ROADMAP.md`
+- `docs/**`
+- `package.json`
+- `scripts/ci/**`
+- `src/create-quiver/**`
 - `specs/quiver-v25-ai-first-lifecycle-orchestrator/**`
+- `tests/**`
 
-## How to Test
+## How to Test (DETAILED - REQUIRED)
+
+### Required Environment
+
+- Node.js and npm available.
+- Git checkout with the v25 branch.
+- No provider CLI credentials are required for dry-run/prompt-only validations.
+
+### Worktree Access
+
+- Run commands from the repository root.
+- This PR does not require a running app server.
+
+### Run the Project
+
+```bash
+node --test tests/**/*.test.js
+npm run smoke:create-quiver
+npm run smoke:guided-workflow
+npm run smoke:doctor-fixtures
+```
+
+### Use Cases
+
+- Create and inspect AI lifecycle runs with `ai run create`, `ai status`, and `ai resume`.
+- Prepare docs-only context with `ai prepare-context --dry-run`.
+- Generate planner drafts, revise them, approve concrete versions, and create specs only after reviewed approval.
+- Execute or print slice prompts with `ai prompt-slice`, `ai execute-slice`, and `ai execute-plan`.
+- Inspect/export lifecycle state with `ai inspect`, `ai export`, `ai specs list`, `ai slices list`, and `ai trace report`.
+
+### Technical Verification
 
 ```bash
 git diff --check
-find specs/quiver-v25-ai-first-lifecycle-orchestrator -name "slice.json" -print -exec node -e "JSON.parse(require('fs').readFileSync(process.argv[1], 'utf8'))" {} \;
+node -e "JSON.parse(require('fs').readFileSync('package.json','utf8')); JSON.parse(require('fs').readFileSync('specs/quiver-v25-ai-first-lifecycle-orchestrator/slices/slice-11-export-dashboard-migration/slice.json','utf8'));"
 ```
 
 ## Evidence
 
-- Update `specs/quiver-v25-ai-first-lifecycle-orchestrator/EVIDENCE_REPORT.md` after validation.
+- See `specs/quiver-v25-ai-first-lifecycle-orchestrator/EVIDENCE_REPORT.md`.
 
 ## Rollback
 
-- Revert the documentation commit for `slice-00`.
-- No product behavior changes should need rollback.
+- Revert the v25 slice commits in reverse order.
+- No migration or PR command writes unless invoked explicitly; dry-runs remain available for recovery.
 
 ## Risks / Notes
 
-- This spec is large by design. Implementation must stay sliced and phase-gated.
-- Provider execution should start in prompt-only or dry-run mode before automatic execution is trusted.
 - Source-of-truth docs should not claim npm publication unless publication has been verified.
+- `CHANGELOG.md`/`ROADMAP.md` still need release-version sync before npm publishing.
+- The lifecycle export JSON is `schema_version: 1`; dashboard consumers should pin expectations.
