@@ -10,6 +10,7 @@ const { buildContextPreparationDrafts, buildPlannerOnboardingPrompt } = require(
 const {
   PLAN_REVIEW_PROMPT_SOURCE,
   buildPlanReviewPrompt,
+  readPlanReview,
   resolveReviewedTechnicalPlanInput,
   resolveTechnicalPlanReviewInput,
   savePlanReview,
@@ -36,6 +37,7 @@ const {
 const {
   PLANNER_APPROVAL_PHASES,
   approvePlannerPhase,
+  readPhaseApproval,
   resolveApprovedPlannerInput,
   savePlannerDraft,
   summarizePlannerApproval,
@@ -97,7 +99,7 @@ function resolveProviderForProfile(repoRoot, role, provider, providerExplicit, f
   return resolveProfileProvider(repoRoot, role, fallbackProvider);
 }
 
-function buildPlanContext({ role, context, phase, inputText, inputPath, repoRoot }) {
+function buildPlanContext({ role, context, phase, inputText, inputPath, repoRoot, revise = false }) {
   const phaseDetails = getPlannerPhaseDetails(phase);
   const pack = buildContextPackMetadata({
     role,
@@ -108,7 +110,9 @@ function buildPlanContext({ role, context, phase, inputText, inputPath, repoRoot
   const sections = [
     pack.prompt,
     `Phase: ${phaseDetails.phase}`,
-    phaseDetails.phase === 'acceptance'
+    revise
+      ? 'Task: revise the current draft and produce a new version only. Do not advance phase, approve, create specs, or modify product code.'
+      : phaseDetails.phase === 'acceptance'
       ? 'Task: produce acceptance criteria only. Do not create files or modify product code.'
       : 'Task: produce a technical plan only. Do not create files or modify product code.',
   ];
@@ -291,6 +295,30 @@ function getRedactedProviderText(result) {
 
 function normalizeText(value) {
   return String(value || '').replace(/\r\n/g, '\n');
+}
+
+function buildRevisionInput({ phase, feedbackPath, feedbackText, repoRoot }) {
+  const current = readPhaseApproval(repoRoot, phase);
+  if (!current.draft) {
+    throw new Error(formatError(`ai revise --phase ${phase} requires an existing draft; current status is ${current.status}. Run \`npx create-quiver ai plan --phase ${phase} --input <file>\` first.`));
+  }
+
+  const sections = [];
+
+  if (phase === 'technical-plan') {
+    const acceptance = resolveApprovedPlannerInput(repoRoot, phase, undefined);
+    const acceptanceText = readTextFile(acceptance.inputPath, repoRoot);
+    sections.push(`Approved acceptance input (${acceptance.inputPath}):`, acceptanceText.trimEnd());
+  }
+
+  sections.push(
+    `Current ${phase} draft (${current.draft.path}):`,
+    current.draft.contents.trimEnd(),
+    `Human feedback (${feedbackPath}):`,
+    feedbackText.trimEnd(),
+  );
+
+  return sections.join('\n\n');
 }
 
 function buildManagedContextBlock(content) {
@@ -737,7 +765,20 @@ async function runPlan(repoRoot, options = {}) {
 
   assertPlannerPhaseReady(phase);
 
-  if (phase === 'technical-plan') {
+  let inputText = '';
+
+  if (options.revise === true) {
+    if (!inputPath) {
+      throw new Error(formatError(`missing feedback input file for ai revise phase '${phase}'`));
+    }
+    const feedbackText = readTextFile(inputPath, repoRoot);
+    inputText = buildRevisionInput({
+      phase,
+      feedbackPath: inputPath,
+      feedbackText,
+      repoRoot,
+    });
+  } else if (phase === 'technical-plan') {
     const resolved = resolveApprovedPlannerInput(repoRoot, phase, inputPath || undefined);
     inputPath = resolved.inputPath;
   }
@@ -746,7 +787,9 @@ async function runPlan(repoRoot, options = {}) {
     throw new Error(formatError(`missing input file for ai plan phase '${phase}'`));
   }
 
-  const inputText = readTextFile(inputPath, repoRoot);
+  if (!inputText) {
+    inputText = readTextFile(inputPath, repoRoot);
+  }
   const contextInfo = buildPlanContext({
     role,
     context,
@@ -754,6 +797,7 @@ async function runPlan(repoRoot, options = {}) {
     inputText,
     inputPath,
     repoRoot,
+    revise: options.revise === true,
   });
   const prompt = contextInfo.prompt;
   let invocation;
@@ -963,17 +1007,46 @@ async function runReviewPlan(repoRoot, options = {}) {
   };
 }
 
+async function runRevise(repoRoot, options = {}) {
+  const phase = normalizePlannerPhase(options.phase || DEFAULT_PLAN_PHASE);
+  if (phase === 'spec') {
+    throw new Error(formatError(`ai revise does not support phase '${phase}'`));
+  }
+
+  const approval = readPhaseApproval(repoRoot, phase);
+  if (approval.status !== 'draft' && approval.status !== 'stale') {
+    throw new Error(formatError(`ai revise --phase ${phase} requires an existing draft; current status is ${approval.status}. Run \`npx create-quiver ai plan --phase ${phase} --input <file>\` first.`));
+  }
+
+  return runPlan(repoRoot, {
+    ...options,
+    phase,
+    revise: true,
+  });
+}
+
 async function runApprove(repoRoot, options = {}) {
   const phase = normalizePlannerPhase(options.phase || DEFAULT_PLAN_PHASE);
   if (phase === 'spec') {
     throw new Error(formatError(`ai approve does not support phase '${phase}'`));
   }
 
-  if (!options.input && !options.version) {
-    throw new Error(formatError(`missing input file for ai approve phase '${phase}'`));
+  if (!options.version) {
+    throw new Error(formatError(`ai approve --phase ${phase} requires --version <n>. Review drafts with \`npx create-quiver ai approvals\`.`));
   }
 
-  const inputText = options.version ? '' : readTextFile(options.input, repoRoot);
+  if (options.input) {
+    throw new Error(formatError(`ai approve --phase ${phase} approves saved draft versions only. Use \`npx create-quiver ai revise --phase ${phase} --input ${options.input}\` to create a new draft first.`));
+  }
+
+  if (phase === 'technical-plan') {
+    const review = readPlanReview(repoRoot);
+    if (review.status !== 'unapproved' && review.status !== 'reviewed') {
+      throw new Error(formatError(`ai approve --phase technical-plan requires a production review for the current draft; current review status is ${review.status}. Run \`npx create-quiver ai review-plan\`.`));
+    }
+  }
+
+  const inputText = '';
 
   if (options.dryRun) {
     process.stdout.write(formatApprovalDryRunResult({ phase, input: options.input, version: options.version }));
@@ -1286,6 +1359,7 @@ module.exports = {
   runApprovalStatus,
   runPrepareContext,
   runReviewPlan,
+  runRevise,
   runPr,
   runOnboard,
   runPlan,

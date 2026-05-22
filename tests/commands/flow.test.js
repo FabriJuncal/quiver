@@ -143,7 +143,7 @@ test('flow command reports criteria draft approval guidance', () => {
     const output = runFlow(repo.root);
 
     assert.match(output, /Stage: acceptance criteria need approval/);
-    assert.match(output, /Next safe command: npx create-quiver ai approve --phase acceptance --input acceptance-approved\.md/);
+    assert.match(output, /Next safe command: npx create-quiver ai approve --phase acceptance --version <n>/);
   } finally {
     repo.cleanup();
   }
@@ -156,7 +156,8 @@ test('flow command asks for production review before technical-plan approval', (
     seedInitializedContext(repo.root);
     writeFile(repo.root, 'acceptance.md', '# Approved acceptance\n');
     writeFile(repo.root, 'technical-plan.md', '# Technical plan\n');
-    approvePlannerPhase(repo.root, 'acceptance', 'acceptance.md', '# Approved acceptance\n');
+    savePlannerDraft(repo.root, 'acceptance', 'acceptance.md', '# Approved acceptance\n');
+    approvePlannerPhase(repo.root, 'acceptance', '', '', { version: 1 });
     savePlannerDraft(repo.root, 'technical-plan', 'technical-plan.md', '# Technical plan draft\n');
 
     const output = runFlow(repo.root);
@@ -175,7 +176,8 @@ test('flow command asks for technical-plan approval after production review', ()
     seedInitializedContext(repo.root);
     writeFile(repo.root, 'acceptance.md', '# Approved acceptance\n');
     writeFile(repo.root, 'technical-plan.md', '# Technical plan\n');
-    approvePlannerPhase(repo.root, 'acceptance', 'acceptance.md', '# Approved acceptance\n');
+    savePlannerDraft(repo.root, 'acceptance', 'acceptance.md', '# Approved acceptance\n');
+    approvePlannerPhase(repo.root, 'acceptance', '', '', { version: 1 });
     savePlannerDraft(repo.root, 'technical-plan', 'technical-plan.md', '# Technical plan draft\n');
     savePlanReview(repo.root, {
       contents: 'review\n',
@@ -200,7 +202,8 @@ test('flow command reports spec create after reviewed and approved technical pla
     seedInitializedContext(repo.root);
     writeFile(repo.root, 'acceptance.md', '# Approved acceptance\n');
     writeFile(repo.root, 'technical-plan.md', '# Technical plan\n');
-    approvePlannerPhase(repo.root, 'acceptance', 'acceptance.md', '# Approved acceptance\n');
+    savePlannerDraft(repo.root, 'acceptance', 'acceptance.md', '# Approved acceptance\n');
+    approvePlannerPhase(repo.root, 'acceptance', '', '', { version: 1 });
     savePlannerDraft(repo.root, 'technical-plan', 'technical-plan.md', '# Technical plan draft\n');
     savePlanReview(repo.root, {
       contents: 'review\n',
@@ -229,8 +232,10 @@ test('flow command reports ready slice execution after approved plan and complet
     seedInitializedContext(repo.root);
     writeFile(repo.root, 'acceptance.md', '# Approved acceptance\n');
     writeFile(repo.root, 'technical-plan.md', '# Approved plan\n');
-    approvePlannerPhase(repo.root, 'acceptance', 'acceptance.md', '# Approved acceptance\n');
-    approvePlannerPhase(repo.root, 'technical-plan', 'technical-plan.md', '# Approved plan\n');
+    savePlannerDraft(repo.root, 'acceptance', 'acceptance.md', '# Approved acceptance\n');
+    approvePlannerPhase(repo.root, 'acceptance', '', '', { version: 1 });
+    savePlannerDraft(repo.root, 'technical-plan', 'technical-plan.md', '# Approved plan\n');
+    approvePlannerPhase(repo.root, 'technical-plan', '', '', { version: 1 });
     writeFile(repo.root, 'specs/my-spec/SPEC.md', '# Spec\n');
     writeFile(repo.root, 'specs/my-spec/slices/slice-00/slice.json', JSON.stringify({
       slice_id: 'slice-00',

@@ -317,7 +317,8 @@ Use \`AGENTS.md\` first, then \`docs/AI_CONTEXT.md\` and \`docs/AI_ONBOARDING_PR
 npm run quiver:prepare -- --dry-run
 npm run quiver:ai:onboard -- --dry-run
 npm run quiver:ai:plan -- --phase acceptance --input requirements.md --dry-run
-npm run quiver:ai:approve -- --phase acceptance --input acceptance-approved.md
+npm run quiver:ai:revise -- --phase acceptance --input feedback.md --dry-run
+npm run quiver:ai:approve -- --phase acceptance --version <n>
 npm run quiver:ai:plan -- --phase technical-plan --dry-run
 npm run quiver:ai:review-plan -- --dry-run
 npm run quiver:ai:approve -- --phase technical-plan --version <n>
@@ -371,7 +372,8 @@ Use dry-runs before spending model tokens:
 npm run quiver:prepare -- --dry-run
 npm run quiver:ai:onboard -- --dry-run
 npm run quiver:ai:plan -- --phase acceptance --input requirements.md --dry-run
-npm run quiver:ai:approve -- --phase acceptance --input acceptance-approved.md
+npm run quiver:ai:revise -- --phase acceptance --input feedback.md --dry-run
+npm run quiver:ai:approve -- --phase acceptance --version <n>
 npm run quiver:ai:plan -- --phase technical-plan --dry-run
 npm run quiver:ai:review-plan -- --dry-run
 npm run quiver:ai:approve -- --phase technical-plan --version <n>
@@ -399,7 +401,8 @@ npm run quiver:next
 npm run quiver:doctor
 npm run quiver:ai:onboard -- --dry-run
 npm run quiver:ai:plan -- --phase acceptance --input requirements.md --dry-run
-npm run quiver:ai:approve -- --phase acceptance --input acceptance-approved.md
+npm run quiver:ai:revise -- --phase acceptance --input feedback.md --dry-run
+npm run quiver:ai:approve -- --phase acceptance --version <n>
 npm run quiver:ai:plan -- --phase technical-plan --dry-run
 npm run quiver:ai:review-plan -- --dry-run
 npm run quiver:ai:approve -- --phase technical-plan --version <n>
@@ -470,7 +473,8 @@ Start with dry-runs so you can inspect the provider, role, context pack, and inv
 npm run quiver:prepare -- --dry-run
 npm run quiver:ai:onboard -- --dry-run
 npm run quiver:ai:plan -- --phase acceptance --input requirements.md --dry-run
-npm run quiver:ai:approve -- --phase acceptance --input acceptance-approved.md
+npm run quiver:ai:revise -- --phase acceptance --input feedback.md --dry-run
+npm run quiver:ai:approve -- --phase acceptance --version <n>
 npm run quiver:ai:plan -- --phase technical-plan --dry-run
 npm run quiver:ai:review-plan -- --dry-run
 npm run quiver:ai:approve -- --phase technical-plan --version <n>
@@ -497,7 +501,8 @@ npm run quiver:next
 npm run quiver:doctor
 npm run quiver:ai:onboard -- --dry-run
 npm run quiver:ai:plan -- --phase acceptance --input requirements.md --dry-run
-npm run quiver:ai:approve -- --phase acceptance --input acceptance-approved.md
+npm run quiver:ai:revise -- --phase acceptance --input feedback.md --dry-run
+npm run quiver:ai:approve -- --phase acceptance --version <n>
 npm run quiver:ai:plan -- --phase technical-plan --dry-run
 npm run quiver:ai:review-plan -- --dry-run
 npm run quiver:ai:approve -- --phase technical-plan --version <n>

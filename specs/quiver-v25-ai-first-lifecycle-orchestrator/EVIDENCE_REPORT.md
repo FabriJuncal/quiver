@@ -122,3 +122,27 @@ Each implementation slice must append:
 
 - Redaction is intentionally best-effort and may hide some diagnostic text if provider output contains key-like labels such as `token=` or `password=`.
 - The `doctor` profile is configurable now, but `ai doctor` itself remains a GitHub/readiness preflight and does not invoke a provider in this slice.
+
+## slice-05 - Approval gates and planner iterations
+
+### Completed
+
+- Added `ai revise` as a phase-safe planner revision command for acceptance and technical-plan drafts.
+- Changed `ai approve` so it requires `--version <n>` and approves only the current saved draft version.
+- Blocked direct approval from arbitrary input files; human feedback must create a new draft through `ai revise`.
+- Required a current production-readiness review before approving a technical-plan draft.
+- Kept spec generation blocked until the reviewed technical-plan draft is approved.
+- Updated README, README_FOR_AI, command docs, onboarding templates, generated init docs, flow guidance, package scripts, and CLI help examples.
+- Added tests for versioned approvals, missing/non-current approval failures, acceptance revise, technical-plan revise, stale review blocking, and spec generation gates.
+
+### Validation
+
+- `node --test tests/commands/ai-plan.test.js tests/commands/ai-review-plan.test.js tests/commands/ai-plan-spec-phase.test.js tests/lib/approvals.test.js tests/commands/flow.test.js tests/lib/init-layout.test.js` passed: 48 tests.
+- `node --test tests/**/*.test.js` passed: 276 tests.
+- `git diff --check` passed.
+- `node -e "const fs=require('fs'); for (const f of process.argv.slice(1)) JSON.parse(fs.readFileSync(f,'utf8')); console.log('slice json ok:', process.argv.length-1);" specs/quiver-v25-ai-first-lifecycle-orchestrator/slices/*/slice.json` passed for 12 slice files.
+
+### Risks
+
+- `ai revise` now gives the planner the current draft plus feedback; output quality still depends on the selected provider/model.
+- Approval state remains file-based under `.quiver/approvals`; concurrent writes are still governed by later execution/locking hardening.

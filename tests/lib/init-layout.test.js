@@ -163,6 +163,7 @@ test('default generated package scripts target supported CLI commands', () => {
     'pr',
     'prompt-slice',
     'review-plan',
+    'revise',
     'resume',
     'run',
     'status',

@@ -193,6 +193,7 @@ function resolveInitPackageScripts(profile, options = {}) {
     'quiver:ai:onboard': 'npx create-quiver ai onboard',
     'quiver:ai:prepare-context': 'npx create-quiver ai prepare-context',
     'quiver:ai:plan': 'npx create-quiver ai plan',
+    'quiver:ai:revise': 'npx create-quiver ai revise',
     'quiver:ai:review-plan': 'npx create-quiver ai review-plan',
     'quiver:ai:approve': 'npx create-quiver ai approve',
     'quiver:ai:prompt-slice': 'npx create-quiver ai prompt-slice',

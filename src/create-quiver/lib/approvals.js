@@ -95,6 +95,18 @@ function findDraftVersion(meta, version) {
   return normalizeDrafts(meta).find((item) => Number(item.version) === parsed) || null;
 }
 
+function latestDraftVersion(meta) {
+  const draftVersion = Number(meta?.draft?.version || 0);
+  if (Number.isInteger(draftVersion) && draftVersion > 0) {
+    return draftVersion;
+  }
+
+  const versions = normalizeDrafts(meta)
+    .map((item) => Number(item.version))
+    .filter((value) => Number.isInteger(value) && value > 0);
+  return versions.length > 0 ? Math.max(...versions) : null;
+}
+
 function readPhaseApproval(projectRoot, phase) {
   const normalizedPhase = normalizePhase(phase);
   const draftPath = approvalDraftPath(projectRoot, normalizedPhase);
@@ -192,10 +204,18 @@ function writeApprovalArtifacts(projectRoot, phase, kind, sourceFile, contents, 
   let finalContents = `${contents}`;
   let version = null;
 
+  if (kind === 'approved' && !options.version) {
+    throw new Error(formatError(`${normalizedPhase} approval requires a concrete draft version. Use --version <n>.`));
+  }
+
   if (kind === 'approved' && options.version) {
+    const latestVersion = latestDraftVersion(current);
     const selectedDraft = findDraftVersion(current, options.version);
     if (!selectedDraft) {
       throw new Error(formatError(`missing ${normalizedPhase} draft version ${options.version}`));
+    }
+    if (latestVersion && Number(selectedDraft.version) !== latestVersion) {
+      throw new Error(formatError(`${normalizedPhase} draft version ${options.version} is not current; latest draft version is ${latestVersion}. Approve the latest version or revise again.`));
     }
     const draftPath = path.resolve(projectRoot, selectedDraft.path);
     if (!fs.existsSync(draftPath)) {
@@ -204,8 +224,6 @@ function writeApprovalArtifacts(projectRoot, phase, kind, sourceFile, contents, 
     finalContents = fs.readFileSync(draftPath, 'utf8');
     sourceFile = selectedDraft.path;
     version = Number(selectedDraft.version);
-  } else if (kind === 'approved' && current.draft?.version) {
-    version = Number(current.draft.version);
   }
 
   if (kind === 'draft') {
@@ -274,7 +292,7 @@ function resolveApprovedPlannerInput(projectRoot, phase, explicitInput) {
 
   const approval = readPhaseApproval(projectRoot, dependencyPhase);
   if (approval.status !== 'approved') {
-    throw new Error(formatError(`ai plan phase '${normalizedPhase}' requires approved ${dependencyPhase} input; current status: ${approval.status}. Run \`npx create-quiver ai approve --phase ${dependencyPhase} --input <file>\`.`));
+    throw new Error(formatError(`ai plan phase '${normalizedPhase}' requires approved ${dependencyPhase} input; current status: ${approval.status}. Run \`npx create-quiver ai approve --phase ${dependencyPhase} --version <n>\`.`));
   }
 
   const approvedPath = approval.approved?.path ? path.resolve(projectRoot, approval.approved.path) : '';
@@ -341,6 +359,7 @@ module.exports = {
   approvalMetaPath,
   approvePlannerPhase,
   findDraftVersion,
+  latestDraftVersion,
   normalizePhase,
   readPhaseApproval,
   renderApprovalStatus,

@@ -183,7 +183,7 @@ test('ai review-plan marks review stale when the technical-plan draft changes', 
   }
 });
 
-test('ai review-plan marks review stale when a different technical-plan version is approved', async () => {
+test('ai approve blocks technical-plan approval when the latest review is stale', async () => {
   const repo = makeRepo({
     'technical-plan.md': '# Technical plan\n- Build the flow.\n',
   });
@@ -208,9 +208,13 @@ test('ai review-plan marks review stale when a different technical-plan version 
       }),
     });
     savePlannerDraft(repo.root, 'technical-plan', 'technical-plan.md', '# Technical plan v2\n');
-    execAi(repo.root, ['approve', '--phase', 'technical-plan', '--version', '2']);
 
     assert.equal(readPlanReview(repo.root).status, 'stale');
+    assert.throws(
+      () => execAi(repo.root, ['approve', '--phase', 'technical-plan', '--version', '2']),
+      (error) => error.stderr.includes('requires a production review for the current draft')
+        && error.stderr.includes('current review status is stale'),
+    );
   } finally {
     repo.cleanup();
   }
@@ -228,7 +232,8 @@ test('ai plan spec phase rejects approved technical plans that were not reviewed
   });
 
   try {
-    approvePlannerPhase(repo.root, 'technical-plan', 'technical-plan.md', fs.readFileSync(path.join(repo.root, 'technical-plan.md'), 'utf8'));
+    savePlannerDraft(repo.root, 'technical-plan', 'technical-plan.md', fs.readFileSync(path.join(repo.root, 'technical-plan.md'), 'utf8'));
+    approvePlannerPhase(repo.root, 'technical-plan', '', '', { version: 1 });
 
     assert.throws(
       () => execAi(repo.root, ['plan', '--phase', 'spec', '--dry-run']),

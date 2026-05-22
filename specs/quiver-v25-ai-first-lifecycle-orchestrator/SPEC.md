@@ -218,7 +218,7 @@ specs/<spec-slug>/
 | slice-02 | Run state, phase gates, and locks | Completed | slice-01 |
 | slice-03 | Safe AI onboarding documentation | Completed | slice-02 |
 | slice-04 | Agent profiles and provider adapters | Completed | slice-02 |
-| slice-05 | Approval gates and planner iterations | Planned | slice-02, slice-04 |
+| slice-05 | Approval gates and planner iterations | Completed | slice-02, slice-04 |
 | slice-06 | Spec, slice, handoff, and PR body generation | Planned | slice-05 |
 | slice-07 | Slice execution planning and parallel safety | Planned | slice-06 |
 | slice-08 | Controlled slice execution and evidence | Planned | slice-07 |

@@ -141,7 +141,7 @@ After initialization, the user should:
 9. Open and merge the documentation PR that establishes the workflow files
 10. Save reusable provider choices with `npx create-quiver ai agent set planner --provider <provider> --model "<label>"`, `npx create-quiver ai agent set executor --provider <provider> --model "<label>"`, and `npx create-quiver ai agent set doctor --provider <provider> --model "<label>"`
 11. Use `npx create-quiver ai plan --phase acceptance --input requirements.md --dry-run`; use `--print-prompt` when you need the exact prompt without provider auth
-12. After human approval, save approved criteria with `npx create-quiver ai approve --phase acceptance --input acceptance-approved.md`
+12. If the human asks for changes, create a new draft with `npx create-quiver ai revise --phase acceptance --input feedback.md --dry-run`; after human approval, save the selected current draft with `npx create-quiver ai approve --phase acceptance --version <n>`
 13. Use `npx create-quiver ai plan --phase technical-plan --dry-run`
 14. Review the technical plan with `npx create-quiver ai review-plan --dry-run`, inspect exact prompt with `--print-prompt` if needed, then run it without `--dry-run` when ready
 15. After human approval, save the reviewed plan version with `npx create-quiver ai approve --phase technical-plan --version <n>`

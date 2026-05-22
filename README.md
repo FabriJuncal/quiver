@@ -36,7 +36,8 @@ El flujo normal con IA continúa así:
 ```bash
 npx create-quiver flow
 npx create-quiver ai plan --phase acceptance --input requirements.md --dry-run
-npx create-quiver ai approve --phase acceptance --input acceptance-approved.md
+npx create-quiver ai revise --phase acceptance --input feedback.md --dry-run
+npx create-quiver ai approve --phase acceptance --version <n>
 npx create-quiver ai approvals
 npx create-quiver ai plan --phase technical-plan --dry-run
 npx create-quiver ai review-plan --dry-run
@@ -99,7 +100,8 @@ npx create-quiver doctor
 npx create-quiver ai prepare-context --dry-run
 npx create-quiver ai onboard --dry-run
 npx create-quiver ai plan --phase acceptance --input requirements.md --dry-run
-npx create-quiver ai approve --phase acceptance --input acceptance-approved.md
+npx create-quiver ai revise --phase acceptance --input feedback.md --dry-run
+npx create-quiver ai approve --phase acceptance --version <n>
 npx create-quiver ai plan --phase technical-plan --dry-run
 npx create-quiver ai review-plan --dry-run
 npx create-quiver ai approve --phase technical-plan --version <n>
@@ -145,7 +147,8 @@ Después del bootstrap, revisá:
 
 ```bash
 npx create-quiver ai plan --phase acceptance --input requirements.md --dry-run
-npx create-quiver ai approve --phase acceptance --input acceptance-approved.md
+npx create-quiver ai revise --phase acceptance --input feedback.md --dry-run
+npx create-quiver ai approve --phase acceptance --version <n>
 npx create-quiver ai plan --phase technical-plan --dry-run
 npx create-quiver ai review-plan --dry-run
 npx create-quiver ai approve --phase technical-plan --version <n>
@@ -367,7 +370,8 @@ npx create-quiver ai agent set doctor --provider codex --model "diagnostic-model
 npx create-quiver ai agent list
 npx create-quiver ai plan --phase acceptance --input requirements.md --dry-run
 npx create-quiver ai plan --phase acceptance --input requirements.md --print-prompt
-npx create-quiver ai approve --phase acceptance --input acceptance-approved.md
+npx create-quiver ai revise --phase acceptance --input feedback.md --dry-run
+npx create-quiver ai approve --phase acceptance --version <n>
 npx create-quiver ai plan --phase technical-plan --dry-run
 npx create-quiver ai review-plan --dry-run
 npx create-quiver ai review-plan --print-prompt
