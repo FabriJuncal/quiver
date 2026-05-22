@@ -1,0 +1,50 @@
+{
+  "slice_id": "slice-02-run-state-phase-locks",
+  "ticket": "QUIVER-25-02",
+  "type": "feature",
+  "title": "Run state, phase gates, and locks",
+  "objective": "Persist AI lifecycle state and prevent invalid phase transitions or concurrent run corruption.",
+  "description": "Introduce `.quiver/runs/<run-id>/` state, approvals metadata, status/resume behavior, phase validation, and locks for runs and slices.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "run-state-phase-locks",
+    "branch_name": "feature/QUIVER-25-02-run-state-phase-locks"
+  },
+  "files": [
+    "src/create-quiver/**",
+    "docs/**",
+    "tests/**"
+  ],
+  "depends_on": [
+    "slice-01-cli-contract-compatibility"
+  ],
+  "parallel_safe": "no",
+  "parallel_safe_reason": "Creates shared state machinery required by later slices.",
+  "must": [
+    "Create and load `.quiver/runs/<run-id>/state.json`.",
+    "Persist approvals metadata.",
+    "Add status and resume behavior.",
+    "Block commands that do not match the current phase.",
+    "Add run and slice locks with stale-lock metadata."
+  ],
+  "not_included": [
+    "Provider execution.",
+    "Generating specs from planner output.",
+    "Git worktree lifecycle."
+  ],
+  "acceptance": [
+    "A run can be created, inspected, and resumed.",
+    "Invalid future-phase commands are blocked with next-command guidance.",
+    "Run and slice locks prevent concurrent mutation.",
+    "Stale lock recovery shows metadata before removal.",
+    "State can be read without chat memory."
+  ],
+  "tests": [
+    "node --test tests/**/*.test.js",
+    "git diff --check"
+  ],
+  "estimated_hours": 6,
+  "status": "planned",
+  "blocked_reason": null
+}

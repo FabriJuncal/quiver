@@ -1,0 +1,54 @@
+{
+  "slice_id": "slice-06-spec-slice-generator",
+  "ticket": "QUIVER-25-06",
+  "type": "feature",
+  "title": "Spec, slice, handoff, and PR body generation",
+  "objective": "Generate versionable implementation artifacts only after the technical plan is approved.",
+  "description": "Create SPEC, STATUS, evidence, execution plan, PR body, mandatory slice-00, slice JSON, execution briefs, closure briefs, and file scope declarations from approved planner output.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "spec-slice-generator",
+    "branch_name": "feature/QUIVER-25-06-spec-slice-generator"
+  },
+  "files": [
+    "src/create-quiver/**",
+    "docs/**",
+    "specs/**",
+    "tests/**"
+  ],
+  "depends_on": [
+    "slice-05-approval-gates"
+  ],
+  "parallel_safe": "no",
+  "parallel_safe_reason": "Creates the artifact contract consumed by planning and execution slices.",
+  "must": [
+    "Generate top-level spec artifacts from approved plan only.",
+    "Always create mandatory slice-00.",
+    "Create slice.json, EXECUTION_BRIEF.md, and CLOSURE_BRIEF.md for each slice.",
+    "Create pr.md body.",
+    "Include depends_on, parallel safety, expected read paths, allowed write paths, and validation hints.",
+    "Support dry-run previews before writing."
+  ],
+  "not_included": [
+    "Executing slices.",
+    "Opening PRs.",
+    "Dashboard export."
+  ],
+  "acceptance": [
+    "Spec generation is blocked before plan approval.",
+    "Dry-run reports all files that would be written.",
+    "Written artifacts match Quiver spec layout.",
+    "slice-00 is present and must run first.",
+    "Every slice has handoffs and parseable JSON.",
+    "PR body is generated."
+  ],
+  "tests": [
+    "node --test tests/**/*.test.js",
+    "find <fixture-output> -name \"slice.json\" -print -exec node -e \"JSON.parse(require('fs').readFileSync(process.argv[1], 'utf8'))\" {} \\;",
+    "git diff --check"
+  ],
+  "estimated_hours": 8,
+  "status": "planned",
+  "blocked_reason": null
+}

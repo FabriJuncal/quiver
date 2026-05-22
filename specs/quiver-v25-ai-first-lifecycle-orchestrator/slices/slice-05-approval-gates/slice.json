@@ -1,0 +1,52 @@
+{
+  "slice_id": "slice-05-approval-gates",
+  "ticket": "QUIVER-25-05",
+  "type": "feature",
+  "title": "Approval gates and planner iterations",
+  "objective": "Implement human approval gates for criteria, technical plans, and production-readiness review.",
+  "description": "Persist versioned planner drafts, allow revisions, require explicit approval, and block later phases until approvals exist.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "approval-gates-planner-iterations",
+    "branch_name": "feature/QUIVER-25-05-approval-gates-planner-iterations"
+  },
+  "files": [
+    "src/create-quiver/**",
+    "docs/**",
+    "tests/**"
+  ],
+  "depends_on": [
+    "slice-02-run-state-phase-locks",
+    "slice-04-agent-profiles-adapters"
+  ],
+  "parallel_safe": "no",
+  "parallel_safe_reason": "Depends on shared state and agent profile contracts.",
+  "must": [
+    "Store versioned acceptance criteria drafts.",
+    "Store versioned technical-plan drafts.",
+    "Support revise commands that do not advance phase.",
+    "Approve only concrete versions.",
+    "Block spec generation until the plan is approved.",
+    "Record approval decisions and timestamps."
+  ],
+  "not_included": [
+    "Spec file generation.",
+    "Slice execution.",
+    "PR creation."
+  ],
+  "acceptance": [
+    "Criteria drafts can be generated, revised, and approved.",
+    "Technical-plan drafts can be generated, revised, reviewed, and approved.",
+    "Approving a missing or non-current version fails clearly.",
+    "Spec generation is blocked before plan approval.",
+    "Approvals are readable from state without chat memory."
+  ],
+  "tests": [
+    "node --test tests/**/*.test.js",
+    "git diff --check"
+  ],
+  "estimated_hours": 7,
+  "status": "planned",
+  "blocked_reason": null
+}

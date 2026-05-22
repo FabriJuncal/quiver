@@ -1,0 +1,55 @@
+{
+  "slice_id": "slice-10-validation-errors-fixtures",
+  "ticket": "QUIVER-25-10",
+  "type": "quality",
+  "title": "Validation, actionable errors, redaction, and fixtures",
+  "objective": "Harden lifecycle behavior with actionable errors, dry-run consistency, redaction, cross-platform checks, and fixture coverage.",
+  "description": "Add production-grade validation and tests for the AI-first lifecycle across new, existing, older, monorepo, dirty git, no git, no gh, path-with-spaces, docs-conflict, and missing-agent scenarios.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "validation-errors-fixtures",
+    "branch_name": "feature/QUIVER-25-10-validation-errors-fixtures"
+  },
+  "files": [
+    "src/create-quiver/**",
+    "docs/**",
+    "tests/**",
+    "scripts/**"
+  ],
+  "depends_on": [
+    "slice-01-cli-contract-compatibility",
+    "slice-02-run-state-phase-locks",
+    "slice-08-controlled-slice-execution"
+  ],
+  "parallel_safe": "yes",
+  "parallel_safe_reason": "Can run beside export/migration if fixture and validation files do not overlap.",
+  "must": [
+    "Standardize actionable error shape.",
+    "Ensure write-capable commands have dry-run behavior or explicit justification.",
+    "Redact likely secrets from logs/evidence.",
+    "Add cross-platform doctor checks for Node, npm, git, gh, shell, permissions, paths with spaces, and auth hints.",
+    "Add official fixtures for the major project states."
+  ],
+  "not_included": [
+    "Dashboard export implementation.",
+    "Provider-specific feature expansion.",
+    "Package publishing."
+  ],
+  "acceptance": [
+    "Errors explain what failed, why it matters, how to fix it, and next command.",
+    "Dry-run behavior is consistent for mutating commands.",
+    "Secret-like output is redacted before writing logs.",
+    "Fixtures cover new, existing, old Quiver, monorepo, no git, dirty git, no gh, paths with spaces, docs contradiction, and missing agent profile.",
+    "Tests and smoke commands validate the fixture matrix."
+  ],
+  "tests": [
+    "node --test tests/**/*.test.js",
+    "npm run smoke:create-quiver",
+    "npm run smoke:guided-workflow",
+    "git diff --check"
+  ],
+  "estimated_hours": 8,
+  "status": "planned",
+  "blocked_reason": null
+}

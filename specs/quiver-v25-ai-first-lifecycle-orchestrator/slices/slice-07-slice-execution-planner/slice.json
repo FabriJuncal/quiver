@@ -1,0 +1,51 @@
+{
+  "slice_id": "slice-07-slice-execution-planner",
+  "ticket": "QUIVER-25-07",
+  "type": "feature",
+  "title": "Slice execution planning and parallel safety",
+  "objective": "Generate a reliable execution plan that shows required order, parallel waves, dependencies, risks, and file conflicts.",
+  "description": "Turn generated slices into execution waves while enforcing slice-00 first, dependency validation, parallel safety, and conflict detection.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "slice-execution-planner",
+    "branch_name": "feature/QUIVER-25-07-slice-execution-planner"
+  },
+  "files": [
+    "src/create-quiver/**",
+    "docs/**",
+    "tests/**"
+  ],
+  "depends_on": [
+    "slice-06-spec-slice-generator"
+  ],
+  "parallel_safe": "no",
+  "parallel_safe_reason": "Uses generated artifact contracts and feeds executor behavior.",
+  "must": [
+    "Generate sequential and parallel execution waves.",
+    "Force slice-00 to execute first.",
+    "Detect dependency cycles and missing dependencies.",
+    "Detect overlapping allowed write paths between parallel slices.",
+    "Explain why a slice is blocked or parallel-safe.",
+    "Emit human and JSON output."
+  ],
+  "not_included": [
+    "Executing agents.",
+    "Creating commits.",
+    "Opening PRs."
+  ],
+  "acceptance": [
+    "Execution plan shows Wave 0 for slice-00.",
+    "Parallel-ready slices are grouped only when dependencies and file scopes allow it.",
+    "Unsafe parallel execution is explained.",
+    "JSON output is suitable for downstream agents or dashboards.",
+    "Existing `plan`, `graph`, and `next` behavior remains compatible."
+  ],
+  "tests": [
+    "node --test tests/**/*.test.js",
+    "git diff --check"
+  ],
+  "estimated_hours": 6,
+  "status": "planned",
+  "blocked_reason": null
+}
