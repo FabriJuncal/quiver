@@ -35,6 +35,7 @@ contents="$(
 )"
 
 cd "$repo_root"
+# shellcheck disable=SC2016
 printf '%s\n' "$contents" | node -e '
   const fs = require("node:fs");
   const { assertPackageSafety } = require("./src/create-quiver/lib/package-safety");
@@ -52,7 +53,7 @@ printf '%s\n' "$contents" | node -e '
 require_present() {
   local path="$1"
 
-  if ! printf '%s\n' "$contents" | grep -Fxq "$path"; then
+  if ! grep -Fxq "$path" <<<"$contents"; then
     echo "FAIL: falta '$path' en el paquete" >&2
     exit 1
   fi
@@ -61,7 +62,7 @@ require_present() {
 require_absent() {
   local path="$1"
 
-  if printf '%s\n' "$contents" | grep -Fxq "$path"; then
+  if grep -Fxq "$path" <<<"$contents"; then
     echo "FAIL: '$path' no debería publicarse en el paquete" >&2
     exit 1
   fi
