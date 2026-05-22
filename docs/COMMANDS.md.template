@@ -20,6 +20,9 @@ This document is the canonical command reference for the orchestration roadmap.
 | `quiver:doctor -- --fix --dry-run` | Previews safe non-destructive repairs without writing files | macOS, Linux, Windows | v0.11 | `npm run quiver:doctor -- --fix --dry-run` |
 | `quiver:doctor -- --fix` | Applies safe idempotent repairs after review | macOS, Linux, Windows | v0.11 | `npm run quiver:doctor -- --fix` |
 | `quiver:evidence -- run -- <command>` | Captures command validation evidence with exit code, duration, redacted/truncated output, and a local Markdown record | macOS, Linux, Windows | v0.11 | `npm run quiver:evidence -- run -- npm test` |
+| `npx create-quiver ai run create --input <requirements.md>` | Creates a persistent AI lifecycle run under `.quiver/runs/` | macOS, Linux, Windows | v0.12 | `npx create-quiver ai run create --input requirements.md` |
+| `npx create-quiver ai status` | Shows the current AI lifecycle phase and next safe command | macOS, Linux, Windows | v0.12 | `npx create-quiver ai status` |
+| `npx create-quiver ai resume` | Resumes guidance from the last valid AI lifecycle phase | macOS, Linux, Windows | v0.12 | `npx create-quiver ai resume` |
 | `npx create-quiver demo create spec-viewer --dry-run` | Previews the optional Quiver Spec Viewer demo scaffold without writing files | macOS, Linux, Windows | v0.11 | `npx create-quiver demo create spec-viewer --dry-run` |
 | `npx create-quiver demo create spec-viewer --dir <target>` | Creates a small static demo app with example specs, slices, and validation scripts | macOS, Linux, Windows | v0.11 | `npx create-quiver demo create spec-viewer --dir ./quiver-spec-viewer` |
 | `quiver:plan` | Sequential orchestration planning command | macOS, Linux, Windows | v0.8 | [docs/examples/plan.md](./examples/plan.md) |

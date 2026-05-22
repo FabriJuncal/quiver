@@ -163,6 +163,9 @@ test('default generated package scripts target supported CLI commands', () => {
     'pr',
     'prompt-slice',
     'review-plan',
+    'resume',
+    'run',
+    'status',
   ]);
   const supportedSpecCommands = new Set(['close', 'create', 'start', 'status']);
 

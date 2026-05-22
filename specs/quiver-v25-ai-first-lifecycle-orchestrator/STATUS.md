@@ -14,7 +14,7 @@ The documentation foundation for v25 has been created. Product implementation ha
 |---|---|---|
 | slice-00-spec-foundation | Completed | Planning artifacts created. |
 | slice-01-cli-contract-compatibility | Completed | Top-level version handling, CLI contract tests, and docs added. |
-| slice-02-run-state-phase-locks | Planned | Not started. |
+| slice-02-run-state-phase-locks | Completed | Persistent runs, status/resume, phase helpers, approval metadata, and locks added. |
 | slice-03-safe-ai-onboarding-docs | Planned | Not started. |
 | slice-04-agent-profiles-adapters | Planned | Not started. |
 | slice-05-approval-gates | Planned | Not started. |

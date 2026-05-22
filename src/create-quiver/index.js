@@ -9,7 +9,23 @@ const {
   collectDoctorReport,
   formatDoctorFixPlan,
 } = require('./lib/doctor');
-const { runAgent: runAiAgent, runApprovalStatus: runAiApprovalStatus, runApprove: runAiApprove, runDoctor: runAiDoctor, runExecutePlan: runAiExecutePlan, runExecuteSlice: runAiExecuteSlice, runOnboard, runPlan: runAiPlan, runPrepareContext: runAiPrepareContext, runPr: runAiPr, runPromptSlice: runAiPromptSlice, runReviewPlan: runAiReviewPlan } = require('./commands/ai');
+const {
+  runAgent: runAiAgent,
+  runApprovalStatus: runAiApprovalStatus,
+  runApprove: runAiApprove,
+  runDoctor: runAiDoctor,
+  runExecutePlan: runAiExecutePlan,
+  runExecuteSlice: runAiExecuteSlice,
+  runLifecycleResume: runAiLifecycleResume,
+  runLifecycleRun: runAiLifecycleRun,
+  runLifecycleStatus: runAiLifecycleStatus,
+  runOnboard,
+  runPlan: runAiPlan,
+  runPrepareContext: runAiPrepareContext,
+  runPr: runAiPr,
+  runPromptSlice: runAiPromptSlice,
+  runReviewPlan: runAiReviewPlan,
+} = require('./commands/ai');
 const { runDemo } = require('./commands/demo');
 const { runPrepare } = require('./commands/prepare');
 const { runEvidence } = require('./commands/evidence');
@@ -86,6 +102,9 @@ const SUPPORTED_AI_COMMANDS = new Set([
   'pr',
   'prompt-slice',
   'review-plan',
+  'resume',
+  'run',
+  'status',
 ]);
 
 const SUPPORTED_SPEC_COMMANDS = new Set(['close', 'create', 'start', 'status']);
@@ -108,6 +127,9 @@ function printUsage() {
   npx create-quiver flow [options]
   npx create-quiver plan [options]
   npx create-quiver ai <task> [options]
+  npx create-quiver ai run create --input <requirements.md>
+  npx create-quiver ai status [options]
+  npx create-quiver ai resume [options]
   npx create-quiver ai agent <set|list|show> [role] [options]
   npx create-quiver ai prepare-context [options]
   npx create-quiver graph [options]
@@ -158,6 +180,7 @@ Options:
       --provider <name>       Provider CLI to preflight for prepare or AI commands
       --model <label>         Free-form model label for AI agent profiles
       --version <n>           Draft version to approve for AI planner phases
+      --run <id>              AI lifecycle run id
       --ssh-host-alias <name> SSH host alias to validate for prepare or AI commands
       --identity-file <path>  SSH identity file to validate for prepare or AI commands
       --remote <name>         Git remote name for check-slice or AI PR checks
@@ -179,6 +202,9 @@ Examples:
   cd ./my-project && npx create-quiver plan --json
   cd ./my-project && npx create-quiver ai onboard --dry-run
   cd ./my-project && npx create-quiver ai prepare-context --dry-run
+  cd ./my-project && npx create-quiver ai run create --input requirements.md
+  cd ./my-project && npx create-quiver ai status
+  cd ./my-project && npx create-quiver ai resume
   cd ./my-project && npx create-quiver ai agent set planner --provider codex --model gpt-5.5
   cd ./my-project && npx create-quiver ai agent list
   cd ./my-project && npx create-quiver ai plan --phase acceptance --input requirements.md --dry-run
@@ -252,6 +278,8 @@ function parseArgs(argv) {
     aiCommand: '',
     aiAgentCommand: '',
     aiAgentRole: '',
+    aiRunCommand: '',
+    aiRunId: '',
     aiPhase: 'acceptance',
     aiProvider: 'codex',
     aiProviderExplicit: false,
@@ -551,6 +579,15 @@ function parseArgs(argv) {
       continue;
     }
 
+    if (arg === '--run') {
+      const value = args[++index];
+      if (!value) {
+        throw new Error(formatError('missing value for --run'));
+      }
+      result.aiRunId = value;
+      continue;
+    }
+
     if (arg === '--role') {
       const value = args[++index];
       if (!value) {
@@ -748,6 +785,9 @@ function parseArgs(argv) {
       if (!result.aiAgentRole && positional.length > 0) {
         result.aiAgentRole = positional.shift();
       }
+    }
+    if (result.aiCommand === 'run' && !result.aiRunCommand && positional.length > 0) {
+      result.aiRunCommand = positional.shift();
     }
     if (positional.length > 0) {
       throw new Error(formatError('ai does not accept extra positional arguments'));
@@ -2093,7 +2133,31 @@ async function run(argv) {
 
   if (args.mode === 'ai') {
     if (!args.aiCommand) {
-      throw new Error(formatError('missing ai subcommand. Use: npx create-quiver ai onboard | prepare-context | plan | review-plan | approve | approvals | agent | prompt-slice | execute-slice | execute-plan | doctor | pr'));
+      throw new Error(formatError('missing ai subcommand. Use: npx create-quiver ai onboard | prepare-context | run | status | resume | plan | review-plan | approve | approvals | agent | prompt-slice | execute-slice | execute-plan | doctor | pr'));
+    }
+
+    if (args.aiCommand === 'run') {
+      runAiLifecycleRun(process.cwd(), {
+        command: args.aiRunCommand,
+        input: args.aiInput || undefined,
+        runId: args.aiRunId || undefined,
+        specSlug: args.specSlug || undefined,
+      });
+      return;
+    }
+
+    if (args.aiCommand === 'status') {
+      runAiLifecycleStatus(process.cwd(), {
+        runId: args.aiRunId || undefined,
+      });
+      return;
+    }
+
+    if (args.aiCommand === 'resume') {
+      runAiLifecycleResume(process.cwd(), {
+        runId: args.aiRunId || undefined,
+      });
+      return;
     }
 
     if (args.aiCommand === 'agent') {
@@ -2137,6 +2201,7 @@ async function run(argv) {
         provider: args.aiProvider,
         providerExplicit: args.aiProviderExplicit,
         role: args.aiRole,
+        runId: args.aiRunId || undefined,
         specSlug: args.specSlug || undefined,
         timeout: args.aiTimeout,
       });
@@ -2160,6 +2225,7 @@ async function run(argv) {
         dryRun: args.dryRun,
         input: args.aiInput || undefined,
         phase: args.aiPhase,
+        runId: args.aiRunId || undefined,
         version: args.aiVersion || undefined,
       });
       return;
@@ -2234,7 +2300,7 @@ async function run(argv) {
       return;
     }
 
-    throw new Error(formatError(`unsupported ai subcommand: ${args.aiCommand}. Supported tasks: onboard, plan, review-plan, approve, approvals, agent, prompt-slice, execute-slice, execute-plan, doctor, pr`));
+    throw new Error(formatError(`unsupported ai subcommand: ${args.aiCommand}. Supported tasks: onboard, prepare-context, run, status, resume, plan, review-plan, approve, approvals, agent, prompt-slice, execute-slice, execute-plan, doctor, pr`));
   }
 
   if (args.mode === 'graph') {

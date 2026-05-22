@@ -17,6 +17,15 @@ const {
 const { buildSpecGenerationManifest, describeSpecGeneration, generateSpecArtifacts } = require('../lib/ai/spec-generator');
 const { buildProviderInvocation, runProvider } = require('../lib/ai/providers');
 const {
+  createAiRun,
+  ensureAiRun,
+  formatAiRunResume,
+  formatAiRunStatus,
+  recordAiRunApproval,
+  resolveAiRun,
+  updateAiRunPhase,
+} = require('../lib/ai/run-state');
+const {
   agentProfilesPath,
   getAgentProfile,
   listAgentProfiles,
@@ -531,7 +540,16 @@ async function runPlan(repoRoot, options = {}) {
     throw annotateProviderError(result.error || new Error('provider run failed'), 'plan', phase);
   }
 
-  savePlannerDraft(repoRoot, phase, inputPath, [result.stdout, result.stderr].filter(Boolean).join(''));
+  const draft = savePlannerDraft(repoRoot, phase, inputPath, [result.stdout, result.stderr].filter(Boolean).join(''));
+  const lifecycleRun = ensureAiRun(repoRoot, {
+    command: `ai plan --phase ${phase}`,
+    input: inputPath,
+    runId: options.runId,
+  });
+  updateAiRunPhase(repoRoot, lifecycleRun.run_id, phase === 'acceptance' ? 'acceptance-draft' : 'technical-plan-draft', {
+    artifact: path.relative(repoRoot, draft.filePath).split(path.sep).join('/'),
+    command: `ai plan --phase ${phase}`,
+  });
 
   return {
     task: 'plan',
@@ -675,6 +693,21 @@ async function runApprove(repoRoot, options = {}) {
   const result = approvePlannerPhase(repoRoot, phase, options.input || '', inputText, {
     version: options.version || undefined,
   });
+  const lifecycleRun = ensureAiRun(repoRoot, {
+    command: `ai approve --phase ${phase}`,
+    input: options.input || result.filePath,
+    runId: options.runId,
+  });
+  recordAiRunApproval(repoRoot, lifecycleRun.run_id, {
+    artifact: path.relative(repoRoot, result.filePath).split(path.sep).join('/'),
+    phase,
+    source_file: options.input || `draft version ${options.version}`,
+    version: result.version || null,
+  });
+  updateAiRunPhase(repoRoot, lifecycleRun.run_id, phase === 'acceptance' ? 'acceptance-approved' : 'technical-plan-approved', {
+    artifact: path.relative(repoRoot, result.filePath).split(path.sep).join('/'),
+    command: `ai approve --phase ${phase}`,
+  });
   process.stdout.write(formatApprovalResult({
     ...result,
     sourceFile: options.input || `draft version ${options.version}`,
@@ -695,6 +728,52 @@ async function runApprovalStatus(repoRoot) {
   process.stdout.write(report);
   return {
     task: 'approval-status',
+    report,
+  };
+}
+
+function runLifecycleStatus(repoRoot, options = {}) {
+  const run = resolveAiRun(repoRoot, options.runId || '');
+  const report = formatAiRunStatus(repoRoot, run);
+  process.stdout.write(report);
+  return {
+    task: 'status',
+    run,
+    report,
+  };
+}
+
+function runLifecycleResume(repoRoot, options = {}) {
+  const run = resolveAiRun(repoRoot, options.runId || '');
+  const report = formatAiRunResume(repoRoot, run);
+  process.stdout.write(report);
+  return {
+    task: 'resume',
+    run,
+    report,
+  };
+}
+
+function runLifecycleRun(repoRoot, options = {}) {
+  const command = String(options.command || '').trim().toLowerCase();
+  if (command !== 'create') {
+    throw new Error(formatError(`unsupported ai run subcommand: ${command}. Supported tasks: create`));
+  }
+  if (!options.input) {
+    throw new Error(formatError('ai run create requires --input <requirements.md>'));
+  }
+  const run = createAiRun(repoRoot, {
+    command: 'ai run create',
+    input: options.input,
+    runId: options.runId,
+    specSlug: options.specSlug,
+  });
+  const report = formatAiRunStatus(repoRoot, run);
+  process.stdout.write(report);
+  return {
+    task: 'run',
+    command,
+    run,
     report,
   };
 }
@@ -903,6 +982,9 @@ module.exports = {
   runDoctor,
   runExecutePlan,
   runExecuteSlice,
+  runLifecycleResume,
+  runLifecycleRun,
+  runLifecycleStatus,
   runPromptSlice,
   runApprove,
   runApprovalStatus,

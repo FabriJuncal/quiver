@@ -315,6 +315,9 @@ El paquete también publica el alias binario `quiver`, que apunta al mismo CLI. 
 | `npx create-quiver ai agent set <role> --provider <provider> --model <label>` | Guarda perfiles reutilizables para planner, executor, reviewer o researcher sin guardar secretos. |
 | `npx create-quiver ai agent list` | Lista los perfiles configurados. |
 | `npx create-quiver ai agent show <role>` | Muestra un perfil específico. |
+| `npx create-quiver ai run create --input requirements.md` | Crea un run persistente en `.quiver/runs/` para un requerimiento. |
+| `npx create-quiver ai status` | Muestra la fase actual del run AI y el próximo comando seguro. |
+| `npx create-quiver ai resume` | Reanuda el run AI desde la última fase válida sin depender del historial del chat. |
 | `npx create-quiver ai approvals` | Muestra drafts versionados y aprobados por fase. |
 | `npx create-quiver ai approve --phase acceptance --version <n>` | Aprueba una versión concreta de un draft guardado. |
 | `npx create-quiver init --minimal` | Crea solo el contrato esencial de onboarding. |

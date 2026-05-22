@@ -55,3 +55,25 @@ Each implementation slice must append:
 ### Risks
 
 - The local `quiver` binary alias is validated through `package.json` and the shared entrypoint, not by installing the package into a fixture.
+
+## slice-02 - Run state, phase gates, and locks
+
+### Completed
+
+- Added `.quiver/runs/<run-id>/state.json`, `approvals.json`, copied requirement input, and decision log scaffolding.
+- Added `.quiver/locks/` as runtime-only internal state.
+- Added `ai run create`, `ai status`, and `ai resume`.
+- Added lifecycle phase helpers, next-command guidance, approval metadata recording, and run/slice lock helpers.
+- Connected `ai plan` and `ai approve` to lifecycle run phase updates.
+
+### Validation
+
+- `node --test tests/lib/ai-run-state.test.js tests/commands/ai-run-state.test.js tests/commands/ai-plan.test.js tests/lib/approvals.test.js tests/lib/init-layout.test.js` passed: 25 tests.
+- `node /Users/fabrijk/Documents/Work/Proyectos\ Personales/nika/frameworks/quiver/bin/create-quiver.js ai status` from `/private/tmp` passed and reported no active run without creating files.
+- `node --test tests/**/*.test.js` passed: 264 tests.
+- `git diff --check` passed.
+
+### Risks
+
+- File locks intentionally require manual inspection/removal when stale; automatic process liveness cleanup is deferred to avoid unsafe cross-platform behavior.
+- Phase guards are available and used by lifecycle status tests, but later slices still need to wire them into spec generation, execution planning, slice execution, and PR creation.

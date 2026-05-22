@@ -21,6 +21,7 @@ Generated projects also get `quiver:*` npm scripts that call the Node CLI direct
 `quiver:ai:execute-plan` supports `--mode manual` for paste-ready executor prompts and `--mode delegated` for temporary worktrees on parallel-ready waves; unsafe waves fall back to sequential execution.
 Agent profiles live in `.quiver/agents/profiles.json`; they store role, provider, model label, context label, and display label only. Do not store API keys, tokens, or credentials there.
 Planner drafts are versioned under `.quiver/approvals/<phase>/drafts/`; review the technical-plan draft with `npx create-quiver ai review-plan --dry-run` before approving it, then approve a concrete version with `npx create-quiver ai approve --phase <phase> --version <n>` when reviewing iterations.
+AI lifecycle runs are persisted under `.quiver/runs/<run-id>/`; use `npx create-quiver ai run create --input <requirements.md>` to start one explicitly, `npx create-quiver ai status` to inspect it, and `npx create-quiver ai resume` to continue from the last valid phase without relying on chat memory.
 Maintain release notes and package publishing with `scripts/release-quiver.sh`.
 The primary generated project context for agents is `docs/AI_CONTEXT.md`.
 The project map is the single source of truth for stack, package manager, commands, and file hints: `docs/PROJECT_MAP.md`.

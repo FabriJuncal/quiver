@@ -82,6 +82,7 @@ function quiverInternalPaths(projectRoot) {
     cacheDir: path.join(root, 'cache'),
     configPath: path.join(root, 'config.json'),
     gitignorePath: path.join(root, '.gitignore'),
+    locksDir: path.join(root, 'locks'),
     runsDir: path.join(root, 'runs'),
     scansDir: path.join(root, 'scans'),
     statePath: path.join(root, 'state.json'),
@@ -94,6 +95,7 @@ function buildQuiverInternalGitignore() {
   return [
     'cache/',
     'evidence/',
+    'locks/',
     'runs/',
     'worktrees/',
     '',
