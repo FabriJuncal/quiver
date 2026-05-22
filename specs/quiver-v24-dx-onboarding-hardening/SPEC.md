@@ -130,7 +130,7 @@ Implement in small vertical slices:
 | slice-05 | Local slice validation and base branch guidance | Completed | slice-02 |
 | slice-06 | Historical plan, graph, and next views | Completed | slice-05 |
 | slice-07 | Analyzer command map hardening | Completed | slice-01 |
-| slice-08 | Evidence run command | Planned | slice-03 |
+| slice-08 | Evidence run command | Completed | slice-03 |
 | slice-09 | Spec Viewer demo scaffolding | Planned | slice-01, slice-06, slice-08 |
 | slice-10 | Docs, smokes, and release readiness | Planned | all implementation slices |
 
@@ -146,4 +146,4 @@ Implement in small vertical slices:
 
 - Should `doctor --fix` require `--yes` in non-interactive mode?
 - Should `ai prepare-context` default to writing drafts or require `--write`?
-- Should evidence records live under `.quiver/evidence/` by default or under the active spec when one exists?
+- Resolved in `slice-08`: evidence records live under `.quiver/evidence/` by default, with `--output <file>` for explicit destinations.

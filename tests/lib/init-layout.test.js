@@ -140,6 +140,7 @@ test('default generated package scripts target supported CLI commands', () => {
     'check-slice',
     'cleanup-slice',
     'doctor',
+    'evidence',
     'flow',
     'graph',
     'migrate',

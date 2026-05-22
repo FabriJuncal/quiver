@@ -2,7 +2,7 @@
 
 ## Status
 
-`slice-00` documentation foundation, `slice-01` init/template hygiene, `slice-02` CLI routing/version diagnostics, `slice-03` doctor fixes/link checks, `slice-05` local slice validation, `slice-06` historical planning views, and `slice-07` analyzer command map hardening are completed. Remaining implementation slices are pending.
+`slice-00` documentation foundation, `slice-01` init/template hygiene, `slice-02` CLI routing/version diagnostics, `slice-03` doctor fixes/link checks, `slice-05` local slice validation, `slice-06` historical planning views, `slice-07` analyzer command map hardening, and `slice-08` evidence command are completed. Remaining implementation slices are pending.
 
 ## Required Final Evidence
 
@@ -32,3 +32,8 @@
 | slice-06 | `node bin/create-quiver.js graph --spec quiver-v24-dx-onboarding-hardening --include-completed` | Pass | Graph history view is restricted to v24 and no longer leaks unrelated specs. |
 | slice-06 | `node bin/create-quiver.js next --spec quiver-v24-dx-onboarding-hardening --include-completed` | Pass | Next output keeps an actionable planned slice and appends completed history separately. |
 | slice-07 | `node --test tests/commands/analyze.test.js tests/lib/project-scan.test.js` | Pass | 6 tests passed, covering plain Node/JavaScript analysis, language dedupe, useful script surfacing, and scan artifact helpers. |
+| slice-08 | `node --test tests/commands/evidence.test.js tests/lib/evidence.test.js` | Pass | 9 tests passed, covering success/failure exit codes, output truncation, default paths, output path display, and secret redaction across command/stdout/stderr. |
+| slice-08 | `node --test tests/lib/init-layout.test.js tests/commands/doctor.test.js tests/lib/quiver-internal-layout.test.js tests/lib/doctor.test.js` | Pass | 22 tests passed, covering supported script surfacing, `.quiver/.gitignore` evidence defaults, and doctor regression coverage. |
+| slice-08 | `node --test tests/commands/init-profiles.test.js tests/lib/init-docs.test.js tests/lib/doctor.test.js tests/commands/prepare.test.js` | Pass | 30 tests passed, covering generated init profiles, docs initialization, doctor layout checks, and prepare regressions. |
+| slice-08 | `node bin/create-quiver.js evidence run --output /private/tmp/quiver-v24-slice08-evidence.md --max-output 200 -- node --version` | Pass | Smoke verified direct command execution, exit code preservation, and explicit output path display. |
+| slice-08 | `npm run smoke:create-quiver` | Pass | Generated package smoke passed after adding `quiver:evidence` to generated scripts. |

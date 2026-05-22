@@ -93,6 +93,7 @@ function quiverInternalPaths(projectRoot) {
 function buildQuiverInternalGitignore() {
   return [
     'cache/',
+    'evidence/',
     'runs/',
     'worktrees/',
     '',
@@ -185,6 +186,7 @@ function resolveInitPackageScripts(profile, options = {}) {
     'quiver:graph': 'npx create-quiver graph',
     'quiver:next': 'npx create-quiver next',
     'quiver:doctor': 'npx create-quiver doctor',
+    'quiver:evidence': 'npx create-quiver evidence',
     'quiver:ai:agent': 'npx create-quiver ai agent',
     'quiver:ai:onboard': 'npx create-quiver ai onboard',
     'quiver:ai:plan': 'npx create-quiver ai plan',

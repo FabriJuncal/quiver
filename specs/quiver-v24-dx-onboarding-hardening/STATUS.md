@@ -16,7 +16,7 @@
 | slice-05 | Local slice validation and base branch guidance | Completed | 100% | slice-02 |
 | slice-06 | Historical plan, graph, and next views | Completed | 100% | slice-05 |
 | slice-07 | Analyzer command map hardening | Completed | 100% | slice-01 |
-| slice-08 | Evidence run command | Planned | 0% | slice-03 |
+| slice-08 | Evidence run command | Completed | 100% | slice-03 |
 | slice-09 | Spec Viewer demo scaffolding | Planned | 0% | slice-01, slice-06, slice-08 |
 | slice-10 | Docs, smokes, and release readiness | Planned | 0% | all implementation slices |
 

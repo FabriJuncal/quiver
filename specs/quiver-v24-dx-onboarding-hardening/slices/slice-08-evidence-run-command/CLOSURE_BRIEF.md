@@ -2,26 +2,32 @@
 
 ## Resumen de lo realizado
 
-Pendiente de ejecución.
+Se agregó `evidence run -- <command>` para ejecutar validaciones y guardar una evidencia local en Markdown con comando, exit code, duración, stdout/stderr resumidos, truncado y redacción básica de secretos.
 
 ## Validación contra criterios de aceptación
 
-- [ ] Command output captured.
-- [ ] Exit code preserved.
-- [ ] Long output truncated.
-- [ ] Secret-like values redacted.
+- [x] Command output captured.
+- [x] Exit code preserved.
+- [x] Long output truncated.
+- [x] Secret-like values redacted in command, stdout, and stderr.
 
 ## Cambios relevantes
 
-Pendiente.
+- Nuevo comando `npx create-quiver evidence run -- <command>`.
+- Nueva librería `src/create-quiver/lib/evidence.js`.
+- Nuevo runner de comando `src/create-quiver/commands/evidence.js`.
+- Script `quiver:evidence` en proyectos generados y en el repo fuente.
+- `.quiver/.gitignore` ahora ignora `evidence/` por defecto.
+- Documentación actualizada en README, README_FOR_AI, COMMANDS y WORKFLOW.
+- Tests CLI y de librería agregados.
 
 ## Pendientes
 
-Execute this slice.
+Sin pendientes del slice.
 
 ## Riesgos remanentes
 
-Redaction remains best effort; final docs must avoid overpromising.
+La redacción sigue siendo best effort. No reemplaza una política de secretos ni debe usarse para ejecutar comandos que impriman credenciales intencionalmente.
 
 ## Recomendaciones futuras
 

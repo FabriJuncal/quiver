@@ -399,6 +399,14 @@ npm run smoke:guided-workflow
 npm run smoke:tiered-pack
 ```
 
+Para dejar evidencia resumida de una validación sin pegar logs completos:
+
+```bash
+npx create-quiver evidence run -- npm test
+```
+
+Por defecto la evidencia queda en `.quiver/evidence/`. También podés elegir destino con `--output <archivo>` y limitar stdout/stderr con `--max-output <n>`.
+
 Notas reales del estado actual:
 
 - No hay script `npm test`; el comando verificado para tests es `node --test tests/**/*.test.js`.
@@ -416,6 +424,7 @@ Notas reales del estado actual:
 | `npm run quiver:graph` | Ejecuta `npx create-quiver graph`. |
 | `npm run quiver:next` | Ejecuta `npx create-quiver next`. |
 | `npm run quiver:doctor` | Ejecuta `npx create-quiver doctor`. |
+| `npm run quiver:evidence` | Ejecuta `npx create-quiver evidence`; usalo como `npm run quiver:evidence -- run -- <comando>`. |
 | `npm run quiver:ai:agent` | Ejecuta `npx create-quiver ai agent`. |
 | `npm run quiver:ai:onboard` | Ejecuta onboarding de IA. |
 | `npm run quiver:ai:plan` | Ejecuta planificación IA por fases. |

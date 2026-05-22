@@ -53,6 +53,7 @@ test('buildQuiverInternalGitignore ignores runtime-only folders', () => {
   const content = buildQuiverInternalGitignore();
 
   assert.match(content, /^cache\/$/m);
+  assert.match(content, /^evidence\/$/m);
   assert.match(content, /^runs\/$/m);
   assert.match(content, /^worktrees\/$/m);
   assert.doesNotMatch(content, /state\.json/);

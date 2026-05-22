@@ -59,7 +59,7 @@ Use maps, metadata, diffs, and summaries first. Open full files only when the sm
 5. Implement only what the slice declares.
 6. Make one commit for that slice, or let `ai execute-slice --commit` / `ai execute-plan --execute --commit --mode delegated` create it after provider, scope, and validation pass.
 7. Validate with `npx create-quiver check-slice <slice.json>` or `npm run quiver:check-slice -- <slice.json>`.
-8. Write evidence.
+8. Write evidence. Prefer `npx create-quiver evidence run -- <command>` when you need a compact local Markdown record of validation output.
 9. Repeat for the next slice until the spec is complete.
 10. Open one PR for the spec. Use `npx create-quiver ai pr --dry-run --input specs/<spec-slug>/pr.md ...` first, then add `--create` only after review.
 11. After the PR is merged and the spec worktree is clean, close it with `npx create-quiver spec close specs/<spec-slug>`.

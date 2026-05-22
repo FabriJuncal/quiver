@@ -11,6 +11,7 @@ const {
 } = require('./lib/doctor');
 const { runAgent: runAiAgent, runApprovalStatus: runAiApprovalStatus, runApprove: runAiApprove, runDoctor: runAiDoctor, runExecutePlan: runAiExecutePlan, runExecuteSlice: runAiExecuteSlice, runOnboard, runPlan: runAiPlan, runPr: runAiPr, runPromptSlice: runAiPromptSlice, runReviewPlan: runAiReviewPlan } = require('./commands/ai');
 const { runPrepare } = require('./commands/prepare');
+const { runEvidence } = require('./commands/evidence');
 const { runFlow } = require('./commands/flow');
 const { runGraph } = require('./commands/graph');
 const { runNext } = require('./commands/next');
@@ -64,6 +65,7 @@ const SUPPORTED_COMMAND_MODES = new Set([
   'check-scope',
   'refresh-active-slices',
   'spec',
+  'evidence',
   'ai',
 ]);
 
@@ -120,6 +122,7 @@ function printUsage() {
   npx create-quiver spec start <spec-dir>
   npx create-quiver spec status <spec-dir>
   npx create-quiver spec close <spec-dir>
+  npx create-quiver evidence run [options] -- <command>
 
 Options:
   -n, --name <project-name>   Project name to generate
@@ -153,6 +156,8 @@ Options:
       --identity-file <path>  SSH identity file to validate for prepare or AI commands
       --remote <name>         Git remote name for check-slice or AI PR checks
       --base <branch>         Base branch for check-slice, ai pr, or spec close (default: main)
+      --output <file>         Output file for evidence run
+      --max-output <n>        Maximum stdout/stderr chars per evidence section
       --title <text>          Override PR title for ai pr create
   -y, --yes                   Skip prompts and use the provided inputs
   -h, --help                  Show this help message
@@ -202,6 +207,7 @@ Examples:
   cd ./my-project && npx create-quiver spec start specs/my-project
   cd ./my-project && npx create-quiver spec status specs/my-project
   cd ./my-project && npx create-quiver spec close specs/my-project --dry-run
+  cd ./my-project && npx create-quiver evidence run -- npm test
   node bin/create-quiver.js doctor --dir ./my-project
 `);
 }
@@ -264,6 +270,10 @@ function parseArgs(argv) {
     initLegacyScripts: false,
     initMinimal: false,
     specCommand: '',
+    evidenceCommand: '',
+    evidenceArgs: [],
+    evidenceOutput: '',
+    evidenceMaxOutput: null,
   };
 
   const args = [...argv];
@@ -273,6 +283,9 @@ function parseArgs(argv) {
     args.shift();
     if (result.mode === 'spec') {
       result.specCommand = args.shift() || '';
+    }
+    if (result.mode === 'evidence') {
+      result.evidenceCommand = args.shift() || '';
     }
   } else if (args[0] === '--analyze') {
     result.mode = 'analyze';
@@ -297,6 +310,11 @@ function parseArgs(argv) {
 
   for (let index = 0; index < args.length; index += 1) {
     const arg = args[index];
+
+    if (arg === '--') {
+      result.evidenceArgs = args.slice(index + 1);
+      break;
+    }
 
     if (arg === '-h' || arg === '--help') {
       result.help = true;
@@ -603,6 +621,28 @@ function parseArgs(argv) {
       continue;
     }
 
+    if (arg === '--output') {
+      const value = args[++index];
+      if (!value) {
+        throw new Error(formatError('missing value for --output'));
+      }
+      result.evidenceOutput = value;
+      continue;
+    }
+
+    if (arg === '--max-output') {
+      const value = args[++index];
+      if (typeof value === 'undefined') {
+        throw new Error(formatError('missing value for --max-output'));
+      }
+      const parsed = Number.parseInt(value, 10);
+      if (!Number.isInteger(parsed) || parsed <= 0) {
+        throw new Error(formatError('invalid value for --max-output'));
+      }
+      result.evidenceMaxOutput = parsed;
+      continue;
+    }
+
     if (arg === '--title') {
       const value = args[++index];
       if (!value) {
@@ -715,6 +755,19 @@ function parseArgs(argv) {
     }
     if (result.specCommand === 'create' && positional.length > 0) {
       throw new Error(formatError('spec create does not accept positional arguments; use --input <file> or --spec <slug>'));
+    }
+  } else if (result.mode === 'evidence') {
+    if (!result.evidenceCommand && positional.length > 0) {
+      result.evidenceCommand = positional.shift();
+    }
+    if (!result.evidenceCommand) {
+      throw new Error(formatError('missing evidence subcommand. Use: npx create-quiver evidence run -- <command>'));
+    }
+    if (result.evidenceCommand !== 'run') {
+      throw new Error(formatError(`unsupported evidence subcommand: ${result.evidenceCommand}. Supported tasks: run`));
+    }
+    if (positional.length > 0) {
+      throw new Error(formatError('evidence run does not accept positional arguments before --'));
     }
   } else {
     if (positional.length > 0) {
@@ -2148,6 +2201,17 @@ async function run(argv) {
       json: args.json,
       specSlug: args.specSlug,
     });
+    return;
+  }
+
+  if (args.mode === 'evidence') {
+    const result = runEvidence(process.cwd(), {
+      command: args.evidenceArgs,
+      maxOutput: args.evidenceMaxOutput || undefined,
+      output: args.evidenceOutput || undefined,
+      subcommand: args.evidenceCommand,
+    });
+    process.exitCode = result.exitCode;
     return;
   }
 

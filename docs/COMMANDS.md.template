@@ -18,6 +18,7 @@ This document is the canonical command reference for the orchestration roadmap.
 | `quiver:doctor` | Validates the Quiver contract and reports layout or migration guidance | macOS, Linux, Windows | v0.8 | `npm run quiver:doctor` |
 | `quiver:doctor -- --fix --dry-run` | Previews safe non-destructive repairs without writing files | macOS, Linux, Windows | v0.11 | `npm run quiver:doctor -- --fix --dry-run` |
 | `quiver:doctor -- --fix` | Applies safe idempotent repairs after review | macOS, Linux, Windows | v0.11 | `npm run quiver:doctor -- --fix` |
+| `quiver:evidence -- run -- <command>` | Captures command validation evidence with exit code, duration, redacted/truncated output, and a local Markdown record | macOS, Linux, Windows | v0.11 | `npm run quiver:evidence -- run -- npm test` |
 | `quiver:plan` | Sequential orchestration planning command | macOS, Linux, Windows | v0.8 | [docs/examples/plan.md](./examples/plan.md) |
 | `quiver:graph` | Parallel-level orchestration tree command | macOS, Linux, Windows | v0.8 | [docs/examples/graph.md](./examples/graph.md) |
 | `quiver:next` | Ready-slice suggestion command | macOS, Linux, Windows | v0.8 | [docs/examples/next.md](./examples/next.md) |
@@ -50,6 +51,8 @@ This document is the canonical command reference for the orchestration roadmap.
 | `--include-templates` | `init` | Export packaged templates under `.quiver/templates/` |
 | `--skip-install` | `init`, `migrate` | Skip auto-install of `create-quiver` as dev dependency (useful for CI) |
 | `--fix` | `doctor` | Apply only safe non-destructive repairs; combine with `--dry-run` first |
+| `--output <file>` | `evidence run` | Write the evidence Markdown file to an explicit path instead of `.quiver/evidence/` |
+| `--max-output <n>` | `evidence run` | Limit captured stdout and stderr characters per section |
 | `--json` | `plan`, `graph`, `next` | Emit machine-readable JSON |
 | `--format <tree\|mermaid\|dot>` | `graph` | Output format |
 | `--all-ready` | `next` | List all ready slices instead of just the next one |
@@ -88,6 +91,7 @@ This document is the canonical command reference for the orchestration roadmap.
 - `quiver:ai:agent` stores provider/model labels under `.quiver/agents/profiles.json`; credentials stay in the provider CLI or OS credential store.
 - Planner drafts are versioned under `.quiver/approvals/<phase>/drafts/`; use `quiver:ai:review-plan -- --dry-run` before approving a technical-plan draft, then `quiver:ai:approve -- --phase technical-plan --version 1` to approve the reviewed version.
 - `quiver:ai:prompt-slice -- --dry-run` prints a paste-ready manual executor prompt and does not call a provider.
+- `quiver:evidence -- run -- <command>` preserves the wrapped command exit code. Redaction is best effort; avoid commands that intentionally print secrets.
 - `quiver:ai:execute-slice -- --commit` creates exactly one commit only after provider, scope, and validation commands pass.
 - `quiver:ai:execute-plan -- --dry-run --commit --mode manual` prints paste-ready executor prompt commands without provider execution.
 - `quiver:ai:execute-plan -- --dry-run --commit --mode delegated` prints safe delegated waves and falls back to sequential mode when file scope is missing or overlapping.

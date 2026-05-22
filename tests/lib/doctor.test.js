@@ -34,7 +34,7 @@ function seedNewLayout(root) {
     last_initialized_at: '2026-05-20T00:00:00.000Z',
   });
   writeJson(root, '.quiver/config.json', { layout_version: 1 });
-  writeFile(root, '.quiver/.gitignore', 'cache/\nruns/\nworktrees/\n');
+  writeFile(root, '.quiver/.gitignore', 'cache/\nevidence/\nruns/\nworktrees/\n');
 }
 
 function seedLegacyLayout(root) {
