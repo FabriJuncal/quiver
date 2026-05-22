@@ -42,14 +42,18 @@ function readSliceMeta(slicePath) {
   const branchName = typeof git.branch_name === 'string' ? git.branch_name.trim() : '';
   const sliceId = typeof json.slice_id === 'string' ? json.slice_id.trim() : '';
   const status = String(json.status || 'draft').trim() || 'draft';
+  const allowedWritePaths = Array.isArray(json.allowed_write_paths) ? json.allowed_write_paths.map((item) => String(item)) : [];
+  const legacyFiles = Array.isArray(json.files) ? json.files.map((item) => String(item)) : [];
 
   return {
     acceptance: Array.isArray(json.acceptance) ? json.acceptance : [],
+    allowedWritePaths,
     baseBranch,
     branchName,
     branchSlug,
     branchType,
-    files: Array.isArray(json.files) ? json.files : [],
+    expectedReadPaths: Array.isArray(json.expected_read_paths) ? json.expected_read_paths.map((item) => String(item)) : [],
+    files: allowedWritePaths.length > 0 ? allowedWritePaths : legacyFiles,
     git,
     isBaseline: sliceId.startsWith('slice-00'),
     json,
@@ -60,6 +64,7 @@ function readSliceMeta(slicePath) {
     status,
     tests: Array.isArray(json.tests) ? json.tests : [],
     ticket,
+    validationHints: Array.isArray(json.validation_hints) ? json.validation_hints.map((item) => String(item)) : [],
   };
 }
 

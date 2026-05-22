@@ -5,8 +5,9 @@ const path = require('node:path');
 const { execFileSync } = require('node:child_process');
 const test = require('node:test');
 
-const { runPlan } = require('../../src/create-quiver/commands/ai');
+const { runPlan, runRevise } = require('../../src/create-quiver/commands/ai');
 const { savePlanReview } = require('../../src/create-quiver/lib/ai/plan-review');
+const { savePlannerDraft } = require('../../src/create-quiver/lib/approvals');
 
 const BIN_PATH = path.resolve(__dirname, '../../bin/create-quiver.js');
 
@@ -62,6 +63,24 @@ test('ai plan CLI dry-run defaults to acceptance phase and planning context', ()
   }
 });
 
+test('ai plan print-prompt renders acceptance prompt without provider auth', () => {
+  const repo = makeRepo({
+    'requirements.md': '# requirements\n- Ship a gated planner flow.',
+  });
+
+  try {
+    const output = execAi(repo.root, ['--print-prompt', '--input', 'requirements.md']);
+    assert.ok(output.includes('AI plan prompt-only'));
+    assert.ok(output.includes('Phase: acceptance'));
+    assert.ok(output.includes('--- PROMPT START ---'));
+    assert.ok(output.includes('Ship a gated planner flow.'));
+    assert.ok(output.includes('Task: produce acceptance criteria only.'));
+    assert.ok(output.includes('--- PROMPT END ---'));
+  } finally {
+    repo.cleanup();
+  }
+});
+
 test('ai plan acceptance persists a draft approval state', async () => {
   const repo = makeRepo({
     'requirements.md': '# requirements\n- Ship a gated planner flow.',
@@ -110,7 +129,46 @@ test('ai plan acceptance persists a draft approval state', async () => {
   }
 });
 
-test('ai approve can approve a selected draft version from history', async () => {
+test('ai plan redacts likely secrets before saving provider output drafts', async () => {
+  const repo = makeRepo({
+    'requirements.md': '# requirements\n- Avoid leaking provider logs.',
+  });
+
+  try {
+    await runPlan(repo.root, {
+      input: 'requirements.md',
+      phase: 'acceptance',
+      runProviderFn: async (provider) => ({
+        ok: true,
+        dryRun: false,
+        provider,
+        command: 'codex',
+        args: ['exec'],
+        cwd: repo.root,
+        timeoutMs: 0,
+        promptTransport: { mode: 'stdin' },
+        exitCode: 0,
+        stdout: 'token=abc123\ncriteria draft\n',
+        stderr: 'authorization: bearer secret-value\n',
+        error: null,
+        preflight: { ok: true },
+      }),
+    });
+
+    const draftPath = path.join(repo.root, '.quiver', 'approvals', 'acceptance', 'draft.md');
+    const draft = fs.readFileSync(draftPath, 'utf8');
+
+    assert.equal(draft.includes('abc123'), false);
+    assert.equal(draft.includes('secret-value'), false);
+    assert.ok(draft.includes('token=[REDACTED]'));
+    assert.ok(draft.includes('authorization: bearer [REDACTED]'));
+    assert.ok(draft.includes('criteria draft'));
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('ai approve only approves the current draft version', async () => {
   const repo = makeRepo({
     'requirements.md': '# requirements\n- Iterate criteria.',
   });
@@ -155,29 +213,247 @@ test('ai approve can approve a selected draft version from history', async () =>
       }),
     });
 
-    const output = execAiSubcommand(repo.root, ['approve', '--phase', 'acceptance', '--version', '1']);
+    assert.throws(
+      () => execAiSubcommand(repo.root, ['approve', '--phase', 'acceptance', '--version', '1']),
+      (error) => error.stderr.includes('draft version 1 is not current') && error.stderr.includes('latest draft version is 2'),
+    );
+
+    const output = execAiSubcommand(repo.root, ['approve', '--phase', 'acceptance', '--version', '2']);
     const approvedPath = path.join(repo.root, '.quiver', 'approvals', 'acceptance', 'approved.md');
     const status = execAiSubcommand(repo.root, ['approvals']);
     const meta = JSON.parse(fs.readFileSync(path.join(repo.root, '.quiver', 'approvals', 'acceptance', 'meta.json'), 'utf8'));
 
-    assert.ok(output.includes('Version: v1'));
-    assert.equal(fs.readFileSync(approvedPath, 'utf8'), 'acceptance draft v1\n');
-    assert.equal(meta.approved.version, 1);
+    assert.ok(output.includes('Version: v2'));
+    assert.equal(fs.readFileSync(approvedPath, 'utf8'), 'acceptance draft v2\n');
+    assert.equal(meta.approved.version, 2);
     assert.equal(meta.drafts.length, 2);
     assert.ok(status.includes('Draft history:'));
-    assert.ok(status.includes('Status: stale'));
+    assert.ok(status.includes('Status: approved'));
   } finally {
     repo.cleanup();
   }
 });
 
-test('ai approve writes an approved acceptance artifact with metadata', () => {
+test('ai approve requires a version and rejects direct input files', async () => {
+  const repo = makeRepo({
+    'requirements.md': '# requirements\n- Gate approval.',
+    'accepted.md': '# Accepted manually\n',
+  });
+
+  try {
+    await runPlan(repo.root, {
+      input: 'requirements.md',
+      phase: 'acceptance',
+      runProviderFn: async (provider) => ({
+        ok: true,
+        dryRun: false,
+        provider,
+        command: 'codex',
+        args: ['exec'],
+        cwd: repo.root,
+        timeoutMs: 0,
+        promptTransport: { mode: 'stdin' },
+        exitCode: 0,
+        stdout: 'acceptance draft v1\n',
+        stderr: '',
+        error: null,
+        preflight: { ok: true },
+      }),
+    });
+
+    assert.throws(
+      () => execAiSubcommand(repo.root, ['approve', '--phase', 'acceptance']),
+      (error) => error.stderr.includes('requires --version <n>'),
+    );
+    assert.throws(
+      () => execAiSubcommand(repo.root, ['approve', '--phase', 'acceptance', '--input', 'accepted.md', '--version', '1']),
+      (error) => error.stderr.includes('approves saved draft versions only')
+        && error.stderr.includes('ai revise --phase acceptance --input accepted.md'),
+    );
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('ai revise creates a new draft version without approving the phase', async () => {
+  const repo = makeRepo({
+    'requirements.md': '# requirements\n- Iterate criteria.',
+    'feedback.md': '# feedback\n- Tighten acceptance criteria.',
+  });
+
+  try {
+    await runPlan(repo.root, {
+      input: 'requirements.md',
+      phase: 'acceptance',
+      runProviderFn: async (provider) => ({
+        ok: true,
+        dryRun: false,
+        provider,
+        command: 'codex',
+        args: ['exec'],
+        cwd: repo.root,
+        timeoutMs: 0,
+        promptTransport: { mode: 'stdin' },
+        exitCode: 0,
+        stdout: 'acceptance draft v1\n',
+        stderr: '',
+        error: null,
+        preflight: { ok: true },
+      }),
+    });
+
+    await runRevise(repo.root, {
+      input: 'feedback.md',
+      phase: 'acceptance',
+      runProviderFn: async (provider, options) => {
+        assert.ok(options.prompt.includes('revise the current draft and produce a new version only'));
+        assert.ok(options.prompt.includes('Current acceptance draft'));
+        assert.ok(options.prompt.includes('acceptance draft v1'));
+        assert.ok(options.prompt.includes('Tighten acceptance criteria.'));
+        return {
+          ok: true,
+          dryRun: false,
+          provider,
+          command: 'codex',
+          args: ['exec'],
+          cwd: repo.root,
+          timeoutMs: 0,
+          promptTransport: { mode: 'stdin' },
+          exitCode: 0,
+          stdout: 'acceptance draft v2\n',
+          stderr: '',
+          error: null,
+          preflight: { ok: true },
+        };
+      },
+    });
+
+    const meta = JSON.parse(fs.readFileSync(path.join(repo.root, '.quiver', 'approvals', 'acceptance', 'meta.json'), 'utf8'));
+    const status = execAiSubcommand(repo.root, ['approvals']);
+
+    assert.equal(meta.draft.version, 2);
+    assert.equal(meta.approved, null);
+    assert.equal(meta.drafts.length, 2);
+    assert.equal(fs.readFileSync(path.join(repo.root, '.quiver', 'approvals', 'acceptance', 'drafts', '002.md'), 'utf8'), 'acceptance draft v2\n');
+    assert.ok(status.includes('Status: draft'));
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('ai revise technical-plan includes approved acceptance, current draft, and feedback', async () => {
+  const repo = makeRepo({
+    'acceptance.md': '# Acceptance\n- Approved criteria.',
+    'plan-feedback.md': '# feedback\n- Reduce risk in rollout.',
+  });
+
+  try {
+    await runPlan(repo.root, {
+      input: 'acceptance.md',
+      phase: 'acceptance',
+      runProviderFn: async (provider) => ({
+        ok: true,
+        dryRun: false,
+        provider,
+        command: 'codex',
+        args: ['exec'],
+        cwd: repo.root,
+        timeoutMs: 0,
+        promptTransport: { mode: 'stdin' },
+        exitCode: 0,
+        stdout: '# Acceptance\n- Approved criteria.',
+        stderr: '',
+        error: null,
+        preflight: { ok: true },
+      }),
+    });
+    execAiSubcommand(repo.root, ['approve', '--phase', 'acceptance', '--version', '1']);
+    savePlannerDraft(repo.root, 'technical-plan', '.quiver/approvals/acceptance/approved.md', '# Technical plan v1\n');
+
+    await runRevise(repo.root, {
+      input: 'plan-feedback.md',
+      phase: 'technical-plan',
+      runProviderFn: async (provider, options) => {
+        assert.ok(options.prompt.includes('Approved acceptance input'));
+        assert.ok(options.prompt.includes('Approved criteria.'));
+        assert.ok(options.prompt.includes('Current technical-plan draft'));
+        assert.ok(options.prompt.includes('# Technical plan v1'));
+        assert.ok(options.prompt.includes('Reduce risk in rollout.'));
+        return {
+          ok: true,
+          dryRun: false,
+          provider,
+          command: 'codex',
+          args: ['exec'],
+          cwd: repo.root,
+          timeoutMs: 0,
+          promptTransport: { mode: 'stdin' },
+          exitCode: 0,
+          stdout: '# Technical plan v2\n',
+          stderr: '',
+          error: null,
+          preflight: { ok: true },
+        };
+      },
+    });
+
+    const meta = JSON.parse(fs.readFileSync(path.join(repo.root, '.quiver', 'approvals', 'technical-plan', 'meta.json'), 'utf8'));
+
+    assert.equal(meta.draft.version, 2);
+    assert.equal(meta.approved, null);
+    assert.equal(fs.readFileSync(path.join(repo.root, '.quiver', 'approvals', 'technical-plan', 'drafts', '002.md'), 'utf8'), '# Technical plan v2\n');
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('ai revise requires an existing draft', async () => {
+  const repo = makeRepo({
+    'feedback.md': '# feedback\n- Update criteria.',
+  });
+
+  try {
+    await assert.rejects(
+      runRevise(repo.root, {
+        input: 'feedback.md',
+        phase: 'acceptance',
+        runProviderFn: async () => {
+          throw new Error('provider should not run');
+        },
+      }),
+      (error) => error.message.includes('requires an existing draft') && error.message.includes('current status is missing'),
+    );
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('ai approve writes an approved acceptance artifact with metadata', async () => {
   const repo = makeRepo({
     'acceptance.md': '# Acceptance\n- Approved criteria.',
   });
 
   try {
-    const output = execAiSubcommand(repo.root, ['approve', '--phase', 'acceptance', '--input', 'acceptance.md']);
+    await runPlan(repo.root, {
+      input: 'acceptance.md',
+      phase: 'acceptance',
+      runProviderFn: async (provider) => ({
+        ok: true,
+        dryRun: false,
+        provider,
+        command: 'codex',
+        args: ['exec'],
+        cwd: repo.root,
+        timeoutMs: 0,
+        promptTransport: { mode: 'stdin' },
+        exitCode: 0,
+        stdout: '# Acceptance\n- Approved criteria.',
+        stderr: '',
+        error: null,
+        preflight: { ok: true },
+      }),
+    });
+    const output = execAiSubcommand(repo.root, ['approve', '--phase', 'acceptance', '--version', '1']);
     const approvedPath = path.join(repo.root, '.quiver', 'approvals', 'acceptance', 'approved.md');
     const metaPath = path.join(repo.root, '.quiver', 'approvals', 'acceptance', 'meta.json');
     const meta = JSON.parse(fs.readFileSync(metaPath, 'utf8'));
@@ -186,7 +462,7 @@ test('ai approve writes an approved acceptance artifact with metadata', () => {
     assert.ok(fs.existsSync(approvedPath));
     assert.equal(fs.readFileSync(approvedPath, 'utf8'), '# Acceptance\n- Approved criteria.');
     assert.equal(meta.phase, 'acceptance');
-    assert.equal(meta.approved.source_file, 'acceptance.md');
+    assert.equal(meta.approved.source_file, '.quiver/approvals/acceptance/drafts/001.md');
     assert.equal(meta.approved.path, '.quiver/approvals/acceptance/approved.md');
     assert.equal(typeof meta.approved.approved_at, 'string');
   } finally {
@@ -194,13 +470,32 @@ test('ai approve writes an approved acceptance artifact with metadata', () => {
   }
 });
 
-test('ai approvals prints draft and approved status', () => {
+test('ai approvals prints draft and approved status', async () => {
   const repo = makeRepo({
     'acceptance.md': '# Acceptance\n- Approved criteria.',
   });
 
   try {
-    execAiSubcommand(repo.root, ['approve', '--phase', 'acceptance', '--input', 'acceptance.md']);
+    await runPlan(repo.root, {
+      input: 'acceptance.md',
+      phase: 'acceptance',
+      runProviderFn: async (provider) => ({
+        ok: true,
+        dryRun: false,
+        provider,
+        command: 'codex',
+        args: ['exec'],
+        cwd: repo.root,
+        timeoutMs: 0,
+        promptTransport: { mode: 'stdin' },
+        exitCode: 0,
+        stdout: '# Acceptance\n- Approved criteria.',
+        stderr: '',
+        error: null,
+        preflight: { ok: true },
+      }),
+    });
+    execAiSubcommand(repo.root, ['approve', '--phase', 'acceptance', '--version', '1']);
     const output = execAiSubcommand(repo.root, ['approvals']);
 
     assert.ok(output.includes('AI approvals status'));
@@ -219,7 +514,26 @@ test('ai plan technical-plan uses approved acceptance by default and rejects dra
   });
 
   try {
-    execAiSubcommand(approvedRepo.root, ['approve', '--phase', 'acceptance', '--input', 'acceptance.md']);
+    await runPlan(approvedRepo.root, {
+      input: 'acceptance.md',
+      phase: 'acceptance',
+      runProviderFn: async (provider) => ({
+        ok: true,
+        dryRun: false,
+        provider,
+        command: 'codex',
+        args: ['exec'],
+        cwd: approvedRepo.root,
+        timeoutMs: 0,
+        promptTransport: { mode: 'stdin' },
+        exitCode: 0,
+        stdout: '# Acceptance\n- Approved criteria.',
+        stderr: '',
+        error: null,
+        preflight: { ok: true },
+      }),
+    });
+    execAiSubcommand(approvedRepo.root, ['approve', '--phase', 'acceptance', '--version', '1']);
 
     const output = await runPlan(approvedRepo.root, {
       phase: 'technical-plan',
@@ -301,12 +615,14 @@ test('ai plan spec phase dry-run reports spec generation instead of provider inv
   });
 
   try {
-    execAiSubcommand(repo.root, ['approve', '--phase', 'technical-plan', '--input', 'technical-plan.md']);
+    savePlannerDraft(repo.root, 'technical-plan', 'technical-plan.md', fs.readFileSync(path.join(repo.root, 'technical-plan.md'), 'utf8'));
     savePlanReview(repo.root, {
       contents: 'production review\n',
-      inputPath: 'technical-plan.md',
-      inputKind: 'approved',
+      inputPath: '.quiver/approvals/technical-plan/drafts/001.md',
+      inputKind: 'draft',
+      inputVersion: 1,
     });
+    execAiSubcommand(repo.root, ['approve', '--phase', 'technical-plan', '--version', '1']);
     const output = execAi(repo.root, ['--phase', 'spec', '--dry-run']);
     assert.ok(output.includes('AI plan dry-run'));
     assert.ok(output.includes('Phase: spec'));

@@ -66,6 +66,15 @@ function sortFileList(files) {
   return Array.from(new Set((Array.isArray(files) ? files : []).map((file) => String(file)).filter(Boolean))).sort((a, b) => a.localeCompare(b));
 }
 
+function resolveWriteScope(json) {
+  const allowedWritePaths = sortFileList(json?.allowed_write_paths);
+  if (allowedWritePaths.length > 0) {
+    return allowedWritePaths;
+  }
+
+  return sortFileList(json?.files);
+}
+
 function normalizeDependencyRef(slice, dependency) {
   const dep = String(dependency || '').trim();
   if (!dep) {
@@ -137,7 +146,10 @@ function readAllSlices(rootDir) {
           sliceId,
           slicePath,
           sliceDir,
-          files: sortFileList(json.files),
+          files: resolveWriteScope(json),
+          expected_read_paths: sortFileList(json.expected_read_paths),
+          allowed_write_paths: sortFileList(json.allowed_write_paths),
+          validation_hints: sortFileList(json.validation_hints),
           dependencies: Array.isArray(json.dependencies) ? json.dependencies.map((item) => String(item).trim()).filter(Boolean) : [],
           depends_on: Array.isArray(json.depends_on) ? json.depends_on.map((item) => String(item).trim()).filter(Boolean) : [],
           parallel_safe: typeof json.parallel_safe === 'string' ? json.parallel_safe : null,
@@ -456,5 +468,6 @@ module.exports = {
   isFoundationSliceId,
   readAllSlices,
   naturalNumberFromSliceId,
+  resolveWriteScope,
   topoSort,
 };

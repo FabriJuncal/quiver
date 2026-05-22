@@ -2,6 +2,7 @@ const fs = require('node:fs');
 const { spawn } = require('node:child_process');
 
 const { finalizePromptTransport, preparePromptTransport, describePromptTransport } = require('./prompt-transport');
+const { redactSecrets } = require('../evidence');
 
 const SUPPORTED_PROVIDERS = ['codex', 'claude', 'gemini'];
 
@@ -107,7 +108,7 @@ function serializeError(error, provider, invocation) {
 
   return {
     code: error.code || 'PROVIDER_ERROR',
-    message: error.message || String(error),
+    message: redactSecrets(error.message || String(error)),
     provider,
     command: invocation.command,
     args: invocation.args.slice(),
@@ -178,8 +179,8 @@ function runSpawn(command, args, options = {}) {
         ok: payload.exitCode === 0,
         exitCode: payload.exitCode,
         signal: payload.signal || null,
-        stdout,
-        stderr,
+        stdout: redactSecrets(stdout),
+        stderr: redactSecrets(stderr),
         error: payload.error ? serializeError(payload.error, options.provider, options.invocation) : null,
       });
     };

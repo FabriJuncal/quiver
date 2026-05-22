@@ -39,10 +39,32 @@ test('ai agent set, list, and show persist reusable profile settings', () => {
     const list = runCli(repo.root, ['ai', 'agent', 'list']);
     assert.match(list, /planner: provider=codex model=gpt-5\.5-xhigh label=planner/);
     assert.match(list, /executor: not configured/);
+    assert.match(list, /doctor: not configured/);
+    assert.doesNotMatch(list, /researcher/);
 
     const show = runCli(repo.root, ['ai', 'agent', 'show', 'planner']);
     assert.match(show, /Role: planner/);
     assert.match(show, /Provider: codex/);
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('ai agent supports doctor profiles and rejects researcher profiles', () => {
+  const repo = makeRepo();
+
+  try {
+    const saved = runCli(repo.root, ['ai', 'agent', 'set', 'doctor', '--provider', 'gemini', '--model', 'diagnostic']);
+    assert.match(saved, /Role: doctor/);
+    assert.match(saved, /Provider: gemini/);
+
+    const show = runCli(repo.root, ['ai', 'agent', 'show', 'doctor']);
+    assert.match(show, /Model: diagnostic/);
+
+    assert.throws(
+      () => runCli(repo.root, ['ai', 'agent', 'set', 'researcher', '--provider', 'codex']),
+      /unsupported agent profile role 'researcher'.*planner, executor, reviewer, doctor/,
+    );
   } finally {
     repo.cleanup();
   }
@@ -55,6 +77,22 @@ test('ai agent rejects unsupported providers with guidance', () => {
     assert.throws(
       () => runCli(repo.root, ['ai', 'agent', 'set', 'planner', '--provider', 'openai', '--model', 'gpt']),
       /Unsupported provider 'openai'. Supported providers: codex, claude, gemini\./,
+    );
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('ai agent show reports missing profile with actionable guidance', () => {
+  const repo = makeRepo();
+
+  try {
+    assert.throws(
+      () => runCli(repo.root, ['ai', 'agent', 'show', 'executor']),
+      (error) => error.stderr.includes("agent profile 'executor' is not configured")
+        && error.stderr.includes('Impact:')
+        && error.stderr.includes('Fix:')
+        && error.stderr.includes('Next command: npx create-quiver ai agent set executor --provider <provider> --model <label>'),
     );
   } finally {
     repo.cleanup();

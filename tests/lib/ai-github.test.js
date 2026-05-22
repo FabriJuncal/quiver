@@ -140,6 +140,30 @@ test('preflightGitHubPr stops when the GitFlow guide is missing', () => {
   }
 });
 
+test('preflightGitHubPr reports missing SSH host alias with platform guidance', () => {
+  const repo = createRepo({
+    [DEFAULT_GITFLOW_GUIDE_PATH]: '# GitFlow guide\n',
+  });
+
+  try {
+    assert.throws(
+      () => preflightGitHubPr(repo.root, {
+        ghProbe: ghOk,
+        ghAuthProbe: ghOk,
+      }),
+      (error) => error.code === 'MISSING_SSH_HOST_ALIAS'
+        && error.message.includes('--ssh-host-alias')
+        && error.message.includes('Impact:')
+        && error.message.includes('Fix:')
+        && error.message.includes('Next command:')
+        && error.message.includes('macOS/Linux')
+        && error.message.includes('Windows'),
+    );
+  } finally {
+    repo.cleanup();
+  }
+});
+
 test('preflightGitHubPr reports the reviewed identity file path when it is missing', () => {
   const repo = createRepo({
     [DEFAULT_GITFLOW_GUIDE_PATH]: '# GitFlow guide\n',
@@ -153,6 +177,7 @@ test('preflightGitHubPr reports the reviewed identity file path when it is missi
       () => preflightGitHubPr(repo.root, {
         ghProbe: ghOk,
         ghAuthProbe: ghOk,
+        sshHostAlias: 'github-work',
         identityFile: relativeIdentityFile,
       }),
       (error) => error.code === 'MISSING_IDENTITY_FILE'
@@ -232,6 +257,39 @@ test('buildPrCreatePlan reads pr.md title and builds safe gh args', () => {
     assert.deepEqual(plan.args.slice(0, 6), ['pr', 'create', '--base', 'main', '--head', 'feature/demo']);
     assert.ok(plan.args.includes('--body-file'));
     assert.ok(plan.args.includes(path.join(repo.root, 'specs/demo/pr.md')));
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('buildPrCreatePlan refuses PR creation while spec slices are open', () => {
+  const repo = createRepo({
+    [DEFAULT_GITFLOW_GUIDE_PATH]: '# GitFlow guide\n',
+    'specs/demo/pr.md': '## Title\nDemo PR\n',
+    'specs/demo/slices/slice-00-spec-foundation/slice.json': `${JSON.stringify({
+      slice_id: 'slice-00-spec-foundation',
+      status: 'completed',
+    }, null, 2)}\n`,
+    'specs/demo/slices/slice-01-work/slice.json': `${JSON.stringify({
+      slice_id: 'slice-01-work',
+      status: 'in-progress',
+    }, null, 2)}\n`,
+  });
+
+  try {
+    assert.throws(
+      () => buildPrCreatePlan(repo.root, {
+        branchName: 'feature/demo',
+        remote: 'origin',
+      }, {
+        input: 'specs/demo/pr.md',
+      }),
+      (error) => error.code === 'OPEN_SLICES'
+        && error.message.includes('Impact:')
+        && error.message.includes('Fix:')
+        && error.message.includes('Next command:')
+        && error.message.includes('slice-01-work (in-progress)'),
+    );
   } finally {
     repo.cleanup();
   }

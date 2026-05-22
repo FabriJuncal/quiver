@@ -48,7 +48,7 @@ test('planner approvals persist draft and approved metadata with status summarie
     assert.equal(draftState.meta.drafts.length, 1);
     assert.match(summarizePlannerApproval(repo.root, 'acceptance'), /Status: draft/);
 
-    const approved = approvePlannerPhase(repo.root, 'acceptance', 'acceptance.md', 'approved text\n');
+    const approved = approvePlannerPhase(repo.root, 'acceptance', '', '', { version: 1 });
     assert.equal(fs.existsSync(approved.filePath), true);
     assert.equal(approved.version, 1);
     assert.equal(approvalApprovedPath(repo.root, 'acceptance'), approved.filePath);
@@ -56,7 +56,7 @@ test('planner approvals persist draft and approved metadata with status summarie
     const approvedState = readPhaseApproval(repo.root, 'acceptance');
     assert.equal(approvedState.status, 'approved');
     assert.equal(approvedState.meta.approved.phase, 'acceptance');
-    assert.equal(approvedState.meta.approved.source_file, 'acceptance.md');
+    assert.equal(approvedState.meta.approved.source_file, '.quiver/approvals/acceptance/drafts/001.md');
     assert.equal(approvedState.meta.approved.version, 1);
     assert.equal(typeof approvedState.meta.approved.approved_at, 'string');
   } finally {
@@ -64,7 +64,7 @@ test('planner approvals persist draft and approved metadata with status summarie
   }
 });
 
-test('planner approvals keep multiple drafts and approve a selected version', () => {
+test('planner approvals keep multiple drafts and only approve the current version', () => {
   const repo = makeRepo();
 
   try {
@@ -76,16 +76,21 @@ test('planner approvals keep multiple drafts and approve a selected version', ()
     assert.equal(first.version, 1);
     assert.equal(second.version, 2);
 
-    const approved = approvePlannerPhase(repo.root, 'acceptance', '', '', { version: 1 });
+    assert.throws(
+      () => approvePlannerPhase(repo.root, 'acceptance', '', '', { version: 1 }),
+      /draft version 1 is not current; latest draft version is 2/,
+    );
+
+    const approved = approvePlannerPhase(repo.root, 'acceptance', '', '', { version: 2 });
     const state = readPhaseApproval(repo.root, 'acceptance');
 
-    assert.equal(approved.version, 1);
-    assert.equal(state.status, 'stale');
-    assert.equal(state.approved.contents, 'draft v1\n');
+    assert.equal(approved.version, 2);
+    assert.equal(state.status, 'approved');
+    assert.equal(state.approved.contents, 'draft v2\n');
     assert.equal(state.meta.drafts.length, 2);
     assert.match(summarizePlannerApproval(repo.root, 'acceptance'), /- v1: \.quiver\/approvals\/acceptance\/drafts\/001\.md/);
     assert.match(summarizePlannerApproval(repo.root, 'acceptance'), /- v2: \.quiver\/approvals\/acceptance\/drafts\/002\.md/);
-    assert.match(summarizePlannerApproval(repo.root, 'acceptance'), /Approved v1/);
+    assert.match(summarizePlannerApproval(repo.root, 'acceptance'), /Approved v2/);
   } finally {
     repo.cleanup();
   }
@@ -101,7 +106,8 @@ test('planner approvals block unapproved or stale inputs before later phases', a
       (error) => error.message.includes('requires approved acceptance input') && error.message.includes('current status: missing'),
     );
 
-    approvePlannerPhase(repo.root, 'acceptance', 'acceptance.md', 'approved acceptance\n');
+    savePlannerDraft(repo.root, 'acceptance', 'acceptance.md', 'approved acceptance\n');
+    approvePlannerPhase(repo.root, 'acceptance', '', '', { version: 1 });
     await new Promise((resolve) => setTimeout(resolve, 15));
     savePlannerDraft(repo.root, 'acceptance', 'acceptance.md', 'newer draft\n');
 
@@ -112,7 +118,8 @@ test('planner approvals block unapproved or stale inputs before later phases', a
     );
 
     writeFile(path.join(repo.root, 'technical-plan.md'), '# Technical plan\n- Approved.');
-    approvePlannerPhase(repo.root, 'technical-plan', 'technical-plan.md', 'approved technical plan\n');
+    savePlannerDraft(repo.root, 'technical-plan', 'technical-plan.md', 'approved technical plan\n');
+    approvePlannerPhase(repo.root, 'technical-plan', '', '', { version: 1 });
     const resolved = resolveApprovedPlannerInput(repo.root, 'spec');
     assert.equal(resolved.inputPath, '.quiver/approvals/technical-plan/approved.md');
   } finally {

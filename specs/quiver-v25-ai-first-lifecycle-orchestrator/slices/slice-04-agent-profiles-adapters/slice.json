@@ -1,0 +1,52 @@
+{
+  "slice_id": "slice-04-agent-profiles-adapters",
+  "ticket": "QUIVER-25-04",
+  "type": "feature",
+  "title": "Agent profiles and provider adapters",
+  "objective": "Create a safe provider-agnostic contract for planner, executor, reviewer, and doctor agents.",
+  "description": "Add profile and adapter behavior for Codex, Claude, Gemini, or custom commands, starting with prompt-only and dry-run-safe execution.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "agent-profiles-adapters",
+    "branch_name": "feature/QUIVER-25-04-agent-profiles-adapters"
+  },
+  "files": [
+    "src/create-quiver/**",
+    "docs/**",
+    "tests/**"
+  ],
+  "depends_on": [
+    "slice-02-run-state-phase-locks"
+  ],
+  "parallel_safe": "yes",
+  "parallel_safe_reason": "Can run beside onboarding docs if adapter files are isolated.",
+  "must": [
+    "Support planner, executor, reviewer, and doctor profiles.",
+    "Store provider/model labels but never credentials.",
+    "Support prompt-only output with `--print-prompt` or equivalent.",
+    "Validate provider CLI availability before execution.",
+    "Capture stdout, stderr, exit code, timeout, and sanitized logs.",
+    "Define fallback behavior when a CLI is missing."
+  ],
+  "not_included": [
+    "Approval gate implementation.",
+    "Spec generation.",
+    "Automatic multi-agent scheduling."
+  ],
+  "acceptance": [
+    "Profiles can be configured and inspected without secrets.",
+    "Prompt-only mode works without provider authentication.",
+    "Missing provider CLI produces actionable guidance.",
+    "Adapter output is captured in a structured way.",
+    "Logs redact likely secrets before writing."
+  ],
+  "tests": [
+    "node --test tests/**/*.test.js",
+    "git diff --check"
+  ],
+  "estimated_hours": 7,
+  "status": "completed",
+  "completed_at": "2026-05-22T16:21:54-0300",
+  "blocked_reason": null
+}

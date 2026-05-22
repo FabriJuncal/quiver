@@ -5,7 +5,7 @@ const path = require('node:path');
 const { execFileSync } = require('node:child_process');
 const test = require('node:test');
 
-const { savePlannerDraft } = require('../../src/create-quiver/lib/approvals');
+const { approvePlannerPhase, savePlannerDraft } = require('../../src/create-quiver/lib/approvals');
 const { savePlanReview } = require('../../src/create-quiver/lib/ai/plan-review');
 
 const BIN_PATH = path.resolve(__dirname, '../../bin/create-quiver.js');
@@ -114,6 +114,9 @@ test('spec create writes the generated spec tree and refuses collisions', () => 
 
     const sliceJson = JSON.parse(fs.readFileSync(path.join(specDir, 'slices', 'slice-01-create-core', 'slice.json'), 'utf8'));
     assert.deepEqual(sliceJson.depends_on, ['slice-00-spec-foundation']);
+    assert.deepEqual(sliceJson.allowed_write_paths, ['src/create-quiver/commands/spec.js']);
+    assert.deepEqual(sliceJson.validation_hints, []);
+    assert.ok(sliceJson.expected_read_paths.includes('specs/quiver-v23-created-spec/SPEC.md'));
 
     assert.throws(
       () => execCli(repo.root, ['spec', 'create']),
@@ -130,7 +133,7 @@ test('spec create blocks when the approved technical plan was not reviewed', () 
   try {
     writeFile(path.join(repo.root, 'technical-plan.json'), `${JSON.stringify(approvedPlanManifest(), null, 2)}\n`);
     savePlannerDraft(repo.root, 'technical-plan', 'technical-plan.json', fs.readFileSync(path.join(repo.root, 'technical-plan.json'), 'utf8'));
-    execCli(repo.root, ['ai', 'approve', '--phase', 'technical-plan', '--version', '1']);
+    approvePlannerPhase(repo.root, 'technical-plan', '', '', { version: 1 });
 
     assert.throws(
       () => execCli(repo.root, ['spec', 'create', '--dry-run']),

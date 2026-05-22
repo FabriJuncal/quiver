@@ -308,3 +308,22 @@ test('migrate reports legacy layout paths and preserves existing legacy files', 
     cleanup();
   }
 });
+
+test('migrate --dry-run reports planned changes without writing', () => {
+  const { dir, cleanup } = makeTmpDir();
+  const target = path.join(dir, 'target');
+  try {
+    runCli(['init', '--name', 'Legacy Project', '--dir', target, '--full', '--skip-install']);
+    const statePath = path.join(target, '.quiver', 'state.json');
+    const beforeState = fs.readFileSync(statePath, 'utf8');
+
+    const output = runCli(['migrate', '--dir', target, '--dry-run', '--skip-install']);
+
+    assert.match(output, /Quiver migration dry-run/);
+    assert.match(output, /Writes: none/);
+    assert.match(output, /Next command: npx create-quiver migrate --skip-install/);
+    assert.equal(fs.readFileSync(statePath, 'utf8'), beforeState);
+  } finally {
+    cleanup();
+  }
+});

@@ -1,0 +1,52 @@
+{
+  "slice_id": "slice-09-git-worktree-pr-lifecycle",
+  "ticket": "QUIVER-25-09",
+  "type": "feature",
+  "title": "Git worktree, commit, PR, and close lifecycle",
+  "objective": "Manage the spec-level Git workflow: worktree per spec, one commit per slice, PR creation, and post-merge cleanup.",
+  "description": "Harden worktree creation/status/repair/close, commit-by-slice behavior, GitHub CLI preflight, SSH alias guidance, PR creation, and post-merge pull.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "git-worktree-pr-lifecycle",
+    "branch_name": "feature/QUIVER-25-09-git-worktree-pr-lifecycle"
+  },
+  "files": [
+    "src/create-quiver/**",
+    "docs/**",
+    "tests/**"
+  ],
+  "depends_on": [
+    "slice-08-controlled-slice-execution"
+  ],
+  "parallel_safe": "no",
+  "parallel_safe_reason": "Depends on reliable slice closure and touches shared Git workflow commands.",
+  "must": [
+    "Create or validate one worktree per spec.",
+    "Report existing worktree, branch, remote branch, or PR state.",
+    "Require clean working tree before slice execution and commit.",
+    "Create one commit per closed slice.",
+    "Validate `gh`, authentication, remote, branch, SSH alias guidance, and PR body before PR creation.",
+    "Guide post-merge worktree removal and pull."
+  ],
+  "not_included": [
+    "Automatic PR merge.",
+    "Credential creation without user action.",
+    "Provider execution."
+  ],
+  "acceptance": [
+    "Worktree create/status/repair/close behavior is safe and dry-run-capable where mutating.",
+    "Commit by slice refuses mixed unrelated changes.",
+    "PR preflight catches missing `gh`, auth, remote, branch, alias, body, or open slices.",
+    "PR creation uses the generated `pr.md`.",
+    "Post-merge close guides worktree cleanup and local pull."
+  ],
+  "tests": [
+    "node --test tests/**/*.test.js",
+    "git diff --check"
+  ],
+  "estimated_hours": 8,
+  "status": "completed",
+  "blocked_reason": null,
+  "completed_at": "2026-05-22T17:07:41-03:00"
+}

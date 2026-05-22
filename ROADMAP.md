@@ -72,6 +72,7 @@
 - **v22 — Guided AI Workflow** (completed): guided preparation, approvals, spec worktrees, executor commits, execution waves, PR creation, cleanup, and release/package safety live in `specs/quiver-v22-guided-ai-workflow/`.
 - **v23 — Guided Flow Productization** (completed): AI-first flow command, agent profiles, compact onboarding/planning prompts, production plan review, explicit `spec create`, manual executor prompts, delegated worktree execution, and release readiness live in `specs/quiver-v23-guided-flow-productization/`.
 - **v24 — DX Onboarding Hardening** (implemented, pending package release): real-world dogfooding fixes for init/templates, CLI routing, doctor/prepare, local validation, analyzer, AI context preparation, evidence, and demos live in `specs/quiver-v24-dx-onboarding-hardening/`.
+- **v25 — AI-First Lifecycle Orchestrator** (planned): safe AI onboarding docs, strict run state, phase locks, agent adapters, approval gates, generated specs/slices/handoffs/PR body, execution waves, controlled slice execution, worktree/PR lifecycle, validation hardening, export, and migration live in `specs/quiver-v25-ai-first-lifecycle-orchestrator/`.
 
 The shipped v20/v21/v22/v23 work is no longer pending. The older context-diagnostics and slice-archaeology ideas remain deferred until real demand justifies them.
 

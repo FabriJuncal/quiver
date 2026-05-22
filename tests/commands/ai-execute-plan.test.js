@@ -28,7 +28,7 @@ function git(cwd, args) {
 }
 
 function slice(sliceId, files, extra = {}) {
-  return {
+  const data = {
     slice_id: sliceId,
     ticket: extra.ticket || 'QUIVER-01',
     type: extra.type || 'feature',
@@ -45,6 +45,12 @@ function slice(sliceId, files, extra = {}) {
     tests: [],
     ...(extra.depends_on !== undefined ? { depends_on: extra.depends_on } : {}),
   };
+
+  if (extra.allowed_write_paths !== undefined) {
+    data.allowed_write_paths = extra.allowed_write_paths;
+  }
+
+  return data;
 }
 
 function makeProject() {
@@ -110,6 +116,26 @@ test('ai execute-plan CLI dry-run supports manual mode', () => {
     assert.ok(output.includes('Execution mode: manual'));
     assert.ok(output.includes('npx create-quiver ai prompt-slice --slice "specs/demo/slices/slice-01-alpha/slice.json" --dry-run'));
     assert.ok(!output.includes('npx create-quiver ai execute-slice --slice'));
+  } finally {
+    project.cleanup();
+  }
+});
+
+test('ai execute-plan CLI JSON exposes downstream wave and scope metadata', () => {
+  const project = makeProject();
+  try {
+    const output = execFileSync('node', [BIN_PATH, 'ai', 'execute-plan', '--json'], {
+      cwd: project.root,
+      encoding: 'utf8',
+    });
+    const parsed = JSON.parse(output);
+    const alpha = parsed.ready_levels[0].slices.find((item) => item.slice_id === 'slice-01-alpha');
+
+    assert.equal(parsed.summary.ready_levels, 1);
+    assert.equal(parsed.ready_levels[0].parallel_ready, true);
+    assert.deepEqual(alpha.files, ['src/alpha.js']);
+    assert.ok(Array.isArray(alpha.allowed_write_paths));
+    assert.ok(Array.isArray(parsed.integration_order));
   } finally {
     project.cleanup();
   }

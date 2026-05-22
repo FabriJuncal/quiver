@@ -126,6 +126,53 @@ test('runProvider uses an argument array and writes the prompt through stdin', a
   assert.equal(result.stdout, '');
 });
 
+test('runProvider redacts likely secrets from stdout, stderr, and serialized errors', async () => {
+  const result = await runProvider('codex', {
+    prompt: 'secret scan',
+    spawn() {
+      const listeners = {};
+      const child = {
+        stdout: {
+          setEncoding() {},
+          on(event, handler) {
+            listeners[`stdout:${event}`] = handler;
+          },
+        },
+        stderr: {
+          setEncoding() {},
+          on(event, handler) {
+            listeners[`stderr:${event}`] = handler;
+          },
+        },
+        stdin: {
+          end() {},
+        },
+        on(event, handler) {
+          listeners[event] = handler;
+          if (event === 'error') {
+            process.nextTick(() => {
+              listeners['stdout:data']('token=abc123\n');
+              listeners['stderr:data']('authorization: bearer secret-value\n');
+              const error = new Error('password=hunter2');
+              error.code = 'EFAIL';
+              handler(error);
+            });
+          }
+        },
+      };
+      return child;
+    },
+    probe() {
+      return { status: 0, stdout: 'codex 1.0.0', stderr: '' };
+    },
+  });
+
+  assert.equal(result.ok, false);
+  assert.equal(result.stdout, 'token=[REDACTED]\n');
+  assert.equal(result.stderr, 'authorization: bearer [REDACTED]\n');
+  assert.equal(result.error.message, 'password=[REDACTED]');
+});
+
 test('runProvider times out and terminates a hung provider', async () => {
   const events = [];
 

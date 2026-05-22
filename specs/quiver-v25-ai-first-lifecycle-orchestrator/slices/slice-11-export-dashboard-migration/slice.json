@@ -1,0 +1,53 @@
+{
+  "slice_id": "slice-11-export-dashboard-migration",
+  "ticket": "QUIVER-25-11",
+  "type": "feature",
+  "title": "Export, dashboard-friendly output, and migration",
+  "objective": "Expose lifecycle state, specs, slices, and migration findings in formats useful for humans, agents, and optional dashboards.",
+  "description": "Add export commands, inspect/list/report surfaces, visualization-friendly JSON/Markdown, and migration dry-runs for older Quiver projects.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "export-dashboard-migration",
+    "branch_name": "feature/QUIVER-25-11-export-dashboard-migration"
+  },
+  "files": [
+    "src/create-quiver/**",
+    "docs/**",
+    "tests/**"
+  ],
+  "depends_on": [
+    "slice-07-slice-execution-planner",
+    "slice-10-validation-errors-fixtures"
+  ],
+  "parallel_safe": "yes",
+  "parallel_safe_reason": "Late-stage output/migration work can run beside hardening if shared CLI files are coordinated.",
+  "must": [
+    "Add or improve status, specs list, slices list, inspect, and trace report surfaces.",
+    "Export specs/slices/runs as JSON and Markdown.",
+    "Provide dashboard-friendly state for agents, specs, slices, dependencies, blockers, and progress.",
+    "Support migration dry-run for older Quiver projects.",
+    "Keep core package lightweight and avoid a full web IDE."
+  ],
+  "not_included": [
+    "Building a persistent web server UI into core.",
+    "Automatic package publishing.",
+    "Automatic PR merge."
+  ],
+  "acceptance": [
+    "Inspection commands show actionable lifecycle state.",
+    "Export JSON is machine-readable and stable enough for demos/dashboards.",
+    "Markdown export is readable in PRs or docs.",
+    "Migration dry-run reports planned changes without writing.",
+    "Older Quiver project fixtures receive clear migration guidance.",
+    "No heavy UI dependencies are added to core."
+  ],
+  "tests": [
+    "node --test tests/**/*.test.js",
+    "git diff --check"
+  ],
+  "estimated_hours": 7,
+  "status": "completed",
+  "blocked_reason": null,
+  "completed_at": "2026-05-22T17:31:01-03:00"
+}

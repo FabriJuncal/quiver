@@ -28,7 +28,7 @@ function makeRepo(structure) {
 
 function slice(ref, files, extra = {}) {
   const [, sliceId] = ref.split('/');
-  return {
+  const data = {
     slice_id: sliceId,
     ticket: extra.ticket || 'QUIVER-01',
     title: extra.title || sliceId,
@@ -49,6 +49,12 @@ function slice(ref, files, extra = {}) {
     ...(extra.depends_on !== undefined ? { depends_on: extra.depends_on } : {}),
     ...(extra.dependencies !== undefined ? { dependencies: extra.dependencies } : {}),
   };
+
+  if (extra.allowed_write_paths !== undefined) {
+    data.allowed_write_paths = extra.allowed_write_paths;
+  }
+
+  return data;
 }
 
 function planFixture() {
@@ -134,6 +140,36 @@ test('collectExecutionPlan falls back to sequential mode when same-level files o
   }
 });
 
+test('collectExecutionPlan detects conflicts from allowed_write_paths even when files is empty', () => {
+  const repo = makeRepo({
+    'specs/spec-a/slices/slice-00-spec-foundation/slice.json': slice('spec-a/slice-00-spec-foundation', ['docs/foundation.md'], {
+      status: 'completed',
+      type: 'docs',
+    }),
+    'specs/spec-a/slices/slice-01-alpha/slice.json': slice('spec-a/slice-01-alpha', [], {
+      allowed_write_paths: ['src/shared.js'],
+      depends_on: [],
+    }),
+    'specs/spec-a/slices/slice-02-beta/slice.json': slice('spec-a/slice-02-beta', [], {
+      allowed_write_paths: ['src/shared.js'],
+      depends_on: [],
+    }),
+  });
+
+  try {
+    const report = collectExecutionPlan(repo.root);
+    const level = report.ready_levels[0];
+
+    assert.equal(level.parallel_ready, false);
+    assert.equal(level.worktree_strategy.mode, 'sequential-fallback');
+    assert.ok(level.fallback_reason.includes('File conflicts'));
+    assert.deepEqual(level.conflicts[0].files, ['src/shared.js']);
+    assert.deepEqual(level.unknown_scope_slices, []);
+  } finally {
+    repo.cleanup();
+  }
+});
+
 test('collectExecutionPlan falls back to sequential mode when file scope is unknown', () => {
   const repo = makeRepo({
     'specs/spec-a/slices/slice-00-spec-foundation/slice.json': slice('spec-a/slice-00-spec-foundation', ['docs/foundation.md'], {
@@ -165,6 +201,7 @@ test('formatHumanExecutionPlan includes worktree guidance and level ordering', (
     assert.ok(output.includes('Worktree strategy: temporary-per-slice'));
     assert.ok(output.includes('spec-a/slice-00-spec-foundation'));
     assert.ok(output.includes('Integration order'));
+    assert.ok(output.includes('Wave 0'));
   } finally {
     repo.cleanup();
   }

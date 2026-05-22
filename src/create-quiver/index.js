@@ -9,7 +9,29 @@ const {
   collectDoctorReport,
   formatDoctorFixPlan,
 } = require('./lib/doctor');
-const { runAgent: runAiAgent, runApprovalStatus: runAiApprovalStatus, runApprove: runAiApprove, runDoctor: runAiDoctor, runExecutePlan: runAiExecutePlan, runExecuteSlice: runAiExecuteSlice, runOnboard, runPlan: runAiPlan, runPrepareContext: runAiPrepareContext, runPr: runAiPr, runPromptSlice: runAiPromptSlice, runReviewPlan: runAiReviewPlan } = require('./commands/ai');
+const {
+  runAgent: runAiAgent,
+  runApprovalStatus: runAiApprovalStatus,
+  runApprove: runAiApprove,
+  runDoctor: runAiDoctor,
+  runExecutePlan: runAiExecutePlan,
+  runExecuteSlice: runAiExecuteSlice,
+  runExport: runAiExport,
+  runInspect: runAiInspect,
+  runLifecycleResume: runAiLifecycleResume,
+  runLifecycleRun: runAiLifecycleRun,
+  runLifecycleStatus: runAiLifecycleStatus,
+  runOnboard,
+  runPlan: runAiPlan,
+  runPrepareContext: runAiPrepareContext,
+  runPr: runAiPr,
+  runPromptSlice: runAiPromptSlice,
+  runReviewPlan: runAiReviewPlan,
+  runRevise: runAiRevise,
+  runSlicesList: runAiSlicesList,
+  runSpecsList: runAiSpecsList,
+  runTraceReport: runAiTraceReport,
+} = require('./commands/ai');
 const { runDemo } = require('./commands/demo');
 const { runPrepare } = require('./commands/prepare');
 const { runEvidence } = require('./commands/evidence');
@@ -80,12 +102,21 @@ const SUPPORTED_AI_COMMANDS = new Set([
   'execute-plan',
   'execute-slice',
   'executor-prompt',
+  'export',
+  'inspect',
   'onboard',
   'plan',
   'prepare-context',
   'pr',
   'prompt-slice',
   'review-plan',
+  'revise',
+  'resume',
+  'run',
+  'slices',
+  'specs',
+  'status',
+  'trace',
 ]);
 
 const SUPPORTED_SPEC_COMMANDS = new Set(['close', 'create', 'start', 'status']);
@@ -108,8 +139,17 @@ function printUsage() {
   npx create-quiver flow [options]
   npx create-quiver plan [options]
   npx create-quiver ai <task> [options]
+  npx create-quiver ai run create --input <requirements.md>
+  npx create-quiver ai status [options]
+  npx create-quiver ai resume [options]
+  npx create-quiver ai inspect [options]
+  npx create-quiver ai export [--format json|markdown]
+  npx create-quiver ai specs list [--json]
+  npx create-quiver ai slices list [--json]
+  npx create-quiver ai trace report [options]
   npx create-quiver ai agent <set|list|show> [role] [options]
   npx create-quiver ai prepare-context [options]
+  npx create-quiver ai revise [options]
   npx create-quiver graph [options]
   npx create-quiver next [options]
   npx create-quiver migrate [options]
@@ -134,7 +174,7 @@ Options:
   -n, --name <project-name>   Project name to generate
   -d, --dir <target-dir>      Target directory to scaffold into or inspect
       --spec <slug>           Restrict plan output to one spec
-      --format <name>         Graph output format (tree, mermaid, dot)
+      --format <name>         Graph or AI export output format (tree, mermaid, dot, json, markdown)
       --show-conflicts        Show shared file paths in graph output
       --level <n>             Restrict graph output to one level
       --json                  Emit machine-readable JSON
@@ -148,7 +188,8 @@ Options:
       --full                  Plan or run the full compatibility init profile
       --legacy-scripts        Include legacy Bash wrappers in init profile
       --include-templates     Export packaged templates in init profile
-      --dry-run               Preview init, prepare, spec create, demo, or AI work without executing writes/providers
+      --dry-run               Preview init, migrate, prepare, spec create/start/close, demo, or AI work without executing writes/providers
+      --print-prompt          Print the exact AI prompt and exit without executing provider CLIs
       --fix                   For doctor, apply safe non-destructive repairs
       --execute               For ai execute-plan, run the planned slices instead of printing commands
       --create                For ai pr, create the PR after preflight instead of printing the plan only
@@ -158,6 +199,7 @@ Options:
       --provider <name>       Provider CLI to preflight for prepare or AI commands
       --model <label>         Free-form model label for AI agent profiles
       --version <n>           Draft version to approve for AI planner phases
+      --run <id>              AI lifecycle run id
       --ssh-host-alias <name> SSH host alias to validate for prepare or AI commands
       --identity-file <path>  SSH identity file to validate for prepare or AI commands
       --remote <name>         Git remote name for check-slice or AI PR checks
@@ -166,6 +208,7 @@ Options:
       --max-output <n>        Maximum stdout/stderr chars per evidence section
       --title <text>          Override PR title for ai pr create
   -y, --yes                   Skip prompts and use the provided inputs
+  -V, --version               Show the installed create-quiver version
   -h, --help                  Show this help message
 
 Examples:
@@ -177,15 +220,27 @@ Examples:
   cd ./my-project && npx create-quiver analyze
   cd ./my-project && npx create-quiver plan --json
   cd ./my-project && npx create-quiver ai onboard --dry-run
+  cd ./my-project && npx create-quiver ai onboard --print-prompt
   cd ./my-project && npx create-quiver ai prepare-context --dry-run
+  cd ./my-project && npx create-quiver ai run create --input requirements.md
+  cd ./my-project && npx create-quiver ai status
+  cd ./my-project && npx create-quiver ai resume
+  cd ./my-project && npx create-quiver ai inspect
+  cd ./my-project && npx create-quiver ai export --format json
+  cd ./my-project && npx create-quiver ai export --format markdown
+  cd ./my-project && npx create-quiver ai specs list
+  cd ./my-project && npx create-quiver ai slices list --json
+  cd ./my-project && npx create-quiver ai trace report
   cd ./my-project && npx create-quiver ai agent set planner --provider codex --model gpt-5.5
   cd ./my-project && npx create-quiver ai agent list
   cd ./my-project && npx create-quiver ai plan --phase acceptance --input requirements.md --dry-run
-  cd ./my-project && npx create-quiver ai approve --phase acceptance --input acceptance.md
+  cd ./my-project && npx create-quiver ai revise --phase acceptance --input feedback.md --dry-run
+  cd ./my-project && npx create-quiver ai approve --phase acceptance --version 1
   cd ./my-project && npx create-quiver ai plan --phase technical-plan --dry-run
   cd ./my-project && npx create-quiver ai review-plan --dry-run
   cd ./my-project && npx create-quiver ai approve --phase technical-plan --version 1
   cd ./my-project && npx create-quiver spec create --dry-run
+  cd ./my-project && npx create-quiver spec start specs/my-project --dry-run
   cd ./my-project && npx create-quiver ai approvals
   cd ./my-project && npx create-quiver ai prompt-slice --slice specs/my-project/slices/slice-01/slice.json --dry-run
   cd ./my-project && npx create-quiver ai execute-slice --slice specs/my-project/slices/slice-01/slice.json --dry-run
@@ -232,6 +287,7 @@ function parseArgs(argv) {
     discard: false,
     doctorFix: false,
     dryRun: false,
+    aiPrintPrompt: false,
     gate: 'execution',
     projectName: '',
     targetDir: '.',
@@ -245,12 +301,16 @@ function parseArgs(argv) {
     autoStart: false,
     specSlug: '',
     format: 'tree',
+    formatExplicit: false,
     showConflicts: false,
     level: null,
     unicode: false,
     aiCommand: '',
+    aiSecondaryCommand: '',
     aiAgentCommand: '',
     aiAgentRole: '',
+    aiRunCommand: '',
+    aiRunId: '',
     aiPhase: 'acceptance',
     aiProvider: 'codex',
     aiProviderExplicit: false,
@@ -396,6 +456,11 @@ function parseArgs(argv) {
       continue;
     }
 
+    if (arg === '--print-prompt') {
+      result.aiPrintPrompt = true;
+      continue;
+    }
+
     if (arg === '--commit') {
       result.aiCommit = true;
       continue;
@@ -476,6 +541,7 @@ function parseArgs(argv) {
         throw new Error(formatError('missing value for --format'));
       }
       result.format = value;
+      result.formatExplicit = true;
       continue;
     }
 
@@ -547,6 +613,15 @@ function parseArgs(argv) {
         throw new Error(formatError('missing value for --version'));
       }
       result.aiVersion = value;
+      continue;
+    }
+
+    if (arg === '--run') {
+      const value = args[++index];
+      if (!value) {
+        throw new Error(formatError('missing value for --run'));
+      }
+      result.aiRunId = value;
       continue;
     }
 
@@ -747,6 +822,18 @@ function parseArgs(argv) {
       if (!result.aiAgentRole && positional.length > 0) {
         result.aiAgentRole = positional.shift();
       }
+    }
+    if (result.aiCommand === 'run' && !result.aiRunCommand && positional.length > 0) {
+      result.aiRunCommand = positional.shift();
+    }
+    if ((result.aiCommand === 'specs' || result.aiCommand === 'slices' || result.aiCommand === 'trace') && !result.aiSecondaryCommand && positional.length > 0) {
+      result.aiSecondaryCommand = positional.shift();
+    }
+    if ((result.aiCommand === 'specs' || result.aiCommand === 'slices') && result.aiSecondaryCommand && result.aiSecondaryCommand !== 'list') {
+      throw new Error(formatError(`unsupported ai ${result.aiCommand} subcommand: ${result.aiSecondaryCommand}. Supported tasks: list`));
+    }
+    if (result.aiCommand === 'trace' && result.aiSecondaryCommand && result.aiSecondaryCommand !== 'report') {
+      throw new Error(formatError(`unsupported ai trace subcommand: ${result.aiSecondaryCommand}. Supported tasks: report`));
     }
     if (positional.length > 0) {
       throw new Error(formatError('ai does not accept extra positional arguments'));
@@ -1845,8 +1932,33 @@ function runMigrate(targetDir, options = {}) {
   const packageJson = loadPackageJson(projectRoot);
   const projectName = packageJson.name || path.basename(projectRoot) || 'Quiver Project';
   const packageRoot = path.resolve(__dirname, '../..');
-  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'quiver-migrate-'));
   const legacyLayout = inspectLegacyMigrationLayout(projectRoot);
+
+  if (options.dryRun) {
+    const migrationPlan = buildInitLayout(projectRoot, {
+      dryRun: true,
+      full: true,
+      legacyScripts: true,
+      projectName,
+      skipInstall: options.skipInstall === true,
+    });
+    console.log('Quiver migration dry-run');
+    console.log(`- Project: ${projectName}`);
+    console.log(`- Target: ${projectRoot}`);
+    console.log('- Writes: none');
+    console.log(`- Planned create: ${migrationPlan.summary.create}`);
+    console.log(`- Planned update: ${migrationPlan.summary.update}`);
+    console.log(`- Planned preserve: ${migrationPlan.summary.preserve}`);
+    if (legacyLayout.hasLegacyLayout) {
+      console.log(`- Legacy layout detected and preserved: ${legacyLayout.legacyPaths.join(', ')}`);
+    }
+    console.log('- Next command: npx create-quiver migrate --skip-install');
+    console.log('');
+    console.log(formatInitLayoutPlan(migrationPlan));
+    return;
+  }
+
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'quiver-migrate-'));
 
   try {
     const templateRoot = packTemplate(packageRoot, tempRoot);
@@ -1958,6 +2070,11 @@ function runDoctor(targetDir, options = {}) {
     .filter((name) => typeof pkg.scripts?.[name] !== 'string');
   const missingAiScripts = [
     'quiver:ai:agent',
+    'quiver:ai:inspect',
+    'quiver:ai:export',
+    'quiver:ai:specs',
+    'quiver:ai:slices',
+    'quiver:ai:trace',
     'quiver:ai:onboard',
     'quiver:ai:plan',
     'quiver:ai:review-plan',
@@ -2045,6 +2162,11 @@ function printInitNextSteps(targetDir, projectName) {
 }
 
 async function run(argv) {
+  if (argv.length === 1 && (argv[0] === '-V' || argv[0] === '--version')) {
+    console.log(CLI_VERSION);
+    return;
+  }
+
   const args = parseArgs(argv);
 
   if (args.help) {
@@ -2087,7 +2209,69 @@ async function run(argv) {
 
   if (args.mode === 'ai') {
     if (!args.aiCommand) {
-      throw new Error(formatError('missing ai subcommand. Use: npx create-quiver ai onboard | prepare-context | plan | review-plan | approve | approvals | agent | prompt-slice | execute-slice | execute-plan | doctor | pr'));
+      throw new Error(formatError('missing ai subcommand. Use: npx create-quiver ai onboard | prepare-context | run | status | resume | inspect | export | specs | slices | trace | plan | revise | review-plan | approve | approvals | agent | prompt-slice | execute-slice | execute-plan | doctor | pr'));
+    }
+
+    if (args.aiCommand === 'run') {
+      runAiLifecycleRun(process.cwd(), {
+        command: args.aiRunCommand,
+        input: args.aiInput || undefined,
+        runId: args.aiRunId || undefined,
+        specSlug: args.specSlug || undefined,
+      });
+      return;
+    }
+
+    if (args.aiCommand === 'status') {
+      runAiLifecycleStatus(process.cwd(), {
+        runId: args.aiRunId || undefined,
+      });
+      return;
+    }
+
+    if (args.aiCommand === 'resume') {
+      runAiLifecycleResume(process.cwd(), {
+        runId: args.aiRunId || undefined,
+      });
+      return;
+    }
+
+    if (args.aiCommand === 'inspect') {
+      runAiInspect(process.cwd(), {
+        includeCompleted: args.includeCompleted,
+      });
+      return;
+    }
+
+    if (args.aiCommand === 'export') {
+      runAiExport(process.cwd(), {
+        format: args.formatExplicit ? args.format : 'json',
+        includeCompleted: args.includeCompleted,
+      });
+      return;
+    }
+
+    if (args.aiCommand === 'specs') {
+      runAiSpecsList(process.cwd(), {
+        includeCompleted: args.includeCompleted,
+        json: args.json,
+      });
+      return;
+    }
+
+    if (args.aiCommand === 'slices') {
+      runAiSlicesList(process.cwd(), {
+        includeCompleted: args.includeCompleted,
+        json: args.json,
+      });
+      return;
+    }
+
+    if (args.aiCommand === 'trace') {
+      runAiTraceReport(process.cwd(), {
+        includeCompleted: args.includeCompleted,
+      });
+      return;
     }
 
     if (args.aiCommand === 'agent') {
@@ -2107,6 +2291,7 @@ async function run(argv) {
         context: args.aiContext || undefined,
         dryRun: args.dryRun,
         input: args.aiInput || undefined,
+        printPrompt: args.aiPrintPrompt,
         provider: args.aiProvider,
         providerExplicit: args.aiProviderExplicit,
         role: args.aiRole,
@@ -2118,6 +2303,7 @@ async function run(argv) {
     if (args.aiCommand === 'prepare-context') {
       await runAiPrepareContext(process.cwd(), {
         dryRun: args.dryRun,
+        runId: args.aiRunId || undefined,
       });
       return;
     }
@@ -2128,9 +2314,11 @@ async function run(argv) {
         dryRun: args.dryRun,
         input: args.aiInput || undefined,
         phase: args.aiPhase,
+        printPrompt: args.aiPrintPrompt,
         provider: args.aiProvider,
         providerExplicit: args.aiProviderExplicit,
         role: args.aiRole,
+        runId: args.aiRunId || undefined,
         specSlug: args.specSlug || undefined,
         timeout: args.aiTimeout,
       });
@@ -2142,8 +2330,25 @@ async function run(argv) {
         context: args.aiContext || undefined,
         dryRun: args.dryRun,
         input: args.aiInput || undefined,
+        printPrompt: args.aiPrintPrompt,
         provider: args.aiProvider,
         providerExplicit: args.aiProviderExplicit,
+        timeout: args.aiTimeout,
+      });
+      return;
+    }
+
+    if (args.aiCommand === 'revise') {
+      await runAiRevise(process.cwd(), {
+        context: args.aiContext || undefined,
+        dryRun: args.dryRun,
+        input: args.aiInput || undefined,
+        phase: args.aiPhase,
+        printPrompt: args.aiPrintPrompt,
+        provider: args.aiProvider,
+        providerExplicit: args.aiProviderExplicit,
+        role: args.aiRole,
+        runId: args.aiRunId || undefined,
         timeout: args.aiTimeout,
       });
       return;
@@ -2154,6 +2359,7 @@ async function run(argv) {
         dryRun: args.dryRun,
         input: args.aiInput || undefined,
         phase: args.aiPhase,
+        runId: args.aiRunId || undefined,
         version: args.aiVersion || undefined,
       });
       return;
@@ -2228,7 +2434,7 @@ async function run(argv) {
       return;
     }
 
-    throw new Error(formatError(`unsupported ai subcommand: ${args.aiCommand}. Supported tasks: onboard, plan, review-plan, approve, approvals, agent, prompt-slice, execute-slice, execute-plan, doctor, pr`));
+    throw new Error(formatError(`unsupported ai subcommand: ${args.aiCommand}. Supported tasks: onboard, prepare-context, run, status, resume, inspect, export, specs, slices, trace, plan, revise, review-plan, approve, approvals, agent, prompt-slice, execute-slice, execute-plan, doctor, pr`));
   }
 
   if (args.mode === 'graph') {
@@ -2278,7 +2484,10 @@ async function run(argv) {
   }
 
   if (args.mode === 'migrate') {
-    runMigrate(args.targetDir, { skipInstall: args.skipInstall });
+    runMigrate(args.targetDir, {
+      dryRun: args.dryRun,
+      skipInstall: args.skipInstall,
+    });
     return;
   }
 
@@ -2366,7 +2575,9 @@ async function run(argv) {
     }
 
     if (args.specCommand === 'start') {
-      const report = startSpecWorktree(process.cwd(), args.targetDir);
+      const report = startSpecWorktree(process.cwd(), args.targetDir, {
+        dryRun: args.dryRun,
+      });
       process.stdout.write(formatSpecStartResult(report));
       return;
     }

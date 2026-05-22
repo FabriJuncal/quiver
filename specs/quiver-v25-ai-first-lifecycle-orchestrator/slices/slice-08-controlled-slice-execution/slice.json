@@ -1,0 +1,53 @@
+{
+  "slice_id": "slice-08-controlled-slice-execution",
+  "ticket": "QUIVER-25-08",
+  "type": "feature",
+  "title": "Controlled slice execution and evidence",
+  "objective": "Execute or print executor prompts for slices with minimal context, scope enforcement, closure updates, evidence, and command logging.",
+  "description": "Prepare executor context packs, support prompt-only/manual/delegated modes, validate touched files, update closure briefs, capture evidence, and support one-slice closure.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "controlled-slice-execution",
+    "branch_name": "feature/QUIVER-25-08-controlled-slice-execution"
+  },
+  "files": [
+    "src/create-quiver/**",
+    "docs/**",
+    "tests/**"
+  ],
+  "depends_on": [
+    "slice-07-slice-execution-planner"
+  ],
+  "parallel_safe": "no",
+  "parallel_safe_reason": "Central executor behavior must be stable before Git/PR automation depends on it.",
+  "must": [
+    "Prepare minimal executor context from slice metadata and relevant spec excerpts.",
+    "Support prompt-only execution.",
+    "Validate correct worktree and clean working tree before execution.",
+    "Validate modified files against declared slice scope.",
+    "Update CLOSURE_BRIEF.md, evidence report, command log, and status.",
+    "Redact likely secrets from captured logs."
+  ],
+  "not_included": [
+    "Creating PRs.",
+    "Closing worktrees after merge.",
+    "Dashboard export."
+  ],
+  "acceptance": [
+    "Executor context excludes unrelated docs/specs by default.",
+    "Prompt-only mode produces directly usable prompts.",
+    "Dirty or wrong worktree blocks execution.",
+    "Out-of-scope file changes are reported or blocked.",
+    "Closure and evidence are updated after successful execution.",
+    "Logs redact likely secrets."
+  ],
+  "tests": [
+    "node --test tests/**/*.test.js",
+    "git diff --check"
+  ],
+  "estimated_hours": 8,
+  "status": "completed",
+  "blocked_reason": null,
+  "completed_at": "2026-05-22T17:02:29-03:00"
+}

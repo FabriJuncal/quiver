@@ -1,0 +1,54 @@
+{
+  "slice_id": "slice-03-safe-ai-onboarding-docs",
+  "ticket": "QUIVER-25-03",
+  "type": "feature",
+  "title": "Safe AI onboarding documentation",
+  "objective": "Let Quiver use AI to generate and update project onboarding docs safely for new, existing, and older Quiver projects.",
+  "description": "Implement docs-only onboarding generation with dry-run, diffs, snapshots, assumptions, risks, and conflict reporting.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "safe-ai-onboarding-docs",
+    "branch_name": "feature/QUIVER-25-03-safe-ai-onboarding-docs"
+  },
+  "files": [
+    "src/create-quiver/**",
+    "docs/**",
+    "templates/**",
+    "tests/**"
+  ],
+  "depends_on": [
+    "slice-02-run-state-phase-locks"
+  ],
+  "parallel_safe": "yes",
+  "parallel_safe_reason": "Can run beside agent adapter work if command/state files do not overlap.",
+  "must": [
+    "Support onboarding generation with `--dry-run`.",
+    "Generate or update docs such as CONTEXTO, WORKFLOW, ARCHITECTURE, STATUS, INDEX, AI_CONTEXT, and PROJECT_MAP where applicable.",
+    "Mark uncertain content as TODO, Assumption, or Pending confirmation.",
+    "Preserve human-authored content and show diffs before writing.",
+    "Snapshot touched docs before writing.",
+    "Report contradictions instead of silently resolving them."
+  ],
+  "not_included": [
+    "Provider adapter implementation unless needed for prompt-only output.",
+    "Spec generation from approved plans.",
+    "Product code modification in target projects."
+  ],
+  "acceptance": [
+    "New projects receive useful onboarding docs from inferred stack/scripts/structure.",
+    "Existing projects update only approved docs without deleting useful content.",
+    "`--dry-run` writes nothing and reports proposed changes.",
+    "Snapshots are stored before writes.",
+    "Contradictions and unknowns are reported clearly.",
+    "No product code files are modified by onboarding generation."
+  ],
+  "tests": [
+    "node --test tests/**/*.test.js",
+    "git diff --check"
+  ],
+  "estimated_hours": 8,
+  "status": "completed",
+  "completed_at": "2026-05-22T16:31:18-0300",
+  "blocked_reason": null
+}

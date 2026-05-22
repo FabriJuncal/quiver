@@ -289,10 +289,11 @@ function detectFlowState(projectRoot) {
       stage: 'criteria-draft',
       label: 'acceptance criteria need approval',
       blockers: ['Acceptance criteria draft exists but is not approved.'],
-      nextCommand: 'npx create-quiver ai approve --phase acceptance --input acceptance-approved.md',
+      nextCommand: 'npx create-quiver ai approve --phase acceptance --version <n>',
       suggestedCommands: [
         'npx create-quiver ai approvals',
-        'npx create-quiver ai approve --phase acceptance --input acceptance-approved.md',
+        'npx create-quiver ai revise --phase acceptance --input feedback.md --dry-run',
+        'npx create-quiver ai approve --phase acceptance --version <n>',
       ],
       facts,
     });
@@ -303,10 +304,11 @@ function detectFlowState(projectRoot) {
       stage: 'criteria-stale',
       label: 'acceptance criteria approval is stale',
       blockers: ['Acceptance criteria changed after approval.'],
-      nextCommand: 'npx create-quiver ai approve --phase acceptance --input acceptance-approved.md',
+      nextCommand: 'npx create-quiver ai approve --phase acceptance --version <n>',
       suggestedCommands: [
         'npx create-quiver ai approvals',
-        'npx create-quiver ai approve --phase acceptance --input acceptance-approved.md',
+        'npx create-quiver ai revise --phase acceptance --input feedback.md --dry-run',
+        'npx create-quiver ai approve --phase acceptance --version <n>',
       ],
       facts,
     });

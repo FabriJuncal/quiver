@@ -97,6 +97,19 @@ test('startSpecWorktree creates and reuses a spec worktree on main', () => {
   }
 });
 
+test('startSpecWorktree dry-run reports planned worktree without creating it', () => {
+  const repo = makeRepo('main');
+  try {
+    const planned = startSpecWorktree(repo.root, 'specs/quiver-v22-guided-ai-workflow', { dryRun: true });
+    assert.equal(planned.dryRun, true);
+    assert.equal(planned.reused, false);
+    assert.equal(planned.baseRef, 'main');
+    assert.equal(fs.existsSync(planned.worktreePath), false);
+  } finally {
+    repo.cleanup();
+  }
+});
+
 test('startSpecWorktree supports develop as the base branch', () => {
   const repo = makeRepo('develop');
   try {

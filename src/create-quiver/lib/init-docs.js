@@ -316,8 +316,14 @@ Use \`AGENTS.md\` first, then \`docs/AI_CONTEXT.md\` and \`docs/AI_ONBOARDING_PR
 \`\`\`bash
 npm run quiver:prepare -- --dry-run
 npm run quiver:ai:onboard -- --dry-run
+npm run quiver:ai:inspect
+npm run quiver:ai:export -- --format json
+npm run quiver:ai:specs
+npm run quiver:ai:slices
+npm run quiver:ai:trace
 npm run quiver:ai:plan -- --phase acceptance --input requirements.md --dry-run
-npm run quiver:ai:approve -- --phase acceptance --input acceptance-approved.md
+npm run quiver:ai:revise -- --phase acceptance --input feedback.md --dry-run
+npm run quiver:ai:approve -- --phase acceptance --version <n>
 npm run quiver:ai:plan -- --phase technical-plan --dry-run
 npm run quiver:ai:review-plan -- --dry-run
 npm run quiver:ai:approve -- --phase technical-plan --version <n>
@@ -371,7 +377,8 @@ Use dry-runs before spending model tokens:
 npm run quiver:prepare -- --dry-run
 npm run quiver:ai:onboard -- --dry-run
 npm run quiver:ai:plan -- --phase acceptance --input requirements.md --dry-run
-npm run quiver:ai:approve -- --phase acceptance --input acceptance-approved.md
+npm run quiver:ai:revise -- --phase acceptance --input feedback.md --dry-run
+npm run quiver:ai:approve -- --phase acceptance --version <n>
 npm run quiver:ai:plan -- --phase technical-plan --dry-run
 npm run quiver:ai:review-plan -- --dry-run
 npm run quiver:ai:approve -- --phase technical-plan --version <n>
@@ -397,9 +404,16 @@ npm run quiver:plan
 npm run quiver:graph
 npm run quiver:next
 npm run quiver:doctor
+npm run quiver:ai:inspect
+npm run quiver:ai:export -- --format json
+npm run quiver:ai:export -- --format markdown
+npm run quiver:ai:specs
+npm run quiver:ai:slices
+npm run quiver:ai:trace
 npm run quiver:ai:onboard -- --dry-run
 npm run quiver:ai:plan -- --phase acceptance --input requirements.md --dry-run
-npm run quiver:ai:approve -- --phase acceptance --input acceptance-approved.md
+npm run quiver:ai:revise -- --phase acceptance --input feedback.md --dry-run
+npm run quiver:ai:approve -- --phase acceptance --version <n>
 npm run quiver:ai:plan -- --phase technical-plan --dry-run
 npm run quiver:ai:review-plan -- --dry-run
 npm run quiver:ai:approve -- --phase technical-plan --version <n>
@@ -470,7 +484,8 @@ Start with dry-runs so you can inspect the provider, role, context pack, and inv
 npm run quiver:prepare -- --dry-run
 npm run quiver:ai:onboard -- --dry-run
 npm run quiver:ai:plan -- --phase acceptance --input requirements.md --dry-run
-npm run quiver:ai:approve -- --phase acceptance --input acceptance-approved.md
+npm run quiver:ai:revise -- --phase acceptance --input feedback.md --dry-run
+npm run quiver:ai:approve -- --phase acceptance --version <n>
 npm run quiver:ai:plan -- --phase technical-plan --dry-run
 npm run quiver:ai:review-plan -- --dry-run
 npm run quiver:ai:approve -- --phase technical-plan --version <n>
@@ -497,7 +512,8 @@ npm run quiver:next
 npm run quiver:doctor
 npm run quiver:ai:onboard -- --dry-run
 npm run quiver:ai:plan -- --phase acceptance --input requirements.md --dry-run
-npm run quiver:ai:approve -- --phase acceptance --input acceptance-approved.md
+npm run quiver:ai:revise -- --phase acceptance --input feedback.md --dry-run
+npm run quiver:ai:approve -- --phase acceptance --version <n>
 npm run quiver:ai:plan -- --phase technical-plan --dry-run
 npm run quiver:ai:review-plan -- --dry-run
 npm run quiver:ai:approve -- --phase technical-plan --version <n>
@@ -522,7 +538,7 @@ npm run quiver:refresh-active-slices
 
 The \`quiver:graph\` script prints the tree view by default; use \`npx create-quiver graph --format mermaid\` for PR-ready Markdown and \`--format dot\` when you want Graphviz source.
 The \`quiver:next\` script points to the next ready slice and can auto-start it behind a confirmation prompt.
-The \`quiver:ai:*\` scripts standardize planner/executor AI flows. Use dry-run first: onboarding and planning dry-runs do not require provider auth, \`quiver:ai:execute-plan -- --dry-run --commit --mode manual\` prints manual prompts, \`--mode delegated\` prints safe waves, and \`quiver:ai:pr -- --dry-run\` validates \`gh\`, GitFlow docs, branch/worktree state, SSH inputs, and \`pr.md\` without creating a PR. Add \`--create\` only after reviewing the plan.
+The \`quiver:ai:*\` scripts standardize planner/executor AI flows. Use dry-run first: onboarding and planning dry-runs do not require provider auth, \`quiver:ai:execute-plan -- --dry-run --commit --mode manual\` prints manual prompts, \`--mode delegated\` prints safe waves, \`quiver:ai:inspect\` shows lifecycle state, \`quiver:ai:export -- --format json|markdown\` emits dashboard/agent-friendly state, and \`quiver:ai:pr -- --dry-run\` validates \`gh\`, GitFlow docs, branch/worktree state, SSH inputs, and \`pr.md\` without creating a PR. Add \`--create\` only after reviewing the plan.
 Use \`quiver:spec:create\`, \`quiver:spec:start\`, \`quiver:spec:status\`, and \`quiver:spec:close\` for one spec generation and worktree per spec.
 Use \`npx create-quiver next --all-ready\` when you want the full ready level instead of a single suggestion.
 The legacy Bash wrappers remain in \`tools/scripts/\` for compatibility, but new project-level automation should prefer the \`quiver:*\` scripts and the direct \`npx create-quiver ...\` commands below.

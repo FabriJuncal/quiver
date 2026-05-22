@@ -6,6 +6,7 @@ const { execFileSync } = require('node:child_process');
 const test = require('node:test');
 
 const { savePlanReview } = require('../../src/create-quiver/lib/ai/plan-review');
+const { savePlannerDraft } = require('../../src/create-quiver/lib/approvals');
 
 const BIN_PATH = path.resolve(__dirname, '../../bin/create-quiver.js');
 
@@ -82,12 +83,14 @@ test('ai plan spec phase dry-run reports the generated spec tree and does not wr
   });
 
   try {
-    execAiSubcommand(repo.root, ['approve', '--phase', 'technical-plan', '--input', 'technical-plan.md']);
+    savePlannerDraft(repo.root, 'technical-plan', 'technical-plan.md', fs.readFileSync(path.join(repo.root, 'technical-plan.md'), 'utf8'));
     savePlanReview(repo.root, {
       contents: 'production review\n',
-      inputPath: 'technical-plan.md',
-      inputKind: 'approved',
+      inputPath: '.quiver/approvals/technical-plan/drafts/001.md',
+      inputKind: 'draft',
+      inputVersion: 1,
     });
+    execAiSubcommand(repo.root, ['approve', '--phase', 'technical-plan', '--version', '1']);
     const output = execAi(repo.root, ['--phase', 'spec', '--dry-run']);
     assert.ok(output.includes('AI plan dry-run'));
     assert.ok(output.includes('Phase: spec'));
@@ -106,12 +109,14 @@ test('ai plan spec phase can infer the spec slug from approved technical-plan in
   });
 
   try {
-    execAiSubcommand(repo.root, ['approve', '--phase', 'technical-plan', '--input', 'technical-plan.md']);
+    savePlannerDraft(repo.root, 'technical-plan', 'technical-plan.md', fs.readFileSync(path.join(repo.root, 'technical-plan.md'), 'utf8'));
     savePlanReview(repo.root, {
       contents: 'production review\n',
-      inputPath: 'technical-plan.md',
-      inputKind: 'approved',
+      inputPath: '.quiver/approvals/technical-plan/drafts/001.md',
+      inputKind: 'draft',
+      inputVersion: 1,
     });
+    execAiSubcommand(repo.root, ['approve', '--phase', 'technical-plan', '--version', '1']);
     const output = execAi(repo.root, ['--phase', 'spec']);
     const specDir = path.join(repo.root, 'specs', 'quiver-v21-cli-spec');
 

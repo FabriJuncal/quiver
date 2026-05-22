@@ -48,21 +48,23 @@ Use maps, metadata, diffs, and summaries first. Open full files only when the sm
 
 ## Execution
 
-1. Create or reuse the spec worktree with `npx create-quiver spec start specs/<spec-slug>` or `npm run quiver:spec:start -- specs/<spec-slug>`.
-2. Inspect manual prompts with `npx create-quiver ai execute-plan --dry-run --commit --mode manual` or delegated waves with `npm run quiver:ai:execute-plan -- --dry-run --commit --mode delegated`.
-3. Print a minimal manual executor prompt with `npx create-quiver ai prompt-slice --slice <slice.json> --dry-run` when assigning the slice to another agent.
-4. Bootstrap a single slice with `npx create-quiver start-slice <slice.json>` or `npm run quiver:start-slice -- <slice.json>` when manual execution is preferred.
+1. Create or reuse the spec worktree with `npx create-quiver spec start specs/<spec-slug>` or `npm run quiver:spec:start -- specs/<spec-slug>`. Use `--dry-run` first when you want to inspect the planned branch/path without changing Git state.
+2. Inspect lifecycle state with `npx create-quiver ai inspect`, or export it with `npx create-quiver ai export --format json` for dashboards/agents and `--format markdown` for PRs/docs.
+3. Inspect manual prompts with `npx create-quiver ai execute-plan --dry-run --commit --mode manual` or delegated waves with `npm run quiver:ai:execute-plan -- --dry-run --commit --mode delegated`.
+4. Print a minimal manual executor prompt with `npx create-quiver ai prompt-slice --slice <slice.json> --dry-run` when assigning the slice to another agent.
+5. Bootstrap a single slice with `npx create-quiver start-slice <slice.json>` or `npm run quiver:start-slice -- <slice.json>` when manual execution is preferred.
    - The bootstrap step should work with canonical paths and a local base branch when `origin` is absent.
    - Draft slices require `--allow-draft`; otherwise `npx create-quiver start-slice` exits before execution.
    - Legacy Bash wrappers remain available for compatibility, but generated projects should prefer the Node CLI and `quiver:*` npm scripts.
    - `start-slice` generates `docs/ai/ACTIVE_SLICE.md` and `WORKTREE_CONTEXT.md`; use the active slice brief as the source of truth for execution.
-5. Implement only what the slice declares.
-6. Make one commit for that slice, or let `ai execute-slice --commit` / `ai execute-plan --execute --commit --mode delegated` create it after provider, scope, and validation pass.
-7. Validate with `npx create-quiver check-slice <slice.json>` or `npm run quiver:check-slice -- <slice.json>`.
-8. Write evidence. Prefer `npx create-quiver evidence run -- <command>` when you need a compact local Markdown record of validation output.
-9. Repeat for the next slice until the spec is complete.
-10. Open one PR for the spec. Use `npx create-quiver ai pr --dry-run --input specs/<spec-slug>/pr.md ...` first, then add `--create` only after review.
-11. After the PR is merged and the spec worktree is clean, close it with `npx create-quiver spec close specs/<spec-slug>`.
+6. Implement only what the slice declares.
+7. Make one commit for that slice, or let `ai execute-slice --commit` / `ai execute-plan --execute --commit --mode delegated` create it after provider, branch/worktree, scope, and validation pass.
+   - `ai execute-slice` updates `CLOSURE_BRIEF.md`, `EVIDENCE_REPORT.md`, `COMMAND_LOG.md`, `STATUS.md`, and `slice.json` only after the provider changes in-scope files and validation passes.
+8. Validate with `npx create-quiver check-slice <slice.json>` or `npm run quiver:check-slice -- <slice.json>`.
+9. Write evidence. Prefer `npx create-quiver evidence run -- <command>` when you need a compact local Markdown record of validation output.
+10. Repeat for the next slice until the spec is complete.
+11. Open one PR for the spec. Use `npx create-quiver ai pr --dry-run --input specs/<spec-slug>/pr.md --ssh-host-alias <alias> ...` first, then add `--create` only after review. Quiver blocks PR creation while slices in that spec remain open.
+12. After the PR is merged and the spec worktree is clean, close it with `npx create-quiver spec close specs/<spec-slug>`.
 
 ## Support Contract
 

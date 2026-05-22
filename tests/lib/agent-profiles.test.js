@@ -57,14 +57,22 @@ test('agent profiles list and resolve configured provider defaults', () => {
       provider: 'claude',
       model: 'sonnet',
     });
+    setAgentProfile(repo.root, 'doctor', {
+      provider: 'gemini',
+      model: 'diagnostic',
+    });
 
     assert.equal(getAgentProfile(repo.root, 'executor').provider, 'claude');
+    assert.equal(getAgentProfile(repo.root, 'doctor').provider, 'gemini');
     assert.equal(resolveProfileProvider(repo.root, 'executor', 'codex'), 'claude');
     assert.equal(resolveProfileProvider(repo.root, 'planner', 'codex'), 'codex');
+    assert.equal(resolveProfileProvider(repo.root, 'doctor', 'codex'), 'gemini');
 
     const profiles = listAgentProfiles(repo.root);
     assert.equal(profiles.find((profile) => profile.role === 'executor').configured, true);
     assert.equal(profiles.find((profile) => profile.role === 'reviewer').configured, false);
+    assert.equal(profiles.find((profile) => profile.role === 'doctor').configured, true);
+    assert.equal(profiles.find((profile) => profile.role === 'researcher'), undefined);
   } finally {
     repo.cleanup();
   }
@@ -82,6 +90,11 @@ test('agent profiles reject unsupported providers and secret-like values', () =>
     assert.throws(
       () => setAgentProfile(repo.root, 'planner', { provider: 'codex', model: 'sk-1234567890abcdef' }),
       /looks like a secret/,
+    );
+
+    assert.throws(
+      () => setAgentProfile(repo.root, 'researcher', { provider: 'codex', model: 'safe-label' }),
+      /unsupported agent profile role 'researcher'.*planner, executor, reviewer, doctor/,
     );
   } finally {
     repo.cleanup();

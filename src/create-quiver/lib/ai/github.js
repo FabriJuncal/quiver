@@ -4,6 +4,8 @@ const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 
 const { currentBranch, hasRemote, isCleanWorktree } = require('../git');
+const { parseJsonWithComments } = require('../json');
+const { formatActionableError } = require('../actionable-error');
 
 const DEFAULT_GH_COMMAND = 'gh';
 const DEFAULT_REMOTE = 'origin';
@@ -249,6 +251,82 @@ function ensureIdentityFile(repoRoot, identityFile) {
   return resolved;
 }
 
+function ensureSshHostAlias(sshHostAlias) {
+  const value = String(sshHostAlias || '').trim();
+  if (!value) {
+    throw createError(
+      'MISSING_SSH_HOST_ALIAS',
+      formatActionableError({
+        failure: 'missing SSH host alias. Pass --ssh-host-alias <alias> before opening the PR.',
+        impact: 'Quiver cannot verify which GitHub SSH identity should be used for this PR flow.',
+        fix: 'macOS/Linux: add a Host entry in ~/.ssh/config, for example `Host github-work`. Windows: add the Host entry in %USERPROFILE%\\.ssh\\config.',
+        nextCommand: 'ssh -T <alias>',
+      }),
+    );
+  }
+  return value;
+}
+
+function prBodySpecDir(repoRoot, prBodyPath) {
+  const relative = path.relative(repoRoot, prBodyPath).split(path.sep).join('/');
+  const parts = relative.split('/');
+  if (parts[0] !== 'specs' || parts.length !== 3 || parts[2] !== 'pr.md') {
+    return '';
+  }
+  return path.join(repoRoot, parts[0], parts[1]);
+}
+
+function listOpenSlicesForSpec(specDir) {
+  const slicesDir = path.join(specDir, 'slices');
+  if (!fs.existsSync(slicesDir)) {
+    return [];
+  }
+
+  return fs.readdirSync(slicesDir, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => {
+      const slicePath = path.join(slicesDir, entry.name, 'slice.json');
+      if (!fs.existsSync(slicePath)) {
+        return null;
+      }
+      const json = parseJsonWithComments(fs.readFileSync(slicePath, 'utf8'));
+      const status = String(json.status || 'draft').trim() || 'draft';
+      return {
+        id: json.slice_id || entry.name,
+        status,
+      };
+    })
+    .filter(Boolean)
+    .filter((slice) => slice.status !== 'completed')
+    .sort((left, right) => left.id.localeCompare(right.id));
+}
+
+function ensureNoOpenSlicesForPrBody(repoRoot, prBodyPath) {
+  const specDir = prBodySpecDir(repoRoot, prBodyPath);
+  if (!specDir) {
+    return [];
+  }
+
+  const openSlices = listOpenSlicesForSpec(specDir);
+  if (openSlices.length > 0) {
+    throw createError(
+      'OPEN_SLICES',
+      formatActionableError({
+        failure: `cannot create PR while spec slices are still open: ${openSlices.map((slice) => `${slice.id} (${slice.status})`).join(', ')}.`,
+        impact: 'The PR would not represent a closed spec and could miss required slice commits or evidence.',
+        fix: 'Finish, validate, and close every slice in the spec before creating the PR.',
+        nextCommand: 'npx create-quiver ai execute-plan --dry-run --commit',
+      }),
+      {
+        openSlices,
+        specDir,
+      },
+    );
+  }
+
+  return openSlices;
+}
+
 function findPrBodyCandidates(repoRoot) {
   const candidates = [];
   const rootPr = path.join(repoRoot, 'pr.md');
@@ -352,6 +430,7 @@ function buildPrCreateArgs(plan) {
 
 function buildPrCreatePlan(repoRoot, preflightReport, options = {}) {
   const prBody = readPrBody(repoRoot, options.prBodyPath || options.input);
+  ensureNoOpenSlicesForPrBody(repoRoot, prBody.path);
   const baseBranch = String(options.baseBranch || 'main').trim() || 'main';
   const title = String(options.title || '').trim() || extractPrTitle(prBody.body, preflightReport.branchName);
   const plan = {
@@ -420,6 +499,7 @@ function preflightGitHubPr(repoRoot, options = {}) {
   const guidePath = ensureGitFlowGuide(repoRoot, options.gitFlowGuidePath);
   const remote = ensureRemote(repoRoot, options.remote || DEFAULT_REMOTE);
   const branchName = ensureWorktreeReady(repoRoot, options);
+  const sshHostAlias = ensureSshHostAlias(options.sshHostAlias);
   const identityFile = ensureIdentityFile(repoRoot, options.identityFile);
 
   return buildPreflightReport(repoRoot, options, {
@@ -428,6 +508,7 @@ function preflightGitHubPr(repoRoot, options = {}) {
     guidePath,
     remote,
     branchName,
+    sshHostAlias,
     identityFile,
   });
 }
@@ -511,7 +592,9 @@ module.exports = {
   ensureGhInstalled,
   ensureGitFlowGuide,
   ensureIdentityFile,
+  ensureNoOpenSlicesForPrBody,
   ensureRemote,
+  ensureSshHostAlias,
   ensureWorktreeReady,
   findPrBodyCandidates,
   formatGhInstallGuidance,

@@ -1,0 +1,56 @@
+{
+  "slice_id": "slice-01-cli-contract-compatibility",
+  "ticket": "QUIVER-25-01",
+  "type": "feature",
+  "title": "CLI contract and compatibility",
+  "objective": "Make command naming, aliases, version reporting, and generated script behavior explicit and consistent.",
+  "description": "Define and implement the contract between canonical `npx create-quiver`, local `quiver`, and generated `quiver:*` scripts before adding more AI lifecycle commands.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "cli-contract-compatibility",
+    "branch_name": "feature/QUIVER-25-01-cli-contract-compatibility"
+  },
+  "files": [
+    "bin/**",
+    "package.json",
+    "src/create-quiver/**",
+    "docs/**",
+    "README.md",
+    "README_FOR_AI.md",
+    "tests/**"
+  ],
+  "depends_on": [
+    "slice-00-spec-foundation"
+  ],
+  "parallel_safe": "no",
+  "parallel_safe_reason": "Establishes shared CLI routing and naming contracts used by all later slices.",
+  "must": [
+    "Preserve `npx create-quiver` as the canonical bootstrap path.",
+    "Keep `quiver` as local alias behavior where installed.",
+    "Make `--version` work for both command surfaces.",
+    "Document whether `ia` is supported or intentionally not supported.",
+    "Ensure unknown commands fail with actionable guidance."
+  ],
+  "not_included": [
+    "Run state persistence.",
+    "Agent execution.",
+    "Spec generation."
+  ],
+  "acceptance": [
+    "`npx create-quiver --version` prints the installed version without error.",
+    "Local `quiver --version` prints the installed version when the binary alias is available.",
+    "Docs explain bootstrap vs local alias without contradiction.",
+    "Unknown commands are not treated as project names.",
+    "Generated scripts target supported command names."
+  ],
+  "tests": [
+    "node --test tests/**/*.test.js",
+    "git diff --check"
+  ],
+  "estimated_hours": 4,
+  "status": "completed",
+  "blocked_reason": null,
+  "actual_hours": 1,
+  "completed_at": "2026-05-22T00:00:00-0300"
+}

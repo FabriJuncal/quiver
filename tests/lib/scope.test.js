@@ -2,6 +2,7 @@ const assert = require('node:assert/strict');
 const test = require('node:test');
 
 const {
+  allowedPathMatches,
   diffWorktreeSnapshots,
   parseStatusPorcelain,
   validateScopeSnapshot,
@@ -48,4 +49,27 @@ test('validateScopeSnapshot reports only files changed after the before snapshot
       && error.details.outOfScopeFiles.includes('docs/out.md')
       && !error.details.outOfScopeFiles.includes('src/pre-existing.js'),
   );
+});
+
+test('validateScopeSnapshot supports simple glob write scopes', () => {
+  assert.equal(allowedPathMatches('src/create-quiver/lib/executor.js', 'src/create-quiver/**'), true);
+  assert.equal(allowedPathMatches('src/create-quiver/lib/executor.js', 'src/create-quiver/*.js'), false);
+  assert.equal(allowedPathMatches('src/create-quiver/index.js', 'src/create-quiver/*.js'), true);
+
+  const result = validateScopeSnapshot({
+    allowedFiles: ['src/create-quiver/**', 'tests/**/*.test.js'],
+    beforeSnapshot: {
+      files: [],
+      raw: '',
+      repoRoot: '/tmp/repo',
+    },
+    afterSnapshot: {
+      files: ['src/create-quiver/lib/ai/executor.js', 'tests/lib/ai-executor.test.js'],
+      raw: '',
+      repoRoot: '/tmp/repo',
+    },
+    strict: true,
+  });
+
+  assert.equal(result.ok, true);
 });

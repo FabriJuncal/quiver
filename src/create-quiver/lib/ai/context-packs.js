@@ -45,9 +45,13 @@ const DEFAULT_CONTEXT_PACK_BY_ROLE = Object.freeze({
 
 const PACK_ORDER = ['full', 'planning', 'slice', 'minimal'];
 const CONTEXT_PREPARED_DOC_PATHS = Object.freeze([
+  'docs/INDEX.md',
+  'docs/PROJECT_MAP.md',
   'docs/AI_CONTEXT.md',
   'docs/AI_ONBOARDING_PROMPT.md',
   'docs/CONTEXTO.md',
+  'docs/WORKFLOW.md',
+  'docs/ARCHITECTURE.md',
   'docs/STATUS.md',
   'docs/DECISIONS.md',
 ]);

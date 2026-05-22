@@ -36,7 +36,8 @@ El flujo normal con IA continúa así:
 ```bash
 npx create-quiver flow
 npx create-quiver ai plan --phase acceptance --input requirements.md --dry-run
-npx create-quiver ai approve --phase acceptance --input acceptance-approved.md
+npx create-quiver ai revise --phase acceptance --input feedback.md --dry-run
+npx create-quiver ai approve --phase acceptance --version <n>
 npx create-quiver ai approvals
 npx create-quiver ai plan --phase technical-plan --dry-run
 npx create-quiver ai review-plan --dry-run
@@ -99,7 +100,8 @@ npx create-quiver doctor
 npx create-quiver ai prepare-context --dry-run
 npx create-quiver ai onboard --dry-run
 npx create-quiver ai plan --phase acceptance --input requirements.md --dry-run
-npx create-quiver ai approve --phase acceptance --input acceptance-approved.md
+npx create-quiver ai revise --phase acceptance --input feedback.md --dry-run
+npx create-quiver ai approve --phase acceptance --version <n>
 npx create-quiver ai plan --phase technical-plan --dry-run
 npx create-quiver ai review-plan --dry-run
 npx create-quiver ai approve --phase technical-plan --version <n>
@@ -145,7 +147,8 @@ Después del bootstrap, revisá:
 
 ```bash
 npx create-quiver ai plan --phase acceptance --input requirements.md --dry-run
-npx create-quiver ai approve --phase acceptance --input acceptance-approved.md
+npx create-quiver ai revise --phase acceptance --input feedback.md --dry-run
+npx create-quiver ai approve --phase acceptance --version <n>
 npx create-quiver ai plan --phase technical-plan --dry-run
 npx create-quiver ai review-plan --dry-run
 npx create-quiver ai approve --phase technical-plan --version <n>
@@ -310,10 +313,20 @@ El paquete también publica el alias binario `quiver`, que apunta al mismo CLI. 
 |---|---|
 | `npx create-quiver init --name "Proyecto"` | Inicializa Quiver en un proyecto nuevo o nunca inicializado. |
 | `npx create-quiver --name "Proyecto"` | Alias compatible del flujo de init recomendado. |
+| `npx create-quiver --version` | Muestra la versión instalada del CLI. |
 | `npx create-quiver flow` | Muestra el estado inicial del flujo guiado y el próximo comando seguro sin escribir estado ni llamar providers. |
-| `npx create-quiver ai agent set <role> --provider <provider> --model <label>` | Guarda perfiles reutilizables para planner, executor, reviewer o researcher sin guardar secretos. |
+| `npx create-quiver ai agent set <role> --provider <provider> --model <label>` | Guarda perfiles reutilizables para planner, executor, reviewer o doctor sin guardar secretos. |
 | `npx create-quiver ai agent list` | Lista los perfiles configurados. |
 | `npx create-quiver ai agent show <role>` | Muestra un perfil específico. |
+| `npx create-quiver ai run create --input requirements.md` | Crea un run persistente en `.quiver/runs/` para un requerimiento. |
+| `npx create-quiver ai status` | Muestra la fase actual del run AI y el próximo comando seguro. |
+| `npx create-quiver ai resume` | Reanuda el run AI desde la última fase válida sin depender del historial del chat. |
+| `npx create-quiver ai inspect` | Resume specs, slices, runs, agentes, layout y próximos comandos accionables. |
+| `npx create-quiver ai export --format json` | Exporta estado de specs, slices, runs, agentes, dependencias y migración para dashboards o agentes. |
+| `npx create-quiver ai export --format markdown` | Exporta el mismo estado en Markdown legible para PRs o docs. |
+| `npx create-quiver ai specs list` | Lista specs con estado, progreso y cantidad de slices. |
+| `npx create-quiver ai slices list` | Lista slices con estado, progreso, dependencias y bloqueos. |
+| `npx create-quiver ai trace report` | Muestra runs, olas de ejecución y estado de migración en formato humano. |
 | `npx create-quiver ai approvals` | Muestra drafts versionados y aprobados por fase. |
 | `npx create-quiver ai approve --phase acceptance --version <n>` | Aprueba una versión concreta de un draft guardado. |
 | `npx create-quiver init --minimal` | Crea solo el contrato esencial de onboarding. |
@@ -326,8 +339,9 @@ El paquete también publica el alias binario `quiver`, que apunta al mismo CLI. 
 | `npx create-quiver doctor --fix` | Aplica reparaciones no destructivas e idempotentes. |
 | `npx create-quiver prepare --dry-run` | Ejecuta diagnóstico guiado de preparación sin escribir archivos. |
 | `npx create-quiver prepare` | Refresca contexto y muestra riesgos, supuestos y próximos comandos. |
-| `npx create-quiver ai prepare-context --dry-run` | Previsualiza borradores de contexto IA, supuestos, riesgos, archivos considerados y rutas omitidas sin escribir. |
+| `npx create-quiver ai prepare-context --dry-run` | Previsualiza docs de onboarding, diffs, supuestos, riesgos, contradicciones y rutas omitidas sin escribir. |
 | `npx create-quiver migrate` | Actualiza proyectos que ya fueron inicializados con Quiver. |
+| `npx create-quiver migrate --dry-run` | Muestra qué actualizaría la migración sin escribir archivos. |
 | `npx create-quiver plan` | Lista slices pendientes en orden y calcula camino crítico. |
 | `npx create-quiver graph` | Muestra el grafo de dependencias (`tree`, `mermaid` o `dot`). |
 | `npx create-quiver next` | Sugiere el próximo slice listo para trabajar. |
@@ -335,9 +349,9 @@ El paquete también publica el alias binario `quiver`, que apunta al mismo CLI. 
 | `npx create-quiver graph --include-completed` | Incluye slices completados en el grafo histórico. |
 | `npx create-quiver next --include-completed` | Mantiene la recomendación accionable y agrega historial completado. |
 | `npx create-quiver spec create` | Crea la spec real desde el plan técnico revisado y aprobado. |
-| `npx create-quiver spec start <spec-dir>` | Crea o reutiliza el worktree dedicado de una spec. |
+| `npx create-quiver spec start <spec-dir>` | Crea o reutiliza el worktree dedicado de una spec. Usá `--dry-run` para ver qué worktree se crearía sin tocar Git. |
 | `npx create-quiver spec status <spec-dir>` | Muestra branch, path, `slice-00` y slices pendientes. |
-| `npx create-quiver spec close <spec-dir>` | Cierra un worktree de spec ya mergeado y limpio. |
+| `npx create-quiver spec close <spec-dir>` | Cierra un worktree de spec ya mergeado y limpio; en modo normal también intenta traer los cambios del merge al checkout principal. |
 | `npx create-quiver start-slice <slice.json>` | Prepara worktree y contexto para ejecutar un slice. |
 | `npx create-quiver check-slice <slice.json>` | Valida readiness del slice. |
 | `npx create-quiver check-slice --local <slice.json>` | Valida estructura local sin exigir remoto/base. |
@@ -356,13 +370,18 @@ El paquete también publica el alias binario `quiver`, que apunta al mismo CLI. 
 ```bash
 npx create-quiver ai prepare-context --dry-run
 npx create-quiver ai onboard --dry-run
+npx create-quiver ai onboard --print-prompt
 npx create-quiver ai agent set planner --provider codex --model "planner-model"
 npx create-quiver ai agent set executor --provider codex --model "executor-model"
+npx create-quiver ai agent set doctor --provider codex --model "diagnostic-model"
 npx create-quiver ai agent list
 npx create-quiver ai plan --phase acceptance --input requirements.md --dry-run
-npx create-quiver ai approve --phase acceptance --input acceptance-approved.md
+npx create-quiver ai plan --phase acceptance --input requirements.md --print-prompt
+npx create-quiver ai revise --phase acceptance --input feedback.md --dry-run
+npx create-quiver ai approve --phase acceptance --version <n>
 npx create-quiver ai plan --phase technical-plan --dry-run
 npx create-quiver ai review-plan --dry-run
+npx create-quiver ai review-plan --print-prompt
 npx create-quiver ai approve --phase technical-plan --version <n>
 npx create-quiver spec create --dry-run
 npx create-quiver ai prompt-slice --slice specs/<project-slug>/slices/slice-01/slice.json --dry-run
@@ -374,11 +393,11 @@ npx create-quiver ai pr --dry-run --input specs/<project-slug>/pr.md --ssh-host-
 ```
 
 Providers soportados: `codex`, `claude` y `gemini`, siempre vía CLI local.
-Usá `--dry-run` primero para revisar provider, rol, context pack, prompt y paths sin ejecutar el modelo.
+Usá `--dry-run` primero para revisar provider, rol, context pack y paths sin ejecutar el modelo. Usá `--print-prompt` cuando quieras ver el prompt exacto que se enviaría, sin depender de autenticación del provider.
 
 Orden recomendado:
 
-1. `ai prepare-context --dry-run`: revisa borradores de contexto, supuestos y riesgos antes de escribir docs.
+1. `ai prepare-context --dry-run`: revisa borradores de contexto, diffs, supuestos, riesgos y contradicciones antes de escribir docs. En modo escritura, Quiver guarda snapshots bajo `.quiver/runs/<run-id>/snapshots/`.
 2. `ai onboard`: el planner entiende el repo y el workflow.
 3. `ai plan --phase acceptance`: convierte requerimientos en criterios de aceptación.
 4. `ai plan --phase technical-plan`: propone el plan técnico.
@@ -387,9 +406,10 @@ Orden recomendado:
 7. `spec create`: genera spec, slices, handoffs y PR body desde el plan revisado y aprobado.
 8. `spec start`: prepara un worktree por spec.
 9. `ai prompt-slice`: imprime el prompt mínimo para asignar un slice manualmente.
-10. `ai execute-slice` / `ai execute-plan`: ejecuta slices aprobados, con commit opt-in. Usá `--mode manual` para prompts y `--mode delegated` para worktrees temporales en olas paralelas.
-11. `ai doctor` / `ai pr`: valida GitHub y crea el PR solo con `--create`.
-12. `spec close`: cierra el worktree después del merge.
+10. `ai execute-slice` / `ai execute-plan`: ejecuta slices aprobados, con commit opt-in. `ai execute-slice` exige worktree/rama correctos, bloquea cambios fuera del alcance declarado, redacta logs sensibles y actualiza `CLOSURE_BRIEF.md`, `EVIDENCE_REPORT.md`, `COMMAND_LOG.md`, `STATUS.md` y `slice.json` cuando la ejecución pasa. Usá `--mode manual` para prompts y `--mode delegated` para worktrees temporales en olas paralelas.
+11. `ai inspect` / `ai export`: exponen estado accionable y formatos JSON/Markdown para humanos, agentes o dashboards.
+12. `ai doctor` / `ai pr`: valida GitHub y crea el PR solo con `--create`.
+13. `spec close`: cierra el worktree después del merge.
 
 ## 🧪 Cómo probar que funciona
 
@@ -406,6 +426,7 @@ Validaciones adicionales disponibles:
 
 ```bash
 npm run smoke:create-quiver
+npm run smoke:doctor-fixtures
 npm run smoke:guided-workflow
 npm run smoke:tiered-pack
 ```
@@ -432,6 +453,7 @@ Notas reales del estado actual:
 - No hay script `npm test`; el comando verificado para tests es `node --test tests/**/*.test.js`.
 - `npm run package:quiver` valida el contenido del paquete npm generado.
 - `npm run smoke:guided-workflow` cubre el flujo guiado con IA sin llamadas reales pagas a providers.
+- `npm run smoke:doctor-fixtures` valida la matriz de estados de proyecto que deben seguir cubiertos por doctor/preflight.
 
 ## 📜 Scripts npm
 
@@ -446,8 +468,13 @@ Notas reales del estado actual:
 | `npm run quiver:doctor` | Ejecuta `npx create-quiver doctor`. |
 | `npm run quiver:evidence` | Ejecuta `npx create-quiver evidence`; usalo como `npm run quiver:evidence -- run -- <comando>`. |
 | `npm run quiver:ai:agent` | Ejecuta `npx create-quiver ai agent`. |
+| `npm run quiver:ai:inspect` | Ejecuta `npx create-quiver ai inspect`. |
+| `npm run quiver:ai:export` | Ejecuta `npx create-quiver ai export`. |
+| `npm run quiver:ai:specs` | Ejecuta `npx create-quiver ai specs list`. |
+| `npm run quiver:ai:slices` | Ejecuta `npx create-quiver ai slices list`. |
+| `npm run quiver:ai:trace` | Ejecuta `npx create-quiver ai trace report`. |
 | `npm run quiver:ai:onboard` | Ejecuta onboarding de IA. |
-| `npm run quiver:ai:prepare-context` | Prepara borradores de contexto IA solo en documentación; usalo primero con `-- --dry-run`. |
+| `npm run quiver:ai:prepare-context` | Prepara docs de contexto IA solo en documentación; usalo primero con `-- --dry-run` para revisar diffs y contradicciones. |
 | `npm run quiver:ai:plan` | Ejecuta planificación IA por fases. |
 | `npm run quiver:ai:review-plan` | Revisa el plan técnico antes de aprobarlo y crear la spec. |
 | `npm run quiver:ai:approve` | Guarda criterios o planes aprobados. |
@@ -462,6 +489,7 @@ Notas reales del estado actual:
 | `npm run quiver:spec:close` | Ejecuta `npx create-quiver spec close`. |
 | `npm run package:quiver` | Empaqueta y valida el tarball npm. |
 | `npm run smoke:create-quiver` | Smoke del instalador `create-quiver`. |
+| `npm run smoke:doctor-fixtures` | Smoke de la matriz de fixtures para validación, doctor y errores accionables. |
 | `npm run smoke:guided-workflow` | Smoke del flujo guiado con IA, PR, cleanup y package safety. |
 | `npm run smoke:tiered-pack` | Smoke de context packs y lifecycle. |
 | `npm run release:quiver` | Release dry-run o publish, según flags. |
@@ -522,7 +550,8 @@ Checklist de release:
 
 1. `node --test tests/**/*.test.js`
 2. `npm run smoke:create-quiver`
-3. `npm run smoke:guided-workflow`
+3. `npm run smoke:doctor-fixtures`
+4. `npm run smoke:guided-workflow`
 4. `npm run smoke:tiered-pack`
 5. `npm pack --dry-run`
 6. Confirmar que el PR esta aprobado antes de publicar.
