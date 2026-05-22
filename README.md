@@ -132,7 +132,7 @@ npx create-quiver ai onboard --dry-run
 
 Qué esperar:
 
-- Quiver crea un contrato visible chico: `AGENTS.md`, `docs/`, scripts `quiver:*` en `package.json` y configuración interna en `.quiver/`.
+- Quiver crea un contrato visible chico: `AGENTS.md`, `docs/`, `.gitignore`, scripts `quiver:*` en `package.json` y configuración interna en `.quiver/`.
 - No crea `docs-template/`, `tools/scripts/` ni una spec placeholder en el flujo default.
 - `analyze` crea el scan crudo en `.quiver/scans/PROJECT_SCAN.json` y el mapa legible en `docs/PROJECT_MAP.md`.
 - `doctor` valida que el contrato inicial esté completo.

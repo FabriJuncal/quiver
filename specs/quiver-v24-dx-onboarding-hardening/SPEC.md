@@ -1,7 +1,7 @@
 # Quiver v24 - DX Onboarding Hardening
 
 **Date:** 2026-05-22
-**Status:** Planned
+**Status:** In progress
 
 Slice numbering resets here. This spec intentionally starts at `slice-00`.
 
@@ -123,7 +123,7 @@ Implement in small vertical slices:
 | Slice | Title | Status | Dependencies |
 |---|---|---|---|
 | slice-00 | Spec foundation and source-of-truth sync | Completed | none |
-| slice-01 | Init and generated template hygiene | Planned | slice-00 |
+| slice-01 | Init and generated template hygiene | Completed | slice-00 |
 | slice-02 | CLI command routing and version mismatch errors | Planned | slice-00 |
 | slice-03 | Doctor fixes and documentation link checks | Planned | slice-01, slice-02 |
 | slice-04 | Prepare output and AI context preparation drafts | Planned | slice-01, slice-02 |

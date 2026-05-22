@@ -22,6 +22,7 @@ const CORE_VISIBLE_DIRECTORIES = ['docs', 'docs/ai', '.quiver', '.quiver/scans']
 const MINIMAL_VISIBLE_FILES = [
   'README.md',
   'AGENTS.md',
+  '.gitignore',
   'docs/AI_CONTEXT.md',
   'docs/AI_ONBOARDING_PROMPT.md',
   'docs/COMMANDS.md',
@@ -270,7 +271,17 @@ function buildInitLayout(projectRoot, options = {}) {
   }
 
   for (const file of visibleFiles) {
-    pushPlannedOperation(operations, projectRoot, file, 'file', file === 'package.json' ? 'update' : 'create', file === 'package.json' ? 'prepare package metadata and scripts' : 'core visible contract file', profile, 'visible');
+    const updateMode = file === 'package.json' || file === '.gitignore';
+    pushPlannedOperation(
+      operations,
+      projectRoot,
+      file,
+      'file',
+      updateMode ? 'update' : 'create',
+      updateMode ? 'prepare project metadata or ignored paths' : 'core visible contract file',
+      profile,
+      'visible',
+    );
   }
 
   if (profile === 'full') {

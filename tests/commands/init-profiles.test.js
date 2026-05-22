@@ -96,6 +96,10 @@ function readPackageJson(projectRoot) {
   return JSON.parse(fs.readFileSync(path.join(projectRoot, 'package.json'), 'utf8'));
 }
 
+function readText(projectRoot, relativePath) {
+  return fs.readFileSync(path.join(projectRoot, relativePath), 'utf8');
+}
+
 test('init command without dry-run writes the default clean AI-first layout', () => {
   const { dir, cleanup } = makeTmpDir();
   const target = path.join(dir, 'target');
@@ -104,6 +108,7 @@ test('init command without dry-run writes the default clean AI-first layout', ()
 
     assert.equal(fs.existsSync(path.join(target, 'README.md')), true);
     assert.equal(fs.existsSync(path.join(target, 'AGENTS.md')), true);
+    assert.equal(fs.existsSync(path.join(target, '.gitignore')), true);
     assert.equal(fs.existsSync(path.join(target, 'docs', 'AI_CONTEXT.md')), true);
     assert.equal(fs.existsSync(path.join(target, 'docs', 'AI_ONBOARDING_PROMPT.md')), true);
     assert.equal(fs.existsSync(path.join(target, 'docs', 'COMMANDS.md')), true);
@@ -113,10 +118,26 @@ test('init command without dry-run writes the default clean AI-first layout', ()
     assert.equal(fs.existsSync(path.join(target, 'specs', 'real-project')), false);
 
     const pkg = readPackageJson(target);
+    assert.equal(pkg.name, 'real-project');
     assert.equal(typeof pkg.scripts['quiver:ai:onboard'], 'string');
     assert.equal(typeof pkg.scripts['quiver:check-slice'], 'string');
     assert.equal(pkg.scripts['start:slice'], undefined);
     assert.equal(pkg.scripts.migrate, undefined);
+
+    const gitignore = readText(target, '.gitignore');
+    assert.match(gitignore, /^node_modules\/$/m);
+    assert.match(gitignore, /^\.DS_Store$/m);
+    assert.match(gitignore, /^dist\/$/m);
+    assert.match(gitignore, /^coverage\/$/m);
+
+    const index = readText(target, path.join('docs', 'INDEX.md'));
+    assert.doesNotMatch(index, /MULTI_AGENT_WORKFLOW\.md/);
+    assert.doesNotMatch(index, /ai\/QUICK\.md/);
+    assert.doesNotMatch(index, /ai\/STANDARD\.md/);
+    assert.doesNotMatch(index, /ai\/DEEP\.md/);
+    assert.doesNotMatch(index, /\.\.\/specs\/real-project/);
+    assert.doesNotMatch(index, /\.\/tools\//);
+    assert.doesNotMatch(index, /\.\/archive\//);
   } finally {
     cleanup();
   }
@@ -130,6 +151,7 @@ test('init --minimal writes only the essential onboarding contract', () => {
 
     assert.equal(fs.existsSync(path.join(target, 'README.md')), true);
     assert.equal(fs.existsSync(path.join(target, 'AGENTS.md')), true);
+    assert.equal(fs.existsSync(path.join(target, '.gitignore')), true);
     assert.equal(fs.existsSync(path.join(target, 'docs', 'AI_CONTEXT.md')), true);
     assert.equal(fs.existsSync(path.join(target, 'docs', 'AI_ONBOARDING_PROMPT.md')), true);
     assert.equal(fs.existsSync(path.join(target, 'docs', 'COMMANDS.md')), true);
@@ -154,7 +176,15 @@ test('init --full preserves the historical compatibility layout explicitly', () 
     assert.equal(fs.existsSync(path.join(target, 'tools', 'scripts')), true);
     assert.equal(fs.existsSync(path.join(target, 'specs', 'full-project', 'slices', 'slice-template', 'slice.json')), true);
 
+    const index = readText(target, path.join('docs', 'INDEX.md'));
+    assert.match(index, /MULTI_AGENT_WORKFLOW\.md/);
+    assert.match(index, /ai\/QUICK\.md/);
+    assert.match(index, /ai\/STANDARD\.md/);
+    assert.match(index, /ai\/DEEP\.md/);
+    assert.match(index, /\.\.\/specs\/full-project/);
+
     const pkg = readPackageJson(target);
+    assert.equal(pkg.name, 'full-project');
     assert.equal(typeof pkg.scripts['quiver:ai:onboard'], 'string');
     assert.equal(typeof pkg.scripts['start:slice'], 'string');
     assert.equal(typeof pkg.scripts.migrate, 'string');
@@ -209,6 +239,26 @@ test('init preserves existing project files by default', () => {
 
     assert.equal(fs.readFileSync(path.join(target, 'README.md'), 'utf8'), '# Keep README\n');
     assert.equal(fs.readFileSync(path.join(target, 'docs', 'COMMANDS.md'), 'utf8'), '# Keep Commands\n');
+  } finally {
+    cleanup();
+  }
+});
+
+test('init merges root gitignore defaults without deleting existing entries', () => {
+  const { dir, cleanup } = makeTmpDir();
+  const target = path.join(dir, 'target');
+  try {
+    fs.mkdirSync(target, { recursive: true });
+    fs.writeFileSync(path.join(target, '.gitignore'), 'custom.log\nnode_modules\n');
+
+    runCli(['init', '--name', 'Gitignore Project', '--dir', target, '--skip-install']);
+
+    const gitignore = readText(target, '.gitignore');
+    assert.match(gitignore, /^custom\.log$/m);
+    assert.equal((gitignore.match(/^node_modules\/?$/gm) || []).length, 1);
+    assert.match(gitignore, /^\.DS_Store$/m);
+    assert.match(gitignore, /^dist\/$/m);
+    assert.match(gitignore, /^coverage\/$/m);
   } finally {
     cleanup();
   }

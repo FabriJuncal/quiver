@@ -1,7 +1,7 @@
 # Quiver v24 Status
 
-**Spec:** DX Onboarding Hardening  
-**Status:** Planned  
+**Spec:** DX Onboarding Hardening
+**Status:** In progress
 **Created:** 2026-05-22
 
 ## Summary
@@ -9,7 +9,7 @@
 | Slice | Title | Status | Progress | Dependencies |
 |---|---|---|---|---|
 | slice-00 | Spec foundation and source-of-truth sync | Completed | 100% | none |
-| slice-01 | Init and generated template hygiene | Planned | 0% | slice-00 |
+| slice-01 | Init and generated template hygiene | Completed | 100% | slice-00 |
 | slice-02 | CLI command routing and version mismatch errors | Planned | 0% | slice-00 |
 | slice-03 | Doctor fixes and documentation link checks | Planned | 0% | slice-01, slice-02 |
 | slice-04 | Prepare output and AI context preparation drafts | Planned | 0% | slice-01, slice-02 |
@@ -22,8 +22,8 @@
 
 ## Current Blockers
 
-- Implementation has not started.
-- `slice-00` must be committed before implementation slices execute.
+- No current blockers for completed slices.
+- Remaining implementation slices must still be validated and committed one slice at a time.
 
 ## Notes
 

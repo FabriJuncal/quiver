@@ -1,5 +1,5 @@
 {
-  "name": "quiver-docs-template",
+  "name": "quiver-project",
   "private": true,
   "scripts": {
     "quiver:migrate": "npx create-quiver migrate",
