@@ -1,7 +1,7 @@
 # Quiver v25 - AI-First Lifecycle Orchestrator
 
 **Date:** 2026-05-22
-**Status:** Planned
+**Status:** In progress
 
 Slice numbering resets here. This spec intentionally starts at `slice-00`.
 
@@ -214,10 +214,10 @@ specs/<spec-slug>/
 | Slice | Title | Status | Dependencies |
 |---|---|---|---|
 | slice-00 | Spec foundation and source-of-truth sync | Completed | none |
-| slice-01 | CLI contract and compatibility | Planned | slice-00 |
-| slice-02 | Run state, phase gates, and locks | Planned | slice-01 |
-| slice-03 | Safe AI onboarding documentation | Planned | slice-02 |
-| slice-04 | Agent profiles and provider adapters | Planned | slice-02 |
+| slice-01 | CLI contract and compatibility | Completed | slice-00 |
+| slice-02 | Run state, phase gates, and locks | Completed | slice-01 |
+| slice-03 | Safe AI onboarding documentation | Completed | slice-02 |
+| slice-04 | Agent profiles and provider adapters | Completed | slice-02 |
 | slice-05 | Approval gates and planner iterations | Planned | slice-02, slice-04 |
 | slice-06 | Spec, slice, handoff, and PR body generation | Planned | slice-05 |
 | slice-07 | Slice execution planning and parallel safety | Planned | slice-06 |

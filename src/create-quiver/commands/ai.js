@@ -49,6 +49,8 @@ const DEFAULT_PLAN_PROVIDER = 'codex';
 const DEFAULT_PLAN_ROLE = 'planner';
 const DEFAULT_PLAN_CONTEXT = 'planning';
 const DEFAULT_PLAN_PHASE = 'acceptance';
+const CONTEXT_PREP_START = '<!-- quiver:context-prep:start -->';
+const CONTEXT_PREP_END = '<!-- quiver:context-prep:end -->';
 
 function formatError(message) {
   return `create-quiver: ${message}`;
@@ -231,28 +233,41 @@ function formatPathList(items, emptyLabel = 'none') {
   return items.map((item) => `- ${item}`);
 }
 
-function formatContextPreparationReport({ dryRun, plan, docs, writtenDocs }) {
+function formatContextPreparationReport({ dryRun, plan, writePlan, writtenDocs, snapshot, completed = false }) {
   const lines = [
-    dryRun ? 'AI prepare-context dry-run' : 'AI prepare-context completed',
+    dryRun ? 'AI prepare-context dry-run' : completed ? 'AI prepare-context completed' : 'AI prepare-context write plan',
     `Mode: ${dryRun ? 'dry-run' : 'live'}`,
     `Project: ${plan.projectName}`,
     `Project slug: ${plan.projectSlug}`,
     'Writes: docs-only',
     'Product code: untouched',
-    `Proposed docs: ${docs.length > 0 ? docs.map((doc) => doc.path).join(', ') : 'none'}`,
+    `Proposed docs: ${writePlan.length > 0 ? writePlan.map((item) => item.path).join(', ') : 'none'}`,
   ];
 
   if (!dryRun) {
-    lines.push(`Written docs: ${writtenDocs.length > 0 ? writtenDocs.join(', ') : 'none'}`);
+    lines.push(`${completed ? 'Written docs' : 'Planned writes'}: ${writtenDocs.length > 0 ? writtenDocs.join(', ') : 'none'}`);
+    if (snapshot) {
+      lines.push(`Snapshot: ${snapshot.root}`);
+    }
+  }
+
+  if (completed) {
+    return `${lines.join('\n')}\n`;
   }
 
   lines.push(
+    'Proposed changes:',
+    ...writePlan.map((item) => `- ${item.path}: ${item.action}${item.reason ? ` (${item.reason})` : ''}`),
+    'Diff preview:',
+    ...formatDiffPreview(writePlan),
     'Files considered:',
     ...plan.filesConsidered.map((item) => `- ${item.path}: ${item.present ? 'present' : 'absent'}${item.reason ? ` (${item.reason})` : ''}`),
     'Assumptions:',
     ...formatPathList(plan.assumptions),
     'Risks:',
     ...formatPathList(plan.risks),
+    'Contradictions:',
+    ...formatPathList(plan.contradictions),
     'Omitted paths:',
     ...formatPathList(plan.omittedPaths),
     'Uncertainty markers: TODO | Assumption | Pending confirmation',
@@ -274,13 +289,157 @@ function getRedactedProviderText(result) {
   return redactSecrets([result.stdout, result.stderr].filter(Boolean).join(''));
 }
 
-function writeDraftDocs(repoRoot, drafts) {
-  const writtenDocs = [];
-  for (const draft of drafts) {
+function normalizeText(value) {
+  return String(value || '').replace(/\r\n/g, '\n');
+}
+
+function buildManagedContextBlock(content) {
+  return `${CONTEXT_PREP_START}\n${String(content || '').trimEnd()}\n${CONTEXT_PREP_END}\n`;
+}
+
+function mergeContextDraft(existingContent, draftContent) {
+  const existing = normalizeText(existingContent);
+  const block = buildManagedContextBlock(draftContent);
+  const startIndex = existing.indexOf(CONTEXT_PREP_START);
+  const endIndex = existing.indexOf(CONTEXT_PREP_END);
+
+  if (startIndex >= 0 && endIndex > startIndex) {
+    const before = existing.slice(0, startIndex).trimEnd();
+    const after = existing.slice(endIndex + CONTEXT_PREP_END.length).trimStart();
+    return `${before}\n\n${block}${after ? `\n${after}` : ''}`;
+  }
+
+  return `${existing.trimEnd()}\n\n${block}`;
+}
+
+function firstChangedLineIndex(beforeLines, afterLines) {
+  const max = Math.max(beforeLines.length, afterLines.length);
+  for (let index = 0; index < max; index += 1) {
+    if (beforeLines[index] !== afterLines[index]) {
+      return index;
+    }
+  }
+  return -1;
+}
+
+function buildDiffSnippet(pathLabel, beforeContent, afterContent, maxLines = 10) {
+  const beforeLines = normalizeText(beforeContent).split('\n');
+  const afterLines = normalizeText(afterContent).split('\n');
+  const changedAt = firstChangedLineIndex(beforeLines, afterLines);
+
+  if (changedAt === -1) {
+    return [`diff -- ${pathLabel}`, '  no changes'];
+  }
+
+  const start = Math.max(0, changedAt - 2);
+  const beforeSnippet = beforeLines.slice(start, start + maxLines);
+  const afterSnippet = afterLines.slice(start, start + maxLines);
+  const lines = [
+    `--- ${pathLabel} (current)`,
+    `+++ ${pathLabel} (proposed)`,
+  ];
+
+  for (const line of beforeSnippet) {
+    if (line) {
+      lines.push(`- ${line}`);
+    }
+  }
+
+  for (const line of afterSnippet) {
+    if (line) {
+      lines.push(`+ ${line}`);
+    }
+  }
+
+  return lines;
+}
+
+function buildContextWritePlan(repoRoot, drafts) {
+  return drafts.map((draft) => {
     const destinationPath = path.join(repoRoot, draft.path);
-    fs.mkdirSync(path.dirname(destinationPath), { recursive: true });
-    fs.writeFileSync(destinationPath, `${draft.content.replace(/\s+$/g, '')}\n`);
-    writtenDocs.push(draft.path);
+    const exists = fs.existsSync(destinationPath);
+    const currentContent = exists ? fs.readFileSync(destinationPath, 'utf8') : '';
+    const proposedContent = exists
+      ? mergeContextDraft(currentContent, draft.content)
+      : `${String(draft.content || '').replace(/\s+$/g, '')}\n`;
+    const changed = normalizeText(currentContent) !== normalizeText(proposedContent);
+
+    return {
+      path: draft.path,
+      destinationPath,
+      action: changed ? (exists ? 'update' : 'create') : 'skip',
+      reason: changed ? (exists ? 'human content preserved; Quiver block appended or refreshed' : 'missing approved context doc') : 'already up to date',
+      exists,
+      currentContent,
+      proposedContent,
+      diff: buildDiffSnippet(draft.path, currentContent, proposedContent),
+    };
+  });
+}
+
+function formatDiffPreview(writePlan) {
+  const lines = [];
+  for (const item of writePlan) {
+    if (item.action === 'skip') {
+      continue;
+    }
+    lines.push(...item.diff);
+  }
+  return lines.length > 0 ? lines : ['- no changes'];
+}
+
+function createContextSnapshots(repoRoot, run, writePlan, now = new Date()) {
+  const stamp = now.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}Z$/, 'Z');
+  const snapshotRoot = path.join(repoRoot, '.quiver', 'runs', run.run_id, 'snapshots', stamp);
+  const manifest = {
+    schema_version: 1,
+    run_id: run.run_id,
+    created_at: now.toISOString(),
+    entries: [],
+  };
+
+  fs.mkdirSync(snapshotRoot, { recursive: true });
+
+  for (const item of writePlan) {
+    if (item.action === 'skip') {
+      continue;
+    }
+    const entry = {
+      path: item.path,
+      action: item.action,
+      existed: item.exists,
+      snapshot_path: null,
+    };
+
+    if (item.exists) {
+      const snapshotPath = path.join(snapshotRoot, item.path);
+      fs.mkdirSync(path.dirname(snapshotPath), { recursive: true });
+      fs.copyFileSync(item.destinationPath, snapshotPath);
+      entry.snapshot_path = path.relative(repoRoot, snapshotPath).split(path.sep).join('/');
+    }
+
+    manifest.entries.push(entry);
+  }
+
+  const manifestPath = path.join(snapshotRoot, 'manifest.json');
+  fs.writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
+
+  return {
+    root: path.relative(repoRoot, snapshotRoot).split(path.sep).join('/'),
+    manifestPath: path.relative(repoRoot, manifestPath).split(path.sep).join('/'),
+    entries: manifest.entries,
+  };
+}
+
+function writeDraftDocs(writePlan) {
+  const writtenDocs = [];
+  for (const item of writePlan) {
+    if (item.action === 'skip') {
+      continue;
+    }
+    fs.mkdirSync(path.dirname(item.destinationPath), { recursive: true });
+    fs.writeFileSync(item.destinationPath, item.proposedContent);
+    writtenDocs.push(item.path);
   }
   return writtenDocs;
 }
@@ -460,33 +619,62 @@ async function runOnboard(repoRoot, options = {}) {
 
 async function runPrepareContext(repoRoot, options = {}) {
   const draftPack = buildContextPreparationDrafts(repoRoot);
+  const writePlan = buildContextWritePlan(repoRoot, draftPack.docs);
   const report = {
     task: 'prepare-context',
     dryRun: options.dryRun === true,
     docs: draftPack.docs.map((doc) => doc.path),
     plan: draftPack.plan,
+    writePlan: writePlan.map((item) => ({
+      path: item.path,
+      action: item.action,
+      reason: item.reason,
+    })),
   };
 
   if (options.dryRun) {
     process.stdout.write(formatContextPreparationReport({
       dryRun: true,
-      docs: draftPack.docs,
       plan: draftPack.plan,
+      writePlan,
       writtenDocs: [],
     }));
     return report;
   }
 
-  const writtenDocs = writeDraftDocs(repoRoot, draftPack.docs);
+  const lifecycleRun = ensureAiRun(repoRoot, {
+    command: 'ai prepare-context',
+    input: options.input || '',
+    runId: options.runId,
+    phase: 'created',
+  });
+  const snapshot = createContextSnapshots(repoRoot, lifecycleRun, writePlan, options.now || new Date());
+  const plannedDocs = writePlan.filter((item) => item.action !== 'skip').map((item) => item.path);
   process.stdout.write(formatContextPreparationReport({
     dryRun: false,
-    docs: draftPack.docs,
     plan: draftPack.plan,
+    writePlan,
+    writtenDocs: plannedDocs,
+    snapshot,
+  }));
+  const writtenDocs = writeDraftDocs(writePlan);
+  updateAiRunPhase(repoRoot, lifecycleRun.run_id, 'onboarding-ready', {
+    artifact: snapshot.manifestPath,
+    command: 'ai prepare-context',
+  });
+  process.stdout.write(formatContextPreparationReport({
+    dryRun: false,
+    plan: draftPack.plan,
+    writePlan,
     writtenDocs,
+    snapshot,
+    completed: true,
   }));
 
   return {
     ...report,
+    runId: lifecycleRun.run_id,
+    snapshot,
     writtenDocs,
   };
 }

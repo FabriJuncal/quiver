@@ -114,6 +114,119 @@ function markPendingConfirmation(value) {
   return `Pending confirmation: ${text}`;
 }
 
+function readJsonIfExists(filePath) {
+  if (!fs.existsSync(filePath)) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(fs.readFileSync(filePath, 'utf8'));
+  } catch {
+    return null;
+  }
+}
+
+function detectPackageManager(projectRoot) {
+  if (hasPath(projectRoot, 'bun.lockb') || hasPath(projectRoot, 'bun.lock')) return 'bun';
+  if (hasPath(projectRoot, 'pnpm-lock.yaml')) return 'pnpm';
+  if (hasPath(projectRoot, 'yarn.lock')) return 'yarn';
+  return 'npm';
+}
+
+function detectSourceDirectories(projectRoot) {
+  const names = ['src', 'app', 'apps', 'packages', 'lib', 'server', 'client', 'web'];
+  return names.filter((name) => {
+    try {
+      return fs.statSync(path.join(projectRoot, name)).isDirectory();
+    } catch {
+      return false;
+    }
+  });
+}
+
+function collectRootNames(projectRoot) {
+  try {
+    return fs.readdirSync(projectRoot, { withFileTypes: true })
+      .filter((entry) => !entry.name.startsWith('.') && entry.name !== 'node_modules')
+      .map((entry) => `${entry.name}${entry.isDirectory() ? '/' : ''}`)
+      .slice(0, 20);
+  } catch {
+    return [];
+  }
+}
+
+function detectStackSummary(packageJson, projectRoot) {
+  const dependencies = {
+    ...(packageJson?.dependencies || {}),
+    ...(packageJson?.devDependencies || {}),
+  };
+  const signals = [];
+
+  if (dependencies.next || hasPath(projectRoot, 'next.config.js') || hasPath(projectRoot, 'next.config.mjs')) signals.push('Next.js');
+  if (dependencies.vite || hasPath(projectRoot, 'vite.config.js') || hasPath(projectRoot, 'vite.config.ts')) signals.push('Vite');
+  if (dependencies.react) signals.push('React');
+  if (dependencies.vue) signals.push('Vue');
+  if (dependencies.angular || dependencies['@angular/core'] || hasPath(projectRoot, 'angular.json')) signals.push('Angular');
+  if (dependencies.svelte || hasPath(projectRoot, 'svelte.config.js')) signals.push('Svelte');
+  if (dependencies.express) signals.push('Express');
+  if (hasPath(projectRoot, 'pyproject.toml') || hasPath(projectRoot, 'requirements.txt')) signals.push('Python');
+  if (hasPath(projectRoot, 'go.mod')) signals.push('Go');
+
+  return signals.length > 0 ? signals.join(', ') : 'Pending confirmation: no primary stack could be inferred from root signals.';
+}
+
+function collectProjectFacts(projectRoot) {
+  const packageJson = readJsonIfExists(path.join(projectRoot, 'package.json'));
+  const scripts = packageJson?.scripts && typeof packageJson.scripts === 'object' ? packageJson.scripts : {};
+  const packageManager = packageJson?.packageManager
+    ? String(packageJson.packageManager).split('@')[0]
+    : detectPackageManager(projectRoot);
+
+  return {
+    packageJsonPresent: Boolean(packageJson),
+    packageManager,
+    stackSummary: detectStackSummary(packageJson, projectRoot),
+    scripts,
+    rootNames: collectRootNames(projectRoot),
+    sourceDirectories: detectSourceDirectories(projectRoot),
+    commands: {
+      install: packageManager === 'pnpm' ? 'pnpm install' : packageManager === 'yarn' ? 'yarn install' : packageManager === 'bun' ? 'bun install' : 'npm install',
+      dev: scripts.dev || scripts.start || 'Pending confirmation: no dev/start script detected.',
+      build: scripts.build || 'Pending confirmation: no build script detected.',
+      test: scripts.test || 'Pending confirmation: no test script detected.',
+      lint: scripts.lint || 'Pending confirmation: no lint script detected.',
+    },
+  };
+}
+
+function readProjectMapField(projectRoot, label) {
+  const filePath = path.join(projectRoot, 'docs', 'PROJECT_MAP.md');
+  if (!fs.existsSync(filePath)) {
+    return '';
+  }
+
+  const text = fs.readFileSync(filePath, 'utf8');
+  const escaped = label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const match = text.match(new RegExp(`^- ${escaped}:\\s*(.+)$`, 'mi'));
+  return match ? match[1].trim() : '';
+}
+
+function collectContextContradictions(projectRoot, plan, facts) {
+  const contradictions = [];
+  const mappedName = readProjectMapField(projectRoot, 'Name');
+  const mappedPackageManager = readProjectMapField(projectRoot, 'Package manager');
+
+  if (mappedName && mappedName !== plan.projectName) {
+    contradictions.push(`docs/PROJECT_MAP.md reports project name '${mappedName}', but package/root identity resolves to '${plan.projectName}'.`);
+  }
+
+  if (mappedPackageManager && mappedPackageManager !== facts.packageManager) {
+    contradictions.push(`docs/PROJECT_MAP.md reports package manager '${mappedPackageManager}', but current root signals resolve to '${facts.packageManager}'.`);
+  }
+
+  return contradictions.map(markPendingConfirmation);
+}
+
 function formatDocStatusLines(items) {
   if (!Array.isArray(items) || items.length === 0) {
     return ['- none'];
@@ -182,6 +295,7 @@ function collectOnboardingContextPlan(projectRoot) {
 function collectContextPreparationPlan(projectRoot) {
   const onboardingPlan = collectOnboardingContextPlan(projectRoot);
   const identity = resolveProjectIdentity(projectRoot);
+  const facts = collectProjectFacts(projectRoot);
   const filesConsidered = CONTEXT_PREP_SOURCE_DOCS.map(([relativePath, reason]) => ({
     path: relativePath,
     reason,
@@ -202,8 +316,7 @@ function collectContextPreparationPlan(projectRoot) {
       ? 'Pending confirmation: docs/INDEX.md is missing, so navigation should stay conservative and index-first.'
       : null,
   ]);
-
-  return {
+  const plan = {
     ...onboardingPlan,
     ...identity,
     approvedDocPaths: getPreparedContextDocPaths(),
@@ -211,6 +324,12 @@ function collectContextPreparationPlan(projectRoot) {
     omittedPaths: onboardingPlan.omittedByDefault.slice(),
     assumptions,
     risks,
+    facts,
+  };
+
+  return {
+    ...plan,
+    contradictions: collectContextContradictions(projectRoot, plan, facts),
   };
 }
 
@@ -230,6 +349,9 @@ function buildContextPreparationNotes(plan) {
     '### Risks',
     ...formatSimpleBullets(plan.risks, 'none'),
     '',
+    '### Contradictions',
+    ...formatSimpleBullets(plan.contradictions, 'none'),
+    '',
     '### Omitted Paths',
     ...formatSimpleBullets(plan.omittedPaths, 'none'),
   ];
@@ -247,6 +369,76 @@ function readTemplate(relativePath) {
   return fs.readFileSync(path.join(PACKAGE_ROOT, relativePath), 'utf8');
 }
 
+function renderProjectMapDraft(plan) {
+  const facts = plan.facts;
+  const lines = [
+    '# Project Map',
+    '',
+    'This file was prepared by `npx create-quiver ai prepare-context`.',
+    'Run `npx create-quiver analyze` to refresh it with a deeper repository scan.',
+    '',
+    '## Project',
+    `- Name: ${plan.projectName}`,
+    `- Slug: ${plan.projectSlug}`,
+    `- Package manager: ${facts.packageManager}`,
+    `- package.json present: ${facts.packageJsonPresent ? 'yes' : 'no'}`,
+    `- Stack summary: ${facts.stackSummary}`,
+    '',
+    '## Commands',
+    `- Install: ${facts.commands.install}`,
+    `- Dev: ${facts.commands.dev}`,
+    `- Build: ${facts.commands.build}`,
+    `- Test: ${facts.commands.test}`,
+    `- Lint: ${facts.commands.lint}`,
+    '',
+    '## Structure',
+    `- Source directories: ${facts.sourceDirectories.length > 0 ? facts.sourceDirectories.join(', ') : 'Pending confirmation: no common source directory detected.'}`,
+    `- Root entries: ${facts.rootNames.length > 0 ? facts.rootNames.join(', ') : 'Pending confirmation: root entries could not be listed.'}`,
+    '',
+    '## Assumptions',
+    ...formatSimpleBullets(plan.assumptions, 'none'),
+    '',
+    '## Risks',
+    ...formatSimpleBullets(plan.risks, 'none'),
+    '',
+    '## Contradictions',
+    ...formatSimpleBullets(plan.contradictions, 'none'),
+  ];
+
+  return `${lines.join('\n')}\n`;
+}
+
+function renderArchitectureDraft(plan) {
+  const facts = plan.facts;
+  const lines = [
+    `# ${plan.projectName} Architecture`,
+    '',
+    'This document captures only what Quiver can infer safely from repository structure and docs.',
+    '',
+    '## Current Understanding',
+    `- Stack: ${facts.stackSummary}`,
+    `- Source directories: ${facts.sourceDirectories.length > 0 ? facts.sourceDirectories.join(', ') : 'Pending confirmation: no common source directory detected.'}`,
+    `- Package manager: ${facts.packageManager}`,
+    '',
+    '## Boundaries',
+    '- TODO: confirm application boundaries with the team.',
+    '- Pending confirmation: no architecture decision should be treated as approved unless it appears in `docs/DECISIONS.md` or an approved spec.',
+    '',
+    '## Commands That Shape Architecture',
+    `- Build: ${facts.commands.build}`,
+    `- Test: ${facts.commands.test}`,
+    `- Lint: ${facts.commands.lint}`,
+    '',
+    '## Risks',
+    ...formatSimpleBullets(plan.risks, 'none'),
+    '',
+    '## Contradictions',
+    ...formatSimpleBullets(plan.contradictions, 'none'),
+  ];
+
+  return `${lines.join('\n')}\n`;
+}
+
 function buildContextPreparationDrafts(projectRoot) {
   const plan = collectContextPreparationPlan(projectRoot);
   const currentDate = new Date().toISOString().slice(0, 10);
@@ -257,6 +449,11 @@ function buildContextPreparationDrafts(projectRoot) {
     estado: 'En preparación',
     fase: 'Fase 0',
     progress: 0,
+    packageManager: plan.facts.packageManager,
+    stackSummary: plan.facts.stackSummary,
+    primaryInstall: plan.facts.commands.install,
+    primaryDev: plan.facts.commands.dev,
+    primaryTest: plan.facts.commands.test,
   };
   const notes = buildContextPreparationNotes(plan);
   const decisionSection = [
@@ -266,6 +463,14 @@ function buildContextPreparationDrafts(projectRoot) {
     `| ${currentDate} | ai prepare-context must remain docs-only | Keeps context prep from touching product code. | Broader write targets | Draft generation stays safe and reviewable |`,
   ].join('\n');
   const docs = [
+    {
+      path: 'docs/INDEX.md',
+      content: appendNotes(renderTemplate(readTemplate('docs/INDEX.md.template'), replacements), notes),
+    },
+    {
+      path: 'docs/PROJECT_MAP.md',
+      content: appendNotes(renderProjectMapDraft(plan), notes),
+    },
     {
       path: 'docs/AI_CONTEXT.md',
       content: appendNotes(renderTemplate(readTemplate('docs/AI_CONTEXT.md.template'), replacements), notes),
@@ -277,6 +482,14 @@ function buildContextPreparationDrafts(projectRoot) {
     {
       path: 'docs/CONTEXTO.md',
       content: appendNotes(renderTemplate(readTemplate('docs/CONTEXTO.md.template'), replacements), notes),
+    },
+    {
+      path: 'docs/WORKFLOW.md',
+      content: appendNotes(renderTemplate(readTemplate('docs/WORKFLOW.md.template'), replacements), notes),
+    },
+    {
+      path: 'docs/ARCHITECTURE.md',
+      content: appendNotes(renderArchitectureDraft(plan), notes),
     },
     {
       path: 'docs/STATUS.md',

@@ -78,6 +78,30 @@ Each implementation slice must append:
 - File locks intentionally require manual inspection/removal when stale; automatic process liveness cleanup is deferred to avoid unsafe cross-platform behavior.
 - Phase guards are available and used by lifecycle status tests, but later slices still need to wire them into spec generation, execution planning, slice execution, and PR creation.
 
+## slice-03 - Safe AI onboarding documentation
+
+### Completed
+
+- Expanded `ai prepare-context` to prepare `INDEX`, `PROJECT_MAP`, `AI_CONTEXT`, `AI_ONBOARDING_PROMPT`, `CONTEXTO`, `WORKFLOW`, `ARCHITECTURE`, `STATUS`, and `DECISIONS` where applicable.
+- Added dry-run write plans with proposed actions, diff snippets, assumptions, risks, contradictions, omitted paths, and uncertainty markers.
+- Added write-mode snapshots under `.quiver/runs/<run-id>/snapshots/` before modifying docs.
+- Preserved human-authored content by appending or refreshing a Quiver-managed context block in existing docs.
+- Added contradiction detection for stale `docs/PROJECT_MAP.md` project name/package manager signals.
+- Wired `ai prepare-context` writes into the AI run lifecycle by advancing to `onboarding-ready`.
+- Updated README, README_FOR_AI, and command docs with the new safe docs behavior.
+
+### Validation
+
+- `node --test tests/commands/ai-onboard.test.js tests/lib/ai-context-packs.test.js tests/lib/init-docs.test.js tests/commands/analyze.test.js` passed: 25 tests.
+- `node --test tests/**/*.test.js` passed: 272 tests.
+- `node -e "JSON.parse(require('fs').readFileSync('specs/quiver-v25-ai-first-lifecycle-orchestrator/slices/slice-03-safe-ai-onboarding-docs/slice.json','utf8')); console.log('slice-03 json ok')"` passed.
+- `git diff --check` passed.
+
+### Risks
+
+- Diff snippets are compact previews, not full patch files; users should still inspect `git diff` before committing generated docs.
+- Contradiction detection is intentionally conservative and currently focuses on high-signal project identity and package-manager mismatches.
+
 ## slice-04 - Agent profiles and provider adapters
 
 ### Completed

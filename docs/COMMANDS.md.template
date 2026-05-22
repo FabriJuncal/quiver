@@ -33,7 +33,7 @@ This document is the canonical command reference for the orchestration roadmap.
 | `quiver:next -- --include-completed` | Keeps actionable next-slice output and appends completed history | macOS, Linux, Windows | v0.11 | `npm run quiver:next -- --include-completed --spec <spec>` |
 | `quiver:ai:agent` | Stores reusable planner/executor/reviewer/doctor provider profiles without secrets | macOS, Linux, Windows | v0.11 | `npm run quiver:ai:agent -- set planner --provider codex --model "planner-model"` |
 | `quiver:ai:onboard` | Runs AI onboarding prompt through a supported local provider CLI | macOS, Linux, Windows | v0.10 | `npm run quiver:ai:onboard -- --dry-run` |
-| `quiver:ai:prepare-context` | Prepares docs-only AI context drafts and reports assumptions, risks, files considered, and omitted paths | macOS, Linux, Windows | v0.11 | `npm run quiver:ai:prepare-context -- --dry-run` |
+| `quiver:ai:prepare-context` | Prepares docs-only AI context drafts with diff preview, assumptions, risks, contradictions, and snapshots before writes | macOS, Linux, Windows | v0.11 | `npm run quiver:ai:prepare-context -- --dry-run` |
 | `quiver:ai:plan` | Runs phase-gated AI planning for acceptance criteria, technical plan, or spec generation | macOS, Linux, Windows | v0.10 | `npm run quiver:ai:plan -- --phase acceptance --input requirements.md --dry-run` |
 | `quiver:ai:review-plan` | Reviews the technical-plan draft for production readiness before approval and spec generation | macOS, Linux, Windows | v0.11 | `npm run quiver:ai:review-plan -- --dry-run` |
 | `quiver:ai:approve` | Persists approved acceptance criteria or technical plans for the next planner phase | macOS, Linux, Windows | v0.10 | `npm run quiver:ai:approve -- --phase acceptance --input acceptance-approved.md` |
@@ -97,7 +97,7 @@ This document is the canonical command reference for the orchestration roadmap.
 - `quiver:next` prints the next ready slice and can auto-start it behind a confirmation prompt.
 - `check-slice` validates `depends_on` targets and requires `parallel_safe_reason` when `parallel_safe` is `never`.
 - `quiver:ai:onboard`, `quiver:ai:plan`, `quiver:ai:review-plan`, and `quiver:ai:execute-slice` support `codex`, `claude`, and `gemini` through local CLIs. Use `--dry-run` first to inspect the invocation without requiring provider auth, or `--print-prompt` to print the exact planner/reviewer prompt without executing a provider.
-- `quiver:ai:prepare-context -- --dry-run` previews docs-only context drafts. Run it before write mode and review assumptions, risks, and omitted paths.
+- `quiver:ai:prepare-context -- --dry-run` previews docs-only context drafts, diff snippets, assumptions, risks, contradictions, and omitted paths. Write mode stores snapshots under `.quiver/runs/<run-id>/snapshots/` and preserves human-authored content by appending or refreshing a Quiver-managed block.
 - `quiver:ai:agent` stores provider/model labels under `.quiver/agents/profiles.json`; credentials stay in the provider CLI or OS credential store.
 - Planner drafts are versioned under `.quiver/approvals/<phase>/drafts/`; use `quiver:ai:review-plan -- --dry-run` before approving a technical-plan draft, then `quiver:ai:approve -- --phase technical-plan --version 1` to approve the reviewed version.
 - `quiver:ai:prompt-slice -- --dry-run` prints a paste-ready manual executor prompt and does not call a provider.

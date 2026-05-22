@@ -2,11 +2,11 @@
 
 **Overall status:** In progress
 **Created:** 2026-05-22
-**Current slice:** slice-04 completed
+**Current slice:** slice-03 completed
 
 ## Summary
 
-The documentation foundation and first implementation slices are in progress. The CLI contract, run state, and provider profile adapter contract have been implemented.
+The documentation foundation and first implementation slices are in progress. The CLI contract, run state, safe onboarding docs, and provider profile adapter contract have been implemented.
 
 ## Slice Status
 
@@ -15,7 +15,7 @@ The documentation foundation and first implementation slices are in progress. Th
 | slice-00-spec-foundation | Completed | Planning artifacts created. |
 | slice-01-cli-contract-compatibility | Completed | Top-level version handling, CLI contract tests, and docs added. |
 | slice-02-run-state-phase-locks | Completed | Persistent runs, status/resume, phase helpers, approval metadata, and locks added. |
-| slice-03-safe-ai-onboarding-docs | Planned | Not started. |
+| slice-03-safe-ai-onboarding-docs | Completed | Docs-only context prep now supports broader onboarding docs, dry-run diffs, snapshots, human-content preservation, and contradiction reporting. |
 | slice-04-agent-profiles-adapters | Completed | Doctor profile, prompt-only output, redacted provider output, focused tests, and docs added. |
 | slice-05-approval-gates | Planned | Not started. |
 | slice-06-spec-slice-generator | Planned | Not started. |
@@ -32,4 +32,4 @@ The documentation foundation and first implementation slices are in progress. Th
 
 ## Next Step
 
-Execute `slice-03-safe-ai-onboarding-docs` or continue to `slice-05-approval-gates` after checking whether onboarding docs and gate wiring need to be sequenced together.
+Continue with `slice-05-approval-gates`.

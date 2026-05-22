@@ -2197,6 +2197,7 @@ async function run(argv) {
     if (args.aiCommand === 'prepare-context') {
       await runAiPrepareContext(process.cwd(), {
         dryRun: args.dryRun,
+        runId: args.aiRunId || undefined,
       });
       return;
     }

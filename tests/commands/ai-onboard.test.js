@@ -201,13 +201,18 @@ test('ai prepare-context dry-run prints proposed docs, assumptions, risks, and o
     assert.ok(output.includes('AI prepare-context dry-run'));
     assert.ok(output.includes('Mode: dry-run'));
     assert.ok(output.includes('Writes: docs-only'));
-    assert.ok(output.includes('Proposed docs: docs/AI_CONTEXT.md, docs/AI_ONBOARDING_PROMPT.md, docs/CONTEXTO.md, docs/STATUS.md, docs/DECISIONS.md'));
+    assert.ok(output.includes('Proposed docs: docs/INDEX.md, docs/PROJECT_MAP.md, docs/AI_CONTEXT.md, docs/AI_ONBOARDING_PROMPT.md, docs/CONTEXTO.md, docs/WORKFLOW.md, docs/ARCHITECTURE.md, docs/STATUS.md, docs/DECISIONS.md'));
+    assert.ok(output.includes('Proposed changes:'));
+    assert.ok(output.includes('Diff preview:'));
+    assert.ok(output.includes('+++ docs/AI_CONTEXT.md (proposed)'));
     assert.ok(output.includes('Files considered:'));
     assert.ok(output.includes('README_FOR_AI.md'));
     assert.ok(output.includes('Assumptions:'));
     assert.ok(output.includes('Risks:'));
+    assert.ok(output.includes('Contradictions:'));
     assert.ok(output.includes('Omitted paths:'));
     assert.ok(output.includes('Uncertainty markers: TODO | Assumption | Pending confirmation'));
+    assert.equal(fs.existsSync(path.join(repo.root, '.quiver')), false);
   } finally {
     repo.cleanup();
   }
@@ -226,18 +231,71 @@ test('ai prepare-context writes docs-only drafts and keeps product code untouche
 
     assert.equal(result.task, 'prepare-context');
     assert.deepEqual(result.writtenDocs, [
+      'docs/INDEX.md',
+      'docs/PROJECT_MAP.md',
       'docs/AI_CONTEXT.md',
       'docs/AI_ONBOARDING_PROMPT.md',
       'docs/CONTEXTO.md',
+      'docs/WORKFLOW.md',
+      'docs/ARCHITECTURE.md',
       'docs/STATUS.md',
       'docs/DECISIONS.md',
     ]);
+    assert.ok(result.runId);
+    assert.ok(result.snapshot);
     assert.equal(fs.readFileSync(path.join(repo.root, 'src/app.js'), 'utf8'), before);
+    assert.ok(fs.existsSync(path.join(repo.root, 'docs', 'INDEX.md')));
+    assert.ok(fs.existsSync(path.join(repo.root, 'docs', 'PROJECT_MAP.md')));
     assert.ok(fs.existsSync(path.join(repo.root, 'docs', 'AI_CONTEXT.md')));
+    assert.ok(fs.existsSync(path.join(repo.root, 'docs', 'ARCHITECTURE.md')));
     assert.ok(fs.existsSync(path.join(repo.root, 'docs', 'DECISIONS.md')));
+    assert.ok(fs.existsSync(path.join(repo.root, result.snapshot.manifestPath)));
     const decisions = fs.readFileSync(path.join(repo.root, 'docs', 'DECISIONS.md'), 'utf8');
     assert.ok(decisions.includes('Context Preparation Decisions'));
     assert.ok(decisions.includes('README_FOR_AI.md absence in generated projects is guidance-only, not project debt'));
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('ai prepare-context preserves human-authored docs and snapshots before updating', async () => {
+  const repo = makeRepo({
+    'README.md': '# Demo\n',
+    'package.json': JSON.stringify({ name: 'demo-project' }, null, 2),
+    'docs/CONTEXTO.md': '# Manual Context\n\nThis paragraph was written by a human.\n',
+  });
+
+  try {
+    const result = await runPrepareContext(repo.root, {
+      now: new Date('2026-05-22T12:00:00.000Z'),
+    });
+    const contexto = fs.readFileSync(path.join(repo.root, 'docs', 'CONTEXTO.md'), 'utf8');
+    const snapshotPath = result.snapshot.entries.find((entry) => entry.path === 'docs/CONTEXTO.md').snapshot_path;
+    const snapshot = fs.readFileSync(path.join(repo.root, snapshotPath), 'utf8');
+
+    assert.ok(contexto.includes('This paragraph was written by a human.'));
+    assert.ok(contexto.includes('<!-- quiver:context-prep:start -->'));
+    assert.ok(contexto.includes('<!-- quiver:context-prep:end -->'));
+    assert.equal(snapshot, '# Manual Context\n\nThis paragraph was written by a human.\n');
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('ai prepare-context reports contradictions between project map and current root signals', () => {
+  const repo = makeRepo({
+    'README.md': '# Demo\n',
+    'package.json': JSON.stringify({ name: 'demo-project' }, null, 2),
+    'docs/PROJECT_MAP.md': '# Project Map\n\n## Project\n- Name: other-project\n- Package manager: pnpm\n',
+    'package-lock.json': '{}\n',
+  });
+
+  try {
+    const output = execAiTask(repo.root, 'prepare-context', ['--dry-run']);
+    assert.ok(output.includes('Contradictions:'));
+    assert.ok(output.includes("docs/PROJECT_MAP.md reports project name 'other-project'"));
+    assert.ok(output.includes("docs/PROJECT_MAP.md reports package manager 'pnpm'"));
+    assert.equal(fs.readFileSync(path.join(repo.root, 'docs', 'PROJECT_MAP.md'), 'utf8').includes('quiver:context-prep:start'), false);
   } finally {
     repo.cleanup();
   }

@@ -69,9 +69,13 @@ test('prepare-context only targets approved docs and never product code', () => 
   const paths = getPreparedContextDocPaths();
 
   assert.deepEqual(paths, [
+    'docs/INDEX.md',
+    'docs/PROJECT_MAP.md',
     'docs/AI_CONTEXT.md',
     'docs/AI_ONBOARDING_PROMPT.md',
     'docs/CONTEXTO.md',
+    'docs/WORKFLOW.md',
+    'docs/ARCHITECTURE.md',
     'docs/STATUS.md',
     'docs/DECISIONS.md',
   ]);

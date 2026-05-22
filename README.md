@@ -330,7 +330,7 @@ El paquete también publica el alias binario `quiver`, que apunta al mismo CLI. 
 | `npx create-quiver doctor --fix` | Aplica reparaciones no destructivas e idempotentes. |
 | `npx create-quiver prepare --dry-run` | Ejecuta diagnóstico guiado de preparación sin escribir archivos. |
 | `npx create-quiver prepare` | Refresca contexto y muestra riesgos, supuestos y próximos comandos. |
-| `npx create-quiver ai prepare-context --dry-run` | Previsualiza borradores de contexto IA, supuestos, riesgos, archivos considerados y rutas omitidas sin escribir. |
+| `npx create-quiver ai prepare-context --dry-run` | Previsualiza docs de onboarding, diffs, supuestos, riesgos, contradicciones y rutas omitidas sin escribir. |
 | `npx create-quiver migrate` | Actualiza proyectos que ya fueron inicializados con Quiver. |
 | `npx create-quiver plan` | Lista slices pendientes en orden y calcula camino crítico. |
 | `npx create-quiver graph` | Muestra el grafo de dependencias (`tree`, `mermaid` o `dot`). |
@@ -386,7 +386,7 @@ Usá `--dry-run` primero para revisar provider, rol, context pack y paths sin ej
 
 Orden recomendado:
 
-1. `ai prepare-context --dry-run`: revisa borradores de contexto, supuestos y riesgos antes de escribir docs.
+1. `ai prepare-context --dry-run`: revisa borradores de contexto, diffs, supuestos, riesgos y contradicciones antes de escribir docs. En modo escritura, Quiver guarda snapshots bajo `.quiver/runs/<run-id>/snapshots/`.
 2. `ai onboard`: el planner entiende el repo y el workflow.
 3. `ai plan --phase acceptance`: convierte requerimientos en criterios de aceptación.
 4. `ai plan --phase technical-plan`: propone el plan técnico.
@@ -455,7 +455,7 @@ Notas reales del estado actual:
 | `npm run quiver:evidence` | Ejecuta `npx create-quiver evidence`; usalo como `npm run quiver:evidence -- run -- <comando>`. |
 | `npm run quiver:ai:agent` | Ejecuta `npx create-quiver ai agent`. |
 | `npm run quiver:ai:onboard` | Ejecuta onboarding de IA. |
-| `npm run quiver:ai:prepare-context` | Prepara borradores de contexto IA solo en documentación; usalo primero con `-- --dry-run`. |
+| `npm run quiver:ai:prepare-context` | Prepara docs de contexto IA solo en documentación; usalo primero con `-- --dry-run` para revisar diffs y contradicciones. |
 | `npm run quiver:ai:plan` | Ejecuta planificación IA por fases. |
 | `npm run quiver:ai:review-plan` | Revisa el plan técnico antes de aprobarlo y crear la spec. |
 | `npm run quiver:ai:approve` | Guarda criterios o planes aprobados. |
