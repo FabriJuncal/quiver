@@ -129,6 +129,7 @@ Options:
       --show-conflicts        Show shared file paths in graph output
       --level <n>             Restrict graph output to one level
       --json                  Emit machine-readable JSON
+      --include-completed     Include completed slices in plan, graph, or next history output
       --only-ready            Show only slices with no pending dependencies
       --all-ready             List every ready slice returned by next
       --auto-start            Prompt for confirmation and run start-slice on next
@@ -223,6 +224,7 @@ function parseArgs(argv) {
     strict: false,
     strictOverlap: false,
     json: false,
+    includeCompleted: false,
     onlyReady: false,
     allReady: false,
     autoStart: false,
@@ -422,6 +424,11 @@ function parseArgs(argv) {
 
     if (arg === '--json') {
       result.json = true;
+      continue;
+    }
+
+    if (arg === '--include-completed') {
+      result.includeCompleted = true;
       continue;
     }
 
@@ -1962,6 +1969,7 @@ async function run(argv) {
 
   if (args.mode === 'plan') {
     runPlan(process.cwd(), {
+      includeCompleted: args.includeCompleted,
       json: args.json,
       onlyReady: args.onlyReady,
       specSlug: args.specSlug,
@@ -2122,9 +2130,11 @@ async function run(argv) {
   if (args.mode === 'graph') {
     runGraph(process.cwd(), {
       format: args.format,
+      includeCompleted: args.includeCompleted,
       json: args.json,
       level: args.level,
       showConflicts: args.showConflicts,
+      specSlug: args.specSlug,
       unicode: args.unicode,
     });
     return;
@@ -2134,6 +2144,7 @@ async function run(argv) {
     await runNext(process.cwd(), {
       allReady: args.allReady,
       autoStart: args.autoStart,
+      includeCompleted: args.includeCompleted,
       json: args.json,
       specSlug: args.specSlug,
     });

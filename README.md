@@ -325,6 +325,9 @@ El paquete también publica el alias binario `quiver`, que apunta al mismo CLI. 
 | `npx create-quiver plan` | Lista slices pendientes en orden y calcula camino crítico. |
 | `npx create-quiver graph` | Muestra el grafo de dependencias (`tree`, `mermaid` o `dot`). |
 | `npx create-quiver next` | Sugiere el próximo slice listo para trabajar. |
+| `npx create-quiver plan --include-completed` | Muestra slices completados para auditoría o demos. |
+| `npx create-quiver graph --include-completed` | Incluye slices completados en el grafo histórico. |
+| `npx create-quiver next --include-completed` | Mantiene la recomendación accionable y agrega historial completado. |
 | `npx create-quiver spec create` | Crea la spec real desde el plan técnico revisado y aprobado. |
 | `npx create-quiver spec start <spec-dir>` | Crea o reutiliza el worktree dedicado de una spec. |
 | `npx create-quiver spec status <spec-dir>` | Muestra branch, path, `slice-00` y slices pendientes. |

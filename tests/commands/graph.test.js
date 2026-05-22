@@ -89,6 +89,24 @@ test('collectGraph returns pending levels and conflicts', () => {
   }
 });
 
+test('graph can include completed slices and filter by spec', () => {
+  const repo = graphFixture();
+  try {
+    const defaultReport = collectGraph(repo.root);
+    const historyReport = collectGraph(repo.root, { includeCompleted: true });
+    const specReport = collectGraph(repo.root, { includeCompleted: true, specSlug: 'spec-d' });
+    const cliOutput = execGraph(repo.root, ['--include-completed', '--spec', 'spec-d']);
+
+    assert.ok(!defaultReport.levels.flat().some((item) => item.ref === 'spec-d/slice-01-done'));
+    assert.ok(historyReport.levels.flat().some((item) => item.ref === 'spec-d/slice-01-done'));
+    assert.deepEqual(specReport.levels.flat().map((item) => item.ref), ['spec-d/slice-01-done']);
+    assert.ok(cliOutput.includes('spec-d/slice-01-done'));
+    assert.ok(!cliOutput.includes('spec-a/slice-01-alpha'));
+  } finally {
+    repo.cleanup();
+  }
+});
+
 test('graph CLI renders an ASCII tree by default', () => {
   const repo = graphFixture();
   try {

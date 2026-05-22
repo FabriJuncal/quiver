@@ -143,6 +143,7 @@ function readAllSlices(rootDir) {
           parallel_safe: typeof json.parallel_safe === 'string' ? json.parallel_safe : null,
           parallel_safe_reason: typeof json.parallel_safe_reason === 'string' ? json.parallel_safe_reason : null,
           status: typeof json.status === 'string' ? json.status : 'draft',
+          ticket: typeof json.ticket === 'string' ? json.ticket : '',
           title: typeof json.title === 'string' ? json.title : sliceId,
           json,
         });

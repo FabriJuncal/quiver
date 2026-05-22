@@ -2,7 +2,7 @@
 
 ## Status
 
-`slice-00` documentation foundation, `slice-01` init/template hygiene, `slice-02` CLI routing/version diagnostics, `slice-03` doctor fixes/link checks, `slice-05` local slice validation, and `slice-07` analyzer command map hardening are completed. Remaining implementation slices are pending.
+`slice-00` documentation foundation, `slice-01` init/template hygiene, `slice-02` CLI routing/version diagnostics, `slice-03` doctor fixes/link checks, `slice-05` local slice validation, `slice-06` historical planning views, and `slice-07` analyzer command map hardening are completed. Remaining implementation slices are pending.
 
 ## Required Final Evidence
 
@@ -27,4 +27,8 @@
 | slice-02 | `node --test tests/commands/init-profiles.test.js tests/commands/doctor.test.js tests/commands/flow.test.js` | Pass | 29 tests passed, covering unsupported command routing, legacy `--name`, doctor script mismatch warnings, and flow regressions. |
 | slice-03 | `node --test tests/lib/doctor.test.js tests/commands/doctor.test.js tests/commands/prepare.test.js` | Pass | 15 tests passed, covering fix dry-run, idempotent fixes, local docs link warnings, and prepare regressions. |
 | slice-05 | `node --test tests/lib/check-slice.test.js tests/commands/flow.test.js` | Pass | 18 tests passed, covering `check-slice --local`, omitted-check reporting, missing-base guidance, explicit base branch, and flow regressions. |
+| slice-06 | `node --test tests/commands/plan.test.js tests/commands/graph.test.js tests/commands/next.test.js tests/lib/slice-graph.test.js` | Pass | 30 tests passed, covering `--include-completed`, spec filtering, JSON output, next history behavior, and ticket propagation. |
+| slice-06 | `node bin/create-quiver.js plan --spec quiver-v24-dx-onboarding-hardening --include-completed` | Pass | Plan history view shows completed v24 slices and preserves `QUIVER-24-*` ticket values. |
+| slice-06 | `node bin/create-quiver.js graph --spec quiver-v24-dx-onboarding-hardening --include-completed` | Pass | Graph history view is restricted to v24 and no longer leaks unrelated specs. |
+| slice-06 | `node bin/create-quiver.js next --spec quiver-v24-dx-onboarding-hardening --include-completed` | Pass | Next output keeps an actionable planned slice and appends completed history separately. |
 | slice-07 | `node --test tests/commands/analyze.test.js tests/lib/project-scan.test.js` | Pass | 6 tests passed, covering plain Node/JavaScript analysis, language dedupe, useful script surfacing, and scan artifact helpers. |

@@ -62,6 +62,7 @@ Prefer maps, metadata, diffs, and summaries over full file reads when they are e
 - `quiver:graph` defaults to the tree view; choose `--format mermaid` or `--format dot` when you need exportable graph artifacts.
 - `quiver:next` prints the next ready slice and can auto-start it behind a confirmation prompt.
 - `quiver:next --all-ready` prints the whole ready level when you want to inspect every actionable slice at once.
+- Use `--include-completed` with `plan`, `graph`, or `next` only for audit/demo history; default output remains pending/actionable work.
 
 ## Initialization Flow
 

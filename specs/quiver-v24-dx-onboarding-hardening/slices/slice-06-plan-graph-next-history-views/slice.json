@@ -55,6 +55,6 @@
     "node --test tests/commands/plan.test.js tests/commands/graph.test.js tests/commands/next.test.js tests/lib/slice-graph.test.js"
   ],
   "estimated_hours": 5,
-  "status": "planned",
+  "status": "completed",
   "blocked_reason": null
 }
