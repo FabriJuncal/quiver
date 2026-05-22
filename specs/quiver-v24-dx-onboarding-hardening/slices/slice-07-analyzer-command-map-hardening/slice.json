@@ -1,0 +1,51 @@
+{
+  "slice_id": "slice-07-analyzer-command-map-hardening",
+  "ticket": "QUIVER-24-07",
+  "type": "feature",
+  "title": "Analyzer command map hardening",
+  "objective": "Improve project analysis for small Node/JavaScript projects and make PROJECT_MAP.md more useful for agents.",
+  "description": "Detect vanilla Node/JavaScript projects, deduplicate language signals, surface scripts like validate, and keep command summaries token-efficient.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "analyzer-command-map-hardening",
+    "branch_name": "feature/QUIVER-24-07-analyzer-command-map-hardening"
+  },
+  "files": [
+    "src/create-quiver/index.js",
+    "src/create-quiver/lib/analyze.js",
+    "src/create-quiver/lib/project-scan.js",
+    "tests/commands/analyze.test.js",
+    "tests/lib/project-scan.test.js"
+  ],
+  "depends_on": [
+    "slice-01-init-template-hygiene"
+  ],
+  "parallel_safe": "yes",
+  "parallel_safe_reason": "Can run after init output is stable; owns analyzer/project-map behavior.",
+  "must": [
+    "Recognize simple Node/JavaScript projects more precisely than unknown.",
+    "Deduplicate language output.",
+    "List useful scripts including validate.",
+    "Keep PROJECT_MAP.md concise and agent-friendly.",
+    "Avoid scanning dependency folders, generated outputs, secrets, caches, and local AI state."
+  ],
+  "not_included": [
+    "Full framework detection rewrite.",
+    "Runtime execution of project scripts.",
+    "Static analysis of product code."
+  ],
+  "acceptance": [
+    "A vanilla Node/JavaScript fixture is not reported as primary unknown when package/source signals exist.",
+    "Languages are deduplicated.",
+    "`validate`, `start`, `dev`, and `test` scripts are surfaced when present.",
+    "PROJECT_MAP.md keeps skipped-path guidance.",
+    "Existing framework detection tests still pass."
+  ],
+  "tests": [
+    "node --test tests/commands/analyze.test.js tests/lib/project-scan.test.js"
+  ],
+  "estimated_hours": 4,
+  "status": "planned",
+  "blocked_reason": null
+}

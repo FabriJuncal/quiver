@@ -1,0 +1,52 @@
+{
+  "slice_id": "slice-02-cli-command-routing-version-errors",
+  "ticket": "QUIVER-24-02",
+  "type": "feature",
+  "title": "CLI command routing and version mismatch errors",
+  "objective": "Prevent unknown or unsupported subcommands from being interpreted as legacy project names and make CLI version mismatches actionable.",
+  "description": "Harden command parsing, improve unknown-command errors, and report when generated scripts target commands unsupported by the installed package.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "cli-routing-version-errors",
+    "branch_name": "feature/QUIVER-24-02-cli-routing-version-errors"
+  },
+  "files": [
+    "src/create-quiver/index.js",
+    "src/create-quiver/commands/flow.js",
+    "src/create-quiver/lib/doctor.js",
+    "tests/commands/flow.test.js",
+    "tests/commands/doctor.test.js",
+    "tests/commands/init-profiles.test.js"
+  ],
+  "depends_on": [
+    "slice-00-spec-foundation"
+  ],
+  "parallel_safe": "yes",
+  "parallel_safe_reason": "Can run in parallel with template and analyzer work if parser edits in index.js are coordinated.",
+  "must": [
+    "Unknown subcommands fail clearly.",
+    "Legacy --name alias remains supported.",
+    "Modern subcommand names are not treated as project names by old-style routing.",
+    "Version/script mismatch diagnostics are actionable.",
+    "Errors recommend --help or update path."
+  ],
+  "not_included": [
+    "Changing command names.",
+    "Removing legacy --name compatibility.",
+    "Implementing doctor --fix."
+  ],
+  "acceptance": [
+    "Unsupported subcommands do not trigger init alias behavior.",
+    "Error output names the unsupported command and shows next steps.",
+    "`npx create-quiver --name \"Project\"` still works.",
+    "Doctor can warn when generated scripts reference unsupported commands.",
+    "Tests cover modern command names with older/unsupported routing behavior."
+  ],
+  "tests": [
+    "node --test tests/commands/init-profiles.test.js tests/commands/doctor.test.js tests/commands/flow.test.js"
+  ],
+  "estimated_hours": 4,
+  "status": "planned",
+  "blocked_reason": null
+}

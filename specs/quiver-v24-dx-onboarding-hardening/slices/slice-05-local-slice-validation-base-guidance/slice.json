@@ -1,0 +1,52 @@
+{
+  "slice_id": "slice-05-local-slice-validation-base-guidance",
+  "ticket": "QUIVER-24-05",
+  "type": "feature",
+  "title": "Local slice validation and base branch guidance",
+  "objective": "Separate local slice readiness from remote/base-branch PR readiness so new repos can validate slices without `origin/develop`.",
+  "description": "Add `check-slice --local`, configurable base/remote guidance, and clearer output for validations omitted in local mode.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "local-slice-validation-base-guidance",
+    "branch_name": "feature/QUIVER-24-05-local-slice-validation-base-guidance"
+  },
+  "files": [
+    "src/create-quiver/index.js",
+    "src/create-quiver/lib/readiness.js",
+    "src/create-quiver/lib/slice.js",
+    "src/create-quiver/lib/git.js",
+    "tests/lib/check-slice.test.js",
+    "tests/commands/flow.test.js"
+  ],
+  "depends_on": [
+    "slice-02-cli-command-routing-version-errors"
+  ],
+  "parallel_safe": "yes",
+  "parallel_safe_reason": "Can run after CLI routing is stable; owns slice readiness behavior.",
+  "must": [
+    "Add `check-slice --local`.",
+    "Make local mode validate JSON, handoffs, dependencies, file declarations, and status rules.",
+    "Make local mode explicitly report omitted remote/base checks.",
+    "Improve normal mode guidance when no remote/base exists.",
+    "Support explicit `--base` and existing config where appropriate."
+  ],
+  "not_included": [
+    "Changing PR creation checks.",
+    "Changing slice schema unless required.",
+    "Starting worktrees."
+  ],
+  "acceptance": [
+    "`check-slice --local` works in a repo without remotes.",
+    "Local mode reports which remote/base validations were omitted.",
+    "Normal mode without remote suggests `--local`, `--base`, or config.",
+    "Existing remote/base validation behavior remains available.",
+    "Tests cover new repo, missing remote, explicit base, and valid local slice cases."
+  ],
+  "tests": [
+    "node --test tests/lib/check-slice.test.js tests/commands/flow.test.js"
+  ],
+  "estimated_hours": 5,
+  "status": "planned",
+  "blocked_reason": null
+}

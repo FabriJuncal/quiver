@@ -1,0 +1,76 @@
+{
+  "slice_id": "slice-10-docs-smokes-release-readiness",
+  "ticket": "QUIVER-24-10",
+  "type": "docs",
+  "title": "Docs, smokes, and release readiness",
+  "objective": "Close v24 with documentation, smoke coverage, evidence, and package safety checks.",
+  "description": "Update README, README_FOR_AI, roadmap, command docs, templates, smoke scripts, evidence report, and release readiness notes after implementation slices land.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "docs-smokes-release-readiness",
+    "branch_name": "feature/QUIVER-24-10-docs-smokes-release-readiness"
+  },
+  "files": [
+    "README.md",
+    "README_FOR_AI.md",
+    "ROADMAP.md",
+    "CHANGELOG.md",
+    "docs/COMMANDS.md.template",
+    "docs/WORKFLOW.md.template",
+    "docs/TROUBLESHOOTING.md.template",
+    "docs/SUPPORT_MATRIX.md.template",
+    "scripts/ci/smoke-create-quiver.sh",
+    "scripts/ci/smoke-guided-workflow.sh",
+    "scripts/ci/smoke-tiered-pack.sh",
+    "tests/**",
+    "specs/quiver-v24-dx-onboarding-hardening/EVIDENCE_REPORT.md",
+    "specs/quiver-v24-dx-onboarding-hardening/STATUS.md",
+    "specs/quiver-v24-dx-onboarding-hardening/pr.md"
+  ],
+  "depends_on": [
+    "slice-01-init-template-hygiene",
+    "slice-02-cli-command-routing-version-errors",
+    "slice-03-doctor-fix-doc-link-checks",
+    "slice-04-prepare-output-ai-context-drafts",
+    "slice-05-local-slice-validation-base-guidance",
+    "slice-06-plan-graph-next-history-views",
+    "slice-07-analyzer-command-map-hardening",
+    "slice-08-evidence-run-command",
+    "slice-09-spec-viewer-demo-scaffolding"
+  ],
+  "parallel_safe": "no",
+  "parallel_safe_reason": "Final integration slice must run after all implementation behavior is known.",
+  "must": [
+    "Update user-facing docs for all shipped v24 behavior.",
+    "Update README_FOR_AI.md to mark implemented behavior accurately.",
+    "Update ROADMAP/CHANGELOG without claiming an npm release unless it happened.",
+    "Add or update smoke tests.",
+    "Run final test and package safety checks.",
+    "Update evidence and status."
+  ],
+  "not_included": [
+    "Publishing to npm.",
+    "Opening or merging the PR.",
+    "Adding new product behavior not covered by earlier slices."
+  ],
+  "acceptance": [
+    "README documents v24 commands and safe first-use flow.",
+    "README_FOR_AI.md is synchronized with actual implemented behavior.",
+    "Smokes cover init hygiene, prepare, local slice validation, historical views, evidence, and demo dry-run.",
+    "Evidence report records final validation commands and results.",
+    "Package safety and npm pack dry-run pass.",
+    "No docs claim a package release that has not happened."
+  ],
+  "tests": [
+    "git diff --check",
+    "node --test tests/**/*.test.js",
+    "npm run smoke:create-quiver",
+    "npm run smoke:guided-workflow",
+    "npm run smoke:tiered-pack",
+    "npm pack --dry-run"
+  ],
+  "estimated_hours": 5,
+  "status": "planned",
+  "blocked_reason": null
+}

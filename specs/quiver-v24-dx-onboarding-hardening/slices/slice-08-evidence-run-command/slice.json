@@ -1,0 +1,54 @@
+{
+  "slice_id": "slice-08-evidence-run-command",
+  "ticket": "QUIVER-24-08",
+  "type": "feature",
+  "title": "Evidence run command",
+  "objective": "Automate command execution evidence capture without hiding failures or leaking common secrets.",
+  "description": "Add `evidence run -- <command>` to capture command, exit code, duration, redacted/truncated output summary, and write evidence to a safe target.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "evidence-run-command",
+    "branch_name": "feature/QUIVER-24-08-evidence-run-command"
+  },
+  "files": [
+    "src/create-quiver/index.js",
+    "src/create-quiver/commands/evidence.js",
+    "src/create-quiver/lib/evidence.js",
+    "tests/commands/evidence.test.js",
+    "tests/lib/evidence.test.js",
+    "docs/COMMANDS.md.template",
+    "docs/WORKFLOW.md.template"
+  ],
+  "depends_on": [
+    "slice-03-doctor-fix-doc-link-checks"
+  ],
+  "parallel_safe": "yes",
+  "parallel_safe_reason": "Can run after doctor/reporting patterns are stable; owns evidence command and docs.",
+  "must": [
+    "Add `evidence run -- <command>`.",
+    "Capture command, exit code, duration, and output summary.",
+    "Preserve the wrapped command exit code.",
+    "Truncate long output.",
+    "Redact common token/secret patterns.",
+    "Write evidence only to an explicit or safe default location."
+  ],
+  "not_included": [
+    "A full secret scanner.",
+    "Uploading evidence externally.",
+    "Running provider calls in tests."
+  ],
+  "acceptance": [
+    "Successful command evidence records exit code 0.",
+    "Failing command evidence records non-zero exit code and the CLI exits non-zero.",
+    "Long output is truncated.",
+    "Common secret patterns are redacted.",
+    "Output path behavior is documented and tested."
+  ],
+  "tests": [
+    "node --test tests/commands/evidence.test.js tests/lib/evidence.test.js"
+  ],
+  "estimated_hours": 5,
+  "status": "planned",
+  "blocked_reason": null
+}
