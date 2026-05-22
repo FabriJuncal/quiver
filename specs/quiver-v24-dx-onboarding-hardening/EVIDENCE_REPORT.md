@@ -2,7 +2,7 @@
 
 ## Status
 
-`slice-00` documentation foundation, `slice-01` init/template hygiene, `slice-02` CLI routing/version diagnostics, `slice-03` doctor fixes/link checks, `slice-05` local slice validation, `slice-06` historical planning views, `slice-07` analyzer command map hardening, and `slice-08` evidence command are completed. Remaining implementation slices are pending.
+`slice-00` documentation foundation, `slice-01` init/template hygiene, `slice-02` CLI routing/version diagnostics, `slice-03` doctor fixes/link checks, `slice-05` local slice validation, `slice-06` historical planning views, `slice-07` analyzer command map hardening, `slice-08` evidence command, and `slice-09` Spec Viewer demo scaffolding are completed. Remaining implementation slices are pending.
 
 ## Required Final Evidence
 
@@ -37,3 +37,8 @@
 | slice-08 | `node --test tests/commands/init-profiles.test.js tests/lib/init-docs.test.js tests/lib/doctor.test.js tests/commands/prepare.test.js` | Pass | 30 tests passed, covering generated init profiles, docs initialization, doctor layout checks, and prepare regressions. |
 | slice-08 | `node bin/create-quiver.js evidence run --output /private/tmp/quiver-v24-slice08-evidence.md --max-output 200 -- node --version` | Pass | Smoke verified direct command execution, exit code preservation, and explicit output path display. |
 | slice-08 | `npm run smoke:create-quiver` | Pass | Generated package smoke passed after adding `quiver:evidence` to generated scripts. |
+| slice-09 | `node --test tests/commands/demo.test.js tests/lib/package-safety.test.js` | Pass | 9 tests passed, covering dry-run, default nested target, real scaffold, file preservation, unsupported demo errors, and package safety for local demo output. |
+| slice-09 | `node bin/create-quiver.js demo create spec-viewer --dir /private/tmp/quiver-spec-viewer-smoke --dry-run` | Pass | Dry-run listed 17 files and wrote nothing. |
+| slice-09 | `node bin/create-quiver.js demo create spec-viewer --dir /private/tmp/quiver-spec-viewer-smoke-real` | Pass | Created static demo app, spec/slices, handoffs, PR body, and validation script. |
+| slice-09 | `npm run validate` from `/private/tmp/quiver-spec-viewer-smoke-real` | Pass | Generated demo validation passed. |
+| slice-09 | `npm run smoke:create-quiver` | Pass | Smoke now covers demo dry-run, real scaffold, demo validation, and evidence capture from the generated demo. |

@@ -10,6 +10,7 @@ const {
   formatDoctorFixPlan,
 } = require('./lib/doctor');
 const { runAgent: runAiAgent, runApprovalStatus: runAiApprovalStatus, runApprove: runAiApprove, runDoctor: runAiDoctor, runExecutePlan: runAiExecutePlan, runExecuteSlice: runAiExecuteSlice, runOnboard, runPlan: runAiPlan, runPr: runAiPr, runPromptSlice: runAiPromptSlice, runReviewPlan: runAiReviewPlan } = require('./commands/ai');
+const { runDemo } = require('./commands/demo');
 const { runPrepare } = require('./commands/prepare');
 const { runEvidence } = require('./commands/evidence');
 const { runFlow } = require('./commands/flow');
@@ -66,6 +67,7 @@ const SUPPORTED_COMMAND_MODES = new Set([
   'refresh-active-slices',
   'spec',
   'evidence',
+  'demo',
   'ai',
 ]);
 
@@ -86,6 +88,7 @@ const SUPPORTED_AI_COMMANDS = new Set([
 ]);
 
 const SUPPORTED_SPEC_COMMANDS = new Set(['close', 'create', 'start', 'status']);
+const SUPPORTED_DEMO_COMMANDS = new Set(['create']);
 
 function unsupportedCommandMessage(commandName) {
   return [
@@ -123,6 +126,7 @@ function printUsage() {
   npx create-quiver spec status <spec-dir>
   npx create-quiver spec close <spec-dir>
   npx create-quiver evidence run [options] -- <command>
+  npx create-quiver demo create spec-viewer [options]
 
 Options:
   -n, --name <project-name>   Project name to generate
@@ -142,7 +146,7 @@ Options:
       --full                  Plan or run the full compatibility init profile
       --legacy-scripts        Include legacy Bash wrappers in init profile
       --include-templates     Export packaged templates in init profile
-      --dry-run               Preview init, prepare, spec create, or AI work without executing writes/providers
+      --dry-run               Preview init, prepare, spec create, demo, or AI work without executing writes/providers
       --fix                   For doctor, apply safe non-destructive repairs
       --execute               For ai execute-plan, run the planned slices instead of printing commands
       --create                For ai pr, create the PR after preflight instead of printing the plan only
@@ -208,6 +212,7 @@ Examples:
   cd ./my-project && npx create-quiver spec status specs/my-project
   cd ./my-project && npx create-quiver spec close specs/my-project --dry-run
   cd ./my-project && npx create-quiver evidence run -- npm test
+  cd ./my-project && npx create-quiver demo create spec-viewer --dry-run
   node bin/create-quiver.js doctor --dir ./my-project
 `);
 }
@@ -227,6 +232,7 @@ function parseArgs(argv) {
     gate: 'execution',
     projectName: '',
     targetDir: '.',
+    targetDirExplicit: false,
     strict: false,
     strictOverlap: false,
     json: false,
@@ -270,6 +276,8 @@ function parseArgs(argv) {
     initLegacyScripts: false,
     initMinimal: false,
     specCommand: '',
+    demoCommand: '',
+    demoName: '',
     evidenceCommand: '',
     evidenceArgs: [],
     evidenceOutput: '',
@@ -286,6 +294,10 @@ function parseArgs(argv) {
     }
     if (result.mode === 'evidence') {
       result.evidenceCommand = args.shift() || '';
+    }
+    if (result.mode === 'demo') {
+      result.demoCommand = args.shift() || '';
+      result.demoName = args.shift() || '';
     }
   } else if (args[0] === '--analyze') {
     result.mode = 'analyze';
@@ -694,6 +706,7 @@ function parseArgs(argv) {
         throw new Error(formatError('missing value for --dir'));
       }
       result.targetDir = value;
+      result.targetDirExplicit = true;
       continue;
     }
 
@@ -768,6 +781,25 @@ function parseArgs(argv) {
     }
     if (positional.length > 0) {
       throw new Error(formatError('evidence run does not accept positional arguments before --'));
+    }
+  } else if (result.mode === 'demo') {
+    if (!result.demoCommand && positional.length > 0) {
+      result.demoCommand = positional.shift();
+    }
+    if (!result.demoName && positional.length > 0) {
+      result.demoName = positional.shift();
+    }
+    if (!result.demoCommand) {
+      throw new Error(formatError('missing demo subcommand. Use: npx create-quiver demo create spec-viewer'));
+    }
+    if (!SUPPORTED_DEMO_COMMANDS.has(result.demoCommand)) {
+      throw new Error(formatError(`unsupported demo subcommand: ${result.demoCommand}. Supported tasks: create`));
+    }
+    if (result.demoName !== 'spec-viewer') {
+      throw new Error(formatError(`unsupported demo: ${result.demoName || '(missing)'}. Supported demos: spec-viewer`));
+    }
+    if (positional.length > 0) {
+      throw new Error(formatError('demo create spec-viewer does not accept positional target paths; use --dir <target-dir>'));
     }
   } else {
     if (positional.length > 0) {
@@ -1256,6 +1288,15 @@ function findUnsupportedCreateQuiverScripts(scripts = {}) {
       unsupported.push({
         command,
         reason: `unsupported spec subcommand "${parsed.subcommand || '(missing)'}"`,
+        scriptName,
+      });
+      continue;
+    }
+
+    if (parsed.commandName === 'demo' && !SUPPORTED_DEMO_COMMANDS.has(parsed.subcommand)) {
+      unsupported.push({
+        command,
+        reason: `unsupported demo subcommand "${parsed.subcommand || '(missing)'}"`,
         scriptName,
       });
     }
@@ -2212,6 +2253,17 @@ async function run(argv) {
       subcommand: args.evidenceCommand,
     });
     process.exitCode = result.exitCode;
+    return;
+  }
+
+  if (args.mode === 'demo') {
+    const demoTarget = resolveTargetRoot(process.cwd(), args.targetDirExplicit ? args.targetDir : 'quiver-spec-viewer');
+    runDemo({
+      command: args.demoCommand,
+      demo: args.demoName,
+      dryRun: args.dryRun,
+      targetRoot: demoTarget,
+    });
     return;
   }
 

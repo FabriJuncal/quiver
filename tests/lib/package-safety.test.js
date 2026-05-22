@@ -24,6 +24,7 @@ test('collectPackageSafetyViolations flags sensitive local files in package tarb
     'package/.quiver/session.json',
     'package/.worktrees/active/index.json',
     'package/WORKTREE_CONTEXT.md',
+    'package/quiver-spec-viewer/package.json',
   ]);
 
   assert.deepEqual(violations, [
@@ -35,6 +36,7 @@ test('collectPackageSafetyViolations flags sensitive local files in package tarb
     { code: 'ai-tool-state', path: 'package/.quiver/session.json' },
     { code: 'worktree-state', path: 'package/.worktrees/active/index.json' },
     { code: 'worktree-context', path: 'package/WORKTREE_CONTEXT.md' },
+    { code: 'demo-output', path: 'package/quiver-spec-viewer/package.json' },
   ]);
 });
 

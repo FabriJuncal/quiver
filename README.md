@@ -407,6 +407,15 @@ npx create-quiver evidence run -- npm test
 
 Por defecto la evidencia queda en `.quiver/evidence/`. También podés elegir destino con `--output <archivo>` y limitar stdout/stderr con `--max-output <n>`.
 
+Para probar Quiver sin inventar una app desde cero:
+
+```bash
+npx create-quiver demo create spec-viewer --dry-run
+npx create-quiver demo create spec-viewer --dir ./quiver-spec-viewer
+```
+
+El demo genera una app estática pequeña, specs/slices de ejemplo y scripts de validación. No forma parte de `init`; se crea solo cuando lo pedís.
+
 Notas reales del estado actual:
 
 - No hay script `npm test`; el comando verificado para tests es `node --test tests/**/*.test.js`.

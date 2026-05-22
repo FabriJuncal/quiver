@@ -54,6 +54,6 @@
     "npm run smoke:create-quiver"
   ],
   "estimated_hours": 6,
-  "status": "planned",
+  "status": "completed",
   "blocked_reason": null
 }
