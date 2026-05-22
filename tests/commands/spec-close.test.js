@@ -91,6 +91,21 @@ test('spec close blocks when spec branch is not merged', () => {
   }
 });
 
+test('spec start dry-run does not create a worktree', () => {
+  const repo = makeRepo();
+  try {
+    const output = execCli(repo.root, ['spec', 'start', 'specs/example-spec', '--dry-run']);
+    const line = output.split('\n').find((item) => item.startsWith('Worktree: '));
+    const worktreePath = line.slice('Worktree: '.length);
+
+    assert.ok(output.includes('Spec worktree start dry-run'));
+    assert.ok(output.includes('Would create worktree'));
+    assert.equal(fs.existsSync(worktreePath), false);
+  } finally {
+    repo.cleanup();
+  }
+});
+
 test('spec close blocks dirty spec worktrees by default', () => {
   const repo = makeRepo();
   try {

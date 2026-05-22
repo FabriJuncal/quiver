@@ -146,14 +146,14 @@ After initialization, the user should:
 14. Review the technical plan with `npx create-quiver ai review-plan --dry-run`, inspect exact prompt with `--print-prompt` if needed, then run it without `--dry-run` when ready
 15. After human approval, save the reviewed plan version with `npx create-quiver ai approve --phase technical-plan --version <n>`
 16. Use `npx create-quiver spec create --dry-run` to preview the real spec, slices, handoffs, execution plan, and PR body, then run it without `--dry-run` when ready
-17. Run `npx create-quiver spec start specs/<spec-slug>` to create or reuse the spec worktree
+17. Run `npx create-quiver spec start specs/<spec-slug> --dry-run` to inspect the planned worktree, then run without `--dry-run` to create or reuse it
 18. Run `npx create-quiver plan` or `npm run quiver:plan`
 19. Run `npx create-quiver next` or `npm run quiver:next`
 20. Run `npx create-quiver ai execute-plan --dry-run --commit --mode manual` to inspect prompts, or `npx create-quiver ai execute-plan --dry-run --commit --mode delegated` to inspect delegated execution waves
 21. For manual assignment, print a minimal executor prompt with `npx create-quiver ai prompt-slice --slice <slice.json> --dry-run`
 22. Execute one slice with `npx create-quiver ai execute-slice --slice <slice.json> --commit` or execute delegated waves with `npx create-quiver ai execute-plan --execute --commit --mode delegated`; single-slice execution must run from the declared slice branch, validates `allowed_write_paths`/`files`, redacts captured logs, and updates closure, evidence, command log, status, and `slice.json`
 23. Keep one commit per slice
-24. Open one PR per spec with `npx create-quiver ai pr --dry-run --input specs/<spec-slug>/pr.md ...`, then `--create` only after review
+24. Open one PR per spec with `npx create-quiver ai pr --dry-run --input specs/<spec-slug>/pr.md --ssh-host-alias <alias> ...`, then `--create` only after review; PR creation is blocked while spec slices remain open
 25. After merge, close the worktree with `npx create-quiver spec close specs/<spec-slug>`
 26. Validate the slice and the final PR with the workflow gates
 

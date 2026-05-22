@@ -342,9 +342,9 @@ El paquete también publica el alias binario `quiver`, que apunta al mismo CLI. 
 | `npx create-quiver graph --include-completed` | Incluye slices completados en el grafo histórico. |
 | `npx create-quiver next --include-completed` | Mantiene la recomendación accionable y agrega historial completado. |
 | `npx create-quiver spec create` | Crea la spec real desde el plan técnico revisado y aprobado. |
-| `npx create-quiver spec start <spec-dir>` | Crea o reutiliza el worktree dedicado de una spec. |
+| `npx create-quiver spec start <spec-dir>` | Crea o reutiliza el worktree dedicado de una spec. Usá `--dry-run` para ver qué worktree se crearía sin tocar Git. |
 | `npx create-quiver spec status <spec-dir>` | Muestra branch, path, `slice-00` y slices pendientes. |
-| `npx create-quiver spec close <spec-dir>` | Cierra un worktree de spec ya mergeado y limpio. |
+| `npx create-quiver spec close <spec-dir>` | Cierra un worktree de spec ya mergeado y limpio; en modo normal también intenta traer los cambios del merge al checkout principal. |
 | `npx create-quiver start-slice <slice.json>` | Prepara worktree y contexto para ejecutar un slice. |
 | `npx create-quiver check-slice <slice.json>` | Valida readiness del slice. |
 | `npx create-quiver check-slice --local <slice.json>` | Valida estructura local sin exigir remoto/base. |

@@ -488,3 +488,30 @@ test('runExecuteSlice requires a clean worktree before execution', async () => {
     repo.cleanup();
   }
 });
+
+test('runExecuteSlice refuses commit mode with pre-existing dirty files even when allowDirty is set', async () => {
+  const repo = createRepo();
+  try {
+    writeFile(path.join(repo.root, 'docs/unrelated.md'), 'clean\n');
+    git(repo.root, ['add', 'docs/unrelated.md']);
+    git(repo.root, ['commit', '-m', 'add unrelated doc']);
+    writeFile(path.join(repo.root, 'docs/unrelated.md'), 'dirty\n');
+
+    await assert.rejects(
+      runExecuteSlice(repo.root, {
+        allowDirty: true,
+        commit: true,
+        provider: 'codex',
+        slice: repo.slicePath,
+        runProviderFn: async () => {
+          writeFile(path.join(repo.root, repo.allowedFile), 'module.exports = 9;\n');
+          return { ok: true, stdout: '', stderr: '' };
+        },
+      }),
+      (error) => error.message.includes('ai execute-slice --commit requires a clean worktree')
+        && error.message.includes('docs/unrelated.md'),
+    );
+  } finally {
+    repo.cleanup();
+  }
+});

@@ -214,3 +214,26 @@ Each implementation slice must append:
 
 - Scope glob support is intentionally simple and covers the common `*` and `**` cases used by Quiver-generated slices; more advanced glob syntax remains out of scope.
 - Direct `ai execute-slice` now requires the declared slice branch. Orchestrated `ai execute-plan` execution bypasses that specific branch check because it manages temporary worktrees itself.
+
+## slice-09 - Git worktree, commit, PR, and close lifecycle
+
+### Completed
+
+- Added `spec start --dry-run` so users can inspect the spec branch and worktree path before mutating Git state.
+- Hardened `ai execute-slice --commit` so commit mode refuses pre-existing dirty files even when `--allow-dirty` is set.
+- Required `--ssh-host-alias` for GitHub PR preflight and added macOS/Linux/Windows SSH alias guidance.
+- Blocked PR creation from `specs/<slug>/pr.md` while slices in that spec are still open.
+- Preserved PR creation through generated `pr.md` and existing `gh pr create` argument-array execution.
+- Kept `spec close` behavior that refuses dirty/unmerged worktrees, supports dry-run, removes the worktree after merge, and pulls the main checkout when a remote base is available.
+- Updated README, README_FOR_AI, command docs, workflow docs, and CLI help examples for the hardened lifecycle.
+
+### Validation
+
+- `node --test tests/lib/ai-executor.test.js tests/lib/ai-github.test.js tests/commands/ai-pr.test.js tests/lib/lifecycle.test.js tests/commands/spec-close.test.js tests/commands/ai-execute-plan.test.js` passed: 52 tests.
+- `node --test tests/**/*.test.js` passed: 290 tests.
+- `git diff --check` passed.
+
+### Risks
+
+- SSH alias validation checks that the alias was provided, not that the remote host accepts the key; users should still run `ssh -T <alias>` when configuring credentials.
+- Open-slice PR blocking applies to `specs/<slug>/pr.md` paths. Non-standard PR body locations are still allowed for advanced/manual flows.

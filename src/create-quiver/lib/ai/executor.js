@@ -774,6 +774,9 @@ async function runExecuteSlice(repoRoot, options = {}) {
   }
 
   const beforeSnapshot = captureWorktreeSnapshot(canonicalRepoRoot);
+  if (beforeSnapshot.files.length > 0 && options.commit === true) {
+    throw appendRecovery(new Error(formatError(`ai execute-slice --commit requires a clean worktree before running. Commit or stash first: ${beforeSnapshot.files.join(', ')}`)), executorContext.slice);
+  }
   if (beforeSnapshot.files.length > 0 && options.allowDirty !== true) {
     throw appendRecovery(new Error(formatError(`ai execute-slice requires a clean worktree before running. Commit or stash first: ${beforeSnapshot.files.join(', ')}`)), executorContext.slice);
   }

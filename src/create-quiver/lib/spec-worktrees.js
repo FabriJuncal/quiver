@@ -185,6 +185,7 @@ function startSpecWorktree(repoRoot, specInput, options = {}) {
     return {
       ...identity,
       baseRef,
+      dryRun: options.dryRun === true,
       reused: true,
       slice00,
       worktreePath: existingWorktree,
@@ -197,6 +198,17 @@ function startSpecWorktree(repoRoot, specInput, options = {}) {
 
   if (!isCleanWorktree(repoRoot)) {
     throw new Error(formatError('current checkout is not clean. Commit or stash before starting a spec worktree.'));
+  }
+
+  if (options.dryRun === true) {
+    return {
+      ...identity,
+      baseRef,
+      currentBranch: currentBranch(repoRoot),
+      dryRun: true,
+      reused: false,
+      slice00,
+    };
   }
 
   worktreePrune(repoRoot);
@@ -212,6 +224,7 @@ function startSpecWorktree(repoRoot, specInput, options = {}) {
     ...identity,
     baseRef,
     currentBranch: currentBranch(repoRoot),
+    dryRun: false,
     reused: false,
     slice00,
   };
@@ -219,13 +232,14 @@ function startSpecWorktree(repoRoot, specInput, options = {}) {
 
 function formatSpecStartResult(result) {
   return `${[
-    'Spec worktree ready',
+    result.dryRun ? 'Spec worktree start dry-run' : 'Spec worktree ready',
     `Branch: ${result.branchName}`,
     `Base: ${result.baseRef}`,
     `Worktree: ${result.worktreePath}`,
     `Reused: ${result.reused ? 'yes' : 'no'}`,
     `slice-00: ${result.slice00 ? result.slice00.status : 'missing'}`,
-  ].join('\n')}\n`;
+    result.dryRun && !result.reused ? `Would create worktree: ${result.worktreePath}` : '',
+  ].filter(Boolean).join('\n')}\n`;
 }
 
 function closeSpecWorktree(repoRoot, specInput, options = {}) {

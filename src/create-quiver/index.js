@@ -173,7 +173,7 @@ Options:
       --full                  Plan or run the full compatibility init profile
       --legacy-scripts        Include legacy Bash wrappers in init profile
       --include-templates     Export packaged templates in init profile
-      --dry-run               Preview init, prepare, spec create, demo, or AI work without executing writes/providers
+      --dry-run               Preview init, prepare, spec create/start/close, demo, or AI work without executing writes/providers
       --print-prompt          Print the exact AI prompt and exit without executing provider CLIs
       --fix                   For doctor, apply safe non-destructive repairs
       --execute               For ai execute-plan, run the planned slices instead of printing commands
@@ -219,6 +219,7 @@ Examples:
   cd ./my-project && npx create-quiver ai review-plan --dry-run
   cd ./my-project && npx create-quiver ai approve --phase technical-plan --version 1
   cd ./my-project && npx create-quiver spec create --dry-run
+  cd ./my-project && npx create-quiver spec start specs/my-project --dry-run
   cd ./my-project && npx create-quiver ai approvals
   cd ./my-project && npx create-quiver ai prompt-slice --slice specs/my-project/slices/slice-01/slice.json --dry-run
   cd ./my-project && npx create-quiver ai execute-slice --slice specs/my-project/slices/slice-01/slice.json --dry-run
@@ -2470,7 +2471,9 @@ async function run(argv) {
     }
 
     if (args.specCommand === 'start') {
-      const report = startSpecWorktree(process.cwd(), args.targetDir);
+      const report = startSpecWorktree(process.cwd(), args.targetDir, {
+        dryRun: args.dryRun,
+      });
       process.stdout.write(formatSpecStartResult(report));
       return;
     }

@@ -2,11 +2,11 @@
 
 **Overall status:** In progress
 **Created:** 2026-05-22
-**Current slice:** slice-08 completed
+**Current slice:** slice-09 completed
 
 ## Summary
 
-The documentation foundation and first implementation slices are in progress. The CLI contract, run state, safe onboarding docs, provider profile adapter contract, planner approval gates, generated spec/slice artifact contract, execution planning safety, and controlled slice execution closure are implemented.
+The documentation foundation and first implementation slices are in progress. The CLI contract, run state, safe onboarding docs, provider profile adapter contract, planner approval gates, generated spec/slice artifact contract, execution planning safety, controlled slice execution closure, and Git/worktree/PR lifecycle hardening are implemented.
 
 ## Slice Status
 
@@ -21,7 +21,7 @@ The documentation foundation and first implementation slices are in progress. Th
 | slice-06-spec-slice-generator | Completed | Generated slice JSON and execution briefs now include read paths, allowed write paths, validation hints, dependency data, and parallel safety. |
 | slice-07-slice-execution-planner | Completed | Execution waves now use generated allowed write paths for conflicts and expose scope metadata in JSON. |
 | slice-08-controlled-slice-execution | Completed | Direct slice execution now validates branch/worktree, scope, writes closure/evidence/status artifacts, and redacts logs. |
-| slice-09-git-worktree-pr-lifecycle | Planned | Not started. |
+| slice-09-git-worktree-pr-lifecycle | Completed | Spec worktree dry-run, commit cleanliness, PR alias/body/open-slice preflight, and close guidance hardened. |
 | slice-10-validation-errors-fixtures | Planned | Not started. |
 | slice-11-export-dashboard-migration | Planned | Not started. |
 
@@ -32,4 +32,4 @@ The documentation foundation and first implementation slices are in progress. Th
 
 ## Next Step
 
-Continue with `slice-09-git-worktree-pr-lifecycle`.
+Continue with `slice-10-validation-errors-fixtures`.
