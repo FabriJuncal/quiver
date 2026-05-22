@@ -65,6 +65,18 @@ function slice(ref, files, extra = {}) {
     data.depends_on = extra.depends_on;
   }
 
+  if (extra.expected_read_paths !== undefined) {
+    data.expected_read_paths = extra.expected_read_paths;
+  }
+
+  if (extra.allowed_write_paths !== undefined) {
+    data.allowed_write_paths = extra.allowed_write_paths;
+  }
+
+  if (extra.validation_hints !== undefined) {
+    data.validation_hints = extra.validation_hints;
+  }
+
   return data;
 }
 
@@ -102,6 +114,26 @@ test('inferDependencies honors explicit dependencies and heuristic overlap', () 
     assert.deepEqual(byRef.get('spec-a/slice-02-beta').depends_on, ['spec-a/slice-01-alpha']);
     assert.deepEqual(byRef.get('spec-a/slice-03-gamma').depends_on, []);
     assert.deepEqual(byRef.get('spec-b/slice-01-cross').depends_on, ['spec-a/slice-02-beta']);
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('readAllSlices uses allowed_write_paths as write scope when present', () => {
+  const repo = makeRepo({
+    'specs/spec-a/slices/slice-01-alpha/slice.json': slice('spec-a/slice-01-alpha', [], {
+      allowed_write_paths: ['src/shared.js'],
+      expected_read_paths: ['docs/plan.md'],
+      validation_hints: ['npm test'],
+    }),
+  });
+
+  try {
+    const slices = readAllSlices(repo.root);
+    assert.deepEqual(slices[0].files, ['src/shared.js']);
+    assert.deepEqual(slices[0].allowed_write_paths, ['src/shared.js']);
+    assert.deepEqual(slices[0].expected_read_paths, ['docs/plan.md']);
+    assert.deepEqual(slices[0].validation_hints, ['npm test']);
   } finally {
     repo.cleanup();
   }

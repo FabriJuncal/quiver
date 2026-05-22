@@ -168,3 +168,26 @@ Each implementation slice must append:
 
 - Generated read/write scopes depend on the approved plan quality; later validation slices should keep hardening error messages when planner output is incomplete.
 - Existing executor code still primarily reads `files` for scope checks; generated `allowed_write_paths` is now aligned with `files` but deeper executor support belongs to later slices.
+
+## slice-07 - Slice execution planning and parallel safety
+
+### Completed
+
+- Updated slice graph reads to treat `allowed_write_paths` as the authoritative write scope when present.
+- Preserved compatibility by falling back to existing `files` when `allowed_write_paths` is absent.
+- Added execution plan JSON metadata for `expected_read_paths`, `allowed_write_paths`, and `validation_hints`.
+- Updated human execution plan output to show `Wave <n>` and each slice's `parallel_safe` rationale.
+- Added regression coverage for conflicts detected from `allowed_write_paths` even when `files` is empty.
+- Added CLI JSON coverage for downstream agent/dashboard consumption.
+
+### Validation
+
+- `node --test tests/lib/slice-graph.test.js tests/lib/ai-execution-plan.test.js tests/commands/ai-execute-plan.test.js tests/commands/plan.test.js tests/commands/graph.test.js tests/commands/next.test.js` passed: 46 tests.
+- `node --test tests/**/*.test.js` passed: 279 tests.
+- `git diff --check` passed.
+- `node -e "const fs=require('fs'); for (const f of process.argv.slice(1)) JSON.parse(fs.readFileSync(f,'utf8')); console.log('slice json ok:', process.argv.length-1);" specs/quiver-v25-ai-first-lifecycle-orchestrator/slices/*/slice.json` passed for 12 slice files.
+
+### Risks
+
+- If planner output omits both `allowed_write_paths` and `files`, Quiver correctly falls back to sequential execution, but the user still needs to fix the slice contract.
+- Parallel execution still requires later execution slices to enforce scope and commit behavior during actual provider runs.

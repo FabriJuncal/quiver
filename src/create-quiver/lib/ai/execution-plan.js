@@ -35,6 +35,9 @@ function summarizeSlice(node, repoRoot) {
     title: node.title || node.sliceId,
     status: node.status || 'draft',
     files: Array.isArray(node.files) ? node.files : [],
+    expected_read_paths: Array.isArray(node.expected_read_paths) ? node.expected_read_paths : [],
+    allowed_write_paths: Array.isArray(node.allowed_write_paths) ? node.allowed_write_paths : [],
+    validation_hints: Array.isArray(node.validation_hints) ? node.validation_hints : [],
     depends_on: Array.isArray(node.depends_on) ? node.depends_on : [],
     parallel_safe: node.parallel_safe || null,
     parallel_safe_reason: node.parallel_safe_reason || null,
@@ -274,7 +277,7 @@ function formatHumanExecutionPlan(report) {
 
   for (const level of report.ready_levels) {
     const modeLabel = level.parallel_ready ? 'parallel-ready' : 'sequential';
-    lines.push(`Level ${level.index} (${modeLabel})`);
+    lines.push(`Wave ${level.index} (${modeLabel})`);
     lines.push(`Worktree strategy: ${level.worktree_strategy.mode}`);
     if (level.fallback_reason) {
       lines.push(`Fallback: ${level.fallback_reason}`);
@@ -282,6 +285,7 @@ function formatHumanExecutionPlan(report) {
 
     for (const slice of level.slices) {
       lines.push(`- ${slice.ref} [${slice.status}]`);
+      lines.push(`  parallel_safe: ${slice.parallel_safe || 'unspecified'}${slice.parallel_safe_reason ? ` (${slice.parallel_safe_reason})` : ''}`);
     }
 
     if (level.conflicts.length > 0) {

@@ -220,7 +220,7 @@ specs/<spec-slug>/
 | slice-04 | Agent profiles and provider adapters | Completed | slice-02 |
 | slice-05 | Approval gates and planner iterations | Completed | slice-02, slice-04 |
 | slice-06 | Spec, slice, handoff, and PR body generation | Completed | slice-05 |
-| slice-07 | Slice execution planning and parallel safety | Planned | slice-06 |
+| slice-07 | Slice execution planning and parallel safety | Completed | slice-06 |
 | slice-08 | Controlled slice execution and evidence | Planned | slice-07 |
 | slice-09 | Git worktree, commit, PR, and close lifecycle | Planned | slice-08 |
 | slice-10 | Validation, actionable errors, redaction, and fixtures | Planned | slice-01, slice-02, slice-08 |

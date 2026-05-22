@@ -2,27 +2,31 @@
 
 ## Summary of Work
 
-Pending implementation.
+Connected execution planning to the generated write-scope contract. Slice graph reads now use `allowed_write_paths` as the authoritative write scope when present, execution plans expose read/write/validation metadata for downstream agents, and human output labels dependency levels as waves with parallel-safety rationale.
 
 ## Validation Against Acceptance Criteria
 
-- [ ] Wave 0 verified.
-- [ ] Parallel grouping verified.
-- [ ] Conflict blocking verified.
-- [ ] JSON output verified.
-- [ ] Tests run.
+- [x] Wave 0 verified.
+- [x] Parallel grouping verified.
+- [x] Conflict blocking verified.
+- [x] JSON output verified.
+- [x] Tests run.
 
 ## Relevant Changes
 
-Pending.
+- `readAllSlices` now resolves write scope from `allowed_write_paths` before falling back to `files`.
+- Execution plan JSON includes `expected_read_paths`, `allowed_write_paths`, and `validation_hints` for each slice.
+- Human execution plan output now uses `Wave <n>` and prints each slice's parallel-safety declaration.
+- Added conflict tests for slices that only declare `allowed_write_paths`.
+- Added CLI JSON coverage for `ai execute-plan --json`.
 
 ## Pending
 
-- Implement slice.
+None for this slice.
 
 ## Remaining Risks
 
-- Parallel execution remains manual and riskier until this slice lands.
+- Parallel safety still assumes declared write paths are accurate; later validation should flag incomplete scopes earlier.
 
 ## Future Recommendations
 
