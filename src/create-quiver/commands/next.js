@@ -12,12 +12,23 @@ function collectNext(repoRoot, options = {}) {
     onlyReady: true,
     specSlug: options.specSlug,
   });
+  const historyReport = options.includeCompleted
+    ? collectPlan(repoRoot, {
+        includeCompleted: true,
+        specSlug: options.specSlug,
+      })
+    : null;
 
   const allReady = report.plan.filter((item) => String(item.status || '').toLowerCase() !== 'blocked');
   const next = allReady.length > 0 ? allReady[0] : null;
+  const history = historyReport
+    ? historyReport.plan.filter((item) => String(item.status || '').toLowerCase() === 'completed')
+    : [];
 
   return {
     all_ready: allReady,
+    history,
+    include_completed: options.includeCompleted === true,
     next,
   };
 }
@@ -27,6 +38,13 @@ function formatHumanNext(report, options = {}) {
 
   if (!report.next) {
     lines.push('No ready slices found.');
+    if (report.include_completed && report.history.length > 0) {
+      lines.push('');
+      lines.push('Historical slices included by --include-completed:');
+      for (const item of report.history) {
+        lines.push(`- ${item.ref} (${item.status})`);
+      }
+    }
     return `${lines.join('\n')}\n`;
   }
 
@@ -48,6 +66,14 @@ function formatHumanNext(report, options = {}) {
       if (report.all_ready.length > 1) {
         lines.push(`Also ready: ${report.all_ready.slice(1).map((candidate) => candidate.ref).join(', ')}`);
       }
+    }
+  }
+
+  if (report.include_completed && report.history.length > 0) {
+    lines.push('');
+    lines.push('Historical slices included by --include-completed:');
+    for (const item of report.history) {
+      lines.push(`- ${item.ref} (${item.status})`);
     }
   }
 
@@ -110,6 +136,8 @@ async function runNext(repoRoot, options = {}) {
         ...item,
         start_slice_command: toStartSliceCommand(item.slice_path),
       })),
+      history: report.history,
+      include_completed: report.include_completed,
       next: report.next
         ? {
             ...report.next,

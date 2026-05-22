@@ -55,6 +55,10 @@
 - Shipped v22 Guided AI Workflow after `0.10.0`: preparation diagnostics, approval state, spec worktrees, executor commits, execution waves, PR creation, post-merge cleanup, and release/package safety are implemented on the release branch.
 - Shipped v23 Guided Flow Productization after `0.10.0`: short `quiver` entrypoint, flow status, agent profiles, token-efficient onboarding, versioned planner drafts, production plan review, spec create, executor prompts, delegated worktrees, and final smoke/readiness coverage are implemented on the release branch and ready for the next package release.
 
+## v0.11 — DX Onboarding Hardening (implemented, pending package release)
+
+- **v24** — DX and onboarding hardening from real Quiver Spec Viewer dogfooding: init hygiene, CLI ambiguity, version mismatch checks, local slice validation, analyzer quality, AI context preparation, evidence capture, optional demo scaffolding, documentation, and smoke coverage are implemented on the release branch. No npm release is implied until publication happens.
+
 ## Post-Checkpoint Plan (do not execute before validating v14)
 
 > This section now records the follow-up line from the v14-era plan.
@@ -67,6 +71,7 @@
 - **v21 — AI-First Layout** (completed): clean default init, `.quiver/` internals, analyze scan relocation, optional legacy assets, and no-spec-safe commands.
 - **v22 — Guided AI Workflow** (completed): guided preparation, approvals, spec worktrees, executor commits, execution waves, PR creation, cleanup, and release/package safety live in `specs/quiver-v22-guided-ai-workflow/`.
 - **v23 — Guided Flow Productization** (completed): AI-first flow command, agent profiles, compact onboarding/planning prompts, production plan review, explicit `spec create`, manual executor prompts, delegated worktree execution, and release readiness live in `specs/quiver-v23-guided-flow-productization/`.
+- **v24 — DX Onboarding Hardening** (implemented, pending package release): real-world dogfooding fixes for init/templates, CLI routing, doctor/prepare, local validation, analyzer, AI context preparation, evidence, and demos live in `specs/quiver-v24-dx-onboarding-hardening/`.
 
 The shipped v20/v21/v22/v23 work is no longer pending. The older context-diagnostics and slice-archaeology ideas remain deferred until real demand justifies them.
 

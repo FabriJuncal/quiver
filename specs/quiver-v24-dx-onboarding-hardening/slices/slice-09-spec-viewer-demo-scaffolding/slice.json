@@ -1,0 +1,59 @@
+{
+  "slice_id": "slice-09-spec-viewer-demo-scaffolding",
+  "ticket": "QUIVER-24-09",
+  "type": "feature",
+  "title": "Spec Viewer demo scaffolding",
+  "objective": "Provide an optional first-party demo that lets users test Quiver end-to-end without inventing an app.",
+  "description": "Add `demo create spec-viewer` with dry-run support to create a lightweight Quiver Spec Viewer demo, spec, slices, validation scripts, and docs.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "spec-viewer-demo-scaffolding",
+    "branch_name": "feature/QUIVER-24-09-spec-viewer-demo-scaffolding"
+  },
+  "files": [
+    "src/create-quiver/index.js",
+    "src/create-quiver/commands/demo.js",
+    "src/create-quiver/lib/demo.js",
+    "docs/COMMANDS.md.template",
+    "README.md",
+    "tests/commands/demo.test.js",
+    "tests/lib/package-safety.test.js",
+    "scripts/ci/smoke-create-quiver.sh"
+  ],
+  "depends_on": [
+    "slice-01-init-template-hygiene",
+    "slice-06-plan-graph-next-history-views",
+    "slice-08-evidence-run-command"
+  ],
+  "parallel_safe": "no",
+  "parallel_safe_reason": "Depends on init, history views, and evidence behavior; should integrate after those contracts stabilize.",
+  "must": [
+    "Add `demo create spec-viewer --dry-run`.",
+    "Add `demo create spec-viewer` for safe targets.",
+    "Keep the demo optional and out of default init.",
+    "Avoid heavy dependencies.",
+    "Generate demo spec/slice artifacts and validation scripts.",
+    "Respect non-destructive target handling."
+  ],
+  "not_included": [
+    "Persistent web console.",
+    "React/Vite/Express dependency stack unless explicitly justified later.",
+    "Real filesystem spec parsing in browser."
+  ],
+  "acceptance": [
+    "Dry-run prints planned demo files without writing.",
+    "Real run creates a small runnable demo in an empty or safe target.",
+    "Demo includes README, app files, package scripts, spec/slices, and validation.",
+    "Demo does not add heavy dependencies.",
+    "Existing files are preserved or reported as skipped.",
+    "Package safety excludes local demo output that should not ship."
+  ],
+  "tests": [
+    "node --test tests/commands/demo.test.js tests/lib/package-safety.test.js",
+    "npm run smoke:create-quiver"
+  ],
+  "estimated_hours": 6,
+  "status": "completed",
+  "blocked_reason": null
+}

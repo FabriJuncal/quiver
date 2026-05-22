@@ -3,6 +3,11 @@ const path = require('path');
 const { readAllSlices } = require('./slice-graph');
 const { hasGeneratedProjectSpec, hasInitializedStateMetadata, readState } = require('./state');
 const { worktreeList } = require('./git');
+const {
+  buildQuiverConfig,
+  buildQuiverInternalGitignore,
+  resolveInitPackageScripts,
+} = require('./init-layout');
 
 const NEW_LAYOUT_REQUIRED_PATHS = [
   'README.md',
@@ -26,12 +31,47 @@ const LEGACY_LAYOUT_PROBES = [
   'docs/PROJECT_SCAN.json',
 ];
 
+const ROOT_GITIGNORE_DEFAULTS = [
+  'node_modules/',
+  '.DS_Store',
+  'dist/',
+  'coverage/',
+];
+
 function readTextIfExists(filePath) {
   if (!fs.existsSync(filePath)) {
     return null;
   }
 
   return fs.readFileSync(filePath, 'utf8');
+}
+
+function normalizeIgnorePattern(line) {
+  const trimmed = line.trim();
+  if (!trimmed || trimmed.startsWith('#')) {
+    return trimmed;
+  }
+
+  return trimmed.replace(/\/+$/g, '');
+}
+
+function missingLineDefaults(existingText, defaults) {
+  const seen = new Set(
+    String(existingText || '')
+      .split(/\r?\n/)
+      .map(normalizeIgnorePattern)
+      .filter(Boolean),
+  );
+
+  return defaults.filter((line) => !seen.has(normalizeIgnorePattern(line)));
+}
+
+function appendMissingLines(filePath, lines) {
+  const existingText = readTextIfExists(filePath) || '';
+  const trimmed = existingText.replace(/\s+$/g, '');
+  const prefix = trimmed.length > 0 ? `${trimmed}\n` : '';
+  fs.mkdirSync(path.dirname(filePath), { recursive: true });
+  fs.writeFileSync(filePath, `${prefix}${lines.join('\n')}\n`);
 }
 
 function countNonEmptyLines(text) {
@@ -210,6 +250,82 @@ function countStackInfoLeaks(projectRoot) {
   return leaks;
 }
 
+function collectGeneratedMarkdownFiles(projectRoot) {
+  const files = [];
+  const rootFiles = ['README.md', 'AGENTS.md'];
+
+  for (const file of rootFiles) {
+    const absolutePath = path.join(projectRoot, file);
+    if (fs.existsSync(absolutePath)) {
+      files.push(absolutePath);
+    }
+  }
+
+  const docsDir = path.join(projectRoot, 'docs');
+  if (!fs.existsSync(docsDir)) {
+    return files;
+  }
+
+  const walk = (dirPath) => {
+    for (const entry of fs.readdirSync(dirPath, { withFileTypes: true })) {
+      const fullPath = path.join(dirPath, entry.name);
+      if (entry.isDirectory()) {
+        walk(fullPath);
+      } else if (entry.isFile() && entry.name.endsWith('.md')) {
+        files.push(fullPath);
+      }
+    }
+  };
+
+  walk(docsDir);
+
+  return files;
+}
+
+function isExternalLink(target) {
+  return /^(?:[a-z][a-z0-9+.-]*:|#)/i.test(target);
+}
+
+function normalizeMarkdownLinkTarget(target) {
+  return target
+    .trim()
+    .replace(/^<|>$/g, '')
+    .split('#')[0]
+    .trim();
+}
+
+function collectMissingMarkdownLinks(projectRoot) {
+  const missing = [];
+  const linkPattern = /!?\[[^\]]*]\(([^)]+)\)/g;
+
+  for (const filePath of collectGeneratedMarkdownFiles(projectRoot)) {
+    const text = readTextIfExists(filePath);
+    if (!text) {
+      continue;
+    }
+
+    let match;
+    while ((match = linkPattern.exec(text)) !== null) {
+      const target = normalizeMarkdownLinkTarget(match[1]);
+      if (!target || isExternalLink(target)) {
+        continue;
+      }
+
+      const resolved = path.resolve(path.dirname(filePath), target);
+      const relativeToRoot = path.relative(projectRoot, resolved);
+      if (relativeToRoot.startsWith('..') || path.isAbsolute(relativeToRoot)) {
+        continue;
+      }
+
+      if (!fs.existsSync(resolved)) {
+        missing.push(`${normalizeRelativePath(projectRoot, filePath)} -> ${target}`);
+      }
+    }
+  }
+
+  return missing;
+}
+
 function collectLayoutReport(projectRoot) {
   const hasStateMetadata = hasInitializedStateMetadata(readState(projectRoot));
   const realSlices = readAllSlices(projectRoot);
@@ -276,6 +392,116 @@ function collectLayoutReport(projectRoot) {
   };
 }
 
+function buildDoctorFixPlan(projectRoot) {
+  const fixes = [];
+  const rootGitignorePath = path.join(projectRoot, '.gitignore');
+  const rootGitignoreText = readTextIfExists(rootGitignorePath) || '';
+  const missingRootGitignoreLines = missingLineDefaults(rootGitignoreText, ROOT_GITIGNORE_DEFAULTS);
+  if (!fs.existsSync(rootGitignorePath)) {
+    fixes.push({
+      type: 'append-lines',
+      path: '.gitignore',
+      description: 'Create root .gitignore with safe Quiver defaults.',
+      lines: ROOT_GITIGNORE_DEFAULTS,
+    });
+  } else if (missingRootGitignoreLines.length > 0) {
+    fixes.push({
+      type: 'append-lines',
+      path: '.gitignore',
+      description: `Merge missing root .gitignore defaults: ${missingRootGitignoreLines.join(', ')}.`,
+      lines: missingRootGitignoreLines,
+    });
+  }
+
+  const quiverGitignorePath = path.join(projectRoot, '.quiver', '.gitignore');
+  const quiverGitignoreText = readTextIfExists(quiverGitignorePath) || '';
+  const quiverDefaults = buildQuiverInternalGitignore().split(/\r?\n/).filter(Boolean);
+  const missingQuiverLines = missingLineDefaults(quiverGitignoreText, quiverDefaults);
+  if (!fs.existsSync(quiverGitignorePath)) {
+    fixes.push({
+      type: 'write-json-or-text',
+      path: '.quiver/.gitignore',
+      description: 'Create internal .quiver/.gitignore for local AI state.',
+      content: buildQuiverInternalGitignore(),
+    });
+  } else if (missingQuiverLines.length > 0) {
+    fixes.push({
+      type: 'append-lines',
+      path: '.quiver/.gitignore',
+      description: `Merge missing .quiver/.gitignore defaults: ${missingQuiverLines.join(', ')}.`,
+      lines: missingQuiverLines,
+    });
+  }
+
+  const configPath = path.join(projectRoot, '.quiver', 'config.json');
+  if (!fs.existsSync(configPath)) {
+    fixes.push({
+      type: 'write-json-or-text',
+      path: '.quiver/config.json',
+      description: 'Create missing Quiver config metadata.',
+      content: `${JSON.stringify(buildQuiverConfig(), null, 2)}\n`,
+    });
+  }
+
+  const packageJsonPath = path.join(projectRoot, 'package.json');
+  if (fs.existsSync(packageJsonPath)) {
+    const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
+    const scripts = packageJson.scripts && typeof packageJson.scripts === 'object' ? packageJson.scripts : {};
+    const expectedScripts = resolveInitPackageScripts('default');
+    const missingScripts = Object.entries(expectedScripts)
+      .filter(([name]) => (name.startsWith('quiver:') || name === 'check-handoff') && typeof scripts[name] !== 'string');
+
+    if (missingScripts.length > 0) {
+      fixes.push({
+        type: 'merge-package-scripts',
+        path: 'package.json',
+        description: `Add missing package scripts: ${missingScripts.map(([name]) => name).join(', ')}.`,
+        scripts: Object.fromEntries(missingScripts),
+      });
+    }
+  }
+
+  return fixes;
+}
+
+function applyDoctorFixPlan(projectRoot, fixes) {
+  for (const fix of fixes) {
+    const targetPath = path.join(projectRoot, fix.path);
+    if (fix.type === 'append-lines') {
+      appendMissingLines(targetPath, fix.lines);
+      continue;
+    }
+
+    if (fix.type === 'write-json-or-text') {
+      fs.mkdirSync(path.dirname(targetPath), { recursive: true });
+      fs.writeFileSync(targetPath, fix.content);
+      continue;
+    }
+
+    if (fix.type === 'merge-package-scripts') {
+      const packageJson = JSON.parse(fs.readFileSync(targetPath, 'utf8'));
+      packageJson.scripts = {
+        ...(packageJson.scripts || {}),
+        ...fix.scripts,
+      };
+      fs.writeFileSync(targetPath, `${JSON.stringify(packageJson, null, 2)}\n`);
+    }
+  }
+}
+
+function formatDoctorFixPlan(fixes, { dryRun = false } = {}) {
+  const lines = [dryRun ? 'Quiver doctor fix dry-run' : 'Quiver doctor fix'];
+  if (fixes.length === 0) {
+    lines.push('- No safe fixes to apply.');
+  } else {
+    for (const fix of fixes) {
+      lines.push(`- ${dryRun ? 'Would update' : 'Updated'} ${fix.path}: ${fix.description}`);
+    }
+  }
+  lines.push('');
+  return lines.join('\n');
+}
+
 function collectDoctorReport(projectRoot) {
   const layout = collectLayoutReport(projectRoot);
   const warnings = collectDoctorWarnings(projectRoot);
@@ -316,11 +542,19 @@ function collectDoctorWarnings(projectRoot) {
     warnings.push(`stack information appears outside docs/PROJECT_MAP.md: ${leakIssues.join(', ')}`);
   }
 
+  const missingLinks = collectMissingMarkdownLinks(projectRoot);
+  for (const issue of missingLinks) {
+    warnings.push(`missing local docs link: ${issue}`);
+  }
+
   return warnings;
 }
 
 module.exports = {
+  applyDoctorFixPlan,
+  buildDoctorFixPlan,
   collectDoctorReport,
   collectDoctorWarnings,
   collectLayoutReport,
+  formatDoctorFixPlan,
 };

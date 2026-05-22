@@ -8,12 +8,15 @@ Important: slice numbering resets inside each spec. `slice-00` is the mandatory 
 The canonical installer entrypoint is `npx create-quiver` run from the target project root.
 Do not recommend global installation; use `npx` or a project-local devDependency when the team needs a pinned version.
 The package also exposes `quiver` as a binary alias to the same CLI. Treat it as a local installed shortcut, not as a replacement for the bootstrap command `npx create-quiver`.
-The post-init contract is validated with `npx create-quiver doctor` from the project root.
+The post-init contract is validated with `npx create-quiver doctor` from the project root. Use `npx create-quiver doctor --fix --dry-run` to preview safe non-destructive repairs, then `npx create-quiver doctor --fix` only after reviewing the plan.
 If the project already exists from an older Quiver version and was previously initialized by Quiver, run `npx create-quiver migrate` before `analyze` from the project root.
 If the project was never initialized by Quiver, do not use `migrate` as bootstrap; run `npx create-quiver init --name "Project Name"` first.
+Use `npx create-quiver evidence run -- <command>` to capture validation evidence with command, exit code, duration, truncated output, and best-effort redaction. The safe default output is `.quiver/evidence/`; use `--output <file>` when a slice needs a specific evidence artifact.
+Use `npx create-quiver demo create spec-viewer --dry-run` to inspect the optional Quiver Spec Viewer demo scaffold, then add `--dir <target>` for a real run. The demo is not part of default init and must remain small, static, dependency-light, and non-destructive.
 The v20, v21, v22, and v23 specs are completed. `specs/quiver-v23-guided-flow-productization/` productized the manual planner/executor prompt workflow into guided Quiver commands, profiles, compact prompts, safe approvals, executor prompts, delegated execution modes, and release readiness evidence.
+The v24 spec is implemented under `specs/quiver-v24-dx-onboarding-hardening/`; it captures DX hardening found while dogfooding Quiver with Quiver Spec Viewer, including init hygiene, CLI ambiguity, local slice validation, analyzer quality, AI context preparation, evidence capture, and demo scaffolding. Do not claim a package release until npm publication actually happens.
 Guided AI workflow behavior is available: prepare, approvals, production-readiness plan review, spec worktrees, executor commits, execution waves, PR creation, spec close, and package safety.
-Generated projects also get `quiver:*` npm scripts that call the Node CLI directly; prefer those for repeatable project workflows, including `quiver:flow` for the read-only guided entrypoint, `quiver:plan` for sequential planning, `quiver:graph` for parallel-level inspection, `quiver:next` for the next ready slice, `quiver:spec:create` for real spec generation, and the AI family `quiver:ai:agent`, `quiver:ai:onboard`, `quiver:ai:plan`, `quiver:ai:review-plan`, `quiver:ai:approve`, `quiver:ai:prompt-slice`, `quiver:ai:execute-slice`, `quiver:ai:execute-plan`, `quiver:ai:pr`, and `quiver:ai:doctor`. Use `quiver:graph --format mermaid` for PR-ready Markdown or `quiver:graph --format dot` for Graphviz source.
+Generated projects also get `quiver:*` npm scripts that call the Node CLI directly; prefer those for repeatable project workflows, including `quiver:flow` for the read-only guided entrypoint, `quiver:plan` for sequential planning, `quiver:graph` for parallel-level inspection, `quiver:next` for the next ready slice, `quiver:evidence` for local command evidence, `quiver:spec:create` for real spec generation, and the AI family `quiver:ai:agent`, `quiver:ai:onboard`, `quiver:ai:prepare-context`, `quiver:ai:plan`, `quiver:ai:review-plan`, `quiver:ai:approve`, `quiver:ai:prompt-slice`, `quiver:ai:execute-slice`, `quiver:ai:execute-plan`, `quiver:ai:pr`, and `quiver:ai:doctor`. Use `quiver:graph --format mermaid` for PR-ready Markdown or `quiver:graph --format dot` for Graphviz source.
 `quiver:ai:execute-plan` supports `--mode manual` for paste-ready executor prompts and `--mode delegated` for temporary worktrees on parallel-ready waves; unsafe waves fall back to sequential execution.
 Agent profiles live in `.quiver/agents/profiles.json`; they store role, provider, model label, context label, and display label only. Do not store API keys, tokens, or credentials there.
 Planner drafts are versioned under `.quiver/approvals/<phase>/drafts/`; review the technical-plan draft with `npx create-quiver ai review-plan --dry-run` before approving it, then approve a concrete version with `npx create-quiver ai approve --phase <phase> --version <n>` when reviewing iterations.
@@ -27,6 +30,7 @@ If a generated project has been analyzed, the exact agent handoff prompt is `doc
 Keep README copy-paste prompts short; the detailed onboarding contract lives in `docs/AI_ONBOARDING_PROMPT.md` generated from `docs/AI_ONBOARDING_PROMPT.md.template`.
 If a new bounded transfer is needed, scaffold `specs/<project-slug>/HANDOFF.md` with `npx create-quiver new-handoff <spec-slug>` and validate it with `npx create-quiver check-handoff specs/<project-slug>/HANDOFF.md`.
 Use `npx create-quiver check-handoff specs/<project-slug>/HANDOFF.md` to validate a transferred handoff before execution.
+Use `npx create-quiver check-slice --local <slice.json>` for structural validation in a new repo without remote/base branches; run normal `check-slice` before PR readiness so base/remote checks still happen.
 During onboarding, after reading `ROADMAP.md`, also read `BACKLOG.md` in the repository root: it tracks emerging patterns that are not yet scoped as specs. Before proposing a new spec, confirm the idea is not already parked or emerging there.
 
 ## Token-Efficient Reading Rules
@@ -56,10 +60,12 @@ Prefer maps, metadata, diffs, and summaries over full file reads when they are e
 - The normal workflow runs from the project root without `--dir`; use `--dir` only when targeting another directory explicitly.
 - The cross-platform contract targets native macOS, Linux, and Windows users through the Node CLI (`npx create-quiver ...`) and generated `quiver:*` npm scripts. Bash wrappers are legacy or optional compatibility, not the primary path. Keep root README examples clear about adapting SSH identity paths on Windows PowerShell, Git Bash, WSL, macOS, and Linux.
 - The support contract lives in `docs/SUPPORT_MATRIX.md` and `docs/TROUBLESHOOTING.md`.
-- Generated project npm scripts should prefer `quiver:*` names such as `quiver:analyze`, `quiver:flow`, `quiver:plan`, `quiver:graph`, `quiver:next`, `quiver:doctor`, `quiver:ai:agent`, `quiver:ai:plan`, `quiver:ai:review-plan`, `quiver:ai:approve`, `quiver:ai:prompt-slice`, `quiver:ai:execute-slice`, `quiver:ai:execute-plan`, `quiver:spec:create`, `quiver:spec:start`, `quiver:spec:status`, `quiver:spec:close`, `quiver:start-slice`, `quiver:check-slice`, and `quiver:check-pr`.
+- Generated project npm scripts should prefer `quiver:*` names such as `quiver:analyze`, `quiver:flow`, `quiver:plan`, `quiver:graph`, `quiver:next`, `quiver:doctor`, `quiver:evidence`, `quiver:ai:agent`, `quiver:ai:prepare-context`, `quiver:ai:plan`, `quiver:ai:review-plan`, `quiver:ai:approve`, `quiver:ai:prompt-slice`, `quiver:ai:execute-slice`, `quiver:ai:execute-plan`, `quiver:spec:create`, `quiver:spec:start`, `quiver:spec:status`, `quiver:spec:close`, `quiver:start-slice`, `quiver:check-slice`, and `quiver:check-pr`.
+- Optional demos are created with `npx create-quiver demo create spec-viewer`; do not add demo output to the package or default init flow.
 - `quiver:graph` defaults to the tree view; choose `--format mermaid` or `--format dot` when you need exportable graph artifacts.
 - `quiver:next` prints the next ready slice and can auto-start it behind a confirmation prompt.
 - `quiver:next --all-ready` prints the whole ready level when you want to inspect every actionable slice at once.
+- Use `--include-completed` with `plan`, `graph`, or `next` only for audit/demo history; default output remains pending/actionable work.
 
 ## Initialization Flow
 
@@ -101,6 +107,7 @@ Default init creates the visible AI-first contract and Quiver internal state:
 - `docs/AI_ONBOARDING_PROMPT.md`
 - `docs/SUPPORT_MATRIX.md`
 - `docs/TROUBLESHOOTING.md`
+- `.gitignore`
 - `.quiver/config.json`
 - `.quiver/state.json`
 - `.quiver/.gitignore`

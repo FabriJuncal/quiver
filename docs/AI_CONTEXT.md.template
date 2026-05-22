@@ -25,6 +25,7 @@ This file is the main context pack after `AGENTS.md` and `docs/PROJECT_MAP.md`. 
 - `docs/AI_ONBOARDING_PROMPT.md` is the handoff after analysis.
 - `docs/DECISIONS.md` tracks durable choices so agents do not re-litigate them.
 - `docs/STATUS.md` tracks progress, blockers, and the current slice.
+- `npx create-quiver ai prepare-context --dry-run` previews docs-only context drafts before writing.
 
 ## Critical Rules
 
@@ -35,6 +36,7 @@ This file is the main context pack after `AGENTS.md` and `docs/PROJECT_MAP.md`. 
 - Use canonical paths when a path matters.
 - Never overwrite user-authored content without checking whether the file is meant to be preserved.
 - If a command or path is ambiguous, prefer the local project root and the generated docs.
+- Context preparation must stay in docs/context files and should use TODO, Assumption, or Pending confirmation markers for uncertain statements.
 
 ## What To Update After A Slice
 

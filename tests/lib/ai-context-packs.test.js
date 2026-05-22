@@ -4,6 +4,7 @@ const test = require('node:test');
 const {
   buildContextPackMetadata,
   getDefaultContextPack,
+  getPreparedContextDocPaths,
   resolveContextPack,
   selectSafePaths,
 } = require('../../src/create-quiver/lib/ai/context-packs');
@@ -62,4 +63,18 @@ test('planner can request the full pack explicitly while executor cannot', () =>
   assert.equal(planner.pack.tokenBudgetHint, 14000);
 
   assert.throws(() => resolveContextPack({ role: 'executor', packName: 'full' }));
+});
+
+test('prepare-context only targets approved docs and never product code', () => {
+  const paths = getPreparedContextDocPaths();
+
+  assert.deepEqual(paths, [
+    'docs/AI_CONTEXT.md',
+    'docs/AI_ONBOARDING_PROMPT.md',
+    'docs/CONTEXTO.md',
+    'docs/STATUS.md',
+    'docs/DECISIONS.md',
+  ]);
+  assert.ok(paths.every((item) => item.startsWith('docs/')));
+  assert.ok(!paths.some((item) => item.startsWith('src/')));
 });

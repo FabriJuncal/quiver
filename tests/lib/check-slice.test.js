@@ -50,6 +50,23 @@ function withRepoCwd(repoRoot, fn) {
   }
 }
 
+function captureConsole(fn) {
+  const originalLog = console.log;
+  const lines = [];
+  console.log = (...args) => lines.push(args.join(' '));
+  try {
+    fn();
+  } finally {
+    console.log = originalLog;
+  }
+  return lines.join('\n');
+}
+
+function commitAll(repoRoot, message = 'seed') {
+  cp.execFileSync('git', ['add', '.'], { cwd: repoRoot });
+  cp.execFileSync('git', ['commit', '-m', message, '--quiet'], { cwd: repoRoot });
+}
+
 function completedSlice(ref, extra = {}) {
   const [, sliceId] = ref.split('/');
   return {
@@ -78,6 +95,16 @@ function completedSlice(ref, extra = {}) {
   };
 }
 
+function readySlice(ref, extra = {}) {
+  return {
+    ...completedSlice(ref, extra),
+    status: 'ready',
+    started_at: undefined,
+    completed_at: undefined,
+    actual_hours: undefined,
+  };
+}
+
 test('check-slice passes for a completed slice without optional dependency fields', () => {
   const repo = makeRepo({
     'specs/spec-a/SPEC.md': '# spec-a\n',
@@ -90,6 +117,79 @@ test('check-slice passes for a completed slice without optional dependency field
     assert.doesNotThrow(() => withRepoCwd(repo.root, () => checkSliceReadiness('specs/spec-a/slices/slice-01-alpha/slice.json', {
       gate: 'validation',
     })));
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('check-slice --local validates structure without requiring remote or base branches', () => {
+  const repo = makeRepo({
+    'specs/spec-a/SPEC.md': '# spec-a\n',
+    'specs/spec-a/STATUS.md': '# status\n',
+    'specs/spec-a/EVIDENCE_REPORT.md': '# evidence\n',
+    'specs/spec-a/slices/slice-01-alpha/EXECUTION_BRIEF.md': '# Execute\n',
+    'specs/spec-a/slices/slice-01-alpha/CLOSURE_BRIEF.md': '# Close\n',
+    'specs/spec-a/slices/slice-01-alpha/slice.json': readySlice('spec-a/slice-01-alpha'),
+  });
+
+  try {
+    const output = withRepoCwd(repo.root, () => captureConsole(() => checkSliceReadiness('specs/spec-a/slices/slice-01-alpha/slice.json', {
+      local: true,
+    })));
+
+    assert.match(output, /PASS: El slice local tiene EXECUTION_BRIEF\.md y CLOSURE_BRIEF\.md/);
+    assert.match(output, /INFO: Modo local: se omite validacion de existencia del slice en origin\/develop o develop/);
+    assert.match(output, /INFO: Modo local: se omite validacion de overlap/);
+    assert.match(output, /PASS: Gate execution/);
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('check-slice default mode gives local/base guidance when no base exists', () => {
+  const repo = makeRepo({
+    'specs/spec-a/SPEC.md': '# spec-a\n',
+    'specs/spec-a/STATUS.md': '# status\n',
+    'specs/spec-a/EVIDENCE_REPORT.md': '# evidence\n',
+    'specs/spec-a/slices/slice-01-alpha/slice.json': readySlice('spec-a/slice-01-alpha'),
+  });
+
+  try {
+    assert.throws(
+      () => withRepoCwd(repo.root, () => checkSliceReadiness('specs/spec-a/slices/slice-01-alpha/slice.json')),
+      (error) => {
+        const message = String(error.message || error);
+        return message.includes('--local') && message.includes('--base <branch>') && message.includes("origin");
+      },
+    );
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('check-slice supports an explicit local base branch', () => {
+  const repo = makeRepo({
+    'specs/spec-a/SPEC.md': '# spec-a\n',
+    'specs/spec-a/STATUS.md': '# status\n',
+    'specs/spec-a/EVIDENCE_REPORT.md': '# evidence\n',
+    'specs/spec-a/slices/slice-01-alpha/slice.json': readySlice('spec-a/slice-01-alpha', {
+      git: {
+        branch_type: 'feature',
+        base_branch: 'main',
+        branch_slug: 'slice-01-alpha',
+        branch_name: 'feature/QUIVER-01-slice-01-alpha',
+      },
+    }),
+  });
+
+  try {
+    commitAll(repo.root);
+    const output = withRepoCwd(repo.root, () => captureConsole(() => checkSliceReadiness('specs/spec-a/slices/slice-01-alpha/slice.json', {
+      baseBranch: 'feature/test-slice',
+    })));
+
+    assert.match(output, /PASS: El slice ya existe en feature\/test-slice local/);
+    assert.match(output, /PASS: Gate execution/);
   } finally {
     repo.cleanup();
   }

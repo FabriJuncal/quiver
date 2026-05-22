@@ -205,6 +205,57 @@ function writeFrontMatter(filePath, fields) {
   return nextContent;
 }
 
+const ROOT_GITIGNORE_DEFAULTS = [
+  'node_modules/',
+  '.DS_Store',
+  'dist/',
+  'coverage/',
+];
+
+function normalizeGitignorePattern(line) {
+  const trimmed = line.trim();
+  if (!trimmed || trimmed.startsWith('#')) {
+    return trimmed;
+  }
+
+  return trimmed.replace(/\/+$/g, '');
+}
+
+function mergeLineList(existingText, defaults) {
+  const existingLines = existingText
+    .split(/\r?\n/)
+    .filter((line, index, lines) => line.length > 0 || index < lines.length - 1);
+  const seen = new Set(existingLines.map(normalizeGitignorePattern).filter(Boolean));
+  const nextLines = [...existingLines];
+
+  for (const line of defaults) {
+    const normalized = normalizeGitignorePattern(line);
+    if (!seen.has(normalized)) {
+      nextLines.push(line);
+      seen.add(normalized);
+    }
+  }
+
+  return `${nextLines.join('\n').replace(/\s+$/g, '')}\n`;
+}
+
+function mergeRootGitignore(projectRoot) {
+  const gitignorePath = path.join(projectRoot, '.gitignore');
+  const exists = fs.existsSync(gitignorePath);
+  const existingText = exists
+    ? fs.readFileSync(gitignorePath, 'utf8')
+    : '';
+
+  ensureDir(path.dirname(gitignorePath));
+  fs.writeFileSync(gitignorePath, mergeLineList(existingText, ROOT_GITIGNORE_DEFAULTS));
+  return exists ? 'merged' : 'created';
+}
+
+function resolvePackageName(projectRoot, options = {}) {
+  return options.projectSlug
+    || toProjectSlug(options.projectName || path.basename(projectRoot) || 'Quiver Project');
+}
+
 function mergePackageJson(projectRoot, templateRoot, options = {}) {
   const packageTemplate = path.join(templateRoot, 'package.template.json');
   const packageJsonPath = path.join(projectRoot, 'package.json');
@@ -218,13 +269,17 @@ function mergePackageJson(projectRoot, templateRoot, options = {}) {
 
   if (!fs.existsSync(packageJsonPath)) {
     const template = JSON.parse(fs.readFileSync(packageTemplate, 'utf8'));
+    template.name = resolvePackageName(projectRoot, options);
     template.scripts = scripts;
     fs.writeFileSync(packageJsonPath, `${JSON.stringify(template, null, 2)}\n`);
     return 'created';
   }
 
   const existing = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
-  const template = JSON.parse(fs.readFileSync(packageTemplate, 'utf8'));
+
+  if (typeof existing.name !== 'string' || existing.name.trim().length === 0) {
+    existing.name = resolvePackageName(projectRoot, options);
+  }
 
   existing.scripts = {
     ...(existing.scripts || {}),
@@ -584,6 +639,19 @@ Use this section only for projects generated with the full compatibility layout.
 `;
 }
 
+function buildFullProfileIndexAppendix(projectSlug) {
+  return `## Full Profile Extras
+
+- **Multi-agent workflow** - \`./MULTI_AGENT_WORKFLOW.md\`
+- **Quick AI context** - \`./ai/QUICK.md\`
+- **Standard AI context** - \`./ai/STANDARD.md\`
+- **Deep AI context** - \`./ai/DEEP.md\`
+- **Spec starter assets** - \`../specs/${projectSlug}/\`
+- **Tool notes** - \`./tools/\`
+- **Archive** - \`./archive/\`
+`;
+}
+
 function initializeProjectDocs(options) {
   const {
     projectRoot,
@@ -640,6 +708,9 @@ function initializeProjectDocs(options) {
 
   fs.writeFileSync(internalPaths.gitignorePath, buildQuiverInternalGitignore());
   operations.push({ source: 'Quiver internal gitignore', destination: '.quiver/.gitignore', result: 'updated' });
+
+  const rootGitignoreResult = mergeRootGitignore(projectRoot);
+  operations.push({ source: 'root gitignore defaults', destination: '.gitignore', result: rootGitignoreResult });
 
   if (includeTemplates) {
     fs.mkdirSync(internalPaths.templatesDir, { recursive: true });
@@ -734,6 +805,17 @@ function initializeProjectDocs(options) {
     operations.push({ source, destination, result });
   }
 
+  const indexPath = path.join(projectRoot, 'docs', 'INDEX.md');
+  const indexWasCreated = operations.some((operation) => (
+    operation.destination === 'docs/INDEX.md'
+    && (operation.result === 'created' || operation.result === 'created-with-frontmatter')
+  ));
+  if (profile === 'full' && indexWasCreated && fs.existsSync(indexPath)) {
+    const currentIndex = fs.readFileSync(indexPath, 'utf8').replace(/\s+$/g, '');
+    fs.writeFileSync(indexPath, `${currentIndex}\n\n${buildFullProfileIndexAppendix(replacements.projectSlug)}`);
+    operations.push({ source: 'full profile index appendix', destination: 'docs/INDEX.md', result: 'updated' });
+  }
+
   const binaryCopies = [
     ['docs/UI_STANDARDS.md', 'docs/UI_STANDARDS.md'],
     ['docs/MOCK_DATA_GUIDE.md', 'docs/MOCK_DATA_GUIDE.md'],
@@ -808,6 +890,8 @@ function initializeProjectDocs(options) {
     legacyScripts,
     migrateMode,
     profile,
+    projectName,
+    projectSlug: replacements.projectSlug,
   });
   operations.push({ source: 'package.template.json', destination: 'package.json', result: packageResult });
 

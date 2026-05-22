@@ -1,0 +1,53 @@
+{
+  "slice_id": "slice-03-doctor-fix-doc-link-checks",
+  "ticket": "QUIVER-24-03",
+  "type": "feature",
+  "title": "Doctor fixes and documentation link checks",
+  "objective": "Add safe repair previews and generated-doc link validation to reduce manual cleanup after init.",
+  "description": "Introduce `doctor --fix --dry-run`, safe `doctor --fix`, and a docs link check that understands generated profiles and optional files.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "doctor-fix-doc-link-checks",
+    "branch_name": "feature/QUIVER-24-03-doctor-fix-doc-link-checks"
+  },
+  "files": [
+    "src/create-quiver/index.js",
+    "src/create-quiver/lib/doctor.js",
+    "src/create-quiver/commands/prepare.js",
+    "tests/lib/doctor.test.js",
+    "tests/commands/doctor.test.js",
+    "tests/commands/prepare.test.js"
+  ],
+  "depends_on": [
+    "slice-01-init-template-hygiene",
+    "slice-02-cli-command-routing-version-errors"
+  ],
+  "parallel_safe": "yes",
+  "parallel_safe_reason": "Can run after init/parser contracts are stable; owns doctor/link-check behavior.",
+  "must": [
+    "Add `doctor --fix --dry-run` with a planned change list.",
+    "Add safe `doctor --fix` for non-destructive repairs only.",
+    "Validate local docs links for generated docs.",
+    "Avoid deleting or rewriting user-owned content.",
+    "Make fixes idempotent."
+  ],
+  "not_included": [
+    "AI context generation.",
+    "Evidence capture.",
+    "Remote validation behavior."
+  ],
+  "acceptance": [
+    "`doctor --fix --dry-run` reports changes and writes nothing.",
+    "`doctor --fix` applies only non-destructive changes.",
+    "Running `doctor --fix` twice produces no duplicate content.",
+    "Docs link validation catches real missing local files.",
+    "Optional docs are either ignored or clearly reported as optional."
+  ],
+  "tests": [
+    "node --test tests/lib/doctor.test.js tests/commands/doctor.test.js tests/commands/prepare.test.js"
+  ],
+  "estimated_hours": 6,
+  "status": "completed",
+  "blocked_reason": null
+}

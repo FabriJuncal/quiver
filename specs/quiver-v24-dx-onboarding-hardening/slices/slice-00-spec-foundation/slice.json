@@ -1,0 +1,51 @@
+{
+  "slice_id": "slice-00-spec-foundation",
+  "ticket": "QUIVER-24-00",
+  "type": "docs",
+  "title": "Spec foundation and source-of-truth sync",
+  "objective": "Create the complete documentation foundation for the DX onboarding hardening spec before product implementation starts.",
+  "description": "Publish the v24 spec, status, evidence report, execution plan, PR body, slice definitions, handoffs, and source-of-truth updates.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "dx-onboarding-hardening-spec-foundation",
+    "branch_name": "feature/QUIVER-24-00-dx-onboarding-hardening-spec-foundation"
+  },
+  "files": [
+    "README_FOR_AI.md",
+    "ROADMAP.md",
+    "specs/quiver-v24-dx-onboarding-hardening/**"
+  ],
+  "depends_on": [],
+  "parallel_safe": "no",
+  "parallel_safe_reason": "slice-00 must land before every implementation slice.",
+  "must": [
+    "Create SPEC.md, STATUS.md, EVIDENCE_REPORT.md, EXECUTION_PLAN.md, and pr.md.",
+    "Create slice.json, EXECUTION_BRIEF.md, and CLOSURE_BRIEF.md for every slice.",
+    "Sync README_FOR_AI.md and ROADMAP.md with the planned v24 spec.",
+    "Avoid product code changes."
+  ],
+  "not_included": [
+    "Implementing CLI behavior.",
+    "Changing generated templates.",
+    "Running package release.",
+    "Opening a PR."
+  ],
+  "acceptance": [
+    "Spec folder exists under specs/quiver-v24-dx-onboarding-hardening.",
+    "Mandatory slice-00 exists.",
+    "Every slice has slice.json, EXECUTION_BRIEF.md, and CLOSURE_BRIEF.md.",
+    "Every slice.json parses successfully.",
+    "README_FOR_AI.md and ROADMAP.md mention v24 as planned, not completed.",
+    "No product code is modified."
+  ],
+  "tests": [
+    "git diff --check",
+    "find specs/quiver-v24-dx-onboarding-hardening -name \"slice.json\" -print -exec node -e \"JSON.parse(require('fs').readFileSync(process.argv[1], 'utf8'))\" {} \\;"
+  ],
+  "estimated_hours": 2,
+  "status": "completed",
+  "blocked_reason": null,
+  "actual_hours": 2,
+  "completed_at": "2026-05-22T00:00:00-0300"
+}

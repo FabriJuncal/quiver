@@ -4,6 +4,7 @@ const { renderMermaidGraph } = require('../lib/renderers/mermaid');
 const { renderTreeGraph, isUnicodeEnabled } = require('../lib/renderers/tree');
 
 const EXCLUDED_STATUSES = new Set(['completed', 'skipped', 'cancelled']);
+const HISTORY_EXCLUDED_STATUSES = new Set(['skipped', 'cancelled']);
 
 function toGraphNode(node) {
   return {
@@ -29,7 +30,18 @@ function buildConflictPayload(levelIndex, groups) {
 function collectGraph(repoRoot, options = {}) {
   const graph = buildGraph(readAllSlices(repoRoot));
   computeLevels(graph);
-  const pendingNodes = graph.nodes.filter((node) => !EXCLUDED_STATUSES.has(String(node.status || '').toLowerCase()));
+  const includeCompleted = options.includeCompleted === true;
+  const excluded = includeCompleted ? HISTORY_EXCLUDED_STATUSES : EXCLUDED_STATUSES;
+  const specSlug = options.specSlug ? String(options.specSlug).trim() : '';
+  const pendingNodes = graph.nodes.filter((node) => {
+    if (excluded.has(String(node.status || '').toLowerCase())) {
+      return false;
+    }
+    if (specSlug && node.specSlug !== specSlug) {
+      return false;
+    }
+    return true;
+  });
   const pendingNodeRefs = new Set(pendingNodes.map((node) => node.ref));
   const pendingEdges = graph.edges.filter((edge) => pendingNodeRefs.has(edge.from) && pendingNodeRefs.has(edge.to));
   const levels = pendingNodes.length > 0 ? computeLevels({ nodes: pendingNodes, edges: pendingEdges, cycles: [] }) : [];
@@ -50,6 +62,7 @@ function collectGraph(repoRoot, options = {}) {
   return {
     levels: filteredLevels.map((entry) => entry.slices),
     conflicts: filteredLevels.flatMap((entry) => entry.conflicts),
+    include_completed: includeCompleted,
   };
 }
 

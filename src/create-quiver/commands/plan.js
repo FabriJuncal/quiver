@@ -4,6 +4,7 @@ const { relativePosixPath } = require('../lib/paths');
 const { buildGraph, readAllSlices, topoSort } = require('../lib/slice-graph');
 
 const EXCLUDED_STATUSES = new Set(['completed', 'skipped', 'cancelled']);
+const HISTORY_EXCLUDED_STATUSES = new Set(['skipped', 'cancelled']);
 
 function toHourCount(value) {
   const parsed = Number(value);
@@ -118,7 +119,8 @@ function collectPlan(repoRoot, options = {}) {
   const allSlices = readAllSlices(repoRoot);
   const graph = buildGraph(allSlices);
   const topo = topoSort(graph);
-  const excluded = EXCLUDED_STATUSES;
+  const includeCompleted = options.includeCompleted === true;
+  const excluded = includeCompleted ? HISTORY_EXCLUDED_STATUSES : EXCLUDED_STATUSES;
   const specSlug = options.specSlug ? String(options.specSlug).trim() : '';
 
   const pendingRefs = new Set(
@@ -147,6 +149,7 @@ function collectPlan(repoRoot, options = {}) {
 
   return {
     critical_path: criticalPath,
+    include_completed: includeCompleted,
     plan,
     total_hours: totalHours,
   };
@@ -154,12 +157,12 @@ function collectPlan(repoRoot, options = {}) {
 
 function formatHumanPlan(report, options = {}) {
   const unicode = Boolean(options.unicode) || /UTF-8/i.test(process.env.LANG || '');
-  const title = options.onlyReady ? 'Ready slices' : 'Quiver plan';
+  const title = options.onlyReady ? 'Ready slices' : (report.include_completed ? 'Quiver plan (including completed)' : 'Quiver plan');
   const pathSeparator = unicode ? ' → ' : ' -> ';
   const lines = [title, `Total hours: ${report.total_hours}`, `Critical path: ${report.critical_path.length > 0 ? report.critical_path.join(pathSeparator) : '-'}`, ''];
 
   if (report.plan.length === 0) {
-    lines.push('No pending slices found.');
+    lines.push(report.include_completed ? 'No slices found for the selected filters.' : 'No pending slices found.');
     return `${lines.join('\n')}\n`;
   }
 

@@ -16,6 +16,7 @@
 
 - [Current goal 1]
 - [Current goal 2]
+- [TODO: confirm current onboarding context before broadening scope]
 
 ## Where The Stack Lives
 
@@ -30,3 +31,4 @@ The stack, package manager, and command surface are generated in `docs/PROJECT_M
 ## Next Step
 
 Read `AI_CONTEXT.md` first if you are an AI agent. Otherwise read `INDEX.md` to navigate the rest of the documentation.
+Use `npx create-quiver ai prepare-context --dry-run` to preview context drafts before writing docs.

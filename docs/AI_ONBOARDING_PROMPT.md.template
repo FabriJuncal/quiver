@@ -15,6 +15,7 @@ Actúa como asistente de onboarding de IA para este proyecto. Tu objetivo es com
    - Lee `docs/INDEX.md`, si existe, y úsalo como mapa para decidir qué abrir después.
    - Lee `docs/PROJECT_MAP.md` para stack, comandos y estructura. Usa `.quiver/scans/PROJECT_SCAN.json` solo si el mapa visible no alcanza.
    - Lee `docs/AI_CONTEXT.md`, `docs/AI_ONBOARDING_PROMPT.md`, `docs/WORKFLOW.md`, `docs/STATUS.md` y `docs/DECISIONS.md` solo cuando existan y sean relevantes para la tarea.
+   - Si usás `npx create-quiver ai prepare-context`, revisá los borradores propuestos antes de escribir y mantené las escrituras limitadas a docs/context.
    - Lee specs, slices o handoffs solo si la tarea actual lo requiere.
    - No leas todo `docs/` por defecto.
    - Si un documento referenciado no existe, repórtalo como deuda documental.
@@ -71,6 +72,7 @@ Si usás los comandos de IA de Quiver, empezá con `--dry-run` para revisar prov
 
 ```bash
 npm run quiver:prepare -- --dry-run
+npm run quiver:ai:prepare-context -- --dry-run
 npm run quiver:ai:onboard -- --dry-run
 npm run quiver:ai:plan -- --phase acceptance --input requirements.md --dry-run
 npm run quiver:ai:approve -- --phase acceptance --input acceptance-approved.md
@@ -97,6 +99,7 @@ npm run quiver:spec:close -- specs/{{PROJECT_SLUG}} --dry-run
 6. Si existe un handoff, trátalo como brief de transferencia y valida que aplique al trabajo solicitado.
 7. Si no existe un handoff y el trabajo necesita uno, créalo con `npx create-quiver new-handoff <spec-slug>` y valídalo con `npx create-quiver check-handoff specs/<spec-slug>/HANDOFF.md`.
 8. Registra los archivos inspeccionados, los archivos modificados y las suposiciones realizadas.
+9. Cuando prepares contexto, marca las incertidumbres como `TODO`, `Assumption` o `Pending confirmation` y evita tocar código de producto.
 
 ## Validación
 

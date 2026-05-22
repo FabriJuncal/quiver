@@ -24,3 +24,4 @@ This page tracks progress, blockers, and the current slice. Stack and command de
 
 - Update this file after each completed slice.
 - Keep stack and command changes in `docs/PROJECT_MAP.md`, not here.
+- Record uncertainty with `TODO`, `Assumption`, or `Pending confirmation` instead of treating it as product debt.

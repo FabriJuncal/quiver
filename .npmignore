@@ -11,6 +11,7 @@ WORKTREE_CONTEXT.md
 npm-debug.log*
 tests
 examples
+quiver-spec-viewer
 !docs/examples/
 !docs/examples/**
 specs/quiver-v01

@@ -44,6 +44,13 @@ const DEFAULT_CONTEXT_PACK_BY_ROLE = Object.freeze({
 });
 
 const PACK_ORDER = ['full', 'planning', 'slice', 'minimal'];
+const CONTEXT_PREPARED_DOC_PATHS = Object.freeze([
+  'docs/AI_CONTEXT.md',
+  'docs/AI_ONBOARDING_PROMPT.md',
+  'docs/CONTEXTO.md',
+  'docs/STATUS.md',
+  'docs/DECISIONS.md',
+]);
 
 function normalizeRole(role) {
   const value = String(role || '').trim().toLowerCase();
@@ -64,6 +71,10 @@ function normalizePackName(packName) {
 function getDefaultContextPack(role) {
   const normalizedRole = normalizeRole(role);
   return DEFAULT_CONTEXT_PACK_BY_ROLE[normalizedRole];
+}
+
+function getPreparedContextDocPaths() {
+  return CONTEXT_PREPARED_DOC_PATHS.slice();
 }
 
 function resolveContextPack({ role, packName } = {}) {
@@ -148,6 +159,7 @@ module.exports = {
   ROLES,
   buildContextPackMetadata,
   buildPackSelection,
+  getPreparedContextDocPaths,
   getDefaultContextPack,
   normalizePackName,
   normalizeRole,

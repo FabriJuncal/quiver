@@ -51,7 +51,7 @@ function buildNextSteps(report) {
   }
 
   if (nextSteps.length === 0) {
-    nextSteps.push('Run `npx create-quiver doctor` for the layout contract, then `npx create-quiver ai onboard --dry-run` to preview the onboarding prompt.');
+    nextSteps.push('Run `npx create-quiver doctor` for the layout contract, then `npx create-quiver ai prepare-context --dry-run` to preview the context drafts.');
   }
 
   return nextSteps;
@@ -70,7 +70,8 @@ function formatPrepareReport(report) {
     'Quiver prepare report',
     `Mode: ${report.dryRun ? 'dry-run' : 'live'}`,
     `Project: ${report.projectRoot}`,
-    `Docs source: ${report.workflowSource.exists ? 'README_FOR_AI.md present' : 'README_FOR_AI.md missing'}`,
+    'Framework guidance: packaged README_FOR_AI.md template',
+    `Project docs copy: ${report.workflowSource.exists ? 'present' : 'absent (not counted as debt)'}`,
     `Layout: ${report.doctor.layout}`,
     formatListLine('Specs', report.doctor.specSlugs),
   ];

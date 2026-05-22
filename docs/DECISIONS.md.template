@@ -4,6 +4,7 @@
 **Status:** {{ESTADO}}
 
 This file records durable project decisions so AI agents do not re-litigate choices that were already made.
+Use it for durable context-preparation choices too, especially when a missing generated doc is guidance-only rather than debt.
 
 ## Log
 

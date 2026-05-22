@@ -22,6 +22,7 @@ const CORE_VISIBLE_DIRECTORIES = ['docs', 'docs/ai', '.quiver', '.quiver/scans']
 const MINIMAL_VISIBLE_FILES = [
   'README.md',
   'AGENTS.md',
+  '.gitignore',
   'docs/AI_CONTEXT.md',
   'docs/AI_ONBOARDING_PROMPT.md',
   'docs/COMMANDS.md',
@@ -92,6 +93,7 @@ function quiverInternalPaths(projectRoot) {
 function buildQuiverInternalGitignore() {
   return [
     'cache/',
+    'evidence/',
     'runs/',
     'worktrees/',
     '',
@@ -184,8 +186,10 @@ function resolveInitPackageScripts(profile, options = {}) {
     'quiver:graph': 'npx create-quiver graph',
     'quiver:next': 'npx create-quiver next',
     'quiver:doctor': 'npx create-quiver doctor',
+    'quiver:evidence': 'npx create-quiver evidence',
     'quiver:ai:agent': 'npx create-quiver ai agent',
     'quiver:ai:onboard': 'npx create-quiver ai onboard',
+    'quiver:ai:prepare-context': 'npx create-quiver ai prepare-context',
     'quiver:ai:plan': 'npx create-quiver ai plan',
     'quiver:ai:review-plan': 'npx create-quiver ai review-plan',
     'quiver:ai:approve': 'npx create-quiver ai approve',
@@ -270,7 +274,17 @@ function buildInitLayout(projectRoot, options = {}) {
   }
 
   for (const file of visibleFiles) {
-    pushPlannedOperation(operations, projectRoot, file, 'file', file === 'package.json' ? 'update' : 'create', file === 'package.json' ? 'prepare package metadata and scripts' : 'core visible contract file', profile, 'visible');
+    const updateMode = file === 'package.json' || file === '.gitignore';
+    pushPlannedOperation(
+      operations,
+      projectRoot,
+      file,
+      'file',
+      updateMode ? 'update' : 'create',
+      updateMode ? 'prepare project metadata or ignored paths' : 'core visible contract file',
+      profile,
+      'visible',
+    );
   }
 
   if (profile === 'full') {

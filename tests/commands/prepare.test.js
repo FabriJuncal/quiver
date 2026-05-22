@@ -97,7 +97,8 @@ exit 0
     assert.deepEqual(after, before);
     assert.ok(output.includes('Quiver prepare report'));
     assert.ok(output.includes('Mode: dry-run'));
-    assert.ok(output.includes('Docs source: README_FOR_AI.md present'));
+    assert.ok(output.includes('Framework guidance: packaged README_FOR_AI.md template'));
+    assert.ok(output.includes('Project docs copy: present'));
     assert.ok(output.includes('GitHub CLI:'));
     assert.ok(output.includes('Provider CLI (codex):'));
     assert.ok(output.includes('Onboarding context:'));
@@ -105,7 +106,7 @@ exit 0
     assert.ok(output.includes('documentation debt:'));
     assert.ok(output.includes('omitted by default:'));
     assert.ok(output.includes('Next safe commands:'));
-    assert.ok(output.includes('npx create-quiver ai onboard --dry-run'));
+    assert.ok(output.includes('npx create-quiver ai prepare-context --dry-run'));
     assert.ok(output.includes('Dry-run note: this command does not write files.'));
   } finally {
     fs.rmSync(binDir, { recursive: true, force: true });
@@ -233,9 +234,48 @@ exit 0
 
     assert.ok(output.includes('Next safe commands:'));
     assert.ok(output.includes('npx create-quiver doctor'));
-    assert.ok(output.includes('npx create-quiver ai onboard --dry-run'));
+    assert.ok(output.includes('npx create-quiver ai prepare-context --dry-run'));
     assert.ok(output.includes('auth: ok'));
     assert.ok(output.includes('available (codex)'));
+  } finally {
+    fs.rmSync(binDir, { recursive: true, force: true });
+    repo.cleanup();
+  }
+});
+
+test('prepare treats missing README_FOR_AI.md as framework guidance, not project debt', () => {
+  const repo = makeRepo();
+  const binDir = fs.mkdtempSync(path.join(os.tmpdir(), 'quiver-prepare-guidance-'));
+
+  try {
+    writeFile(repo.root, 'README.md', '# Project\n');
+    writeFile(repo.root, 'AGENTS.md', 'Purpose\n\n## Reading Budget\n## Reading Order\n## Output Policy\n## Slice Execution Rules\n## Links\n');
+    writeFile(repo.root, 'docs/AI_CONTEXT.md', '# AI Context\n');
+    writeFile(repo.root, 'docs/AI_ONBOARDING_PROMPT.md', '# Prompt\n');
+    writeFile(repo.root, 'docs/COMMANDS.md', '# Commands\n');
+    writeFile(repo.root, 'docs/WORKFLOW.md', '# Workflow\n');
+    writeFile(repo.root, 'package.json', JSON.stringify({ name: 'project' }, null, 2));
+
+    createFakeCli(binDir, 'gh', `#!/bin/sh
+case "$1 $2" in
+  "--version "*) printf '%s\n' 'gh version 2.0.0'; exit 0 ;;
+  "auth status") printf '%s\n' 'Logged in to github.com as octocat'; exit 0 ;;
+esac
+exit 1
+`);
+
+    const output = execFileSync(process.execPath, [BIN_PATH, 'prepare', '--dry-run'], {
+      cwd: repo.root,
+      encoding: 'utf8',
+      env: {
+        ...process.env,
+        PATH: binDir,
+      },
+    });
+
+    assert.ok(output.includes('Framework guidance: packaged README_FOR_AI.md template'));
+    assert.ok(output.includes('Project docs copy: absent (not counted as debt)'));
+    assert.ok(!output.includes('README_FOR_AI.md missing'));
   } finally {
     fs.rmSync(binDir, { recursive: true, force: true });
     repo.cleanup();

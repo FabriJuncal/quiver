@@ -1,0 +1,60 @@
+{
+  "slice_id": "slice-06-plan-graph-next-history-views",
+  "ticket": "QUIVER-24-06",
+  "type": "feature",
+  "title": "Historical plan, graph, and next views",
+  "objective": "Make orchestration commands useful for demos and audits by optionally including completed slices.",
+  "description": "Add `--include-completed` behavior to `plan`, `graph`, and `next` while keeping default pending-only output unchanged.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "plan-graph-next-history-views",
+    "branch_name": "feature/QUIVER-24-06-plan-graph-next-history-views"
+  },
+  "files": [
+    "src/create-quiver/index.js",
+    "src/create-quiver/commands/plan.js",
+    "src/create-quiver/commands/graph.js",
+    "src/create-quiver/commands/next.js",
+    "src/create-quiver/lib/slice-graph.js",
+    "tests/commands/plan.test.js",
+    "tests/commands/graph.test.js",
+    "tests/commands/next.test.js",
+    "tests/lib/slice-graph.test.js"
+  ],
+  "depends_on": [
+    "slice-05-local-slice-validation-base-guidance"
+  ],
+  "parallel_safe": "yes",
+  "parallel_safe_reason": "Can run after local validation behavior is defined; owns planning command output.",
+  "must": [
+    "Add `--include-completed` to plan, graph, and next where useful.",
+    "Keep default output pending-only.",
+    "Define behavior for completed, skipped, cancelled, blocked, and draft statuses.",
+    "Keep JSON output parseable.",
+    "Ensure `--spec <slug>` filters plan, graph, and next outputs consistently.",
+    "Preserve slice ticket values in plan output.",
+    "Keep default no-pending message clear."
+  ],
+  "not_included": [
+    "Changing dependency inference semantics.",
+    "Adding a persistent UI.",
+    "Changing slice statuses."
+  ],
+  "acceptance": [
+    "Default plan/graph/next behavior remains pending-only.",
+    "`plan --include-completed` shows completed slices for audit/demo use.",
+    "`graph --include-completed` renders completed slices without breaking Mermaid/DOT/tree outputs.",
+    "`next --include-completed` does not recommend completed slices as actionable work unless explicitly documented as historical output.",
+    "`graph --spec <slug>` does not include slices from other specs.",
+    "`next --spec <slug>` and `plan --spec <slug>` apply the same spec filter semantics.",
+    "Plan output shows the `ticket` value from slice.json when present.",
+    "Tests cover JSON and human output."
+  ],
+  "tests": [
+    "node --test tests/commands/plan.test.js tests/commands/graph.test.js tests/commands/next.test.js tests/lib/slice-graph.test.js"
+  ],
+  "estimated_hours": 5,
+  "status": "completed",
+  "blocked_reason": null
+}

@@ -47,6 +47,95 @@ test('doctor accepts the new default init layout before specs exist', () => {
   }
 });
 
+test('doctor warns when package scripts target unsupported create-quiver commands', () => {
+  const { dir, cleanup } = makeTmpDir();
+  const target = path.join(dir, 'target');
+  try {
+    runCli(['init', '--name', 'Unsupported Script Project', '--dir', target, '--skip-install']);
+    const packageJsonPath = path.join(target, 'package.json');
+    const pkg = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
+    pkg.scripts['quiver:ai:prepare-context'] = 'npx create-quiver ai prepare-context --dry-run';
+    pkg.scripts['quiver:future'] = 'npx create-quiver future run -- npm test';
+    fs.writeFileSync(packageJsonPath, `${JSON.stringify(pkg, null, 2)}\n`);
+
+    const output = runCli(['doctor'], { cwd: target });
+
+    assert.match(output, /Warning: package\.json script quiver:future targets unsupported command "future"/);
+    assert.doesNotMatch(output, /quiver:ai:prepare-context targets unsupported ai subcommand "prepare-context"/);
+    assert.match(output, /Update create-quiver or regenerate scripts with npx create-quiver migrate/);
+  } finally {
+    cleanup();
+  }
+});
+
+test('doctor fix dry-run previews safe repairs without writing', () => {
+  const { dir, cleanup } = makeTmpDir();
+  const target = path.join(dir, 'target');
+  try {
+    runCli(['init', '--name', 'Fix Dry Run Project', '--dir', target, '--skip-install']);
+    fs.rmSync(path.join(target, '.gitignore'), { force: true });
+    const packageJsonPath = path.join(target, 'package.json');
+    const pkg = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
+    delete pkg.scripts['quiver:check-slice'];
+    fs.writeFileSync(packageJsonPath, `${JSON.stringify(pkg, null, 2)}\n`);
+
+    const output = runCli(['doctor', '--fix', '--dry-run'], { cwd: target });
+    const afterPkg = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
+
+    assert.match(output, /Quiver doctor fix dry-run/);
+    assert.match(output, /Would update \.gitignore/);
+    assert.match(output, /Would update package\.json/);
+    assert.equal(fs.existsSync(path.join(target, '.gitignore')), false);
+    assert.equal(afterPkg.scripts['quiver:check-slice'], undefined);
+  } finally {
+    cleanup();
+  }
+});
+
+test('doctor fix applies safe repairs idempotently', () => {
+  const { dir, cleanup } = makeTmpDir();
+  const target = path.join(dir, 'target');
+  try {
+    runCli(['init', '--name', 'Fix Project', '--dir', target, '--skip-install']);
+    fs.writeFileSync(path.join(target, '.gitignore'), 'custom.log\nnode_modules\n');
+    const packageJsonPath = path.join(target, 'package.json');
+    const pkg = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
+    delete pkg.scripts['quiver:check-slice'];
+    fs.writeFileSync(packageJsonPath, `${JSON.stringify(pkg, null, 2)}\n`);
+
+    const firstOutput = runCli(['doctor', '--fix'], { cwd: target });
+    const secondOutput = runCli(['doctor', '--fix'], { cwd: target });
+    const gitignore = fs.readFileSync(path.join(target, '.gitignore'), 'utf8');
+    const fixedPkg = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
+
+    assert.match(firstOutput, /Updated \.gitignore/);
+    assert.match(firstOutput, /Updated package\.json/);
+    assert.match(secondOutput, /No safe fixes to apply/);
+    assert.match(gitignore, /^custom\.log$/m);
+    assert.equal((gitignore.match(/^node_modules\/?$/gm) || []).length, 1);
+    assert.equal((gitignore.match(/^dist\/$/gm) || []).length, 1);
+    assert.equal(typeof fixedPkg.scripts['quiver:check-slice'], 'string');
+  } finally {
+    cleanup();
+  }
+});
+
+test('doctor warns about missing local markdown links in generated docs', () => {
+  const { dir, cleanup } = makeTmpDir();
+  const target = path.join(dir, 'target');
+  try {
+    runCli(['init', '--name', 'Broken Link Project', '--dir', target, '--skip-install']);
+    writeFile(target, 'docs/BROKEN_LINK.md', '# Broken\n\n[Missing](./NOPE.md)\n[External](https://example.com)\n');
+
+    const output = runCli(['doctor'], { cwd: target });
+
+    assert.match(output, /Warning: missing local docs link: docs\/BROKEN_LINK\.md -> \.\/NOPE\.md/);
+    assert.doesNotMatch(output, /example\.com/);
+  } finally {
+    cleanup();
+  }
+});
+
 test('doctor reports a legacy layout with migration guidance', () => {
   const { dir, cleanup } = makeTmpDir();
   const target = path.join(dir, 'target');

@@ -3,9 +3,16 @@ const os = require('os');
 const path = require('path');
 const { execFileSync } = require('child_process');
 const { checkHandoff, scaffoldHandoff } = require('./lib/handoff');
-const { collectDoctorReport } = require('./lib/doctor');
-const { runAgent: runAiAgent, runApprovalStatus: runAiApprovalStatus, runApprove: runAiApprove, runDoctor: runAiDoctor, runExecutePlan: runAiExecutePlan, runExecuteSlice: runAiExecuteSlice, runOnboard, runPlan: runAiPlan, runPr: runAiPr, runPromptSlice: runAiPromptSlice, runReviewPlan: runAiReviewPlan } = require('./commands/ai');
+const {
+  applyDoctorFixPlan,
+  buildDoctorFixPlan,
+  collectDoctorReport,
+  formatDoctorFixPlan,
+} = require('./lib/doctor');
+const { runAgent: runAiAgent, runApprovalStatus: runAiApprovalStatus, runApprove: runAiApprove, runDoctor: runAiDoctor, runExecutePlan: runAiExecutePlan, runExecuteSlice: runAiExecuteSlice, runOnboard, runPlan: runAiPlan, runPrepareContext: runAiPrepareContext, runPr: runAiPr, runPromptSlice: runAiPromptSlice, runReviewPlan: runAiReviewPlan } = require('./commands/ai');
+const { runDemo } = require('./commands/demo');
 const { runPrepare } = require('./commands/prepare');
+const { runEvidence } = require('./commands/evidence');
 const { runFlow } = require('./commands/flow');
 const { runGraph } = require('./commands/graph');
 const { runNext } = require('./commands/next');
@@ -40,6 +47,59 @@ function formatError(message) {
   return `create-quiver: ${message}`;
 }
 
+const SUPPORTED_COMMAND_MODES = new Set([
+  'init',
+  'flow',
+  'plan',
+  'graph',
+  'next',
+  'doctor',
+  'prepare',
+  'analyze',
+  'migrate',
+  'start-slice',
+  'check-slice',
+  'check-pr',
+  'check-handoff',
+  'new-handoff',
+  'cleanup-slice',
+  'check-scope',
+  'refresh-active-slices',
+  'spec',
+  'evidence',
+  'demo',
+  'ai',
+]);
+
+const SUPPORTED_AI_COMMANDS = new Set([
+  'agent',
+  'approve',
+  'approval-status',
+  'approvals',
+  'doctor',
+  'execute-plan',
+  'execute-slice',
+  'executor-prompt',
+  'onboard',
+  'plan',
+  'prepare-context',
+  'pr',
+  'prompt-slice',
+  'review-plan',
+]);
+
+const SUPPORTED_SPEC_COMMANDS = new Set(['close', 'create', 'start', 'status']);
+const SUPPORTED_DEMO_COMMANDS = new Set(['create']);
+
+function unsupportedCommandMessage(commandName) {
+  return [
+    `unsupported command: ${commandName}`,
+    'Run: npx create-quiver --help',
+    `If you meant to initialize a project, use: npx create-quiver init --name "${commandName}"`,
+    'If this command exists in newer docs, update create-quiver and rerun the command.',
+  ].join('\n');
+}
+
 function printUsage() {
   console.log(`Usage:
   npx create-quiver [options]
@@ -49,6 +109,7 @@ function printUsage() {
   npx create-quiver plan [options]
   npx create-quiver ai <task> [options]
   npx create-quiver ai agent <set|list|show> [role] [options]
+  npx create-quiver ai prepare-context [options]
   npx create-quiver graph [options]
   npx create-quiver next [options]
   npx create-quiver migrate [options]
@@ -66,6 +127,8 @@ function printUsage() {
   npx create-quiver spec start <spec-dir>
   npx create-quiver spec status <spec-dir>
   npx create-quiver spec close <spec-dir>
+  npx create-quiver evidence run [options] -- <command>
+  npx create-quiver demo create spec-viewer [options]
 
 Options:
   -n, --name <project-name>   Project name to generate
@@ -75,15 +138,18 @@ Options:
       --show-conflicts        Show shared file paths in graph output
       --level <n>             Restrict graph output to one level
       --json                  Emit machine-readable JSON
+      --include-completed     Include completed slices in plan, graph, or next history output
       --only-ready            Show only slices with no pending dependencies
       --all-ready             List every ready slice returned by next
       --auto-start            Prompt for confirmation and run start-slice on next
+      --local                 For check-slice, run structural validation without remote/base checks
       --unicode               Prefer Unicode output when supported
       --minimal               Plan or run the minimal init profile
       --full                  Plan or run the full compatibility init profile
       --legacy-scripts        Include legacy Bash wrappers in init profile
       --include-templates     Export packaged templates in init profile
-      --dry-run               Preview init, prepare, spec create, or AI work without executing writes/providers
+      --dry-run               Preview init, prepare, spec create, demo, or AI work without executing writes/providers
+      --fix                   For doctor, apply safe non-destructive repairs
       --execute               For ai execute-plan, run the planned slices instead of printing commands
       --create                For ai pr, create the PR after preflight instead of printing the plan only
       --commit                For ai execute-slice, commit validated slice changes after provider, scope, and tests pass
@@ -94,8 +160,10 @@ Options:
       --version <n>           Draft version to approve for AI planner phases
       --ssh-host-alias <name> SSH host alias to validate for prepare or AI commands
       --identity-file <path>  SSH identity file to validate for prepare or AI commands
-      --remote <name>         Git remote name for AI PR checks
-      --base <branch>         Base branch for ai pr create (default: main)
+      --remote <name>         Git remote name for check-slice or AI PR checks
+      --base <branch>         Base branch for check-slice, ai pr, or spec close (default: main)
+      --output <file>         Output file for evidence run
+      --max-output <n>        Maximum stdout/stderr chars per evidence section
       --title <text>          Override PR title for ai pr create
   -y, --yes                   Skip prompts and use the provided inputs
   -h, --help                  Show this help message
@@ -109,6 +177,7 @@ Examples:
   cd ./my-project && npx create-quiver analyze
   cd ./my-project && npx create-quiver plan --json
   cd ./my-project && npx create-quiver ai onboard --dry-run
+  cd ./my-project && npx create-quiver ai prepare-context --dry-run
   cd ./my-project && npx create-quiver ai agent set planner --provider codex --model gpt-5.5
   cd ./my-project && npx create-quiver ai agent list
   cd ./my-project && npx create-quiver ai plan --phase acceptance --input requirements.md --dry-run
@@ -145,6 +214,8 @@ Examples:
   cd ./my-project && npx create-quiver spec start specs/my-project
   cd ./my-project && npx create-quiver spec status specs/my-project
   cd ./my-project && npx create-quiver spec close specs/my-project --dry-run
+  cd ./my-project && npx create-quiver evidence run -- npm test
+  cd ./my-project && npx create-quiver demo create spec-viewer --dry-run
   node bin/create-quiver.js doctor --dir ./my-project
 `);
 }
@@ -156,15 +227,19 @@ function parseArgs(argv) {
     explicitInit: false,
     mode: 'init',
     allowDraft: false,
+    checkSliceLocal: false,
     closeBaseline: false,
     discard: false,
+    doctorFix: false,
     dryRun: false,
     gate: 'execution',
     projectName: '',
     targetDir: '.',
+    targetDirExplicit: false,
     strict: false,
     strictOverlap: false,
     json: false,
+    includeCompleted: false,
     onlyReady: false,
     allReady: false,
     autoStart: false,
@@ -194,6 +269,7 @@ function parseArgs(argv) {
     aiExecutionMode: 'auto',
     aiCreate: false,
     aiBaseBranch: 'main',
+    baseBranchExplicit: false,
     aiTitle: '',
     aiSshHostAlias: '',
     aiIdentityFile: '',
@@ -203,16 +279,28 @@ function parseArgs(argv) {
     initLegacyScripts: false,
     initMinimal: false,
     specCommand: '',
+    demoCommand: '',
+    demoName: '',
+    evidenceCommand: '',
+    evidenceArgs: [],
+    evidenceOutput: '',
+    evidenceMaxOutput: null,
   };
 
   const args = [...argv];
-  const commandModes = new Set(['init', 'flow', 'plan', 'graph', 'next', 'doctor', 'prepare', 'analyze', 'migrate', 'start-slice', 'check-slice', 'check-pr', 'check-handoff', 'new-handoff', 'cleanup-slice', 'check-scope', 'refresh-active-slices', 'spec', 'ai']);
-  if (commandModes.has(args[0])) {
+  if (SUPPORTED_COMMAND_MODES.has(args[0])) {
     result.mode = args[0];
     result.explicitInit = args[0] === 'init';
     args.shift();
     if (result.mode === 'spec') {
       result.specCommand = args.shift() || '';
+    }
+    if (result.mode === 'evidence') {
+      result.evidenceCommand = args.shift() || '';
+    }
+    if (result.mode === 'demo') {
+      result.demoCommand = args.shift() || '';
+      result.demoName = args.shift() || '';
     }
   } else if (args[0] === '--analyze') {
     result.mode = 'analyze';
@@ -229,12 +317,19 @@ function parseArgs(argv) {
   } else if (args[0] === '--new-handoff') {
     result.mode = 'new-handoff';
     args.shift();
+  } else if (args[0] && !args[0].startsWith('-')) {
+    throw new Error(formatError(unsupportedCommandMessage(args[0])));
   }
 
   const positional = [];
 
   for (let index = 0; index < args.length; index += 1) {
     const arg = args[index];
+
+    if (arg === '--') {
+      result.evidenceArgs = args.slice(index + 1);
+      break;
+    }
 
     if (arg === '-h' || arg === '--help') {
       result.help = true;
@@ -276,6 +371,11 @@ function parseArgs(argv) {
       continue;
     }
 
+    if (arg === '--local') {
+      result.checkSliceLocal = true;
+      continue;
+    }
+
     if (arg === '--close-baseline') {
       result.closeBaseline = true;
       continue;
@@ -283,6 +383,11 @@ function parseArgs(argv) {
 
     if (arg === '--discard') {
       result.discard = true;
+      continue;
+    }
+
+    if (arg === '--fix') {
+      result.doctorFix = true;
       continue;
     }
 
@@ -352,6 +457,11 @@ function parseArgs(argv) {
 
     if (arg === '--json') {
       result.json = true;
+      continue;
+    }
+
+    if (arg === '--include-completed') {
+      result.includeCompleted = true;
       continue;
     }
 
@@ -522,6 +632,29 @@ function parseArgs(argv) {
         throw new Error(formatError('missing value for --base'));
       }
       result.aiBaseBranch = value;
+      result.baseBranchExplicit = true;
+      continue;
+    }
+
+    if (arg === '--output') {
+      const value = args[++index];
+      if (!value) {
+        throw new Error(formatError('missing value for --output'));
+      }
+      result.evidenceOutput = value;
+      continue;
+    }
+
+    if (arg === '--max-output') {
+      const value = args[++index];
+      if (typeof value === 'undefined') {
+        throw new Error(formatError('missing value for --max-output'));
+      }
+      const parsed = Number.parseInt(value, 10);
+      if (!Number.isInteger(parsed) || parsed <= 0) {
+        throw new Error(formatError('invalid value for --max-output'));
+      }
+      result.evidenceMaxOutput = parsed;
       continue;
     }
 
@@ -576,6 +709,7 @@ function parseArgs(argv) {
         throw new Error(formatError('missing value for --dir'));
       }
       result.targetDir = value;
+      result.targetDirExplicit = true;
       continue;
     }
 
@@ -637,6 +771,38 @@ function parseArgs(argv) {
     }
     if (result.specCommand === 'create' && positional.length > 0) {
       throw new Error(formatError('spec create does not accept positional arguments; use --input <file> or --spec <slug>'));
+    }
+  } else if (result.mode === 'evidence') {
+    if (!result.evidenceCommand && positional.length > 0) {
+      result.evidenceCommand = positional.shift();
+    }
+    if (!result.evidenceCommand) {
+      throw new Error(formatError('missing evidence subcommand. Use: npx create-quiver evidence run -- <command>'));
+    }
+    if (result.evidenceCommand !== 'run') {
+      throw new Error(formatError(`unsupported evidence subcommand: ${result.evidenceCommand}. Supported tasks: run`));
+    }
+    if (positional.length > 0) {
+      throw new Error(formatError('evidence run does not accept positional arguments before --'));
+    }
+  } else if (result.mode === 'demo') {
+    if (!result.demoCommand && positional.length > 0) {
+      result.demoCommand = positional.shift();
+    }
+    if (!result.demoName && positional.length > 0) {
+      result.demoName = positional.shift();
+    }
+    if (!result.demoCommand) {
+      throw new Error(formatError('missing demo subcommand. Use: npx create-quiver demo create spec-viewer'));
+    }
+    if (!SUPPORTED_DEMO_COMMANDS.has(result.demoCommand)) {
+      throw new Error(formatError(`unsupported demo subcommand: ${result.demoCommand}. Supported tasks: create`));
+    }
+    if (result.demoName !== 'spec-viewer') {
+      throw new Error(formatError(`unsupported demo: ${result.demoName || '(missing)'}. Supported demos: spec-viewer`));
+    }
+    if (positional.length > 0) {
+      throw new Error(formatError('demo create spec-viewer does not accept positional target paths; use --dir <target-dir>'));
     }
   } else {
     if (positional.length > 0) {
@@ -1041,6 +1207,7 @@ function collectLanguageSignals(files) {
   }
 
   const languages = [];
+  const seenLanguages = new Set();
   const extToLanguage = new Map([
     ['.ts', 'typescript'],
     ['.tsx', 'typescript'],
@@ -1066,12 +1233,88 @@ function collectLanguageSignals(files) {
   ]);
 
   for (const [ext, language] of extToLanguage.entries()) {
-    if (extensions.has(ext)) {
+    if (extensions.has(ext) && !seenLanguages.has(language)) {
       languages.push(language);
+      seenLanguages.add(language);
     }
   }
 
   return languages;
+}
+
+function parseCreateQuiverScriptCommand(command) {
+  const normalized = String(command || '').trim();
+  const match = normalized.match(/^npx\s+create-quiver(?:@[^\s]+)?\s+(.+)$/);
+  if (!match) {
+    return null;
+  }
+
+  const tokens = match[1].split(/\s+/).filter(Boolean);
+  if (tokens.length === 0) {
+    return null;
+  }
+
+  return {
+    commandName: tokens[0],
+    subcommand: tokens[1] || '',
+  };
+}
+
+function findUnsupportedCreateQuiverScripts(scripts = {}) {
+  const unsupported = [];
+
+  for (const [scriptName, command] of Object.entries(scripts)) {
+    const parsed = parseCreateQuiverScriptCommand(command);
+    if (!parsed) {
+      continue;
+    }
+
+    if (!SUPPORTED_COMMAND_MODES.has(parsed.commandName)) {
+      unsupported.push({
+        command,
+        reason: `unsupported command "${parsed.commandName}"`,
+        scriptName,
+      });
+      continue;
+    }
+
+    if (parsed.commandName === 'ai' && !SUPPORTED_AI_COMMANDS.has(parsed.subcommand)) {
+      unsupported.push({
+        command,
+        reason: `unsupported ai subcommand "${parsed.subcommand || '(missing)'}"`,
+        scriptName,
+      });
+      continue;
+    }
+
+    if (parsed.commandName === 'spec' && !SUPPORTED_SPEC_COMMANDS.has(parsed.subcommand)) {
+      unsupported.push({
+        command,
+        reason: `unsupported spec subcommand "${parsed.subcommand || '(missing)'}"`,
+        scriptName,
+      });
+      continue;
+    }
+
+    if (parsed.commandName === 'demo' && !SUPPORTED_DEMO_COMMANDS.has(parsed.subcommand)) {
+      unsupported.push({
+        command,
+        reason: `unsupported demo subcommand "${parsed.subcommand || '(missing)'}"`,
+        scriptName,
+      });
+    }
+  }
+
+  return unsupported;
+}
+
+function detectNodeProject(files, rootEntries, packageJson, languages) {
+  const hasPackageJson = Boolean(packageJson);
+  const hasJavaScriptSignals = languages.some((language) => language === 'javascript' || language === 'typescript');
+  const hasSourceDirectories = detectSourceDirectories(rootEntries).length > 0;
+  const hasSourceFiles = files.some((file) => /\.(?:c|m)?jsx?$/i.test(file) || /\.(?:c|m)?tsx?$/i.test(file));
+
+  return hasJavaScriptSignals && (hasPackageJson || hasSourceDirectories || hasSourceFiles);
 }
 
 function collectWorkspaces(packageJson) {
@@ -1201,6 +1444,11 @@ function detectFrameworks(projectRoot, files, rootEntries, packageJson) {
   if (frameworks.length === 0 && languages.includes('typescript') && dependencies.has('react')) {
     frameworks.push('react');
     evidence.push({ framework: 'react', signals: ['react', 'typescript files'] });
+  }
+
+  if (frameworks.length === 0 && detectNodeProject(files, rootEntries, packageJson, languages)) {
+    frameworks.push('node');
+    evidence.push({ framework: 'node', signals: ['package.json', 'javascript or typescript source files'] });
   }
 
   const primary = frameworks[0] || 'unknown';
@@ -1472,7 +1720,7 @@ function renderProjectMap(scan) {
   }
 
   const relevantScripts = Object.entries(scan.commands.scripts)
-    .filter(([name]) => /(^|:)(analyze|doctor|migrate|test|build|lint|dev|start|check)(:|$)|analyze|doctor|migrate|test|build|lint|dev|start|check/i.test(name))
+    .filter(([name]) => /(^|:)(analyze|doctor|migrate|validate|test|build|lint|dev|start|check)(:|$)|analyze|doctor|migrate|validate|test|build|lint|dev|start|check/i.test(name))
     .slice(0, 12);
 
   if (relevantScripts.length > 0) {
@@ -1633,7 +1881,7 @@ function runMigrate(targetDir, options = {}) {
   }
 }
 
-function runDoctor(targetDir) {
+function runDoctor(targetDir, options = {}) {
   const projectRoot = resolveTargetRoot(process.cwd(), targetDir);
 
   if (!fs.existsSync(projectRoot)) {
@@ -1642,6 +1890,17 @@ function runDoctor(targetDir) {
 
   if (!hasQuiverInitializationEvidence(projectRoot)) {
     throw new Error(formatError('doctor requires a project previously initialized by Quiver.\nRun init first: npx create-quiver --name "Project Name"'));
+  }
+
+  const fixPlan = buildDoctorFixPlan(projectRoot);
+  if (options.fix) {
+    if (options.dryRun) {
+      console.log(formatDoctorFixPlan(fixPlan, { dryRun: true }));
+      return;
+    }
+
+    applyDoctorFixPlan(projectRoot, fixPlan);
+    console.log(formatDoctorFixPlan(fixPlan));
   }
 
   const doctorReport = collectDoctorReport(projectRoot);
@@ -1709,6 +1968,7 @@ function runDoctor(targetDir) {
     'quiver:ai:pr',
     'quiver:ai:doctor',
   ].filter((name) => typeof pkg.scripts?.[name] !== 'string');
+  const unsupportedCreateQuiverScripts = findUnsupportedCreateQuiverScripts(pkg.scripts || {});
   const hasScanArtifacts = hasProjectScanArtifact(projectRoot)
     && fs.existsSync(path.join(projectRoot, PROJECT_MAP_RELATIVE_PATH));
   const quiverState = readState(projectRoot);
@@ -1750,6 +2010,9 @@ function runDoctor(targetDir) {
   }
   if (legacyOnlyScripts.length > 0) {
     console.log(`- Warning: legacy Bash workflow scripts detected for ${legacyOnlyScripts.join(', ')}. Run npx create-quiver migrate to add quiver:* npm scripts.`);
+  }
+  for (const script of unsupportedCreateQuiverScripts) {
+    console.log(`- Warning: package.json script ${script.scriptName} targets ${script.reason}: \`${script.command}\`. Update create-quiver or regenerate scripts with npx create-quiver migrate.`);
   }
   for (const warning of softWarnings) {
     console.log(`- Warning: ${warning}`);
@@ -1803,6 +2066,7 @@ async function run(argv) {
 
   if (args.mode === 'plan') {
     runPlan(process.cwd(), {
+      includeCompleted: args.includeCompleted,
       json: args.json,
       onlyReady: args.onlyReady,
       specSlug: args.specSlug,
@@ -1823,7 +2087,7 @@ async function run(argv) {
 
   if (args.mode === 'ai') {
     if (!args.aiCommand) {
-      throw new Error(formatError('missing ai subcommand. Use: npx create-quiver ai onboard | plan | review-plan | approve | approvals | agent | prompt-slice | execute-slice | execute-plan | doctor | pr'));
+      throw new Error(formatError('missing ai subcommand. Use: npx create-quiver ai onboard | prepare-context | plan | review-plan | approve | approvals | agent | prompt-slice | execute-slice | execute-plan | doctor | pr'));
     }
 
     if (args.aiCommand === 'agent') {
@@ -1847,6 +2111,13 @@ async function run(argv) {
         providerExplicit: args.aiProviderExplicit,
         role: args.aiRole,
         timeout: args.aiTimeout,
+      });
+      return;
+    }
+
+    if (args.aiCommand === 'prepare-context') {
+      await runAiPrepareContext(process.cwd(), {
+        dryRun: args.dryRun,
       });
       return;
     }
@@ -1963,9 +2234,11 @@ async function run(argv) {
   if (args.mode === 'graph') {
     runGraph(process.cwd(), {
       format: args.format,
+      includeCompleted: args.includeCompleted,
       json: args.json,
       level: args.level,
       showConflicts: args.showConflicts,
+      specSlug: args.specSlug,
       unicode: args.unicode,
     });
     return;
@@ -1975,8 +2248,31 @@ async function run(argv) {
     await runNext(process.cwd(), {
       allReady: args.allReady,
       autoStart: args.autoStart,
+      includeCompleted: args.includeCompleted,
       json: args.json,
       specSlug: args.specSlug,
+    });
+    return;
+  }
+
+  if (args.mode === 'evidence') {
+    const result = runEvidence(process.cwd(), {
+      command: args.evidenceArgs,
+      maxOutput: args.evidenceMaxOutput || undefined,
+      output: args.evidenceOutput || undefined,
+      subcommand: args.evidenceCommand,
+    });
+    process.exitCode = result.exitCode;
+    return;
+  }
+
+  if (args.mode === 'demo') {
+    const demoTarget = resolveTargetRoot(process.cwd(), args.targetDirExplicit ? args.targetDir : 'quiver-spec-viewer');
+    runDemo({
+      command: args.demoCommand,
+      demo: args.demoName,
+      dryRun: args.dryRun,
+      targetRoot: demoTarget,
     });
     return;
   }
@@ -1987,7 +2283,10 @@ async function run(argv) {
   }
 
   if (args.mode === 'doctor') {
-    runDoctor(args.targetDir);
+    runDoctor(args.targetDir, {
+      dryRun: args.dryRun,
+      fix: args.doctorFix,
+    });
     return;
   }
 
@@ -1998,7 +2297,10 @@ async function run(argv) {
 
   if (args.mode === 'check-slice') {
     checkSliceReadiness(args.targetDir, {
+      baseBranch: args.baseBranchExplicit ? args.aiBaseBranch : '',
       gate: args.gate,
+      local: args.checkSliceLocal,
+      remote: args.aiRemote,
       strictOverlap: args.strictOverlap,
     });
     return;

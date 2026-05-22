@@ -65,6 +65,17 @@ function nextFixture() {
   });
 }
 
+function completedFixture() {
+  return makeRepo({
+    'specs/spec-a/slices/slice-00-foundation/slice.json': slice('spec-a/slice-00-foundation', ['docs/a.md'], {
+      status: 'completed',
+    }),
+    'specs/spec-b/slices/slice-00-foundation/slice.json': slice('spec-b/slice-00-foundation', ['docs/b.md'], {
+      status: 'completed',
+    }),
+  });
+}
+
 function execNext(repoRoot, args = [], env = {}) {
   return execFileSync('node', [BIN_PATH, 'next', ...args], {
     cwd: repoRoot,
@@ -121,6 +132,27 @@ test('next CLI can list all ready slices', () => {
     assert.ok(output.includes('Ready slices'));
     assert.ok(output.includes('[1] spec-a/slice-01-alpha'));
     assert.ok(output.includes('[2] spec-b/slice-01-delta'));
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('next include-completed reports history without suggesting completed work', () => {
+  const repo = completedFixture();
+  try {
+    const report = collectNext(repo.root, { includeCompleted: true, specSlug: 'spec-a' });
+    const output = execNext(repo.root, ['--include-completed', '--spec', 'spec-a']);
+    const json = JSON.parse(execNext(repo.root, ['--include-completed', '--spec', 'spec-a', '--json']));
+
+    assert.equal(report.next, null);
+    assert.deepEqual(report.history.map((item) => item.ref), ['spec-a/slice-00-foundation']);
+    assert.ok(output.includes('No ready slices found.'));
+    assert.ok(output.includes('Historical slices included by --include-completed'));
+    assert.ok(output.includes('spec-a/slice-00-foundation'));
+    assert.ok(!output.includes('spec-b/slice-00-foundation'));
+    assert.equal(json.next, null);
+    assert.equal(json.include_completed, true);
+    assert.deepEqual(json.history.map((item) => item.ref), ['spec-a/slice-00-foundation']);
   } finally {
     repo.cleanup();
   }

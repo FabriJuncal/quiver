@@ -8,6 +8,7 @@ const {
   buildInitLayout,
   formatInitLayoutPlan,
   normalizeInitLayoutOptions,
+  resolveInitPackageScripts,
   resolveInitProfile,
 } = require('../../src/create-quiver/lib/init-layout');
 
@@ -39,6 +40,7 @@ test('buildInitLayout creates a default AI-first plan without legacy visible roo
     assert.equal(plan.projectSlug, 'mi-proyecto');
     assert(createPaths.includes('README.md'));
     assert(createPaths.includes('AGENTS.md'));
+    assert(createPaths.includes('.gitignore'));
     assert(createPaths.includes('.quiver/state.json'));
     assert(createPaths.includes('.quiver/config.json'));
     assert(createPaths.includes('.quiver/.gitignore'));
@@ -57,11 +59,15 @@ test('buildInitLayout reports preserved files instead of overwriting them', () =
   const { dir, cleanup } = makeTmpDir();
   try {
     fs.writeFileSync(path.join(dir, 'README.md'), '# Existing\n');
+    fs.writeFileSync(path.join(dir, '.gitignore'), 'custom.log\n');
     const plan = buildInitLayout(dir, { projectName: 'Existing Project' });
     const readmeOperation = plan.operations.find((operation) => operation.path === 'README.md');
+    const gitignoreOperation = plan.operations.find((operation) => operation.path === '.gitignore');
 
     assert.equal(readmeOperation.action, 'preserve');
     assert.equal(readmeOperation.exists, true);
+    assert.equal(gitignoreOperation.action, 'update');
+    assert.equal(gitignoreOperation.exists, true);
   } finally {
     cleanup();
   }
@@ -120,5 +126,60 @@ test('formatInitLayoutPlan prints core dry-run sections', () => {
     assert.match(output, /dry-run prints the planned layout only/);
   } finally {
     cleanup();
+  }
+});
+
+test('default generated package scripts target supported CLI commands', () => {
+  const scripts = resolveInitPackageScripts('default');
+  const supportedCommands = new Set([
+    'ai',
+    'analyze',
+    'check-handoff',
+    'check-pr',
+    'check-scope',
+    'check-slice',
+    'cleanup-slice',
+    'doctor',
+    'evidence',
+    'flow',
+    'graph',
+    'migrate',
+    'next',
+    'plan',
+    'prepare',
+    'refresh-active-slices',
+    'spec',
+    'start-slice',
+  ]);
+  const supportedAiCommands = new Set([
+    'agent',
+    'approve',
+    'doctor',
+    'execute-plan',
+    'execute-slice',
+    'onboard',
+    'plan',
+    'prepare-context',
+    'pr',
+    'prompt-slice',
+    'review-plan',
+  ]);
+  const supportedSpecCommands = new Set(['close', 'create', 'start', 'status']);
+
+  for (const [scriptName, command] of Object.entries(scripts)) {
+    if (!command.startsWith('npx create-quiver ')) {
+      continue;
+    }
+
+    const [, commandName, subcommand] = command.match(/^npx create-quiver\s+(\S+)(?:\s+(\S+))?/) || [];
+    assert.ok(supportedCommands.has(commandName), `${scriptName} points to unsupported command: ${command}`);
+
+    if (commandName === 'ai') {
+      assert.ok(supportedAiCommands.has(subcommand), `${scriptName} points to unsupported ai command: ${command}`);
+    }
+
+    if (commandName === 'spec') {
+      assert.ok(supportedSpecCommands.has(subcommand), `${scriptName} points to unsupported spec command: ${command}`);
+    }
   }
 });

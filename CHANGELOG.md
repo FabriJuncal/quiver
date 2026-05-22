@@ -9,6 +9,8 @@ All notable changes to this project will be documented in this file.
 - Guided AI workflow commands: `prepare`, agent profiles, planner onboarding, approval persistence, `review-plan`, `spec create`, executor prompt generation, delegated execution waves, PR creation with `gh`, spec worktree start/status/close, and package safety.
 - `quiver:prepare`, `quiver:flow`, `quiver:ai:agent`, `quiver:ai:review-plan`, `quiver:ai:prompt-slice`, `quiver:ai:execute-plan`, `quiver:spec:create`, `quiver:spec:start`, `quiver:spec:status`, and `quiver:spec:close` npm scripts for generated projects.
 - Guided workflow smoke coverage for flow status, profiles, onboarding, approvals, review-plan, spec create, executor prompts, delegated execution dry-runs, PR dry-run/create mocks, cleanup, and package safety.
+- DX onboarding hardening for generated projects: `doctor --fix`, `check-slice --local`, `plan|graph|next --include-completed`, `ai prepare-context`, `evidence run`, and `demo create spec-viewer`.
+- Generated scripts for `quiver:evidence` and `quiver:ai:prepare-context`.
 
 ### Changed
 
@@ -16,6 +18,13 @@ All notable changes to this project will be documented in this file.
 - `ai execute-plan` now documents manual prompt mode and delegated worktree mode.
 - Refreshed AI context docs keep front matter after `analyze`.
 - Package smoke now fails when local AI/tool state, env files, npm credentials, or worktree state would enter the npm tarball.
+- `init`, `doctor`, `prepare`, and `analyze` now produce clearer first-use guidance, safer repairs, better generated metadata, and better command maps.
+
+### Fixed
+
+- Unknown top-level commands now fail clearly instead of being treated as legacy project names.
+- Generated docs and scripts are kept aligned with the selected init profile and supported command surface.
+- Local-only repositories can run structural slice validation without a remote/base branch by using `check-slice --local`.
 
 ## [0.10.0] - 2026-05-21
 

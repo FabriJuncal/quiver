@@ -62,7 +62,7 @@ function slice(ref, files, extra = {}) {
 
 function planFixture() {
   return makeRepo({
-    'specs/spec-a/slices/slice-01-alpha/slice.json': slice('spec-a/slice-01-alpha', ['docs/a.md'], { estimated_hours: 2 }),
+    'specs/spec-a/slices/slice-01-alpha/slice.json': slice('spec-a/slice-01-alpha', ['docs/a.md'], { estimated_hours: 2, ticket: 'QUIVER-101' }),
     'specs/spec-a/slices/slice-02-beta/slice.json': slice('spec-a/slice-02-beta', ['docs/b.md'], {
       estimated_hours: 3,
       dependencies: ['spec-a/slice-01-alpha'],
@@ -73,6 +73,11 @@ function planFixture() {
     'specs/spec-c/slices/slice-01-epsilon/slice.json': slice('spec-c/slice-01-epsilon', ['docs/d.md'], {
       estimated_hours: 1,
       dependencies: ['spec-a/slice-02-beta'],
+    }),
+    'specs/spec-a/slices/slice-00-foundation/slice.json': slice('spec-a/slice-00-foundation', ['docs/spec.md'], {
+      estimated_hours: 1,
+      status: 'completed',
+      ticket: 'QUIVER-100',
     }),
   });
 }
@@ -92,10 +97,28 @@ test('collectPlan returns pending slices, critical path, and total hours', () =>
     assert.equal(report.total_hours, 10);
     assert.deepEqual(report.critical_path, ['spec-a/slice-01-alpha', 'spec-a/slice-02-beta', 'spec-c/slice-01-epsilon']);
     assert.equal(report.plan[0].slice_path, 'specs/spec-a/slices/slice-01-alpha/slice.json');
+    assert.equal(report.plan[0].ticket, 'QUIVER-101');
     assert.deepEqual(
       report.plan.map((item) => item.ref).sort(),
       ['spec-a/slice-01-alpha', 'spec-a/slice-02-beta', 'spec-b/slice-01-delta', 'spec-c/slice-01-epsilon'].sort(),
     );
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('plan can include completed slices for history without changing defaults', () => {
+  const repo = planFixture();
+  try {
+    const defaultReport = collectPlan(repo.root, { specSlug: 'spec-a' });
+    const historyReport = collectPlan(repo.root, { includeCompleted: true, specSlug: 'spec-a' });
+    const output = execPlan(repo.root, ['--include-completed', '--spec', 'spec-a']);
+
+    assert.ok(!defaultReport.plan.some((item) => item.ref === 'spec-a/slice-00-foundation'));
+    assert.ok(historyReport.plan.some((item) => item.ref === 'spec-a/slice-00-foundation' && item.status === 'completed'));
+    assert.ok(output.includes('Quiver plan (including completed)'));
+    assert.ok(output.includes('QUIVER-100'));
+    assert.ok(output.includes('spec-a/slice-00-foundation'));
   } finally {
     repo.cleanup();
   }
@@ -125,6 +148,7 @@ test('plan CLI emits parseable JSON', () => {
     const output = execPlan(repo.root, ['--json', '--spec', 'spec-a']);
     const parsed = JSON.parse(output);
     assert.ok(Array.isArray(parsed.plan));
+    assert.equal(parsed.include_completed, false);
     assert.equal(parsed.total_hours, 5);
     assert.deepEqual(parsed.critical_path, ['spec-a/slice-01-alpha', 'spec-a/slice-02-beta']);
     assert.equal(parsed.plan[0].slice_path, 'specs/spec-a/slices/slice-01-alpha/slice.json');

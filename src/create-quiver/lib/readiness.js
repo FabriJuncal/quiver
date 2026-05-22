@@ -56,7 +56,7 @@ function parseWorktrees(text) {
   return entries;
 }
 
-function collectOverlapWarnings(repoRoot, currentBranchName, currentFiles) {
+function collectOverlapWarnings(repoRoot, currentBranchName, currentFiles, baseRef = 'origin/develop') {
   const sliceMap = new Map();
   walkSlices(path.join(repoRoot, 'specs'), sliceMap, repoRoot);
   walkSlices(path.join(repoRoot, 'specs-fix'), sliceMap, repoRoot);
@@ -79,7 +79,7 @@ function collectOverlapWarnings(repoRoot, currentBranchName, currentFiles) {
     }
 
     const dirty = statusPorcelain(worktreePath) !== '';
-    const aheadCount = revListCount(worktreePath, 'origin/develop..HEAD');
+    const aheadCount = revListCount(worktreePath, `${baseRef}..HEAD`);
     const active = dirty || aheadCount > 0;
 
     if (!active) {
@@ -93,6 +93,65 @@ function collectOverlapWarnings(repoRoot, currentBranchName, currentFiles) {
   }
 
   return warnings;
+}
+
+function validateLocalSliceArtifacts(repoRoot, slice) {
+  const sliceDir = path.dirname(slice.sliceAbs);
+  for (const file of ['EXECUTION_BRIEF.md', 'CLOSURE_BRIEF.md']) {
+    ensureExists(path.join(sliceDir, file), `create-quiver: falta '${path.posix.join(path.dirname(slice.sliceRel), file)}'.`);
+  }
+  console.log('PASS: El slice local tiene EXECUTION_BRIEF.md y CLOSURE_BRIEF.md.');
+
+  if (!Array.isArray(slice.json.files) || slice.json.files.length === 0) {
+    throw new Error('create-quiver: slice.json debe declarar al menos un archivo en files para validacion local.');
+  }
+
+  const invalidFiles = slice.json.files.filter((file) => typeof file !== 'string' || file.trim().length === 0);
+  if (invalidFiles.length > 0) {
+    throw new Error('create-quiver: slice.json.files contiene entradas invalidas.');
+  }
+  console.log('PASS: slice.json declara archivos de alcance.');
+}
+
+function baseRecoveryMessage(remote, baseBranch) {
+  return `No se encontro la base '${baseBranch}' como rama local ni como '${remote}/${baseBranch}'. Para validacion estructural usa --local; para validacion contra otra base usa --base <branch>; o configura/fetchea el remoto '${remote}'.`;
+}
+
+function validateSliceDocumentedOnBase(repoRoot, slice, options = {}) {
+  const gate = options.gate || 'execution';
+  const remote = options.remote || 'origin';
+  const baseBranch = options.baseBranch || slice.baseBranch || 'develop';
+  const remoteRef = `${remote}/${baseBranch}`;
+  const hasRemoteBase = hasRemoteBranch(repoRoot, baseBranch, remote);
+  const hasLocalBase = hasLocalBranch(repoRoot, baseBranch);
+
+  if (hasRemoteBase && catFileExists(repoRoot, `${remoteRef}:${slice.sliceRel}`)) {
+    console.log(`PASS: El slice ya existe en ${remoteRef} (PR base documental mergeado).`);
+    return remoteRef;
+  }
+
+  if (hasLocalBase && catFileExists(repoRoot, `${baseBranch}:${slice.sliceRel}`)) {
+    console.log(`PASS: El slice ya existe en ${baseBranch} local (modo sin remote).`);
+    return baseBranch;
+  }
+
+  if (!hasRemoteBase && !hasLocalBase) {
+    const guidance = baseRecoveryMessage(remote, baseBranch);
+    if (gate === 'validation') {
+      console.log(`WARN: ${guidance}`);
+      return null;
+    }
+
+    throw new Error(`create-quiver: ${guidance}`);
+  }
+
+  const expectedBase = hasRemoteBase ? remoteRef : baseBranch;
+  if (gate === 'validation') {
+    console.log(`WARN: El slice no existe todavia en ${expectedBase}. El PR base documental sigue pendiente de merge. Podes abrir el PR del slice igual si el humano mergea en orden.`);
+    return expectedBase;
+  }
+
+  throw new Error(`create-quiver: el slice no existe en ${expectedBase}. Mergea primero el PR base documental o usa --local para validar solo estructura local.`);
 }
 
 function validateDeclaredDependencyContract(repoRoot, slice) {
@@ -147,35 +206,43 @@ function validateDeclaredDependencyContract(repoRoot, slice) {
 
 function checkSliceReadiness(sliceInput, options = {}) {
   const gate = options.gate || 'execution';
+  const localMode = options.local === true;
   const strictOverlap = options.strictOverlap === true;
+  const remote = options.remote || 'origin';
   const repoRoot = runGit(['rev-parse', '--show-toplevel'], process.cwd());
   const slice = resolveSliceContext(repoRoot, sliceInput);
+  const baseBranch = options.baseBranch || slice.baseBranch || 'develop';
 
   for (const specFile of ['SPEC.md', 'STATUS.md', 'EVIDENCE_REPORT.md']) {
     ensureExists(path.join(repoRoot, slice.specDirRel, specFile), `create-quiver: falta '${slice.specDirRel}/${specFile}'.`);
   }
   console.log('PASS: El spec local tiene SPEC.md, STATUS.md y EVIDENCE_REPORT.md.');
 
-  if (catFileExists(repoRoot, `origin/develop:${slice.sliceRel}`)) {
-    console.log('PASS: El slice ya existe en origin/develop (PR base documental mergeado).');
-  } else if (catFileExists(repoRoot, `develop:${slice.sliceRel}`)) {
-    console.log('PASS: El slice ya existe en develop local (modo sin origin).');
-  } else if (gate === 'validation') {
-    console.log('WARN: El slice no existe todavia en origin/develop. El PR base documental sigue pendiente de merge. Podes abrir el PR del slice igual — el humano mergea en orden.');
+  let baseRef = null;
+  if (localMode) {
+    validateLocalSliceArtifacts(repoRoot, slice);
+    console.log(`INFO: Modo local: se omite validacion de existencia del slice en ${remote}/${baseBranch} o ${baseBranch}.`);
+    console.log('INFO: Modo local: se omite validacion de overlap contra worktrees activos basada en rama remota/base.');
   } else {
-    throw new Error('create-quiver: el slice no existe en origin/develop. Mergea primero el PR base documental.');
+    baseRef = validateSliceDocumentedOnBase(repoRoot, slice, {
+      baseBranch,
+      gate,
+      remote,
+    });
   }
 
-  const overlapWarnings = collectOverlapWarnings(repoRoot, currentBranch(repoRoot), slice.files);
-  if (overlapWarnings.length === 0) {
-    console.log('PASS: No se detecto overlap con worktrees activos.');
-  } else {
-    for (const warning of overlapWarnings) {
-      const [overlapBranch, overlapFiles] = warning.split('|');
-      if (strictOverlap) {
-        throw new Error(`create-quiver: Overlap con worktree activo '${overlapBranch}': ${overlapFiles}`);
+  if (!localMode) {
+    const overlapWarnings = collectOverlapWarnings(repoRoot, currentBranch(repoRoot), slice.files, baseRef || `${remote}/${baseBranch}`);
+    if (overlapWarnings.length === 0) {
+      console.log('PASS: No se detecto overlap con worktrees activos.');
+    } else {
+      for (const warning of overlapWarnings) {
+        const [overlapBranch, overlapFiles] = warning.split('|');
+        if (strictOverlap) {
+          throw new Error(`create-quiver: Overlap con worktree activo '${overlapBranch}': ${overlapFiles}`);
+        }
+        console.log(`WARN: Overlap con worktree activo '${overlapBranch}': ${overlapFiles}`);
       }
-      console.log(`WARN: Overlap con worktree activo '${overlapBranch}': ${overlapFiles}`);
     }
   }
 

@@ -4,7 +4,6 @@
 
 ## Start Here
 
-- **Project Map** - `./PROJECT_MAP.md`
 - **Context** - `./CONTEXTO.md`
 - **AI Context** - `./AI_CONTEXT.md`
 - **Decision Log** - `./DECISIONS.md`
@@ -13,23 +12,28 @@
 - **Commands** - `./COMMANDS.md`
 - **Support Matrix** - `./SUPPORT_MATRIX.md`
 - **Troubleshooting** - `./TROUBLESHOOTING.md`
-- **Multi-agent workflow** - `./MULTI_AGENT_WORKFLOW.md`
 
 ## AI Configuration
 
-- **QUICK** - `./ai/QUICK.md`
-- **STANDARD** - `./ai/STANDARD.md`
-- **DEEP** - `./ai/DEEP.md`
 - **Principles** - `./ai/PRINCIPLES.md`
 - **Rules** - `./ai/RULES.yaml`
 - **Lessons** - `./ai/LESSONS.md`
 
-## Optional Docs
+## Project Map Generated After Analyze
 
-- **Status** - `./STATUS.md`
-- **Specs** - `../specs/{{PROJECT_SLUG}}/`
-- **Tools** - `./tools/`
-- **Archive** - `./archive/`
+`docs/PROJECT_MAP.md` is created by:
+
+```bash
+npx create-quiver analyze
+```
+
+Use it after analysis for detected stack, package manager, commands, and file hints.
+
+## Optional Docs and Profiles
+
+- `npx create-quiver init --full` can add optional multi-agent notes, examples, and starter spec assets.
+- Real specs and slices should be created later from approved requirements and plans with `npx create-quiver spec create`.
+- Legacy Bash wrappers are only added with `--full` or `--legacy-scripts`.
 
 ## Directory Layout
 
@@ -38,9 +42,6 @@ docs/
 ├── INDEX.md
 ├── AI_CONTEXT.md
 ├── DECISIONS.md
-├── ai/QUICK.md
-├── ai/STANDARD.md
-├── ai/DEEP.md
 ├── AI_ONBOARDING_PROMPT.md
 ├── CONTEXTO.md
 ├── STATUS.md
@@ -48,9 +49,10 @@ docs/
 ├── COMMANDS.md
 ├── SUPPORT_MATRIX.md
 ├── TROUBLESHOOTING.md
-├── MULTI_AGENT_WORKFLOW.md
-├── ai/
-├── api/
-├── tools/
-└── archive/
+├── TESTING_GUIDE_FOR_AI.md
+├── GITFLOW_PR_GUIDE.md
+└── ai/
+    ├── PRINCIPLES.md
+    ├── RULES.yaml
+    └── LESSONS.md
 ```

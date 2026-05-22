@@ -1,0 +1,70 @@
+{
+  "slice_id": "slice-04-prepare-output-ai-context-drafts",
+  "ticket": "QUIVER-24-04",
+  "type": "feature",
+  "title": "Prepare output and AI context preparation drafts",
+  "objective": "Make prepare output clearer and add a safe AI context preparation command that produces reviewable project context drafts.",
+  "description": "Improve `prepare --dry-run` wording around framework sources and implement `ai prepare-context` with dry-run-first behavior, assumptions, risks, and docs-only writes.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "prepare-ai-context-drafts",
+    "branch_name": "feature/QUIVER-24-04-prepare-ai-context-drafts"
+  },
+  "files": [
+    "package.json",
+    "package.template.json",
+    "README.md",
+    "README_FOR_AI.md",
+    "src/create-quiver/index.js",
+    "src/create-quiver/commands/prepare.js",
+    "src/create-quiver/commands/ai.js",
+    "src/create-quiver/lib/ai/context-packs.js",
+    "src/create-quiver/lib/ai/onboarding-template.js",
+    "src/create-quiver/lib/init-layout.js",
+    "docs/COMMANDS.md.template",
+    "docs/AI_ONBOARDING_PROMPT.md.template",
+    "docs/AI_CONTEXT.md.template",
+    "docs/CONTEXTO.md.template",
+    "docs/STATUS.md.template",
+    "docs/DECISIONS.md.template",
+    "scripts/ci/smoke-create-quiver.sh",
+    "tests/commands/prepare.test.js",
+    "tests/commands/ai-onboard.test.js",
+    "tests/commands/doctor.test.js",
+    "tests/lib/ai-context-packs.test.js",
+    "tests/lib/init-layout.test.js"
+  ],
+  "depends_on": [
+    "slice-01-init-template-hygiene",
+    "slice-02-cli-command-routing-version-errors"
+  ],
+  "parallel_safe": "yes",
+  "parallel_safe_reason": "Can run after parser and init docs contracts are stable; owns prepare/AI context output.",
+  "must": [
+    "Change misleading `README_FOR_AI.md missing` output.",
+    "Add `ai prepare-context --dry-run`.",
+    "Allow docs-only context draft writes with explicit uncertainty markers.",
+    "Report assumptions, risks, files considered, and omitted paths.",
+    "Never modify product code."
+  ],
+  "not_included": [
+    "Calling real provider APIs in tests.",
+    "Generating implementation specs.",
+    "Changing approval gates."
+  ],
+  "acceptance": [
+    "`prepare --dry-run` distinguishes framework source guidance from generated project docs.",
+    "`ai prepare-context --dry-run` reports proposed context docs without writing files.",
+    "Write mode touches only approved docs/context files.",
+    "Uncertain statements are marked as TODO, Assumption, or Pending confirmation.",
+    "Product code is never modified by context preparation."
+  ],
+  "tests": [
+    "node --test tests/commands/prepare.test.js tests/commands/ai-onboard.test.js tests/lib/ai-context-packs.test.js tests/commands/doctor.test.js tests/lib/init-layout.test.js",
+    "npm run smoke:create-quiver"
+  ],
+  "estimated_hours": 6,
+  "status": "completed",
+  "blocked_reason": null
+}

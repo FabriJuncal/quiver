@@ -31,6 +31,12 @@ const SAFETY_RULES = [
       return /(^|\/)WORKTREE_CONTEXT\.md$/.test(relativePath);
     },
   },
+  {
+    code: 'demo-output',
+    match(relativePath) {
+      return relativePath === 'quiver-spec-viewer' || relativePath.startsWith('quiver-spec-viewer/');
+    },
+  },
 ];
 
 function normalizeTarballPath(inputPath) {

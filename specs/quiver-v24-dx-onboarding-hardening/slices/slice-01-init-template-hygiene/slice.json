@@ -1,0 +1,55 @@
+{
+  "slice_id": "slice-01-init-template-hygiene",
+  "ticket": "QUIVER-24-01",
+  "type": "feature",
+  "title": "Init and generated template hygiene",
+  "objective": "Make newly initialized projects cleaner, correctly named, and free of generated docs links that point to absent files.",
+  "description": "Fix root .gitignore generation/merge, package name rendering, generated script contract, profile-aware docs index output, and install/version guidance.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "init-template-hygiene",
+    "branch_name": "feature/QUIVER-24-01-init-template-hygiene"
+  },
+  "files": [
+    "src/create-quiver/lib/init-docs.js",
+    "src/create-quiver/lib/init-layout.js",
+    "src/create-quiver/index.js",
+    "docs/INDEX.md.template",
+    "package.template.json",
+    "tests/lib/init-docs.test.js",
+    "tests/lib/init-layout.test.js",
+    "tests/commands/init-profiles.test.js"
+  ],
+  "depends_on": [
+    "slice-00-spec-foundation"
+  ],
+  "parallel_safe": "yes",
+  "parallel_safe_reason": "Can run in parallel with CLI routing and analyzer slices if it owns init/template files and avoids shared parser edits unless coordinated.",
+  "must": [
+    "Generate or merge a root .gitignore non-destructively.",
+    "Use the project slug for generated package.json.name.",
+    "Ensure docs/INDEX.md reflects the actual init profile.",
+    "Ensure generated quiver:* scripts match supported command surface.",
+    "Keep init non-destructive for existing projects."
+  ],
+  "not_included": [
+    "Implementing doctor --fix.",
+    "Adding demo scaffolding.",
+    "Changing package publishing."
+  ],
+  "acceptance": [
+    "Empty project init creates package.json.name from the project slug.",
+    "Empty project init creates a root .gitignore with safe defaults.",
+    "Existing .gitignore entries are preserved and missing defaults are merged without duplicates.",
+    "Default profile docs/INDEX.md does not link to files that are absent from the generated project.",
+    "Generated quiver:* scripts reference commands supported by the generated package version."
+  ],
+  "tests": [
+    "node --test tests/lib/init-docs.test.js tests/lib/init-layout.test.js tests/commands/init-profiles.test.js",
+    "npm run smoke:create-quiver"
+  ],
+  "estimated_hours": 5,
+  "status": "completed",
+  "blocked_reason": null
+}
