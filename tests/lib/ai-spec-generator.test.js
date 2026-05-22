@@ -59,7 +59,10 @@ function approvedPlanManifest() {
           not_included: ['Provider execution'],
           acceptance: ['The generator writes a valid spec tree.'],
           files: ['src/create-quiver/lib/ai/spec-generator.js'],
+          expected_read_paths: ['docs/approved-plan.json', 'src/create-quiver/lib/ai/spec-templates.js'],
+          allowed_write_paths: ['src/create-quiver/lib/ai/spec-generator.js'],
           tests: ['node --test tests/lib/ai-spec-generator.test.js'],
+          validation_hints: ['node --test tests/lib/ai-spec-generator.test.js', 'git diff --check'],
           estimated_hours: 4,
         },
         {
@@ -164,6 +167,18 @@ test('generateSpecArtifacts writes the spec tree, validates JSON, and refuses co
 
     const firstSlice = JSON.parse(fs.readFileSync(path.join(specDir, 'slices', 'slice-01-spec-generator-core', 'slice.json'), 'utf8'));
     assert.deepEqual(firstSlice.depends_on, ['slice-00-spec-foundation']);
+    assert.deepEqual(firstSlice.expected_read_paths, ['docs/approved-plan.json', 'src/create-quiver/lib/ai/spec-templates.js']);
+    assert.deepEqual(firstSlice.allowed_write_paths, ['src/create-quiver/lib/ai/spec-generator.js']);
+    assert.deepEqual(firstSlice.validation_hints, ['node --test tests/lib/ai-spec-generator.test.js', 'git diff --check']);
+
+    const secondSlice = JSON.parse(fs.readFileSync(path.join(specDir, 'slices', 'slice-02-spec-cli-plumbing', 'slice.json'), 'utf8'));
+    assert.deepEqual(secondSlice.allowed_write_paths, ['src/create-quiver/commands/ai.js']);
+    assert.deepEqual(secondSlice.validation_hints, ['node --test tests/commands/ai-plan-spec-phase.test.js']);
+
+    const executionBrief = fs.readFileSync(path.join(specDir, 'slices', 'slice-01-spec-generator-core', 'EXECUTION_BRIEF.md'), 'utf8');
+    assert.ok(executionBrief.includes('## Expected read paths'));
+    assert.ok(executionBrief.includes('## Allowed write paths'));
+    assert.ok(executionBrief.includes('## Validation hints'));
 
     assert.throws(
       () => generateSpecArtifacts(repo.root, { input: 'docs/approved-plan.json' }),

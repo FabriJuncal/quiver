@@ -31,6 +31,46 @@ function bullets(items, fallback = '- n/a') {
   return list.map((item) => `- ${item}`);
 }
 
+function normalizeStringArray(items) {
+  return Array.isArray(items) ? items.map((item) => String(item).trim()).filter(Boolean) : [];
+}
+
+function resolveExpectedReadPaths(manifest, slice) {
+  const explicit = normalizeStringArray(slice.expected_read_paths);
+  if (explicit.length > 0) {
+    return explicit;
+  }
+
+  if (slice.slice_id === SPEC_FOUNDATION_SLICE_ID) {
+    return [manifest.sourcePath];
+  }
+
+  return [
+    manifest.sourcePath,
+    `specs/${manifest.slug}/SPEC.md`,
+    `specs/${manifest.slug}/slices/${slice.slice_id}/slice.json`,
+    `specs/${manifest.slug}/slices/${slice.slice_id}/EXECUTION_BRIEF.md`,
+  ];
+}
+
+function resolveAllowedWritePaths(slice) {
+  const explicit = normalizeStringArray(slice.allowed_write_paths);
+  if (explicit.length > 0) {
+    return explicit;
+  }
+
+  return normalizeStringArray(slice.files);
+}
+
+function resolveValidationHints(slice) {
+  const explicit = normalizeStringArray(slice.validation_hints);
+  if (explicit.length > 0) {
+    return explicit;
+  }
+
+  return normalizeStringArray(slice.tests);
+}
+
 function displayStatus(status, defaultStatus = 'draft') {
   const normalized = String(status || defaultStatus).trim().toLowerCase();
   if (normalized === 'completed') {
@@ -325,6 +365,9 @@ function buildSliceJson(manifest, slice, index) {
   const dependsOn = isFoundation ? [] : Array.from(new Set(['slice-00-spec-foundation', ...(slice.depends_on || [])]));
   const branchSlug = slice.git?.branch_slug || slugify(slice.slice_id);
   const ticket = slice.ticket || manifest.ticket;
+  const expectedReadPaths = resolveExpectedReadPaths(manifest, slice);
+  const allowedWritePaths = resolveAllowedWritePaths(slice);
+  const validationHints = resolveValidationHints(slice);
 
   return {
     slice_id: slice.slice_id,
@@ -343,12 +386,15 @@ function buildSliceJson(manifest, slice, index) {
     not_included: Array.isArray(slice.not_included) ? slice.not_included : [],
     acceptance: Array.isArray(slice.acceptance) ? slice.acceptance : [],
     files: Array.isArray(slice.files) ? slice.files : [],
+    expected_read_paths: expectedReadPaths,
+    allowed_write_paths: allowedWritePaths,
     depends_on: dependsOn,
     parallel_safe: slice.parallel_safe || (isFoundation ? 'never' : 'after_dependencies'),
     parallel_safe_reason: slice.parallel_safe_reason || (isFoundation
       ? 'slice-00 is the mandatory documentation foundation and must land before every implementation slice.'
       : 'Can run after slice-00 and the approved input has been staged.'),
     tests: Array.isArray(slice.tests) ? slice.tests : [],
+    validation_hints: validationHints,
     documentation: [
       `specs/${manifest.slug}/slices/${slice.slice_id}/EXECUTION_BRIEF.md`,
       `specs/${manifest.slug}/slices/${slice.slice_id}/CLOSURE_BRIEF.md`,
@@ -365,6 +411,9 @@ function buildSliceJson(manifest, slice, index) {
 }
 
 function buildExecutionBrief(manifest, slice) {
+  const expectedReadPaths = resolveExpectedReadPaths(manifest, slice);
+  const allowedWritePaths = resolveAllowedWritePaths(slice);
+  const validationHints = resolveValidationHints(slice);
   const lines = [
     `# EXECUTION BRIEF - ${slice.slice_id}`,
     '',
@@ -392,11 +441,23 @@ function buildExecutionBrief(manifest, slice) {
     '',
     `Follow the approved input staged in \`${manifest.sourcePath}\` and keep the slice inside its declared files.`,
     '',
+    '## Expected read paths',
+    '',
+    ...bullets(expectedReadPaths, '- No explicit read paths declared.'),
+    '',
+    '## Allowed write paths',
+    '',
+    ...bullets(allowedWritePaths, '- No explicit write paths declared.'),
+    '',
+    '## Validation hints',
+    '',
+    ...bullets(validationHints, '- No explicit validation commands declared.'),
+    '',
     '## Pasos sugeridos de ejecucion',
     '',
-    '1. Read the approved input.',
-    '2. Implement the declared files.',
-    '3. Run the declared validation commands.',
+    '1. Read only the expected paths unless a blocker requires more context.',
+    '2. Implement only the declared allowed write paths.',
+    '3. Run the declared validation commands or document why they are not available.',
     '',
     '## Restricciones',
     '',
@@ -601,12 +662,17 @@ function normalizeSliceManifest(slice, index, fallbackTicket) {
     ? 'Document the approved planning input.'
     : `Implement the approved plan captured in the spec source.`);
   const dependsOn = Array.isArray(slice.depends_on) ? slice.depends_on.map((dep) => String(dep).trim()).filter(Boolean) : [];
-  const files = Array.isArray(slice.files) ? slice.files.map((file) => String(file).trim()).filter(Boolean) : [];
-  const must = Array.isArray(slice.must) ? slice.must.map((item) => String(item).trim()).filter(Boolean) : [];
-  const notIncluded = Array.isArray(slice.not_included) ? slice.not_included.map((item) => String(item).trim()).filter(Boolean) : [];
-  const acceptance = Array.isArray(slice.acceptance) ? slice.acceptance.map((item) => String(item).trim()).filter(Boolean) : [];
-  const tests = Array.isArray(slice.tests) ? slice.tests.map((item) => String(item).trim()).filter(Boolean) : [];
-  const assumptions = Array.isArray(slice.assumptions) ? slice.assumptions.map((item) => String(item).trim()).filter(Boolean) : [];
+  const explicitAllowedWritePaths = normalizeStringArray(slice.allowed_write_paths || slice.allowedWritePaths || slice.write_paths);
+  const declaredFiles = normalizeStringArray(slice.files);
+  const files = declaredFiles.length > 0 ? declaredFiles : explicitAllowedWritePaths;
+  const must = normalizeStringArray(slice.must);
+  const notIncluded = normalizeStringArray(slice.not_included);
+  const acceptance = normalizeStringArray(slice.acceptance);
+  const tests = normalizeStringArray(slice.tests);
+  const assumptions = normalizeStringArray(slice.assumptions);
+  const expectedReadPaths = normalizeStringArray(slice.expected_read_paths || slice.expectedReadPaths || slice.read_paths || slice.reads);
+  const allowedWritePaths = explicitAllowedWritePaths;
+  const validationHints = normalizeStringArray(slice.validation_hints || slice.validationHints);
   const normalizedDependsOn = index === 0
     ? dependsOn
     : Array.from(new Set([SPEC_FOUNDATION_SLICE_ID, ...dependsOn]));
@@ -628,10 +694,13 @@ function normalizeSliceManifest(slice, index, fallbackTicket) {
     not_included: notIncluded,
     acceptance,
     files,
+    expected_read_paths: expectedReadPaths,
+    allowed_write_paths: allowedWritePaths,
     depends_on: normalizedDependsOn,
     parallel_safe: slice.parallel_safe,
     parallel_safe_reason: slice.parallel_safe_reason,
     tests,
+    validation_hints: validationHints,
     assumptions,
     estimated_hours: Number.isFinite(Number(slice.estimated_hours)) ? Number(slice.estimated_hours) : 0,
     status: slice.status || (index === 0 ? 'ready' : 'draft'),

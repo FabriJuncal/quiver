@@ -2,27 +2,31 @@
 
 ## Summary of Work
 
-Pending implementation.
+Completed the generated artifact contract for specs and slices. Generated `slice.json` files now include dependency data, parallel safety, expected read paths, allowed write paths, and validation hints, and generated `EXECUTION_BRIEF.md` files expose the same execution contract for agents.
 
 ## Validation Against Acceptance Criteria
 
-- [ ] Blocked before plan approval.
-- [ ] Dry-run verified.
-- [ ] Spec artifacts generated.
-- [ ] Slice handoffs generated.
-- [ ] JSON validation passed.
+- [x] Blocked before plan approval.
+- [x] Dry-run verified.
+- [x] Spec artifacts generated.
+- [x] Slice handoffs generated.
+- [x] JSON validation passed.
 
 ## Relevant Changes
 
-Pending.
+- Added generated `expected_read_paths`, `allowed_write_paths`, and `validation_hints` to `slice.json`.
+- Added validation that generated slice JSON contains those arrays.
+- Added the same read/write/validation sections to generated execution briefs.
+- Preserved backward compatibility by deriving `allowed_write_paths` from existing `files` and deriving `files` from explicit allowed write paths when needed.
+- Added fixture coverage for explicit and default scope declarations.
 
 ## Pending
 
-- Implement slice.
+None for this slice.
 
 ## Remaining Risks
 
-- Generated artifacts remain manual until this slice lands.
+- Generated scopes are only as accurate as the approved planner output and safe defaults.
 
 ## Future Recommendations
 

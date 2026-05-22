@@ -146,3 +146,25 @@ Each implementation slice must append:
 
 - `ai revise` now gives the planner the current draft plus feedback; output quality still depends on the selected provider/model.
 - Approval state remains file-based under `.quiver/approvals`; concurrent writes are still governed by later execution/locking hardening.
+
+## slice-06 - Spec, slice, handoff, and PR body generation
+
+### Completed
+
+- Completed the generated slice artifact contract with `expected_read_paths`, `allowed_write_paths`, and `validation_hints`.
+- Added generated execution brief sections for read paths, write paths, and validation hints.
+- Preserved compatibility with existing `files` and `tests` fields while exposing clearer agent-facing fields.
+- Added validation that generated `slice.json` files contain required scope arrays.
+- Added fixture coverage for explicit generated scope fields and default derivation from existing `files`/`tests`.
+
+### Validation
+
+- `node --test tests/lib/ai-spec-generator.test.js tests/commands/spec-create.test.js tests/commands/ai-plan-spec-phase.test.js` passed: 9 tests.
+- `node --test tests/**/*.test.js` passed: 276 tests.
+- `git diff --check` passed.
+- `node -e "const fs=require('fs'); for (const f of process.argv.slice(1)) JSON.parse(fs.readFileSync(f,'utf8')); console.log('slice json ok:', process.argv.length-1);" specs/quiver-v25-ai-first-lifecycle-orchestrator/slices/*/slice.json` passed for 12 slice files.
+
+### Risks
+
+- Generated read/write scopes depend on the approved plan quality; later validation slices should keep hardening error messages when planner output is incomplete.
+- Existing executor code still primarily reads `files` for scope checks; generated `allowed_write_paths` is now aligned with `files` but deeper executor support belongs to later slices.

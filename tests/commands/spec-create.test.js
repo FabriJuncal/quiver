@@ -114,6 +114,9 @@ test('spec create writes the generated spec tree and refuses collisions', () => 
 
     const sliceJson = JSON.parse(fs.readFileSync(path.join(specDir, 'slices', 'slice-01-create-core', 'slice.json'), 'utf8'));
     assert.deepEqual(sliceJson.depends_on, ['slice-00-spec-foundation']);
+    assert.deepEqual(sliceJson.allowed_write_paths, ['src/create-quiver/commands/spec.js']);
+    assert.deepEqual(sliceJson.validation_hints, []);
+    assert.ok(sliceJson.expected_read_paths.includes('specs/quiver-v23-created-spec/SPEC.md'));
 
     assert.throws(
       () => execCli(repo.root, ['spec', 'create']),

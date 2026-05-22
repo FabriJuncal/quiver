@@ -182,8 +182,20 @@ function validateGeneratedSliceJson(filePath, expectedSliceId) {
     throw new Error(formatError(`slice.json files must be an array at ${filePath}`));
   }
 
+  if (!Array.isArray(parsed.expected_read_paths)) {
+    throw new Error(formatError(`slice.json expected_read_paths must be an array at ${filePath}`));
+  }
+
+  if (!Array.isArray(parsed.allowed_write_paths)) {
+    throw new Error(formatError(`slice.json allowed_write_paths must be an array at ${filePath}`));
+  }
+
   if (!Array.isArray(parsed.depends_on)) {
     throw new Error(formatError(`slice.json depends_on must be an array at ${filePath}`));
+  }
+
+  if (!Array.isArray(parsed.validation_hints)) {
+    throw new Error(formatError(`slice.json validation_hints must be an array at ${filePath}`));
   }
 
   return parsed;
