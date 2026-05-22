@@ -19,6 +19,48 @@ function normalizeScopePath(filePath) {
   return normalizeContextPath(filePath);
 }
 
+function globToRegExp(pattern) {
+  const source = String(pattern || '')
+    .split('')
+    .map((char, index, chars) => {
+      if (char === '*') {
+        return chars[index + 1] === '*' ? '\0' : '[^/]*';
+      }
+      if (char === '\0') {
+        return '.*';
+      }
+      return /[\\^$+?.()|[\]{}]/.test(char) ? `\\${char}` : char;
+    })
+    .join('')
+    .replace(/\0\[\^\/\]\*/g, '.*');
+
+  return new RegExp(`^${source}$`);
+}
+
+function allowedPathMatches(filePath, allowedPath) {
+  const file = normalizeScopePath(filePath);
+  const allowed = normalizeScopePath(allowedPath);
+
+  if (!file || !allowed) {
+    return false;
+  }
+
+  if (file === allowed) {
+    return true;
+  }
+
+  if (allowed.endsWith('/**')) {
+    const prefix = allowed.slice(0, -3);
+    return file === prefix || file.startsWith(`${prefix}/`);
+  }
+
+  if (allowed.includes('*')) {
+    return globToRegExp(allowed).test(file);
+  }
+
+  return false;
+}
+
 function parseStatusPorcelain(text) {
   if (!text) {
     return [];
@@ -74,30 +116,30 @@ function diffWorktreeSnapshots(beforeSnapshot, afterSnapshot) {
 }
 
 function validateScopeSnapshot({ allowedFiles = [], beforeSnapshot, afterSnapshot, strict = true } = {}) {
-  const normalizedAllowedFiles = new Set(
+  const normalizedAllowedFiles = Array.from(new Set(
     Array.isArray(allowedFiles)
       ? allowedFiles.map(normalizeScopePath).filter(Boolean)
       : [],
-  );
+  ));
   const changedFiles = diffWorktreeSnapshots(beforeSnapshot, afterSnapshot);
-  const outOfScopeFiles = changedFiles.filter((file) => !normalizedAllowedFiles.has(file));
+  const outOfScopeFiles = changedFiles.filter((file) => !normalizedAllowedFiles.some((allowedFile) => allowedPathMatches(file, allowedFile)));
 
   if (outOfScopeFiles.length === 0) {
     return {
       ok: true,
       changedFiles,
       outOfScopeFiles,
-      allowedFiles: Array.from(normalizedAllowedFiles),
+      allowedFiles: normalizedAllowedFiles,
       beforeSnapshot,
       afterSnapshot,
     };
   }
 
   const message = formatError(
-    `scope violation detected: changed files outside slice.json.files: ${outOfScopeFiles.join(', ')}`,
+    `scope violation detected: changed files outside declared slice scope: ${outOfScopeFiles.join(', ')}`,
   );
   const error = new ScopeValidationError('SCOPE_VIOLATION', message, {
-    allowedFiles: Array.from(normalizedAllowedFiles),
+    allowedFiles: normalizedAllowedFiles,
     beforeSnapshot,
     afterSnapshot,
     changedFiles,
@@ -112,7 +154,7 @@ function validateScopeSnapshot({ allowedFiles = [], beforeSnapshot, afterSnapsho
     ok: false,
     changedFiles,
     outOfScopeFiles,
-    allowedFiles: Array.from(normalizedAllowedFiles),
+    allowedFiles: normalizedAllowedFiles,
     beforeSnapshot,
     afterSnapshot,
     error,
@@ -121,6 +163,7 @@ function validateScopeSnapshot({ allowedFiles = [], beforeSnapshot, afterSnapsho
 
 module.exports = {
   ScopeValidationError,
+  allowedPathMatches,
   captureWorktreeSnapshot,
   diffWorktreeSnapshots,
   checkScope,

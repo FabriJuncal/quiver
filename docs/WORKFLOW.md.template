@@ -57,7 +57,8 @@ Use maps, metadata, diffs, and summaries first. Open full files only when the sm
    - Legacy Bash wrappers remain available for compatibility, but generated projects should prefer the Node CLI and `quiver:*` npm scripts.
    - `start-slice` generates `docs/ai/ACTIVE_SLICE.md` and `WORKTREE_CONTEXT.md`; use the active slice brief as the source of truth for execution.
 5. Implement only what the slice declares.
-6. Make one commit for that slice, or let `ai execute-slice --commit` / `ai execute-plan --execute --commit --mode delegated` create it after provider, scope, and validation pass.
+6. Make one commit for that slice, or let `ai execute-slice --commit` / `ai execute-plan --execute --commit --mode delegated` create it after provider, branch/worktree, scope, and validation pass.
+   - `ai execute-slice` updates `CLOSURE_BRIEF.md`, `EVIDENCE_REPORT.md`, `COMMAND_LOG.md`, `STATUS.md`, and `slice.json` only after the provider changes in-scope files and validation passes.
 7. Validate with `npx create-quiver check-slice <slice.json>` or `npm run quiver:check-slice -- <slice.json>`.
 8. Write evidence. Prefer `npx create-quiver evidence run -- <command>` when you need a compact local Markdown record of validation output.
 9. Repeat for the next slice until the spec is complete.

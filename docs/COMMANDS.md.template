@@ -39,7 +39,7 @@ This document is the canonical command reference for the orchestration roadmap.
 | `quiver:ai:review-plan` | Reviews the technical-plan draft for production readiness before approval and spec generation | macOS, Linux, Windows | v0.11 | `npm run quiver:ai:review-plan -- --dry-run` |
 | `quiver:ai:approve` | Approves a concrete saved draft version for the next planner phase | macOS, Linux, Windows | v0.10 | `npm run quiver:ai:approve -- --phase acceptance --version 1` |
 | `quiver:ai:prompt-slice` | Prints a minimal executor prompt for manual slice assignment without calling a provider | macOS, Linux, Windows | v0.11 | `npm run quiver:ai:prompt-slice -- --slice specs/<spec>/slices/<slice>/slice.json --dry-run` |
-| `quiver:ai:execute-slice` | Runs an executor agent against one slice handoff with scope checks and optional commit | macOS, Linux, Windows | v0.10 | `npm run quiver:ai:execute-slice -- --slice specs/<spec>/slices/<slice>/slice.json --dry-run --commit` |
+| `quiver:ai:execute-slice` | Runs one executor against a slice handoff with branch/worktree checks, scope checks, redacted logs, closure/evidence updates, and optional commit | macOS, Linux, Windows | v0.10 | `npm run quiver:ai:execute-slice -- --slice specs/<spec>/slices/<slice>/slice.json --dry-run --commit` |
 | `quiver:ai:execute-plan` | Prints or executes dependency-safe waves of slices, with manual prompts or delegated worktrees | macOS, Linux, Windows | v0.10 | `npm run quiver:ai:execute-plan -- --dry-run --commit --mode delegated` |
 | `quiver:ai:doctor` | Runs GitHub PR preflight checks without opening a PR | macOS, Linux, Windows | v0.10 | `npm run quiver:ai:doctor -- --dry-run --ssh-host-alias github-work --identity-file ~/.ssh/github-work` |
 | `quiver:ai:pr` | Validates `gh`, reads `pr.md`, prints a PR plan, and creates a PR only with `--create` | macOS, Linux, Windows | v0.10 | `npm run quiver:ai:pr -- --dry-run --input specs/<spec>/pr.md --ssh-host-alias github-work --identity-file ~/.ssh/github-work` |
@@ -104,7 +104,7 @@ This document is the canonical command reference for the orchestration roadmap.
 - `quiver:ai:prompt-slice -- --dry-run` prints a paste-ready manual executor prompt and does not call a provider.
 - `quiver:evidence -- run -- <command>` preserves the wrapped command exit code. Redaction is best effort; avoid commands that intentionally print secrets.
 - `demo create spec-viewer` is optional and static; it must stay outside default `init`.
-- `quiver:ai:execute-slice -- --commit` creates exactly one commit only after provider, scope, and validation commands pass.
+- `quiver:ai:execute-slice -- --commit` creates exactly one commit only after provider, branch/worktree, scope, and validation commands pass. Successful execution updates `CLOSURE_BRIEF.md`, `EVIDENCE_REPORT.md`, `COMMAND_LOG.md`, `STATUS.md`, and `slice.json`; likely secrets in captured stdout/stderr are redacted.
 - `quiver:ai:execute-plan -- --dry-run --commit --mode manual` prints paste-ready executor prompt commands without provider execution.
 - `quiver:ai:execute-plan -- --dry-run --commit --mode delegated` prints safe delegated waves and falls back to sequential mode when file scope is missing or overlapping.
 - `quiver:ai:execute-plan -- --execute --commit --mode delegated` uses temporary worktrees for parallel-ready waves and integrates one validated commit per slice.

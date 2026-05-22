@@ -191,3 +191,26 @@ Each implementation slice must append:
 
 - If planner output omits both `allowed_write_paths` and `files`, Quiver correctly falls back to sequential execution, but the user still needs to fix the slice contract.
 - Parallel execution still requires later execution slices to enforce scope and commit behavior during actual provider runs.
+
+## slice-08 - Controlled slice execution and evidence
+
+### Completed
+
+- Updated slice metadata resolution so `allowed_write_paths` becomes the authoritative executor write scope while preserving `files` fallback.
+- Added simple glob-aware scope validation for declared write paths such as `src/**` and `tests/**/*.test.js`.
+- Added branch/worktree validation for direct `ai execute-slice` runs and kept `ai execute-plan` delegated worktrees explicitly exempt through internal orchestration.
+- Expanded executor context with expected read paths and validation hints while keeping prompt-only/manual execution minimal.
+- Added automatic closure artifacts after successful execution: `CLOSURE_BRIEF.md`, `EVIDENCE_REPORT.md`, `COMMAND_LOG.md`, `STATUS.md`, and `slice.json`.
+- Added no-op protection so a provider that changes no in-scope files cannot close a slice.
+- Redacted likely secrets from provider output, validation output, command logs, and saved execution evidence.
+- Updated README and generated command/workflow docs for the controlled execution behavior.
+
+### Validation
+
+- `node --test tests/lib/scope.test.js tests/lib/ai-executor.test.js tests/commands/ai-execute-slice.test.js tests/lib/ai-execution-plan.test.js tests/commands/ai-execute-plan.test.js` passed: 39 tests.
+- `node --test tests/**/*.test.js` passed: 285 tests.
+
+### Risks
+
+- Scope glob support is intentionally simple and covers the common `*` and `**` cases used by Quiver-generated slices; more advanced glob syntax remains out of scope.
+- Direct `ai execute-slice` now requires the declared slice branch. Orchestrated `ai execute-plan` execution bypasses that specific branch check because it manages temporary worktrees itself.

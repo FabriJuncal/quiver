@@ -399,7 +399,7 @@ Orden recomendado:
 7. `spec create`: genera spec, slices, handoffs y PR body desde el plan revisado y aprobado.
 8. `spec start`: prepara un worktree por spec.
 9. `ai prompt-slice`: imprime el prompt mínimo para asignar un slice manualmente.
-10. `ai execute-slice` / `ai execute-plan`: ejecuta slices aprobados, con commit opt-in. Usá `--mode manual` para prompts y `--mode delegated` para worktrees temporales en olas paralelas.
+10. `ai execute-slice` / `ai execute-plan`: ejecuta slices aprobados, con commit opt-in. `ai execute-slice` exige worktree/rama correctos, bloquea cambios fuera del alcance declarado, redacta logs sensibles y actualiza `CLOSURE_BRIEF.md`, `EVIDENCE_REPORT.md`, `COMMAND_LOG.md`, `STATUS.md` y `slice.json` cuando la ejecución pasa. Usá `--mode manual` para prompts y `--mode delegated` para worktrees temporales en olas paralelas.
 11. `ai doctor` / `ai pr`: valida GitHub y crea el PR solo con `--create`.
 12. `spec close`: cierra el worktree después del merge.
 

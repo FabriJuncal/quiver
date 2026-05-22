@@ -458,6 +458,7 @@ async function runSequentialGroup(repoRoot, level, group, options = {}) {
         providerExplicit: options.providerExplicit,
         role: options.role,
         slice: slice.slice_path,
+        skipWorktreeBranchCheck: true,
         timeout: options.timeout,
       });
       results.push({
@@ -502,6 +503,7 @@ async function runParallelGroupInWorktrees(repoRoot, level, group, options = {})
         providerExplicit: options.providerExplicit,
         role: options.role,
         slice: workspace.slice.slice_path,
+        skipWorktreeBranchCheck: true,
         timeout: options.timeout,
       });
       const commit = runGit(['rev-parse', 'HEAD'], workspace.worktreePath);

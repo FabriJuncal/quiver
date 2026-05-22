@@ -151,7 +151,7 @@ After initialization, the user should:
 19. Run `npx create-quiver next` or `npm run quiver:next`
 20. Run `npx create-quiver ai execute-plan --dry-run --commit --mode manual` to inspect prompts, or `npx create-quiver ai execute-plan --dry-run --commit --mode delegated` to inspect delegated execution waves
 21. For manual assignment, print a minimal executor prompt with `npx create-quiver ai prompt-slice --slice <slice.json> --dry-run`
-22. Execute one slice with `npx create-quiver ai execute-slice --slice <slice.json> --commit` or execute delegated waves with `npx create-quiver ai execute-plan --execute --commit --mode delegated`
+22. Execute one slice with `npx create-quiver ai execute-slice --slice <slice.json> --commit` or execute delegated waves with `npx create-quiver ai execute-plan --execute --commit --mode delegated`; single-slice execution must run from the declared slice branch, validates `allowed_write_paths`/`files`, redacts captured logs, and updates closure, evidence, command log, status, and `slice.json`
 23. Keep one commit per slice
 24. Open one PR per spec with `npx create-quiver ai pr --dry-run --input specs/<spec-slug>/pr.md ...`, then `--create` only after review
 25. After merge, close the worktree with `npx create-quiver spec close specs/<spec-slug>`

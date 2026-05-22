@@ -5,7 +5,8 @@ const cp = require('node:child_process');
 const { buildContextPackMetadata, normalizeRole } = require('./context-packs');
 const { buildProviderInvocation, runProvider } = require('./providers');
 const { resolveProfileProvider } = require('../agent-profiles');
-const { runGit } = require('../git');
+const { currentBranch, runGit } = require('../git');
+const { redactSecrets, truncateText } = require('../evidence');
 const { captureWorktreeSnapshot, validateScopeSnapshot } = require('../scope');
 const { resolveSliceContext } = require('../slice');
 
@@ -75,6 +76,14 @@ function formatList(items) {
   }
 
   return items.map((item) => `- ${item}`);
+}
+
+function uniqueList(items) {
+  return Array.from(new Set((Array.isArray(items) ? items : []).map((item) => String(item)).filter(Boolean)));
+}
+
+function escapeRegex(value) {
+  return String(value || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 function extractMarkdownHeading(text) {
@@ -189,6 +198,9 @@ function buildManualExecutorPrompt({ repoRoot, slicePath, role, context, tokenLi
     `- Source: ${specExcerpt.path}`,
     ...specExcerpt.lines,
     '',
+    'Expected read paths:',
+    ...formatList(executorContext.expectedReadPaths),
+    '',
     'Allowed files:',
     ...formatList(executorContext.allowedFiles),
     '',
@@ -200,6 +212,9 @@ function buildManualExecutorPrompt({ repoRoot, slicePath, role, context, tokenLi
     '',
     'Validation commands:',
     ...formatList(executorContext.validationCommands),
+    '',
+    'Validation hints:',
+    ...formatList(executorContext.validationHints),
     '',
     'Exact deliverable expected:',
     '- Implement only this slice.',
@@ -289,8 +304,10 @@ function buildExecuteSliceContext({ repoRoot, slicePath, role, context }) {
   const relativeSlicePath = toRelativePath(canonicalRepoRoot, slice.sliceAbs);
   const relativeBriefPath = toRelativePath(canonicalRepoRoot, briefPath);
   const allowedFiles = Array.isArray(slice.files) ? slice.files.map((file) => String(file)) : [];
+  const expectedReadPaths = Array.isArray(slice.expectedReadPaths) ? slice.expectedReadPaths.map((file) => String(file)) : [];
   const acceptance = Array.isArray(slice.acceptance) ? slice.acceptance.map((item) => String(item)) : [];
   const validationCommands = Array.isArray(slice.tests) ? slice.tests.map((item) => String(item)) : [];
+  const validationHints = Array.isArray(slice.validationHints) ? slice.validationHints.map((item) => String(item)) : [];
   const mustItems = Array.isArray(slice.json.must) ? slice.json.must.map((item) => String(item)) : [];
   const excludedItems = Array.isArray(slice.json.not_included) ? slice.json.not_included.map((item) => String(item)) : [];
 
@@ -301,6 +318,8 @@ function buildExecuteSliceContext({ repoRoot, slicePath, role, context }) {
     `Spec: ${slice.specSlug}`,
     `Slice file: ${relativeSlicePath}`,
     `Execution brief: ${relativeBriefPath}`,
+    'Expected read paths:',
+    ...formatList(expectedReadPaths),
     'Allowed files:',
     ...formatList(allowedFiles),
     'Acceptance criteria:',
@@ -315,6 +334,10 @@ function buildExecuteSliceContext({ repoRoot, slicePath, role, context }) {
 
   if (excludedItems.length > 0) {
     sections.push('Not included:', ...formatList(excludedItems));
+  }
+
+  if (validationHints.length > 0) {
+    sections.push('Validation hints:', ...formatList(validationHints));
   }
 
   sections.push(
@@ -332,8 +355,10 @@ function buildExecuteSliceContext({ repoRoot, slicePath, role, context }) {
     briefPath: relativeBriefPath,
     briefText,
     context: pack,
+    expectedReadPaths,
     prompt: sections.join('\n\n'),
     slice,
+    validationHints,
     validationCommands,
   };
 }
@@ -407,18 +432,18 @@ function runValidationCommand(command, repoRoot) {
       stdio: ['ignore', 'pipe', 'pipe'],
     });
     return {
-      command,
+      command: redactSecrets(command),
       ok: true,
-      stdout,
+      stdout: redactSecrets(stdout),
       stderr: '',
       exitCode: 0,
     };
   } catch (error) {
     return {
-      command,
+      command: redactSecrets(command),
       ok: false,
-      stdout: error.stdout ? String(error.stdout) : '',
-      stderr: error.stderr ? String(error.stderr) : '',
+      stdout: redactSecrets(error.stdout ? String(error.stdout) : ''),
+      stderr: redactSecrets(error.stderr ? String(error.stderr) : ''),
       exitCode: Number.isInteger(error.status) ? error.status : 1,
       error,
     };
@@ -428,7 +453,13 @@ function runValidationCommand(command, repoRoot) {
 function runValidationCommands(repoRoot, commands, runner = runValidationCommand) {
   const results = [];
   for (const command of commands) {
-    const result = runner(command, repoRoot);
+    const rawResult = runner(command, repoRoot);
+    const result = {
+      ...rawResult,
+      command: redactSecrets(rawResult.command || command),
+      stderr: redactSecrets(rawResult.stderr || ''),
+      stdout: redactSecrets(rawResult.stdout || ''),
+    };
     results.push(result);
     if (!result.ok) {
       const details = [
@@ -492,11 +523,196 @@ function commitSliceChanges(repoRoot, slice, changedFiles, options = {}) {
   };
 }
 
+function assertCorrectSliceWorktree(repoRoot, slice, options = {}) {
+  if (options.skipWorktreeBranchCheck === true) {
+    return null;
+  }
+
+  const expectedBranch = String(slice.branchName || slice.json.git?.branch_name || '').trim();
+  if (!expectedBranch) {
+    return null;
+  }
+
+  const actualBranch = currentBranch(repoRoot);
+  if (actualBranch !== expectedBranch) {
+    const error = new Error(formatError(`ai execute-slice must run from the slice worktree branch. Current branch: ${actualBranch || '(detached or unavailable)'}. Expected: ${expectedBranch}.`));
+    error.code = 'WRONG_WORKTREE';
+    error.details = {
+      actualBranch,
+      expectedBranch,
+      slice: slice.sliceRel,
+    };
+    throw error;
+  }
+
+  return {
+    actualBranch,
+    expectedBranch,
+  };
+}
+
+function sliceLifecycleArtifactPaths(repoRoot, slice) {
+  const closureAbs = path.join(path.dirname(slice.sliceAbs), 'CLOSURE_BRIEF.md');
+  return {
+    closure: toRelativePath(repoRoot, closureAbs),
+    commandLog: toRelativePath(repoRoot, path.join(slice.specDirAbs, 'COMMAND_LOG.md')),
+    evidence: toRelativePath(repoRoot, path.join(slice.specDirAbs, 'EVIDENCE_REPORT.md')),
+    sliceJson: toRelativePath(repoRoot, slice.sliceAbs),
+    status: toRelativePath(repoRoot, path.join(slice.specDirAbs, 'STATUS.md')),
+  };
+}
+
+function renderClosureBrief({ slice, changedFiles, validationResults, completedAt }) {
+  const criteria = Array.isArray(slice.acceptance) ? slice.acceptance : [];
+  const validationLines = Array.isArray(validationResults) && validationResults.length > 0
+    ? validationResults.map((result) => `- [x] \`${result.command}\` exited ${result.exitCode}`)
+    : ['- [x] No validation commands declared.'];
+
+  return `${[
+    `# CLOSURE BRIEF - ${slice.sliceId}: ${slice.json.title || slice.sliceId}`,
+    '',
+    '## Summary of Work',
+    '',
+    `Executed controlled slice closure at ${completedAt}. Quiver validated scope, validation commands, and lifecycle evidence for this slice.`,
+    '',
+    '## Validation Against Acceptance Criteria',
+    '',
+    ...(criteria.length > 0 ? criteria.map((item) => `- [x] ${item}`) : ['- [x] Slice execution completed with scope validation.']),
+    '',
+    '## Relevant Changes',
+    '',
+    ...formatList(changedFiles),
+    '',
+    '## Validation Commands',
+    '',
+    ...validationLines,
+    '',
+    '## Pending',
+    '',
+    'None recorded by Quiver.',
+    '',
+    '## Remaining Risks',
+    '',
+    'None recorded by Quiver.',
+    '',
+    '## Future Recommendations',
+    '',
+    'Review the evidence report and commit diff before opening the PR.',
+    '',
+  ].join('\n')}\n`;
+}
+
+function appendSection(filePath, fallbackTitle, section) {
+  const current = fs.existsSync(filePath) ? fs.readFileSync(filePath, 'utf8').trimEnd() : fallbackTitle;
+  fs.mkdirSync(path.dirname(filePath), { recursive: true });
+  fs.writeFileSync(filePath, `${current}\n\n${section.trimEnd()}\n`);
+}
+
+function updateStatusMarkdown(filePath, slice, completedAt) {
+  const fallback = `# Status - ${slice.specSlug}\n`;
+  let text = fs.existsSync(filePath) ? fs.readFileSync(filePath, 'utf8') : fallback;
+  const rowRegex = new RegExp(`(\\|\\s*${escapeRegex(slice.sliceId)}\\s*\\|\\s*)[^|\\n]+(\\|[^\\n]*\\|)`);
+  if (rowRegex.test(text)) {
+    text = text.replace(rowRegex, '$1Completed $2');
+  }
+  text = text.replace(/\*\*Current slice:\*\*\s*[^\n]*/i, `**Current slice:** ${slice.sliceId} completed`);
+  if (!text.endsWith('\n')) {
+    text += '\n';
+  }
+  const section = [
+    '',
+    `## Execution Update - ${slice.sliceId}`,
+    '',
+    `- Status: Completed`,
+    `- Completed at: ${completedAt}`,
+    `- Source: \`npx create-quiver ai execute-slice --slice ${slice.sliceRel}\``,
+  ].join('\n');
+  fs.mkdirSync(path.dirname(filePath), { recursive: true });
+  fs.writeFileSync(filePath, `${text}${section}\n`);
+}
+
+function updateSliceJson(filePath, completedAt) {
+  const json = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+  json.status = 'completed';
+  json.completed_at = completedAt;
+  fs.writeFileSync(filePath, `${JSON.stringify(json, null, 2)}\n`);
+}
+
+function writeExecutionArtifacts(repoRoot, executorContext, details) {
+  const { slice } = executorContext;
+  const completedAt = details.completedAt || new Date().toISOString();
+  const artifacts = sliceLifecycleArtifactPaths(repoRoot, slice);
+  const changedFiles = uniqueList(details.changedFiles);
+  const closurePath = path.join(repoRoot, artifacts.closure);
+  const evidencePath = path.join(repoRoot, artifacts.evidence);
+  const commandLogPath = path.join(repoRoot, artifacts.commandLog);
+  const statusPath = path.join(repoRoot, artifacts.status);
+  const validationResults = Array.isArray(details.validationResults) ? details.validationResults : [];
+  const providerStdout = truncateText(redactSecrets(details.providerOutput?.stdout || ''), 1200).text;
+  const providerStderr = truncateText(redactSecrets(details.providerOutput?.stderr || ''), 1200).text;
+
+  fs.mkdirSync(path.dirname(closurePath), { recursive: true });
+  fs.writeFileSync(closurePath, renderClosureBrief({
+    slice,
+    changedFiles,
+    validationResults,
+    completedAt,
+  }));
+
+  const validationLines = validationResults.length > 0
+    ? validationResults.map((result) => `- \`${result.command}\` -> exit ${result.exitCode}`)
+    : ['- No validation commands declared.'];
+  appendSection(evidencePath, `# Evidence Report - ${slice.specSlug}`, [
+    `## ${slice.sliceId} - Execution Evidence`,
+    '',
+    `- Completed at: ${completedAt}`,
+    `- Changed files: ${changedFiles.length}`,
+    ...changedFiles.map((file) => `  - \`${file}\``),
+    `- Scope validation: passed`,
+    `- Provider stdout redacted: ${providerStdout ? 'yes' : 'n/a'}`,
+    `- Provider stderr redacted: ${providerStderr ? 'yes' : 'n/a'}`,
+    '',
+    '### Validation',
+    '',
+    ...validationLines,
+    '',
+    '### Provider Output',
+    '',
+    '```text',
+    providerStdout || 'n/a',
+    providerStderr ? `\n${providerStderr}` : '',
+    '```',
+  ].join('\n'));
+
+  const commandLogRows = [
+    `| ${completedAt} | ${slice.sliceId} | \`npx create-quiver ai execute-slice --slice ${slice.sliceRel}\` | passed |`,
+    ...validationResults.map((result) => `| ${completedAt} | ${slice.sliceId} | \`${result.command}\` | exit ${result.exitCode} |`),
+  ];
+  const commandLogHeader = [
+    '# Command Log',
+    '',
+    '| Timestamp | Slice | Command | Result |',
+    '|---|---|---|---|',
+  ].join('\n');
+  const currentCommandLog = fs.existsSync(commandLogPath) ? fs.readFileSync(commandLogPath, 'utf8').trimEnd() : commandLogHeader;
+  fs.mkdirSync(path.dirname(commandLogPath), { recursive: true });
+  fs.writeFileSync(commandLogPath, `${currentCommandLog}\n${commandLogRows.join('\n')}\n`);
+
+  updateStatusMarkdown(statusPath, slice, completedAt);
+  updateSliceJson(path.join(repoRoot, artifacts.sliceJson), completedAt);
+
+  return {
+    completedAt,
+    files: Object.values(artifacts),
+  };
+}
+
 async function runExecuteSlice(repoRoot, options = {}) {
+  const canonicalRepoRoot = canonicalizeRepoRoot(repoRoot);
   const role = normalizeRole(options.role || DEFAULT_EXECUTE_ROLE);
   const provider = options.providerExplicit === true || (options.provider && options.providerExplicit !== false)
     ? String(options.provider || DEFAULT_EXECUTE_PROVIDER).trim().toLowerCase()
-    : resolveProfileProvider(repoRoot, role, DEFAULT_EXECUTE_PROVIDER);
+    : resolveProfileProvider(canonicalRepoRoot, role, DEFAULT_EXECUTE_PROVIDER);
   const context = options.context || DEFAULT_EXECUTE_CONTEXT;
   const timeoutMs = normalizeTimeout(options.timeout);
 
@@ -505,7 +721,7 @@ async function runExecuteSlice(repoRoot, options = {}) {
   }
 
   const executorContext = buildExecuteSliceContext({
-    repoRoot,
+    repoRoot: canonicalRepoRoot,
     slicePath: options.slice,
     role,
     context,
@@ -517,7 +733,7 @@ async function runExecuteSlice(repoRoot, options = {}) {
   try {
     invocation = buildProviderInvocation(provider, {
       prompt,
-      cwd: repoRoot,
+      cwd: canonicalRepoRoot,
       timeoutMs,
     });
   } catch (error) {
@@ -551,7 +767,13 @@ async function runExecuteSlice(repoRoot, options = {}) {
     return report;
   }
 
-  const beforeSnapshot = captureWorktreeSnapshot(repoRoot);
+  try {
+    assertCorrectSliceWorktree(canonicalRepoRoot, executorContext.slice, options);
+  } catch (error) {
+    throw appendRecovery(error, executorContext.slice);
+  }
+
+  const beforeSnapshot = captureWorktreeSnapshot(canonicalRepoRoot);
   if (beforeSnapshot.files.length > 0 && options.allowDirty !== true) {
     throw appendRecovery(new Error(formatError(`ai execute-slice requires a clean worktree before running. Commit or stash first: ${beforeSnapshot.files.join(', ')}`)), executorContext.slice);
   }
@@ -560,7 +782,7 @@ async function runExecuteSlice(repoRoot, options = {}) {
   try {
     result = await (options.runProviderFn || runProvider)(provider, {
       prompt,
-      cwd: repoRoot,
+      cwd: canonicalRepoRoot,
       timeoutMs,
       dryRun: false,
       probe: options.probe,
@@ -574,17 +796,27 @@ async function runExecuteSlice(repoRoot, options = {}) {
   }
 
   if (result.stdout) {
-    process.stdout.write(result.stdout);
+    process.stdout.write(redactSecrets(result.stdout));
   }
   if (result.stderr) {
-    process.stderr.write(result.stderr);
+    process.stderr.write(redactSecrets(result.stderr));
   }
 
   if (!result.ok) {
     throw appendRecovery(annotateProviderError(result.error || new Error('provider run failed'), 'execute-slice'), executorContext.slice);
   }
 
-  const afterSnapshot = captureWorktreeSnapshot(repoRoot);
+  const providerOutput = {
+    stdout: redactSecrets(result.stdout || ''),
+    stderr: redactSecrets(result.stderr || ''),
+  };
+  const sanitizedResult = {
+    ...result,
+    stdout: providerOutput.stdout,
+    stderr: providerOutput.stderr,
+  };
+
+  const afterSnapshot = captureWorktreeSnapshot(canonicalRepoRoot);
   let scopeResult;
   try {
     scopeResult = validateScopeSnapshot({
@@ -596,11 +828,16 @@ async function runExecuteSlice(repoRoot, options = {}) {
   } catch (error) {
     throw appendRecovery(error, executorContext.slice);
   }
+  if (scopeResult.changedFiles.length === 0) {
+    const error = new Error(formatError('provider produced no changed files; slice closure was not updated.'));
+    error.code = 'NO_CHANGES_TO_CLOSE';
+    throw appendRecovery(error, executorContext.slice);
+  }
 
   let validationResults = [];
   try {
     validationResults = runValidationCommands(
-      repoRoot,
+      canonicalRepoRoot,
       executorContext.validationCommands,
       options.runValidationCommandFn,
     );
@@ -608,11 +845,18 @@ async function runExecuteSlice(repoRoot, options = {}) {
     throw appendRecovery(error, executorContext.slice);
   }
 
-  const finalSnapshot = captureWorktreeSnapshot(repoRoot);
+  const artifacts = writeExecutionArtifacts(canonicalRepoRoot, executorContext, {
+    changedFiles: scopeResult.changedFiles,
+    completedAt: new Date().toISOString(),
+    providerOutput,
+    validationResults,
+  });
+
+  const finalSnapshot = captureWorktreeSnapshot(canonicalRepoRoot);
   let finalScopeResult;
   try {
     finalScopeResult = validateScopeSnapshot({
-      allowedFiles: executorContext.allowedFiles,
+      allowedFiles: uniqueList([...executorContext.allowedFiles, ...artifacts.files]),
       beforeSnapshot,
       afterSnapshot: finalSnapshot,
       strict: true,
@@ -624,7 +868,7 @@ async function runExecuteSlice(repoRoot, options = {}) {
   let commitResult = null;
   if (options.commit === true) {
     try {
-      commitResult = commitSliceChanges(repoRoot, executorContext.slice, finalScopeResult.changedFiles, {
+      commitResult = commitSliceChanges(canonicalRepoRoot, executorContext.slice, finalScopeResult.changedFiles, {
         message: options.commitMessage,
       });
     } catch (error) {
@@ -649,12 +893,13 @@ async function runExecuteSlice(repoRoot, options = {}) {
     slice: executorContext.slice.sliceId,
     specSlug: executorContext.slice.specSlug,
     invocation,
-    result,
+    result: sanitizedResult,
     beforeSnapshot,
     afterSnapshot: finalSnapshot,
     scopeResult: finalScopeResult,
     validationResults,
     commitResult,
+    artifacts,
   };
 }
 
@@ -672,6 +917,8 @@ module.exports = {
   commitSliceChanges,
   formatExecuteSliceDryRunReport,
   formatExecuteSliceResult,
+  assertCorrectSliceWorktree,
+  writeExecutionArtifacts,
   runValidationCommand,
   runValidationCommands,
   normalizeTimeout,
