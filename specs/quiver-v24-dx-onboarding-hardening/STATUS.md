@@ -1,7 +1,7 @@
 # Quiver v24 Status
 
 **Spec:** DX Onboarding Hardening
-**Status:** In progress
+**Status:** Completed, pending package release
 **Created:** 2026-05-22
 
 ## Summary
@@ -18,12 +18,12 @@
 | slice-07 | Analyzer command map hardening | Completed | 100% | slice-01 |
 | slice-08 | Evidence run command | Completed | 100% | slice-03 |
 | slice-09 | Spec Viewer demo scaffolding | Completed | 100% | slice-01, slice-06, slice-08 |
-| slice-10 | Docs, smokes, and release readiness | Planned | 0% | all implementation slices |
+| slice-10 | Docs, smokes, and release readiness | Completed | 100% | all implementation slices |
 
 ## Current Blockers
 
 - No current blockers for completed slices.
-- Remaining implementation slices must still be validated and committed one slice at a time.
+- Package publication is intentionally outside this spec.
 
 ## Notes
 

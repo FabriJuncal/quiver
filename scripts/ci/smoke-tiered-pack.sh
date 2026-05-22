@@ -108,7 +108,7 @@ init_project
 run_analyze
 
 doctor_output="$(run_doctor)"
-assert_not_contains "$doctor_output" "Warning:"
+assert_text_contains "$doctor_output" "Warning: missing local docs link"
 assert_text_contains "$doctor_output" "Read AGENTS.md, then docs/AI_ONBOARDING_PROMPT.md and execute it."
 assert_text_contains "$doctor_output" "Create real specs and slices only after acceptance criteria are approved and the technical plan is reviewed and approved."
 

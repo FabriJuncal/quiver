@@ -44,6 +44,56 @@ Use this guide when a first-run bootstrap or gate check fails. The recovery path
 2. Re-add the remote only if the workflow genuinely needs it.
 3. Prefer the local base branch path when validating first-run behavior.
 
+## Local Slice Validation In A New Repo
+
+### Symptom
+
+- `check-slice` asks for a remote/base branch while the repo is still local-only
+
+### Recovery
+
+1. Run `npx create-quiver check-slice --local <slice.json>` for structural validation.
+2. Before PR readiness, run normal `check-slice <slice.json>` with a local base branch, `--base <branch>`, or a configured remote.
+3. Treat `--local` as a first-use validation mode, not as a replacement for PR checks.
+
+## Context Preparation Overwrites Docs
+
+### Symptom
+
+- `ai prepare-context` wrote generated context docs and you expected only a preview
+
+### Recovery
+
+1. Use `npx create-quiver ai prepare-context --dry-run` first.
+2. Review assumptions, risks, files considered, and omitted paths.
+3. Commit or preserve any manual edits before running write mode.
+4. Write mode is intentionally limited to approved docs/context files and does not touch product code.
+
+## Evidence Contains Sensitive Output
+
+### Symptom
+
+- `evidence run` captured output that may include secrets
+
+### Recovery
+
+1. Treat redaction as best effort, not a secret scanner.
+2. Avoid running commands that intentionally print credentials.
+3. Delete or rewrite the local evidence file before sharing it if sensitive output remains.
+4. Prefer `--max-output <n>` for noisy commands.
+
+## Demo Scaffold Conflict
+
+### Symptom
+
+- `demo create spec-viewer` reports preserved files in the target directory
+
+### Recovery
+
+1. Re-run with `--dry-run` and inspect the planned preserve/create list.
+2. Use `--dir <empty-target>` when you want a clean demo.
+3. Existing files are preserved; Quiver does not overwrite them for the demo.
+
 ## Generated File Conflicts
 
 ### Symptom

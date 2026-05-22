@@ -1,7 +1,7 @@
 # Quiver v24 - DX Onboarding Hardening
 
 **Date:** 2026-05-22
-**Status:** In progress
+**Status:** Completed, pending package release
 
 Slice numbering resets here. This spec intentionally starts at `slice-00`.
 
@@ -132,7 +132,7 @@ Implement in small vertical slices:
 | slice-07 | Analyzer command map hardening | Completed | slice-01 |
 | slice-08 | Evidence run command | Completed | slice-03 |
 | slice-09 | Spec Viewer demo scaffolding | Completed | slice-01, slice-06, slice-08 |
-| slice-10 | Docs, smokes, and release readiness | Planned | all implementation slices |
+| slice-10 | Docs, smokes, and release readiness | Completed | all implementation slices |
 
 ## Risks
 

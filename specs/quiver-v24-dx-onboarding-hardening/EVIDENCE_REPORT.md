@@ -2,7 +2,7 @@
 
 ## Status
 
-`slice-00` documentation foundation, `slice-01` init/template hygiene, `slice-02` CLI routing/version diagnostics, `slice-03` doctor fixes/link checks, `slice-04` prepare/context drafts, `slice-05` local slice validation, `slice-06` historical planning views, `slice-07` analyzer command map hardening, `slice-08` evidence command, and `slice-09` Spec Viewer demo scaffolding are completed. Remaining implementation slices are pending.
+All v24 slices are completed. Package publication is intentionally outside this spec.
 
 ## Required Final Evidence
 
@@ -45,3 +45,11 @@
 | slice-09 | `node bin/create-quiver.js demo create spec-viewer --dir /private/tmp/quiver-spec-viewer-smoke-real` | Pass | Created static demo app, spec/slices, handoffs, PR body, and validation script. |
 | slice-09 | `npm run validate` from `/private/tmp/quiver-spec-viewer-smoke-real` | Pass | Generated demo validation passed. |
 | slice-09 | `npm run smoke:create-quiver` | Pass | Smoke now covers demo dry-run, real scaffold, demo validation, and evidence capture from the generated demo. |
+| slice-10 | `git diff --check` | Pass | No whitespace errors. |
+| slice-10 | `node --test tests/**/*.test.js` | Pass | 255 tests passed. |
+| slice-10 | `npm pack --dry-run` | Local environment issue | Default npm cache had root-owned files under `~/.npm`; not a package failure. Re-ran with isolated cache. |
+| slice-10 | `npm --cache /private/tmp/quiver-npm-cache pack --dry-run` | Pass | npm dry-run generated `create-quiver-0.10.0.tgz` with 401 files. |
+| slice-10 | `npm run smoke:create-quiver` | Pass | Generated-project smoke passed, including v24 demo/evidence paths. |
+| slice-10 | `npm run smoke:guided-workflow` | Pass | Guided workflow smoke and package smoke passed. |
+| slice-10 | `npm run smoke:tiered-pack` | Pass | Tiered context smoke passed after updating expected doctor link warnings. |
+| slice-10 | `npm run package:quiver` | Pass | Package safety smoke passed for `create-quiver-0.10.0.tgz`. |

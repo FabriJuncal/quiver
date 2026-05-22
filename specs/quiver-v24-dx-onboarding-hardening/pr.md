@@ -3,7 +3,7 @@ Quiver v24 - DX Onboarding Hardening
 
 ## Summary
 - Hardens first-use and dogfooding workflows discovered while building Quiver Spec Viewer.
-- Improves init hygiene, CLI errors, doctor fixes, prepare output, local slice validation, analyzer quality, evidence capture, and demo scaffolding.
+- Improves init hygiene, CLI errors, doctor fixes, prepare/context output, local slice validation, analyzer quality, evidence capture, and demo scaffolding.
 - Adds tests, smokes, and documentation for the new DX contract.
 
 ## Scope
@@ -58,8 +58,10 @@ node --test tests/**/*.test.js
 npm run smoke:create-quiver
 npm run smoke:guided-workflow
 npm run smoke:tiered-pack
-npm pack --dry-run
+npm --cache /private/tmp/quiver-npm-cache pack --dry-run
 ```
+
+If the default npm cache is healthy, `npm pack --dry-run` is equivalent. The explicit cache keeps local machine cache permissions out of the validation.
 
 ## Evidence
 - Update `specs/quiver-v24-dx-onboarding-hardening/EVIDENCE_REPORT.md` after each slice.
