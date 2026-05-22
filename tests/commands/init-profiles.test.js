@@ -52,6 +52,29 @@ test('legacy --name alias supports dry-run without writing files', () => {
   }
 });
 
+test('unsupported subcommands fail clearly instead of initializing a project', () => {
+  const { dir, cleanup } = makeTmpDir();
+  const target = path.join(dir, 'target');
+  try {
+    let error;
+    try {
+      runCli(['prepare-context', '--dir', target]);
+    } catch (caught) {
+      error = caught;
+    }
+
+    assert.ok(error, 'expected unsupported command to fail');
+    const output = `${error.stdout || ''}${error.stderr || ''}`;
+    assert.match(output, /unsupported command: prepare-context/);
+    assert.match(output, /npx create-quiver --help/);
+    assert.match(output, /npx create-quiver init --name "prepare-context"/);
+    assert.match(output, /update create-quiver/);
+    assert.equal(fs.existsSync(target), false);
+  } finally {
+    cleanup();
+  }
+});
+
 test('init --dry-run reports requested profiles and optional assets', () => {
   const { dir, cleanup } = makeTmpDir();
   try {

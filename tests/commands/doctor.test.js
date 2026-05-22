@@ -47,6 +47,27 @@ test('doctor accepts the new default init layout before specs exist', () => {
   }
 });
 
+test('doctor warns when package scripts target unsupported create-quiver commands', () => {
+  const { dir, cleanup } = makeTmpDir();
+  const target = path.join(dir, 'target');
+  try {
+    runCli(['init', '--name', 'Unsupported Script Project', '--dir', target, '--skip-install']);
+    const packageJsonPath = path.join(target, 'package.json');
+    const pkg = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
+    pkg.scripts['quiver:ai:prepare-context'] = 'npx create-quiver ai prepare-context --dry-run';
+    pkg.scripts['quiver:evidence'] = 'npx create-quiver evidence run -- npm test';
+    fs.writeFileSync(packageJsonPath, `${JSON.stringify(pkg, null, 2)}\n`);
+
+    const output = runCli(['doctor'], { cwd: target });
+
+    assert.match(output, /Warning: package\.json script quiver:ai:prepare-context targets unsupported ai subcommand "prepare-context"/);
+    assert.match(output, /Warning: package\.json script quiver:evidence targets unsupported command "evidence"/);
+    assert.match(output, /Update create-quiver or regenerate scripts with npx create-quiver migrate/);
+  } finally {
+    cleanup();
+  }
+});
+
 test('doctor reports a legacy layout with migration guidance', () => {
   const { dir, cleanup } = makeTmpDir();
   const target = path.join(dir, 'target');

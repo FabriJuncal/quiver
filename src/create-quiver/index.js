@@ -40,6 +40,55 @@ function formatError(message) {
   return `create-quiver: ${message}`;
 }
 
+const SUPPORTED_COMMAND_MODES = new Set([
+  'init',
+  'flow',
+  'plan',
+  'graph',
+  'next',
+  'doctor',
+  'prepare',
+  'analyze',
+  'migrate',
+  'start-slice',
+  'check-slice',
+  'check-pr',
+  'check-handoff',
+  'new-handoff',
+  'cleanup-slice',
+  'check-scope',
+  'refresh-active-slices',
+  'spec',
+  'ai',
+]);
+
+const SUPPORTED_AI_COMMANDS = new Set([
+  'agent',
+  'approve',
+  'approval-status',
+  'approvals',
+  'doctor',
+  'execute-plan',
+  'execute-slice',
+  'executor-prompt',
+  'onboard',
+  'plan',
+  'pr',
+  'prompt-slice',
+  'review-plan',
+]);
+
+const SUPPORTED_SPEC_COMMANDS = new Set(['close', 'create', 'start', 'status']);
+
+function unsupportedCommandMessage(commandName) {
+  return [
+    `unsupported command: ${commandName}`,
+    'Run: npx create-quiver --help',
+    `If you meant to initialize a project, use: npx create-quiver init --name "${commandName}"`,
+    'If this command exists in newer docs, update create-quiver and rerun the command.',
+  ].join('\n');
+}
+
 function printUsage() {
   console.log(`Usage:
   npx create-quiver [options]
@@ -206,8 +255,7 @@ function parseArgs(argv) {
   };
 
   const args = [...argv];
-  const commandModes = new Set(['init', 'flow', 'plan', 'graph', 'next', 'doctor', 'prepare', 'analyze', 'migrate', 'start-slice', 'check-slice', 'check-pr', 'check-handoff', 'new-handoff', 'cleanup-slice', 'check-scope', 'refresh-active-slices', 'spec', 'ai']);
-  if (commandModes.has(args[0])) {
+  if (SUPPORTED_COMMAND_MODES.has(args[0])) {
     result.mode = args[0];
     result.explicitInit = args[0] === 'init';
     args.shift();
@@ -229,6 +277,8 @@ function parseArgs(argv) {
   } else if (args[0] === '--new-handoff') {
     result.mode = 'new-handoff';
     args.shift();
+  } else if (args[0] && !args[0].startsWith('-')) {
+    throw new Error(formatError(unsupportedCommandMessage(args[0])));
   }
 
   const positional = [];
@@ -1076,6 +1126,63 @@ function collectLanguageSignals(files) {
   return languages;
 }
 
+function parseCreateQuiverScriptCommand(command) {
+  const normalized = String(command || '').trim();
+  const match = normalized.match(/^npx\s+create-quiver(?:@[^\s]+)?\s+(.+)$/);
+  if (!match) {
+    return null;
+  }
+
+  const tokens = match[1].split(/\s+/).filter(Boolean);
+  if (tokens.length === 0) {
+    return null;
+  }
+
+  return {
+    commandName: tokens[0],
+    subcommand: tokens[1] || '',
+  };
+}
+
+function findUnsupportedCreateQuiverScripts(scripts = {}) {
+  const unsupported = [];
+
+  for (const [scriptName, command] of Object.entries(scripts)) {
+    const parsed = parseCreateQuiverScriptCommand(command);
+    if (!parsed) {
+      continue;
+    }
+
+    if (!SUPPORTED_COMMAND_MODES.has(parsed.commandName)) {
+      unsupported.push({
+        command,
+        reason: `unsupported command "${parsed.commandName}"`,
+        scriptName,
+      });
+      continue;
+    }
+
+    if (parsed.commandName === 'ai' && !SUPPORTED_AI_COMMANDS.has(parsed.subcommand)) {
+      unsupported.push({
+        command,
+        reason: `unsupported ai subcommand "${parsed.subcommand || '(missing)'}"`,
+        scriptName,
+      });
+      continue;
+    }
+
+    if (parsed.commandName === 'spec' && !SUPPORTED_SPEC_COMMANDS.has(parsed.subcommand)) {
+      unsupported.push({
+        command,
+        reason: `unsupported spec subcommand "${parsed.subcommand || '(missing)'}"`,
+        scriptName,
+      });
+    }
+  }
+
+  return unsupported;
+}
+
 function detectNodeProject(files, rootEntries, packageJson, languages) {
   const hasPackageJson = Boolean(packageJson);
   const hasJavaScriptSignals = languages.some((language) => language === 'javascript' || language === 'typescript');
@@ -1725,6 +1832,7 @@ function runDoctor(targetDir) {
     'quiver:ai:pr',
     'quiver:ai:doctor',
   ].filter((name) => typeof pkg.scripts?.[name] !== 'string');
+  const unsupportedCreateQuiverScripts = findUnsupportedCreateQuiverScripts(pkg.scripts || {});
   const hasScanArtifacts = hasProjectScanArtifact(projectRoot)
     && fs.existsSync(path.join(projectRoot, PROJECT_MAP_RELATIVE_PATH));
   const quiverState = readState(projectRoot);
@@ -1766,6 +1874,9 @@ function runDoctor(targetDir) {
   }
   if (legacyOnlyScripts.length > 0) {
     console.log(`- Warning: legacy Bash workflow scripts detected for ${legacyOnlyScripts.join(', ')}. Run npx create-quiver migrate to add quiver:* npm scripts.`);
+  }
+  for (const script of unsupportedCreateQuiverScripts) {
+    console.log(`- Warning: package.json script ${script.scriptName} targets ${script.reason}: \`${script.command}\`. Update create-quiver or regenerate scripts with npx create-quiver migrate.`);
   }
   for (const warning of softWarnings) {
     console.log(`- Warning: ${warning}`);
