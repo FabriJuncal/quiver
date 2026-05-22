@@ -129,7 +129,7 @@ Implement in small vertical slices:
 | slice-04 | Prepare output and AI context preparation drafts | Planned | slice-01, slice-02 |
 | slice-05 | Local slice validation and base branch guidance | Planned | slice-02 |
 | slice-06 | Historical plan, graph, and next views | Planned | slice-05 |
-| slice-07 | Analyzer command map hardening | Planned | slice-01 |
+| slice-07 | Analyzer command map hardening | Completed | slice-01 |
 | slice-08 | Evidence run command | Planned | slice-03 |
 | slice-09 | Spec Viewer demo scaffolding | Planned | slice-01, slice-06, slice-08 |
 | slice-10 | Docs, smokes, and release readiness | Planned | all implementation slices |

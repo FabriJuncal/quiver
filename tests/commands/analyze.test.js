@@ -67,3 +67,47 @@ test('analyze writes raw scan under .quiver and keeps project map visible', () =
     cleanup();
   }
 });
+
+test('analyze recognizes a plain Node/JavaScript project and surfaces useful scripts', () => {
+  const { dir, cleanup } = makeTmpDir();
+  try {
+    const projectRoot = path.join(dir, 'project');
+    fs.mkdirSync(path.join(projectRoot, 'src'), { recursive: true });
+    fs.writeFileSync(path.join(projectRoot, 'package.json'), JSON.stringify({
+      name: 'plain-node-project',
+      scripts: {
+        validate: 'npm run test && npm run lint',
+        start: 'node src/index.js',
+        dev: 'node --watch src/index.js',
+        test: 'node --test',
+      },
+    }, null, 2));
+    fs.writeFileSync(path.join(projectRoot, 'src', 'index.js'), 'console.log("ok");\n');
+    fs.writeFileSync(path.join(projectRoot, 'src', 'helper.jsx'), 'export const helper = () => null;\n');
+    fs.writeFileSync(path.join(projectRoot, 'src', 'types.ts'), 'export type Thing = string;\n');
+    fs.writeFileSync(path.join(projectRoot, 'src', 'view.tsx'), 'export const View = () => null;\n');
+    fs.writeFileSync(path.join(projectRoot, 'README.md'), '# Plain Node Project\n');
+
+    const output = runCli(['analyze'], { cwd: projectRoot });
+    const scan = JSON.parse(fs.readFileSync(path.join(projectRoot, '.quiver', 'scans', 'PROJECT_SCAN.json'), 'utf8'));
+    const projectMap = fs.readFileSync(path.join(projectRoot, 'docs', 'PROJECT_MAP.md'), 'utf8');
+
+    assert.match(output, /Detected primary stack: node/);
+    assert.equal(scan.stack.primary, 'node');
+    assert.equal(new Set(scan.stack.languages).size, scan.stack.languages.length);
+    assert.deepEqual([...new Set(scan.stack.languages)].sort(), ['javascript', 'typescript']);
+    assert.match(projectMap, /## Stack/);
+    assert.match(projectMap, /- Primary: node/);
+    assert.match(projectMap, /- Languages: .*javascript/);
+    assert.match(projectMap, /- Languages: .*typescript/);
+    assert.match(projectMap, /### package\.json scripts/);
+    assert.match(projectMap, /- validate: `npm run test && npm run lint`/);
+    assert.match(projectMap, /- start: `node src\/index\.js`/);
+    assert.match(projectMap, /- dev: `node --watch src\/index\.js`/);
+    assert.match(projectMap, /- test: `node --test`/);
+    assert.match(projectMap, /## Skipped Paths/);
+    assert.match(projectMap, /## Do Not Read First/);
+  } finally {
+    cleanup();
+  }
+});

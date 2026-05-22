@@ -1041,6 +1041,7 @@ function collectLanguageSignals(files) {
   }
 
   const languages = [];
+  const seenLanguages = new Set();
   const extToLanguage = new Map([
     ['.ts', 'typescript'],
     ['.tsx', 'typescript'],
@@ -1066,12 +1067,22 @@ function collectLanguageSignals(files) {
   ]);
 
   for (const [ext, language] of extToLanguage.entries()) {
-    if (extensions.has(ext)) {
+    if (extensions.has(ext) && !seenLanguages.has(language)) {
       languages.push(language);
+      seenLanguages.add(language);
     }
   }
 
   return languages;
+}
+
+function detectNodeProject(files, rootEntries, packageJson, languages) {
+  const hasPackageJson = Boolean(packageJson);
+  const hasJavaScriptSignals = languages.some((language) => language === 'javascript' || language === 'typescript');
+  const hasSourceDirectories = detectSourceDirectories(rootEntries).length > 0;
+  const hasSourceFiles = files.some((file) => /\.(?:c|m)?jsx?$/i.test(file) || /\.(?:c|m)?tsx?$/i.test(file));
+
+  return hasJavaScriptSignals && (hasPackageJson || hasSourceDirectories || hasSourceFiles);
 }
 
 function collectWorkspaces(packageJson) {
@@ -1201,6 +1212,11 @@ function detectFrameworks(projectRoot, files, rootEntries, packageJson) {
   if (frameworks.length === 0 && languages.includes('typescript') && dependencies.has('react')) {
     frameworks.push('react');
     evidence.push({ framework: 'react', signals: ['react', 'typescript files'] });
+  }
+
+  if (frameworks.length === 0 && detectNodeProject(files, rootEntries, packageJson, languages)) {
+    frameworks.push('node');
+    evidence.push({ framework: 'node', signals: ['package.json', 'javascript or typescript source files'] });
   }
 
   const primary = frameworks[0] || 'unknown';
@@ -1472,7 +1488,7 @@ function renderProjectMap(scan) {
   }
 
   const relevantScripts = Object.entries(scan.commands.scripts)
-    .filter(([name]) => /(^|:)(analyze|doctor|migrate|test|build|lint|dev|start|check)(:|$)|analyze|doctor|migrate|test|build|lint|dev|start|check/i.test(name))
+    .filter(([name]) => /(^|:)(analyze|doctor|migrate|validate|test|build|lint|dev|start|check)(:|$)|analyze|doctor|migrate|validate|test|build|lint|dev|start|check/i.test(name))
     .slice(0, 12);
 
   if (relevantScripts.length > 0) {

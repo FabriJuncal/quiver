@@ -2,7 +2,7 @@
 
 ## Status
 
-`slice-00` documentation foundation and `slice-01` init/template hygiene are completed. Remaining implementation slices are pending.
+`slice-00` documentation foundation, `slice-01` init/template hygiene, and `slice-07` analyzer command map hardening are completed. Remaining implementation slices are pending.
 
 ## Required Final Evidence
 
@@ -24,3 +24,4 @@
 | slice-00 | `node bin/create-quiver.js graph --spec quiver-v24-dx-onboarding-hardening` | Observed issue | Output included an unrelated v20 slice; captured under `slice-06` scope for spec-filter hardening. |
 | slice-01 | `node --test tests/lib/init-docs.test.js tests/lib/init-layout.test.js tests/commands/init-profiles.test.js` | Pass | 30 tests passed, covering `.gitignore`, package name, profile-aware index, and generated script command targets. |
 | slice-01 | `npm run smoke:create-quiver` | Pass | Generated-project smoke passed after aligning full-profile index expectations with actual generated extras. |
+| slice-07 | `node --test tests/commands/analyze.test.js tests/lib/project-scan.test.js` | Pass | 6 tests passed, covering plain Node/JavaScript analysis, language dedupe, useful script surfacing, and scan artifact helpers. |
