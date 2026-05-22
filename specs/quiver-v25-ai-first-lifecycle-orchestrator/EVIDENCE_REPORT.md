@@ -237,3 +237,29 @@ Each implementation slice must append:
 
 - SSH alias validation checks that the alias was provided, not that the remote host accepts the key; users should still run `ssh -T <alias>` when configuring credentials.
 - Open-slice PR blocking applies to `specs/<slug>/pr.md` paths. Non-standard PR body locations are still allowed for advanced/manual flows.
+
+## slice-10 - Validation, actionable errors, redaction, and fixtures
+
+### Completed
+
+- Added a shared actionable error formatter with explicit `Impact`, `Fix`, and `Next command` fields.
+- Applied actionable error formatting to missing agent-profile guidance, missing SSH alias PR preflight, and open-slice PR blocking.
+- Added doctor environment warnings for Node, npm, git, gh, gh auth, shell, write permissions, and paths with spaces.
+- Added `tests/fixtures/validation-errors/matrix.json` as the official fixture matrix for new, existing, old Quiver, monorepo, no git, dirty git, no gh, paths with spaces, docs contradiction, and missing agent profile states.
+- Added `npm run smoke:doctor-fixtures` to enforce the fixture matrix in CI.
+- Updated README, README_FOR_AI, and command docs to mention the new smoke and validation contract.
+- Delegated a bounded fixture-gap scan to a sub-agent and incorporated its high-signal recommendations into the implementation.
+
+### Validation
+
+- `node --test tests/lib/doctor.test.js tests/lib/ai-github.test.js tests/commands/ai-agent.test.js tests/commands/doctor.test.js` passed: 30 tests.
+- `npm run smoke:doctor-fixtures` passed: 10 fixture states.
+- `node --test tests/**/*.test.js` passed: 294 tests.
+- `npm run smoke:create-quiver` passed.
+- `npm run smoke:guided-workflow` passed.
+- `git diff --check` passed.
+
+### Risks
+
+- Doctor environment checks are warnings, not hard failures, to avoid blocking offline or partially configured projects.
+- The validation fixture matrix is a contract manifest; individual deep fixtures should continue to grow as new bugs are found.

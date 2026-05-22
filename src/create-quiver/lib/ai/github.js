@@ -5,6 +5,7 @@ const { spawnSync } = require('node:child_process');
 
 const { currentBranch, hasRemote, isCleanWorktree } = require('../git');
 const { parseJsonWithComments } = require('../json');
+const { formatActionableError } = require('../actionable-error');
 
 const DEFAULT_GH_COMMAND = 'gh';
 const DEFAULT_REMOTE = 'origin';
@@ -255,12 +256,12 @@ function ensureSshHostAlias(sshHostAlias) {
   if (!value) {
     throw createError(
       'MISSING_SSH_HOST_ALIAS',
-      [
-        formatError('missing SSH host alias. Pass --ssh-host-alias <alias> before opening the PR.'),
-        'macOS/Linux: add a Host entry in ~/.ssh/config, for example `Host github-work`.',
-        'Windows: add the Host entry in %USERPROFILE%\\.ssh\\config.',
-        'Validate it with `ssh -T <alias>` before retrying.',
-      ].join('\n'),
+      formatActionableError({
+        failure: 'missing SSH host alias. Pass --ssh-host-alias <alias> before opening the PR.',
+        impact: 'Quiver cannot verify which GitHub SSH identity should be used for this PR flow.',
+        fix: 'macOS/Linux: add a Host entry in ~/.ssh/config, for example `Host github-work`. Windows: add the Host entry in %USERPROFILE%\\.ssh\\config.',
+        nextCommand: 'ssh -T <alias>',
+      }),
     );
   }
   return value;
@@ -310,7 +311,12 @@ function ensureNoOpenSlicesForPrBody(repoRoot, prBodyPath) {
   if (openSlices.length > 0) {
     throw createError(
       'OPEN_SLICES',
-      formatError(`cannot create PR while spec slices are still open: ${openSlices.map((slice) => `${slice.id} (${slice.status})`).join(', ')}.`),
+      formatActionableError({
+        failure: `cannot create PR while spec slices are still open: ${openSlices.map((slice) => `${slice.id} (${slice.status})`).join(', ')}.`,
+        impact: 'The PR would not represent a closed spec and could miss required slice commits or evidence.',
+        fix: 'Finish, validate, and close every slice in the spec before creating the PR.',
+        nextCommand: 'npx create-quiver ai execute-plan --dry-run --commit',
+      }),
       {
         openSlices,
         specDir,

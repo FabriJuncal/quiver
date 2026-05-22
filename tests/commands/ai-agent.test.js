@@ -83,6 +83,22 @@ test('ai agent rejects unsupported providers with guidance', () => {
   }
 });
 
+test('ai agent show reports missing profile with actionable guidance', () => {
+  const repo = makeRepo();
+
+  try {
+    assert.throws(
+      () => runCli(repo.root, ['ai', 'agent', 'show', 'executor']),
+      (error) => error.stderr.includes("agent profile 'executor' is not configured")
+        && error.stderr.includes('Impact:')
+        && error.stderr.includes('Fix:')
+        && error.stderr.includes('Next command: npx create-quiver ai agent set executor --provider <provider> --model <label>'),
+    );
+  } finally {
+    repo.cleanup();
+  }
+});
+
 test('ai onboard uses planner profile provider when provider is not explicit', () => {
   const repo = makeRepo();
 

@@ -153,6 +153,9 @@ test('preflightGitHubPr reports missing SSH host alias with platform guidance', 
       }),
       (error) => error.code === 'MISSING_SSH_HOST_ALIAS'
         && error.message.includes('--ssh-host-alias')
+        && error.message.includes('Impact:')
+        && error.message.includes('Fix:')
+        && error.message.includes('Next command:')
         && error.message.includes('macOS/Linux')
         && error.message.includes('Windows'),
     );
@@ -282,6 +285,9 @@ test('buildPrCreatePlan refuses PR creation while spec slices are open', () => {
         input: 'specs/demo/pr.md',
       }),
       (error) => error.code === 'OPEN_SLICES'
+        && error.message.includes('Impact:')
+        && error.message.includes('Fix:')
+        && error.message.includes('Next command:')
         && error.message.includes('slice-01-work (in-progress)'),
     );
   } finally {

@@ -418,6 +418,7 @@ Validaciones adicionales disponibles:
 
 ```bash
 npm run smoke:create-quiver
+npm run smoke:doctor-fixtures
 npm run smoke:guided-workflow
 npm run smoke:tiered-pack
 ```
@@ -444,6 +445,7 @@ Notas reales del estado actual:
 - No hay script `npm test`; el comando verificado para tests es `node --test tests/**/*.test.js`.
 - `npm run package:quiver` valida el contenido del paquete npm generado.
 - `npm run smoke:guided-workflow` cubre el flujo guiado con IA sin llamadas reales pagas a providers.
+- `npm run smoke:doctor-fixtures` valida la matriz de estados de proyecto que deben seguir cubiertos por doctor/preflight.
 
 ## 📜 Scripts npm
 
@@ -474,6 +476,7 @@ Notas reales del estado actual:
 | `npm run quiver:spec:close` | Ejecuta `npx create-quiver spec close`. |
 | `npm run package:quiver` | Empaqueta y valida el tarball npm. |
 | `npm run smoke:create-quiver` | Smoke del instalador `create-quiver`. |
+| `npm run smoke:doctor-fixtures` | Smoke de la matriz de fixtures para validación, doctor y errores accionables. |
 | `npm run smoke:guided-workflow` | Smoke del flujo guiado con IA, PR, cleanup y package safety. |
 | `npm run smoke:tiered-pack` | Smoke de context packs y lifecycle. |
 | `npm run release:quiver` | Release dry-run o publish, según flags. |
@@ -534,7 +537,8 @@ Checklist de release:
 
 1. `node --test tests/**/*.test.js`
 2. `npm run smoke:create-quiver`
-3. `npm run smoke:guided-workflow`
+3. `npm run smoke:doctor-fixtures`
+4. `npm run smoke:guided-workflow`
 4. `npm run smoke:tiered-pack`
 5. `npm pack --dry-run`
 6. Confirmar que el PR esta aprobado antes de publicar.

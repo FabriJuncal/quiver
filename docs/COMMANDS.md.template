@@ -111,5 +111,6 @@ This document is the canonical command reference for the orchestration roadmap.
 - `quiver:ai:execute-plan -- --execute --commit --mode delegated` uses temporary worktrees for parallel-ready waves and integrates one validated commit per slice.
 - `quiver:ai:pr -- --dry-run` validates GitHub CLI, auth, Git remote, current branch/worktree, `docs/GITFLOW_PR_GUIDE.md`, SSH host alias, optional identity file, `pr.md`, and open slice status without creating a PR. Add `--create` only after reviewing the plan.
 - `quiver:spec:close` refuses dirty or unmerged spec worktrees unless discard behavior is explicitly requested.
+- `npm run smoke:doctor-fixtures` validates the required fixture matrix for doctor, validation, and actionable error coverage in the Quiver source repo.
 - After `init` or `migrate`, Quiver auto-installs itself as a dev dependency. Use `--skip-install` to suppress.
 - Cross-platform authoring rules live in `docs/SUPPORT_MATRIX.md`.

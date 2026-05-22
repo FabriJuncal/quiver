@@ -4,7 +4,11 @@ const os = require('node:os');
 const path = require('node:path');
 const test = require('node:test');
 
-const { collectLayoutReport } = require('../../src/create-quiver/lib/doctor');
+const {
+  collectEnvironmentWarnings,
+  collectLayoutReport,
+} = require('../../src/create-quiver/lib/doctor');
+const { formatActionableError } = require('../../src/create-quiver/lib/actionable-error');
 
 function makeTmpDir() {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'quiver-doctor-layout-test-'));
@@ -93,4 +97,68 @@ test('collectLayoutReport distinguishes legacy, hybrid, and incomplete layouts',
     hybrid.cleanup();
     incomplete.cleanup();
   }
+});
+
+test('collectEnvironmentWarnings reports missing tools, auth, and spaced paths', () => {
+  const { dir, cleanup } = makeTmpDir();
+  const spacedRoot = path.join(dir, 'project with spaces');
+  fs.mkdirSync(spacedRoot, { recursive: true });
+
+  try {
+    const warnings = collectEnvironmentWarnings(spacedRoot, {
+      runner(command, args) {
+        if (command === 'node' || command === 'npm' || command === 'git') {
+          return { status: 0, stdout: `${command} ok`, stderr: '' };
+        }
+        if (command === 'gh' && args[0] === '--version') {
+          return { status: 0, stdout: 'gh ok', stderr: '' };
+        }
+        if (command === 'gh' && args[0] === 'auth') {
+          return { status: 1, stdout: '', stderr: 'not logged in' };
+        }
+        return { error: Object.assign(new Error('missing'), { code: 'ENOENT' }) };
+      },
+    });
+
+    assert(warnings.some((warning) => warning.includes('gh auth check failed')));
+    assert(warnings.some((warning) => warning.includes('path contains spaces')));
+  } finally {
+    cleanup();
+  }
+});
+
+test('collectEnvironmentWarnings reports missing gh with cross-platform guidance', () => {
+  const { dir, cleanup } = makeTmpDir();
+  try {
+    const warnings = collectEnvironmentWarnings(dir, {
+      runner(command) {
+        if (command === 'gh') {
+          return { error: Object.assign(new Error('missing'), { code: 'ENOENT' }) };
+        }
+        return { status: 0, stdout: `${command} ok`, stderr: '' };
+      },
+    });
+
+    const ghWarning = warnings.find((warning) => warning.includes('gh check failed'));
+    assert.ok(ghWarning);
+    assert.match(ghWarning, /macOS/);
+    assert.match(ghWarning, /Linux/);
+    assert.match(ghWarning, /Windows/);
+  } finally {
+    cleanup();
+  }
+});
+
+test('formatActionableError includes failure, impact, fix, and next command', () => {
+  const output = formatActionableError({
+    failure: 'missing fixture matrix',
+    impact: 'validation can regress silently',
+    fix: 'add the required fixture states',
+    nextCommand: 'npm run smoke:doctor-fixtures',
+  });
+
+  assert.match(output, /^create-quiver: missing fixture matrix/);
+  assert.match(output, /Impact: validation can regress silently/);
+  assert.match(output, /Fix: add the required fixture states/);
+  assert.match(output, /Next command: npm run smoke:doctor-fixtures/);
 });

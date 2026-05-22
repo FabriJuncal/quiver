@@ -1,0 +1,54 @@
+{
+  "states": [
+    {
+      "id": "new",
+      "purpose": "Fresh Quiver init with no real specs yet.",
+      "expected": "doctor passes and recommends analyze/onboarding."
+    },
+    {
+      "id": "existing",
+      "purpose": "Existing app after Quiver init/migrate.",
+      "expected": "doctor preserves app files and reports missing context only as warnings."
+    },
+    {
+      "id": "old-quiver",
+      "purpose": "Legacy Quiver layout before the .quiver contract.",
+      "expected": "doctor reports legacy layout and recommends migrate."
+    },
+    {
+      "id": "monorepo",
+      "purpose": "Workspace-style repo with multiple app/package folders.",
+      "expected": "doctor avoids scanning dependency/build folders and keeps project map guidance."
+    },
+    {
+      "id": "no-git",
+      "purpose": "Initialized project without a Git repository.",
+      "expected": "doctor warns that Git is required for slices, worktrees, commits, and PRs."
+    },
+    {
+      "id": "dirty-git",
+      "purpose": "Git repo with uncommitted changes.",
+      "expected": "mutating lifecycle commands block or dry-run before writing."
+    },
+    {
+      "id": "no-gh",
+      "purpose": "Project without GitHub CLI available.",
+      "expected": "doctor/PR preflight give install guidance for macOS, Linux, and Windows."
+    },
+    {
+      "id": "paths-with-spaces",
+      "purpose": "Project path contains spaces.",
+      "expected": "doctor warns to quote copied commands."
+    },
+    {
+      "id": "docs-contradiction",
+      "purpose": "Project docs disagree on project identity or package manager.",
+      "expected": "prepare-context reports contradictions without modifying product code."
+    },
+    {
+      "id": "missing-agent-profile",
+      "purpose": "AI agent/profile context is absent or incomplete.",
+      "expected": "doctor reports actionable agent/profile warnings."
+    }
+  ]
+}

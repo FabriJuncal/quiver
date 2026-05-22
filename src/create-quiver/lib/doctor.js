@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const { spawnSync } = require('child_process');
 const { readAllSlices } = require('./slice-graph');
 const { hasGeneratedProjectSpec, hasInitializedStateMetadata, readState } = require('./state');
 const { worktreeList } = require('./git');
@@ -512,6 +513,75 @@ function collectDoctorReport(projectRoot) {
   };
 }
 
+function runEnvironmentProbe(command, args = [], options = {}) {
+  const runner = options.runner || spawnSync;
+  return runner(command, args, {
+    cwd: options.cwd,
+    encoding: 'utf8',
+    shell: false,
+    stdio: ['ignore', 'pipe', 'pipe'],
+    timeout: options.timeout || 3000,
+  });
+}
+
+function probeOk(command, args, options = {}) {
+  const result = runEnvironmentProbe(command, args, options);
+  if (result && result.error && result.error.code === 'ENOENT') {
+    return {
+      ok: false,
+      reason: 'missing',
+    };
+  }
+  return {
+    ok: Boolean(result && result.status === 0),
+    reason: result && result.error ? result.error.message : result && result.stderr ? String(result.stderr).trim() : '',
+  };
+}
+
+function collectEnvironmentWarnings(projectRoot, options = {}) {
+  const warnings = [];
+  const cwd = projectRoot;
+
+  const checks = [
+    ['node', ['--version'], 'Node.js is required to run create-quiver. Install Node 20+ and retry.'],
+    ['npm', ['--version'], 'npm is required for generated npm scripts and package smokes. Install npm or use a Node distribution that includes it.'],
+    ['git', ['--version'], 'git is required for specs, slices, worktrees, commits, and PR flow. Install git and retry.'],
+  ];
+
+  for (const [command, args, message] of checks) {
+    const check = probeOk(command, args, { ...options, cwd });
+    if (!check.ok) {
+      warnings.push(`${command} check failed: ${message}`);
+    }
+  }
+
+  const ghCheck = probeOk('gh', ['--version'], { ...options, cwd });
+  if (!ghCheck.ok) {
+    warnings.push('gh check failed: GitHub CLI is required for `ai pr` and `ai doctor`. macOS: brew install gh. Linux: use your distro package manager. Windows: winget install GitHub.cli.');
+  } else {
+    const authCheck = probeOk('gh', ['auth', 'status'], { ...options, cwd });
+    if (!authCheck.ok) {
+      warnings.push('gh auth check failed: run `gh auth login` before using `ai pr --create`.');
+    }
+  }
+
+  if (!process.env.SHELL && !process.env.ComSpec) {
+    warnings.push('shell check failed: no SHELL or ComSpec environment variable was detected.');
+  }
+
+  if (projectRoot.includes(' ')) {
+    warnings.push('path contains spaces: use quoted paths when copying manual commands.');
+  }
+
+  try {
+    fs.accessSync(projectRoot, fs.constants.W_OK);
+  } catch {
+    warnings.push('permission check failed: current user cannot write to the project root.');
+  }
+
+  return warnings;
+}
+
 function collectDoctorWarnings(projectRoot) {
   const warnings = [];
 
@@ -547,6 +617,10 @@ function collectDoctorWarnings(projectRoot) {
     warnings.push(`missing local docs link: ${issue}`);
   }
 
+  for (const issue of collectEnvironmentWarnings(projectRoot)) {
+    warnings.push(issue);
+  }
+
   return warnings;
 }
 
@@ -554,6 +628,7 @@ module.exports = {
   applyDoctorFixPlan,
   buildDoctorFixPlan,
   collectDoctorReport,
+  collectEnvironmentWarnings,
   collectDoctorWarnings,
   collectLayoutReport,
   formatDoctorFixPlan,

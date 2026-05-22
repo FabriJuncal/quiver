@@ -23,6 +23,7 @@ Agent profiles live in `.quiver/agents/profiles.json`; they store role, provider
 Planner drafts are versioned under `.quiver/approvals/<phase>/drafts/`; review the technical-plan draft with `npx create-quiver ai review-plan --dry-run` before approving it, then approve a concrete version with `npx create-quiver ai approve --phase <phase> --version <n>` when reviewing iterations.
 AI lifecycle runs are persisted under `.quiver/runs/<run-id>/`; use `npx create-quiver ai run create --input <requirements.md>` to start one explicitly, `npx create-quiver ai status` to inspect it, and `npx create-quiver ai resume` to continue from the last valid phase without relying on chat memory.
 Maintain release notes and package publishing with `scripts/release-quiver.sh`.
+Use `npm run smoke:doctor-fixtures` after changing doctor, preflight, validation, actionable errors, or fixture coverage.
 The primary generated project context for agents is `docs/AI_CONTEXT.md`.
 The project map is the single source of truth for stack, package manager, commands, and file hints: `docs/PROJECT_MAP.md`.
 The raw analyzer output is internal machinery at `.quiver/scans/PROJECT_SCAN.json`; read it only when the visible map is not enough.

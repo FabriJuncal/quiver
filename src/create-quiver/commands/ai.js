@@ -2,6 +2,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const { redactSecrets } = require('../lib/evidence');
+const { formatActionableError } = require('../lib/actionable-error');
 const { buildContextPackMetadata, normalizeRole } = require('../lib/ai/context-packs');
 const { runExecuteSlice, runPromptSlice } = require('../lib/ai/executor');
 const { runExecutePlan } = require('../lib/ai/execution-plan');
@@ -1206,7 +1207,12 @@ function runAgent(repoRoot, options = {}) {
     }
     const profile = getAgentProfile(repoRoot, options.role);
     if (!profile) {
-      throw new Error(formatError(`agent profile '${options.role}' is not configured. Run: npx create-quiver ai agent set ${options.role} --provider <provider> --model <label>`));
+      throw new Error(formatActionableError({
+        failure: `agent profile '${options.role}' is not configured.`,
+        impact: 'Quiver will fall back to default provider behavior and may use the wrong model/cost profile.',
+        fix: `Configure the ${options.role} profile with a supported provider and optional model label.`,
+        nextCommand: `npx create-quiver ai agent set ${options.role} --provider <provider> --model <label>`,
+      }));
     }
     process.stdout.write(formatAgentProfile(profile));
     return {
