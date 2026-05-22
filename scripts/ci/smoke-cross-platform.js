@@ -10,6 +10,7 @@ const repoRoot = cp.execFileSync('git', ['rev-parse', '--show-toplevel'], { enco
 const cli = path.join(repoRoot, 'bin', 'create-quiver.js');
 const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'quiver-cross-smoke-'));
 const fixtureRoot = path.join(repoRoot, 'tests', 'fixtures', 'workflow-gates');
+const foundationSlicePath = path.join('specs', 'quiver-v03-adoption-verification', 'slices', 'slice-00-spec-foundation', 'slice.json');
 const slicePath = path.join('specs', 'quiver-v03-adoption-verification', 'slices', 'slice-02-workflow-gate-fixtures', 'slice.json');
 const prPath = path.join('specs', 'quiver-v03-adoption-verification', 'slices', 'slice-02-workflow-gate-fixtures', 'pr.md');
 const npmCommand = process.platform === 'win32' ? 'npm.cmd' : 'npm';
@@ -158,6 +159,13 @@ function cloneRepo(dest) {
 }
 
 function seedWorkflowFixtures(repoDir, includePr = true) {
+  writeJson(path.join(repoDir, foundationSlicePath), {
+    slice_id: 'slice-00-spec-foundation',
+    title: 'Spec foundation',
+    status: 'completed',
+    completed_at: '2026-04-20T00:00:00Z',
+  });
+
   const sliceDest = path.join(repoDir, slicePath);
   fs.mkdirSync(path.dirname(sliceDest), { recursive: true });
   fs.copyFileSync(path.join(fixtureRoot, 'slice-ready.json'), sliceDest);
