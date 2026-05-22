@@ -60,8 +60,8 @@ test('doctor warns when package scripts target unsupported create-quiver command
 
     const output = runCli(['doctor'], { cwd: target });
 
-    assert.match(output, /Warning: package\.json script quiver:ai:prepare-context targets unsupported ai subcommand "prepare-context"/);
     assert.match(output, /Warning: package\.json script quiver:future targets unsupported command "future"/);
+    assert.doesNotMatch(output, /quiver:ai:prepare-context targets unsupported ai subcommand "prepare-context"/);
     assert.match(output, /Update create-quiver or regenerate scripts with npx create-quiver migrate/);
   } finally {
     cleanup();

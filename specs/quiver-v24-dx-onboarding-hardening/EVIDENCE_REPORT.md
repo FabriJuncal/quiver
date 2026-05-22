@@ -2,7 +2,7 @@
 
 ## Status
 
-`slice-00` documentation foundation, `slice-01` init/template hygiene, `slice-02` CLI routing/version diagnostics, `slice-03` doctor fixes/link checks, `slice-05` local slice validation, `slice-06` historical planning views, `slice-07` analyzer command map hardening, `slice-08` evidence command, and `slice-09` Spec Viewer demo scaffolding are completed. Remaining implementation slices are pending.
+`slice-00` documentation foundation, `slice-01` init/template hygiene, `slice-02` CLI routing/version diagnostics, `slice-03` doctor fixes/link checks, `slice-04` prepare/context drafts, `slice-05` local slice validation, `slice-06` historical planning views, `slice-07` analyzer command map hardening, `slice-08` evidence command, and `slice-09` Spec Viewer demo scaffolding are completed. Remaining implementation slices are pending.
 
 ## Required Final Evidence
 
@@ -26,6 +26,9 @@
 | slice-01 | `npm run smoke:create-quiver` | Pass | Generated-project smoke passed after aligning full-profile index expectations with actual generated extras. |
 | slice-02 | `node --test tests/commands/init-profiles.test.js tests/commands/doctor.test.js tests/commands/flow.test.js` | Pass | 29 tests passed, covering unsupported command routing, legacy `--name`, doctor script mismatch warnings, and flow regressions. |
 | slice-03 | `node --test tests/lib/doctor.test.js tests/commands/doctor.test.js tests/commands/prepare.test.js` | Pass | 15 tests passed, covering fix dry-run, idempotent fixes, local docs link warnings, and prepare regressions. |
+| slice-04 | `node --test tests/commands/prepare.test.js tests/commands/ai-onboard.test.js tests/lib/ai-context-packs.test.js tests/commands/doctor.test.js tests/lib/init-layout.test.js` | Pass | 32 tests passed, covering prepare wording, `ai prepare-context` dry-run/write mode, approved docs-only targets, generated scripts, and doctor support for the new AI command. |
+| slice-04 | `node bin/create-quiver.js ai prepare-context --dry-run` | Pass | Dry-run reported proposed docs, files considered, assumptions, risks, omitted paths, and uncertainty markers without writing files. |
+| slice-04 | `npm run smoke:create-quiver` | Pass | Generated-project smoke passed with `quiver:ai:prepare-context` in the script contract. |
 | slice-05 | `node --test tests/lib/check-slice.test.js tests/commands/flow.test.js` | Pass | 18 tests passed, covering `check-slice --local`, omitted-check reporting, missing-base guidance, explicit base branch, and flow regressions. |
 | slice-06 | `node --test tests/commands/plan.test.js tests/commands/graph.test.js tests/commands/next.test.js tests/lib/slice-graph.test.js` | Pass | 30 tests passed, covering `--include-completed`, spec filtering, JSON output, next history behavior, and ticket propagation. |
 | slice-06 | `node bin/create-quiver.js plan --spec quiver-v24-dx-onboarding-hardening --include-completed` | Pass | Plan history view shows completed v24 slices and preserves `QUIVER-24-*` ticket values. |

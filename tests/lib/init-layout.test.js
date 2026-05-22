@@ -159,6 +159,7 @@ test('default generated package scripts target supported CLI commands', () => {
     'execute-slice',
     'onboard',
     'plan',
+    'prepare-context',
     'pr',
     'prompt-slice',
     'review-plan',

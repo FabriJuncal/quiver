@@ -12,17 +12,28 @@
     "branch_name": "feature/QUIVER-24-04-prepare-ai-context-drafts"
   },
   "files": [
+    "package.json",
+    "package.template.json",
+    "README.md",
+    "README_FOR_AI.md",
+    "src/create-quiver/index.js",
     "src/create-quiver/commands/prepare.js",
     "src/create-quiver/commands/ai.js",
     "src/create-quiver/lib/ai/context-packs.js",
     "src/create-quiver/lib/ai/onboarding-template.js",
+    "src/create-quiver/lib/init-layout.js",
+    "docs/COMMANDS.md.template",
     "docs/AI_ONBOARDING_PROMPT.md.template",
     "docs/AI_CONTEXT.md.template",
     "docs/CONTEXTO.md.template",
     "docs/STATUS.md.template",
     "docs/DECISIONS.md.template",
+    "scripts/ci/smoke-create-quiver.sh",
     "tests/commands/prepare.test.js",
-    "tests/commands/ai-onboard.test.js"
+    "tests/commands/ai-onboard.test.js",
+    "tests/commands/doctor.test.js",
+    "tests/lib/ai-context-packs.test.js",
+    "tests/lib/init-layout.test.js"
   ],
   "depends_on": [
     "slice-01-init-template-hygiene",
@@ -50,9 +61,10 @@
     "Product code is never modified by context preparation."
   ],
   "tests": [
-    "node --test tests/commands/prepare.test.js tests/commands/ai-onboard.test.js tests/lib/ai-context-packs.test.js"
+    "node --test tests/commands/prepare.test.js tests/commands/ai-onboard.test.js tests/lib/ai-context-packs.test.js tests/commands/doctor.test.js tests/lib/init-layout.test.js",
+    "npm run smoke:create-quiver"
   ],
   "estimated_hours": 6,
-  "status": "planned",
+  "status": "completed",
   "blocked_reason": null
 }

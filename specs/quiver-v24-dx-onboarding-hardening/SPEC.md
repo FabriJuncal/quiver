@@ -126,7 +126,7 @@ Implement in small vertical slices:
 | slice-01 | Init and generated template hygiene | Completed | slice-00 |
 | slice-02 | CLI command routing and version mismatch errors | Completed | slice-00 |
 | slice-03 | Doctor fixes and documentation link checks | Completed | slice-01, slice-02 |
-| slice-04 | Prepare output and AI context preparation drafts | Planned | slice-01, slice-02 |
+| slice-04 | Prepare output and AI context preparation drafts | Completed | slice-01, slice-02 |
 | slice-05 | Local slice validation and base branch guidance | Completed | slice-02 |
 | slice-06 | Historical plan, graph, and next views | Completed | slice-05 |
 | slice-07 | Analyzer command map hardening | Completed | slice-01 |
@@ -145,5 +145,5 @@ Implement in small vertical slices:
 ## Open Questions
 
 - Should `doctor --fix` require `--yes` in non-interactive mode?
-- Should `ai prepare-context` default to writing drafts or require `--write`?
+- Resolved in `slice-04`: `ai prepare-context --dry-run` previews docs-only drafts; running without `--dry-run` writes only the approved docs/context files.
 - Resolved in `slice-08`: evidence records live under `.quiver/evidence/` by default, with `--output <file>` for explicit destinations.

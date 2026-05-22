@@ -424,7 +424,7 @@ if grep -R -nF "Package manager:" "$new_target/docs" | grep -v "docs/PROJECT_MAP
   exit 1
 fi
 assert_package_scripts "$new_target/package.json" "new project" \
-  quiver:analyze quiver:flow quiver:prepare quiver:plan quiver:graph quiver:next quiver:doctor quiver:evidence quiver:ai:agent quiver:ai:onboard quiver:ai:plan quiver:ai:review-plan quiver:ai:approve quiver:ai:prompt-slice quiver:ai:execute-slice quiver:ai:execute-plan quiver:ai:pr quiver:ai:doctor quiver:spec:create quiver:spec:start quiver:spec:status quiver:spec:close quiver:migrate quiver:start-slice quiver:check-slice quiver:check-pr quiver:check-handoff check-handoff quiver:cleanup-slice quiver:check-scope quiver:refresh-active-slices
+  quiver:analyze quiver:flow quiver:prepare quiver:plan quiver:graph quiver:next quiver:doctor quiver:evidence quiver:ai:agent quiver:ai:onboard quiver:ai:prepare-context quiver:ai:plan quiver:ai:review-plan quiver:ai:approve quiver:ai:prompt-slice quiver:ai:execute-slice quiver:ai:execute-plan quiver:ai:pr quiver:ai:doctor quiver:spec:create quiver:spec:start quiver:spec:status quiver:spec:close quiver:migrate quiver:start-slice quiver:check-slice quiver:check-pr quiver:check-handoff check-handoff quiver:cleanup-slice quiver:check-scope quiver:refresh-active-slices
 
 demo_target="$temp_root/quiver-spec-viewer"
 demo_dry_run="$(cd "$new_target" && node "$cli" demo create spec-viewer --dir "$demo_target" --dry-run)"

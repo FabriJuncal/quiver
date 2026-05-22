@@ -9,7 +9,7 @@ const {
   collectDoctorReport,
   formatDoctorFixPlan,
 } = require('./lib/doctor');
-const { runAgent: runAiAgent, runApprovalStatus: runAiApprovalStatus, runApprove: runAiApprove, runDoctor: runAiDoctor, runExecutePlan: runAiExecutePlan, runExecuteSlice: runAiExecuteSlice, runOnboard, runPlan: runAiPlan, runPr: runAiPr, runPromptSlice: runAiPromptSlice, runReviewPlan: runAiReviewPlan } = require('./commands/ai');
+const { runAgent: runAiAgent, runApprovalStatus: runAiApprovalStatus, runApprove: runAiApprove, runDoctor: runAiDoctor, runExecutePlan: runAiExecutePlan, runExecuteSlice: runAiExecuteSlice, runOnboard, runPlan: runAiPlan, runPrepareContext: runAiPrepareContext, runPr: runAiPr, runPromptSlice: runAiPromptSlice, runReviewPlan: runAiReviewPlan } = require('./commands/ai');
 const { runDemo } = require('./commands/demo');
 const { runPrepare } = require('./commands/prepare');
 const { runEvidence } = require('./commands/evidence');
@@ -82,6 +82,7 @@ const SUPPORTED_AI_COMMANDS = new Set([
   'executor-prompt',
   'onboard',
   'plan',
+  'prepare-context',
   'pr',
   'prompt-slice',
   'review-plan',
@@ -108,6 +109,7 @@ function printUsage() {
   npx create-quiver plan [options]
   npx create-quiver ai <task> [options]
   npx create-quiver ai agent <set|list|show> [role] [options]
+  npx create-quiver ai prepare-context [options]
   npx create-quiver graph [options]
   npx create-quiver next [options]
   npx create-quiver migrate [options]
@@ -175,6 +177,7 @@ Examples:
   cd ./my-project && npx create-quiver analyze
   cd ./my-project && npx create-quiver plan --json
   cd ./my-project && npx create-quiver ai onboard --dry-run
+  cd ./my-project && npx create-quiver ai prepare-context --dry-run
   cd ./my-project && npx create-quiver ai agent set planner --provider codex --model gpt-5.5
   cd ./my-project && npx create-quiver ai agent list
   cd ./my-project && npx create-quiver ai plan --phase acceptance --input requirements.md --dry-run
@@ -2084,7 +2087,7 @@ async function run(argv) {
 
   if (args.mode === 'ai') {
     if (!args.aiCommand) {
-      throw new Error(formatError('missing ai subcommand. Use: npx create-quiver ai onboard | plan | review-plan | approve | approvals | agent | prompt-slice | execute-slice | execute-plan | doctor | pr'));
+      throw new Error(formatError('missing ai subcommand. Use: npx create-quiver ai onboard | prepare-context | plan | review-plan | approve | approvals | agent | prompt-slice | execute-slice | execute-plan | doctor | pr'));
     }
 
     if (args.aiCommand === 'agent') {
@@ -2108,6 +2111,13 @@ async function run(argv) {
         providerExplicit: args.aiProviderExplicit,
         role: args.aiRole,
         timeout: args.aiTimeout,
+      });
+      return;
+    }
+
+    if (args.aiCommand === 'prepare-context') {
+      await runAiPrepareContext(process.cwd(), {
+        dryRun: args.dryRun,
       });
       return;
     }

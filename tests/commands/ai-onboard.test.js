@@ -5,7 +5,7 @@ const path = require('node:path');
 const { execFileSync } = require('node:child_process');
 const test = require('node:test');
 
-const { runOnboard } = require('../../src/create-quiver/commands/ai');
+const { runOnboard, runPrepareContext } = require('../../src/create-quiver/commands/ai');
 
 const BIN_PATH = path.resolve(__dirname, '../../bin/create-quiver.js');
 
@@ -29,6 +29,14 @@ function makeRepo(structure) {
 
 function execAi(repoRoot, args = [], env = {}) {
   return execFileSync('node', [BIN_PATH, 'ai', 'onboard', ...args], {
+    cwd: repoRoot,
+    encoding: 'utf8',
+    env: { ...process.env, ...env },
+  });
+}
+
+function execAiTask(repoRoot, task, args = [], env = {}) {
+  return execFileSync('node', [BIN_PATH, 'ai', task, ...args], {
     cwd: repoRoot,
     encoding: 'utf8',
     env: { ...process.env, ...env },
@@ -145,6 +153,63 @@ test('ai onboard surfaces provider failures with actionable context', async () =
         && error.message.includes('Install the Codex CLI')
         && error.code === 'MISSING_PROVIDER_CLI',
     );
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('ai prepare-context dry-run prints proposed docs, assumptions, risks, and omitted paths', () => {
+  const repo = makeRepo({
+    README: '',
+    'README.md': '# Demo\n',
+    'package.json': JSON.stringify({ name: 'demo-project' }, null, 2),
+    'docs/PROJECT_MAP.md': '# Project Map\n',
+    'docs/INDEX.md': '# Index\n',
+    'docs/WORKFLOW.md': '# Workflow\n',
+  });
+
+  try {
+    const output = execAiTask(repo.root, 'prepare-context', ['--dry-run']);
+    assert.ok(output.includes('AI prepare-context dry-run'));
+    assert.ok(output.includes('Mode: dry-run'));
+    assert.ok(output.includes('Writes: docs-only'));
+    assert.ok(output.includes('Proposed docs: docs/AI_CONTEXT.md, docs/AI_ONBOARDING_PROMPT.md, docs/CONTEXTO.md, docs/STATUS.md, docs/DECISIONS.md'));
+    assert.ok(output.includes('Files considered:'));
+    assert.ok(output.includes('README_FOR_AI.md'));
+    assert.ok(output.includes('Assumptions:'));
+    assert.ok(output.includes('Risks:'));
+    assert.ok(output.includes('Omitted paths:'));
+    assert.ok(output.includes('Uncertainty markers: TODO | Assumption | Pending confirmation'));
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('ai prepare-context writes docs-only drafts and keeps product code untouched', async () => {
+  const repo = makeRepo({
+    'README.md': '# Demo\n',
+    'package.json': JSON.stringify({ name: 'demo-project' }, null, 2),
+    'src/app.js': 'module.exports = 1;\n',
+  });
+
+  try {
+    const before = fs.readFileSync(path.join(repo.root, 'src/app.js'), 'utf8');
+    const result = await runPrepareContext(repo.root, {});
+
+    assert.equal(result.task, 'prepare-context');
+    assert.deepEqual(result.writtenDocs, [
+      'docs/AI_CONTEXT.md',
+      'docs/AI_ONBOARDING_PROMPT.md',
+      'docs/CONTEXTO.md',
+      'docs/STATUS.md',
+      'docs/DECISIONS.md',
+    ]);
+    assert.equal(fs.readFileSync(path.join(repo.root, 'src/app.js'), 'utf8'), before);
+    assert.ok(fs.existsSync(path.join(repo.root, 'docs', 'AI_CONTEXT.md')));
+    assert.ok(fs.existsSync(path.join(repo.root, 'docs', 'DECISIONS.md')));
+    const decisions = fs.readFileSync(path.join(repo.root, 'docs', 'DECISIONS.md'), 'utf8');
+    assert.ok(decisions.includes('Context Preparation Decisions'));
+    assert.ok(decisions.includes('README_FOR_AI.md absence in generated projects is guidance-only, not project debt'));
   } finally {
     repo.cleanup();
   }

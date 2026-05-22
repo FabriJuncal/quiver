@@ -5,7 +5,7 @@ const { buildContextPackMetadata, normalizeRole } = require('../lib/ai/context-p
 const { runExecuteSlice, runPromptSlice } = require('../lib/ai/executor');
 const { runExecutePlan } = require('../lib/ai/execution-plan');
 const { buildPrCreatePlan, formatPreflightReport, formatPrCreateReport, preflightGitHubPr, runGhPrCreate } = require('../lib/ai/github');
-const { buildPlannerOnboardingPrompt } = require('../lib/ai/onboarding-template');
+const { buildContextPreparationDrafts, buildPlannerOnboardingPrompt } = require('../lib/ai/onboarding-template');
 const {
   PLAN_REVIEW_PROMPT_SOURCE,
   buildPlanReviewPrompt,
@@ -167,6 +167,44 @@ function formatDryRunReport({ task, provider, role, contextPack, phase, invocati
   return `${lines.join('\n')}\n`;
 }
 
+function formatPathList(items, emptyLabel = 'none') {
+  if (!Array.isArray(items) || items.length === 0) {
+    return [`- ${emptyLabel}`];
+  }
+
+  return items.map((item) => `- ${item}`);
+}
+
+function formatContextPreparationReport({ dryRun, plan, docs, writtenDocs }) {
+  const lines = [
+    dryRun ? 'AI prepare-context dry-run' : 'AI prepare-context completed',
+    `Mode: ${dryRun ? 'dry-run' : 'live'}`,
+    `Project: ${plan.projectName}`,
+    `Project slug: ${plan.projectSlug}`,
+    'Writes: docs-only',
+    'Product code: untouched',
+    `Proposed docs: ${docs.length > 0 ? docs.map((doc) => doc.path).join(', ') : 'none'}`,
+  ];
+
+  if (!dryRun) {
+    lines.push(`Written docs: ${writtenDocs.length > 0 ? writtenDocs.join(', ') : 'none'}`);
+  }
+
+  lines.push(
+    'Files considered:',
+    ...plan.filesConsidered.map((item) => `- ${item.path}: ${item.present ? 'present' : 'absent'}${item.reason ? ` (${item.reason})` : ''}`),
+    'Assumptions:',
+    ...formatPathList(plan.assumptions),
+    'Risks:',
+    ...formatPathList(plan.risks),
+    'Omitted paths:',
+    ...formatPathList(plan.omittedPaths),
+    'Uncertainty markers: TODO | Assumption | Pending confirmation',
+  );
+
+  return `${lines.join('\n')}\n`;
+}
+
 function writeProviderOutput(result) {
   if (result.stdout) {
     process.stdout.write(result.stdout);
@@ -174,6 +212,17 @@ function writeProviderOutput(result) {
   if (result.stderr) {
     process.stderr.write(result.stderr);
   }
+}
+
+function writeDraftDocs(repoRoot, drafts) {
+  const writtenDocs = [];
+  for (const draft of drafts) {
+    const destinationPath = path.join(repoRoot, draft.path);
+    fs.mkdirSync(path.dirname(destinationPath), { recursive: true });
+    fs.writeFileSync(destinationPath, `${draft.content.replace(/\s+$/g, '')}\n`);
+    writtenDocs.push(draft.path);
+  }
+  return writtenDocs;
 }
 
 function formatSpecDryRunReport({ manifest, repoRoot }) {
@@ -332,6 +381,39 @@ async function runOnboard(repoRoot, options = {}) {
     invocation,
     onboardingPlan: contextInfo.plan,
     result,
+  };
+}
+
+async function runPrepareContext(repoRoot, options = {}) {
+  const draftPack = buildContextPreparationDrafts(repoRoot);
+  const report = {
+    task: 'prepare-context',
+    dryRun: options.dryRun === true,
+    docs: draftPack.docs.map((doc) => doc.path),
+    plan: draftPack.plan,
+  };
+
+  if (options.dryRun) {
+    process.stdout.write(formatContextPreparationReport({
+      dryRun: true,
+      docs: draftPack.docs,
+      plan: draftPack.plan,
+      writtenDocs: [],
+    }));
+    return report;
+  }
+
+  const writtenDocs = writeDraftDocs(repoRoot, draftPack.docs);
+  process.stdout.write(formatContextPreparationReport({
+    dryRun: false,
+    docs: draftPack.docs,
+    plan: draftPack.plan,
+    writtenDocs,
+  }));
+
+  return {
+    ...report,
+    writtenDocs,
   };
 }
 
@@ -824,6 +906,7 @@ module.exports = {
   runPromptSlice,
   runApprove,
   runApprovalStatus,
+  runPrepareContext,
   runReviewPlan,
   runPr,
   runOnboard,
