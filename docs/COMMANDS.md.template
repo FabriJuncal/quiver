@@ -11,6 +11,7 @@ This document is the canonical command reference for the orchestration roadmap.
 |---------|---------|----|-------|---------|
 | `npx create-quiver init --name "<project>"` | Creates the default AI-first Quiver contract for a project | macOS, Linux, Windows | current | `npx create-quiver init --name "{{PROJECT_NAME}}"` |
 | `npx create-quiver --name "<project>"` | Compatibility alias for the recommended init flow | macOS, Linux, Windows | current | `npx create-quiver --name "{{PROJECT_NAME}}"` |
+| `npx create-quiver --version` | Prints the installed CLI version | macOS, Linux, Windows | current | `npx create-quiver --version` |
 | `npx create-quiver flow` | Shows the read-only guided flow entrypoint and next safe command | macOS, Linux, Windows | v0.11 | `npx create-quiver flow` |
 | `quiver:analyze` | Writes raw analyzer data to `.quiver/scans/PROJECT_SCAN.json` and the visible project map to `docs/PROJECT_MAP.md` | macOS, Linux, Windows | v0.8 | `npm run quiver:analyze` |
 | `quiver:flow` | Runs the guided flow entrypoint through the generated npm script | macOS, Linux, Windows | v0.11 | `npm run quiver:flow` |

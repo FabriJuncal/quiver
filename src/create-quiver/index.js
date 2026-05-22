@@ -166,6 +166,7 @@ Options:
       --max-output <n>        Maximum stdout/stderr chars per evidence section
       --title <text>          Override PR title for ai pr create
   -y, --yes                   Skip prompts and use the provided inputs
+  -V, --version               Show the installed create-quiver version
   -h, --help                  Show this help message
 
 Examples:
@@ -2045,6 +2046,11 @@ function printInitNextSteps(targetDir, projectName) {
 }
 
 async function run(argv) {
+  if (argv.length === 1 && (argv[0] === '-V' || argv[0] === '--version')) {
+    console.log(CLI_VERSION);
+    return;
+  }
+
   const args = parseArgs(argv);
 
   if (args.help) {

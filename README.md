@@ -310,6 +310,7 @@ El paquete también publica el alias binario `quiver`, que apunta al mismo CLI. 
 |---|---|
 | `npx create-quiver init --name "Proyecto"` | Inicializa Quiver en un proyecto nuevo o nunca inicializado. |
 | `npx create-quiver --name "Proyecto"` | Alias compatible del flujo de init recomendado. |
+| `npx create-quiver --version` | Muestra la versión instalada del CLI. |
 | `npx create-quiver flow` | Muestra el estado inicial del flujo guiado y el próximo comando seguro sin escribir estado ni llamar providers. |
 | `npx create-quiver ai agent set <role> --provider <provider> --model <label>` | Guarda perfiles reutilizables para planner, executor, reviewer o researcher sin guardar secretos. |
 | `npx create-quiver ai agent list` | Lista los perfiles configurados. |

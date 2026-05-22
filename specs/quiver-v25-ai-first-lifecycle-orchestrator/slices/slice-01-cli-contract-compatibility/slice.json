@@ -49,6 +49,8 @@
     "git diff --check"
   ],
   "estimated_hours": 4,
-  "status": "planned",
-  "blocked_reason": null
+  "status": "completed",
+  "blocked_reason": null,
+  "actual_hours": 1,
+  "completed_at": "2026-05-22T00:00:00-0300"
 }

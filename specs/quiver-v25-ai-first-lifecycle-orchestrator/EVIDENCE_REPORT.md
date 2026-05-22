@@ -35,3 +35,23 @@ Each implementation slice must append:
 - validation result;
 - risks remaining;
 - evidence location.
+
+## slice-01 - CLI contract and compatibility
+
+### Completed
+
+- Added top-level `--version` and `-V` handling before normal argument parsing.
+- Kept `--version <n>` available for `ai approve`.
+- Added focused CLI contract tests.
+- Added command reference docs for version output.
+
+### Validation
+
+- `node bin/create-quiver.js --version` passed and printed `0.12.0`.
+- `node bin/create-quiver.js -V` passed and printed `0.12.0`.
+- `node --test tests/commands/cli-contract.test.js tests/commands/init-profiles.test.js tests/commands/flow.test.js tests/lib/init-layout.test.js` passed: 36 tests.
+- `git diff --check` passed.
+
+### Risks
+
+- The local `quiver` binary alias is validated through `package.json` and the shared entrypoint, not by installing the package into a fixture.
