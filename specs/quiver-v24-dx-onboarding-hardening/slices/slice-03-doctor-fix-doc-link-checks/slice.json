@@ -48,6 +48,6 @@
     "node --test tests/lib/doctor.test.js tests/commands/doctor.test.js tests/commands/prepare.test.js"
   ],
   "estimated_hours": 6,
-  "status": "planned",
+  "status": "completed",
   "blocked_reason": null
 }

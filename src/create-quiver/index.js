@@ -3,7 +3,12 @@ const os = require('os');
 const path = require('path');
 const { execFileSync } = require('child_process');
 const { checkHandoff, scaffoldHandoff } = require('./lib/handoff');
-const { collectDoctorReport } = require('./lib/doctor');
+const {
+  applyDoctorFixPlan,
+  buildDoctorFixPlan,
+  collectDoctorReport,
+  formatDoctorFixPlan,
+} = require('./lib/doctor');
 const { runAgent: runAiAgent, runApprovalStatus: runAiApprovalStatus, runApprove: runAiApprove, runDoctor: runAiDoctor, runExecutePlan: runAiExecutePlan, runExecuteSlice: runAiExecuteSlice, runOnboard, runPlan: runAiPlan, runPr: runAiPr, runPromptSlice: runAiPromptSlice, runReviewPlan: runAiReviewPlan } = require('./commands/ai');
 const { runPrepare } = require('./commands/prepare');
 const { runFlow } = require('./commands/flow');
@@ -133,6 +138,7 @@ Options:
       --legacy-scripts        Include legacy Bash wrappers in init profile
       --include-templates     Export packaged templates in init profile
       --dry-run               Preview init, prepare, spec create, or AI work without executing writes/providers
+      --fix                   For doctor, apply safe non-destructive repairs
       --execute               For ai execute-plan, run the planned slices instead of printing commands
       --create                For ai pr, create the PR after preflight instead of printing the plan only
       --commit                For ai execute-slice, commit validated slice changes after provider, scope, and tests pass
@@ -207,6 +213,7 @@ function parseArgs(argv) {
     allowDraft: false,
     closeBaseline: false,
     discard: false,
+    doctorFix: false,
     dryRun: false,
     gate: 'execution',
     projectName: '',
@@ -333,6 +340,11 @@ function parseArgs(argv) {
 
     if (arg === '--discard') {
       result.discard = true;
+      continue;
+    }
+
+    if (arg === '--fix') {
+      result.doctorFix = true;
       continue;
     }
 
@@ -1756,7 +1768,7 @@ function runMigrate(targetDir, options = {}) {
   }
 }
 
-function runDoctor(targetDir) {
+function runDoctor(targetDir, options = {}) {
   const projectRoot = resolveTargetRoot(process.cwd(), targetDir);
 
   if (!fs.existsSync(projectRoot)) {
@@ -1765,6 +1777,17 @@ function runDoctor(targetDir) {
 
   if (!hasQuiverInitializationEvidence(projectRoot)) {
     throw new Error(formatError('doctor requires a project previously initialized by Quiver.\nRun init first: npx create-quiver --name "Project Name"'));
+  }
+
+  const fixPlan = buildDoctorFixPlan(projectRoot);
+  if (options.fix) {
+    if (options.dryRun) {
+      console.log(formatDoctorFixPlan(fixPlan, { dryRun: true }));
+      return;
+    }
+
+    applyDoctorFixPlan(projectRoot, fixPlan);
+    console.log(formatDoctorFixPlan(fixPlan));
   }
 
   const doctorReport = collectDoctorReport(projectRoot);
@@ -2114,7 +2137,10 @@ async function run(argv) {
   }
 
   if (args.mode === 'doctor') {
-    runDoctor(args.targetDir);
+    runDoctor(args.targetDir, {
+      dryRun: args.dryRun,
+      fix: args.doctorFix,
+    });
     return;
   }
 

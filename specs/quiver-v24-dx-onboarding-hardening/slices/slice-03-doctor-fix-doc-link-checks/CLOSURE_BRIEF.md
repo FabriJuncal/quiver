@@ -2,26 +2,32 @@
 
 ## Resumen de lo realizado
 
-Pendiente de ejecución.
+- `doctor --fix --dry-run` ahora muestra un plan de reparaciones seguras sin escribir archivos.
+- `doctor --fix` aplica reparaciones no destructivas e idempotentes para `.gitignore`, `.quiver/.gitignore`, `.quiver/config.json` y scripts `quiver:*` faltantes.
+- `doctor` valida links Markdown locales en docs generadas y advierte cuando apuntan a archivos inexistentes.
+- Los fixes preservan contenido existente y solo agregan líneas/scripts faltantes.
 
 ## Validación contra criterios de aceptación
 
-- [ ] `doctor --fix --dry-run` writes nothing.
-- [ ] `doctor --fix` is safe and idempotent.
-- [ ] Docs link checks distinguish required and optional files.
+- [x] `doctor --fix --dry-run` writes nothing.
+- [x] `doctor --fix` is safe and idempotent.
+- [x] Docs link checks detect missing local files.
+- [x] Optional generated docs are not reported when they are not linked by the selected profile.
 
 ## Cambios relevantes
 
-Pendiente.
+- `src/create-quiver/index.js`
+- `src/create-quiver/lib/doctor.js`
+- `tests/commands/doctor.test.js`
 
 ## Pendientes
 
-Execute this slice.
+Sin pendientes del slice.
 
 ## Riesgos remanentes
 
-Optional docs may need a maintained allowlist if profiles expand.
+El link checker cubre links Markdown locales explícitos; no intenta validar rutas escritas en texto plano o dentro de bloques de código.
 
 ## Recomendaciones futuras
 
-Keep fix planning reusable so future repair types can be added without hidden writes.
+Mantener `doctor --fix` limitado a reparaciones aditivas y auditables; cualquier rewrite de contenido debe ir en otro flujo con confirmación explícita.

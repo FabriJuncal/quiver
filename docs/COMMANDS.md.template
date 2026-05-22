@@ -16,6 +16,8 @@ This document is the canonical command reference for the orchestration roadmap.
 | `quiver:flow` | Runs the guided flow entrypoint through the generated npm script | macOS, Linux, Windows | v0.11 | `npm run quiver:flow` |
 | `quiver:prepare` | Runs guided setup diagnostics and context preparation | macOS, Linux, Windows | v0.10 | `npm run quiver:prepare -- --dry-run --provider codex` |
 | `quiver:doctor` | Validates the Quiver contract and reports layout or migration guidance | macOS, Linux, Windows | v0.8 | `npm run quiver:doctor` |
+| `quiver:doctor -- --fix --dry-run` | Previews safe non-destructive repairs without writing files | macOS, Linux, Windows | v0.11 | `npm run quiver:doctor -- --fix --dry-run` |
+| `quiver:doctor -- --fix` | Applies safe idempotent repairs after review | macOS, Linux, Windows | v0.11 | `npm run quiver:doctor -- --fix` |
 | `quiver:plan` | Sequential orchestration planning command | macOS, Linux, Windows | v0.8 | [docs/examples/plan.md](./examples/plan.md) |
 | `quiver:graph` | Parallel-level orchestration tree command | macOS, Linux, Windows | v0.8 | [docs/examples/graph.md](./examples/graph.md) |
 | `quiver:next` | Ready-slice suggestion command | macOS, Linux, Windows | v0.8 | [docs/examples/next.md](./examples/next.md) |
@@ -43,6 +45,7 @@ This document is the canonical command reference for the orchestration roadmap.
 | `--legacy-scripts` | `init` | Add legacy Bash wrappers under `tools/scripts/` |
 | `--include-templates` | `init` | Export packaged templates under `.quiver/templates/` |
 | `--skip-install` | `init`, `migrate` | Skip auto-install of `create-quiver` as dev dependency (useful for CI) |
+| `--fix` | `doctor` | Apply only safe non-destructive repairs; combine with `--dry-run` first |
 | `--json` | `plan`, `graph`, `next` | Emit machine-readable JSON |
 | `--format <tree\|mermaid\|dot>` | `graph` | Output format |
 | `--all-ready` | `next` | List all ready slices instead of just the next one |

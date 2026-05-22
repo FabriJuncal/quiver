@@ -8,7 +8,7 @@ Important: slice numbering resets inside each spec. `slice-00` is the mandatory 
 The canonical installer entrypoint is `npx create-quiver` run from the target project root.
 Do not recommend global installation; use `npx` or a project-local devDependency when the team needs a pinned version.
 The package also exposes `quiver` as a binary alias to the same CLI. Treat it as a local installed shortcut, not as a replacement for the bootstrap command `npx create-quiver`.
-The post-init contract is validated with `npx create-quiver doctor` from the project root.
+The post-init contract is validated with `npx create-quiver doctor` from the project root. Use `npx create-quiver doctor --fix --dry-run` to preview safe non-destructive repairs, then `npx create-quiver doctor --fix` only after reviewing the plan.
 If the project already exists from an older Quiver version and was previously initialized by Quiver, run `npx create-quiver migrate` before `analyze` from the project root.
 If the project was never initialized by Quiver, do not use `migrate` as bootstrap; run `npx create-quiver init --name "Project Name"` first.
 The v20, v21, v22, and v23 specs are completed. `specs/quiver-v23-guided-flow-productization/` productized the manual planner/executor prompt workflow into guided Quiver commands, profiles, compact prompts, safe approvals, executor prompts, delegated execution modes, and release readiness evidence.

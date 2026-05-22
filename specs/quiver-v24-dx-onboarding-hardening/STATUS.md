@@ -11,7 +11,7 @@
 | slice-00 | Spec foundation and source-of-truth sync | Completed | 100% | none |
 | slice-01 | Init and generated template hygiene | Completed | 100% | slice-00 |
 | slice-02 | CLI command routing and version mismatch errors | Completed | 100% | slice-00 |
-| slice-03 | Doctor fixes and documentation link checks | Planned | 0% | slice-01, slice-02 |
+| slice-03 | Doctor fixes and documentation link checks | Completed | 100% | slice-01, slice-02 |
 | slice-04 | Prepare output and AI context preparation drafts | Planned | 0% | slice-01, slice-02 |
 | slice-05 | Local slice validation and base branch guidance | Planned | 0% | slice-02 |
 | slice-06 | Historical plan, graph, and next views | Planned | 0% | slice-05 |

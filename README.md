@@ -317,6 +317,8 @@ El paquete también publica el alias binario `quiver`, que apunta al mismo CLI. 
 | `npx create-quiver init --include-templates` | Exporta templates empaquetados bajo `.quiver/templates/`. |
 | `npx create-quiver analyze` | Genera `.quiver/scans/PROJECT_SCAN.json` y `docs/PROJECT_MAP.md`. |
 | `npx create-quiver doctor` | Valida que el contrato de Quiver esté completo. |
+| `npx create-quiver doctor --fix --dry-run` | Muestra reparaciones seguras sin escribir archivos. |
+| `npx create-quiver doctor --fix` | Aplica reparaciones no destructivas e idempotentes. |
 | `npx create-quiver prepare --dry-run` | Ejecuta diagnóstico guiado de preparación sin escribir archivos. |
 | `npx create-quiver prepare` | Refresca contexto y muestra riesgos, supuestos y próximos comandos. |
 | `npx create-quiver migrate` | Actualiza proyectos que ya fueron inicializados con Quiver. |
