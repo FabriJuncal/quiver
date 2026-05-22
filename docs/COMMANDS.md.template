@@ -31,7 +31,7 @@ This document is the canonical command reference for the orchestration roadmap.
 | `quiver:plan -- --include-completed` | Shows completed slices for audit/demo history | macOS, Linux, Windows | v0.11 | `npm run quiver:plan -- --include-completed --spec <spec>` |
 | `quiver:graph -- --include-completed` | Includes completed slices in the dependency graph history view | macOS, Linux, Windows | v0.11 | `npm run quiver:graph -- --include-completed --spec <spec>` |
 | `quiver:next -- --include-completed` | Keeps actionable next-slice output and appends completed history | macOS, Linux, Windows | v0.11 | `npm run quiver:next -- --include-completed --spec <spec>` |
-| `quiver:ai:agent` | Stores reusable planner/executor/reviewer/researcher provider profiles without secrets | macOS, Linux, Windows | v0.11 | `npm run quiver:ai:agent -- set planner --provider codex --model "planner-model"` |
+| `quiver:ai:agent` | Stores reusable planner/executor/reviewer/doctor provider profiles without secrets | macOS, Linux, Windows | v0.11 | `npm run quiver:ai:agent -- set planner --provider codex --model "planner-model"` |
 | `quiver:ai:onboard` | Runs AI onboarding prompt through a supported local provider CLI | macOS, Linux, Windows | v0.10 | `npm run quiver:ai:onboard -- --dry-run` |
 | `quiver:ai:prepare-context` | Prepares docs-only AI context drafts and reports assumptions, risks, files considered, and omitted paths | macOS, Linux, Windows | v0.11 | `npm run quiver:ai:prepare-context -- --dry-run` |
 | `quiver:ai:plan` | Runs phase-gated AI planning for acceptance criteria, technical plan, or spec generation | macOS, Linux, Windows | v0.10 | `npm run quiver:ai:plan -- --phase acceptance --input requirements.md --dry-run` |
@@ -71,6 +71,7 @@ This document is the canonical command reference for the orchestration roadmap.
 | `--provider <codex\|claude\|gemini>` | `ai onboard`, `ai plan`, `ai review-plan`, `ai execute-slice`, `ai execute-plan` | Select the local AI CLI adapter |
 | `--model <label>` | `ai agent set` | Store a free-form model label in an agent profile; Quiver does not verify model availability |
 | `--label <label>` | `ai agent set` | Store a display label for the profile |
+| `--print-prompt` | `ai onboard`, `ai plan`, `ai review-plan` | Print the exact provider prompt and exit without executing provider CLIs or requiring provider auth |
 | `--role <planner\|executor>` | `ai onboard`, `ai plan`, `ai execute-slice`, `ai execute-plan` | Select planner or executor role; execution requires executor |
 | `--context <full\|planning\|slice\|minimal>` | `ai onboard`, `ai plan`, `ai review-plan`, `ai execute-slice`, `ai execute-plan` | Select a token-budgeted context pack |
 | `--phase <acceptance\|technical-plan\|spec>` | `ai plan` | Select the gated planner phase |
@@ -95,7 +96,7 @@ This document is the canonical command reference for the orchestration roadmap.
 - `quiver:graph --format mermaid` is the PR-friendly Mermaid export; `--format dot` is for Graphviz/DOT consumers.
 - `quiver:next` prints the next ready slice and can auto-start it behind a confirmation prompt.
 - `check-slice` validates `depends_on` targets and requires `parallel_safe_reason` when `parallel_safe` is `never`.
-- `quiver:ai:onboard`, `quiver:ai:plan`, `quiver:ai:review-plan`, and `quiver:ai:execute-slice` support `codex`, `claude`, and `gemini` through local CLIs. Use `--dry-run` first to inspect the invocation without requiring provider auth.
+- `quiver:ai:onboard`, `quiver:ai:plan`, `quiver:ai:review-plan`, and `quiver:ai:execute-slice` support `codex`, `claude`, and `gemini` through local CLIs. Use `--dry-run` first to inspect the invocation without requiring provider auth, or `--print-prompt` to print the exact planner/reviewer prompt without executing a provider.
 - `quiver:ai:prepare-context -- --dry-run` previews docs-only context drafts. Run it before write mode and review assumptions, risks, and omitted paths.
 - `quiver:ai:agent` stores provider/model labels under `.quiver/agents/profiles.json`; credentials stay in the provider CLI or OS credential store.
 - Planner drafts are versioned under `.quiver/approvals/<phase>/drafts/`; use `quiver:ai:review-plan -- --dry-run` before approving a technical-plan draft, then `quiver:ai:approve -- --phase technical-plan --version 1` to approve the reviewed version.

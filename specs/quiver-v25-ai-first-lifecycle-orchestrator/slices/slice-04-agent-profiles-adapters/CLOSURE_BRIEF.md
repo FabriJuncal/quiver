@@ -2,28 +2,33 @@
 
 ## Summary of Work
 
-Pending implementation.
+Implemented the provider-agnostic agent profile contract for planner, executor, reviewer, and doctor roles, plus prompt-only rendering and redacted provider output.
 
 ## Validation Against Acceptance Criteria
 
-- [ ] Profiles inspected.
-- [ ] Prompt-only mode verified.
-- [ ] Missing CLI guidance verified.
-- [ ] Structured output captured.
-- [ ] Tests run.
+- [x] Profiles inspected.
+- [x] Prompt-only mode verified.
+- [x] Missing CLI guidance verified.
+- [x] Structured output captured.
+- [x] Tests run.
 
 ## Relevant Changes
 
-Pending.
+- Added `doctor` as a supported agent profile and removed `researcher` from the public profile contract.
+- Added `--print-prompt` support for planner/reviewer AI commands without invoking provider CLIs.
+- Redacted likely secrets from provider stdout, stderr, and error messages.
+- Added focused tests for doctor profiles, prompt-only output, missing CLI guidance, structured provider metadata, and log redaction.
+- Updated README and command reference docs.
 
 ## Pending
 
-- Implement slice.
+No pending implementation for this slice.
 
 ## Remaining Risks
 
-- Automatic provider execution remains unsafe until adapter behavior is validated.
+- Redaction remains best-effort and should not be treated as a reason to intentionally print secrets.
+- `ai doctor` does not yet use the doctor provider profile; it remains a local readiness/GitHub preflight command.
 
 ## Future Recommendations
 
-- Keep prompt-only mode as the fallback for every provider.
+- Consider a later explicit `ai doctor --provider` diagnostic flow if the doctor profile should run model-assisted diagnosis.

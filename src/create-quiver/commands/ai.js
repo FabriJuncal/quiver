@@ -1,6 +1,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 
+const { redactSecrets } = require('../lib/evidence');
 const { buildContextPackMetadata, normalizeRole } = require('../lib/ai/context-packs');
 const { runExecuteSlice, runPromptSlice } = require('../lib/ai/executor');
 const { runExecutePlan } = require('../lib/ai/execution-plan');
@@ -176,6 +177,52 @@ function formatDryRunReport({ task, provider, role, contextPack, phase, invocati
   return `${lines.join('\n')}\n`;
 }
 
+function formatPromptOnlyReport({ task, provider, role, contextPack, phase, invocation, prompt, onboardingPlan, promptSource, inputPath, inputKind, inputVersion }) {
+  const lines = [
+    `AI ${task} prompt-only`,
+    `Provider: ${provider}`,
+    `Role: ${role}`,
+    `Context pack: ${contextPack}`,
+  ];
+
+  if (phase) {
+    lines.push(`Phase: ${phase}`);
+  }
+
+  lines.push(`Command: ${invocation.command} ${invocation.args.join(' ')}`);
+  lines.push(`Timeout: ${invocation.timeoutMs}ms`);
+  lines.push(`Prompt transport: ${invocation.promptTransport.mode}`);
+  lines.push(`Prompt length: ${invocation.promptLength} bytes`);
+
+  if (onboardingPlan) {
+    lines.push(`Prompt source: ${onboardingPlan.promptSource}`);
+    lines.push(`Selected docs: ${onboardingPlan.selectedDocs.length}`);
+    lines.push(`Documentation debt: ${onboardingPlan.missingDocs.length}`);
+  }
+
+  if (promptSource) {
+    lines.push(`Prompt source: ${promptSource}`);
+  }
+
+  if (inputPath) {
+    lines.push(`Input file: ${inputPath}`);
+  }
+
+  if (inputKind) {
+    lines.push(`Input kind: ${inputKind}`);
+  }
+
+  if (inputVersion) {
+    lines.push(`Input version: v${inputVersion}`);
+  }
+
+  lines.push('--- PROMPT START ---');
+  lines.push(String(prompt || '').trimEnd());
+  lines.push('--- PROMPT END ---');
+
+  return `${lines.join('\n')}\n`;
+}
+
 function formatPathList(items, emptyLabel = 'none') {
   if (!Array.isArray(items) || items.length === 0) {
     return [`- ${emptyLabel}`];
@@ -216,11 +263,15 @@ function formatContextPreparationReport({ dryRun, plan, docs, writtenDocs }) {
 
 function writeProviderOutput(result) {
   if (result.stdout) {
-    process.stdout.write(result.stdout);
+    process.stdout.write(redactSecrets(result.stdout));
   }
   if (result.stderr) {
-    process.stderr.write(result.stderr);
+    process.stderr.write(redactSecrets(result.stderr));
   }
+}
+
+function getRedactedProviderText(result) {
+  return redactSecrets([result.stdout, result.stderr].filter(Boolean).join(''));
 }
 
 function writeDraftDocs(repoRoot, drafts) {
@@ -359,6 +410,20 @@ async function runOnboard(repoRoot, options = {}) {
     return report;
   }
 
+  if (options.printPrompt) {
+    const report = {
+      task: 'onboard',
+      provider,
+      role,
+      contextPack: context,
+      invocation,
+      onboardingPlan: contextInfo.plan,
+      prompt,
+    };
+    process.stdout.write(formatPromptOnlyReport(report));
+    return report;
+  }
+
   let result;
   try {
     result = await (options.runProviderFn || runProvider)(provider, {
@@ -445,6 +510,17 @@ async function runPlan(repoRoot, options = {}) {
       specSlug: options.specSlug,
     });
 
+    if (options.printPrompt) {
+      const report = {
+        task: 'plan',
+        phase,
+        manifest,
+      };
+      process.stdout.write('AI plan prompt-only\nPhase: spec\nNo provider prompt is used for spec generation; showing the local generation plan instead.\n');
+      process.stdout.write(formatSpecDryRunReport({ manifest, repoRoot }));
+      return report;
+    }
+
     if (options.dryRun) {
       const report = {
         task: 'plan',
@@ -517,6 +593,20 @@ async function runPlan(repoRoot, options = {}) {
     return report;
   }
 
+  if (options.printPrompt) {
+    const report = {
+      task: 'plan',
+      provider,
+      role,
+      contextPack: contextInfo.pack.packName,
+      phase,
+      invocation,
+      prompt,
+    };
+    process.stdout.write(formatPromptOnlyReport(report));
+    return report;
+  }
+
   let result;
   try {
     result = await (options.runProviderFn || runProvider)(provider, {
@@ -540,7 +630,7 @@ async function runPlan(repoRoot, options = {}) {
     throw annotateProviderError(result.error || new Error('provider run failed'), 'plan', phase);
   }
 
-  const draft = savePlannerDraft(repoRoot, phase, inputPath, [result.stdout, result.stderr].filter(Boolean).join(''));
+  const draft = savePlannerDraft(repoRoot, phase, inputPath, getRedactedProviderText(result));
   const lifecycleRun = ensureAiRun(repoRoot, {
     command: `ai plan --phase ${phase}`,
     input: inputPath,
@@ -621,6 +711,24 @@ async function runReviewPlan(repoRoot, options = {}) {
     return report;
   }
 
+  if (options.printPrompt) {
+    const report = {
+      task: 'review-plan',
+      provider,
+      role: 'reviewer',
+      contextPack: pack.packName,
+      phase: 'plan-review',
+      invocation,
+      prompt: built.prompt,
+      promptSource: built.promptSource,
+      inputPath,
+      inputKind: resolved.kind,
+      inputVersion: resolved.version,
+    };
+    process.stdout.write(formatPromptOnlyReport(report));
+    return report;
+  }
+
   let result;
   try {
     result = await (options.runProviderFn || runProvider)(provider, {
@@ -645,7 +753,7 @@ async function runReviewPlan(repoRoot, options = {}) {
   }
 
   const saved = savePlanReview(repoRoot, {
-    contents: [result.stdout, result.stderr].filter(Boolean).join(''),
+    contents: getRedactedProviderText(result),
     inputPath,
     inputKind: resolved.kind,
     inputVersion: resolved.version,
@@ -809,7 +917,7 @@ function runAgent(repoRoot, options = {}) {
 
   if (command === 'set') {
     if (!options.role) {
-      throw new Error(formatError('missing agent role. Use: npx create-quiver ai agent set <planner|executor|reviewer|researcher> --provider <provider>'));
+      throw new Error(formatError('missing agent role. Use: npx create-quiver ai agent set <planner|executor|reviewer|doctor> --provider <provider>'));
     }
     if (!options.provider) {
       throw new Error(formatError('ai agent set requires --provider. Supported providers: codex, claude, gemini.'));
@@ -833,7 +941,7 @@ function runAgent(repoRoot, options = {}) {
 
   if (command === 'show') {
     if (!options.role) {
-      throw new Error(formatError('missing agent role. Use: npx create-quiver ai agent show <planner|executor|reviewer|researcher>'));
+      throw new Error(formatError('missing agent role. Use: npx create-quiver ai agent show <planner|executor|reviewer|doctor>'));
     }
     const profile = getAgentProfile(repoRoot, options.role);
     if (!profile) {

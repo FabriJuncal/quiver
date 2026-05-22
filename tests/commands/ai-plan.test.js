@@ -62,6 +62,24 @@ test('ai plan CLI dry-run defaults to acceptance phase and planning context', ()
   }
 });
 
+test('ai plan print-prompt renders acceptance prompt without provider auth', () => {
+  const repo = makeRepo({
+    'requirements.md': '# requirements\n- Ship a gated planner flow.',
+  });
+
+  try {
+    const output = execAi(repo.root, ['--print-prompt', '--input', 'requirements.md']);
+    assert.ok(output.includes('AI plan prompt-only'));
+    assert.ok(output.includes('Phase: acceptance'));
+    assert.ok(output.includes('--- PROMPT START ---'));
+    assert.ok(output.includes('Ship a gated planner flow.'));
+    assert.ok(output.includes('Task: produce acceptance criteria only.'));
+    assert.ok(output.includes('--- PROMPT END ---'));
+  } finally {
+    repo.cleanup();
+  }
+});
+
 test('ai plan acceptance persists a draft approval state', async () => {
   const repo = makeRepo({
     'requirements.md': '# requirements\n- Ship a gated planner flow.',
@@ -105,6 +123,45 @@ test('ai plan acceptance persists a draft approval state', async () => {
     assert.equal(meta.draft.version, 1);
     assert.equal(meta.drafts.length, 1);
     assert.equal(typeof meta.draft.created_at, 'string');
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('ai plan redacts likely secrets before saving provider output drafts', async () => {
+  const repo = makeRepo({
+    'requirements.md': '# requirements\n- Avoid leaking provider logs.',
+  });
+
+  try {
+    await runPlan(repo.root, {
+      input: 'requirements.md',
+      phase: 'acceptance',
+      runProviderFn: async (provider) => ({
+        ok: true,
+        dryRun: false,
+        provider,
+        command: 'codex',
+        args: ['exec'],
+        cwd: repo.root,
+        timeoutMs: 0,
+        promptTransport: { mode: 'stdin' },
+        exitCode: 0,
+        stdout: 'token=abc123\ncriteria draft\n',
+        stderr: 'authorization: bearer secret-value\n',
+        error: null,
+        preflight: { ok: true },
+      }),
+    });
+
+    const draftPath = path.join(repo.root, '.quiver', 'approvals', 'acceptance', 'draft.md');
+    const draft = fs.readFileSync(draftPath, 'utf8');
+
+    assert.equal(draft.includes('abc123'), false);
+    assert.equal(draft.includes('secret-value'), false);
+    assert.ok(draft.includes('token=[REDACTED]'));
+    assert.ok(draft.includes('authorization: bearer [REDACTED]'));
+    assert.ok(draft.includes('criteria draft'));
   } finally {
     repo.cleanup();
   }

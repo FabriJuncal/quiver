@@ -60,6 +60,27 @@ test('ai review-plan dry-run uses the latest technical-plan draft', () => {
   }
 });
 
+test('ai review-plan print-prompt renders review prompt without provider auth', () => {
+  const repo = makeRepo({
+    'technical-plan.md': '# Technical plan\n- Build the flow.\n',
+  });
+
+  try {
+    savePlannerDraft(repo.root, 'technical-plan', 'technical-plan.md', '# Technical plan v1\n');
+
+    const output = execAi(repo.root, ['review-plan', '--print-prompt']);
+
+    assert.match(output, /AI review-plan prompt-only/);
+    assert.match(output, /Role: reviewer/);
+    assert.match(output, /Phase: plan-review/);
+    assert.match(output, /--- PROMPT START ---/);
+    assert.match(output, /# Technical plan v1/);
+    assert.match(output, /--- PROMPT END ---/);
+  } finally {
+    repo.cleanup();
+  }
+});
+
 test('ai review-plan rejects missing technical-plan draft', () => {
   const repo = makeRepo();
 

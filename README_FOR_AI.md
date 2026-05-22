@@ -141,11 +141,11 @@ After initialization, the user should:
 9. Ask the AI agent to execute `docs/AI_ONBOARDING_PROMPT.md`
 10. Review context docs before creating the first implementation slice
 11. Open and merge the documentation PR that establishes the workflow files
-12. Save reusable provider choices with `npx create-quiver ai agent set planner --provider <provider> --model "<label>"` and `npx create-quiver ai agent set executor --provider <provider> --model "<label>"`
-13. Use `npx create-quiver ai plan --phase acceptance --input requirements.md --dry-run`
+12. Save reusable provider choices with `npx create-quiver ai agent set planner --provider <provider> --model "<label>"`, `npx create-quiver ai agent set executor --provider <provider> --model "<label>"`, and `npx create-quiver ai agent set doctor --provider <provider> --model "<label>"`
+13. Use `npx create-quiver ai plan --phase acceptance --input requirements.md --dry-run`; use `--print-prompt` when you need the exact prompt without provider auth
 14. After human approval, save approved criteria with `npx create-quiver ai approve --phase acceptance --input acceptance-approved.md`
 15. Use `npx create-quiver ai plan --phase technical-plan --dry-run`
-16. Review the technical plan with `npx create-quiver ai review-plan --dry-run`, then run it without `--dry-run` when ready
+16. Review the technical plan with `npx create-quiver ai review-plan --dry-run`, inspect exact prompt with `--print-prompt` if needed, then run it without `--dry-run` when ready
 17. After human approval, save the reviewed plan version with `npx create-quiver ai approve --phase technical-plan --version <n>`
 18. Use `npx create-quiver spec create --dry-run` to preview the real spec, slices, handoffs, execution plan, and PR body, then run it without `--dry-run` when ready
 19. Run `npx create-quiver spec start specs/<spec-slug>` to create or reuse the spec worktree

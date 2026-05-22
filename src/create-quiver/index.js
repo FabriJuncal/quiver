@@ -171,6 +171,7 @@ Options:
       --legacy-scripts        Include legacy Bash wrappers in init profile
       --include-templates     Export packaged templates in init profile
       --dry-run               Preview init, prepare, spec create, demo, or AI work without executing writes/providers
+      --print-prompt          Print the exact AI prompt and exit without executing provider CLIs
       --fix                   For doctor, apply safe non-destructive repairs
       --execute               For ai execute-plan, run the planned slices instead of printing commands
       --create                For ai pr, create the PR after preflight instead of printing the plan only
@@ -201,6 +202,7 @@ Examples:
   cd ./my-project && npx create-quiver analyze
   cd ./my-project && npx create-quiver plan --json
   cd ./my-project && npx create-quiver ai onboard --dry-run
+  cd ./my-project && npx create-quiver ai onboard --print-prompt
   cd ./my-project && npx create-quiver ai prepare-context --dry-run
   cd ./my-project && npx create-quiver ai run create --input requirements.md
   cd ./my-project && npx create-quiver ai status
@@ -259,6 +261,7 @@ function parseArgs(argv) {
     discard: false,
     doctorFix: false,
     dryRun: false,
+    aiPrintPrompt: false,
     gate: 'execution',
     projectName: '',
     targetDir: '.',
@@ -422,6 +425,11 @@ function parseArgs(argv) {
 
     if (arg === '--dry-run') {
       result.dryRun = true;
+      continue;
+    }
+
+    if (arg === '--print-prompt') {
+      result.aiPrintPrompt = true;
       continue;
     }
 
@@ -2177,6 +2185,7 @@ async function run(argv) {
         context: args.aiContext || undefined,
         dryRun: args.dryRun,
         input: args.aiInput || undefined,
+        printPrompt: args.aiPrintPrompt,
         provider: args.aiProvider,
         providerExplicit: args.aiProviderExplicit,
         role: args.aiRole,
@@ -2198,6 +2207,7 @@ async function run(argv) {
         dryRun: args.dryRun,
         input: args.aiInput || undefined,
         phase: args.aiPhase,
+        printPrompt: args.aiPrintPrompt,
         provider: args.aiProvider,
         providerExplicit: args.aiProviderExplicit,
         role: args.aiRole,
@@ -2213,6 +2223,7 @@ async function run(argv) {
         context: args.aiContext || undefined,
         dryRun: args.dryRun,
         input: args.aiInput || undefined,
+        printPrompt: args.aiPrintPrompt,
         provider: args.aiProvider,
         providerExplicit: args.aiProviderExplicit,
         timeout: args.aiTimeout,

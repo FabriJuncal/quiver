@@ -4,7 +4,7 @@ const path = require('node:path');
 const { assertSupportedProvider, formatProviderList } = require('./ai/providers');
 const { quiverInternalPaths } = require('./init-layout');
 
-const AGENT_PROFILE_ROLES = Object.freeze(['planner', 'executor', 'reviewer', 'researcher']);
+const AGENT_PROFILE_ROLES = Object.freeze(['planner', 'executor', 'reviewer', 'doctor']);
 const PROFILE_STATE_VERSION = 1;
 
 function formatError(message) {

@@ -76,6 +76,34 @@ test('ai onboard CLI dry-run prints provider, role, context pack, and invocation
   }
 });
 
+test('ai onboard print-prompt prints the exact prompt without invoking provider auth', () => {
+  const repo = makeRepo({
+    'docs/onboarding-notes.md': '# onboarding notes\nRead-only planning only.',
+  });
+  try {
+    const output = execAi(repo.root, [
+      '--provider',
+      'gemini',
+      '--role',
+      'planner',
+      '--context',
+      'full',
+      '--input',
+      'docs/onboarding-notes.md',
+      '--print-prompt',
+    ]);
+
+    assert.ok(output.includes('AI onboard prompt-only'));
+    assert.ok(output.includes('Provider: gemini'));
+    assert.ok(output.includes('--- PROMPT START ---'));
+    assert.ok(output.includes('Read-only planning only.'));
+    assert.ok(output.includes('Do not modify product code.'));
+    assert.ok(output.includes('--- PROMPT END ---'));
+  } finally {
+    repo.cleanup();
+  }
+});
+
 test('ai onboard forwards custom provider, role, context, input, and timeout to the provider runner', async () => {
   const repo = makeRepo({
     'docs/onboarding-notes.md': '# onboarding notes\nKeep the repo in read-only mode.',

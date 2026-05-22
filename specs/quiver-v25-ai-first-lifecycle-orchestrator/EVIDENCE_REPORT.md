@@ -77,3 +77,24 @@ Each implementation slice must append:
 
 - File locks intentionally require manual inspection/removal when stale; automatic process liveness cleanup is deferred to avoid unsafe cross-platform behavior.
 - Phase guards are available and used by lifecycle status tests, but later slices still need to wire them into spec generation, execution planning, slice execution, and PR creation.
+
+## slice-04 - Agent profiles and provider adapters
+
+### Completed
+
+- Replaced the old `researcher` profile slot with `doctor` to match the v25 agent contract.
+- Added prompt-only output through `--print-prompt` for `ai onboard`, `ai plan`, and `ai review-plan`.
+- Kept prompt-only paths provider-auth-free by rendering prompts without running provider preflight or spawn.
+- Added best-effort redaction of likely secrets in provider stdout, stderr, and serialized error messages.
+- Updated README and command reference docs for doctor profiles and prompt-only mode.
+
+### Validation
+
+- `node --test tests/lib/agent-profiles.test.js tests/commands/ai-agent.test.js tests/lib/ai-providers.test.js tests/commands/ai-onboard.test.js tests/commands/ai-plan.test.js tests/commands/ai-review-plan.test.js` passed: 40 tests.
+- `node --test tests/**/*.test.js` passed: 270 tests.
+- `git diff --check` passed.
+
+### Risks
+
+- Redaction is intentionally best-effort and may hide some diagnostic text if provider output contains key-like labels such as `token=` or `password=`.
+- The `doctor` profile is configurable now, but `ai doctor` itself remains a GitHub/readiness preflight and does not invoke a provider in this slice.

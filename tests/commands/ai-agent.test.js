@@ -39,10 +39,32 @@ test('ai agent set, list, and show persist reusable profile settings', () => {
     const list = runCli(repo.root, ['ai', 'agent', 'list']);
     assert.match(list, /planner: provider=codex model=gpt-5\.5-xhigh label=planner/);
     assert.match(list, /executor: not configured/);
+    assert.match(list, /doctor: not configured/);
+    assert.doesNotMatch(list, /researcher/);
 
     const show = runCli(repo.root, ['ai', 'agent', 'show', 'planner']);
     assert.match(show, /Role: planner/);
     assert.match(show, /Provider: codex/);
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('ai agent supports doctor profiles and rejects researcher profiles', () => {
+  const repo = makeRepo();
+
+  try {
+    const saved = runCli(repo.root, ['ai', 'agent', 'set', 'doctor', '--provider', 'gemini', '--model', 'diagnostic']);
+    assert.match(saved, /Role: doctor/);
+    assert.match(saved, /Provider: gemini/);
+
+    const show = runCli(repo.root, ['ai', 'agent', 'show', 'doctor']);
+    assert.match(show, /Model: diagnostic/);
+
+    assert.throws(
+      () => runCli(repo.root, ['ai', 'agent', 'set', 'researcher', '--provider', 'codex']),
+      /unsupported agent profile role 'researcher'.*planner, executor, reviewer, doctor/,
+    );
   } finally {
     repo.cleanup();
   }

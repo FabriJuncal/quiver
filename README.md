@@ -312,7 +312,7 @@ El paquete también publica el alias binario `quiver`, que apunta al mismo CLI. 
 | `npx create-quiver --name "Proyecto"` | Alias compatible del flujo de init recomendado. |
 | `npx create-quiver --version` | Muestra la versión instalada del CLI. |
 | `npx create-quiver flow` | Muestra el estado inicial del flujo guiado y el próximo comando seguro sin escribir estado ni llamar providers. |
-| `npx create-quiver ai agent set <role> --provider <provider> --model <label>` | Guarda perfiles reutilizables para planner, executor, reviewer o researcher sin guardar secretos. |
+| `npx create-quiver ai agent set <role> --provider <provider> --model <label>` | Guarda perfiles reutilizables para planner, executor, reviewer o doctor sin guardar secretos. |
 | `npx create-quiver ai agent list` | Lista los perfiles configurados. |
 | `npx create-quiver ai agent show <role>` | Muestra un perfil específico. |
 | `npx create-quiver ai run create --input requirements.md` | Crea un run persistente en `.quiver/runs/` para un requerimiento. |
@@ -360,13 +360,17 @@ El paquete también publica el alias binario `quiver`, que apunta al mismo CLI. 
 ```bash
 npx create-quiver ai prepare-context --dry-run
 npx create-quiver ai onboard --dry-run
+npx create-quiver ai onboard --print-prompt
 npx create-quiver ai agent set planner --provider codex --model "planner-model"
 npx create-quiver ai agent set executor --provider codex --model "executor-model"
+npx create-quiver ai agent set doctor --provider codex --model "diagnostic-model"
 npx create-quiver ai agent list
 npx create-quiver ai plan --phase acceptance --input requirements.md --dry-run
+npx create-quiver ai plan --phase acceptance --input requirements.md --print-prompt
 npx create-quiver ai approve --phase acceptance --input acceptance-approved.md
 npx create-quiver ai plan --phase technical-plan --dry-run
 npx create-quiver ai review-plan --dry-run
+npx create-quiver ai review-plan --print-prompt
 npx create-quiver ai approve --phase technical-plan --version <n>
 npx create-quiver spec create --dry-run
 npx create-quiver ai prompt-slice --slice specs/<project-slug>/slices/slice-01/slice.json --dry-run
@@ -378,7 +382,7 @@ npx create-quiver ai pr --dry-run --input specs/<project-slug>/pr.md --ssh-host-
 ```
 
 Providers soportados: `codex`, `claude` y `gemini`, siempre vía CLI local.
-Usá `--dry-run` primero para revisar provider, rol, context pack, prompt y paths sin ejecutar el modelo.
+Usá `--dry-run` primero para revisar provider, rol, context pack y paths sin ejecutar el modelo. Usá `--print-prompt` cuando quieras ver el prompt exacto que se enviaría, sin depender de autenticación del provider.
 
 Orden recomendado:
 

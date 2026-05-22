@@ -1,12 +1,12 @@
 # Status - Quiver v25 AI-First Lifecycle Orchestrator
 
-**Overall status:** Planned
+**Overall status:** In progress
 **Created:** 2026-05-22
-**Current slice:** slice-00 completed
+**Current slice:** slice-04 completed
 
 ## Summary
 
-The documentation foundation for v25 has been created. Product implementation has not started.
+The documentation foundation and first implementation slices are in progress. The CLI contract, run state, and provider profile adapter contract have been implemented.
 
 ## Slice Status
 
@@ -16,7 +16,7 @@ The documentation foundation for v25 has been created. Product implementation ha
 | slice-01-cli-contract-compatibility | Completed | Top-level version handling, CLI contract tests, and docs added. |
 | slice-02-run-state-phase-locks | Completed | Persistent runs, status/resume, phase helpers, approval metadata, and locks added. |
 | slice-03-safe-ai-onboarding-docs | Planned | Not started. |
-| slice-04-agent-profiles-adapters | Planned | Not started. |
+| slice-04-agent-profiles-adapters | Completed | Doctor profile, prompt-only output, redacted provider output, focused tests, and docs added. |
 | slice-05-approval-gates | Planned | Not started. |
 | slice-06-spec-slice-generator | Planned | Not started. |
 | slice-07-slice-execution-planner | Planned | Not started. |
@@ -27,10 +27,9 @@ The documentation foundation for v25 has been created. Product implementation ha
 
 ## Current Blockers
 
-- Product implementation requires starting from `slice-01`.
 - The release status docs need sync: `npm view create-quiver version` returned `0.12.0`, while `CHANGELOG.md` still keeps the latest shipped work under `Unreleased` and `ROADMAP.md` still says v24/v0.11 is pending package release.
 - `npm run quiver:plan -- --spec quiver-v25-ai-first-lifecycle-orchestrator --include-completed` failed with Node out-of-memory during validation. Track as a CLI hardening issue for `slice-10`.
 
 ## Next Step
 
-Execute `slice-01-cli-contract-compatibility` after reviewing this documentation package.
+Execute `slice-03-safe-ai-onboarding-docs` or continue to `slice-05-approval-gates` after checking whether onboarding docs and gate wiring need to be sequenced together.
