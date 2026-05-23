@@ -1,4 +1,4 @@
-const { buildGraph, computeLevels, detectFileConflicts, readAllSlices } = require('../lib/slice-graph');
+const { buildGraph, computeLevels, detectFileConflicts, readAllSlices, readSlicesForSpec } = require('../lib/slice-graph');
 const { renderDotGraph } = require('../lib/renderers/dot');
 const { renderMermaidGraph } = require('../lib/renderers/mermaid');
 const { renderTreeGraph, isUnicodeEnabled } = require('../lib/renderers/tree');
@@ -28,11 +28,13 @@ function buildConflictPayload(levelIndex, groups) {
 }
 
 function collectGraph(repoRoot, options = {}) {
-  const graph = buildGraph(readAllSlices(repoRoot));
-  computeLevels(graph);
+  const specSlug = options.specSlug ? String(options.specSlug).trim() : '';
+  const graph = buildGraph(specSlug ? readSlicesForSpec(repoRoot, specSlug) : readAllSlices(repoRoot));
+  if (!specSlug) {
+    computeLevels(graph);
+  }
   const includeCompleted = options.includeCompleted === true;
   const excluded = includeCompleted ? HISTORY_EXCLUDED_STATUSES : EXCLUDED_STATUSES;
-  const specSlug = options.specSlug ? String(options.specSlug).trim() : '';
   const pendingNodes = graph.nodes.filter((node) => {
     if (excluded.has(String(node.status || '').toLowerCase())) {
       return false;

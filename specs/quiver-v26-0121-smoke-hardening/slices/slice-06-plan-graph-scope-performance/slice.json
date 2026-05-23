@@ -15,6 +15,7 @@
     "src/create-quiver/commands/plan.js",
     "src/create-quiver/commands/graph.js",
     "src/create-quiver/lib/slice-graph.js",
+    "package.json",
     "tests/**",
     "specs/quiver-v26-0121-smoke-hardening/**"
   ],
@@ -22,6 +23,7 @@
     "src/create-quiver/commands/plan.js",
     "src/create-quiver/commands/graph.js",
     "src/create-quiver/lib/slice-graph.js",
+    "package.json",
     "tests/commands/plan.test.js",
     "tests/commands/graph.test.js",
     "specs/quiver-v25-ai-first-lifecycle-orchestrator/EVIDENCE_REPORT.md",
@@ -31,6 +33,7 @@
     "src/create-quiver/commands/plan.js",
     "src/create-quiver/commands/graph.js",
     "src/create-quiver/lib/slice-graph.js",
+    "package.json",
     "tests/**",
     "README.md",
     "docs/COMMANDS.md.template",
@@ -72,7 +75,8 @@
     "Use the current repo as a real regression case."
   ],
   "estimated_hours": 5,
-  "status": "planned",
-  "blocked_reason": null
+  "status": "completed",
+  "blocked_reason": null,
+  "actual_hours": 4,
+  "completed_at": "2026-05-23T00:00:00-0300"
 }
-

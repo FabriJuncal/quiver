@@ -140,3 +140,24 @@ Each implementation slice must append:
 ### Risks
 
 - Port fallback was validated through generated server contract assertions because this sandbox blocks opening local sockets.
+
+## slice-06 - Plan and graph scope performance
+
+### Completed
+
+- Added `readSlicesForSpec()` to load only the requested spec and explicit dependency refs for scoped plan/graph runs.
+- Updated `plan` and `graph` commands to use scoped loading before graph construction when `--spec` is provided.
+- Preserved unscoped behavior and cycle checks.
+- Added regression tests proving scoped plan/graph do not parse unrelated invalid historical slice artifacts.
+- Added readiness coverage for explicit external dependencies during scoped planning.
+- Updated root `quiver:plan` and `quiver:graph` scripts to use the local CLI entrypoint during repository validation.
+
+### Validation
+
+- `node --test tests/commands/plan.test.js tests/commands/graph.test.js tests/lib/slice-graph.test.js` passed: 28 tests.
+- `npm run quiver:plan -- --spec quiver-v26-0121-smoke-hardening --include-completed` completed without OOM.
+- `npm run quiver:graph -- --spec quiver-v26-0121-smoke-hardening --include-completed` completed without OOM.
+
+### Risks
+
+- Scoped output still displays only the requested spec; external dependencies are retained internally for readiness checks.

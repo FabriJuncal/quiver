@@ -17,7 +17,12 @@ function writeJson(filePath, data) {
 function makeRepo(structure) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'quiver-plan-'));
   for (const [relativePath, data] of Object.entries(structure)) {
-    writeJson(path.join(root, relativePath), data);
+    if (typeof data === 'string') {
+      fs.mkdirSync(path.dirname(path.join(root, relativePath)), { recursive: true });
+      fs.writeFileSync(path.join(root, relativePath), data);
+    } else {
+      writeJson(path.join(root, relativePath), data);
+    }
   }
   return {
     root,
@@ -137,6 +142,38 @@ test('collectPlan respects --only-ready and --spec filtering', () => {
     assert.deepEqual(specOnly.plan.map((item) => item.ref), ['spec-a/slice-01-alpha', 'spec-a/slice-02-beta']);
     assert.deepEqual(specOnly.critical_path, ['spec-a/slice-01-alpha', 'spec-a/slice-02-beta']);
     assert.equal(specOnly.total_hours, 5);
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('scoped plan does not parse unrelated historical slice artifacts', () => {
+  const repo = makeRepo({
+    'specs/spec-a/slices/slice-01-alpha/slice.json': slice('spec-a/slice-01-alpha', ['docs/a.md'], { estimated_hours: 2 }),
+    'specs/huge-history/slices/slice-01-bad/slice.json': '{ this is not valid json',
+  });
+
+  try {
+    const report = collectPlan(repo.root, { specSlug: 'spec-a' });
+    assert.deepEqual(report.plan.map((item) => item.ref), ['spec-a/slice-01-alpha']);
+    assert.throws(() => collectPlan(repo.root));
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('scoped plan keeps explicit external dependencies for readiness', () => {
+  const repo = makeRepo({
+    'specs/spec-a/slices/slice-01-alpha/slice.json': slice('spec-a/slice-01-alpha', ['docs/a.md'], {
+      depends_on: ['spec-b/slice-01-foundation'],
+    }),
+    'specs/spec-b/slices/slice-01-foundation/slice.json': slice('spec-b/slice-01-foundation', ['docs/b.md']),
+    'specs/unrelated/slices/slice-01-bad/slice.json': '{ this is not valid json',
+  });
+
+  try {
+    const ready = collectPlan(repo.root, { onlyReady: true, specSlug: 'spec-a' });
+    assert.deepEqual(ready.plan, []);
   } finally {
     repo.cleanup();
   }
