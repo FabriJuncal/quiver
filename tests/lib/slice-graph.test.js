@@ -10,6 +10,7 @@ const {
   detectFileConflicts,
   inferDependencies,
   isFoundationSliceId,
+  normalizeDeclaredDependencies,
   readAllSlices,
   naturalNumberFromSliceId,
   topoSort,
@@ -258,6 +259,14 @@ test('buildGraph preserves depends_on with full spec/slice-id format (regression
   } finally {
     repo.cleanup();
   }
+});
+
+test('normalizeDeclaredDependencies expands bare slice ids within the same spec', () => {
+  const normalized = normalizeDeclaredDependencies({
+    specSlug: 'spec-a',
+  }, ['slice-00-docs-foundation']);
+
+  assert.deepEqual(normalized, ['spec-a/slice-00-docs-foundation']);
 });
 
 test('foundation slice helpers recognize slice-00 ids', () => {

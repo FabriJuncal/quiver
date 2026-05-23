@@ -96,3 +96,26 @@ Each implementation slice must append:
 ### Risks
 
 - The review gate remains strict; users must persist a review before spec generation can proceed.
+
+## slice-04 - Local validation and brief contracts
+
+### Completed
+
+- Allowed `check-slice --local` to run structural validation in folders without a Git repository.
+- Normalized declared `depends_on` references before comparing them to the slice graph, so bare same-spec dependencies like `slice-00-docs-foundation` resolve correctly.
+- Extended `check-handoff` to validate legacy `HANDOFF.md` files plus current per-slice `EXECUTION_BRIEF.md` and `CLOSURE_BRIEF.md` files.
+- Updated CLI help, generated command docs, README, and generated workflow docs to show brief validation.
+- Added regression fixtures for no-Git local projects, completed `slice-00` dependencies, legacy handoffs, execution briefs, and closure briefs.
+
+### Validation
+
+- `node --test tests/lib/check-slice.test.js tests/lib/handoff.test.js tests/lib/slice-graph.test.js` passed: 25 tests.
+- `node bin/create-quiver.js check-slice --local specs/quiver-v26-0121-smoke-hardening/slices/slice-01-cli-help-version-contract/slice.json` passed.
+- `node bin/create-quiver.js check-handoff specs/quiver-v26-0121-smoke-hardening/slices/slice-04-local-validation-brief-contracts/EXECUTION_BRIEF.md` passed.
+- `node bin/create-quiver.js check-handoff specs/quiver-v26-0121-smoke-hardening/slices/slice-04-local-validation-brief-contracts/CLOSURE_BRIEF.md` passed.
+- `node --test tests/lib/check-slice.test.js tests/lib/handoff.test.js tests/lib/slice-graph.test.js tests/commands/cli-contract.test.js tests/lib/init-docs.test.js tests/lib/init-layout.test.js` passed: 50 tests.
+- `npm run smoke:guided-workflow` passed: 130 tests plus package smoke.
+
+### Risks
+
+- Normal remote/base validation remains unchanged; final release smoke still needs to cover `check-slice` in normal mode and `check-pr`.

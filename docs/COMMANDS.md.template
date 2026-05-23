@@ -62,6 +62,7 @@ This document is the canonical command reference for the orchestration roadmap.
 | `quiver:spec:status` | Shows spec worktree, branch, `slice-00`, and pending slices | macOS, Linux, Windows | v0.10 | `npm run quiver:spec:status -- specs/<spec>` |
 | `quiver:spec:close` | Closes a merged clean spec worktree and pulls the main checkout | macOS, Linux, Windows | v0.10 | `npm run quiver:spec:close -- specs/<spec> --dry-run` |
 | `quiver:check-slice -- --local <slice.json>` | Runs local structural slice validation without remote/base checks | macOS, Linux, Windows | v0.11 | `npm run quiver:check-slice -- --local specs/<spec>/slices/<slice>/slice.json` |
+| `quiver:check-handoff -- <handoff-or-brief.md>` | Validates legacy `HANDOFF.md` files and per-slice `EXECUTION_BRIEF.md` / `CLOSURE_BRIEF.md` files | macOS, Linux, Windows | v0.12.1 | `npm run quiver:check-handoff -- specs/<spec>/slices/<slice>/EXECUTION_BRIEF.md` |
 
 ## CLI Flags
 
@@ -111,6 +112,7 @@ This document is the canonical command reference for the orchestration roadmap.
 - `quiver:graph --format mermaid` is the PR-friendly Mermaid export; `--format dot` is for Graphviz/DOT consumers.
 - `quiver:next` prints the next ready slice and can auto-start it behind a confirmation prompt.
 - `check-slice` validates `depends_on` targets and requires `parallel_safe_reason` when `parallel_safe` is `never`.
+- `check-handoff` validates both exceptional `HANDOFF.md` transfers and current slice-local `EXECUTION_BRIEF.md` / `CLOSURE_BRIEF.md` contracts.
 - `quiver:ai:onboard`, `quiver:ai:plan`, `quiver:ai:revise`, `quiver:ai:review-plan`, and `quiver:ai:execute-slice` support `codex`, `claude`, and `gemini` through local CLIs. Use `--dry-run` first to inspect the invocation without requiring provider auth, or `--print-prompt` to print the exact planner/reviewer prompt without executing a provider.
 - `quiver:ai:prepare-context -- --dry-run` previews docs-only context drafts, diff snippets, assumptions, risks, contradictions, and omitted paths. Write mode stores snapshots under `.quiver/runs/<run-id>/snapshots/` and preserves human-authored content by appending or refreshing a Quiver-managed block.
 - `quiver:ai:agent` stores provider/model labels under `.quiver/agents/profiles.json`; credentials stay in the provider CLI or OS credential store.

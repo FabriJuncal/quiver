@@ -466,6 +466,8 @@ module.exports = {
   detectFileConflicts,
   inferDependencies,
   isFoundationSliceId,
+  normalizeDeclaredDependencies,
+  normalizeDependencyRef,
   readAllSlices,
   naturalNumberFromSliceId,
   resolveWriteScope,

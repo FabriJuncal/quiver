@@ -195,7 +195,7 @@ const COMMAND_HELP_GROUPS = [
       ['check-scope', 'Compare changed files against a slice scope.'],
       ['cleanup-slice', 'Clean active-slice state after a slice finishes or is discarded.'],
       ['refresh-active-slices', 'Refresh generated active-slice boards.'],
-      ['check-handoff', 'Validate a transfer handoff document.'],
+      ['check-handoff', 'Validate a transfer handoff or per-slice execution/closure brief.'],
       ['new-handoff', 'Create a handoff scaffold for exceptional context transfer.'],
     ],
   },
@@ -255,7 +255,7 @@ function printUsage() {
   npx create-quiver start-slice [options] <slice.json>
   npx create-quiver check-slice [options] <slice.json>
   npx create-quiver check-pr <slice.json>
-  npx create-quiver check-handoff <handoff.md>
+  npx create-quiver check-handoff <handoff-or-brief.md>
   npx create-quiver new-handoff <spec-slug>
   npx create-quiver cleanup-slice [options] <slice.json>
   npx create-quiver check-scope [options] <slice.json>
@@ -361,6 +361,7 @@ Examples:
   cd ./my-project && npx create-quiver check-slice specs/my-project/slices/slice-01/slice.json
   cd ./my-project && npx create-quiver check-pr specs/my-project/slices/slice-01/slice.json
   cd ./my-project && npx create-quiver check-handoff specs/my-project/HANDOFF.md
+  cd ./my-project && npx create-quiver check-handoff specs/my-project/slices/slice-01/EXECUTION_BRIEF.md
   cd ./my-project && npx create-quiver new-handoff my-spec
   cd ./my-project && npx create-quiver cleanup-slice specs/my-project/slices/slice-01/slice.json
   cd ./my-project && npx create-quiver check-scope specs/my-project/slices/slice-01/slice.json
@@ -2628,10 +2629,10 @@ async function run(argv) {
     const repoRoot = process.cwd();
     const handoffInput = args.targetDir;
     if (!handoffInput || handoffInput === '.') {
-      throw new Error(formatError('missing handoff path. Use: npx create-quiver check-handoff specs/<spec-slug>/HANDOFF.md'));
+      throw new Error(formatError('missing handoff or brief path. Use: npx create-quiver check-handoff specs/<spec-slug>/HANDOFF.md or specs/<spec-slug>/slices/<slice-id>/EXECUTION_BRIEF.md'));
     }
     const resolved = checkHandoff(handoffInput, repoRoot);
-    console.log(`PASS: Handoff validated at ${resolved.relativePath}`);
+    console.log(`PASS: ${resolved.label} validated at ${resolved.relativePath}`);
     return;
   }
 

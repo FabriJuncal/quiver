@@ -2,28 +2,34 @@
 
 ## Summary of Work
 
-- Pending implementation.
+- Implemented local slice readiness hardening and current brief validation support.
+- `check-slice --local` now falls back to the current directory when Git metadata is unavailable.
+- `depends_on` validation now compares normalized dependency refs, so bare same-spec dependencies resolve consistently.
+- `check-handoff` now validates legacy `HANDOFF.md` files and per-slice `EXECUTION_BRIEF.md` / `CLOSURE_BRIEF.md` files.
 
 ## Validation Against Acceptance Criteria
 
-- [ ] Local validation works without fatal Git assumption.
-- [ ] Completed dependency resolves.
-- [ ] Brief validation supported.
-- [ ] Handoff compatibility preserved.
+- [x] Local validation works without fatal Git assumption.
+- [x] Completed dependency resolves.
+- [x] Brief validation supported.
+- [x] Handoff compatibility preserved.
 
 ## Relevant Changes
 
-- To be filled during execution.
+- Updated `src/create-quiver/lib/readiness.js`.
+- Updated `src/create-quiver/lib/slice-graph.js`.
+- Updated `src/create-quiver/lib/handoff.js`.
+- Updated CLI help and generated command documentation.
+- Added `tests/lib/handoff.test.js` and new local validation fixtures.
 
 ## Pending
 
-- Implement the slice.
+- No pending work for this slice.
 
 ## Remaining Risks
 
-- Shared dependency graph behavior must remain stable for plan/graph/next.
+- Final release smoke still needs normal Git/base validation coverage.
 
 ## Future Recommendations
 
 - Keep generated demo slices in validation fixtures to catch regressions.
-

@@ -531,6 +531,7 @@ npm run quiver:start-slice -- specs/${projectSlug}/slices/slice-01/slice.json
 npm run quiver:check-slice -- specs/${projectSlug}/slices/slice-01/slice.json
 npm run quiver:check-pr -- specs/${projectSlug}/slices/slice-01/slice.json
 npm run quiver:check-handoff -- specs/${projectSlug}/HANDOFF.md
+npm run quiver:check-handoff -- specs/${projectSlug}/slices/slice-01/EXECUTION_BRIEF.md
 npm run quiver:cleanup-slice -- specs/${projectSlug}/slices/slice-01/slice.json
 npm run quiver:check-scope -- specs/${projectSlug}/slices/slice-01/slice.json
 npm run quiver:refresh-active-slices
@@ -545,6 +546,7 @@ The legacy Bash wrappers remain in \`tools/scripts/\` for compatibility, but new
 \`npm run quiver:migrate\` is only for projects that were already initialized by Quiver.
 \`npm run check-handoff -- specs/${projectSlug}/HANDOFF.md\` is available as a legacy-friendly alias for the handoff validator.
 If a new bounded transfer is needed, scaffold \`specs/${projectSlug}/HANDOFF.md\` with \`npx create-quiver new-handoff ${projectSlug}\` and validate it with \`npx create-quiver check-handoff specs/${projectSlug}/HANDOFF.md\`.
+Use \`npx create-quiver check-handoff specs/${projectSlug}/slices/slice-01/EXECUTION_BRIEF.md\` or \`CLOSURE_BRIEF.md\` to validate the current per-slice brief contract.
 For exceptional context transfers between agents or phases, a dedicated \`HANDOFF.md\` can live alongside the usual spec and docs files.
 
 ## Cross-Platform Support

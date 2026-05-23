@@ -362,7 +362,7 @@ El paquete también publica el alias binario `quiver`, que apunta al mismo CLI. 
 | `npx create-quiver check-scope <slice.json>` | Verifica que los archivos modificados estén dentro del alcance declarado. |
 | `npx create-quiver cleanup-slice <slice.json>` | Limpia worktree/branch local asociado a un slice. |
 | `npx create-quiver refresh-active-slices` | Regenera el tablero local `ACTIVE_SLICES.md`. |
-| `npx create-quiver check-handoff <handoff.md>` | Valida un handoff. |
+| `npx create-quiver check-handoff <handoff-or-brief.md>` | Valida un `HANDOFF.md` o un brief de slice (`EXECUTION_BRIEF.md` / `CLOSURE_BRIEF.md`). |
 | `npx create-quiver new-handoff <spec-slug>` | Crea un handoff para una transferencia excepcional. |
 | `npx create-quiver evidence run -- <comando>` | Ejecuta un comando y guarda evidencia local con exit code, duración y salida redactada/truncada. |
 | `npx create-quiver demo create spec-viewer --dry-run` | Previsualiza el demo opcional Quiver Spec Viewer sin escribir archivos. |

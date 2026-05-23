@@ -2,7 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const { catFileExists, currentBranch, hasLocalBranch, hasRemoteBranch, mergeBaseIsAncestor, revListCount, runGit, statusPorcelain, worktreeList } = require('./git');
 const { parseJsonWithComments } = require('./json');
-const { buildGraph, readAllSlices, SliceGraphError, topoSort } = require('./slice-graph');
+const { buildGraph, normalizeDeclaredDependencies, readAllSlices, SliceGraphError, topoSort } = require('./slice-graph');
 const { resolveSliceContext, toAlias } = require('./slice');
 
 function ensureExists(filePath, message) {
@@ -117,6 +117,17 @@ function baseRecoveryMessage(remote, baseBranch) {
   return `No se encontro la base '${baseBranch}' como rama local ni como '${remote}/${baseBranch}'. Para validacion estructural usa --local; para validacion contra otra base usa --base <branch>; o configura/fetchea el remoto '${remote}'.`;
 }
 
+function resolveReadinessRoot(localMode) {
+  try {
+    return runGit(['rev-parse', '--show-toplevel'], process.cwd());
+  } catch (error) {
+    if (localMode) {
+      return process.cwd();
+    }
+    throw error;
+  }
+}
+
 function validateSliceDocumentedOnBase(repoRoot, slice, options = {}) {
   const gate = options.gate || 'execution';
   const remote = options.remote || 'origin';
@@ -178,8 +189,12 @@ function validateDeclaredDependencyContract(repoRoot, slice) {
       throw new Error(`create-quiver: depends_on contiene referencias duplicadas en ${currentRef}.`);
     }
 
+    const normalizedDeclared = normalizeDeclaredDependencies(currentNode, declared);
+    if (normalizedDeclared.length !== new Set(normalizedDeclared).size) {
+      throw new Error(`create-quiver: depends_on contiene referencias duplicadas en ${currentRef}.`);
+    }
     const currentSet = new Set(currentNode.depends_on || []);
-    for (const dep of declared) {
+    for (const dep of normalizedDeclared) {
       if (!currentSet.has(dep)) {
         throw new Error(`create-quiver: depends_on apunta a una referencia inexistente o invalida: ${dep}`);
       }
@@ -209,7 +224,7 @@ function checkSliceReadiness(sliceInput, options = {}) {
   const localMode = options.local === true;
   const strictOverlap = options.strictOverlap === true;
   const remote = options.remote || 'origin';
-  const repoRoot = runGit(['rev-parse', '--show-toplevel'], process.cwd());
+  const repoRoot = resolveReadinessRoot(localMode);
   const slice = resolveSliceContext(repoRoot, sliceInput);
   const baseBranch = options.baseBranch || slice.baseBranch || 'develop';
 
