@@ -161,3 +161,48 @@ Each implementation slice must append:
 ### Risks
 
 - Scoped output still displays only the requested spec; external dependencies are retained internally for readiness checks.
+
+## slice-07 - Smoke and release readiness
+
+### Completed
+
+- Bumped package metadata to `0.12.1` in `package.json` and `package-lock.json`.
+- Added `0.12.1` release notes to `CHANGELOG.md`.
+- Updated source-of-truth project docs to mark v26 as implemented and release-ready, while keeping npm publication as a post-merge step.
+- Ran full unit, command, smoke, cross-platform, init-docs, package, and candidate tarball validation.
+- Validated the candidate tarball from `/private/tmp` in a clean project installed from `create-quiver-0.12.1.tgz`.
+
+### Validation
+
+- `node --test tests/**/*.test.js` passed: 317 tests.
+- `npm run smoke:create-quiver` passed.
+- `npm run smoke:guided-workflow` passed: 130 tests plus package smoke.
+- `npm run smoke:doctor-fixtures` passed: 10 doctor fixture states.
+- `node scripts/ci/smoke-cross-platform.js` passed.
+- `bash scripts/ci/smoke-init-docs.sh` passed.
+- `npm run quiver:plan -- --spec quiver-v26-0121-smoke-hardening --include-completed` passed and reported all 8 slices as completed.
+- `npm run quiver:graph -- --spec quiver-v26-0121-smoke-hardening --include-completed` passed and rendered the scoped graph without OOM.
+- `node bin/create-quiver.js check-slice --local specs/quiver-v26-0121-smoke-hardening/slices/slice-07-smoke-release-readiness/slice.json` passed structural validation.
+- `npm pack --pack-destination /private/tmp/quiver-v26-tarball-smoke` initially failed because the local `~/.npm` cache has root-owned files.
+- `npm --cache /private/tmp/quiver-npm-cache pack --pack-destination /private/tmp/quiver-v26-tarball-smoke` passed and produced `create-quiver-0.12.1.tgz`.
+- Clean tarball smoke from `/private/tmp/quiver-v26-tarball-project-0121` passed:
+  - `npm --cache /private/tmp/quiver-npm-cache install -D /private/tmp/quiver-v26-tarball-smoke/create-quiver-0.12.1.tgz`
+  - `npx create-quiver --version` printed `0.12.1`.
+  - `npx create-quiver --help` printed the grouped command reference.
+  - `npx create-quiver init --name "Tarball Smoke Project" --skip-install` completed.
+  - `npx create-quiver analyze` completed.
+  - `npx create-quiver doctor` passed.
+  - `npx create-quiver flow` completed and suggested the next safe command.
+  - `npx create-quiver ai onboard --dry-run` completed without provider execution.
+  - `npx create-quiver ai plan --phase acceptance --input requirements.md --dry-run` completed without provider execution.
+  - `npx create-quiver demo create spec-viewer --dir ./demo` completed.
+  - `node scripts/validate-demo.js` passed inside the generated demo.
+  - `npx create-quiver check-handoff specs/quiver-spec-viewer/slices/slice-00-docs-foundation/EXECUTION_BRIEF.md` passed inside the generated demo.
+  - `npx create-quiver check-handoff specs/quiver-spec-viewer/slices/slice-01-static-spec-viewer/CLOSURE_BRIEF.md` passed inside the generated demo.
+  - `npx create-quiver doctor` passed inside the generated demo.
+- `git diff --check` passed.
+
+### Risks
+
+- npm publication was intentionally not performed in this slice; it must happen only after PR merge.
+- The standard `npm pack` command can fail on this workstation until `~/.npm` cache ownership is repaired. The package itself was validated by rerunning pack with an isolated temp cache.

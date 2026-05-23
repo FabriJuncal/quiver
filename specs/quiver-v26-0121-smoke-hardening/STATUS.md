@@ -1,8 +1,8 @@
 # Status - Quiver v26 0.12.1 Smoke Hardening
 
-**Overall status:** Slices 00-06 complete; release readiness pending
+**Overall status:** Slices 00-07 complete; release-ready pending PR merge and npm publication
 **Created:** 2026-05-23
-**Current slice:** slice-06 completed
+**Current slice:** slice-07 completed
 
 ## Summary
 
@@ -19,13 +19,14 @@ This hotfix spec tracks the first-use issues found while smoke testing `create-q
 | slice-04-local-validation-brief-contracts | Completed | Local validation no longer fatally requires Git, bare slice dependencies normalize, and brief validation supports execution/closure briefs. |
 | slice-05-demo-scaffold-readiness | Completed | Demo scaffold now includes Quiver metadata, doctor/plan/graph/next coverage, brief validation, and server port fallback. |
 | slice-06-plan-graph-scope-performance | Completed | Scoped plan/graph now read only the target spec plus explicit dependency refs and root scripts validate local code. |
-| slice-07-smoke-release-readiness | Planned | Run full validation, tarball smoke, and release prep. |
+| slice-07-smoke-release-readiness | Completed | Full tests, required smokes, tarball candidate smoke, version bump, changelog, and release evidence completed. |
 
 ## Current Blockers
 
-- `plan` and `graph` still need scoped loading hardening in `slice-06` before release readiness.
-- The real `Quiver Spec Viewer` project should wait until this hotfix is published and smoke-tested from npm.
+- No local implementation blockers remain.
+- npm publication is intentionally pending until PR merge.
+- The real `Quiver Spec Viewer` project should wait until `create-quiver@0.12.1` is published and smoke-tested from npm.
 
 ## Next Step
 
-Execute `slice-07-smoke-release-readiness` next.
+Open the PR, merge after review, publish `create-quiver@0.12.1`, then verify the published package with `npm view create-quiver version` and a clean npm smoke.

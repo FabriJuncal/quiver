@@ -65,9 +65,9 @@
 - Published package `0.12.0`.
 - **v25** — AI-first lifecycle orchestrator: safe AI onboarding docs, strict run state, phase locks, agent adapters, approval gates, generated specs/slices/handoffs/PR body, execution waves, controlled slice execution, worktree/PR lifecycle, validation hardening, export, and migration.
 
-## v0.12.1 — Smoke Hardening Hotfix (planned)
+## v0.12.1 — Smoke Hardening Hotfix (release-ready, pending publication)
 
-- **v26** — `0.12.1` smoke hardening from clean npm package validation: CLI help/version output, generated doc links, AI approval/review guidance, local validation, slice brief validation, demo scaffold readiness, and release smoke coverage.
+- **v26** — `0.12.1` smoke hardening from clean npm package validation: CLI help/version output, generated doc links, AI approval/review guidance, local validation, slice brief validation, demo scaffold readiness, scoped plan/graph performance, and release smoke coverage.
 
 ## Post-Checkpoint Plan (do not execute before validating v14)
 
@@ -83,7 +83,7 @@
 - **v23 — Guided Flow Productization** (completed): AI-first flow command, agent profiles, compact onboarding/planning prompts, production plan review, explicit `spec create`, manual executor prompts, delegated worktree execution, and release readiness live in `specs/quiver-v23-guided-flow-productization/`.
 - **v24 — DX Onboarding Hardening** (shipped in `0.11.0`): real-world dogfooding fixes for init/templates, CLI routing, doctor/prepare, local validation, analyzer, AI context preparation, evidence, and demos live in `specs/quiver-v24-dx-onboarding-hardening/`.
 - **v25 — AI-First Lifecycle Orchestrator** (shipped in `0.12.0`): safe AI onboarding docs, strict run state, phase locks, agent adapters, approval gates, generated specs/slices/handoffs/PR body, execution waves, controlled slice execution, worktree/PR lifecycle, validation hardening, export, and migration live in `specs/quiver-v25-ai-first-lifecycle-orchestrator/`.
-- **v26 — 0.12.1 Smoke Hardening** (planned): first-use hardening from clean npm smoke testing, covering CLI help/version output, generated doc links, AI approval/review guidance, local validation, slice brief validation, demo readiness, and release smoke coverage live in `specs/quiver-v26-0121-smoke-hardening/`.
+- **v26 — 0.12.1 Smoke Hardening** (release-ready, pending publication): first-use hardening from clean npm smoke testing, covering CLI help/version output, generated doc links, AI approval/review guidance, local validation, slice brief validation, demo readiness, scoped plan/graph performance, and release smoke coverage live in `specs/quiver-v26-0121-smoke-hardening/`.
 
 The shipped v20/v21/v22/v23 work is no longer pending. The older context-diagnostics and slice-archaeology ideas remain deferred until real demand justifies them.
 

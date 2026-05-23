@@ -85,6 +85,8 @@
     "After merge and publish, verify npm with npm view create-quiver version."
   ],
   "estimated_hours": 4,
-  "status": "planned",
-  "blocked_reason": null
+  "status": "completed",
+  "blocked_reason": null,
+  "actual_hours": 3,
+  "completed_at": "2026-05-23T00:00:00-0300"
 }

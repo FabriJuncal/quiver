@@ -63,9 +63,20 @@ git diff --check
 ### Technical Verification
 
 ```bash
-npm pack
-npx --yes ./create-quiver-0.12.1.tgz --version
-npx --yes ./create-quiver-0.12.1.tgz --help
+npm --cache /private/tmp/quiver-npm-cache pack --pack-destination /private/tmp/quiver-v26-tarball-smoke
+cd /private/tmp/quiver-v26-tarball-project-0121
+npm --cache /private/tmp/quiver-npm-cache install -D /private/tmp/quiver-v26-tarball-smoke/create-quiver-0.12.1.tgz
+npx create-quiver --version
+npx create-quiver --help
+npx create-quiver init --name "Tarball Smoke Project" --skip-install
+npx create-quiver analyze
+npx create-quiver doctor
+npx create-quiver flow
+npx create-quiver ai onboard --dry-run
+npx create-quiver ai plan --phase acceptance --input requirements.md --dry-run
+npx create-quiver demo create spec-viewer --dir ./demo
+cd demo
+node scripts/validate-demo.js
 ```
 
 ## Evidence
@@ -82,3 +93,4 @@ npx --yes ./create-quiver-0.12.1.tgz --help
 - Top-level `--version` must not break AI draft approvals.
 - Help output should be covered by tests to prevent command drift.
 - Demo port fallback must work cross-platform or provide clear cross-platform instructions.
+- Standard `npm pack` failed locally because `~/.npm` contains root-owned cache files; candidate package validation passed with an isolated temp cache.

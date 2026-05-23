@@ -1,7 +1,7 @@
 # Quiver v26 - 0.12.1 Smoke Hardening
 
 **Date:** 2026-05-23
-**Status:** Planned
+**Status:** Implemented; release-ready pending PR merge and npm publication
 
 Slice numbering resets here. This spec intentionally starts at `slice-00`.
 
@@ -124,13 +124,13 @@ The production-readiness review added these constraints:
 | Slice | Title | Status | Dependencies |
 |---|---|---|---|
 | slice-00 | Docs foundation and source-of-truth sync | Completed | none |
-| slice-01 | CLI help and version contract | Planned | slice-00 |
-| slice-02 | Init doc links and flow guidance | Planned | slice-01 |
-| slice-03 | AI approval and review consistency | Planned | slice-01 |
-| slice-04 | Local validation and brief contracts | Planned | slice-02, slice-03 |
-| slice-05 | Demo scaffold readiness | Planned | slice-02, slice-04 |
-| slice-06 | Plan and graph scope performance | Planned | slice-04 |
-| slice-07 | Smoke and release readiness | Planned | slice-01, slice-02, slice-03, slice-04, slice-05, slice-06 |
+| slice-01 | CLI help and version contract | Completed | slice-00 |
+| slice-02 | Init doc links and flow guidance | Completed | slice-01 |
+| slice-03 | AI approval and review consistency | Completed | slice-01 |
+| slice-04 | Local validation and brief contracts | Completed | slice-02, slice-03 |
+| slice-05 | Demo scaffold readiness | Completed | slice-02, slice-04 |
+| slice-06 | Plan and graph scope performance | Completed | slice-04 |
+| slice-07 | Smoke and release readiness | Completed | slice-01, slice-02, slice-03, slice-04, slice-05, slice-06 |
 
 ## Release Plan
 

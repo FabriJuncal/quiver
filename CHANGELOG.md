@@ -4,9 +4,26 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.12.1] - 2026-05-23
+
 ### Added
 
-- Planned v26 `0.12.1` smoke hardening spec for CLI help/version output, generated doc links, AI approval/review guidance, local validation, slice brief validation, demo readiness, and release smoke coverage.
+- `help` command alias and grouped top-level CLI help so `npx create-quiver --help`, `npx create-quiver help`, and local `quiver --help` expose the supported command surface.
+- Current per-slice brief validation for `EXECUTION_BRIEF.md` and `CLOSURE_BRIEF.md`, while keeping legacy `HANDOFF.md` validation compatible.
+- Regression coverage for scoped `plan` and `graph` loading so unrelated historical specs are not parsed when `--spec <slug>` is used.
+
+### Changed
+
+- Default generated docs now avoid links to optional `docs/examples/*` files unless those files are actually exported.
+- `flow` and AI review/spec-create blockers now guide approved-but-unreviewed technical plans toward `ai review-plan` instead of confusing re-approval steps.
+- The optional `spec-viewer` demo now includes minimal Quiver metadata, doctor-friendly docs, broader Quiver scripts, and server port fallback.
+- Root development scripts for `quiver:plan` and `quiver:graph` now use the local CLI entrypoint so local validation tests the branch code.
+
+### Fixed
+
+- `check-slice --local` no longer fatally requires Git metadata in no-Git folders.
+- Bare same-spec dependencies such as `slice-00-docs-foundation` resolve correctly during local dependency validation.
+- Scoped `plan` and `graph` complete in this repository without increasing Node heap size.
 
 ## [0.12.0] - 2026-05-22
 
