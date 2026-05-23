@@ -13,7 +13,7 @@ This hotfix spec tracks the first-use issues found while smoke testing `create-q
 | Slice | Status | Notes |
 |---|---|---|
 | slice-00-docs-foundation | Completed | Planning artifacts and source-of-truth sync created. |
-| slice-01-cli-help-version-contract | Planned | Fix top-level version/help while preserving AI draft versions. |
+| slice-01-cli-help-version-contract | Completed | Added grouped command help, `help` command alias, help drift tests, and alias/version coverage. |
 | slice-02-init-doc-links-and-flow-guidance | Planned | Fix generated doc links and guided flow next steps. |
 | slice-03-ai-approval-review-consistency | Planned | Align review/approval/spec-create state messages. |
 | slice-04-local-validation-brief-contracts | Planned | Harden local slice validation and brief contracts. |
@@ -28,4 +28,4 @@ This hotfix spec tracks the first-use issues found while smoke testing `create-q
 
 ## Next Step
 
-Execute `slice-01-cli-help-version-contract` after the documentation foundation commit lands.
+Execute `slice-02-init-doc-links-and-flow-guidance` and `slice-03-ai-approval-review-consistency` next. They can run in parallel only if shared `flow`/help files do not overlap.

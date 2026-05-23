@@ -38,3 +38,25 @@ Each implementation slice must append:
 - validation result;
 - risks remaining;
 - evidence location.
+
+## slice-01 - CLI help and version contract
+
+### Completed
+
+- Added grouped command descriptions to the CLI help output.
+- Added `npx create-quiver help` as a readable alias for full help.
+- Preserved top-level `--version` / `-V` behavior and `ai approve --version <n>` semantics.
+- Added CLI contract tests for grouped help, important public command coverage, and local `quiver` alias metadata.
+- Updated README and generated command reference template with `--help`, `help`, and local `quiver --help`.
+
+### Validation
+
+- `node --test tests/commands/cli-contract.test.js` passed: 6 tests.
+- `node --test tests/commands/cli-contract.test.js tests/commands/ai-plan.test.js tests/lib/approvals.test.js` passed: 25 tests.
+- `node bin/create-quiver.js help` printed grouped command descriptions.
+- `node bin/create-quiver.js --version` printed `0.12.0`.
+- `git diff --check` passed.
+
+### Risks
+
+- Help output is still maintained in code, but the new contract test checks important public commands are present with descriptions.
