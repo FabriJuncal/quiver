@@ -57,6 +57,13 @@ function runFlow(repoRoot, args = []) {
   });
 }
 
+function runCli(repoRoot, args = []) {
+  return execFileSync(process.execPath, [BIN_PATH, ...args], {
+    cwd: repoRoot,
+    encoding: 'utf8',
+  });
+}
+
 function seedInitializedContext(repoRoot) {
   writeFile(repoRoot, '.quiver/state.json', JSON.stringify({
     initialized_version: '0.10.0',
@@ -127,6 +134,22 @@ test('flow command reports agent profile guidance before planning when context d
 
     assert.match(output, /Stage: agent profiles need setup/);
     assert.match(output, /Next safe command: npx create-quiver ai agent set planner --provider codex --model "<model-label>"/);
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('flow command uses the generated project map after analyze', () => {
+  const repo = makeRepo();
+
+  try {
+    runCli(repo.root, ['init', '--name', 'Analyzed Flow Project', '--skip-install']);
+    runCli(repo.root, ['analyze']);
+
+    const output = runFlow(repo.root);
+
+    assert.doesNotMatch(output, /Missing docs\/PROJECT_MAP\.md\./);
+    assert.match(output, /Stage: agent profiles need setup/);
   } finally {
     repo.cleanup();
   }
@@ -220,6 +243,28 @@ test('flow command reports spec create after reviewed and approved technical pla
 
     assert.match(output, /Stage: ready for spec generation/);
     assert.match(output, /Next safe command: npx create-quiver spec create --dry-run/);
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('flow command does not suggest re-approving a technical plan that still needs review', () => {
+  const repo = makeRepo();
+
+  try {
+    seedInitializedContext(repo.root);
+    writeFile(repo.root, 'acceptance.md', '# Approved acceptance\n');
+    writeFile(repo.root, 'technical-plan.md', '# Technical plan\n');
+    savePlannerDraft(repo.root, 'acceptance', 'acceptance.md', '# Approved acceptance\n');
+    approvePlannerPhase(repo.root, 'acceptance', '', '', { version: 1 });
+    savePlannerDraft(repo.root, 'technical-plan', 'technical-plan.md', '# Technical plan draft\n');
+    approvePlannerPhase(repo.root, 'technical-plan', '', '', { version: 1 });
+
+    const output = runFlow(repo.root);
+
+    assert.match(output, /Stage: technical plan needs production review/);
+    assert.match(output, /Next safe command: npx create-quiver ai review-plan --dry-run/);
+    assert.doesNotMatch(output, /npx create-quiver ai approve --phase technical-plan --version <n>/);
   } finally {
     repo.cleanup();
   }

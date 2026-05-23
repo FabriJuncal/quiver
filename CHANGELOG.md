@@ -4,6 +4,50 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.12.1] - 2026-05-23
+
+### Added
+
+- `help` command alias and grouped top-level CLI help so `npx create-quiver --help`, `npx create-quiver help`, and local `quiver --help` expose the supported command surface.
+- Current per-slice brief validation for `EXECUTION_BRIEF.md` and `CLOSURE_BRIEF.md`, while keeping legacy `HANDOFF.md` validation compatible.
+- Regression coverage for scoped `plan` and `graph` loading so unrelated historical specs are not parsed when `--spec <slug>` is used.
+
+### Changed
+
+- Default generated docs now avoid links to optional `docs/examples/*` files unless those files are actually exported.
+- `flow` and AI review/spec-create blockers now guide approved-but-unreviewed technical plans toward `ai review-plan` instead of confusing re-approval steps.
+- The optional `spec-viewer` demo now includes minimal Quiver metadata, doctor-friendly docs, broader Quiver scripts, and server port fallback.
+- Root development scripts for `quiver:plan` and `quiver:graph` now use the local CLI entrypoint so local validation tests the branch code.
+
+### Fixed
+
+- `check-slice --local` no longer fatally requires Git metadata in no-Git folders.
+- Bare same-spec dependencies such as `slice-00-docs-foundation` resolve correctly during local dependency validation.
+- Scoped `plan` and `graph` complete in this repository without increasing Node heap size.
+
+## [0.12.0] - 2026-05-22
+
+### Added
+
+- AI-first lifecycle run state with status, resume, phase locks, approvals, prompt/draft artifacts, and dashboard-friendly exports.
+- Safe AI onboarding docs with dry-run diffs, snapshots, assumptions, risks, contradictions, and human-content preservation.
+- Agent profiles and prompt-only/provider adapter flows for planner, executor, reviewer, and doctor roles.
+- Strict approval gates for acceptance criteria, technical plans, production-readiness reviews, and spec generation.
+- Generated spec/slice artifacts with `EXECUTION_BRIEF.md`, `CLOSURE_BRIEF.md`, read paths, allowed write paths, validation hints, dependency data, execution plans, and PR body.
+- Controlled slice execution with scope validation, closure/evidence/status updates, and one-commit-per-slice support.
+- Worktree, PR, inspection, export, trace, migration dry-run, and lifecycle list surfaces for AI-first workflows.
+
+### Changed
+
+- Quiver now treats the guided AI lifecycle as durable state under `.quiver/`, not as chat-only memory.
+- Generated docs and root docs describe planner/executor flows, review gates, worktree-per-spec, and release safety more explicitly.
+
+### Fixed
+
+- Hardened validation errors, fixture coverage, redaction, parser behavior, and migration/readiness checks around the AI lifecycle.
+
+## [0.11.0] - 2026-05-22
+
 ### Added
 
 - Guided AI workflow commands: `prepare`, agent profiles, planner onboarding, approval persistence, `review-plan`, `spec create`, executor prompt generation, delegated execution waves, PR creation with `gh`, spec worktree start/status/close, and package safety.

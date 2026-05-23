@@ -238,7 +238,9 @@ test('ai plan spec phase rejects approved technical plans that were not reviewed
     assert.throws(
       () => execAi(repo.root, ['plan', '--phase', 'spec', '--dry-run']),
       (error) => error.stderr.includes('requires a reviewed and approved technical-plan input')
-        && error.stderr.includes('current review status: missing'),
+        && error.stderr.includes('current review status: missing')
+        && error.stderr.includes('Run `npx create-quiver ai review-plan --dry-run`')
+        && error.stderr.includes('then run `npx create-quiver ai review-plan`'),
     );
   } finally {
     repo.cleanup();

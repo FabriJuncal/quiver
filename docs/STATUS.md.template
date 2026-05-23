@@ -10,9 +10,13 @@ This page tracks progress, blockers, and the current slice. Stack and command de
 
 ## Slice Summary
 
+No implementation slices exist yet. Create specs and slices only after acceptance criteria are approved and the technical plan is reviewed and approved.
+
+When slices exist, track them here with:
+
 | Slice | Title | Status | Progress | Spec |
 |-------|-------|--------|----------|------|
-| 01 | [Name] | Done | 100% | [link](../specs/{{PROJECT_SLUG}}/slices/slice-01/slice.json) |
+| slice-00 | Documentary foundation | Pending | 0% | `specs/<spec>/slices/slice-00-.../slice.json` |
 
 ## Blockers
 

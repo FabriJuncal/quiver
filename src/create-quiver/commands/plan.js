@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const { relativePosixPath } = require('../lib/paths');
-const { buildGraph, readAllSlices, topoSort } = require('../lib/slice-graph');
+const { buildGraph, readAllSlices, readSlicesForSpec, topoSort } = require('../lib/slice-graph');
 
 const EXCLUDED_STATUSES = new Set(['completed', 'skipped', 'cancelled']);
 const HISTORY_EXCLUDED_STATUSES = new Set(['skipped', 'cancelled']);
@@ -116,12 +116,12 @@ function buildCriticalPath(graph, refs) {
 }
 
 function collectPlan(repoRoot, options = {}) {
-  const allSlices = readAllSlices(repoRoot);
+  const specSlug = options.specSlug ? String(options.specSlug).trim() : '';
+  const allSlices = specSlug ? readSlicesForSpec(repoRoot, specSlug) : readAllSlices(repoRoot);
   const graph = buildGraph(allSlices);
   const topo = topoSort(graph);
   const includeCompleted = options.includeCompleted === true;
   const excluded = includeCompleted ? HISTORY_EXCLUDED_STATUSES : EXCLUDED_STATUSES;
-  const specSlug = options.specSlug ? String(options.specSlug).trim() : '';
 
   const pendingRefs = new Set(
     graph.nodes

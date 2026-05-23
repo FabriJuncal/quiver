@@ -104,6 +104,61 @@ function normalizeDependencyRef(slice, dependency) {
   return `${slice.specSlug}/${dep}`;
 }
 
+function readSliceFile(rootDir, rootName, specSlug, sliceDirName) {
+  const sliceDir = path.join(rootDir, rootName, specSlug, 'slices', sliceDirName);
+  const slicePath = path.join(sliceDir, 'slice.json');
+  if (!fs.existsSync(slicePath)) {
+    return null;
+  }
+
+  const json = parseJsonWithComments(fs.readFileSync(slicePath, 'utf8'));
+  const sliceId = String(json.slice_id || sliceDirName).trim();
+  const ref = `${specSlug}/${sliceId}`;
+  return {
+    ref,
+    specFamily: rootName,
+    specSlug,
+    sliceId,
+    slicePath,
+    sliceDir,
+    files: resolveWriteScope(json),
+    expected_read_paths: sortFileList(json.expected_read_paths),
+    allowed_write_paths: sortFileList(json.allowed_write_paths),
+    validation_hints: sortFileList(json.validation_hints),
+    dependencies: Array.isArray(json.dependencies) ? json.dependencies.map((item) => String(item).trim()).filter(Boolean) : [],
+    depends_on: Array.isArray(json.depends_on) ? json.depends_on.map((item) => String(item).trim()).filter(Boolean) : [],
+    parallel_safe: typeof json.parallel_safe === 'string' ? json.parallel_safe : null,
+    parallel_safe_reason: typeof json.parallel_safe_reason === 'string' ? json.parallel_safe_reason : null,
+    status: typeof json.status === 'string' ? json.status : 'draft',
+    ticket: typeof json.ticket === 'string' ? json.ticket : '',
+    title: typeof json.title === 'string' ? json.title : sliceId,
+    json,
+  };
+}
+
+function readSpecSlices(rootDir, rootName, specSlug) {
+  const slicesDir = path.join(rootDir, rootName, specSlug, 'slices');
+  if (!fs.existsSync(slicesDir)) {
+    return [];
+  }
+
+  const slices = [];
+
+  for (const sliceEntry of fs.readdirSync(slicesDir, { withFileTypes: true })) {
+    if (!sliceEntry.isDirectory() || isPlaceholderSliceDir(sliceEntry.name)) {
+      continue;
+    }
+
+    const slice = readSliceFile(rootDir, rootName, specSlug, sliceEntry.name);
+    if (slice) {
+      slices.push(slice);
+    }
+  }
+
+  slices.sort((left, right) => compareSliceRefs(left.ref, right.ref));
+  return slices;
+}
+
 function readAllSlices(rootDir) {
   const roots = ['specs', 'specs-fix'];
   const slices = [];
@@ -119,47 +174,7 @@ function readAllSlices(rootDir) {
         continue;
       }
 
-      const specSlug = specEntry.name;
-      const slicesDir = path.join(rootPath, specSlug, 'slices');
-      if (!fs.existsSync(slicesDir)) {
-        continue;
-      }
-
-      for (const sliceEntry of fs.readdirSync(slicesDir, { withFileTypes: true })) {
-        if (!sliceEntry.isDirectory() || isPlaceholderSliceDir(sliceEntry.name)) {
-          continue;
-        }
-
-        const sliceDir = path.join(slicesDir, sliceEntry.name);
-        const slicePath = path.join(sliceDir, 'slice.json');
-        if (!fs.existsSync(slicePath)) {
-          continue;
-        }
-
-        const json = parseJsonWithComments(fs.readFileSync(slicePath, 'utf8'));
-        const sliceId = String(json.slice_id || sliceEntry.name).trim();
-        const ref = `${specSlug}/${sliceId}`;
-        slices.push({
-          ref,
-          specFamily: rootName,
-          specSlug,
-          sliceId,
-          slicePath,
-          sliceDir,
-          files: resolveWriteScope(json),
-          expected_read_paths: sortFileList(json.expected_read_paths),
-          allowed_write_paths: sortFileList(json.allowed_write_paths),
-          validation_hints: sortFileList(json.validation_hints),
-          dependencies: Array.isArray(json.dependencies) ? json.dependencies.map((item) => String(item).trim()).filter(Boolean) : [],
-          depends_on: Array.isArray(json.depends_on) ? json.depends_on.map((item) => String(item).trim()).filter(Boolean) : [],
-          parallel_safe: typeof json.parallel_safe === 'string' ? json.parallel_safe : null,
-          parallel_safe_reason: typeof json.parallel_safe_reason === 'string' ? json.parallel_safe_reason : null,
-          status: typeof json.status === 'string' ? json.status : 'draft',
-          ticket: typeof json.ticket === 'string' ? json.ticket : '',
-          title: typeof json.title === 'string' ? json.title : sliceId,
-          json,
-        });
-      }
+      slices.push(...readSpecSlices(rootDir, rootName, specEntry.name));
     }
   }
 
@@ -181,6 +196,75 @@ function declaredDependenciesForSlice(slice) {
   }
 
   return null;
+}
+
+function readSliceByRef(rootDir, ref) {
+  const value = String(ref || '').trim();
+  const slashIndex = value.indexOf('/');
+  if (slashIndex === -1) {
+    return null;
+  }
+
+  const specSlug = value.slice(0, slashIndex);
+  const sliceId = value.slice(slashIndex + 1);
+  if (!specSlug || !sliceId) {
+    return null;
+  }
+
+  for (const rootName of ['specs', 'specs-fix']) {
+    const direct = readSliceFile(rootDir, rootName, specSlug, sliceId);
+    if (direct) {
+      return direct;
+    }
+
+    for (const slice of readSpecSlices(rootDir, rootName, specSlug)) {
+      if (slice.ref === value) {
+        return slice;
+      }
+    }
+  }
+
+  return null;
+}
+
+function readSlicesForSpec(rootDir, specSlug) {
+  const targetSpec = String(specSlug || '').trim();
+  if (!targetSpec) {
+    return readAllSlices(rootDir);
+  }
+
+  const byRef = new Map();
+  const queue = [];
+
+  function addSlice(slice) {
+    if (!slice || byRef.has(slice.ref)) {
+      return;
+    }
+    byRef.set(slice.ref, slice);
+    queue.push(slice);
+  }
+
+  for (const rootName of ['specs', 'specs-fix']) {
+    for (const slice of readSpecSlices(rootDir, rootName, targetSpec)) {
+      addSlice(slice);
+    }
+  }
+
+  while (queue.length > 0) {
+    const slice = queue.shift();
+    for (const dep of declaredDependenciesForSlice(slice) || []) {
+      if (byRef.has(dep)) {
+        continue;
+      }
+
+      const dependencySlice = readSliceByRef(rootDir, dep);
+      if (dependencySlice) {
+        addSlice(dependencySlice);
+      }
+    }
+  }
+
+  return Array.from(byRef.values()).sort((left, right) => compareSliceRefs(left.ref, right.ref));
 }
 
 function inferDependencies(slices) {
@@ -466,7 +550,10 @@ module.exports = {
   detectFileConflicts,
   inferDependencies,
   isFoundationSliceId,
+  normalizeDeclaredDependencies,
+  normalizeDependencyRef,
   readAllSlices,
+  readSlicesForSpec,
   naturalNumberFromSliceId,
   resolveWriteScope,
   topoSort,

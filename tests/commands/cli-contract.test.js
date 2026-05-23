@@ -23,6 +23,81 @@ test('top-level -V prints the installed package version', () => {
   assert.equal(runCli(['-V']).trim(), packageJson.version);
 });
 
+test('local quiver alias points to the same CLI entrypoint', () => {
+  assert.equal(packageJson.bin.quiver, packageJson.bin['create-quiver']);
+  assert.equal(packageJson.bin.quiver, 'bin/create-quiver.js');
+});
+
+test('top-level help command prints grouped command descriptions', () => {
+  const output = runCli(['help']);
+
+  assert.match(output, /Commands:/);
+  assert.match(output, /Bootstrap and project context:/);
+  assert.match(output, /AI lifecycle:/);
+  assert.match(output, /Specs, slices, and validation:/);
+  assert.match(output, /init\s+Create the default AI-first Quiver contract/);
+  assert.match(output, /ai plan\s+Generate versioned planner drafts/);
+  assert.match(output, /check-slice\s+Validate slice structure/);
+  assert.match(output, /demo create spec-viewer\s+Create or preview the optional static Quiver Spec Viewer demo scaffold/);
+});
+
+test('help output documents important public commands', () => {
+  const output = runCli(['--help']);
+  const expectedCommands = [
+    'init',
+    'analyze',
+    'doctor',
+    'flow',
+    'prepare',
+    'migrate',
+    'plan',
+    'graph',
+    'next',
+    'ai run create',
+    'ai status',
+    'ai resume',
+    'ai onboard',
+    'ai prepare-context',
+    'ai agent set|list|show',
+    'ai plan',
+    'ai revise',
+    'ai review-plan',
+    'ai approve',
+    'ai approvals',
+    'ai prompt-slice',
+    'ai execute-slice',
+    'ai execute-plan',
+    'ai doctor',
+    'ai pr',
+    'ai inspect',
+    'ai export',
+    'ai specs list',
+    'ai slices list',
+    'ai trace report',
+    'spec create',
+    'spec start',
+    'spec status',
+    'spec close',
+    'start-slice',
+    'check-slice',
+    'check-pr',
+    'check-scope',
+    'cleanup-slice',
+    'refresh-active-slices',
+    'check-handoff',
+    'new-handoff',
+    'evidence run',
+    'demo create spec-viewer',
+    '--version / -V',
+    '--help / help',
+    'quiver',
+  ];
+
+  for (const command of expectedCommands) {
+    assert.match(output, new RegExp(`${command.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s+\\S`));
+  }
+});
+
 test('ai approve --version remains a draft-version option', () => {
   assert.throws(
     () => runCli(['ai', 'approve', '--phase', 'technical-plan', '--version']),

@@ -1,0 +1,82 @@
+{
+  "slice_id": "slice-06-plan-graph-scope-performance",
+  "ticket": "QUIVER-26-06",
+  "type": "fix",
+  "title": "Plan and graph scope performance",
+  "objective": "Prevent scoped plan and graph commands from running out of memory in repos with many historical specs.",
+  "description": "Harden plan/graph data loading so --spec <slug> only reads and retains the needed spec/slice graph, and add regression coverage for the OOM observed in v25 and v26 validation.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "plan-graph-scope-performance",
+    "branch_name": "feature/QUIVER-26-06-plan-graph-scope-performance"
+  },
+  "files": [
+    "src/create-quiver/commands/plan.js",
+    "src/create-quiver/commands/graph.js",
+    "src/create-quiver/lib/slice-graph.js",
+    "package.json",
+    "tests/**",
+    "specs/quiver-v26-0121-smoke-hardening/**"
+  ],
+  "expected_read_paths": [
+    "src/create-quiver/commands/plan.js",
+    "src/create-quiver/commands/graph.js",
+    "src/create-quiver/lib/slice-graph.js",
+    "package.json",
+    "tests/commands/plan.test.js",
+    "tests/commands/graph.test.js",
+    "specs/quiver-v25-ai-first-lifecycle-orchestrator/EVIDENCE_REPORT.md",
+    "specs/quiver-v26-0121-smoke-hardening/EVIDENCE_REPORT.md"
+  ],
+  "allowed_write_paths": [
+    "src/create-quiver/commands/plan.js",
+    "src/create-quiver/commands/graph.js",
+    "src/create-quiver/lib/slice-graph.js",
+    "package.json",
+    "tests/**",
+    "README.md",
+    "docs/COMMANDS.md.template",
+    "specs/quiver-v26-0121-smoke-hardening/**"
+  ],
+  "depends_on": [
+    "slice-04-local-validation-brief-contracts"
+  ],
+  "parallel_safe": "no",
+  "parallel_safe_reason": "This slice modifies shared graph/planning utilities used by multiple commands.",
+  "must": [
+    "Reproduce or cover the scoped plan/graph OOM with a regression fixture or command-level test.",
+    "Ensure --spec <slug> limits read/retained data to the target spec and necessary dependency references.",
+    "Keep unscoped plan/graph behavior compatible.",
+    "Ensure plan and graph still support --include-completed.",
+    "Record evidence for v26 scoped plan and graph commands."
+  ],
+  "not_included": [
+    "Changing slice dependency semantics beyond necessary scoped loading.",
+    "Removing historical spec support.",
+    "Adding a database or cache service."
+  ],
+  "acceptance": [
+    "npm run quiver:plan -- --spec quiver-v26-0121-smoke-hardening --include-completed completes without OOM.",
+    "npm run quiver:graph -- --spec quiver-v26-0121-smoke-hardening --include-completed completes without OOM.",
+    "A test or fixture proves scoped plan/graph do not load unrelated heavy spec artifacts unnecessarily.",
+    "Unscoped plan/graph tests continue to pass.",
+    "Dependency output remains correct for v26."
+  ],
+  "tests": [
+    "node --test tests/commands/plan.test.js tests/commands/graph.test.js tests/lib/slice-graph.test.js",
+    "npm run quiver:plan -- --spec quiver-v26-0121-smoke-hardening --include-completed",
+    "npm run quiver:graph -- --spec quiver-v26-0121-smoke-hardening --include-completed",
+    "git diff --check"
+  ],
+  "validation_hints": [
+    "Do not mask the issue by increasing Node heap size.",
+    "Prefer lazy/scoped discovery over post-filtering a full historical graph.",
+    "Use the current repo as a real regression case."
+  ],
+  "estimated_hours": 5,
+  "status": "completed",
+  "blocked_reason": null,
+  "actual_hours": 4,
+  "completed_at": "2026-05-23T00:00:00-0300"
+}

@@ -17,7 +17,12 @@ function writeJson(filePath, data) {
 function makeRepo(structure) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'quiver-graph-'));
   for (const [relativePath, data] of Object.entries(structure)) {
-    writeJson(path.join(root, relativePath), data);
+    if (typeof data === 'string') {
+      fs.mkdirSync(path.dirname(path.join(root, relativePath)), { recursive: true });
+      fs.writeFileSync(path.join(root, relativePath), data);
+    } else {
+      writeJson(path.join(root, relativePath), data);
+    }
   }
   return {
     root,
@@ -102,6 +107,21 @@ test('graph can include completed slices and filter by spec', () => {
     assert.deepEqual(specReport.levels.flat().map((item) => item.ref), ['spec-d/slice-01-done']);
     assert.ok(cliOutput.includes('spec-d/slice-01-done'));
     assert.ok(!cliOutput.includes('spec-a/slice-01-alpha'));
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('scoped graph does not parse unrelated historical slice artifacts', () => {
+  const repo = makeRepo({
+    'specs/spec-a/slices/slice-01-alpha/slice.json': slice('spec-a/slice-01-alpha', ['docs/a.md']),
+    'specs/huge-history/slices/slice-01-bad/slice.json': '{ this is not valid json',
+  });
+
+  try {
+    const report = collectGraph(repo.root, { specSlug: 'spec-a' });
+    assert.deepEqual(report.levels.flat().map((item) => item.ref), ['spec-a/slice-01-alpha']);
+    assert.throws(() => collectGraph(repo.root));
   } finally {
     repo.cleanup();
   }

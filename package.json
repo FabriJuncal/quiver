@@ -1,6 +1,6 @@
 {
   "name": "create-quiver",
-  "version": "0.12.0",
+  "version": "0.12.1",
   "private": false,
   "description": "Quiver CLI for scaffolding projects from the packaged template",
   "license": "MIT",
@@ -17,8 +17,8 @@
     "quiver:analyze": "npx create-quiver analyze",
     "quiver:flow": "npx create-quiver flow",
     "quiver:prepare": "npx create-quiver prepare",
-    "quiver:plan": "npx create-quiver plan",
-    "quiver:graph": "npx create-quiver graph",
+    "quiver:plan": "node bin/create-quiver.js plan",
+    "quiver:graph": "node bin/create-quiver.js graph",
     "quiver:next": "npx create-quiver next",
     "quiver:doctor": "npx create-quiver doctor",
     "quiver:evidence": "npx create-quiver evidence",

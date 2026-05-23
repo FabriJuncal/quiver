@@ -1,0 +1,75 @@
+{
+  "slice_id": "slice-02-init-doc-links-and-flow-guidance",
+  "ticket": "QUIVER-26-02",
+  "type": "fix",
+  "title": "Init doc links and flow guidance",
+  "objective": "Remove broken links from default generated docs and make flow guidance reflect the current project state after analyze and doctor.",
+  "description": "Fix default init template references, doctor link warnings, and guided flow next-step messaging for clean projects.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "init-doc-links-flow-guidance",
+    "branch_name": "feature/QUIVER-26-02-init-doc-links-flow-guidance"
+  },
+  "files": [
+    "src/create-quiver/lib/init-docs.js",
+    "src/create-quiver/lib/init-layout.js",
+    "src/create-quiver/lib/doctor.js",
+    "src/create-quiver/commands/flow.js",
+    "docs/**/*.template",
+    "tests/**",
+    "specs/quiver-v26-0121-smoke-hardening/**"
+  ],
+  "expected_read_paths": [
+    "docs/COMMANDS.md.template",
+    "docs/STATUS.md.template",
+    "src/create-quiver/lib/doctor.js",
+    "src/create-quiver/commands/flow.js",
+    "tests/commands/flow.test.js",
+    "tests/commands/doctor.test.js"
+  ],
+  "allowed_write_paths": [
+    "src/create-quiver/lib/init-docs.js",
+    "src/create-quiver/lib/init-layout.js",
+    "src/create-quiver/lib/doctor.js",
+    "src/create-quiver/commands/flow.js",
+    "docs/**/*.template",
+    "tests/**",
+    "specs/quiver-v26-0121-smoke-hardening/**"
+  ],
+  "depends_on": [
+    "slice-01-cli-help-version-contract"
+  ],
+  "parallel_safe": "maybe",
+  "parallel_safe_reason": "Can run beside slice-03 only if shared flow/help files do not overlap.",
+  "must": [
+    "Default init docs must not reference files absent from the default profile.",
+    "doctor must not warn about links Quiver itself generated incorrectly.",
+    "flow must show the correct next step after analyze creates PROJECT_MAP.md.",
+    "Errors and warnings must remain actionable."
+  ],
+  "not_included": [
+    "Changing AI approval persistence.",
+    "Changing demo scaffold behavior."
+  ],
+  "acceptance": [
+    "Default init followed by doctor has no generated-doc broken-link warnings.",
+    "After analyze, flow no longer reports PROJECT_MAP.md as missing.",
+    "Generated docs still point users to valid examples or omit optional references.",
+    "Focused tests cover default init docs and flow state."
+  ],
+  "tests": [
+    "node --test tests/commands/flow.test.js tests/commands/doctor.test.js tests/lib/init-layout.test.js",
+    "npm run smoke:create-quiver",
+    "git diff --check"
+  ],
+  "validation_hints": [
+    "Use a clean temp directory for init/analyze/doctor/flow.",
+    "Check both before and after analyze state."
+  ],
+  "estimated_hours": 4,
+  "status": "completed",
+  "blocked_reason": null,
+  "actual_hours": 2,
+  "completed_at": "2026-05-23T00:00:00-0300"
+}

@@ -1,0 +1,92 @@
+{
+  "slice_id": "slice-07-smoke-release-readiness",
+  "ticket": "QUIVER-26-07",
+  "type": "release",
+  "title": "Smoke and release readiness",
+  "objective": "Validate the hotfix end to end, prepare 0.12.1 package metadata, and record evidence before PR and publication.",
+  "description": "Run the full validation suite, candidate tarball smoke, documentation sync, version bump, evidence updates, and release-readiness checks.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "smoke-release-readiness",
+    "branch_name": "feature/QUIVER-26-07-smoke-release-readiness"
+  },
+  "files": [
+    "package.json",
+    "package-lock.json",
+    "CHANGELOG.md",
+    "README_FOR_AI.md",
+    "ROADMAP.md",
+    "scripts/ci/**",
+    "specs/quiver-v26-0121-smoke-hardening/**",
+    "tests/**"
+  ],
+  "expected_read_paths": [
+    "package.json",
+    "package-lock.json",
+    "CHANGELOG.md",
+    "scripts/release-quiver.sh",
+    "scripts/package-quiver.sh",
+    "scripts/ci/**",
+    "specs/quiver-v26-0121-smoke-hardening/EVIDENCE_REPORT.md"
+  ],
+  "allowed_write_paths": [
+    "package.json",
+    "package-lock.json",
+    "CHANGELOG.md",
+    "README_FOR_AI.md",
+    "ROADMAP.md",
+    "scripts/ci/**",
+    "specs/quiver-v26-0121-smoke-hardening/**",
+    "tests/**"
+  ],
+  "depends_on": [
+    "slice-01-cli-help-version-contract",
+    "slice-02-init-doc-links-and-flow-guidance",
+    "slice-03-ai-approval-review-consistency",
+    "slice-04-local-validation-brief-contracts",
+    "slice-05-demo-scaffold-readiness",
+    "slice-06-plan-graph-scope-performance"
+  ],
+  "parallel_safe": "no",
+  "parallel_safe_reason": "Final integration and release readiness must run after every implementation slice.",
+  "must": [
+    "Bump package metadata to 0.12.1 only after implementation slices are complete.",
+    "Run full local tests and smokes.",
+    "Run candidate tarball smoke from a clean temp directory.",
+    "Record evidence and remaining risks.",
+    "Prepare PR body and release notes without publishing npm."
+  ],
+  "not_included": [
+    "Publishing npm before PR merge.",
+    "Creating the real Quiver Spec Viewer project.",
+    "Skipping failed smoke results."
+  ],
+  "acceptance": [
+    "node --test tests/**/*.test.js passes.",
+    "npm run smoke:create-quiver passes.",
+    "npm run smoke:guided-workflow passes.",
+    "npm run smoke:doctor-fixtures passes.",
+    "git diff --check passes.",
+    "Candidate tarball smoke validates init, analyze, doctor, flow, AI dry-runs, demo, and validate.",
+    "CHANGELOG.md and evidence report document 0.12.1 readiness."
+  ],
+  "tests": [
+    "node --test tests/**/*.test.js",
+    "npm run smoke:create-quiver",
+    "npm run smoke:guided-workflow",
+    "npm run smoke:doctor-fixtures",
+    "npm pack",
+    "git diff --check"
+  ],
+  "validation_hints": [
+    "Use /private/tmp for tarball smoke.",
+    "Do not rely on the local checkout path for candidate validation.",
+    "After merge and publish, verify npm with npm view create-quiver version."
+  ],
+  "estimated_hours": 4,
+  "status": "completed",
+  "blocked_reason": null,
+  "actual_hours": 3,
+  "completed_at": "2026-05-23T00:00:00-0300"
+}

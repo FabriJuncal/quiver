@@ -42,6 +42,7 @@ test('doctor accepts the new default init layout before specs exist', () => {
     assert.match(output, /Specs: none yet/);
     assert.match(output, /No specs yet\. That is valid after the AI-first init flow\./);
     assert.match(output, /Create real specs and slices only after acceptance criteria are approved and the technical plan is reviewed and approved\./);
+    assert.doesNotMatch(output, /Warning: missing local docs link:/);
   } finally {
     cleanup();
   }

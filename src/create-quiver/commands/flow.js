@@ -409,7 +409,6 @@ function detectFlowState(projectRoot) {
       suggestedCommands: [
         'npx create-quiver ai review-plan --dry-run',
         'npx create-quiver ai review-plan',
-        'npx create-quiver ai approve --phase technical-plan --version <n>',
       ],
       facts,
     });

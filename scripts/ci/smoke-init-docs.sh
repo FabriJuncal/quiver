@@ -169,6 +169,16 @@ assert_contains() {
   fi
 }
 
+assert_not_contains() {
+  local path="$1"
+  local needle="$2"
+
+  if grep -Fq "$needle" "$path"; then
+    echo "Unexpected content in $path: $needle" >&2
+    exit 1
+  fi
+}
+
 assert_front_matter() {
   local path="$1"
 
@@ -203,9 +213,7 @@ assert_contains "docs/COMMANDS.md" "\`quiver:graph\`"
 assert_contains "docs/COMMANDS.md" "\`quiver:next\`"
 assert_contains "docs/COMMANDS.md" "Mermaid"
 assert_contains "docs/COMMANDS.md" "DOT"
-assert_contains "docs/COMMANDS.md" "docs/examples/plan.md"
-assert_contains "docs/COMMANDS.md" "docs/examples/graph.md"
-assert_contains "docs/COMMANDS.md" "docs/examples/next.md"
+assert_not_contains "docs/COMMANDS.md" "docs/examples/"
 assert_file "docs/examples/plan.md"
 assert_file "docs/examples/graph.md"
 assert_file "docs/examples/next.md"

@@ -40,6 +40,25 @@ function makeRepo(structure) {
   };
 }
 
+function makeProject(structure) {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'quiver-check-slice-local-'));
+
+  for (const [relativePath, data] of Object.entries(structure)) {
+    if (typeof data === 'string') {
+      writeText(path.join(root, relativePath), data);
+    } else {
+      writeJson(path.join(root, relativePath), data);
+    }
+  }
+
+  return {
+    root,
+    cleanup() {
+      fs.rmSync(root, { recursive: true, force: true });
+    },
+  };
+}
+
 function withRepoCwd(repoRoot, fn) {
   const previous = process.cwd();
   process.chdir(repoRoot);
@@ -143,6 +162,56 @@ test('check-slice --local validates structure without requiring remote or base b
     assert.match(output, /PASS: Gate execution/);
   } finally {
     repo.cleanup();
+  }
+});
+
+test('check-slice --local validates structure without requiring a Git repository', () => {
+  const project = makeProject({
+    'specs/spec-a/SPEC.md': '# spec-a\n',
+    'specs/spec-a/STATUS.md': '# status\n',
+    'specs/spec-a/EVIDENCE_REPORT.md': '# evidence\n',
+    'specs/spec-a/slices/slice-01-alpha/EXECUTION_BRIEF.md': '# Execute\n',
+    'specs/spec-a/slices/slice-01-alpha/CLOSURE_BRIEF.md': '# Close\n',
+    'specs/spec-a/slices/slice-01-alpha/slice.json': readySlice('spec-a/slice-01-alpha'),
+  });
+
+  try {
+    const output = withRepoCwd(project.root, () => captureConsole(() => checkSliceReadiness('specs/spec-a/slices/slice-01-alpha/slice.json', {
+      local: true,
+    })));
+
+    assert.match(output, /PASS: El spec local tiene SPEC\.md, STATUS\.md y EVIDENCE_REPORT\.md/);
+    assert.match(output, /PASS: El slice local tiene EXECUTION_BRIEF\.md y CLOSURE_BRIEF\.md/);
+    assert.match(output, /PASS: Gate execution/);
+  } finally {
+    project.cleanup();
+  }
+});
+
+test('check-slice --local accepts a completed slice-00 dependency declared as a bare slice id', () => {
+  const project = makeProject({
+    'specs/spec-a/SPEC.md': '# spec-a\n',
+    'specs/spec-a/STATUS.md': '# status\n',
+    'specs/spec-a/EVIDENCE_REPORT.md': '# evidence\n',
+    'specs/spec-a/slices/slice-00-docs-foundation/EXECUTION_BRIEF.md': '# Execute\n',
+    'specs/spec-a/slices/slice-00-docs-foundation/CLOSURE_BRIEF.md': '# Close\n',
+    'specs/spec-a/slices/slice-00-docs-foundation/slice.json': completedSlice('spec-a/slice-00-docs-foundation', {
+      files: ['specs/spec-a/SPEC.md'],
+    }),
+    'specs/spec-a/slices/slice-01-alpha/EXECUTION_BRIEF.md': '# Execute\n',
+    'specs/spec-a/slices/slice-01-alpha/CLOSURE_BRIEF.md': '# Close\n',
+    'specs/spec-a/slices/slice-01-alpha/slice.json': readySlice('spec-a/slice-01-alpha', {
+      depends_on: ['slice-00-docs-foundation'],
+      files: ['src/alpha.js'],
+    }),
+  });
+
+  try {
+    assert.doesNotThrow(() => withRepoCwd(project.root, () => checkSliceReadiness('specs/spec-a/slices/slice-01-alpha/slice.json', {
+      local: true,
+    })));
+  } finally {
+    project.cleanup();
   }
 });
 

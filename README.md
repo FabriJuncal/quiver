@@ -314,6 +314,9 @@ El paquete también publica el alias binario `quiver`, que apunta al mismo CLI. 
 | `npx create-quiver init --name "Proyecto"` | Inicializa Quiver en un proyecto nuevo o nunca inicializado. |
 | `npx create-quiver --name "Proyecto"` | Alias compatible del flujo de init recomendado. |
 | `npx create-quiver --version` | Muestra la versión instalada del CLI. |
+| `npx create-quiver --help` | Lista todos los comandos públicos con descripción, opciones principales y ejemplos recomendados. |
+| `npx create-quiver help` | Alias legible de la ayuda completa. |
+| `quiver --help` | Muestra la misma ayuda cuando Quiver ya está instalado localmente. |
 | `npx create-quiver flow` | Muestra el estado inicial del flujo guiado y el próximo comando seguro sin escribir estado ni llamar providers. |
 | `npx create-quiver ai agent set <role> --provider <provider> --model <label>` | Guarda perfiles reutilizables para planner, executor, reviewer o doctor sin guardar secretos. |
 | `npx create-quiver ai agent list` | Lista los perfiles configurados. |
@@ -359,7 +362,7 @@ El paquete también publica el alias binario `quiver`, que apunta al mismo CLI. 
 | `npx create-quiver check-scope <slice.json>` | Verifica que los archivos modificados estén dentro del alcance declarado. |
 | `npx create-quiver cleanup-slice <slice.json>` | Limpia worktree/branch local asociado a un slice. |
 | `npx create-quiver refresh-active-slices` | Regenera el tablero local `ACTIVE_SLICES.md`. |
-| `npx create-quiver check-handoff <handoff.md>` | Valida un handoff. |
+| `npx create-quiver check-handoff <handoff-or-brief.md>` | Valida un `HANDOFF.md` o un brief de slice (`EXECUTION_BRIEF.md` / `CLOSURE_BRIEF.md`). |
 | `npx create-quiver new-handoff <spec-slug>` | Crea un handoff para una transferencia excepcional. |
 | `npx create-quiver evidence run -- <comando>` | Ejecuta un comando y guarda evidencia local con exit code, duración y salida redactada/truncada. |
 | `npx create-quiver demo create spec-viewer --dry-run` | Previsualiza el demo opcional Quiver Spec Viewer sin escribir archivos. |
@@ -446,7 +449,7 @@ npx create-quiver demo create spec-viewer --dry-run
 npx create-quiver demo create spec-viewer --dir ./quiver-spec-viewer
 ```
 
-El demo genera una app estática pequeña, specs/slices de ejemplo y scripts de validación. No forma parte de `init`; se crea solo cuando lo pedís.
+El demo genera una app estática pequeña, metadata mínima de Quiver, specs/slices de ejemplo y scripts de validación. `doctor`, `plan`, `graph` y `next` funcionan dentro del demo, y el server intenta el siguiente puerto si el inicial está ocupado. No forma parte de `init`; se crea solo cuando lo pedís.
 
 Notas reales del estado actual:
 

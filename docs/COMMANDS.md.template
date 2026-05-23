@@ -12,6 +12,9 @@ This document is the canonical command reference for the orchestration roadmap.
 | `npx create-quiver init --name "<project>"` | Creates the default AI-first Quiver contract for a project | macOS, Linux, Windows | current | `npx create-quiver init --name "{{PROJECT_NAME}}"` |
 | `npx create-quiver --name "<project>"` | Compatibility alias for the recommended init flow | macOS, Linux, Windows | current | `npx create-quiver --name "{{PROJECT_NAME}}"` |
 | `npx create-quiver --version` | Prints the installed CLI version | macOS, Linux, Windows | current | `npx create-quiver --version` |
+| `npx create-quiver --help` | Lists all public commands with descriptions, key options, and recommended examples | macOS, Linux, Windows | current | `npx create-quiver --help` |
+| `npx create-quiver help` | Readable alias for the complete CLI help | macOS, Linux, Windows | current | `npx create-quiver help` |
+| `quiver --help` | Shows the same help when Quiver is installed locally as a project dependency | macOS, Linux, Windows | current | `quiver --help` |
 | `npx create-quiver flow` | Shows the read-only guided flow entrypoint and next safe command | macOS, Linux, Windows | v0.11 | `npx create-quiver flow` |
 | `quiver:analyze` | Writes raw analyzer data to `.quiver/scans/PROJECT_SCAN.json` and the visible project map to `docs/PROJECT_MAP.md` | macOS, Linux, Windows | v0.8 | `npm run quiver:analyze` |
 | `quiver:flow` | Runs the guided flow entrypoint through the generated npm script | macOS, Linux, Windows | v0.11 | `npm run quiver:flow` |
@@ -30,10 +33,10 @@ This document is the canonical command reference for the orchestration roadmap.
 | `npx create-quiver ai slices list` | Lists slices with state, progress, dependencies, and blockers | macOS, Linux, Windows | v0.13 | `npx create-quiver ai slices list --json` |
 | `npx create-quiver ai trace report` | Reports AI runs, execution waves, and migration guidance | macOS, Linux, Windows | v0.13 | `npx create-quiver ai trace report` |
 | `npx create-quiver demo create spec-viewer --dry-run` | Previews the optional Quiver Spec Viewer demo scaffold without writing files | macOS, Linux, Windows | v0.11 | `npx create-quiver demo create spec-viewer --dry-run` |
-| `npx create-quiver demo create spec-viewer --dir <target>` | Creates a small static demo app with example specs, slices, and validation scripts | macOS, Linux, Windows | v0.11 | `npx create-quiver demo create spec-viewer --dir ./quiver-spec-viewer` |
-| `quiver:plan` | Sequential orchestration planning command | macOS, Linux, Windows | v0.8 | [docs/examples/plan.md](./examples/plan.md) |
-| `quiver:graph` | Parallel-level orchestration tree command | macOS, Linux, Windows | v0.8 | [docs/examples/graph.md](./examples/graph.md) |
-| `quiver:next` | Ready-slice suggestion command | macOS, Linux, Windows | v0.8 | [docs/examples/next.md](./examples/next.md) |
+| `npx create-quiver demo create spec-viewer --dir <target>` | Creates a small static demo app with Quiver metadata, example specs, slices, validation scripts, and port fallback | macOS, Linux, Windows | v0.12.1 | `npx create-quiver demo create spec-viewer --dir ./quiver-spec-viewer` |
+| `quiver:plan` | Sequential orchestration planning command | macOS, Linux, Windows | v0.8 | `npm run quiver:plan -- --spec <spec>` |
+| `quiver:graph` | Parallel-level orchestration tree command | macOS, Linux, Windows | v0.8 | `npm run quiver:graph -- --format mermaid --spec <spec>` |
+| `quiver:next` | Ready-slice suggestion command | macOS, Linux, Windows | v0.8 | `npm run quiver:next -- --all-ready` |
 | `quiver:plan -- --include-completed` | Shows completed slices for audit/demo history | macOS, Linux, Windows | v0.11 | `npm run quiver:plan -- --include-completed --spec <spec>` |
 | `quiver:graph -- --include-completed` | Includes completed slices in the dependency graph history view | macOS, Linux, Windows | v0.11 | `npm run quiver:graph -- --include-completed --spec <spec>` |
 | `quiver:next -- --include-completed` | Keeps actionable next-slice output and appends completed history | macOS, Linux, Windows | v0.11 | `npm run quiver:next -- --include-completed --spec <spec>` |
@@ -59,6 +62,7 @@ This document is the canonical command reference for the orchestration roadmap.
 | `quiver:spec:status` | Shows spec worktree, branch, `slice-00`, and pending slices | macOS, Linux, Windows | v0.10 | `npm run quiver:spec:status -- specs/<spec>` |
 | `quiver:spec:close` | Closes a merged clean spec worktree and pulls the main checkout | macOS, Linux, Windows | v0.10 | `npm run quiver:spec:close -- specs/<spec> --dry-run` |
 | `quiver:check-slice -- --local <slice.json>` | Runs local structural slice validation without remote/base checks | macOS, Linux, Windows | v0.11 | `npm run quiver:check-slice -- --local specs/<spec>/slices/<slice>/slice.json` |
+| `quiver:check-handoff -- <handoff-or-brief.md>` | Validates legacy `HANDOFF.md` files and per-slice `EXECUTION_BRIEF.md` / `CLOSURE_BRIEF.md` files | macOS, Linux, Windows | v0.12.1 | `npm run quiver:check-handoff -- specs/<spec>/slices/<slice>/EXECUTION_BRIEF.md` |
 
 ## CLI Flags
 
@@ -108,6 +112,7 @@ This document is the canonical command reference for the orchestration roadmap.
 - `quiver:graph --format mermaid` is the PR-friendly Mermaid export; `--format dot` is for Graphviz/DOT consumers.
 - `quiver:next` prints the next ready slice and can auto-start it behind a confirmation prompt.
 - `check-slice` validates `depends_on` targets and requires `parallel_safe_reason` when `parallel_safe` is `never`.
+- `check-handoff` validates both exceptional `HANDOFF.md` transfers and current slice-local `EXECUTION_BRIEF.md` / `CLOSURE_BRIEF.md` contracts.
 - `quiver:ai:onboard`, `quiver:ai:plan`, `quiver:ai:revise`, `quiver:ai:review-plan`, and `quiver:ai:execute-slice` support `codex`, `claude`, and `gemini` through local CLIs. Use `--dry-run` first to inspect the invocation without requiring provider auth, or `--print-prompt` to print the exact planner/reviewer prompt without executing a provider.
 - `quiver:ai:prepare-context -- --dry-run` previews docs-only context drafts, diff snippets, assumptions, risks, contradictions, and omitted paths. Write mode stores snapshots under `.quiver/runs/<run-id>/snapshots/` and preserves human-authored content by appending or refreshing a Quiver-managed block.
 - `quiver:ai:agent` stores provider/model labels under `.quiver/agents/profiles.json`; credentials stay in the provider CLI or OS credential store.

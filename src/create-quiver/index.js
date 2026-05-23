@@ -131,6 +131,103 @@ function unsupportedCommandMessage(commandName) {
   ].join('\n');
 }
 
+const COMMAND_HELP_GROUPS = [
+  {
+    title: 'Bootstrap and project context',
+    commands: [
+      ['init', 'Create the default AI-first Quiver contract in the current project.'],
+      ['analyze', 'Scan the project and write docs/PROJECT_MAP.md plus .quiver scan data.'],
+      ['doctor', 'Validate the Quiver layout, generated docs, environment, and next safe steps.'],
+      ['flow', 'Show the read-only guided workflow stage, blockers, and next safe command.'],
+      ['prepare', 'Run setup diagnostics for providers, GitHub, SSH, and project readiness.'],
+      ['migrate', 'Upgrade an already initialized Quiver project to the current contract.'],
+    ],
+  },
+  {
+    title: 'Planning and slice navigation',
+    commands: [
+      ['plan', 'List slices in execution order with critical path and optional JSON output.'],
+      ['graph', 'Render slice dependencies as tree, Mermaid, DOT, or JSON-ready graph output.'],
+      ['next', 'Print the next ready slice or every ready slice with --all-ready.'],
+    ],
+  },
+  {
+    title: 'AI lifecycle',
+    commands: [
+      ['ai run create', 'Create a durable AI lifecycle run from a requirements file.'],
+      ['ai status', 'Show current AI lifecycle phase, approved versions, blockers, and next command.'],
+      ['ai resume', 'Resume guidance from the last valid lifecycle phase without chat memory.'],
+      ['ai onboard', 'Run or print the planner onboarding prompt with a token-aware context pack.'],
+      ['ai prepare-context', 'Preview or write docs-only AI context updates with assumptions and risks.'],
+      ['ai agent set|list|show', 'Manage planner, executor, reviewer, and doctor provider profiles without secrets.'],
+      ['ai plan', 'Generate versioned planner drafts for acceptance criteria, technical plan, or spec phase.'],
+      ['ai revise', 'Create a new planner draft from human feedback without approving it.'],
+      ['ai review-plan', 'Review the technical-plan draft for production readiness before approval.'],
+      ['ai approve', 'Approve a concrete saved draft version for the next planner phase.'],
+      ['ai approvals', 'Inspect approval status and saved planner drafts.'],
+      ['ai prompt-slice', 'Print a minimal executor prompt for one slice without provider execution.'],
+      ['ai execute-slice', 'Execute one slice with scope checks, redacted evidence, closure updates, and optional commit.'],
+      ['ai execute-plan', 'Print or execute dependency-safe waves in manual or delegated mode.'],
+      ['ai doctor', 'Run GitHub, SSH, and PR readiness preflight checks.'],
+      ['ai pr', 'Validate and optionally create a GitHub PR from the generated PR body.'],
+    ],
+  },
+  {
+    title: 'Inspection and export',
+    commands: [
+      ['ai inspect', 'Show dashboard-friendly lifecycle state for specs, slices, runs, agents, and blockers.'],
+      ['ai export', 'Export lifecycle state as JSON or Markdown for dashboards, PRs, or other agents.'],
+      ['ai specs list', 'List specs with status, progress, slice counts, and paths.'],
+      ['ai slices list', 'List slices with status, dependencies, blockers, and optional JSON.'],
+      ['ai trace report', 'Report AI runs, execution waves, and migration guidance.'],
+    ],
+  },
+  {
+    title: 'Specs, slices, and validation',
+    commands: [
+      ['spec create', 'Create the real spec tree from a reviewed approved technical plan.'],
+      ['spec start', 'Create or reuse the dedicated worktree and branch for one spec.'],
+      ['spec status', 'Show spec worktree, branch, slice-00 state, and pending slices.'],
+      ['spec close', 'Close a merged clean spec worktree and guide local sync.'],
+      ['start-slice', 'Start work on one slice and mark it active.'],
+      ['check-slice', 'Validate slice structure, dependencies, scope, and readiness.'],
+      ['check-pr', 'Validate PR readiness for a slice/spec workflow.'],
+      ['check-scope', 'Compare changed files against a slice scope.'],
+      ['cleanup-slice', 'Clean active-slice state after a slice finishes or is discarded.'],
+      ['refresh-active-slices', 'Refresh generated active-slice boards.'],
+      ['check-handoff', 'Validate a transfer handoff or per-slice execution/closure brief.'],
+      ['new-handoff', 'Create a handoff scaffold for exceptional context transfer.'],
+    ],
+  },
+  {
+    title: 'Evidence and demos',
+    commands: [
+      ['evidence run', 'Run a command and record exit code, duration, redacted output, and Markdown evidence.'],
+      ['demo create spec-viewer', 'Create or preview the optional static Quiver Spec Viewer demo scaffold.'],
+    ],
+  },
+  {
+    title: 'Shortcuts and compatibility',
+    commands: [
+      ['--name "<project>"', 'Compatibility alias for init when bootstrapping a project.'],
+      ['--version / -V', 'Print the installed create-quiver package version.'],
+      ['--help / help', 'Show this command reference.'],
+      ['quiver', 'Local installed alias to the same CLI; use npx create-quiver for bootstrap.'],
+    ],
+  },
+];
+
+function formatCommandHelpGroups() {
+  const lines = ['Commands:'];
+  for (const group of COMMAND_HELP_GROUPS) {
+    lines.push('', `${group.title}:`);
+    for (const [command, description] of group.commands) {
+      lines.push(`  ${command.padEnd(24)} ${description}`);
+    }
+  }
+  return lines.join('\n');
+}
+
 function printUsage() {
   console.log(`Usage:
   npx create-quiver [options]
@@ -158,7 +255,7 @@ function printUsage() {
   npx create-quiver start-slice [options] <slice.json>
   npx create-quiver check-slice [options] <slice.json>
   npx create-quiver check-pr <slice.json>
-  npx create-quiver check-handoff <handoff.md>
+  npx create-quiver check-handoff <handoff-or-brief.md>
   npx create-quiver new-handoff <spec-slug>
   npx create-quiver cleanup-slice [options] <slice.json>
   npx create-quiver check-scope [options] <slice.json>
@@ -169,6 +266,8 @@ function printUsage() {
   npx create-quiver spec close <spec-dir>
   npx create-quiver evidence run [options] -- <command>
   npx create-quiver demo create spec-viewer [options]
+
+${formatCommandHelpGroups()}
 
 Options:
   -n, --name <project-name>   Project name to generate
@@ -262,6 +361,7 @@ Examples:
   cd ./my-project && npx create-quiver check-slice specs/my-project/slices/slice-01/slice.json
   cd ./my-project && npx create-quiver check-pr specs/my-project/slices/slice-01/slice.json
   cd ./my-project && npx create-quiver check-handoff specs/my-project/HANDOFF.md
+  cd ./my-project && npx create-quiver check-handoff specs/my-project/slices/slice-01/EXECUTION_BRIEF.md
   cd ./my-project && npx create-quiver new-handoff my-spec
   cd ./my-project && npx create-quiver cleanup-slice specs/my-project/slices/slice-01/slice.json
   cd ./my-project && npx create-quiver check-scope specs/my-project/slices/slice-01/slice.json
@@ -2162,6 +2262,11 @@ function printInitNextSteps(targetDir, projectName) {
 }
 
 async function run(argv) {
+  if (argv.length === 1 && argv[0] === 'help') {
+    printUsage();
+    return;
+  }
+
   if (argv.length === 1 && (argv[0] === '-V' || argv[0] === '--version')) {
     console.log(CLI_VERSION);
     return;
@@ -2524,10 +2629,10 @@ async function run(argv) {
     const repoRoot = process.cwd();
     const handoffInput = args.targetDir;
     if (!handoffInput || handoffInput === '.') {
-      throw new Error(formatError('missing handoff path. Use: npx create-quiver check-handoff specs/<spec-slug>/HANDOFF.md'));
+      throw new Error(formatError('missing handoff or brief path. Use: npx create-quiver check-handoff specs/<spec-slug>/HANDOFF.md or specs/<spec-slug>/slices/<slice-id>/EXECUTION_BRIEF.md'));
     }
     const resolved = checkHandoff(handoffInput, repoRoot);
-    console.log(`PASS: Handoff validated at ${resolved.relativePath}`);
+    console.log(`PASS: ${resolved.label} validated at ${resolved.relativePath}`);
     return;
   }
 
