@@ -15,6 +15,9 @@
     "src/create-quiver/commands/demo.js",
     "src/create-quiver/lib/demo.js",
     "src/create-quiver/lib/doctor.js",
+    "scripts/ci/smoke-create-quiver.sh",
+    "scripts/ci/smoke-cross-platform.js",
+    "scripts/ci/smoke-init-docs.sh",
     "tests/**",
     "specs/quiver-v26-0121-smoke-hardening/**"
   ],
@@ -22,6 +25,9 @@
     "src/create-quiver/commands/demo.js",
     "src/create-quiver/lib/demo.js",
     "src/create-quiver/lib/doctor.js",
+    "scripts/ci/smoke-create-quiver.sh",
+    "scripts/ci/smoke-cross-platform.js",
+    "scripts/ci/smoke-init-docs.sh",
     "tests/commands/demo.test.js",
     "README.md"
   ],
@@ -29,6 +35,9 @@
     "src/create-quiver/commands/demo.js",
     "src/create-quiver/lib/demo.js",
     "src/create-quiver/lib/doctor.js",
+    "scripts/ci/smoke-create-quiver.sh",
+    "scripts/ci/smoke-cross-platform.js",
+    "scripts/ci/smoke-init-docs.sh",
     "tests/**",
     "README.md",
     "docs/COMMANDS.md.template",
@@ -68,7 +77,8 @@
     "Run validate, quiver plan/graph/next, doctor, and start with an occupied default port when practical."
   ],
   "estimated_hours": 5,
-  "status": "planned",
-  "blocked_reason": null
+  "status": "completed",
+  "blocked_reason": null,
+  "actual_hours": 4,
+  "completed_at": "2026-05-23T00:00:00-0300"
 }
-

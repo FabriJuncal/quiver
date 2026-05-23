@@ -1,6 +1,12 @@
 const fs = require('fs');
 const path = require('path');
-const { toProjectSlug } = require('./init-layout');
+const {
+  buildQuiverConfig,
+  buildQuiverInternalGitignore,
+  resolveInitPackageScripts,
+  toProjectSlug,
+} = require('./init-layout');
+const cliPackageJson = require('../../../package.json');
 
 const SPEC_VIEWER_DEMO = 'spec-viewer';
 const SPEC_VIEWER_PROJECT_NAME = 'Quiver Spec Viewer';
@@ -11,6 +17,14 @@ function createJson(data) {
 }
 
 function createSpecViewerFiles() {
+  const quiverScripts = {
+    ...resolveInitPackageScripts('default'),
+    'quiver:plan': 'npx create-quiver plan --spec quiver-spec-viewer',
+    'quiver:graph': 'npx create-quiver graph --spec quiver-spec-viewer',
+    'quiver:next': 'npx create-quiver next --spec quiver-spec-viewer',
+    'quiver:evidence': 'npx create-quiver evidence',
+  };
+
   return [
     {
       path: 'package.json',
@@ -22,12 +36,62 @@ function createSpecViewerFiles() {
         scripts: {
           start: 'node server.js',
           validate: 'node scripts/validate-demo.js',
-          'quiver:plan': 'npx create-quiver plan --spec quiver-spec-viewer',
-          'quiver:graph': 'npx create-quiver graph --spec quiver-spec-viewer',
-          'quiver:next': 'npx create-quiver next --spec quiver-spec-viewer',
-          'quiver:evidence': 'npx create-quiver evidence',
+          ...quiverScripts,
         },
       }),
+    },
+    {
+      path: '.quiver/state.json',
+      content: createJson({
+        quiver_version: cliPackageJson.version || '0.0.0',
+        project_name: SPEC_VIEWER_PROJECT_NAME,
+        initialized_version: cliPackageJson.version || '0.0.0',
+        migrated_version: null,
+        last_initialized_at: '2026-05-23T00:00:00.000Z',
+        last_migration_at: null,
+        last_analysis_at: null,
+        demo: SPEC_VIEWER_DEMO,
+      }),
+    },
+    {
+      path: '.quiver/config.json',
+      content: createJson(buildQuiverConfig()),
+    },
+    {
+      path: '.quiver/.gitignore',
+      content: buildQuiverInternalGitignore(),
+    },
+    {
+      path: 'AGENTS.md',
+      content: `# Agents
+
+Purpose
+
+This demo is a small Quiver project used to inspect specs and slices.
+
+## Reading Budget
+
+Start with README.md and the demo spec. Do not read generated or dependency folders.
+
+## Reading Order
+
+1. README.md
+2. docs/AI_ONBOARDING_PROMPT.md
+3. specs/quiver-spec-viewer/SPEC.md
+
+## Output Policy
+
+Keep reports short and cite touched files.
+
+## Slice Execution Rules
+
+Execute only the selected slice and keep changes inside its declared files.
+
+## Links
+
+- docs/AI_ONBOARDING_PROMPT.md
+- specs/quiver-spec-viewer/SPEC.md
+`,
     },
     {
       path: 'README.md',
@@ -42,7 +106,19 @@ npm run validate
 npm start
 \`\`\`
 
-Open http://127.0.0.1:4173 after starting the server.
+Open the URL printed by the server. It starts at http://127.0.0.1:4173 and automatically tries the next ports if that port is occupied.
+
+To request a specific starting port:
+
+\`\`\`bash
+PORT=4300 npm start
+\`\`\`
+
+On Windows PowerShell:
+
+\`\`\`powershell
+$env:PORT = "4300"; npm start
+\`\`\`
 
 ## Quiver workflow
 
@@ -54,20 +130,72 @@ Open http://127.0.0.1:4173 after starting the server.
 `,
     },
     {
+      path: 'docs/AI_CONTEXT.md',
+      content: `# Quiver Spec Viewer AI Context
+
+This demo is a small static Quiver project. It exists to exercise Quiver specs, slices, validation, and diagnostics with minimal product code.
+
+## Relevant paths
+
+- \`specs/quiver-spec-viewer/SPEC.md\`
+- \`specs/quiver-spec-viewer/slices/\`
+- \`src/\`
+`,
+    },
+    {
+      path: 'docs/AI_ONBOARDING_PROMPT.md',
+      content: `# AI Onboarding Prompt
+
+Read README.md, AGENTS.md, and specs/quiver-spec-viewer/SPEC.md.
+
+Do not modify product files unless a slice explicitly asks for it.
+`,
+    },
+    {
+      path: 'docs/COMMANDS.md',
+      content: `# Commands
+
+| Command | Purpose |
+|---|---|
+| \`npm run validate\` | Validate required demo files. |
+| \`npm start\` | Start the dependency-free static server. |
+| \`npm run quiver:doctor\` | Run Quiver diagnostics. |
+| \`npm run quiver:plan\` | Show demo slice execution order. |
+| \`npm run quiver:graph\` | Show the demo slice graph. |
+| \`npm run quiver:next\` | Suggest the next demo slice. |
+`,
+    },
+    {
+      path: 'docs/WORKFLOW.md',
+      content: `# Workflow
+
+1. Validate the demo with \`npm run validate\`.
+2. Inspect the Quiver workflow with \`npm run quiver:plan\`, \`npm run quiver:graph\`, and \`npm run quiver:next\`.
+3. Execute only one slice at a time.
+4. Keep \`slice-00-docs-foundation\` as the documentary baseline.
+`,
+    },
+    {
       path: 'server.js',
       content: `const fs = require('node:fs');
 const http = require('node:http');
 const path = require('node:path');
 
 const root = path.join(__dirname, 'src');
-const port = Number(process.env.PORT || 4173);
+const startingPort = Number.parseInt(process.env.PORT || '4173', 10);
+const maxPortAttempts = 10;
 const types = {
   '.css': 'text/css; charset=utf-8',
   '.html': 'text/html; charset=utf-8',
   '.js': 'text/javascript; charset=utf-8',
 };
 
-const server = http.createServer((request, response) => {
+if (!Number.isInteger(startingPort) || startingPort < 1 || startingPort > 65535) {
+  console.error('Invalid PORT value. Use a number between 1 and 65535.');
+  process.exit(1);
+}
+
+function handleRequest(request, response) {
   const requestedPath = request.url === '/' ? '/index.html' : request.url;
   const filePath = path.normalize(path.join(root, requestedPath));
 
@@ -87,11 +215,31 @@ const server = http.createServer((request, response) => {
     response.writeHead(200, { 'Content-Type': types[path.extname(filePath)] || 'text/plain; charset=utf-8' });
     response.end(content);
   });
-});
+}
 
-server.listen(port, '127.0.0.1', () => {
-  console.log(\`Quiver Spec Viewer running at http://127.0.0.1:\${port}\`);
-});
+function startServer(port, attempt = 0) {
+  const server = http.createServer(handleRequest);
+
+  server.on('error', (error) => {
+    if (error.code === 'EADDRINUSE' && attempt < maxPortAttempts) {
+      startServer(port + 1, attempt + 1);
+      return;
+    }
+
+    if (error.code === 'EADDRINUSE') {
+      console.error(\`Port \${port} is in use. Set PORT to a free port, for example: PORT=4300 npm start\`);
+    } else {
+      console.error(error.message);
+    }
+    process.exit(1);
+  });
+
+  server.listen(port, '127.0.0.1', () => {
+    console.log(\`Quiver Spec Viewer running at http://127.0.0.1:\${port}\`);
+  });
+}
+
+startServer(startingPort);
 `,
     },
     {
@@ -363,7 +511,16 @@ renderContent();
 const path = require('node:path');
 
 const required = [
+  '.quiver/config.json',
+  '.quiver/state.json',
+  '.quiver/.gitignore',
+  'AGENTS.md',
   'README.md',
+  'docs/AI_CONTEXT.md',
+  'docs/AI_ONBOARDING_PROMPT.md',
+  'docs/COMMANDS.md',
+  'docs/WORKFLOW.md',
+  'package.json',
   'server.js',
   'src/index.html',
   'src/styles.css',
@@ -378,6 +535,14 @@ const missing = required.filter((relativePath) => !fs.existsSync(path.join(__dir
 if (missing.length > 0) {
   console.error(\`Missing demo files: \${missing.join(', ')}\`);
   process.exit(1);
+}
+
+const packageJson = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'package.json'), 'utf8'));
+for (const scriptName of ['start', 'validate', 'quiver:doctor', 'quiver:plan', 'quiver:graph', 'quiver:next', 'quiver:evidence']) {
+  if (typeof packageJson.scripts?.[scriptName] !== 'string') {
+    console.error(\`Missing package script: \${scriptName}\`);
+    process.exit(1);
+  }
 }
 
 console.log('Quiver Spec Viewer demo validated');
@@ -477,7 +642,11 @@ This slice publishes the demo planning artifacts.
 
 Keep the Quiver Spec Viewer spec, status, evidence, and PR body available in the repo.
 
-## Checklist
+## Acceptance Criteria
+
+- Demo documentation artifacts exist.
+
+## Completion Checklist
 
 - [ ] Verify spec docs exist.
 - [ ] Run \`npm run validate\`.
@@ -535,7 +704,13 @@ The demo is intentionally static and dependency-free.
 
 Implement a small viewer for mocked Quiver specs and slices.
 
-## Checklist
+## Acceptance Criteria
+
+- Viewer shows title, spec list, and detail.
+- Viewer supports loading, empty, error, and content states.
+- Demo validates with npm run validate.
+
+## Completion Checklist
 
 - [ ] Keep the UI simple and readable.
 - [ ] Do not add heavy dependencies.

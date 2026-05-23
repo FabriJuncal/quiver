@@ -119,3 +119,24 @@ Each implementation slice must append:
 ### Risks
 
 - Normal remote/base validation remains unchanged; final release smoke still needs to cover `check-slice` in normal mode and `check-pr`.
+
+## slice-05 - Demo scaffold readiness
+
+### Completed
+
+- Generated demo scaffold now includes minimal Quiver initialization metadata and required docs so `doctor` can inspect it without a misleading not-initialized error.
+- Demo package scripts include the broader Quiver command set while keeping the app itself dependency-free.
+- Demo server now tries subsequent ports when the starting port is occupied and documents POSIX/PowerShell port overrides.
+- Demo execution briefs now match the current per-slice brief validation contract.
+- Updated stale smoke fixtures that expected removed `COMMANDS.md` links to optional `docs/examples/*` files.
+
+### Validation
+
+- `node --test tests/commands/demo.test.js tests/commands/doctor.test.js` passed: 14 tests.
+- `npm run smoke:create-quiver` passed.
+- `node scripts/ci/smoke-cross-platform.js` passed.
+- `bash scripts/ci/smoke-init-docs.sh` passed.
+
+### Risks
+
+- Port fallback was validated through generated server contract assertions because this sandbox blocks opening local sockets.

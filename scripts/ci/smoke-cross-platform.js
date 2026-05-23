@@ -72,6 +72,10 @@ function assertContains(text, needle, label) {
   assert(text.includes(needle), `${label} did not contain: ${needle}`);
 }
 
+function assertNotContains(text, needle, label) {
+  assert(!text.includes(needle), `${label} unexpectedly contained: ${needle}`);
+}
+
 function assertFrontMatter(filePath) {
   const text = fs.readFileSync(filePath, 'utf8');
   const lines = text.split(/\r?\n/);
@@ -319,9 +323,7 @@ function runSmoke() {
   assertContains(fs.readFileSync(path.join(newProject, 'docs', 'COMMANDS.md'), 'utf8'), '`quiver:ai:execute-slice`', 'COMMANDS.md');
   assertContains(fs.readFileSync(path.join(newProject, 'docs', 'COMMANDS.md'), 'utf8'), 'Mermaid', 'COMMANDS.md');
   assertContains(fs.readFileSync(path.join(newProject, 'docs', 'COMMANDS.md'), 'utf8'), 'DOT', 'COMMANDS.md');
-  assertContains(fs.readFileSync(path.join(newProject, 'docs', 'COMMANDS.md'), 'utf8'), 'docs/examples/plan.md', 'COMMANDS.md');
-  assertContains(fs.readFileSync(path.join(newProject, 'docs', 'COMMANDS.md'), 'utf8'), 'docs/examples/graph.md', 'COMMANDS.md');
-  assertContains(fs.readFileSync(path.join(newProject, 'docs', 'COMMANDS.md'), 'utf8'), 'docs/examples/next.md', 'COMMANDS.md');
+  assertNotContains(fs.readFileSync(path.join(newProject, 'docs', 'COMMANDS.md'), 'utf8'), 'docs/examples/', 'COMMANDS.md');
   assertContains(fs.readFileSync(path.join(newProject, 'docs', 'COMMANDS.md'), 'utf8'), 'src/create-quiver/lib/slice-graph.js', 'COMMANDS.md');
   assertContains(fs.readFileSync(path.join(newProject, 'docs', 'examples', 'graph.md'), 'utf8'), '```mermaid', 'graph example');
   assertContains(fs.readFileSync(path.join(newProject, 'docs', 'examples', 'graph.md'), 'utf8'), 'digraph QuiverGraph', 'graph example');
@@ -419,7 +421,7 @@ function runSmoke() {
   assert(readJson(path.join(newProject, '.quiver', 'state.json')).last_analysis_at, 'analysis metadata missing after analyze');
   assertThrows(
     () => runNodeCli(newProject, ['check-handoff', path.join('docs', 'HANDOFF.md')]),
-    'handoff must live at specs/<spec-slug>/HANDOFF.md',
+    'handoff or brief must live at specs/<spec-slug>/HANDOFF.md',
     'check-handoff placement failure',
   );
 
@@ -507,8 +509,7 @@ function runSmoke() {
   assertContains(fs.readFileSync(path.join(legacyProject, 'docs', 'COMMANDS.md'), 'utf8'), '`quiver:graph`', 'legacy COMMANDS.md');
   assertContains(fs.readFileSync(path.join(legacyProject, 'docs', 'COMMANDS.md'), 'utf8'), 'Mermaid', 'legacy COMMANDS.md');
   assertContains(fs.readFileSync(path.join(legacyProject, 'docs', 'COMMANDS.md'), 'utf8'), 'DOT', 'legacy COMMANDS.md');
-  assertContains(fs.readFileSync(path.join(legacyProject, 'docs', 'COMMANDS.md'), 'utf8'), 'docs/examples/plan.md', 'legacy COMMANDS.md');
-  assertContains(fs.readFileSync(path.join(legacyProject, 'docs', 'COMMANDS.md'), 'utf8'), 'docs/examples/graph.md', 'legacy COMMANDS.md');
+  assertNotContains(fs.readFileSync(path.join(legacyProject, 'docs', 'COMMANDS.md'), 'utf8'), 'docs/examples/', 'legacy COMMANDS.md');
   assertContains(fs.readFileSync(path.join(legacyProject, 'docs', 'COMMANDS.md'), 'utf8'), 'src/create-quiver/lib/slice-graph.js', 'legacy COMMANDS.md');
   assertFile(path.join(legacyProject, 'docs', 'examples', 'plan.md'));
   assertFile(path.join(legacyProject, 'docs', 'examples', 'graph.md'));
@@ -629,14 +630,13 @@ function runSmoke() {
   assertContains(fs.readFileSync(path.join(releaseProject, 'docs', 'COMMANDS.md'), 'utf8'), '`quiver:graph`', 'packaged COMMANDS.md');
   assertContains(fs.readFileSync(path.join(releaseProject, 'docs', 'COMMANDS.md'), 'utf8'), 'Mermaid', 'packaged COMMANDS.md');
   assertContains(fs.readFileSync(path.join(releaseProject, 'docs', 'COMMANDS.md'), 'utf8'), 'DOT', 'packaged COMMANDS.md');
-  assertContains(fs.readFileSync(path.join(releaseProject, 'docs', 'COMMANDS.md'), 'utf8'), 'docs/examples/plan.md', 'packaged COMMANDS.md');
-  assertContains(fs.readFileSync(path.join(releaseProject, 'docs', 'COMMANDS.md'), 'utf8'), 'docs/examples/graph.md', 'packaged COMMANDS.md');
+  assertNotContains(fs.readFileSync(path.join(releaseProject, 'docs', 'COMMANDS.md'), 'utf8'), 'docs/examples/', 'packaged COMMANDS.md');
   assertContains(fs.readFileSync(path.join(releaseProject, 'docs', 'COMMANDS.md'), 'utf8'), 'src/create-quiver/lib/slice-graph.js', 'packaged COMMANDS.md');
   assertContains(fs.readFileSync(path.join(releaseProject, 'docs', 'SUPPORT_MATRIX.md'), 'utf8'), 'Cross-Platform Authoring Rules', 'packaged SUPPORT_MATRIX.md');
   runNodeCli(releaseProject, ['check-handoff', path.join('specs', 'packaged-project', 'HANDOFF.md')]);
   assertThrows(
     () => runNodeCli(releaseProject, ['check-handoff', path.join('docs', 'HANDOFF.md')]),
-    'handoff must live at specs/<spec-slug>/HANDOFF.md',
+    'handoff or brief must live at specs/<spec-slug>/HANDOFF.md',
     'packaged check-handoff placement failure',
   );
 

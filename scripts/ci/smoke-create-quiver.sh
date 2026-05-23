@@ -41,6 +41,16 @@ assert_contains() {
   fi
 }
 
+assert_not_contains() {
+  local path="$1"
+  local needle="$2"
+
+  if grep -Fq "$needle" "$path"; then
+    echo "Unexpected content in $path: $needle" >&2
+    exit 1
+  fi
+}
+
 assert_front_matter() {
   local path="$1"
 
@@ -292,9 +302,7 @@ assert_contains "$new_target/docs/COMMANDS.md" "\`quiver:spec:create\`"
 assert_contains "$new_target/docs/COMMANDS.md" "\`quiver:spec:start\`"
 assert_contains "$new_target/docs/COMMANDS.md" "Mermaid"
 assert_contains "$new_target/docs/COMMANDS.md" "DOT"
-assert_contains "$new_target/docs/COMMANDS.md" "docs/examples/plan.md"
-assert_contains "$new_target/docs/COMMANDS.md" "docs/examples/graph.md"
-assert_contains "$new_target/docs/COMMANDS.md" "docs/examples/next.md"
+assert_not_contains "$new_target/docs/COMMANDS.md" "docs/examples/"
 assert_file "$new_target/docs/examples/plan.md"
 assert_file "$new_target/docs/examples/graph.md"
 assert_file "$new_target/docs/examples/next.md"
@@ -710,9 +718,7 @@ assert_file "$existing_target/docs/examples/graph.md"
 assert_contains "$existing_target/docs/COMMANDS.md" "| Command | Purpose | OS | Since | Example |"
 assert_contains "$existing_target/docs/COMMANDS.md" "\`quiver:graph\`"
 assert_contains "$existing_target/docs/COMMANDS.md" "\`quiver:next\`"
-assert_contains "$existing_target/docs/COMMANDS.md" "docs/examples/plan.md"
-assert_contains "$existing_target/docs/COMMANDS.md" "docs/examples/graph.md"
-assert_contains "$existing_target/docs/COMMANDS.md" "docs/examples/next.md"
+assert_not_contains "$existing_target/docs/COMMANDS.md" "docs/examples/"
 assert_file "$existing_target/docs/examples/next.md"
 assert_contains "$existing_target/docs/SUPPORT_MATRIX.md" "## Cross-Platform Authoring Rules"
 assert_contains "$existing_target/docs/COMMANDS.md" "src/create-quiver/lib/slice-graph.js"
@@ -730,7 +736,7 @@ assert_file "$space_target/docs/ai/STANDARD.md"
 assert_file "$space_target/docs/ai/DEEP.md"
 assert_file "$space_target/docs/ai/LESSONS.md"
 assert_contains "$space_target/docs/COMMANDS.md" "\`quiver:next\`"
-assert_contains "$space_target/docs/COMMANDS.md" "docs/examples/next.md"
+assert_not_contains "$space_target/docs/COMMANDS.md" "docs/examples/"
 assert_file "$space_target/docs/examples/next.md"
 assert_file "$space_target/docs/ai/PRINCIPLES.md"
 assert_file "$space_target/specs/space-project/HANDOFF.md"
@@ -740,8 +746,6 @@ assert_project_map_sections "$space_target/docs/PROJECT_MAP.md"
 assert_file "$space_target/docs/DECISIONS.md"
 assert_contains "$space_target/docs/COMMANDS.md" "\`quiver:plan\`"
 assert_contains "$space_target/docs/COMMANDS.md" "\`quiver:graph\`"
-assert_contains "$space_target/docs/COMMANDS.md" "docs/examples/plan.md"
-assert_contains "$space_target/docs/COMMANDS.md" "docs/examples/graph.md"
 assert_contains "$space_target/docs/COMMANDS.md" "src/create-quiver/lib/slice-graph.js"
 assert_contains "$space_target/docs/SUPPORT_MATRIX.md" "## Cross-Platform Authoring Rules"
 assert_contains "$space_target/specs/space-project/slices/slice-template/slice.json" "// \"parallel_safe_reason\": \"Explain why this slice cannot run in parallel.\""
@@ -830,9 +834,7 @@ assert_file "$legacy_target/docs/examples/graph.md"
 assert_contains "$legacy_target/docs/COMMANDS.md" "| Command | Purpose | OS | Since | Example |"
 assert_contains "$legacy_target/docs/COMMANDS.md" "\`quiver:graph\`"
 assert_contains "$legacy_target/docs/COMMANDS.md" "\`quiver:next\`"
-assert_contains "$legacy_target/docs/COMMANDS.md" "docs/examples/plan.md"
-assert_contains "$legacy_target/docs/COMMANDS.md" "docs/examples/graph.md"
-assert_contains "$legacy_target/docs/COMMANDS.md" "docs/examples/next.md"
+assert_not_contains "$legacy_target/docs/COMMANDS.md" "docs/examples/"
 assert_file "$legacy_target/docs/examples/next.md"
 assert_contains "$legacy_target/docs/COMMANDS.md" "src/create-quiver/lib/slice-graph.js"
 assert_contains "$legacy_target/docs/SUPPORT_MATRIX.md" "## Cross-Platform Authoring Rules"
@@ -912,9 +914,7 @@ assert_contains "$release_target/docs/COMMANDS.md" "| Command | Purpose | OS | S
 assert_contains "$release_target/docs/COMMANDS.md" "\`quiver:plan\`"
 assert_contains "$release_target/docs/COMMANDS.md" "\`quiver:graph\`"
 assert_contains "$release_target/docs/COMMANDS.md" "\`quiver:next\`"
-assert_contains "$release_target/docs/COMMANDS.md" "docs/examples/plan.md"
-assert_contains "$release_target/docs/COMMANDS.md" "docs/examples/graph.md"
-assert_contains "$release_target/docs/COMMANDS.md" "docs/examples/next.md"
+assert_not_contains "$release_target/docs/COMMANDS.md" "docs/examples/"
 assert_file "$release_target/docs/examples/next.md"
 assert_contains "$release_target/docs/COMMANDS.md" "src/create-quiver/lib/slice-graph.js"
 

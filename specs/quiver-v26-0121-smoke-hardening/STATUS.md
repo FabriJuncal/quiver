@@ -1,8 +1,8 @@
 # Status - Quiver v26 0.12.1 Smoke Hardening
 
-**Overall status:** Slices 00-04 complete; demo, scoped graph, and release readiness pending
+**Overall status:** Slices 00-05 complete; scoped graph and release readiness pending
 **Created:** 2026-05-23
-**Current slice:** slice-04 completed
+**Current slice:** slice-05 completed
 
 ## Summary
 
@@ -17,7 +17,7 @@ This hotfix spec tracks the first-use issues found while smoke testing `create-q
 | slice-02-init-doc-links-and-flow-guidance | Completed | Removed default generated doc links to absent files and added flow-after-analyze coverage. |
 | slice-03-ai-approval-review-consistency | Completed | Clarified review/spec-create blockers and removed confusing re-approval guidance before review. |
 | slice-04-local-validation-brief-contracts | Completed | Local validation no longer fatally requires Git, bare slice dependencies normalize, and brief validation supports execution/closure briefs. |
-| slice-05-demo-scaffold-readiness | Planned | Make the demo scaffold diagnosable and easier to run. |
+| slice-05-demo-scaffold-readiness | Completed | Demo scaffold now includes Quiver metadata, doctor/plan/graph/next coverage, brief validation, and server port fallback. |
 | slice-06-plan-graph-scope-performance | Planned | Fix scoped plan/graph OOM in repos with many historical specs. |
 | slice-07-smoke-release-readiness | Planned | Run full validation, tarball smoke, and release prep. |
 
@@ -28,4 +28,4 @@ This hotfix spec tracks the first-use issues found while smoke testing `create-q
 
 ## Next Step
 
-Execute `slice-05-demo-scaffold-readiness` next, then `slice-06-plan-graph-scope-performance` before final smoke and release prep.
+Execute `slice-06-plan-graph-scope-performance` next before final smoke and release prep.

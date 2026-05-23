@@ -449,7 +449,7 @@ npx create-quiver demo create spec-viewer --dry-run
 npx create-quiver demo create spec-viewer --dir ./quiver-spec-viewer
 ```
 
-El demo genera una app estática pequeña, specs/slices de ejemplo y scripts de validación. No forma parte de `init`; se crea solo cuando lo pedís.
+El demo genera una app estática pequeña, metadata mínima de Quiver, specs/slices de ejemplo y scripts de validación. `doctor`, `plan`, `graph` y `next` funcionan dentro del demo, y el server intenta el siguiente puerto si el inicial está ocupado. No forma parte de `init`; se crea solo cuando lo pedís.
 
 Notas reales del estado actual:
 
