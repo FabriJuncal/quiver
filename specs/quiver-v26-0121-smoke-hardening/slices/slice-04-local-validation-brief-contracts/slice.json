@@ -1,0 +1,76 @@
+{
+  "slice_id": "slice-04-local-validation-brief-contracts",
+  "ticket": "QUIVER-26-04",
+  "type": "fix",
+  "title": "Local validation and brief contracts",
+  "objective": "Make local slice validation and current per-slice brief validation work in new/local projects.",
+  "description": "Harden check-slice --local without Git/remote assumptions, resolve dependencies against completed slices, and support EXECUTION_BRIEF.md and CLOSURE_BRIEF.md validation while keeping HANDOFF.md compatible.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "local-validation-brief-contracts",
+    "branch_name": "feature/QUIVER-26-04-local-validation-brief-contracts"
+  },
+  "files": [
+    "src/create-quiver/lib/slice.js",
+    "src/create-quiver/lib/slice-graph.js",
+    "src/create-quiver/lib/handoff.js",
+    "src/create-quiver/index.js",
+    "tests/**",
+    "specs/quiver-v26-0121-smoke-hardening/**"
+  ],
+  "expected_read_paths": [
+    "src/create-quiver/lib/slice.js",
+    "src/create-quiver/lib/slice-graph.js",
+    "src/create-quiver/lib/handoff.js",
+    "tests/commands/check-slice*.test.js",
+    "tests/commands/check-handoff*.test.js"
+  ],
+  "allowed_write_paths": [
+    "src/create-quiver/lib/slice.js",
+    "src/create-quiver/lib/slice-graph.js",
+    "src/create-quiver/lib/handoff.js",
+    "src/create-quiver/index.js",
+    "tests/**",
+    "README.md",
+    "docs/COMMANDS.md.template",
+    "specs/quiver-v26-0121-smoke-hardening/**"
+  ],
+  "depends_on": [
+    "slice-02-init-doc-links-and-flow-guidance",
+    "slice-03-ai-approval-review-consistency"
+  ],
+  "parallel_safe": "maybe",
+  "parallel_safe_reason": "Can run beside demo work only if shared demo validation helpers are not touched.",
+  "must": [
+    "Allow check-slice --local structural validation without fatal git rev-parse failure.",
+    "Resolve dependencies against all known slices, including completed slices.",
+    "Support validation for EXECUTION_BRIEF.md and CLOSURE_BRIEF.md.",
+    "Keep existing HANDOFF.md validation compatible.",
+    "Add fixtures for no-git local project and completed slice-00 dependency."
+  ],
+  "not_included": [
+    "Changing normal non-local remote/base validation semantics.",
+    "Removing HANDOFF.md support."
+  ],
+  "acceptance": [
+    "check-slice --local works in a folder without .git or prints only non-fatal Git warnings.",
+    "slice-01 depending on completed slice-00-docs-foundation validates locally.",
+    "EXECUTION_BRIEF.md and CLOSURE_BRIEF.md can be validated with a supported command path.",
+    "HANDOFF.md validation remains supported.",
+    "Focused fixtures cover the reported smoke failures."
+  ],
+  "tests": [
+    "node --test tests/commands/check-slice*.test.js tests/commands/check-handoff*.test.js tests/lib/slice-graph.test.js",
+    "npm run smoke:guided-workflow",
+    "git diff --check"
+  ],
+  "validation_hints": [
+    "Use a temp fixture without .git.",
+    "Use the generated spec-viewer demo slice dependency as a regression fixture."
+  ],
+  "estimated_hours": 5,
+  "status": "planned",
+  "blocked_reason": null
+}
+

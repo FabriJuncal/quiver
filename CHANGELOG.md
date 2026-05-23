@@ -6,6 +6,33 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- Planned v26 `0.12.1` smoke hardening spec for CLI help/version output, generated doc links, AI approval/review guidance, local validation, slice brief validation, demo readiness, and release smoke coverage.
+
+## [0.12.0] - 2026-05-22
+
+### Added
+
+- AI-first lifecycle run state with status, resume, phase locks, approvals, prompt/draft artifacts, and dashboard-friendly exports.
+- Safe AI onboarding docs with dry-run diffs, snapshots, assumptions, risks, contradictions, and human-content preservation.
+- Agent profiles and prompt-only/provider adapter flows for planner, executor, reviewer, and doctor roles.
+- Strict approval gates for acceptance criteria, technical plans, production-readiness reviews, and spec generation.
+- Generated spec/slice artifacts with `EXECUTION_BRIEF.md`, `CLOSURE_BRIEF.md`, read paths, allowed write paths, validation hints, dependency data, execution plans, and PR body.
+- Controlled slice execution with scope validation, closure/evidence/status updates, and one-commit-per-slice support.
+- Worktree, PR, inspection, export, trace, migration dry-run, and lifecycle list surfaces for AI-first workflows.
+
+### Changed
+
+- Quiver now treats the guided AI lifecycle as durable state under `.quiver/`, not as chat-only memory.
+- Generated docs and root docs describe planner/executor flows, review gates, worktree-per-spec, and release safety more explicitly.
+
+### Fixed
+
+- Hardened validation errors, fixture coverage, redaction, parser behavior, and migration/readiness checks around the AI lifecycle.
+
+## [0.11.0] - 2026-05-22
+
+### Added
+
 - Guided AI workflow commands: `prepare`, agent profiles, planner onboarding, approval persistence, `review-plan`, `spec create`, executor prompt generation, delegated execution waves, PR creation with `gh`, spec worktree start/status/close, and package safety.
 - `quiver:prepare`, `quiver:flow`, `quiver:ai:agent`, `quiver:ai:review-plan`, `quiver:ai:prompt-slice`, `quiver:ai:execute-plan`, `quiver:spec:create`, `quiver:spec:start`, `quiver:spec:status`, and `quiver:spec:close` npm scripts for generated projects.
 - Guided workflow smoke coverage for flow status, profiles, onboarding, approvals, review-plan, spec create, executor prompts, delegated execution dry-runs, PR dry-run/create mocks, cleanup, and package safety.

@@ -1,0 +1,75 @@
+{
+  "slice_id": "slice-01-cli-help-version-contract",
+  "ticket": "QUIVER-26-01",
+  "type": "fix",
+  "title": "CLI help and version contract",
+  "objective": "Make top-level version and help output reliable, complete, and test-covered without breaking AI draft version approvals.",
+  "description": "Fix top-level --version handling, improve grouped help output, add help drift coverage, and preserve subcommand-specific --version semantics for AI approvals.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "cli-help-version-contract",
+    "branch_name": "feature/QUIVER-26-01-cli-help-version-contract"
+  },
+  "files": [
+    "bin/create-quiver.js",
+    "src/create-quiver/index.js",
+    "src/create-quiver/**",
+    "README.md",
+    "docs/COMMANDS.md.template",
+    "tests/**",
+    "specs/quiver-v26-0121-smoke-hardening/**"
+  ],
+  "expected_read_paths": [
+    "bin/create-quiver.js",
+    "src/create-quiver/index.js",
+    "package.json",
+    "tests/commands/**",
+    "README.md",
+    "docs/COMMANDS.md.template"
+  ],
+  "allowed_write_paths": [
+    "src/create-quiver/**",
+    "README.md",
+    "docs/COMMANDS.md.template",
+    "tests/**",
+    "specs/quiver-v26-0121-smoke-hardening/**"
+  ],
+  "depends_on": [
+    "slice-00-docs-foundation"
+  ],
+  "parallel_safe": "no",
+  "parallel_safe_reason": "This slice owns shared CLI routing and help output used by later slices.",
+  "must": [
+    "Support top-level --version and -V as package version output.",
+    "Preserve ai approve --version <n> draft-version behavior.",
+    "Support npx create-quiver --help, npx create-quiver help, and local quiver --help.",
+    "Group public commands with descriptions and examples.",
+    "Add tests that prevent important commands from missing help descriptions."
+  ],
+  "not_included": [
+    "Changing AI lifecycle state behavior.",
+    "Changing generated docs beyond command references.",
+    "Publishing npm."
+  ],
+  "acceptance": [
+    "Top-level version commands exit 0 and print the package version.",
+    "AI approval version commands still work with draft versions.",
+    "Help output lists public commands with descriptions grouped by purpose.",
+    "Tests fail if important public commands are missing from help.",
+    "Unknown command behavior remains clear and actionable."
+  ],
+  "tests": [
+    "node --test tests/commands/cli-contract.test.js",
+    "node --test tests/commands/ai-plan.test.js tests/lib/approvals.test.js",
+    "git diff --check"
+  ],
+  "validation_hints": [
+    "Exercise both top-level --version and ai approve --version <n>.",
+    "Validate local alias through package bin metadata or installed fixture when practical."
+  ],
+  "estimated_hours": 4,
+  "status": "planned",
+  "blocked_reason": null
+}
+

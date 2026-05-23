@@ -1,6 +1,6 @@
 # Status - Quiver v25 AI-First Lifecycle Orchestrator
 
-**Overall status:** Implementation complete; pending PR/release
+**Overall status:** Completed and published in `create-quiver@0.12.0`
 **Created:** 2026-05-22
 **Current slice:** slice-11 completed
 
@@ -27,9 +27,9 @@ The v25 implementation slices are complete. The CLI contract, run state, safe on
 
 ## Current Blockers
 
-- The release status docs need sync: `npm view create-quiver version` returned `0.12.0`, while `CHANGELOG.md` still keeps the latest shipped work under `Unreleased` and `ROADMAP.md` still says v24/v0.11 is pending package release.
-- `npm run quiver:plan -- --spec quiver-v25-ai-first-lifecycle-orchestrator --include-completed` previously failed with Node out-of-memory during validation. Keep this as a follow-up CLI hardening issue for large historical planning output.
+- None for v25.
+- Post-release smoke findings were promoted to `specs/quiver-v26-0121-smoke-hardening/`.
 
 ## Next Step
 
-Open the PR for the completed v25 package, then plan release documentation/version sync before publishing.
+Use v26 for the `0.12.1` smoke hardening hotfix before using the published package for the next real dogfooding project.

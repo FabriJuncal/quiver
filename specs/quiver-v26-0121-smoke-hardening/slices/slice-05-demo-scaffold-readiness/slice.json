@@ -1,0 +1,74 @@
+{
+  "slice_id": "slice-05-demo-scaffold-readiness",
+  "ticket": "QUIVER-26-05",
+  "type": "fix",
+  "title": "Demo scaffold readiness",
+  "objective": "Make the optional spec-viewer demo scaffold diagnosable, validatable, and easy to run when the default port is occupied.",
+  "description": "Align demo scaffold metadata with doctor behavior, improve server port handling or cross-platform instructions, and add demo smoke coverage.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "demo-scaffold-readiness",
+    "branch_name": "feature/QUIVER-26-05-demo-scaffold-readiness"
+  },
+  "files": [
+    "src/create-quiver/commands/demo.js",
+    "src/create-quiver/lib/demo.js",
+    "src/create-quiver/lib/doctor.js",
+    "tests/**",
+    "specs/quiver-v26-0121-smoke-hardening/**"
+  ],
+  "expected_read_paths": [
+    "src/create-quiver/commands/demo.js",
+    "src/create-quiver/lib/demo.js",
+    "src/create-quiver/lib/doctor.js",
+    "tests/commands/demo.test.js",
+    "README.md"
+  ],
+  "allowed_write_paths": [
+    "src/create-quiver/commands/demo.js",
+    "src/create-quiver/lib/demo.js",
+    "src/create-quiver/lib/doctor.js",
+    "tests/**",
+    "README.md",
+    "docs/COMMANDS.md.template",
+    "specs/quiver-v26-0121-smoke-hardening/**"
+  ],
+  "depends_on": [
+    "slice-02-init-doc-links-and-flow-guidance",
+    "slice-04-local-validation-brief-contracts"
+  ],
+  "parallel_safe": "maybe",
+  "parallel_safe_reason": "Can run beside slice-04 only if doctor/validation helpers do not overlap.",
+  "must": [
+    "Generated demo must be coherent with doctor or doctor must explain demo scaffold status clearly.",
+    "Demo validate command must remain dependency-light.",
+    "Port occupied failure must be actionable or fallback automatically.",
+    "README instructions must be cross-platform if environment variables are used."
+  ],
+  "not_included": [
+    "Turning the demo into a large app.",
+    "Adding backend/auth/database.",
+    "Using external assets."
+  ],
+  "acceptance": [
+    "demo create spec-viewer generates a demo that validates.",
+    "doctor inside the demo no longer gives a misleading not-initialized error.",
+    "npm start handles occupied default port or documents a clear cross-platform recovery path.",
+    "Demo Quiver scripts still work: plan, graph, next, evidence.",
+    "Tests or smoke cover demo generation and validation."
+  ],
+  "tests": [
+    "node --test tests/commands/demo.test.js tests/commands/doctor.test.js",
+    "npm run smoke:create-quiver",
+    "git diff --check"
+  ],
+  "validation_hints": [
+    "Generate the demo into a temp folder.",
+    "Run validate, quiver plan/graph/next, doctor, and start with an occupied default port when practical."
+  ],
+  "estimated_hours": 5,
+  "status": "planned",
+  "blocked_reason": null
+}
+

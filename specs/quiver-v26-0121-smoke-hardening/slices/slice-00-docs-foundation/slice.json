@@ -1,0 +1,73 @@
+{
+  "slice_id": "slice-00-docs-foundation",
+  "ticket": "QUIVER-26-00",
+  "type": "docs",
+  "title": "Docs foundation and source-of-truth sync",
+  "objective": "Create the v26 hotfix planning package and align source-of-truth docs with the actual v25 and 0.12.0 release state.",
+  "description": "Publish the v26 spec, status, evidence report, execution plan, PR body, slice definitions, execution briefs, closure briefs, and source-of-truth documentation sync before product implementation starts.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v26-0121-smoke-hardening-docs-foundation",
+    "branch_name": "feature/QUIVER-26-00-v26-0121-smoke-hardening-docs-foundation"
+  },
+  "files": [
+    "README_FOR_AI.md",
+    "ROADMAP.md",
+    "CHANGELOG.md",
+    "specs/quiver-v25-ai-first-lifecycle-orchestrator/STATUS.md",
+    "specs/quiver-v26-0121-smoke-hardening/**"
+  ],
+  "expected_read_paths": [
+    "README_FOR_AI.md",
+    "ROADMAP.md",
+    "CHANGELOG.md",
+    "specs/quiver-v25-ai-first-lifecycle-orchestrator/STATUS.md",
+    "specs/quiver-v25-ai-first-lifecycle-orchestrator/**"
+  ],
+  "allowed_write_paths": [
+    "README_FOR_AI.md",
+    "ROADMAP.md",
+    "CHANGELOG.md",
+    "specs/quiver-v25-ai-first-lifecycle-orchestrator/STATUS.md",
+    "specs/quiver-v26-0121-smoke-hardening/**"
+  ],
+  "depends_on": [],
+  "parallel_safe": "no",
+  "parallel_safe_reason": "slice-00 must land before every implementation slice.",
+  "must": [
+    "Create the v26 planning artifacts.",
+    "Create slice.json, EXECUTION_BRIEF.md, and CLOSURE_BRIEF.md for every slice.",
+    "Sync source-of-truth docs with v25 implemented/published and v26 planned.",
+    "Avoid product code changes."
+  ],
+  "not_included": [
+    "Implementing CLI behavior.",
+    "Changing package behavior.",
+    "Running AI providers.",
+    "Publishing a package.",
+    "Opening a PR."
+  ],
+  "acceptance": [
+    "Spec folder exists under specs/quiver-v26-0121-smoke-hardening.",
+    "Mandatory slice-00 exists.",
+    "Every slice has slice.json, EXECUTION_BRIEF.md, and CLOSURE_BRIEF.md.",
+    "Every slice.json parses successfully.",
+    "README_FOR_AI.md, ROADMAP.md, CHANGELOG.md, and v25 status do not contradict the published 0.12.0 state.",
+    "No product code is modified."
+  ],
+  "tests": [
+    "git diff --check",
+    "find specs/quiver-v26-0121-smoke-hardening -name \"slice.json\" -print -exec node -e \"JSON.parse(require('fs').readFileSync(process.argv[1], 'utf8'))\" {} \\;"
+  ],
+  "validation_hints": [
+    "Use git diff to confirm only docs/spec files changed.",
+    "Check source-of-truth docs for stale v25 planned/pending wording."
+  ],
+  "estimated_hours": 2,
+  "status": "completed",
+  "blocked_reason": null,
+  "actual_hours": 2,
+  "completed_at": "2026-05-23T00:00:00-0300"
+}
+
