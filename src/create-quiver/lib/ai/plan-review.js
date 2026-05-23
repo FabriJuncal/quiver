@@ -208,8 +208,11 @@ function assertPlanReviewed(projectRoot) {
   if (review.status !== 'reviewed') {
     const nextCommand = review.status === 'unapproved'
       ? 'npx create-quiver ai approve --phase technical-plan --version <n>'
-      : 'npx create-quiver ai review-plan';
-    throw new Error(formatError(`ai plan phase 'spec' requires a reviewed and approved technical-plan input; current review status: ${review.status}. Run \`${nextCommand}\`.`));
+      : 'npx create-quiver ai review-plan --dry-run';
+    const followUp = review.status === 'unapproved'
+      ? ''
+      : ' Preview the review first, then run `npx create-quiver ai review-plan` to persist it.';
+    throw new Error(formatError(`ai plan phase 'spec' requires a reviewed and approved technical-plan input; current review status: ${review.status}. Run \`${nextCommand}\`.${followUp}`));
   }
   return review;
 }

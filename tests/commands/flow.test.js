@@ -248,6 +248,28 @@ test('flow command reports spec create after reviewed and approved technical pla
   }
 });
 
+test('flow command does not suggest re-approving a technical plan that still needs review', () => {
+  const repo = makeRepo();
+
+  try {
+    seedInitializedContext(repo.root);
+    writeFile(repo.root, 'acceptance.md', '# Approved acceptance\n');
+    writeFile(repo.root, 'technical-plan.md', '# Technical plan\n');
+    savePlannerDraft(repo.root, 'acceptance', 'acceptance.md', '# Approved acceptance\n');
+    approvePlannerPhase(repo.root, 'acceptance', '', '', { version: 1 });
+    savePlannerDraft(repo.root, 'technical-plan', 'technical-plan.md', '# Technical plan draft\n');
+    approvePlannerPhase(repo.root, 'technical-plan', '', '', { version: 1 });
+
+    const output = runFlow(repo.root);
+
+    assert.match(output, /Stage: technical plan needs production review/);
+    assert.match(output, /Next safe command: npx create-quiver ai review-plan --dry-run/);
+    assert.doesNotMatch(output, /npx create-quiver ai approve --phase technical-plan --version <n>/);
+  } finally {
+    repo.cleanup();
+  }
+});
+
 test('flow command reports ready slice execution after approved plan and completed slice-00', () => {
   const repo = makeRepo();
 

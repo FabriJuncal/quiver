@@ -15,7 +15,7 @@ This hotfix spec tracks the first-use issues found while smoke testing `create-q
 | slice-00-docs-foundation | Completed | Planning artifacts and source-of-truth sync created. |
 | slice-01-cli-help-version-contract | Completed | Added grouped command help, `help` command alias, help drift tests, and alias/version coverage. |
 | slice-02-init-doc-links-and-flow-guidance | Completed | Removed default generated doc links to absent files and added flow-after-analyze coverage. |
-| slice-03-ai-approval-review-consistency | Planned | Align review/approval/spec-create state messages. |
+| slice-03-ai-approval-review-consistency | Completed | Clarified review/spec-create blockers and removed confusing re-approval guidance before review. |
 | slice-04-local-validation-brief-contracts | Planned | Harden local slice validation and brief contracts. |
 | slice-05-demo-scaffold-readiness | Planned | Make the demo scaffold diagnosable and easier to run. |
 | slice-06-plan-graph-scope-performance | Planned | Fix scoped plan/graph OOM in repos with many historical specs. |
