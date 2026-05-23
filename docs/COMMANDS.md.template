@@ -34,9 +34,9 @@ This document is the canonical command reference for the orchestration roadmap.
 | `npx create-quiver ai trace report` | Reports AI runs, execution waves, and migration guidance | macOS, Linux, Windows | v0.13 | `npx create-quiver ai trace report` |
 | `npx create-quiver demo create spec-viewer --dry-run` | Previews the optional Quiver Spec Viewer demo scaffold without writing files | macOS, Linux, Windows | v0.11 | `npx create-quiver demo create spec-viewer --dry-run` |
 | `npx create-quiver demo create spec-viewer --dir <target>` | Creates a small static demo app with example specs, slices, and validation scripts | macOS, Linux, Windows | v0.11 | `npx create-quiver demo create spec-viewer --dir ./quiver-spec-viewer` |
-| `quiver:plan` | Sequential orchestration planning command | macOS, Linux, Windows | v0.8 | [docs/examples/plan.md](./examples/plan.md) |
-| `quiver:graph` | Parallel-level orchestration tree command | macOS, Linux, Windows | v0.8 | [docs/examples/graph.md](./examples/graph.md) |
-| `quiver:next` | Ready-slice suggestion command | macOS, Linux, Windows | v0.8 | [docs/examples/next.md](./examples/next.md) |
+| `quiver:plan` | Sequential orchestration planning command | macOS, Linux, Windows | v0.8 | `npm run quiver:plan -- --spec <spec>` |
+| `quiver:graph` | Parallel-level orchestration tree command | macOS, Linux, Windows | v0.8 | `npm run quiver:graph -- --format mermaid --spec <spec>` |
+| `quiver:next` | Ready-slice suggestion command | macOS, Linux, Windows | v0.8 | `npm run quiver:next -- --all-ready` |
 | `quiver:plan -- --include-completed` | Shows completed slices for audit/demo history | macOS, Linux, Windows | v0.11 | `npm run quiver:plan -- --include-completed --spec <spec>` |
 | `quiver:graph -- --include-completed` | Includes completed slices in the dependency graph history view | macOS, Linux, Windows | v0.11 | `npm run quiver:graph -- --include-completed --spec <spec>` |
 | `quiver:next -- --include-completed` | Keeps actionable next-slice output and appends completed history | macOS, Linux, Windows | v0.11 | `npm run quiver:next -- --include-completed --spec <spec>` |

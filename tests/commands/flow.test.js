@@ -57,6 +57,13 @@ function runFlow(repoRoot, args = []) {
   });
 }
 
+function runCli(repoRoot, args = []) {
+  return execFileSync(process.execPath, [BIN_PATH, ...args], {
+    cwd: repoRoot,
+    encoding: 'utf8',
+  });
+}
+
 function seedInitializedContext(repoRoot) {
   writeFile(repoRoot, '.quiver/state.json', JSON.stringify({
     initialized_version: '0.10.0',
@@ -127,6 +134,22 @@ test('flow command reports agent profile guidance before planning when context d
 
     assert.match(output, /Stage: agent profiles need setup/);
     assert.match(output, /Next safe command: npx create-quiver ai agent set planner --provider codex --model "<model-label>"/);
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('flow command uses the generated project map after analyze', () => {
+  const repo = makeRepo();
+
+  try {
+    runCli(repo.root, ['init', '--name', 'Analyzed Flow Project', '--skip-install']);
+    runCli(repo.root, ['analyze']);
+
+    const output = runFlow(repo.root);
+
+    assert.doesNotMatch(output, /Missing docs\/PROJECT_MAP\.md\./);
+    assert.match(output, /Stage: agent profiles need setup/);
   } finally {
     repo.cleanup();
   }
