@@ -43,6 +43,17 @@
 - Ran full Node test suite: `node --test tests/**/*.test.js` passed with 321 tests.
 - Ran `git diff --check`.
 
+## Slice 03 Evidence - 2026-05-24
+
+- Updated approved-plan parsing to extract structured slice data from full JSON input or fenced JSON blocks inside Markdown.
+- Removed silent generic fallback behavior for plans without structured slices.
+- Added pre-write validation for duplicate slice IDs, missing dependencies, invalid slice IDs, and dependency cycles.
+- Kept `slice-00-spec-foundation` mandatory while preserving every approved implementation slice from the plan.
+- Added atomic failure coverage showing missing structured slices fail before creating a spec directory or temporary build remnant.
+- Added command-level coverage for `spec create --dry-run` failing safely when the reviewed approved plan lacks structured slices.
+- Ran `node --test tests/lib/ai-spec-generator.test.js tests/commands/spec-create.test.js tests/commands/ai-plan-spec-phase.test.js`.
+- Ran full Node test suite: `node --test tests/**/*.test.js` passed with 327 tests.
+
 ## Spec Package Validation - 2026-05-24
 
 - Every `slice.json` under `specs/quiver-v27-reliability-ai-workflow-hardening` parsed successfully with Node.
@@ -60,7 +71,7 @@
 | slice-00 | Completed: coverage matrix, command contracts, v24/v25/v26 audit, source-of-truth docs sync, and spec package validation. |
 | slice-01 | Completed: shared resolver, canonical status catalogs, classic/AI resolver adapters, scoped-read tests, completed-slice consistency tests, and targeted validation. |
 | slice-02 | Completed: schema v2 export contract, pure stdout/stderr CLI checks, completed-slice export coverage, source metadata, warnings, approvals, evidence, next steps, lifecycle, and aggregates. |
-| slice-03 | Pending |
+| slice-03 | Completed: structured approved-plan extraction, no generic fallback, duplicate/dependency/cycle validation, eight-slice preservation, safe failure cleanup, and command coverage. |
 | slice-04 | Pending |
 | slice-05 | Pending |
 | slice-06 | Pending |

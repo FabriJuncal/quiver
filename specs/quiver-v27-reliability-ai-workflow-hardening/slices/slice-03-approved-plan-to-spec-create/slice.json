@@ -71,7 +71,8 @@
     "Compare git status before/after failed spec create."
   ],
   "estimated_hours": 6,
-  "status": "planned",
+  "actual_hours": 6,
+  "status": "completed",
+  "completed_at": "2026-05-24T14:00:33Z",
   "blocked_reason": null
 }
-

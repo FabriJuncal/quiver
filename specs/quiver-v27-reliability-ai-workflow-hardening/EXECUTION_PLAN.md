@@ -20,7 +20,7 @@ This slice owns the state model used by later command fixes.
 Run after Wave 1. Prefer sequential order:
 
 1. `slice-02-json-export-contract-and-machine-output` - completed
-2. `slice-03-approved-plan-to-spec-create` - next
+2. `slice-03-approved-plan-to-spec-create` - completed
 
 These touch shared AI/spec data contracts and should not run in parallel unless file scopes are proven independent.
 
@@ -30,6 +30,8 @@ Can run in parallel after Wave 1 if write scopes do not overlap:
 
 1. `slice-04-ai-artifact-storage-redaction-and-token-compaction`
 2. `slice-05-worktree-lifecycle-locks-and-recovery`
+
+Status: next wave. These are parallel candidates if their write scopes remain independent during execution.
 
 ## Wave 4 - Validation Gates
 

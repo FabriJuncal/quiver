@@ -515,6 +515,16 @@ function normalizeSliceName(sliceId) {
   return String(sliceId || '').trim() || SPEC_FOUNDATION_SLICE_ID;
 }
 
+function dependencySliceId(dependency) {
+  const value = String(dependency || '').trim();
+  if (!value) {
+    return '';
+  }
+
+  const slashIndex = value.lastIndexOf('/');
+  return slashIndex === -1 ? value : value.slice(slashIndex + 1);
+}
+
 function buildDefaultImplementationSlice(manifest) {
   const title = `${manifest.title} implementation`;
   return {
@@ -562,17 +572,11 @@ function buildManifest(source, options = {}) {
   const assumptions = Array.isArray(specSource.assumptions) ? specSource.assumptions.slice() : Array.isArray(source.assumptions) ? source.assumptions.slice() : [];
 
   const rawSlices = Array.isArray(specSource.slices) ? specSource.slices : Array.isArray(source.slices) ? source.slices : [];
-  const normalizedSlices = rawSlices.length > 0
-    ? rawSlices.map((slice) => normalizeImplementationSlice(slice, ticket))
-    : [buildDefaultImplementationSlice({
-      acceptance,
-      assumptions,
-      objective,
-      scope,
-      sourcePath,
-      ticket,
-      title,
-    })];
+  if (rawSlices.length === 0) {
+    throw new Error('approved technical plan must include a structured slices array. Expected JSON: { "spec": { "slices": [{ "slice_id": "slice-01-name", "title": "...", "objective": "...", "files": [] }] } }');
+  }
+
+  const normalizedSlices = rawSlices.map((slice) => normalizeImplementationSlice(slice, ticket));
 
   const slices = [
     {
@@ -622,6 +626,8 @@ function buildManifest(source, options = {}) {
     ...normalizedSlices,
   ].map((slice, index) => normalizeSliceManifest(slice, index, ticket));
 
+  validateSliceManifestGraph(slices);
+
   const executionOrder = orderSlices(slices);
   const executionGroups = buildExecutionGroups(slices);
 
@@ -661,7 +667,7 @@ function normalizeSliceManifest(slice, index, fallbackTicket) {
   const description = String(slice.description || '').trim() || (index === 0
     ? 'Document the approved planning input.'
     : `Implement the approved plan captured in the spec source.`);
-  const dependsOn = Array.isArray(slice.depends_on) ? slice.depends_on.map((dep) => String(dep).trim()).filter(Boolean) : [];
+  const dependsOn = Array.isArray(slice.depends_on) ? slice.depends_on.map(dependencySliceId).filter(Boolean) : [];
   const explicitAllowedWritePaths = normalizeStringArray(slice.allowed_write_paths || slice.allowedWritePaths || slice.write_paths);
   const declaredFiles = normalizeStringArray(slice.files);
   const files = declaredFiles.length > 0 ? declaredFiles : explicitAllowedWritePaths;
@@ -709,6 +715,60 @@ function normalizeSliceManifest(slice, index, fallbackTicket) {
     started_at: slice.started_at ?? null,
     completed_at: slice.completed_at ?? null,
   };
+}
+
+function validateSliceManifestGraph(slices) {
+  const ids = new Set();
+
+  for (const slice of slices) {
+    if (!String(slice.slice_id || '').startsWith('slice-')) {
+      throw new Error(`invalid slice_id '${slice.slice_id}'. Slice ids must start with 'slice-'.`);
+    }
+
+    if (ids.has(slice.slice_id)) {
+      throw new Error(`duplicate slice_id '${slice.slice_id}' in approved technical plan.`);
+    }
+
+    ids.add(slice.slice_id);
+  }
+
+  for (const slice of slices) {
+    for (const dependency of slice.depends_on || []) {
+      if (!ids.has(dependency)) {
+        throw new Error(`slice '${slice.slice_id}' depends on missing slice '${dependency}'.`);
+      }
+    }
+  }
+
+  const visiting = new Set();
+  const visited = new Set();
+  const stack = [];
+
+  function visit(sliceId) {
+    if (visited.has(sliceId)) {
+      return;
+    }
+
+    if (visiting.has(sliceId)) {
+      const start = stack.indexOf(sliceId);
+      const cycle = start === -1 ? [sliceId] : [...stack.slice(start), sliceId];
+      throw new Error(`approved technical plan contains a dependency cycle: ${cycle.join(' -> ')}.`);
+    }
+
+    visiting.add(sliceId);
+    stack.push(sliceId);
+    const slice = slices.find((item) => item.slice_id === sliceId);
+    for (const dependency of slice?.depends_on || []) {
+      visit(dependency);
+    }
+    stack.pop();
+    visiting.delete(sliceId);
+    visited.add(sliceId);
+  }
+
+  for (const slice of slices) {
+    visit(slice.slice_id);
+  }
 }
 
 function orderSlices(slices) {

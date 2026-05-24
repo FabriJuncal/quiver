@@ -144,3 +144,28 @@ test('spec create blocks when the approved technical plan was not reviewed', () 
     repo.cleanup();
   }
 });
+
+test('spec create fails before writing when approved plan lacks structured slices', () => {
+  const repo = makeRepo({
+    'technical-plan.md': '# Technical plan\n\nThis plan has no structured slice block.\n',
+  });
+
+  try {
+    savePlannerDraft(repo.root, 'technical-plan', 'technical-plan.md', fs.readFileSync(path.join(repo.root, 'technical-plan.md'), 'utf8'));
+    savePlanReview(repo.root, {
+      contents: 'reviewed\n',
+      inputPath: '.quiver/approvals/technical-plan/drafts/001.md',
+      inputKind: 'draft',
+      inputVersion: 1,
+    });
+    execCli(repo.root, ['ai', 'approve', '--phase', 'technical-plan', '--version', '1']);
+
+    assert.throws(
+      () => execCli(repo.root, ['spec', 'create', '--dry-run']),
+      (error) => error.stderr.includes('approved technical plan must include a structured slices array'),
+    );
+    assert.equal(fs.existsSync(path.join(repo.root, 'specs')), false);
+  } finally {
+    repo.cleanup();
+  }
+});

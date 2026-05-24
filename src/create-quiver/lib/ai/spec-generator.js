@@ -65,18 +65,71 @@ function parseApprovedManifest(sourceText, options = {}) {
   const acceptance = extractSectionBullets(normalizedText, ['Acceptance Criteria', 'Criterios de aceptacion', 'Criterios de aceptación']);
   const risks = extractSectionBullets(normalizedText, ['Risks', 'Riesgos']);
   const assumptions = extractSectionBullets(normalizedText, ['Assumptions', 'Suposiciones', 'Supuestos']);
+  const structuredBlock = extractStructuredJsonBlock(normalizedText);
+  const markdownSource = {
+    title: titleMatch ? titleMatch[1].trim() : options.fallbackTitle || '',
+    objective: objective || '',
+    scope,
+    acceptance,
+    risks,
+    assumptions,
+  };
+
+  if (structuredBlock) {
+    if (structuredBlock.spec && typeof structuredBlock.spec === 'object') {
+      return {
+        sourceText: normalizedText,
+        source: {
+          ...structuredBlock,
+          spec: {
+            ...markdownSource,
+            ...structuredBlock.spec,
+          },
+        },
+      };
+    }
+
+    return {
+      sourceText: normalizedText,
+      source: {
+        ...markdownSource,
+        ...structuredBlock,
+      },
+    };
+  }
 
   return {
     sourceText: normalizedText,
-    source: {
-      title: titleMatch ? titleMatch[1].trim() : options.fallbackTitle || '',
-      objective: objective || '',
-      scope,
-      acceptance,
-      risks,
-      assumptions,
-    },
+    source: markdownSource,
   };
+}
+
+function hasStructuredSlices(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return false;
+  }
+
+  return Array.isArray(value.slices) || Array.isArray(value.spec?.slices);
+}
+
+function extractStructuredJsonBlock(text) {
+  const fencePattern = /```(?:json|quiver|quiver-spec)?\s*\n([\s\S]*?)```/gi;
+  let match = fencePattern.exec(text);
+
+  while (match) {
+    const candidate = String(match[1] || '').trim();
+    try {
+      const parsed = parseJsonWithComments(candidate);
+      if (hasStructuredSlices(parsed)) {
+        return parsed;
+      }
+    } catch {
+      // Continue scanning other fenced blocks.
+    }
+    match = fencePattern.exec(text);
+  }
+
+  return null;
 }
 
 function extractSectionText(text, headings) {
@@ -206,11 +259,17 @@ function buildSpecGenerationManifest({ inputText, inputPath, repoRoot, specSlug 
     fallbackTitle: specSlug ? specSlug.replace(/-/g, ' ') : path.basename(inputPath || 'generated-spec.md', path.extname(inputPath || '.md')),
   });
 
-  const manifest = buildManifest({
-    ...source,
-    sourcePath: path.relative(repoRoot, path.resolve(repoRoot, inputPath)).split(path.sep).join('/'),
-    sourceText,
-  }, { specSlug });
+  let manifest;
+  try {
+    manifest = buildManifest({
+      ...source,
+      sourcePath: path.relative(repoRoot, path.resolve(repoRoot, inputPath)).split(path.sep).join('/'),
+      sourceText,
+    }, { specSlug });
+  } catch (error) {
+    const message = String(error.message || error);
+    throw new Error(message.startsWith('create-quiver:') ? message : formatError(message));
+  }
 
   if (!manifest.slug) {
     throw new Error(formatError('unable to derive a spec slug from the approved input'));
