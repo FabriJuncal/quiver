@@ -148,7 +148,7 @@ The full coverage matrix lives in `COVERAGE_MATRIX.md`. Summary:
 | slice-01 | Core state resolver and canonical statuses | completed | slice-00 |
 | slice-02 | JSON export contract and machine output | completed | slice-01 |
 | slice-03 | Approved plan to spec create | completed | slice-01, slice-02 |
-| slice-04 | AI artifact storage, redaction, and token compaction | planned | slice-01 |
+| slice-04 | AI artifact storage, redaction, and token compaction | completed | slice-01 |
 | slice-05 | Worktree lifecycle, locks, and recovery | planned | slice-01 |
 | slice-06 | Validation gates and scope safety | planned | slice-01, slice-05 |
 | slice-07 | Context analysis and doctor flow | planned | slice-01, slice-06 |

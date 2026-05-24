@@ -3,8 +3,8 @@
 ## Overall Status
 
 - Phase: active
-- Progress: 40%
-- Current recommended slice: `slice-04-ai-artifact-storage-redaction-and-token-compaction` and `slice-05-worktree-lifecycle-locks-and-recovery`
+- Progress: 50%
+- Current recommended slice: `slice-05-worktree-lifecycle-locks-and-recovery`
 - Source evidence: Pixel Quiver final dogfooding traceability (`QP-001` to `QP-019`, `QIS-001` to `QIS-022`)
 
 ## Slices
@@ -15,7 +15,7 @@
 | slice-01 | Core state resolver and canonical statuses | completed | 100% | slice-00 |
 | slice-02 | JSON export contract and machine output | completed | 100% | slice-01 |
 | slice-03 | Approved plan to spec create | completed | 100% | slice-01, slice-02 |
-| slice-04 | AI artifact storage, redaction, and token compaction | planned | 0% | slice-01 |
+| slice-04 | AI artifact storage, redaction, and token compaction | completed | 100% | slice-01 |
 | slice-05 | Worktree lifecycle, locks, and recovery | planned | 0% | slice-01 |
 | slice-06 | Validation gates and scope safety | planned | 0% | slice-01, slice-05 |
 | slice-07 | Context analysis and doctor flow | planned | 0% | slice-01, slice-06 |
@@ -24,7 +24,7 @@
 
 ## Blockers
 
-- No blockers after `slice-03`.
+- No blockers after `slice-04`.
 
 ## Known Production Concerns
 
@@ -34,4 +34,4 @@
 
 ## Next Step
 
-Execute `slice-04-ai-artifact-storage-redaction-and-token-compaction` and `slice-05-worktree-lifecycle-locks-and-recovery` next. They are the first candidates for parallel work, but only if write scopes stay separated.
+Execute `slice-05-worktree-lifecycle-locks-and-recovery` next, using the slice-05 audit notes from the delegated sub-agent as implementation input.

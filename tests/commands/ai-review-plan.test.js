@@ -120,7 +120,7 @@ test('ai review-plan persists review state and becomes valid after approving the
           promptTransport: { mode: 'stdin' },
           exitCode: 0,
           stdout: 'review output\n',
-          stderr: '',
+          stderr: 'authorization: bearer secret-value\n',
           error: null,
           preflight: { ok: true },
         };
@@ -130,6 +130,7 @@ test('ai review-plan persists review state and becomes valid after approving the
     const reviewPath = path.join(repo.root, '.quiver', 'approvals', 'plan-review', 'review.md');
     const metaPath = path.join(repo.root, '.quiver', 'approvals', 'plan-review', 'meta.json');
     const meta = JSON.parse(fs.readFileSync(metaPath, 'utf8'));
+    const raw = JSON.parse(fs.readFileSync(path.join(repo.root, meta.raw_artifact_path), 'utf8'));
 
     assert.equal(result.inputKind, 'draft');
     assert.equal(result.inputVersion, 1);
@@ -137,6 +138,9 @@ test('ai review-plan persists review state and becomes valid after approving the
     assert.equal(meta.source_file, '.quiver/approvals/technical-plan/drafts/001.md');
     assert.equal(meta.source_kind, 'draft');
     assert.equal(meta.source_version, 1);
+    assert.ok(meta.raw_artifact_path.startsWith('.quiver/runs/'));
+    assert.equal(raw.stderr.includes('secret-value'), false);
+    assert.ok(raw.stderr.includes('authorization: bearer [REDACTED]'));
     assert.equal(readPlanReview(repo.root).status, 'unapproved');
 
     const approveOutput = execAi(repo.root, ['approve', '--phase', 'technical-plan', '--version', '1']);

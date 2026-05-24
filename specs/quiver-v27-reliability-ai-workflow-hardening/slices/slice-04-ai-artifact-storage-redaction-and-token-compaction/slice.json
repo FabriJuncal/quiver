@@ -14,7 +14,9 @@
   "files": [
     "src/create-quiver/lib/ai/**",
     "src/create-quiver/lib/approvals.js",
+    "src/create-quiver/lib/package-safety.js",
     "tests/lib/ai-*.test.js",
+    "tests/lib/package-safety.test.js",
     "tests/commands/ai-*.test.js",
     "specs/quiver-v27-reliability-ai-workflow-hardening/**"
   ],
@@ -29,7 +31,9 @@
   "allowed_write_paths": [
     "src/create-quiver/lib/ai/**",
     "src/create-quiver/lib/approvals.js",
+    "src/create-quiver/lib/package-safety.js",
     "tests/lib/ai-*.test.js",
+    "tests/lib/package-safety.test.js",
     "tests/commands/ai-*.test.js",
     "specs/quiver-v27-reliability-ai-workflow-hardening/**"
   ],
@@ -67,7 +71,7 @@
     "Assert raw logs do not leak obvious token/env patterns."
   ],
   "estimated_hours": 5,
-  "status": "planned",
+  "status": "completed",
+  "completed_at": "2026-05-24",
   "blocked_reason": null
 }
-

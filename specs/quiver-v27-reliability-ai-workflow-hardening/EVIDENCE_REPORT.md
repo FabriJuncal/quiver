@@ -54,6 +54,23 @@
 - Ran `node --test tests/lib/ai-spec-generator.test.js tests/commands/spec-create.test.js tests/commands/ai-plan-spec-phase.test.js`.
 - Ran full Node test suite: `node --test tests/**/*.test.js` passed with 327 tests.
 
+## Slice 04 Evidence - 2026-05-24
+
+- Added `src/create-quiver/lib/ai/artifacts.js` to centralize clean AI output extraction, raw provider artifact persistence, local path redaction, prompt-size checks, and revise-input compaction.
+- Updated `ai plan`, `ai revise`, and `ai review-plan` persistence so saved drafts/reviews use clean provider output while raw stdout/stderr are stored separately under `.quiver/runs/<run-id>/raw/*.json`.
+- Added prompt echo stripping and provider-log edge cleanup so draft artifacts do not include provider logs or prompt echoes when useful stdout is available.
+- Added raw artifact metadata to planner approval and plan-review metadata, including `raw_artifact_path`, `output_source`, and revise `input_compaction`.
+- Preserved explicit approved draft versions while carrying raw artifact metadata from the selected draft into approved metadata.
+- Added revise-input compaction for oversized feedback, preserving decisions, risks, files, acceptance criteria, validation, blockers, dependencies, assumptions, rollback, and evidence lines.
+- Added prompt-size rejection before provider execution with an actionable `AI_PROMPT_TOO_LARGE` error.
+- Added package-safety coverage for raw AI artifacts under `.quiver/runs/*/raw/`.
+- Ran `node --test tests/commands/ai-plan.test.js tests/commands/ai-review-plan.test.js tests/lib/ai-providers.test.js tests/lib/package-safety.test.js`.
+- Ran `node --test tests/lib/ai-*.test.js tests/commands/ai-plan.test.js tests/commands/ai-review-plan.test.js`.
+- Ran full Node test suite: `node --test tests/**/*.test.js` passed with 330 tests.
+- Ran `node bin/create-quiver.js plan --spec quiver-v27-reliability-ai-workflow-hardening --include-completed`.
+- Ran `node bin/create-quiver.js graph --spec quiver-v27-reliability-ai-workflow-hardening`.
+- Ran `git diff --check`.
+
 ## Spec Package Validation - 2026-05-24
 
 - Every `slice.json` under `specs/quiver-v27-reliability-ai-workflow-hardening` parsed successfully with Node.
@@ -72,7 +89,7 @@
 | slice-01 | Completed: shared resolver, canonical status catalogs, classic/AI resolver adapters, scoped-read tests, completed-slice consistency tests, and targeted validation. |
 | slice-02 | Completed: schema v2 export contract, pure stdout/stderr CLI checks, completed-slice export coverage, source metadata, warnings, approvals, evidence, next steps, lifecycle, and aggregates. |
 | slice-03 | Completed: structured approved-plan extraction, no generic fallback, duplicate/dependency/cycle validation, eight-slice preservation, safe failure cleanup, and command coverage. |
-| slice-04 | Pending |
+| slice-04 | Completed: clean drafts/reviews, redacted run-scoped raw provider artifacts, revise compaction, prompt-size guardrails, approval metadata, and raw artifact package-safety coverage. |
 | slice-05 | Pending |
 | slice-06 | Pending |
 | slice-07 | Pending |

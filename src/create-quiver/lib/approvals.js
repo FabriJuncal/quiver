@@ -203,6 +203,9 @@ function writeApprovalArtifacts(projectRoot, phase, kind, sourceFile, contents, 
   };
   let finalContents = `${contents}`;
   let version = null;
+  let rawArtifactPath = options.rawArtifactPath || null;
+  let outputSource = options.outputSource || null;
+  let inputCompaction = options.inputCompaction || null;
 
   if (kind === 'approved' && !options.version) {
     throw new Error(formatError(`${normalizedPhase} approval requires a concrete draft version. Use --version <n>.`));
@@ -224,6 +227,9 @@ function writeApprovalArtifacts(projectRoot, phase, kind, sourceFile, contents, 
     finalContents = fs.readFileSync(draftPath, 'utf8');
     sourceFile = selectedDraft.path;
     version = Number(selectedDraft.version);
+    rawArtifactPath = rawArtifactPath || selectedDraft.raw_artifact_path || null;
+    outputSource = outputSource || selectedDraft.output_source || null;
+    inputCompaction = inputCompaction || selectedDraft.input_compaction || null;
   }
 
   if (kind === 'draft') {
@@ -238,6 +244,9 @@ function writeApprovalArtifacts(projectRoot, phase, kind, sourceFile, contents, 
       source_file: toRelativePosix(projectRoot, path.resolve(projectRoot, sourceFile)),
       path: toRelativePosix(projectRoot, versionPath),
       created_at: now,
+      raw_artifact_path: rawArtifactPath,
+      output_source: outputSource,
+      input_compaction: inputCompaction,
     });
   }
 
@@ -249,6 +258,9 @@ function writeApprovalArtifacts(projectRoot, phase, kind, sourceFile, contents, 
     path: toRelativePosix(projectRoot, filePath),
     version,
     created_at: now,
+    raw_artifact_path: rawArtifactPath,
+    output_source: outputSource,
+    input_compaction: inputCompaction,
     ...(kind === 'approved' ? { approved_at: now } : {}),
   };
 
@@ -270,8 +282,8 @@ function writeApprovalArtifacts(projectRoot, phase, kind, sourceFile, contents, 
   };
 }
 
-function savePlannerDraft(projectRoot, phase, sourceFile, contents) {
-  return writeApprovalArtifacts(projectRoot, phase, 'draft', sourceFile, contents);
+function savePlannerDraft(projectRoot, phase, sourceFile, contents, options = {}) {
+  return writeApprovalArtifacts(projectRoot, phase, 'draft', sourceFile, contents, options);
 }
 
 function approvePlannerPhase(projectRoot, phase, sourceFile, contents, options = {}) {
