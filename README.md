@@ -562,9 +562,10 @@ Checklist de release:
 2. `npm run smoke:create-quiver`
 3. `npm run smoke:doctor-fixtures`
 4. `npm run smoke:guided-workflow`
-4. `npm run smoke:tiered-pack`
-5. `npm pack --dry-run`
-6. Confirmar que el PR esta aprobado antes de publicar.
+5. `npm run smoke:tiered-pack`
+6. `npm run package:quiver`
+7. `npm pack --dry-run`
+8. Confirmar que el PR esta aprobado antes de publicar.
 
 ## 📚 Documentación útil
 
@@ -578,7 +579,7 @@ Checklist de release:
 
 ## Información confirmada y pendiente
 
-- `package.json` está en `0.10.0` y `CHANGELOG.md` reconoce `0.10.0`.
+- `package.json` está en `0.12.1` y `CHANGELOG.md` mantiene los cambios nuevos en `[Unreleased]` hasta que se publique la próxima versión.
 - `package.json` no declara `engines`; la versión mínima real de Node queda pendiente. La CI usa Node 22.
 - Si aparece alguna referencia vieja a `0.9.0`, hay que actualizarla al contrato actual antes de seguir.
 - Los scripts legacy de `package.json` que apuntan a `tools/scripts/*` deben confirmarse para este repo fuente o separarse de los scripts pensados para proyectos generados con `--legacy-scripts` o `--full`.

@@ -7,9 +7,10 @@
 - `README_FOR_AI.md` was read before creating this spec.
 - `ROADMAP.md` and `BACKLOG.md` were reviewed before creating this spec.
 
-## Validation Pending
+## Validation Status
 
-- In implementation slices, record command evidence and test results in this file.
+- v27 source, fixture, smoke, guided workflow, and packaged tarball validation passed on 2026-05-24.
+- npm publication was intentionally not performed by this spec.
 
 ## Slice 00 Evidence - 2026-05-24
 
@@ -131,6 +132,27 @@
 - Ran `node bin/create-quiver.js graph --spec quiver-v27-reliability-ai-workflow-hardening`.
 - Ran `git diff --check`.
 
+## Slice 09 Evidence - 2026-05-24
+
+- Extended the sanitized doctor fixture matrix to cover Pixel Quiver-style completed specs, multiple-spec fallback behavior, stale generated context, old `.quiver` state, no-Git projects, and paths with spaces.
+- Hardened `scripts/ci/smoke-doctor-fixtures.js` so every declared fixture state must have executable coverage references and those references must exist.
+- Added doctor command coverage for stale generated docs when the scan is newer than `docs/PROJECT_MAP.md`.
+- Added doctor command coverage for old incomplete `.quiver` state so legacy projects recommend `migrate` instead of `init`.
+- Extended `scripts/ci/smoke-create-quiver.sh` to smoke `flow` package-manager guidance, source `ai agent set --dry-run`, packaged CLI `--help`, packaged `flow`, and packaged `ai agent set --dry-run`.
+- Synced `README_FOR_AI.md`, `ROADMAP.md`, `CHANGELOG.md`, `README.md`, v27 `STATUS.md`, `SPEC.md`, `EXECUTION_PLAN.md`, `pr.md`, and this evidence report with the implemented-but-unpublished v27 state.
+- Ran `node --test tests/commands/doctor.test.js`.
+- Ran `npm run smoke:doctor-fixtures`.
+- Ran `npm run smoke:create-quiver`.
+- Ran `npm run smoke:guided-workflow`.
+- Ran `npm run package:quiver`.
+- Ran full Node test suite: `node --test tests/**/*.test.js` passed with 356 tests.
+- Ran `node bin/create-quiver.js spec validate specs/quiver-v27-reliability-ai-workflow-hardening`.
+- Ran `node bin/create-quiver.js plan --spec quiver-v27-reliability-ai-workflow-hardening --include-completed`.
+- Ran `node bin/create-quiver.js graph --spec quiver-v27-reliability-ai-workflow-hardening --include-completed`.
+- Ran `node bin/create-quiver.js next --spec quiver-v27-reliability-ai-workflow-hardening`; no ready slices remain.
+- Ran targeted regression suite: `node --test tests/commands/doctor.test.js tests/lib/project-state-resolver.test.js tests/commands/plan.test.js tests/commands/graph.test.js` passed with 31 tests.
+- Ran `git diff --check`.
+
 ## Spec Package Validation - 2026-05-24
 
 - Every `slice.json` under `specs/quiver-v27-reliability-ai-workflow-hardening` parsed successfully with Node.
@@ -154,4 +176,4 @@
 | slice-06 | Completed: stronger local slice gates, base-aware scope validation, actionable handoff templates, spec validate, and repo-bound path safety. |
 | slice-07 | Completed: read-only analyze dry-run, React/Vite stack detection, scan source/freshness reporting, flow context source output, active/generic doctor examples, and prepare-context evidence coverage. |
 | slice-08 | Completed: agent profile dry-run, grouped help sync, cross-platform path guidance, GitHub account/scope/alias diagnostics, package-manager-aware flow guidance, install fallback messages, and focused command/library tests. |
-| slice-09 | Pending |
+| slice-09 | Completed: sanitized fixture matrix coverage, fixture coverage validator, stale-doc and old-state doctor regressions, source and packaged CLI smokes, full test suite, package smoke, and docs/release readiness sync. |

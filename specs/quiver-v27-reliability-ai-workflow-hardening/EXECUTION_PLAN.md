@@ -60,6 +60,8 @@ Run last:
 
 This slice validates the whole package from source and tarball.
 
+Status: Wave 6 is complete.
+
 ## Parallel Safety Notes
 
 - Keep one commit per slice.

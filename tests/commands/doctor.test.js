@@ -270,3 +270,46 @@ test('doctor uses generic examples when multiple specs have no active slice', ()
     cleanup();
   }
 });
+
+test('doctor reports stale generated context when scan is newer than project map', () => {
+  const { dir, cleanup } = makeTmpDir();
+  const target = path.join(dir, 'target');
+  try {
+    runCli(['init', '--name', 'Doctor Stale Docs Project', '--dir', target, '--skip-install']);
+    runCli(['analyze'], { cwd: target });
+
+    const projectMapPath = path.join(target, 'docs', 'PROJECT_MAP.md');
+    const scanPath = path.join(target, '.quiver', 'scans', 'PROJECT_SCAN.json');
+    const oldDate = new Date('2026-01-01T00:00:00.000Z');
+    const newDate = new Date('2026-01-01T00:00:05.000Z');
+    fs.utimesSync(projectMapPath, oldDate, oldDate);
+    fs.utimesSync(scanPath, newDate, newDate);
+
+    const output = runCli(['flow'], { cwd: target });
+
+    assert.match(output, /Context source: \.quiver\/scans\/PROJECT_SCAN\.json newer than docs\/PROJECT_MAP\.md; run analyze to refresh visible context/);
+  } finally {
+    cleanup();
+  }
+});
+
+test('doctor reports old incomplete .quiver state as migration-needed instead of init bootstrap', () => {
+  const { dir, cleanup } = makeTmpDir();
+  const target = path.join(dir, 'target');
+  try {
+    runCli(['init', '--name', 'Old State Project', '--dir', target, '--full', '--skip-install']);
+    fs.rmSync(path.join(target, '.quiver', 'state.json'));
+    writeJson(target, '.quiver/state.json', {
+      migrated_version: '0.7.0',
+    });
+    fs.rmSync(path.join(target, 'docs', 'AI_ONBOARDING_PROMPT.md'));
+
+    const output = runCli(['doctor'], { cwd: target });
+
+    assert.match(output, /Layout: legacy/);
+    assert.match(output, /Legacy layout detected\. Run `npx create-quiver migrate`/);
+    assert.doesNotMatch(output, /Run init first: npx create-quiver --name "Project Name"/);
+  } finally {
+    cleanup();
+  }
+});

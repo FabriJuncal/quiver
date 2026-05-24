@@ -17,6 +17,9 @@ const requiredStates = [
   'paths-with-spaces',
   'docs-contradiction',
   'missing-agent-profile',
+  'pixel-quiver-completed-specs',
+  'multiple-specs',
+  'stale-docs',
 ];
 
 const actual = new Set((matrix.states || []).map((state) => state.id));
@@ -31,6 +34,16 @@ for (const state of matrix.states) {
   if (!state.purpose || !state.expected) {
     console.error(`Fixture state '${state.id}' must include purpose and expected.`);
     process.exit(1);
+  }
+  if (!Array.isArray(state.covered_by) || state.covered_by.length === 0) {
+    console.error(`Fixture state '${state.id}' must include covered_by evidence.`);
+    process.exit(1);
+  }
+  for (const relativePath of state.covered_by) {
+    if (!fs.existsSync(path.join(root, relativePath))) {
+      console.error(`Fixture state '${state.id}' references missing coverage file: ${relativePath}`);
+      process.exit(1);
+    }
   }
 }
 

@@ -70,9 +70,9 @@
 - Published package `0.12.1`.
 - **v26** — `0.12.1` smoke hardening from clean npm package validation: CLI help/version output, generated doc links, AI approval/review guidance, local validation, slice brief validation, demo scaffold readiness, scoped plan/graph performance, and release smoke coverage.
 
-## v0.13 — Reliability and AI Workflow Hardening (planned)
+## v0.13 — Reliability and AI Workflow Hardening (implemented, pending package release)
 
-- **v27** — Reliability hardening from Pixel Quiver dogfooding: shared state resolver, canonical statuses, JSON export contract, approved-plan spec generation, AI artifact cleanup, token compaction, worktree lifecycle, validation gates, context diagnostics, cross-platform DX, fixtures, smoke tests, and release readiness.
+- **v27** — Reliability hardening from Pixel Quiver dogfooding: shared state resolver, canonical statuses, JSON export contract, approved-plan spec generation, AI artifact cleanup, token compaction, worktree lifecycle, validation gates, context diagnostics, cross-platform DX, fixtures, smoke tests, and package/tarball release readiness are implemented under `specs/quiver-v27-reliability-ai-workflow-hardening/`. npm publication remains pending.
 
 ## Post-Checkpoint Plan (do not execute before validating v14)
 
@@ -89,7 +89,7 @@
 - **v24 — DX Onboarding Hardening** (shipped in `0.11.0`): real-world dogfooding fixes for init/templates, CLI routing, doctor/prepare, local validation, analyzer, AI context preparation, evidence, and demos live in `specs/quiver-v24-dx-onboarding-hardening/`.
 - **v25 — AI-First Lifecycle Orchestrator** (shipped in `0.12.0`): safe AI onboarding docs, strict run state, phase locks, agent adapters, approval gates, generated specs/slices/handoffs/PR body, execution waves, controlled slice execution, worktree/PR lifecycle, validation hardening, export, and migration live in `specs/quiver-v25-ai-first-lifecycle-orchestrator/`.
 - **v26 — 0.12.1 Smoke Hardening** (shipped in `0.12.1`): first-use hardening from clean npm smoke testing, covering CLI help/version output, generated doc links, AI approval/review guidance, local validation, slice brief validation, demo readiness, scoped plan/graph performance, and release smoke coverage live in `specs/quiver-v26-0121-smoke-hardening/`.
-- **v27 — Reliability and AI Workflow Hardening** (planned): Pixel Quiver dogfooding follow-up covering resolver/export/spec-create/AI-artifact/worktree/validation/context/DX hardening lives in `specs/quiver-v27-reliability-ai-workflow-hardening/`.
+- **v27 — Reliability and AI Workflow Hardening** (implemented, pending package release): Pixel Quiver dogfooding follow-up covering resolver/export/spec-create/AI-artifact/worktree/validation/context/DX hardening lives in `specs/quiver-v27-reliability-ai-workflow-hardening/`.
 
 The shipped v20/v21/v22/v23 work is no longer pending. The older context-diagnostics and slice-archaeology ideas remain deferred until real demand justifies them.
 
