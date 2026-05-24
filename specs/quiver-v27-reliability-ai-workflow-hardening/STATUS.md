@@ -3,8 +3,8 @@
 ## Overall Status
 
 - Phase: active
-- Progress: 10%
-- Current recommended slice: `slice-01-core-state-resolver-and-canonical-statuses`
+- Progress: 20%
+- Current recommended slice: `slice-02-json-export-contract-and-machine-output`
 - Source evidence: Pixel Quiver final dogfooding traceability (`QP-001` to `QP-019`, `QIS-001` to `QIS-022`)
 
 ## Slices
@@ -12,7 +12,7 @@
 | Slice | Title | Status | Progress | Dependencies |
 |---|---|---|---:|---|
 | slice-00 | Docs audit, coverage, and contracts | completed | 100% | none |
-| slice-01 | Core state resolver and canonical statuses | planned | 0% | slice-00 |
+| slice-01 | Core state resolver and canonical statuses | completed | 100% | slice-00 |
 | slice-02 | JSON export contract and machine output | planned | 0% | slice-01 |
 | slice-03 | Approved plan to spec create | planned | 0% | slice-01, slice-02 |
 | slice-04 | AI artifact storage, redaction, and token compaction | planned | 0% | slice-01 |
@@ -24,7 +24,7 @@
 
 ## Blockers
 
-- No blockers after `slice-00`.
+- No blockers after `slice-01`.
 
 ## Known Production Concerns
 
@@ -34,4 +34,4 @@
 
 ## Next Step
 
-Execute `slice-01-core-state-resolver-and-canonical-statuses` next.
+Execute `slice-02-json-export-contract-and-machine-output` next.

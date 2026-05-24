@@ -3,7 +3,18 @@ const path = require('node:path');
 
 const { listAgentProfiles } = require('../agent-profiles');
 const { collectLayoutReport } = require('../doctor');
-const { buildGraph, computeLevels, detectFileConflicts, readAllSlices, SliceGraphError } = require('../slice-graph');
+const {
+  filterSlicesForExecution,
+  groupSlicesBySpec: groupResolvedSlicesBySpec,
+  isBlockedStatus: isCanonicalBlockedStatus,
+  isCompletedStatus: isCanonicalCompletedStatus,
+  normalizeStatus,
+  progressForSlice: resolveProgressForSlice,
+  resolveProjectState,
+  summarizeGraph: summarizeResolvedGraph,
+  summarizeSliceProgress,
+} = require('../project-state-resolver');
+const { detectFileConflicts } = require('../slice-graph');
 const { listAiRuns, nextCommandForPhase } = require('./run-state');
 
 const EXPORT_SCHEMA_VERSION = 1;
@@ -38,43 +49,19 @@ function readPackageSummary(projectRoot) {
 }
 
 function isCompletedStatus(status) {
-  return ['closed', 'completed', 'done'].includes(String(status || '').toLowerCase());
+  return isCanonicalCompletedStatus('slice', status);
 }
 
 function isBlockedStatus(slice) {
-  return String(slice?.status || '').toLowerCase() === 'blocked' || Boolean(slice?.json?.blocked_reason);
+  return isCanonicalBlockedStatus('slice', slice?.canonical_status || slice?.status, slice);
 }
 
 function progressForSlice(slice) {
-  const explicit = Number(slice?.json?.progress);
-  if (Number.isFinite(explicit)) {
-    return Math.max(0, Math.min(100, explicit));
-  }
-
-  const status = String(slice?.status || '').toLowerCase();
-  if (isCompletedStatus(status)) {
-    return 100;
-  }
-  if (status === 'in-progress' || status === 'active' || status === 'review') {
-    return 50;
-  }
-  return 0;
+  return resolveProgressForSlice(slice);
 }
 
 function summarizeProgress(items) {
-  const total = items.length;
-  const completed = items.filter((item) => isCompletedStatus(item.status)).length;
-  const blocked = items.filter((item) => isBlockedStatus(item)).length;
-  const open = Math.max(0, total - completed);
-  const percent = total === 0 ? 0 : Math.round((completed / total) * 100);
-
-  return {
-    total,
-    completed,
-    open,
-    blocked,
-    percent,
-  };
+  return summarizeSliceProgress(items);
 }
 
 function statusForSpec(specSlices) {
@@ -94,59 +81,11 @@ function statusForSpec(specSlices) {
 }
 
 function groupSlicesBySpec(slices) {
-  const groups = new Map();
-
-  for (const slice of slices) {
-    const key = `${slice.specFamily}/${slice.specSlug}`;
-    if (!groups.has(key)) {
-      groups.set(key, []);
-    }
-    groups.get(key).push(slice);
-  }
-
-  return Array.from(groups.entries())
-    .map(([key, specSlices]) => {
-      const [specFamily, specSlug] = key.split('/');
-      return { specFamily, specSlug, slices: specSlices };
-    })
-    .sort((left, right) => left.specSlug.localeCompare(right.specSlug));
+  return groupResolvedSlicesBySpec(slices);
 }
 
 function buildGraphSummary(slices) {
-  try {
-    const graph = buildGraph(slices);
-    const levels = computeLevels(graph).map((level, index) => ({
-      level: index,
-      slices: level.map((slice) => slice.ref),
-    }));
-
-    return {
-      ok: true,
-      edges: graph.edges.map((edge) => ({ from: edge.from, to: edge.to })),
-      levels,
-      conflicts: detectFileConflicts(graph.nodes).map((conflict) => ({
-        files: conflict.files,
-        slices: conflict.slices,
-      })),
-      error: null,
-      nodes: graph.nodes,
-    };
-  } catch (error) {
-    if (error instanceof SliceGraphError) {
-      return {
-        ok: false,
-        edges: [],
-        levels: [],
-        conflicts: [],
-        error: {
-          code: error.code,
-          message: error.message,
-        },
-        nodes: slices,
-      };
-    }
-    throw error;
-  }
+  return summarizeResolvedGraph(slices);
 }
 
 function filterGraphSummary(graph, selectedRefs) {
@@ -187,6 +126,7 @@ function normalizeSlice(projectRoot, slice, dependencyMap) {
     id: slice.sliceId,
     title: slice.title,
     status: slice.status,
+    canonical_status: slice.canonical_status || normalizeStatus('slice', slice.status, 'planned'),
     progress: progressForSlice(slice),
     spec_slug: slice.specSlug,
     spec_family: slice.specFamily,
@@ -209,6 +149,7 @@ function normalizeRuns(projectRoot) {
   return listAiRuns(projectRoot).map((run) => ({
     run_id: run.run_id,
     status: run.status,
+    canonical_status: normalizeStatus('run', run.status, 'draft'),
     phase: run.phase,
     spec_slug: run.spec_slug || null,
     requirement_path: run.requirement?.path || null,
@@ -222,6 +163,8 @@ function normalizeRuns(projectRoot) {
 function normalizeAgents(projectRoot) {
   return listAgentProfiles(projectRoot).map((item) => ({
     role: item.role,
+    status: 'idle',
+    canonical_status: normalizeStatus('agent', 'idle', 'idle'),
     configured: item.configured,
     provider: item.profile?.provider || null,
     model: item.profile?.model || null,
@@ -232,9 +175,15 @@ function normalizeAgents(projectRoot) {
 }
 
 function collectLifecycleExport(projectRoot, options = {}) {
-  const allSlices = readAllSlices(projectRoot);
-  const slices = options.includeCompleted ? allSlices : allSlices.filter((slice) => !isCompletedStatus(slice.status));
-  const fullGraph = buildGraphSummary(allSlices);
+  const state = resolveProjectState(projectRoot, {
+    allowGraphErrors: true,
+    specSlug: options.specSlug,
+  });
+  const allSlices = state.graph.nodes;
+  const slices = filterSlicesForExecution(allSlices, {
+    includeCompleted: options.includeCompleted === true,
+  });
+  const fullGraph = buildGraphSummary(state.graph);
   const selectedRefs = new Set(slices.map((slice) => slice.ref));
   const graph = filterGraphSummary(fullGraph, selectedRefs);
   if (graph.ok) {
@@ -255,7 +204,8 @@ function collectLifecycleExport(projectRoot, options = {}) {
       spec_path: fs.existsSync(path.join(projectRoot, specPath, 'SPEC.md')) ? toPosix(path.join(specPath, 'SPEC.md')) : null,
       status_path: fs.existsSync(path.join(projectRoot, specPath, 'STATUS.md')) ? toPosix(path.join(specPath, 'STATUS.md')) : null,
       pr_path: fs.existsSync(path.join(projectRoot, specPath, 'pr.md')) ? toPosix(path.join(specPath, 'pr.md')) : null,
-      status: statusForSpec(spec.slices),
+      status: spec.status || statusForSpec(spec.slices),
+      canonical_status: spec.canonical_status || normalizeStatus('spec', spec.status || statusForSpec(spec.slices), 'planned'),
       progress,
       slices: spec.slices.map((slice) => slice.ref),
       blockers: spec.slices.filter((slice) => isBlockedStatus(slice)).map((slice) => ({

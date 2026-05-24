@@ -72,7 +72,8 @@
     "Assert ordering is stable across runs."
   ],
   "estimated_hours": 6,
-  "status": "planned",
+  "actual_hours": 6,
+  "status": "completed",
+  "completed_at": "2026-05-24T13:48:34Z",
   "blocked_reason": null
 }
-

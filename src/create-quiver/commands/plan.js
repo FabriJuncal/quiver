@@ -1,10 +1,6 @@
-const fs = require('fs');
-const path = require('path');
 const { relativePosixPath } = require('../lib/paths');
-const { buildGraph, readAllSlices, readSlicesForSpec, topoSort } = require('../lib/slice-graph');
-
-const EXCLUDED_STATUSES = new Set(['completed', 'skipped', 'cancelled']);
-const HISTORY_EXCLUDED_STATUSES = new Set(['skipped', 'cancelled']);
+const { filterSlicesForExecution, resolveProjectState } = require('../lib/project-state-resolver');
+const { topoSort } = require('../lib/slice-graph');
 
 function toHourCount(value) {
   const parsed = Number(value);
@@ -26,6 +22,7 @@ function sliceToPlanItem(repoRoot, slice, index, readySet) {
     ticket: slice.ticket || '',
     title: slice.title || slice.sliceId,
     status: slice.status || 'draft',
+    canonical_status: slice.canonical_status || 'planned',
     hours: toHourCount(slice.json?.estimated_hours),
     files: Array.isArray(slice.files) ? slice.files : [],
     depends_on: Array.isArray(slice.depends_on) ? slice.depends_on : [],
@@ -117,17 +114,11 @@ function buildCriticalPath(graph, refs) {
 
 function collectPlan(repoRoot, options = {}) {
   const specSlug = options.specSlug ? String(options.specSlug).trim() : '';
-  const allSlices = specSlug ? readSlicesForSpec(repoRoot, specSlug) : readAllSlices(repoRoot);
-  const graph = buildGraph(allSlices);
+  const state = resolveProjectState(repoRoot, { specSlug });
+  const graph = state.graph;
   const topo = topoSort(graph);
   const includeCompleted = options.includeCompleted === true;
-  const excluded = includeCompleted ? HISTORY_EXCLUDED_STATUSES : EXCLUDED_STATUSES;
-
-  const pendingRefs = new Set(
-    graph.nodes
-      .filter((node) => !excluded.has(String(node.status || '').toLowerCase()))
-      .map((node) => node.ref),
-  );
+  const pendingRefs = new Set(filterSlicesForExecution(graph.nodes, { includeCompleted }).map((node) => node.ref));
 
   const readyRefs = buildReadySet(graph, Array.from(pendingRefs));
 

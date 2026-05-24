@@ -145,7 +145,7 @@ The full coverage matrix lives in `COVERAGE_MATRIX.md`. Summary:
 | Slice | Title | Status | Dependencies |
 |---|---|---|---|
 | slice-00 | Docs audit, coverage, and contracts | completed | none |
-| slice-01 | Core state resolver and canonical statuses | planned | slice-00 |
+| slice-01 | Core state resolver and canonical statuses | completed | slice-00 |
 | slice-02 | JSON export contract and machine output | planned | slice-01 |
 | slice-03 | Approved plan to spec create | planned | slice-01, slice-02 |
 | slice-04 | AI artifact storage, redaction, and token compaction | planned | slice-01 |

@@ -19,6 +19,18 @@
 - Audited existing command and test surfaces with `rg` across `src/create-quiver`, `tests`, and v24/v25/v26 specs for resolver/export/spec-create/check-scope/check-handoff/worktree/analyze/dry-run/doctor/path/redaction surfaces.
 - Confirmed `README_FOR_AI.md`, `ROADMAP.md`, and `CHANGELOG.md` were updated so v26 remains the shipped release and v27 is not described as published.
 
+## Slice 01 Evidence - 2026-05-24
+
+- Added `src/create-quiver/lib/statuses.js` with shared canonical status catalogs and alias normalization for specs, slices, runs, approvals, agents, and datasets.
+- Added `src/create-quiver/lib/project-state-resolver.js` as the shared resolver over slice discovery, graph building, deterministic ordering, scoped reads, completed-slice filtering, progress, spec grouping, and graph summaries.
+- Routed classic `plan` and `graph` commands through the shared resolver while preserving existing human output and adding `canonical_status` to machine payloads.
+- Routed AI lifecycle export/list/inspect state through the shared resolver so classic and AI surfaces agree about completed slices when `includeCompleted` is requested.
+- Added `tests/lib/project-state-resolver.test.js` for canonical statuses, scoped read safety, and plan/export agreement on completed slices.
+- Ran targeted command and library tests for resolver, AI export, plan, graph, next, and doctor.
+- Ran `npm run smoke:doctor-fixtures`.
+- Ran full Node test suite: `node --test tests/**/*.test.js` passed with 320 tests.
+- Ran `git diff --check`.
+
 ## Spec Package Validation - 2026-05-24
 
 - Every `slice.json` under `specs/quiver-v27-reliability-ai-workflow-hardening` parsed successfully with Node.
@@ -34,7 +46,7 @@
 | Slice | Evidence |
 |---|---|
 | slice-00 | Completed: coverage matrix, command contracts, v24/v25/v26 audit, source-of-truth docs sync, and spec package validation. |
-| slice-01 | Pending |
+| slice-01 | Completed: shared resolver, canonical status catalogs, classic/AI resolver adapters, scoped-read tests, completed-slice consistency tests, and targeted validation. |
 | slice-02 | Pending |
 | slice-03 | Pending |
 | slice-04 | Pending |

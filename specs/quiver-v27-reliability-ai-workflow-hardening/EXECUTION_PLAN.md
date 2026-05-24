@@ -11,7 +11,7 @@
 
 Run sequentially:
 
-1. `slice-01-core-state-resolver-and-canonical-statuses` - next
+1. `slice-01-core-state-resolver-and-canonical-statuses` - completed
 
 This slice owns the state model used by later command fixes.
 
@@ -19,7 +19,7 @@ This slice owns the state model used by later command fixes.
 
 Run after Wave 1. Prefer sequential order:
 
-1. `slice-02-json-export-contract-and-machine-output`
+1. `slice-02-json-export-contract-and-machine-output` - next
 2. `slice-03-approved-plan-to-spec-create`
 
 These touch shared AI/spec data contracts and should not run in parallel unless file scopes are proven independent.

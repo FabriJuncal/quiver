@@ -1,10 +1,8 @@
-const { buildGraph, computeLevels, detectFileConflicts, readAllSlices, readSlicesForSpec } = require('../lib/slice-graph');
+const { filterSlicesForExecution, resolveProjectState } = require('../lib/project-state-resolver');
+const { computeLevels, detectFileConflicts } = require('../lib/slice-graph');
 const { renderDotGraph } = require('../lib/renderers/dot');
 const { renderMermaidGraph } = require('../lib/renderers/mermaid');
 const { renderTreeGraph, isUnicodeEnabled } = require('../lib/renderers/tree');
-
-const EXCLUDED_STATUSES = new Set(['completed', 'skipped', 'cancelled']);
-const HISTORY_EXCLUDED_STATUSES = new Set(['skipped', 'cancelled']);
 
 function toGraphNode(node) {
   return {
@@ -14,6 +12,7 @@ function toGraphNode(node) {
     title: node.title || node.sliceId,
     hours: Number.isFinite(Number(node.json?.estimated_hours)) ? Number(node.json.estimated_hours) : 0,
     status: node.status || 'draft',
+    canonical_status: node.canonical_status || 'planned',
     files: Array.isArray(node.files) ? node.files : [],
     depends_on: Array.isArray(node.depends_on) ? node.depends_on : [],
   };
@@ -29,14 +28,15 @@ function buildConflictPayload(levelIndex, groups) {
 
 function collectGraph(repoRoot, options = {}) {
   const specSlug = options.specSlug ? String(options.specSlug).trim() : '';
-  const graph = buildGraph(specSlug ? readSlicesForSpec(repoRoot, specSlug) : readAllSlices(repoRoot));
+  const state = resolveProjectState(repoRoot, { specSlug });
+  const graph = state.graph;
   if (!specSlug) {
     computeLevels(graph);
   }
   const includeCompleted = options.includeCompleted === true;
-  const excluded = includeCompleted ? HISTORY_EXCLUDED_STATUSES : EXCLUDED_STATUSES;
+  const executionRefs = new Set(filterSlicesForExecution(graph.nodes, { includeCompleted }).map((node) => node.ref));
   const pendingNodes = graph.nodes.filter((node) => {
-    if (excluded.has(String(node.status || '').toLowerCase())) {
+    if (!executionRefs.has(node.ref)) {
       return false;
     }
     if (specSlug && node.specSlug !== specSlug) {
