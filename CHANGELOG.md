@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Planned v27 reliability and AI workflow hardening spec under `specs/quiver-v27-reliability-ai-workflow-hardening/`, based on Pixel Quiver dogfooding findings.
+
 ## [0.12.1] - 2026-05-23
 
 ### Added

@@ -1,0 +1,77 @@
+{
+  "slice_id": "slice-03-approved-plan-to-spec-create",
+  "ticket": "QUIVER-27-03",
+  "type": "implementation",
+  "title": "Approved plan to spec create",
+  "objective": "Make spec create generate the approved spec/slices/handoffs from a reviewed and approved technical plan, or fail safely before writing.",
+  "description": "Prevents generic fallback scaffolds by requiring structured slice data from the approved plan, validating slice IDs/dependencies/slice-00/handoffs, using atomic writes, and cleaning up safely.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v27-approved-plan-to-spec-create",
+    "branch_name": "feature/QUIVER-27-03-v27-approved-plan-to-spec-create"
+  },
+  "files": [
+    "src/create-quiver/lib/ai/spec-generator.js",
+    "src/create-quiver/lib/ai/spec-templates.js",
+    "src/create-quiver/lib/approvals.js",
+    "src/create-quiver/commands/spec.js",
+    "tests/lib/ai-spec-generator.test.js",
+    "tests/commands/spec-create.test.js",
+    "specs/quiver-v27-reliability-ai-workflow-hardening/**"
+  ],
+  "expected_read_paths": [
+    "src/create-quiver/lib/ai/spec-generator.js",
+    "src/create-quiver/lib/ai/spec-templates.js",
+    "src/create-quiver/lib/approvals.js",
+    "tests/lib/ai-spec-generator.test.js",
+    "tests/commands/spec-create.test.js"
+  ],
+  "allowed_write_paths": [
+    "src/create-quiver/lib/ai/spec-generator.js",
+    "src/create-quiver/lib/ai/spec-templates.js",
+    "src/create-quiver/lib/approvals.js",
+    "src/create-quiver/commands/spec.js",
+    "tests/lib/ai-spec-generator.test.js",
+    "tests/commands/spec-create.test.js",
+    "specs/quiver-v27-reliability-ai-workflow-hardening/**"
+  ],
+  "depends_on": [
+    "slice-01-core-state-resolver-and-canonical-statuses",
+    "slice-02-json-export-contract-and-machine-output"
+  ],
+  "parallel_safe": "no",
+  "parallel_safe_reason": "Spec generation depends on shared state/export contracts and affects core workflow.",
+  "must": [
+    "Use explicitly approved technical plan metadata.",
+    "Require or extract a structured slice block.",
+    "Generate slice-00 and every approved slice.",
+    "Create SPEC.md, STATUS.md, EVIDENCE_REPORT.md, EXECUTION_PLAN.md, pr.md, slice.json, EXECUTION_BRIEF.md, and CLOSURE_BRIEF.md.",
+    "Fail before writing if the plan cannot be parsed.",
+    "Use atomic writes and avoid empty scaffold remnants."
+  ],
+  "not_included": [
+    "Changing AI provider prompts except where needed for structured output.",
+    "Executing generated slices.",
+    "Opening PRs."
+  ],
+  "acceptance": [
+    "Given a plan with 8 approved slices, spec create creates 8 slices plus required artifacts.",
+    "Given no structured slice block, spec create fails without writing files.",
+    "Given duplicate IDs or circular dependencies, spec create fails before writing.",
+    "Generated names are derived from requirement/spec metadata and not generic approved placeholders.",
+    "No empty generic scaffold directories remain after failure or regeneration."
+  ],
+  "tests": [
+    "node --test tests/lib/ai-spec-generator.test.js tests/commands/spec-create.test.js",
+    "git diff --check"
+  ],
+  "validation_hints": [
+    "Test dry-run and real-run behavior.",
+    "Compare git status before/after failed spec create."
+  ],
+  "estimated_hours": 6,
+  "status": "planned",
+  "blocked_reason": null
+}
+

@@ -1,0 +1,73 @@
+{
+  "slice_id": "slice-04-ai-artifact-storage-redaction-and-token-compaction",
+  "ticket": "QUIVER-27-04",
+  "type": "implementation",
+  "title": "AI artifact storage, redaction, and token compaction",
+  "objective": "Keep AI drafts clean, persist raw provider logs separately with redaction, and prevent revise flows from exceeding provider context limits.",
+  "description": "Separates useful provider output from raw transcripts, redacts sensitive values before persistence, snapshots raw logs under run-scoped paths, and compacts long review/feedback inputs before calling providers.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v27-ai-artifacts-redaction-token-compaction",
+    "branch_name": "feature/QUIVER-27-04-v27-ai-artifacts-redaction-token-compaction"
+  },
+  "files": [
+    "src/create-quiver/lib/ai/**",
+    "src/create-quiver/lib/approvals.js",
+    "tests/lib/ai-*.test.js",
+    "tests/commands/ai-*.test.js",
+    "specs/quiver-v27-reliability-ai-workflow-hardening/**"
+  ],
+  "expected_read_paths": [
+    "src/create-quiver/lib/ai/providers.js",
+    "src/create-quiver/lib/ai/prompt-transport.js",
+    "src/create-quiver/lib/ai/plan-review.js",
+    "src/create-quiver/lib/approvals.js",
+    "tests/commands/ai-plan.test.js",
+    "tests/commands/ai-review-plan.test.js"
+  ],
+  "allowed_write_paths": [
+    "src/create-quiver/lib/ai/**",
+    "src/create-quiver/lib/approvals.js",
+    "tests/lib/ai-*.test.js",
+    "tests/commands/ai-*.test.js",
+    "specs/quiver-v27-reliability-ai-workflow-hardening/**"
+  ],
+  "depends_on": [
+    "slice-01-core-state-resolver-and-canonical-statuses"
+  ],
+  "parallel_safe": "yes",
+  "parallel_safe_reason": "Can run after shared resolver if it avoids files touched by worktree lifecycle work.",
+  "must": [
+    "Store clean drafts separately from raw provider output.",
+    "Redact secrets and sensitive local values before persisting raw logs.",
+    "Detect oversized inputs before provider calls.",
+    "Compact feedback while preserving decisions, risks, changed files, and acceptance criteria.",
+    "Preserve approved version metadata."
+  ],
+  "not_included": [
+    "Changing provider CLI installation.",
+    "Changing spec create parsing.",
+    "Adding telemetry."
+  ],
+  "acceptance": [
+    "Draft files contain only useful AI output, not provider logs or prompt echo.",
+    "Raw logs are stored in run-scoped raw paths and redacted.",
+    "Oversized revise inputs are compacted or blocked with an actionable message before provider execution.",
+    "Approved versions remain explicit and are not inferred from latest draft filenames.",
+    "Package safety blocks unsafe raw AI artifacts from npm publication."
+  ],
+  "tests": [
+    "node --test tests/lib/ai-*.test.js tests/commands/ai-plan.test.js tests/commands/ai-review-plan.test.js",
+    "node --test tests/lib/package-safety.test.js",
+    "git diff --check"
+  ],
+  "validation_hints": [
+    "Use fixtures with prompt echo and long review text.",
+    "Assert raw logs do not leak obvious token/env patterns."
+  ],
+  "estimated_hours": 5,
+  "status": "planned",
+  "blocked_reason": null
+}
+

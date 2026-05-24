@@ -1,12 +1,12 @@
 # Status - Quiver v26 0.12.1 Smoke Hardening
 
-**Overall status:** Slices 00-07 complete; release-ready pending PR merge and npm publication
+**Overall status:** Slices 00-07 complete; shipped in `create-quiver@0.12.1`
 **Created:** 2026-05-23
 **Current slice:** slice-07 completed
 
 ## Summary
 
-This hotfix spec tracks the first-use issues found while smoke testing `create-quiver@0.12.0` from npm. The goal is to prepare a reliable `0.12.1` before using Quiver for the real `Quiver Spec Viewer` project.
+This hotfix spec tracks the first-use issues found while smoke testing `create-quiver@0.12.0` from npm. It prepared the `0.12.1` package that was later published.
 
 ## Slice Status
 
@@ -24,9 +24,9 @@ This hotfix spec tracks the first-use issues found while smoke testing `create-q
 ## Current Blockers
 
 - No local implementation blockers remain.
-- npm publication is intentionally pending until PR merge.
-- The real `Quiver Spec Viewer` project should wait until `create-quiver@0.12.1` is published and smoke-tested from npm.
+- npm publication for `0.12.1` is complete.
+- Follow-up dogfooding findings are tracked in `specs/quiver-v27-reliability-ai-workflow-hardening/`.
 
 ## Next Step
 
-Open the PR, merge after review, publish `create-quiver@0.12.1`, then verify the published package with `npm view create-quiver version` and a clean npm smoke.
+Use v27 for the next reliability hardening cycle.

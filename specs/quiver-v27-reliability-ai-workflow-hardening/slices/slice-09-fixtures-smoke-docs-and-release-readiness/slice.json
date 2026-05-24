@@ -1,0 +1,91 @@
+{
+  "slice_id": "slice-09-fixtures-smoke-docs-and-release-readiness",
+  "ticket": "QUIVER-27-09",
+  "type": "validation",
+  "title": "Fixtures, smoke, docs, and release readiness",
+  "objective": "Validate the full v27 hardening package with sanitized fixtures, local tests, smoke tests, tarball/package validation, and source-of-truth docs.",
+  "description": "Adds final regression fixtures from real dogfooding, runs full local and package smokes, synchronizes docs, records evidence, and confirms release readiness without publishing npm.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v27-fixtures-smoke-docs-release-readiness",
+    "branch_name": "feature/QUIVER-27-09-fixtures-smoke-docs-release-readiness"
+  },
+  "files": [
+    "README.md",
+    "README_FOR_AI.md",
+    "ROADMAP.md",
+    "CHANGELOG.md",
+    "tests/**",
+    "scripts/**",
+    "specs/quiver-v27-reliability-ai-workflow-hardening/**"
+  ],
+  "expected_read_paths": [
+    "README.md",
+    "README_FOR_AI.md",
+    "ROADMAP.md",
+    "CHANGELOG.md",
+    "package.json",
+    "scripts/package-quiver.sh",
+    "scripts/ci/**",
+    "tests/**",
+    "specs/quiver-v27-reliability-ai-workflow-hardening/**"
+  ],
+  "allowed_write_paths": [
+    "README.md",
+    "README_FOR_AI.md",
+    "ROADMAP.md",
+    "CHANGELOG.md",
+    "tests/**",
+    "scripts/**",
+    "specs/quiver-v27-reliability-ai-workflow-hardening/**"
+  ],
+  "depends_on": [
+    "slice-02-json-export-contract-and-machine-output",
+    "slice-03-approved-plan-to-spec-create",
+    "slice-04-ai-artifact-storage-redaction-and-token-compaction",
+    "slice-05-worktree-lifecycle-locks-and-recovery",
+    "slice-06-validation-gates-and-scope-safety",
+    "slice-07-context-analysis-and-doctor-flow",
+    "slice-08-cross-platform-help-auth-and-dx"
+  ],
+  "parallel_safe": "no",
+  "parallel_safe_reason": "Final validation and docs sync must run after all implementation slices.",
+  "must": [
+    "Add sanitized fixtures that represent real dogfooding failures.",
+    "Run full command and lib tests.",
+    "Run smoke suites.",
+    "Run package/tarball smoke from outside the repo.",
+    "Update source-of-truth docs only with implemented behavior.",
+    "Record release readiness evidence without publishing."
+  ],
+  "not_included": [
+    "Publishing npm.",
+    "Opening PR unless requested.",
+    "Adding unsanitized local paths or credentials."
+  ],
+  "acceptance": [
+    "All v27 QP/QIS coverage items are either fixed, validated, or documented as remaining risk.",
+    "Sanitized fixtures cover Pixel Quiver completed specs, path with spaces, no Git, old .quiver state, multiple specs, and stale docs.",
+    "node --test tests/**/*.test.js passes.",
+    "smoke:create-quiver, smoke:guided-workflow, and smoke:doctor-fixtures pass or documented blockers are resolved.",
+    "Package/tarball smoke validates installed CLI behavior rather than only source code.",
+    "README, README_FOR_AI, ROADMAP, and CHANGELOG are synchronized with actual implementation state."
+  ],
+  "tests": [
+    "node --test tests/**/*.test.js",
+    "npm run smoke:create-quiver",
+    "npm run smoke:guided-workflow",
+    "npm run smoke:doctor-fixtures",
+    "npm run package:quiver",
+    "git diff --check"
+  ],
+  "validation_hints": [
+    "Run package smoke from /private/tmp or another clean directory.",
+    "Confirm fixtures do not contain private tokens or unnecessary personal paths."
+  ],
+  "estimated_hours": 5,
+  "status": "planned",
+  "blocked_reason": null
+}
+

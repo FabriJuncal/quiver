@@ -1,0 +1,88 @@
+{
+  "slice_id": "slice-07-context-analysis-and-doctor-flow",
+  "ticket": "QUIVER-27-07",
+  "type": "implementation",
+  "title": "Context analysis and doctor flow",
+  "objective": "Harden analyze, prepare-context, flow, and doctor so onboarding docs are evidence-based, dry-runs are read-only, and next steps are accurate.",
+  "description": "Fixes stack detection, read-only dry-run behavior, docs/status consistency checks, stale-state guidance, active spec/slice examples, root/package manager detection, and first-use diagnostics.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v27-context-analysis-doctor-flow",
+    "branch_name": "feature/QUIVER-27-07-v27-context-analysis-doctor-flow"
+  },
+  "files": [
+    "src/create-quiver/lib/analyze.js",
+    "src/create-quiver/lib/project-scan.js",
+    "src/create-quiver/lib/doctor.js",
+    "src/create-quiver/lib/ai/onboarding-template.js",
+    "src/create-quiver/commands/flow.js",
+    "src/create-quiver/commands/prepare.js",
+    "tests/lib/**",
+    "tests/commands/**",
+    "tests/fixtures/**",
+    "specs/quiver-v27-reliability-ai-workflow-hardening/**"
+  ],
+  "expected_read_paths": [
+    "src/create-quiver/lib/analyze.js",
+    "src/create-quiver/lib/project-scan.js",
+    "src/create-quiver/lib/doctor.js",
+    "src/create-quiver/lib/ai/onboarding-template.js",
+    "src/create-quiver/commands/flow.js",
+    "tests/commands/analyze.test.js",
+    "tests/commands/ai-onboard.test.js",
+    "tests/commands/flow.test.js",
+    "tests/commands/doctor.test.js"
+  ],
+  "allowed_write_paths": [
+    "src/create-quiver/lib/analyze.js",
+    "src/create-quiver/lib/project-scan.js",
+    "src/create-quiver/lib/doctor.js",
+    "src/create-quiver/lib/ai/onboarding-template.js",
+    "src/create-quiver/commands/flow.js",
+    "src/create-quiver/commands/prepare.js",
+    "tests/lib/**",
+    "tests/commands/**",
+    "tests/fixtures/**",
+    "specs/quiver-v27-reliability-ai-workflow-hardening/**"
+  ],
+  "depends_on": [
+    "slice-01-core-state-resolver-and-canonical-statuses",
+    "slice-06-validation-gates-and-scope-safety"
+  ],
+  "parallel_safe": "no",
+  "parallel_safe_reason": "Context and doctor guidance depends on resolver and validation contract behavior.",
+  "must": [
+    "Make analyze --dry-run read-only.",
+    "Improve React/Vite and stack detection using package.json and config evidence.",
+    "Make prepare-context conservative and evidence-based.",
+    "Detect docs/status contradictions without overwriting human content.",
+    "Make flow show source/timestamp or stale-state information.",
+    "Make doctor prioritize active spec/slice examples where available."
+  ],
+  "not_included": [
+    "Changing spec create behavior.",
+    "Changing worktree lifecycle beyond guidance messages.",
+    "Executing AI providers."
+  ],
+  "acceptance": [
+    "analyze --dry-run leaves git status unchanged.",
+    "React + Vite projects are detected as React/Vite, not Vue.",
+    "prepare-context --dry-run does not propose placeholders as truth when evidence exists.",
+    "flow reports the state source or a stale/missing context explanation.",
+    "doctor examples prefer active spec/slice context or generic examples over the wrong spec."
+  ],
+  "tests": [
+    "node --test tests/commands/analyze.test.js tests/commands/ai-onboard.test.js tests/commands/flow.test.js tests/commands/doctor.test.js tests/lib/project-scan.test.js tests/lib/doctor.test.js",
+    "npm run smoke:doctor-fixtures",
+    "git diff --check"
+  ],
+  "validation_hints": [
+    "Snapshot git status before/after dry-run tests.",
+    "Use fixtures with stale docs and real completed slices."
+  ],
+  "estimated_hours": 6,
+  "status": "planned",
+  "blocked_reason": null
+}
+
