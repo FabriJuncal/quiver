@@ -2,6 +2,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const { listAgentProfiles } = require('../agent-profiles');
+const { PLANNER_APPROVAL_PHASES, readPhaseApproval } = require('../approvals');
 const { collectLayoutReport } = require('../doctor');
 const {
   filterSlicesForExecution,
@@ -15,9 +16,10 @@ const {
   summarizeSliceProgress,
 } = require('../project-state-resolver');
 const { detectFileConflicts } = require('../slice-graph');
+const { readPlanReview } = require('./plan-review');
 const { listAiRuns, nextCommandForPhase } = require('./run-state');
 
-const EXPORT_SCHEMA_VERSION = 1;
+const EXPORT_SCHEMA_VERSION = 2;
 
 function toPosix(relativePath) {
   return String(relativePath || '').split(path.sep).join('/');
@@ -160,6 +162,68 @@ function normalizeRuns(projectRoot) {
   }));
 }
 
+function safeReadApproval(projectRoot, phase) {
+  try {
+    return readPhaseApproval(projectRoot, phase);
+  } catch (error) {
+    return {
+      phase,
+      status: 'invalid',
+      draft: null,
+      approved: null,
+      meta: null,
+      error: error.message,
+    };
+  }
+}
+
+function safeReadPlanReview(projectRoot) {
+  try {
+    return readPlanReview(projectRoot);
+  } catch (error) {
+    return {
+      status: 'invalid',
+      review: null,
+      meta: null,
+      error: error.message,
+    };
+  }
+}
+
+function normalizeApproval(projectRoot, phase, approval) {
+  const drafts = Array.isArray(approval?.meta?.drafts) ? approval.meta.drafts : [];
+  return {
+    phase,
+    status: approval?.status || 'missing',
+    canonical_status: normalizeStatus('approval', approval?.status || 'missing', 'pending'),
+    draft_path: approval?.draft?.path || null,
+    approved_path: approval?.approved?.path || null,
+    latest_draft_version: Number(approval?.meta?.draft?.version || 0) || null,
+    approved_version: Number(approval?.meta?.approved?.version || 0) || null,
+    draft_count: drafts.length,
+    source_file: approval?.meta?.approved?.source_file || approval?.meta?.draft?.source_file || null,
+    error: approval?.error || null,
+  };
+}
+
+function normalizeApprovals(projectRoot) {
+  const plannerApprovals = PLANNER_APPROVAL_PHASES.map((phase) => normalizeApproval(projectRoot, phase, safeReadApproval(projectRoot, phase)));
+  const planReview = safeReadPlanReview(projectRoot);
+
+  return plannerApprovals.concat({
+    phase: 'plan-review',
+    status: planReview.status || 'missing',
+    canonical_status: normalizeStatus('approval', planReview.status || 'missing', 'pending'),
+    draft_path: null,
+    approved_path: planReview.review?.path || null,
+    latest_draft_version: Number(planReview.meta?.source_version || 0) || null,
+    approved_version: null,
+    draft_count: 0,
+    source_file: planReview.meta?.source_file || null,
+    error: planReview.error || null,
+  });
+}
+
 function normalizeAgents(projectRoot) {
   return listAgentProfiles(projectRoot).map((item) => ({
     role: item.role,
@@ -172,6 +236,101 @@ function normalizeAgents(projectRoot) {
     context: item.profile?.context || null,
     updated_at: item.profile?.updated_at || null,
   }));
+}
+
+function collectEvidenceEntries(slices) {
+  return (Array.isArray(slices) ? slices : [])
+    .flatMap((slice) => {
+      const evidence = Array.isArray(slice.json?.evidence) ? slice.json.evidence : [];
+      return evidence.map((item, index) => ({
+        slice_ref: slice.ref,
+        index,
+        value: item,
+      }));
+    })
+    .sort((left, right) => left.slice_ref.localeCompare(right.slice_ref) || left.index - right.index);
+}
+
+function countByStatus(items, statusKey = 'canonical_status') {
+  return (Array.isArray(items) ? items : []).reduce((acc, item) => {
+    const key = item?.[statusKey] || item?.status || 'unknown';
+    acc[key] = (acc[key] || 0) + 1;
+    return acc;
+  }, {});
+}
+
+function collectWarnings({ graph, layout, specs, slices }) {
+  const warnings = [];
+
+  if (!graph.ok && graph.error?.message) {
+    warnings.push({
+      code: graph.error.code || 'GRAPH_ERROR',
+      message: graph.error.message,
+    });
+  }
+
+  if (layout.layout === 'legacy' || layout.layout === 'hybrid' || layout.layout === 'incomplete') {
+    warnings.push({
+      code: 'LAYOUT_REQUIRES_ATTENTION',
+      message: layout.recommendations.join(' '),
+    });
+  }
+
+  if (specs.length === 0) {
+    warnings.push({
+      code: 'NO_SPECS_FOUND',
+      message: 'No specs were found for the selected export filters.',
+    });
+  }
+
+  if (slices.length === 0) {
+    warnings.push({
+      code: 'NO_SLICES_FOUND',
+      message: 'No slices were found for the selected export filters.',
+    });
+  }
+
+  return warnings;
+}
+
+function collectNextSteps(data) {
+  const activeRun = [...data.runs].reverse().find((run) => run.status !== 'closed');
+  const commands = [];
+
+  commands.push({
+    id: activeRun ? 'continue-active-run' : 'create-ai-run',
+    command: activeRun ? activeRun.next_command : 'npx create-quiver ai run create --input <requirements.md>',
+    reason: activeRun ? `Continue AI run ${activeRun.run_id}.` : 'Start a new AI lifecycle run.',
+  });
+
+  if (data.summary.slices > 0) {
+    commands.push({
+      id: 'inspect-slices',
+      command: 'npx create-quiver ai slices list',
+      reason: 'Inspect current slice state.',
+    });
+    commands.push({
+      id: 'export-json',
+      command: 'npx create-quiver ai export --format json',
+      reason: 'Export machine-readable lifecycle state.',
+    });
+  } else {
+    commands.push({
+      id: 'draft-acceptance',
+      command: 'npx create-quiver ai plan --phase acceptance --input <requirements.md> --dry-run',
+      reason: 'Preview acceptance criteria generation.',
+    });
+  }
+
+  if (data.migration.layout === 'legacy' || data.migration.layout === 'hybrid' || data.migration.layout === 'incomplete') {
+    commands.push({
+      id: 'preview-migration',
+      command: 'npx create-quiver migrate --dry-run',
+      reason: 'Preview migration to the current layout.',
+    });
+  }
+
+  return commands;
 }
 
 function collectLifecycleExport(projectRoot, options = {}) {
@@ -217,7 +376,9 @@ function collectLifecycleExport(projectRoot, options = {}) {
   const layout = collectLayoutReport(projectRoot);
   const runs = normalizeRuns(projectRoot);
   const agents = normalizeAgents(projectRoot);
+  const approvals = normalizeApprovals(projectRoot);
   const progress = summarizeProgress(slices);
+  const evidence = collectEvidenceEntries(slices);
   const blockers = normalizedSlices
     .filter((slice) => slice.blocked_reason || String(slice.status).toLowerCase() === 'blocked')
     .map((slice) => ({ ref: slice.ref, reason: slice.blocked_reason || 'blocked' }));
@@ -229,9 +390,18 @@ function collectLifecycleExport(projectRoot, options = {}) {
     blockers.push({ ref: 'migration', reason: layout.recommendations.join(' ') });
   }
 
-  return {
+  const exportData = {
     schema_version: EXPORT_SCHEMA_VERSION,
     generated_at: new Date().toISOString(),
+    source_metadata: {
+      generator: 'create-quiver',
+      command: 'ai export',
+      resolver: 'project-state-resolver',
+      project_root_name: path.basename(projectRoot),
+      include_completed: options.includeCompleted === true,
+      spec_filter: options.specSlug || null,
+      families: Array.from(new Set(allSlices.map((slice) => slice.specFamily))).sort((left, right) => left.localeCompare(right)),
+    },
     project: readPackageSummary(projectRoot),
     summary: {
       specs: specs.length,
@@ -242,8 +412,11 @@ function collectLifecycleExport(projectRoot, options = {}) {
       progress_percent: progress.percent,
       runs: runs.length,
       configured_agents: agents.filter((agent) => agent.configured).length,
+      approvals: approvals.length,
+      warnings: 0,
     },
     agents,
+    approvals,
     runs,
     specs,
     slices: normalizedSlices,
@@ -262,6 +435,26 @@ function collectLifecycleExport(projectRoot, options = {}) {
       missing_new_layout_files: layout.missingNewLayoutFiles,
       recommendations: layout.recommendations,
       dry_run_command: 'npx create-quiver migrate --dry-run',
+    },
+    evidence,
+    warnings: [],
+    blockers,
+    next_steps: [],
+    lifecycle: {
+      phase: runs.length > 0 ? runs[runs.length - 1].phase : 'no-active-run',
+      active_run_id: (runs.length > 0 ? [...runs].reverse().find((run) => run.status !== 'closed') : null)?.run_id || null,
+      include_completed: options.includeCompleted === true,
+      spec_filter: options.specSlug || null,
+      levels: graph.levels,
+    },
+    aggregates: {
+      specs_by_status: countByStatus(specs),
+      slices_by_status: countByStatus(normalizedSlices),
+      runs_by_status: countByStatus(runs),
+      approvals_by_status: countByStatus(approvals),
+      blockers: blockers.length,
+      evidence: evidence.length,
+      progress_percent: progress.percent,
     },
     dashboard: {
       progress,
@@ -289,6 +482,18 @@ function collectLifecycleExport(projectRoot, options = {}) {
       dependencies: graph.edges,
     },
   };
+
+  exportData.warnings = collectWarnings({
+    graph,
+    layout,
+    specs,
+    slices: normalizedSlices,
+  });
+  exportData.summary.warnings = exportData.warnings.length;
+  exportData.next_steps = collectNextSteps(exportData);
+  exportData.lifecycle.next_commands = exportData.next_steps.map((step) => step.command);
+
+  return exportData;
 }
 
 function formatLifecycleInspect(data) {
@@ -304,18 +509,8 @@ function formatLifecycleInspect(data) {
     'Next safe commands',
   ];
 
-  const activeRun = [...data.runs].reverse().find((run) => run.status !== 'closed');
-  lines.push(`- ${activeRun ? activeRun.next_command : 'npx create-quiver ai run create --input <requirements.md>'}`);
-
-  if (data.summary.slices > 0) {
-    lines.push('- npx create-quiver ai slices list');
-    lines.push('- npx create-quiver ai export --format json');
-  } else {
-    lines.push('- npx create-quiver ai plan --phase acceptance --input <requirements.md> --dry-run');
-  }
-
-  if (data.migration.layout === 'legacy' || data.migration.layout === 'hybrid' || data.migration.layout === 'incomplete') {
-    lines.push('- npx create-quiver migrate --dry-run');
+  for (const step of data.next_steps || collectNextSteps(data)) {
+    lines.push(`- ${step.command}`);
   }
 
   if (data.dashboard.blockers.length > 0) {

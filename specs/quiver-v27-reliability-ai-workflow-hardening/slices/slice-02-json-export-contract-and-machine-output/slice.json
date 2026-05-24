@@ -68,7 +68,8 @@
     "Assert deterministic ordering in exported arrays."
   ],
   "estimated_hours": 5,
-  "status": "planned",
+  "actual_hours": 5,
+  "status": "completed",
+  "completed_at": "2026-05-24T13:54:36Z",
   "blocked_reason": null
 }
-

@@ -31,6 +31,18 @@
 - Ran full Node test suite: `node --test tests/**/*.test.js` passed with 320 tests.
 - Ran `git diff --check`.
 
+## Slice 02 Evidence - 2026-05-24
+
+- Bumped lifecycle export schema to `schema_version: 2`.
+- Extended `ai export` JSON with `source_metadata`, `warnings`, `approvals`, top-level `blockers`, `evidence`, `next_steps`, `lifecycle`, and `aggregates` while preserving existing `summary`, `project`, `agents`, `runs`, `specs`, `slices`, `graph`, `migration`, and `dashboard` fields.
+- Kept source metadata sanitized by exposing the project root name rather than an absolute local path.
+- Added canonical statuses to exported slices, runs, agents, specs, and approvals.
+- Added CLI tests that parse stdout JSON directly, assert stderr is empty on success, assert unsupported formats write to stderr with non-zero exit, and assert `--include-completed` includes completed slices.
+- Ran `node --test tests/lib/ai-export-state.test.js tests/commands/ai-export.test.js`.
+- Ran `node --test tests/commands/cli-contract.test.js tests/lib/project-state-resolver.test.js`.
+- Ran full Node test suite: `node --test tests/**/*.test.js` passed with 321 tests.
+- Ran `git diff --check`.
+
 ## Spec Package Validation - 2026-05-24
 
 - Every `slice.json` under `specs/quiver-v27-reliability-ai-workflow-hardening` parsed successfully with Node.
@@ -47,7 +59,7 @@
 |---|---|
 | slice-00 | Completed: coverage matrix, command contracts, v24/v25/v26 audit, source-of-truth docs sync, and spec package validation. |
 | slice-01 | Completed: shared resolver, canonical status catalogs, classic/AI resolver adapters, scoped-read tests, completed-slice consistency tests, and targeted validation. |
-| slice-02 | Pending |
+| slice-02 | Completed: schema v2 export contract, pure stdout/stderr CLI checks, completed-slice export coverage, source metadata, warnings, approvals, evidence, next steps, lifecycle, and aggregates. |
 | slice-03 | Pending |
 | slice-04 | Pending |
 | slice-05 | Pending |

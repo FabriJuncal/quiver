@@ -1,5 +1,5 @@
 const assert = require('node:assert/strict');
-const { execFileSync } = require('node:child_process');
+const { execFileSync, spawnSync } = require('node:child_process');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
@@ -77,13 +77,24 @@ test('ai inspect, export, specs, slices, and trace expose lifecycle state', () =
     assert.match(inspect, /npx create-quiver ai export --format json/);
 
     const json = JSON.parse(execAi(repo.root, ['export']));
-    assert.equal(json.schema_version, 1);
+    assert.equal(json.schema_version, 2);
+    assert.equal(json.source_metadata.command, 'ai export');
+    assert.equal(json.source_metadata.resolver, 'project-state-resolver');
     assert.equal(json.project.name, 'demo-project');
     assert.equal(json.slices[0].ref, 'demo/slice-01-dashboard');
+    assert.equal(json.slices[0].canonical_status, 'planned');
+    assert.equal(Array.isArray(json.approvals), true);
+    assert.equal(Array.isArray(json.next_steps), true);
+    assert.equal(Array.isArray(json.warnings), true);
+    assert.equal(typeof json.aggregates, 'object');
+    assert.equal(typeof json.lifecycle, 'object');
     assert.equal(Array.isArray(json.dashboard.dependencies), true);
 
     const explicitJson = JSON.parse(execAi(repo.root, ['export', '--format', 'json']));
-    assert.equal(explicitJson.schema_version, 1);
+    assert.equal(explicitJson.schema_version, 2);
+
+    const withCompleted = JSON.parse(execAi(repo.root, ['export', '--format', 'json', '--include-completed']));
+    assert.deepEqual(withCompleted.slices.map((slice) => slice.ref), ['demo/slice-00-foundation', 'demo/slice-01-dashboard']);
 
     const markdown = execAi(repo.root, ['export', '--format', 'markdown']);
     assert.match(markdown, /# Quiver Lifecycle Export/);
@@ -112,6 +123,32 @@ test('ai export rejects unsupported formats with a clear error', () => {
       () => execAi(repo.root, ['export', '--format', 'xml']),
       /unsupported ai export format: xml/,
     );
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('ai export JSON writes parseable JSON to stdout and diagnostics to stderr', () => {
+  const repo = makeRepo();
+
+  try {
+    const result = spawnSync(process.execPath, [BIN_PATH, 'ai', 'export', '--format', 'json'], {
+      cwd: repo.root,
+      encoding: 'utf8',
+    });
+
+    assert.equal(result.status, 0);
+    assert.equal(result.stderr, '');
+    assert.doesNotThrow(() => JSON.parse(result.stdout));
+
+    const failed = spawnSync(process.execPath, [BIN_PATH, 'ai', 'export', '--format', 'xml'], {
+      cwd: repo.root,
+      encoding: 'utf8',
+    });
+
+    assert.notEqual(failed.status, 0);
+    assert.equal(failed.stdout, '');
+    assert.match(failed.stderr, /unsupported ai export format: xml/);
   } finally {
     repo.cleanup();
   }
