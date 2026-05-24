@@ -1,8 +1,9 @@
 const fs = require('fs');
 const path = require('path');
-const { branchDelete, catFileExists, currentBranch, fetchBranch, fetchRemote, hasLocalBranch, hasRemoteBranch, lsRemoteHeads, mergeBaseIsAncestor, revListCount, runGit, statusPorcelain, worktreeAdd, worktreeList, worktreePrune, worktreeRemove } = require('./git');
+const { branchDelete, catFileExists, currentBranch, fetchBranch, fetchRemote, hasLocalBranch, hasRemoteBranch, isGitWorktree, isLinkedWorktree, lsRemoteHeads, mergeBaseIsAncestor, revListCount, runGit, statusPorcelain, worktreeAdd, worktreeList, worktreePrune, worktreeRemove } = require('./git');
 const { parseJsonWithComments } = require('./json');
 const { writeFrontMatter } = require('./init-docs');
+const { withLockSync } = require('./locks');
 const { relativePosixPath, resolveTargetRoot } = require('./paths');
 const { ensureSpecSliceZeroComplete } = require('./spec-worktrees');
 const { activeSlicePath, renderActiveSlice, resolveSliceContext, safeBranchName, toAlias, validateSliceMetaForStart, worktreesRootForRepo } = require('./slice');
@@ -295,6 +296,35 @@ function findExistingWorktreeForBranch(repoRoot, branchName) {
   return '';
 }
 
+function sameRealPath(left, right) {
+  try {
+    return fs.realpathSync(left) === fs.realpathSync(right);
+  } catch {
+    return path.resolve(left) === path.resolve(right);
+  }
+}
+
+function formatMissingSliceWorktree(branchName, worktreePath) {
+  return [
+    `create-quiver: registered slice worktree is missing or stale for ${branchName}: ${worktreePath}`,
+    'Recovery:',
+    '- Run `git worktree prune` from the main checkout, then retry the slice command.',
+    '- If the directory was moved manually, restore it or remove the stale git worktree registration intentionally.',
+    '- Do not create a nested replacement worktree from inside another worktree.',
+  ].join('\n');
+}
+
+function formatNestedSliceWorktree(branchName, existingWorktreePath = '') {
+  return [
+    `create-quiver: refusing to create a slice worktree from inside a linked worktree for ${branchName}.`,
+    'Recovery:',
+    existingWorktreePath
+      ? `- Use the existing worktree: ${existingWorktreePath}`
+      : '- Return to the main checkout and rerun the command.',
+    '- This prevents nested .worktrees paths and conflicting slice worktrees.',
+  ].join('\n');
+}
+
 function startSlice(sliceInput, options = {}) {
   const allowDraft = options.allowDraft === true || process.env.ALLOW_DRAFT_SLICE === '1';
   const repoRoot = runGit(['rev-parse', '--show-toplevel'], process.cwd());
@@ -323,13 +353,25 @@ function startSlice(sliceInput, options = {}) {
     console.log('WARN: bootstrap intencional para un slice en draft.');
   }
 
+  return withLockSync(repoRoot, `slice-worktree-${slice.branchName}`, {
+    command: 'start-slice',
+    metadata: {
+      branch: slice.branchName,
+      slice: slice.sliceRel,
+    },
+  }, () => {
   const worktreesRoot = worktreesRootForRepo(repoRoot, slice.branchName);
   const worktreePath = path.join(worktreesRoot, safeBranchName(slice.branchName));
   const existingWorktreePath = findExistingWorktreeForBranch(repoRoot, slice.branchName);
 
-  worktreePrune(repoRoot);
+  if (existingWorktreePath && (!fs.existsSync(existingWorktreePath) || !isGitWorktree(existingWorktreePath))) {
+    throw new Error(formatMissingSliceWorktree(slice.branchName, existingWorktreePath));
+  }
 
-  if (existingWorktreePath && fs.existsSync(existingWorktreePath)) {
+  if (existingWorktreePath) {
+    if (isLinkedWorktree(repoRoot) && !sameRealPath(repoRoot, existingWorktreePath)) {
+      throw new Error(formatNestedSliceWorktree(slice.branchName, existingWorktreePath));
+    }
     writeWorktreeContext(existingWorktreePath, slice, slice.branchName);
     const activeSlice = writeActiveSlice(repoRoot, slice);
     if (activeSlice.replaced) {
@@ -348,6 +390,12 @@ function startSlice(sliceInput, options = {}) {
     console.log(`Worktree: ${existingWorktreePath}`);
     return { worktreePath: existingWorktreePath, reused: true };
   }
+
+  if (isLinkedWorktree(repoRoot)) {
+    throw new Error(formatNestedSliceWorktree(slice.branchName));
+  }
+
+  worktreePrune(repoRoot);
 
   if (fs.existsSync(worktreePath) && !fs.existsSync(path.join(worktreePath, '.git'))) {
     throw new Error(`create-quiver: la ruta '${worktreePath}' ya existe y no parece un worktree git.`);
@@ -395,6 +443,7 @@ function startSlice(sliceInput, options = {}) {
   console.log(`Worktree: ${worktreePath}`);
   console.log(`Contexto: ${worktreePath}/WORKTREE_CONTEXT.md`);
   return { worktreePath, reused: false };
+  });
 }
 
 function cleanupSlice(sliceInput, options = {}) {

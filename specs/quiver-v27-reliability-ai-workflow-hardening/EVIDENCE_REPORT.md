@@ -71,6 +71,17 @@
 - Ran `node bin/create-quiver.js graph --spec quiver-v27-reliability-ai-workflow-hardening`.
 - Ran `git diff --check`.
 
+## Slice 05 Evidence - 2026-05-24
+
+- Added `src/create-quiver/lib/locks.js` to centralize `.quiver/locks` lock acquisition, release, stale lock diagnostics, and automatic local exclusion of Quiver runtime state.
+- Hardened `spec start` and `spec close` with spec-level locks, persistent worktree reuse, stale/missing worktree detection, and actionable recovery guidance.
+- Hardened slice worktree startup to reject nested worktree creation when commands run from an existing linked worktree.
+- Hardened git helpers to detect missing paths, linked worktrees, absolute git dirs, and shared git common dirs reliably across realpath differences such as `/var` and `/private/var`.
+- Added delegated execution locks for parallel AI execution runs so duplicate concurrent run IDs fail before provider execution.
+- Added tests for stale spec worktrees, concurrent spec locks, nested slice worktrees, and delegated execution lock collisions.
+- Ran `node --test tests/lib/lifecycle.test.js tests/commands/spec-worktree.test.js tests/commands/spec-close.test.js tests/commands/ai-execute-plan.test.js`.
+- Ran full Node test suite: `node --test tests/**/*.test.js` passed with 334 tests.
+
 ## Spec Package Validation - 2026-05-24
 
 - Every `slice.json` under `specs/quiver-v27-reliability-ai-workflow-hardening` parsed successfully with Node.
@@ -90,7 +101,7 @@
 | slice-02 | Completed: schema v2 export contract, pure stdout/stderr CLI checks, completed-slice export coverage, source metadata, warnings, approvals, evidence, next steps, lifecycle, and aggregates. |
 | slice-03 | Completed: structured approved-plan extraction, no generic fallback, duplicate/dependency/cycle validation, eight-slice preservation, safe failure cleanup, and command coverage. |
 | slice-04 | Completed: clean drafts/reviews, redacted run-scoped raw provider artifacts, revise compaction, prompt-size guardrails, approval metadata, and raw artifact package-safety coverage. |
-| slice-05 | Pending |
+| slice-05 | Completed: spec/slice worktree locks, stale and missing worktree recovery, nested worktree prevention, delegated run lock safety, and lifecycle/git helper coverage. |
 | slice-06 | Pending |
 | slice-07 | Pending |
 | slice-08 | Pending |

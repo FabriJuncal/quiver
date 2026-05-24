@@ -13,6 +13,8 @@
   },
   "files": [
     "src/create-quiver/lib/spec-worktrees.js",
+    "src/create-quiver/lib/lifecycle.js",
+    "src/create-quiver/lib/locks.js",
     "src/create-quiver/lib/ai/execution-plan.js",
     "src/create-quiver/lib/ai/executor.js",
     "src/create-quiver/lib/git.js",
@@ -23,6 +25,8 @@
   ],
   "expected_read_paths": [
     "src/create-quiver/lib/spec-worktrees.js",
+    "src/create-quiver/lib/lifecycle.js",
+    "src/create-quiver/lib/git.js",
     "src/create-quiver/lib/ai/execution-plan.js",
     "src/create-quiver/lib/ai/executor.js",
     "tests/commands/spec-worktree.test.js",
@@ -31,6 +35,8 @@
   ],
   "allowed_write_paths": [
     "src/create-quiver/lib/spec-worktrees.js",
+    "src/create-quiver/lib/lifecycle.js",
+    "src/create-quiver/lib/locks.js",
     "src/create-quiver/lib/ai/execution-plan.js",
     "src/create-quiver/lib/ai/executor.js",
     "src/create-quiver/lib/git.js",
@@ -72,7 +78,7 @@
     "Simulate manually deleted worktree paths."
   ],
   "estimated_hours": 6,
-  "status": "planned",
+  "status": "completed",
+  "completed_at": "2026-05-24",
   "blocked_reason": null
 }
-

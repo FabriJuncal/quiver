@@ -29,15 +29,15 @@ These touch shared AI/spec data contracts and should not run in parallel unless 
 Can run in parallel after Wave 1 if write scopes do not overlap:
 
 1. `slice-04-ai-artifact-storage-redaction-and-token-compaction` - completed
-2. `slice-05-worktree-lifecycle-locks-and-recovery`
+2. `slice-05-worktree-lifecycle-locks-and-recovery` - completed
 
-Status: `slice-04` is complete. Continue with `slice-05`; it no longer needs to run in parallel for this local execution.
+Status: Wave 3 is complete.
 
 ## Wave 4 - Validation Gates
 
 Run after Wave 3:
 
-1. `slice-06-validation-gates-and-scope-safety`
+1. `slice-06-validation-gates-and-scope-safety` - next
 
 This slice depends on the resolver and worktree decisions.
 
