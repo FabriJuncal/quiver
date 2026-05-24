@@ -37,15 +37,15 @@ Status: Wave 3 is complete.
 
 Run after Wave 3:
 
-1. `slice-06-validation-gates-and-scope-safety` - next
+1. `slice-06-validation-gates-and-scope-safety` - completed
 
-This slice depends on the resolver and worktree decisions.
+Status: Wave 4 is complete.
 
 ## Wave 5 - Context and DX
 
 Run after Wave 4:
 
-1. `slice-07-context-analysis-and-doctor-flow`
+1. `slice-07-context-analysis-and-doctor-flow` - next
 2. `slice-08-cross-platform-help-auth-and-dx`
 
 `slice-08` depends on `slice-07` because help/auth guidance should reference the hardened diagnostics contract.

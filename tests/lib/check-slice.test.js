@@ -157,11 +157,91 @@ test('check-slice --local validates structure without requiring remote or base b
     })));
 
     assert.match(output, /PASS: El slice local tiene EXECUTION_BRIEF\.md y CLOSURE_BRIEF\.md/);
+    assert.match(output, /PASS: slice\.json declara metadata git compatible con start-slice/);
+    assert.match(output, /PASS: slice\.json declara rutas relativas seguras dentro del proyecto/);
     assert.match(output, /INFO: Modo local: se omite validacion de existencia del slice en origin\/develop o develop/);
     assert.match(output, /INFO: Modo local: se omite validacion de overlap/);
+    assert.match(output, /INFO: Modo local: checks ejecutados:/);
+    assert.match(output, /INFO: Modo local: checks omitidos:/);
     assert.match(output, /PASS: Gate execution/);
   } finally {
     repo.cleanup();
+  }
+});
+
+test('check-slice --local rejects missing execution git metadata', () => {
+  const project = makeProject({
+    'specs/spec-a/SPEC.md': '# spec-a\n',
+    'specs/spec-a/STATUS.md': '# status\n',
+    'specs/spec-a/EVIDENCE_REPORT.md': '# evidence\n',
+    'specs/spec-a/slices/slice-01-alpha/EXECUTION_BRIEF.md': '# Execute\n',
+    'specs/spec-a/slices/slice-01-alpha/CLOSURE_BRIEF.md': '# Close\n',
+    'specs/spec-a/slices/slice-01-alpha/slice.json': {
+      slice_id: 'slice-01-alpha',
+      ticket: 'QUIVER-01',
+      title: 'Alpha',
+      files: ['src/alpha.js'],
+      status: 'ready',
+    },
+  });
+
+  try {
+    assert.throws(
+      () => withRepoCwd(project.root, () => checkSliceReadiness('specs/spec-a/slices/slice-01-alpha/slice.json', {
+        local: true,
+      })),
+      /bloque "git" debe incluir/,
+    );
+  } finally {
+    project.cleanup();
+  }
+});
+
+test('check-slice --local rejects scope paths outside the project', () => {
+  const project = makeProject({
+    'specs/spec-a/SPEC.md': '# spec-a\n',
+    'specs/spec-a/STATUS.md': '# status\n',
+    'specs/spec-a/EVIDENCE_REPORT.md': '# evidence\n',
+    'specs/spec-a/slices/slice-01-alpha/EXECUTION_BRIEF.md': '# Execute\n',
+    'specs/spec-a/slices/slice-01-alpha/CLOSURE_BRIEF.md': '# Close\n',
+    'specs/spec-a/slices/slice-01-alpha/slice.json': readySlice('spec-a/slice-01-alpha', {
+      files: ['../outside.js'],
+    }),
+  });
+
+  try {
+    assert.throws(
+      () => withRepoCwd(project.root, () => checkSliceReadiness('specs/spec-a/slices/slice-01-alpha/slice.json', {
+        local: true,
+      })),
+      /project-relative path without traversal/,
+    );
+  } finally {
+    project.cleanup();
+  }
+});
+
+test('check-slice rejects an external absolute slice path even if it contains specs', () => {
+  const project = makeProject({
+    'specs/spec-a/SPEC.md': '# spec-a\n',
+    'specs/spec-a/STATUS.md': '# status\n',
+    'specs/spec-a/EVIDENCE_REPORT.md': '# evidence\n',
+  });
+  const external = makeProject({
+    'specs/spec-a/slices/slice-01-alpha/slice.json': readySlice('spec-a/slice-01-alpha'),
+  });
+
+  try {
+    const externalSlice = path.join(external.root, 'specs/spec-a/slices/slice-01-alpha/slice.json');
+    assert.throws(
+      () => withRepoCwd(project.root, () => checkSliceReadiness(externalSlice, {
+        local: true,
+      })),
+      /slice path must stay inside the project root/,
+    );
+  } finally {
+    external.cleanup();
+    project.cleanup();
   }
 });
 

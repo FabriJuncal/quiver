@@ -9,6 +9,7 @@ const { currentBranch, runGit } = require('../git');
 const { redactSecrets, truncateText } = require('../evidence');
 const { captureWorktreeSnapshot, validateScopeSnapshot } = require('../scope');
 const { resolveSliceContext } = require('../slice');
+const { validateProjectRelativePaths } = require('../paths');
 
 const DEFAULT_EXECUTE_PROVIDER = 'codex';
 const DEFAULT_EXECUTE_ROLE = 'executor';
@@ -303,8 +304,8 @@ function buildExecuteSliceContext({ repoRoot, slicePath, role, context }) {
   });
   const relativeSlicePath = toRelativePath(canonicalRepoRoot, slice.sliceAbs);
   const relativeBriefPath = toRelativePath(canonicalRepoRoot, briefPath);
-  const allowedFiles = Array.isArray(slice.files) ? slice.files.map((file) => String(file)) : [];
-  const expectedReadPaths = Array.isArray(slice.expectedReadPaths) ? slice.expectedReadPaths.map((file) => String(file)) : [];
+  const allowedFiles = validateProjectRelativePaths(Array.isArray(slice.files) ? slice.files.map((file) => String(file)) : [], 'slice write scope');
+  const expectedReadPaths = validateProjectRelativePaths(Array.isArray(slice.expectedReadPaths) ? slice.expectedReadPaths.map((file) => String(file)) : [], 'slice read scope');
   const acceptance = Array.isArray(slice.acceptance) ? slice.acceptance.map((item) => String(item)) : [];
   const validationCommands = Array.isArray(slice.tests) ? slice.tests.map((item) => String(item)) : [];
   const validationHints = Array.isArray(slice.validationHints) ? slice.validationHints.map((item) => String(item)) : [];

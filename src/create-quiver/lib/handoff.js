@@ -113,6 +113,46 @@ function validateBriefSections(text, kind) {
     .map((group) => group.label);
 }
 
+function headingGroupsForKind(kind) {
+  if (kind === 'handoff') {
+    return REQUIRED_HEADINGS.map((heading) => ({
+      label: heading.replace(/^##\s+/, '').toLowerCase(),
+      alternatives: [heading],
+    }));
+  }
+  return kind === 'closure-brief' ? CLOSURE_BRIEF_REQUIRED_HEADINGS : EXECUTION_BRIEF_REQUIRED_HEADINGS;
+}
+
+function formatAliasGuidance(kind) {
+  return headingGroupsForKind(kind)
+    .map((group) => `- ${group.label}: ${group.alternatives.join(' | ')}`)
+    .join('\n');
+}
+
+function canonicalHeadingForGroup(group) {
+  return group.alternatives[0] || `## ${group.label}`;
+}
+
+function formatMinimalTemplate(kind) {
+  const lines = [];
+  for (const group of headingGroupsForKind(kind)) {
+    lines.push(canonicalHeadingForGroup(group), '', 'TODO', '');
+  }
+  return lines.join('\n').trimEnd();
+}
+
+function formatMissingSectionsError(resolved, missingSections) {
+  return [
+    `create-quiver: ${resolved.label.toLowerCase()} is missing required sections: ${missingSections.join(', ')}`,
+    '',
+    'Accepted headings/aliases:',
+    formatAliasGuidance(resolved.kind),
+    '',
+    'Minimal template:',
+    formatMinimalTemplate(resolved.kind),
+  ].join('\n');
+}
+
 function checkHandoff(handoffInput, repoRoot = process.cwd()) {
   const resolved = resolveHandoffPath(repoRoot, handoffInput);
 
@@ -125,7 +165,7 @@ function checkHandoff(handoffInput, repoRoot = process.cwd()) {
     ? validateHandoffSections(text)
     : validateBriefSections(text, resolved.kind);
   if (missingSections.length > 0) {
-    throw new Error(`create-quiver: ${resolved.label.toLowerCase()} is missing required sections: ${missingSections.join(', ')}`);
+    throw new Error(formatMissingSectionsError(resolved, missingSections));
   }
 
   return resolved;
@@ -165,6 +205,8 @@ module.exports = {
   EXECUTION_BRIEF_REQUIRED_HEADINGS,
   REQUIRED_HEADINGS,
   checkHandoff,
+  formatAliasGuidance,
+  formatMinimalTemplate,
   readHandoffSections,
   scaffoldHandoff,
   resolveHandoffPath,

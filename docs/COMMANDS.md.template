@@ -60,6 +60,7 @@ This document is the canonical command reference for the orchestration roadmap.
 | `quiver:spec:create` | Creates the real spec tree from the reviewed approved technical plan | macOS, Linux, Windows | v0.11 | `npm run quiver:spec:create -- --dry-run` |
 | `quiver:spec:start` | Creates or reuses the dedicated worktree for one spec | macOS, Linux, Windows | v0.10 | `npm run quiver:spec:start -- specs/<spec>` |
 | `quiver:spec:status` | Shows spec worktree, branch, `slice-00`, and pending slices | macOS, Linux, Windows | v0.10 | `npm run quiver:spec:status -- specs/<spec>` |
+| `quiver:spec:validate` | Validates spec docs, slices, briefs, evidence, status, dependencies, and safe paths | macOS, Linux, Windows | v0.13 | `npm run quiver:spec:validate -- specs/<spec>` |
 | `quiver:spec:close` | Closes a merged clean spec worktree and pulls the main checkout | macOS, Linux, Windows | v0.10 | `npm run quiver:spec:close -- specs/<spec> --dry-run` |
 | `quiver:check-slice -- --local <slice.json>` | Runs local structural slice validation without remote/base checks | macOS, Linux, Windows | v0.11 | `npm run quiver:check-slice -- --local specs/<spec>/slices/<slice>/slice.json` |
 | `quiver:check-handoff -- <handoff-or-brief.md>` | Validates legacy `HANDOFF.md` files and per-slice `EXECUTION_BRIEF.md` / `CLOSURE_BRIEF.md` files | macOS, Linux, Windows | v0.12.1 | `npm run quiver:check-handoff -- specs/<spec>/slices/<slice>/EXECUTION_BRIEF.md` |

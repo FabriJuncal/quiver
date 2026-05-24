@@ -77,6 +77,7 @@ test('help output documents important public commands', () => {
     'spec create',
     'spec start',
     'spec status',
+    'spec validate',
     'spec close',
     'start-slice',
     'check-slice',

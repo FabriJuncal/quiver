@@ -16,8 +16,15 @@
     "src/create-quiver/lib/scope.js",
     "src/create-quiver/lib/handoff.js",
     "src/create-quiver/lib/paths.js",
+    "src/create-quiver/lib/slice.js",
+    "src/create-quiver/lib/ai/executor.js",
+    "src/create-quiver/lib/init-layout.js",
     "src/create-quiver/commands/spec.js",
     "src/create-quiver/index.js",
+    "package.json",
+    "README.md",
+    "README_FOR_AI.md",
+    "docs/COMMANDS.md.template",
     "tests/lib/**",
     "tests/commands/**",
     "specs/quiver-v27-reliability-ai-workflow-hardening/**"
@@ -27,6 +34,8 @@
     "src/create-quiver/lib/scope.js",
     "src/create-quiver/lib/handoff.js",
     "src/create-quiver/lib/paths.js",
+    "src/create-quiver/lib/slice.js",
+    "src/create-quiver/lib/init-layout.js",
     "tests/lib/check-slice.test.js",
     "tests/lib/scope.test.js",
     "tests/lib/handoff.test.js"
@@ -36,8 +45,15 @@
     "src/create-quiver/lib/scope.js",
     "src/create-quiver/lib/handoff.js",
     "src/create-quiver/lib/paths.js",
+    "src/create-quiver/lib/slice.js",
+    "src/create-quiver/lib/ai/executor.js",
+    "src/create-quiver/lib/init-layout.js",
     "src/create-quiver/commands/spec.js",
     "src/create-quiver/index.js",
+    "package.json",
+    "README.md",
+    "README_FOR_AI.md",
+    "docs/COMMANDS.md.template",
     "tests/lib/**",
     "tests/commands/**",
     "specs/quiver-v27-reliability-ai-workflow-hardening/**"
@@ -77,7 +93,7 @@
     "Add path traversal and symlink cases."
   ],
   "estimated_hours": 6,
-  "status": "planned",
+  "status": "completed",
+  "completed_at": "2026-05-24",
   "blocked_reason": null
 }
-

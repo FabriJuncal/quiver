@@ -82,6 +82,19 @@
 - Ran `node --test tests/lib/lifecycle.test.js tests/commands/spec-worktree.test.js tests/commands/spec-close.test.js tests/commands/ai-execute-plan.test.js`.
 - Ran full Node test suite: `node --test tests/**/*.test.js` passed with 334 tests.
 
+## Slice 06 Evidence - 2026-05-24
+
+- Hardened `check-slice --local` so it validates execution git metadata, declared write/read paths, dependency contracts, and reports exactly which checks are executed or skipped in local mode.
+- Updated `check-scope` to resolve base branches from `--base`, then `slice.git.base_branch`, then safe fallbacks instead of hardcoding `develop`.
+- Added actionable `check-handoff` failures with accepted heading aliases and a minimal copyable template for legacy handoffs, execution briefs, and closure briefs.
+- Added `spec validate` to validate spec docs, slices, JSON parseability, brief contracts, dependency cycles, safe paths, evidence references, and status references.
+- Added shared path safety helpers and applied them to slice resolution, scope validation, and AI executor prompt/scope construction so absolute, traversal, and external slice paths are rejected.
+- Synced the new `spec validate` command into generated `quiver:spec:validate` scripts, README command references, `README_FOR_AI.md`, and `docs/COMMANDS.md.template`.
+- Ran `node bin/create-quiver.js spec validate specs/quiver-v27-reliability-ai-workflow-hardening`.
+- Ran `node --test tests/lib/check-slice.test.js tests/lib/scope.test.js tests/lib/handoff.test.js tests/lib/paths.test.js tests/commands/spec-validate.test.js tests/commands/cli-contract.test.js`.
+- Ran `node --test tests/commands/spec-create.test.js tests/commands/spec-worktree.test.js tests/commands/spec-close.test.js tests/commands/ai-execute-slice.test.js tests/commands/ai-execute-plan.test.js tests/lib/scope.test.js tests/lib/check-slice.test.js tests/lib/handoff.test.js tests/lib/paths.test.js`.
+- Ran full Node test suite: `node --test tests/**/*.test.js` passed with 343 tests.
+
 ## Spec Package Validation - 2026-05-24
 
 - Every `slice.json` under `specs/quiver-v27-reliability-ai-workflow-hardening` parsed successfully with Node.
@@ -102,7 +115,7 @@
 | slice-03 | Completed: structured approved-plan extraction, no generic fallback, duplicate/dependency/cycle validation, eight-slice preservation, safe failure cleanup, and command coverage. |
 | slice-04 | Completed: clean drafts/reviews, redacted run-scoped raw provider artifacts, revise compaction, prompt-size guardrails, approval metadata, and raw artifact package-safety coverage. |
 | slice-05 | Completed: spec/slice worktree locks, stale and missing worktree recovery, nested worktree prevention, delegated run lock safety, and lifecycle/git helper coverage. |
-| slice-06 | Pending |
+| slice-06 | Completed: stronger local slice gates, base-aware scope validation, actionable handoff templates, spec validate, and repo-bound path safety. |
 | slice-07 | Pending |
 | slice-08 | Pending |
 | slice-09 | Pending |

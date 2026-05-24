@@ -39,7 +39,7 @@ const { runFlow } = require('./commands/flow');
 const { runGraph } = require('./commands/graph');
 const { runNext } = require('./commands/next');
 const { runPlan } = require('./commands/plan');
-const { runCreateSpec } = require('./commands/spec');
+const { runCreateSpec, runValidateSpec } = require('./commands/spec');
 const { buildInitLayout, formatInitLayoutPlan } = require('./lib/init-layout');
 const { initializeProjectDocs, installSelfAsDevDep, refreshAiContextDoc } = require('./lib/init-docs');
 const { checkPrReadiness, checkScope, checkSliceReadiness } = require('./lib/readiness');
@@ -119,7 +119,7 @@ const SUPPORTED_AI_COMMANDS = new Set([
   'trace',
 ]);
 
-const SUPPORTED_SPEC_COMMANDS = new Set(['close', 'create', 'start', 'status']);
+const SUPPORTED_SPEC_COMMANDS = new Set(['close', 'create', 'start', 'status', 'validate']);
 const SUPPORTED_DEMO_COMMANDS = new Set(['create']);
 
 function unsupportedCommandMessage(commandName) {
@@ -188,6 +188,7 @@ const COMMAND_HELP_GROUPS = [
       ['spec create', 'Create the real spec tree from a reviewed approved technical plan.'],
       ['spec start', 'Create or reuse the dedicated worktree and branch for one spec.'],
       ['spec status', 'Show spec worktree, branch, slice-00 state, and pending slices.'],
+      ['spec validate', 'Validate spec docs, slices, briefs, evidence, status, dependencies, and safe paths.'],
       ['spec close', 'Close a merged clean spec worktree and guide local sync.'],
       ['start-slice', 'Start work on one slice and mark it active.'],
       ['check-slice', 'Validate slice structure, dependencies, scope, and readiness.'],
@@ -263,6 +264,7 @@ function printUsage() {
   npx create-quiver spec create [options]
   npx create-quiver spec start <spec-dir>
   npx create-quiver spec status <spec-dir>
+  npx create-quiver spec validate <spec-dir>
   npx create-quiver spec close <spec-dir>
   npx create-quiver evidence run [options] -- <command>
   npx create-quiver demo create spec-viewer [options]
@@ -282,6 +284,7 @@ Options:
       --all-ready             List every ready slice returned by next
       --auto-start            Prompt for confirmation and run start-slice on next
       --local                 For check-slice, run structural validation without remote/base checks
+      --strict                Treat supported validation warnings as failures
       --unicode               Prefer Unicode output when supported
       --minimal               Plan or run the minimal init profile
       --full                  Plan or run the full compatibility init profile
@@ -302,7 +305,7 @@ Options:
       --ssh-host-alias <name> SSH host alias to validate for prepare or AI commands
       --identity-file <path>  SSH identity file to validate for prepare or AI commands
       --remote <name>         Git remote name for check-slice or AI PR checks
-      --base <branch>         Base branch for check-slice, ai pr, or spec close (default: main)
+      --base <branch>         Base branch for check-slice, check-scope, ai pr, or spec close (default: main)
       --output <file>         Output file for evidence run
       --max-output <n>        Maximum stdout/stderr chars per evidence section
       --title <text>          Override PR title for ai pr create
@@ -368,6 +371,7 @@ Examples:
   cd ./my-project && npx create-quiver refresh-active-slices
   cd ./my-project && npx create-quiver spec start specs/my-project
   cd ./my-project && npx create-quiver spec status specs/my-project
+  cd ./my-project && npx create-quiver spec validate specs/my-project
   cd ./my-project && npx create-quiver spec close specs/my-project --dry-run
   cd ./my-project && npx create-quiver evidence run -- npm test
   cd ./my-project && npx create-quiver demo create spec-viewer --dry-run
@@ -951,7 +955,7 @@ function parseArgs(argv) {
       result.specCommand = positional.shift();
     }
     if (!result.specCommand) {
-      throw new Error(formatError('missing spec subcommand. Use: npx create-quiver spec <create|start|status|close>'));
+      throw new Error(formatError('missing spec subcommand. Use: npx create-quiver spec <create|start|status|validate|close>'));
     }
     if (result.specCommand !== 'create' && positional.length > 0) {
       result.targetDir = positional.shift();
@@ -2655,7 +2659,11 @@ async function run(argv) {
   }
 
   if (args.mode === 'check-scope') {
-    checkScope(args.targetDir, { strict: args.strict });
+    checkScope(args.targetDir, {
+      baseBranch: args.baseBranchExplicit ? args.aiBaseBranch : '',
+      remote: args.aiRemote,
+      strict: args.strict,
+    });
     return;
   }
 
@@ -2676,7 +2684,7 @@ async function run(argv) {
     }
 
     if (!args.targetDir || args.targetDir === '.') {
-      throw new Error(formatError('missing spec directory. Use: npx create-quiver spec <start|status|close> <spec-dir>'));
+      throw new Error(formatError('missing spec directory. Use: npx create-quiver spec <start|status|validate|close> <spec-dir>'));
     }
 
     if (args.specCommand === 'start') {
@@ -2693,6 +2701,13 @@ async function run(argv) {
       return;
     }
 
+    if (args.specCommand === 'validate') {
+      runValidateSpec(process.cwd(), args.targetDir, {
+        strict: args.strict,
+      });
+      return;
+    }
+
     if (args.specCommand === 'close') {
       const report = closeSpecWorktree(process.cwd(), args.targetDir, {
         baseBranch: args.aiBaseBranch,
@@ -2705,7 +2720,7 @@ async function run(argv) {
       return;
     }
 
-    throw new Error(formatError(`unsupported spec subcommand: ${args.specCommand}. Supported tasks: create, start, status, close`));
+    throw new Error(formatError(`unsupported spec subcommand: ${args.specCommand}. Supported tasks: create, start, status, validate, close`));
   }
 
   const packageRoot = path.resolve(__dirname, '../..');

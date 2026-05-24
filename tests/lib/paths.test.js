@@ -3,10 +3,12 @@ const path = require('node:path');
 const test = require('node:test');
 
 const {
+  getProjectRelativePathIssue,
   normalizeGitBashDrivePath,
   relativePosixPath,
   specRelativePathFromPath,
   toPosixPath,
+  validateProjectRelativePath,
 } = require('../../src/create-quiver/lib/paths');
 
 test('toPosixPath normalizes explicit Windows separators', () => {
@@ -48,4 +50,19 @@ test('specRelativePathFromPath extracts specs-fix paths from Git Bash paths', ()
 
 test('specRelativePathFromPath returns empty string when no spec family exists', () => {
   assert.equal(specRelativePathFromPath('/d/a/_temp/repo/docs/slice.json', path.win32), '');
+});
+
+test('validateProjectRelativePath rejects absolute and traversal paths', () => {
+  assert.equal(validateProjectRelativePath('src/app.js'), 'src/app.js');
+  assert.equal(validateProjectRelativePath(String.raw`src\app.js`, 'field'), 'src/app.js');
+  assert.equal(getProjectRelativePathIssue('../secret.txt'), 'path-traversal');
+  assert.equal(getProjectRelativePathIssue('specs/demo/../../secret.txt'), 'path-traversal');
+  assert.equal(getProjectRelativePathIssue('/tmp/secret.txt'), 'absolute-path');
+  assert.equal(getProjectRelativePathIssue(String.raw`C:\repo\secret.txt`, path.win32), 'absolute-path');
+  assert.equal(getProjectRelativePathIssue('file:///tmp/secret.txt'), 'file-url');
+
+  assert.throws(
+    () => validateProjectRelativePath('../secret.txt', 'slice path'),
+    /slice path must be a project-relative path without traversal/,
+  );
 });
