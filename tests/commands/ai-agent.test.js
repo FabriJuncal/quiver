@@ -50,6 +50,24 @@ test('ai agent set, list, and show persist reusable profile settings', () => {
   }
 });
 
+test('ai agent set --dry-run previews the profile without writing state', () => {
+  const repo = makeRepo();
+
+  try {
+    const output = runCli(repo.root, ['ai', 'agent', 'set', 'planner', '--provider', 'codex', '--model', 'gpt-5.5-xhigh', '--label', 'planner', '--dry-run']);
+
+    assert.match(output, /AI agent profile dry-run/);
+    assert.match(output, /Writes: none/);
+    assert.match(output, /Would create: \.quiver\/agents\/profiles\.json/);
+    assert.match(output, /Role: planner/);
+    assert.match(output, /Provider: codex/);
+    assert.match(output, /Model: gpt-5\.5-xhigh/);
+    assert.equal(fs.existsSync(path.join(repo.root, '.quiver', 'agents', 'profiles.json')), false);
+  } finally {
+    repo.cleanup();
+  }
+});
+
 test('ai agent supports doctor profiles and rejects researcher profiles', () => {
   const repo = makeRepo();
 

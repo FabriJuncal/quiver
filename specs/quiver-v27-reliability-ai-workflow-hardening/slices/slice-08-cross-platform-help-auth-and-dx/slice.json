@@ -79,7 +79,7 @@
     "Do not require real GitHub credentials in tests."
   ],
   "estimated_hours": 4,
-  "status": "planned",
+  "status": "completed",
+  "completed_at": "2026-05-24",
   "blocked_reason": null
 }
-

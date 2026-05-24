@@ -1092,6 +1092,15 @@ function installSelfAsDevDep(projectRoot, version) {
     return 'skipped-already-present';
   }
 
+  try {
+    execSync(formatInstallSelfCommand(projectRoot, version), { cwd: projectRoot, stdio: 'inherit' });
+    return 'installed';
+  } catch {
+    return 'failed';
+  }
+}
+
+function formatInstallSelfCommand(projectRoot, version) {
   const pm = detectPackageManager(projectRoot);
   const commands = {
     npm: `npm install -D create-quiver@${version}`,
@@ -1099,13 +1108,7 @@ function installSelfAsDevDep(projectRoot, version) {
     pnpm: `pnpm add -D create-quiver@${version}`,
     bun: `bun add -d create-quiver@${version}`,
   };
-
-  try {
-    execSync(commands[pm], { cwd: projectRoot, stdio: 'inherit' });
-    return 'installed';
-  } catch {
-    return 'failed';
-  }
+  return commands[pm] || commands.npm;
 }
 
 function normalizeSkippedReason(reason) {
@@ -1253,5 +1256,6 @@ module.exports = {
   writeFrontMatter,
   toProjectSlug,
   detectPackageManager,
+  formatInstallSelfCommand,
   installSelfAsDevDep,
 };

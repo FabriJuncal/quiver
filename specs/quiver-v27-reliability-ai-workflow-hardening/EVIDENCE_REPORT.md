@@ -112,6 +112,25 @@
 - Ran `node bin/create-quiver.js plan --spec quiver-v27-reliability-ai-workflow-hardening --include-completed`.
 - Ran `node bin/create-quiver.js graph --spec quiver-v27-reliability-ai-workflow-hardening`.
 
+## Slice 08 Evidence - 2026-05-24
+
+- Added real `ai agent set --dry-run` preview behavior that validates the requested profile and reports the planned `.quiver/agents/profiles.json` change without writing files.
+- Updated top-level help and examples so `--help` includes the agent dry-run flow.
+- Hardened GitHub auth failures with actionable account, scope, and SSH alias guidance plus a safe `gh auth status` next command.
+- Added shell-specific path guidance for identity files and PR commands with spaces across macOS/Linux, Windows PowerShell, Git Bash, and WSL.
+- Updated `flow` to report the detected package manager and matching generated `quiver:flow` script command.
+- Updated init/migrate auto-install fallback warnings to respect the detected package manager instead of always printing npm.
+- Synced `README.md`, `README_FOR_AI.md`, and `docs/COMMANDS.md.template` with the new help/auth/dry-run behavior.
+- Ran `node --test tests/commands/cli-contract.test.js tests/commands/ai-agent.test.js tests/lib/ai-github.test.js tests/commands/flow.test.js`.
+- Ran `node --test tests/commands/cli-contract.test.js tests/commands/ai-agent.test.js tests/lib/ai-github.test.js tests/commands/flow.test.js tests/lib/init-docs.test.js`.
+- Ran `node --test tests/commands/cli-contract.test.js tests/commands/ai-agent.test.js tests/lib/ai-github.test.js tests/lib/doctor.test.js tests/commands/flow.test.js tests/lib/init-docs.test.js`.
+- Ran `npm run smoke:doctor-fixtures`.
+- Ran `node bin/create-quiver.js spec validate specs/quiver-v27-reliability-ai-workflow-hardening`.
+- Ran `node --test tests/**/*.test.js` passed with 354 tests.
+- Ran `node bin/create-quiver.js plan --spec quiver-v27-reliability-ai-workflow-hardening --include-completed`.
+- Ran `node bin/create-quiver.js graph --spec quiver-v27-reliability-ai-workflow-hardening`.
+- Ran `git diff --check`.
+
 ## Spec Package Validation - 2026-05-24
 
 - Every `slice.json` under `specs/quiver-v27-reliability-ai-workflow-hardening` parsed successfully with Node.
@@ -134,5 +153,5 @@
 | slice-05 | Completed: spec/slice worktree locks, stale and missing worktree recovery, nested worktree prevention, delegated run lock safety, and lifecycle/git helper coverage. |
 | slice-06 | Completed: stronger local slice gates, base-aware scope validation, actionable handoff templates, spec validate, and repo-bound path safety. |
 | slice-07 | Completed: read-only analyze dry-run, React/Vite stack detection, scan source/freshness reporting, flow context source output, active/generic doctor examples, and prepare-context evidence coverage. |
-| slice-08 | Pending |
+| slice-08 | Completed: agent profile dry-run, grouped help sync, cross-platform path guidance, GitHub account/scope/alias diagnostics, package-manager-aware flow guidance, install fallback messages, and focused command/library tests. |
 | slice-09 | Pending |

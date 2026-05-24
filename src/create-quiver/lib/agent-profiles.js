@@ -95,6 +95,16 @@ function listAgentProfiles(projectRoot) {
 }
 
 function setAgentProfile(projectRoot, role, options = {}) {
+  const next = buildAgentProfileState(projectRoot, role, options);
+
+  const filePath = writeAgentProfiles(projectRoot, next.state);
+  return {
+    filePath,
+    profile: next.profile,
+  };
+}
+
+function buildAgentProfileState(projectRoot, role, options = {}) {
   const normalizedRole = normalizeAgentProfileRole(role);
   const provider = assertSupportedProvider(options.provider);
   const model = normalizeOptionalText(options.model, 'model');
@@ -102,7 +112,7 @@ function setAgentProfile(projectRoot, role, options = {}) {
   const context = normalizeOptionalText(options.context, 'context');
   const state = readAgentProfiles(projectRoot);
   const current = state.profiles[normalizedRole] || {};
-  const now = new Date().toISOString();
+  const now = options.now instanceof Date ? options.now.toISOString() : new Date().toISOString();
   const profile = {
     role: normalizedRole,
     provider,
@@ -119,10 +129,11 @@ function setAgentProfile(projectRoot, role, options = {}) {
   };
   state.updated_at = now;
 
-  const filePath = writeAgentProfiles(projectRoot, state);
   return {
-    filePath,
+    action: current.provider ? 'update' : 'create',
+    filePath: agentProfilesPath(projectRoot),
     profile,
+    state,
   };
 }
 
@@ -139,6 +150,7 @@ module.exports = {
   PROFILE_STATE_VERSION,
   agentProfilesPath,
   formatProviderList,
+  buildAgentProfileState,
   getAgentProfile,
   listAgentProfiles,
   normalizeAgentProfileRole,

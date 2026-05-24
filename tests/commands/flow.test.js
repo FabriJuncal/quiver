@@ -140,6 +140,25 @@ test('flow command reports agent profile guidance before planning when context d
   }
 });
 
+test('flow command reports package-manager-aware generated script guidance', () => {
+  const repo = makeRepo({
+    'package.json': JSON.stringify({
+      name: 'flow-pnpm-project',
+      packageManager: 'pnpm@9.0.0',
+    }, null, 2),
+  });
+
+  try {
+    seedInitializedContext(repo.root);
+    const output = runFlow(repo.root);
+
+    assert.match(output, /Package manager: pnpm/);
+    assert.match(output, /Generated project script: pnpm run quiver:flow/);
+  } finally {
+    repo.cleanup();
+  }
+});
+
 test('flow command uses the generated project map after analyze', () => {
   const repo = makeRepo();
 

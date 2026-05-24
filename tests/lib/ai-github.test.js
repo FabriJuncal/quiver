@@ -9,6 +9,8 @@ const {
   buildPrCreatePlan,
   DEFAULT_GITFLOW_GUIDE_PATH,
   extractPrTitle,
+  formatPreflightReport,
+  formatPrCreateReport,
   preflightGitHubPr,
   resolvePrBodyPath,
   resolveConfiguredPath,
@@ -116,6 +118,10 @@ test('preflightGitHubPr reports an unauthenticated gh with gh auth login guidanc
       }),
       (error) => error.code === 'GH_NOT_AUTHENTICATED'
         && error.message.includes('gh auth login')
+        && error.message.includes('account')
+        && error.message.includes('scopes')
+        && error.message.includes('ssh -T <alias>')
+        && error.message.includes('Next command: gh auth status')
         && error.message.includes('You are not logged into any GitHub hosts.'),
     );
   } finally {
@@ -156,8 +162,8 @@ test('preflightGitHubPr reports missing SSH host alias with platform guidance', 
         && error.message.includes('Impact:')
         && error.message.includes('Fix:')
         && error.message.includes('Next command:')
-        && error.message.includes('macOS/Linux')
-        && error.message.includes('Windows'),
+        && error.message.includes('macOS/Linux/Git Bash/WSL')
+        && error.message.includes('Windows PowerShell'),
     );
   } finally {
     repo.cleanup();
@@ -182,11 +188,36 @@ test('preflightGitHubPr reports the reviewed identity file path when it is missi
       }),
       (error) => error.code === 'MISSING_IDENTITY_FILE'
         && error.message.includes(expectedIdentityPath)
+        && error.message.includes('macOS/Linux')
+        && error.message.includes('Windows PowerShell')
+        && error.message.includes('Git Bash/WSL')
+        && error.message.includes('--identity-file')
         && error.details.resolvedIdentityFile === expectedIdentityPath,
     );
   } finally {
     repo.cleanup();
   }
+});
+
+test('formatPreflightReport prints shell-specific path guidance for paths with spaces', () => {
+  const repoRoot = path.join(os.tmpdir(), 'quiver path with spaces');
+  const report = {
+    ok: true,
+    repoRoot,
+    remote: 'origin',
+    branchName: 'feature/demo',
+    guidePath: path.join(repoRoot, 'docs/GITFLOW_PR_GUIDE.md'),
+    sshHostAlias: 'github-work',
+    identityFile: path.join(repoRoot, 'ssh/github work'),
+  };
+
+  const output = formatPreflightReport(report, { dryRun: true });
+
+  assert.match(output, /Path guidance:/);
+  assert.match(output, /macOS\/Linux/);
+  assert.match(output, /Windows PowerShell/);
+  assert.match(output, /Git Bash\/WSL/);
+  assert.match(output, /--identity-file '.+github work'/);
 });
 
 test('preflightGitHubPr keeps sshHostAlias and identityFile as separate inputs', () => {
@@ -260,6 +291,38 @@ test('buildPrCreatePlan reads pr.md title and builds safe gh args', () => {
   } finally {
     repo.cleanup();
   }
+});
+
+test('formatPrCreateReport prints shell-specific command examples for paths with spaces', () => {
+  const repoRoot = path.join(os.tmpdir(), 'quiver repo with spaces');
+  const preflight = {
+    ok: true,
+    repoRoot,
+    remote: 'origin',
+    branchName: 'feature/demo',
+    guidePath: path.join(repoRoot, DEFAULT_GITFLOW_GUIDE_PATH),
+    sshHostAlias: 'github-work',
+    identityFile: path.join(repoRoot, 'ssh/github work'),
+  };
+  const plan = {
+    args: ['pr', 'create', '--base', 'main', '--head', 'feature/demo', '--title', 'Demo PR', '--body-file', path.join(repoRoot, 'specs/demo/pr.md')],
+    baseBranch: 'main',
+    branchName: 'feature/demo',
+    ghCommand: 'gh',
+    prBodyPath: path.join(repoRoot, 'specs/demo/pr.md'),
+    prBodyRelativePath: 'specs/demo/pr.md',
+    remote: 'origin',
+    repoRoot,
+    title: 'Demo PR',
+  };
+
+  const output = formatPrCreateReport({ preflight, plan }, { dryRun: true });
+
+  assert.match(output, /Shell-safe command examples:/);
+  assert.match(output, /macOS\/Linux\/Git Bash\/WSL: gh pr create/);
+  assert.match(output, /Windows PowerShell: gh pr create/);
+  assert.match(output, /'Demo PR'/);
+  assert.match(output, /'\/.+quiver repo with spaces\/specs\/demo\/pr\.md'/);
 });
 
 test('buildPrCreatePlan refuses PR creation while spec slices are open', () => {

@@ -37,6 +37,7 @@ test('top-level help command prints grouped command descriptions', () => {
   assert.match(output, /Specs, slices, and validation:/);
   assert.match(output, /init\s+Create the default AI-first Quiver contract/);
   assert.match(output, /ai plan\s+Generate versioned planner drafts/);
+  assert.match(output, /ai agent set\|list\|show\s+Manage planner, executor, reviewer, and doctor provider profiles without secrets; use set --dry-run to preview\./);
   assert.match(output, /check-slice\s+Validate slice structure/);
   assert.match(output, /demo create spec-viewer\s+Create or preview the optional static Quiver Spec Viewer demo scaffold/);
 });
@@ -97,6 +98,8 @@ test('help output documents important public commands', () => {
   for (const command of expectedCommands) {
     assert.match(output, new RegExp(`${command.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s+\\S`));
   }
+  assert.match(output, /--dry-run\s+Preview .*ai agent set/);
+  assert.match(output, /ai agent set planner --provider codex --model gpt-5\.5 --dry-run/);
 });
 
 test('ai approve --version remains a draft-version option', () => {

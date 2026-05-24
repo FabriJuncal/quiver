@@ -4,7 +4,12 @@ const os = require('node:os');
 const path = require('node:path');
 const test = require('node:test');
 
-const { initializeProjectDocs, detectPackageManager, installSelfAsDevDep } = require('../../src/create-quiver/lib/init-docs');
+const {
+  initializeProjectDocs,
+  detectPackageManager,
+  formatInstallSelfCommand,
+  installSelfAsDevDep,
+} = require('../../src/create-quiver/lib/init-docs');
 
 function makeTmpDir() {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'quiver-init-test-'));
@@ -108,6 +113,25 @@ test('detectPackageManager prefers bun over pnpm over yarn over npm', () => {
     assert.equal(detectPackageManager(dir), 'bun');
   } finally {
     cleanup();
+  }
+});
+
+test('formatInstallSelfCommand respects detected package managers', () => {
+  const cases = [
+    ['npm', 'package-lock.json', 'npm install -D create-quiver@0.13.0'],
+    ['pnpm', 'pnpm-lock.yaml', 'pnpm add -D create-quiver@0.13.0'],
+    ['yarn', 'yarn.lock', 'yarn add -D create-quiver@0.13.0'],
+    ['bun', 'bun.lockb', 'bun add -d create-quiver@0.13.0'],
+  ];
+
+  for (const [, lockfile, expected] of cases) {
+    const { dir, cleanup } = makeTmpDir();
+    try {
+      fs.writeFileSync(path.join(dir, lockfile), '');
+      assert.equal(formatInstallSelfCommand(dir, '0.13.0'), expected);
+    } finally {
+      cleanup();
+    }
   }
 });
 

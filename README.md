@@ -16,6 +16,7 @@ npx create-quiver flow
 npx create-quiver prepare --dry-run
 npx create-quiver analyze
 npx create-quiver doctor
+npx create-quiver ai agent set planner --provider codex --model "planner-model" --dry-run
 npx create-quiver ai agent set planner --provider codex --model "planner-model"
 npx create-quiver ai agent set executor --provider codex --model "executor-model"
 npx create-quiver ai prepare-context --dry-run
@@ -61,12 +62,13 @@ Reglas prácticas por sistema:
 - Windows con PowerShell: usá los mismos comandos `npx`, `npm` y `node`, pero adaptá rutas a formato Windows, por ejemplo `C:\Users\<usuario>\ssh\github-work`.
 - Windows con Git Bash o WSL: podés usar rutas tipo Unix, por ejemplo `~/.ssh/github-work`.
 - Los wrappers Bash bajo `tools/scripts/` son compatibilidad legacy u opcional. Para trabajo nuevo, preferí el CLI Node y los scripts `quiver:*`.
+- Si una ruta tiene espacios, mantenela entre comillas. En los preflights de GitHub, Quiver imprime ejemplos seguros para macOS/Linux, Windows PowerShell, Git Bash y WSL.
 
 Cuando uses GitHub o PRs:
 
 - `--ssh-host-alias` recibe el alias del host en tu configuración SSH, por ejemplo `github-work` o `github-personal`.
 - `--identity-file` recibe la ruta al archivo de clave, que cambia según el sistema operativo.
-- `gh` debe estar instalado y autenticado; Quiver lo valida con `ai doctor` o `ai pr --dry-run`.
+- `gh` debe estar instalado y autenticado; Quiver lo valida con `ai doctor` o `ai pr --dry-run`, y cuando falla indica cuenta, permisos/scopes, alias SSH y próximo comando seguro.
 
 ### Desarrollar este repositorio
 
@@ -317,7 +319,8 @@ El paquete también publica el alias binario `quiver`, que apunta al mismo CLI. 
 | `npx create-quiver --help` | Lista todos los comandos públicos con descripción, opciones principales y ejemplos recomendados. |
 | `npx create-quiver help` | Alias legible de la ayuda completa. |
 | `quiver --help` | Muestra la misma ayuda cuando Quiver ya está instalado localmente. |
-| `npx create-quiver flow` | Muestra el estado inicial del flujo guiado, la fuente/frescura del contexto y el próximo comando seguro sin escribir estado ni llamar providers. |
+| `npx create-quiver flow` | Muestra el estado inicial del flujo guiado, la fuente/frescura del contexto, el package manager detectado, el script `quiver:flow` correcto y el próximo comando seguro sin escribir estado ni llamar providers. |
+| `npx create-quiver ai agent set <role> --provider <provider> --model <label> --dry-run` | Previsualiza el perfil que se guardaría sin escribir `.quiver/agents/profiles.json`. |
 | `npx create-quiver ai agent set <role> --provider <provider> --model <label>` | Guarda perfiles reutilizables para planner, executor, reviewer o doctor sin guardar secretos. |
 | `npx create-quiver ai agent list` | Lista los perfiles configurados. |
 | `npx create-quiver ai agent show <role>` | Muestra un perfil específico. |
@@ -376,6 +379,7 @@ El paquete también publica el alias binario `quiver`, que apunta al mismo CLI. 
 npx create-quiver ai prepare-context --dry-run
 npx create-quiver ai onboard --dry-run
 npx create-quiver ai onboard --print-prompt
+npx create-quiver ai agent set planner --provider codex --model "planner-model" --dry-run
 npx create-quiver ai agent set planner --provider codex --model "planner-model"
 npx create-quiver ai agent set executor --provider codex --model "executor-model"
 npx create-quiver ai agent set doctor --provider codex --model "diagnostic-model"

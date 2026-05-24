@@ -44,6 +44,7 @@ const {
 } = require('../lib/ai/run-state');
 const {
   agentProfilesPath,
+  buildAgentProfileState,
   getAgentProfile,
   listAgentProfiles,
   resolveProfileProvider,
@@ -1304,6 +1305,21 @@ function formatAgentProfileList(profiles) {
   return `${lines.join('\n')}\n`;
 }
 
+function formatAgentProfileDryRun(repoRoot, result) {
+  const relativePath = path.relative(repoRoot, result.filePath).split(path.sep).join('/');
+  const verb = result.action === 'update' ? 'update' : 'create';
+  return [
+    'AI agent profile dry-run',
+    '- Writes: none',
+    `- Would ${verb}: ${relativePath}`,
+    '',
+    formatAgentProfile(result.profile).trimEnd(),
+    '',
+    'No secrets or provider credentials are stored in agent profiles.',
+    '',
+  ].join('\n');
+}
+
 function runAgent(repoRoot, options = {}) {
   const command = String(options.command || '').trim().toLowerCase();
 
@@ -1313,6 +1329,22 @@ function runAgent(repoRoot, options = {}) {
     }
     if (!options.provider) {
       throw new Error(formatError('ai agent set requires --provider. Supported providers: codex, claude, gemini.'));
+    }
+    if (options.dryRun) {
+      const preview = buildAgentProfileState(repoRoot, options.role, {
+        context: options.context,
+        label: options.label,
+        model: options.model,
+        provider: options.provider,
+      });
+      process.stdout.write(formatAgentProfileDryRun(repoRoot, preview));
+      return {
+        task: 'agent',
+        command,
+        dryRun: true,
+        profile: preview.profile,
+        filePath: path.relative(repoRoot, preview.filePath).split(path.sep).join('/'),
+      };
     }
     const result = setAgentProfile(repoRoot, options.role, {
       context: options.context,

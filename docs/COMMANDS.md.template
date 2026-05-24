@@ -15,7 +15,7 @@ This document is the canonical command reference for the orchestration roadmap.
 | `npx create-quiver --help` | Lists all public commands with descriptions, key options, and recommended examples | macOS, Linux, Windows | current | `npx create-quiver --help` |
 | `npx create-quiver help` | Readable alias for the complete CLI help | macOS, Linux, Windows | current | `npx create-quiver help` |
 | `quiver --help` | Shows the same help when Quiver is installed locally as a project dependency | macOS, Linux, Windows | current | `quiver --help` |
-| `npx create-quiver flow` | Shows the read-only guided flow entrypoint, context source/freshness, and next safe command | macOS, Linux, Windows | v0.11 | `npx create-quiver flow` |
+| `npx create-quiver flow` | Shows the read-only guided flow entrypoint, context source/freshness, package-manager-aware script guidance, and next safe command | macOS, Linux, Windows | v0.11 | `npx create-quiver flow` |
 | `npx create-quiver analyze --dry-run` | Previews scan, project-map, and AI context writes without creating files | macOS, Linux, Windows | v0.13 | `npx create-quiver analyze --dry-run` |
 | `quiver:analyze` | Writes raw analyzer data to `.quiver/scans/PROJECT_SCAN.json`, the visible project map to `docs/PROJECT_MAP.md`, and refreshed AI context | macOS, Linux, Windows | v0.8 | `npm run quiver:analyze` |
 | `quiver:flow` | Runs the guided flow entrypoint through the generated npm script | macOS, Linux, Windows | v0.11 | `npm run quiver:flow` |
@@ -41,6 +41,7 @@ This document is the canonical command reference for the orchestration roadmap.
 | `quiver:plan -- --include-completed` | Shows completed slices for audit/demo history | macOS, Linux, Windows | v0.11 | `npm run quiver:plan -- --include-completed --spec <spec>` |
 | `quiver:graph -- --include-completed` | Includes completed slices in the dependency graph history view | macOS, Linux, Windows | v0.11 | `npm run quiver:graph -- --include-completed --spec <spec>` |
 | `quiver:next -- --include-completed` | Keeps actionable next-slice output and appends completed history | macOS, Linux, Windows | v0.11 | `npm run quiver:next -- --include-completed --spec <spec>` |
+| `quiver:ai:agent -- set <role> ... --dry-run` | Previews planner/executor/reviewer/doctor provider profile writes without creating `.quiver/agents/profiles.json` | macOS, Linux, Windows | v0.13 | `npm run quiver:ai:agent -- set planner --provider codex --model "planner-model" --dry-run` |
 | `quiver:ai:agent` | Stores reusable planner/executor/reviewer/doctor provider profiles without secrets | macOS, Linux, Windows | v0.11 | `npm run quiver:ai:agent -- set planner --provider codex --model "planner-model"` |
 | `quiver:ai:inspect` | Shows actionable lifecycle state through the generated npm script | macOS, Linux, Windows | v0.13 | `npm run quiver:ai:inspect` |
 | `quiver:ai:export` | Exports lifecycle state as JSON or Markdown through the generated npm script | macOS, Linux, Windows | v0.13 | `npm run quiver:ai:export -- --format json` |
@@ -89,6 +90,7 @@ This document is the canonical command reference for the orchestration roadmap.
 | `--provider <codex\|claude\|gemini>` | `ai onboard`, `ai plan`, `ai revise`, `ai review-plan`, `ai execute-slice`, `ai execute-plan` | Select the local AI CLI adapter |
 | `--model <label>` | `ai agent set` | Store a free-form model label in an agent profile; Quiver does not verify model availability |
 | `--label <label>` | `ai agent set` | Store a display label for the profile |
+| `--dry-run` | `ai agent set` | Preview profile writes without creating or updating `.quiver/agents/profiles.json` |
 | `--print-prompt` | `ai onboard`, `ai plan`, `ai revise`, `ai review-plan` | Print the exact provider prompt and exit without executing provider CLIs or requiring provider auth |
 | `--role <planner\|executor\|reviewer\|doctor>` | `ai onboard`, `ai plan`, `ai revise`, `ai execute-slice`, `ai execute-plan` | Select an AI role; execution requires executor |
 | `--context <full\|planning\|slice\|minimal>` | `ai onboard`, `ai plan`, `ai revise`, `ai review-plan`, `ai execute-slice`, `ai execute-plan` | Select a token-budgeted context pack |
@@ -117,6 +119,8 @@ This document is the canonical command reference for the orchestration roadmap.
 - `check-handoff` validates both exceptional `HANDOFF.md` transfers and current slice-local `EXECUTION_BRIEF.md` / `CLOSURE_BRIEF.md` contracts.
 - `quiver:ai:onboard`, `quiver:ai:plan`, `quiver:ai:revise`, `quiver:ai:review-plan`, and `quiver:ai:execute-slice` support `codex`, `claude`, and `gemini` through local CLIs. Use `--dry-run` first to inspect the invocation without requiring provider auth, or `--print-prompt` to print the exact planner/reviewer prompt without executing a provider.
 - `quiver:ai:prepare-context -- --dry-run` previews docs-only context drafts, diff snippets, assumptions, risks, contradictions, and omitted paths. Write mode stores snapshots under `.quiver/runs/<run-id>/snapshots/` and preserves human-authored content by appending or refreshing a Quiver-managed block.
+- `quiver:flow` reports the detected package manager and the matching generated project script, for example `npm run quiver:flow`, `pnpm run quiver:flow`, `yarn run quiver:flow`, or `bun run quiver:flow`.
+- `quiver:ai:agent -- set ... --dry-run` previews provider/model profile changes without writing `.quiver/agents/profiles.json`.
 - `quiver:ai:agent` stores provider/model labels under `.quiver/agents/profiles.json`; credentials stay in the provider CLI or OS credential store.
 - `quiver:ai:inspect`, `quiver:ai:specs`, `quiver:ai:slices`, and `quiver:ai:trace` are read-only inspection surfaces for humans and agents.
 - `quiver:ai:export -- --format json` is the dashboard/agent-friendly state contract; `--format markdown` is the PR/docs-friendly version.
@@ -130,6 +134,7 @@ This document is the canonical command reference for the orchestration roadmap.
 - `quiver:ai:execute-plan -- --dry-run --commit --mode delegated` prints safe delegated waves and falls back to sequential mode when file scope is missing or overlapping.
 - `quiver:ai:execute-plan -- --execute --commit --mode delegated` uses temporary worktrees for parallel-ready waves and integrates one validated commit per slice.
 - `quiver:ai:pr -- --dry-run` validates GitHub CLI, auth, Git remote, current branch/worktree, `docs/GITFLOW_PR_GUIDE.md`, SSH host alias, optional identity file, `pr.md`, and open slice status without creating a PR. Add `--create` only after reviewing the plan.
+- GitHub auth and SSH diagnostics should identify likely account, scopes, and alias issues. When paths contain spaces, Quiver prints copy-safe examples for macOS/Linux, Windows PowerShell, Git Bash, and WSL.
 - `quiver:spec:close` refuses dirty or unmerged spec worktrees unless discard behavior is explicitly requested.
 - `npm run smoke:doctor-fixtures` validates the required fixture matrix for doctor, validation, and actionable error coverage in the Quiver source repo.
 - After `init` or `migrate`, Quiver auto-installs itself as a dev dependency. Use `--skip-install` to suppress.

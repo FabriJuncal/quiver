@@ -41,7 +41,12 @@ const { runNext } = require('./commands/next');
 const { runPlan } = require('./commands/plan');
 const { runCreateSpec, runValidateSpec } = require('./commands/spec');
 const { buildInitLayout, formatInitLayoutPlan } = require('./lib/init-layout');
-const { initializeProjectDocs, installSelfAsDevDep, refreshAiContextDoc } = require('./lib/init-docs');
+const {
+  formatInstallSelfCommand,
+  initializeProjectDocs,
+  installSelfAsDevDep,
+  refreshAiContextDoc,
+} = require('./lib/init-docs');
 const { checkPrReadiness, checkScope, checkSliceReadiness } = require('./lib/readiness');
 const { cleanupSlice, refreshActiveSlicesBoard, startSlice } = require('./lib/lifecycle');
 const { buildSpecStatus, closeSpecWorktree, formatSpecCloseResult, formatSpecStartResult, formatSpecStatus, startSpecWorktree } = require('./lib/spec-worktrees');
@@ -159,7 +164,7 @@ const COMMAND_HELP_GROUPS = [
       ['ai resume', 'Resume guidance from the last valid lifecycle phase without chat memory.'],
       ['ai onboard', 'Run or print the planner onboarding prompt with a token-aware context pack.'],
       ['ai prepare-context', 'Preview or write docs-only AI context updates with assumptions and risks.'],
-      ['ai agent set|list|show', 'Manage planner, executor, reviewer, and doctor provider profiles without secrets.'],
+      ['ai agent set|list|show', 'Manage planner, executor, reviewer, and doctor provider profiles without secrets; use set --dry-run to preview.'],
       ['ai plan', 'Generate versioned planner drafts for acceptance criteria, technical plan, or spec phase.'],
       ['ai revise', 'Create a new planner draft from human feedback without approving it.'],
       ['ai review-plan', 'Review the technical-plan draft for production readiness before approval.'],
@@ -290,7 +295,7 @@ Options:
       --full                  Plan or run the full compatibility init profile
       --legacy-scripts        Include legacy Bash wrappers in init profile
       --include-templates     Export packaged templates in init profile
-      --dry-run               Preview init, analyze, migrate, prepare, spec create/start/close, demo, or AI work without executing writes/providers
+      --dry-run               Preview init, analyze, migrate, prepare, spec create/start/close, demo, ai agent set, or AI work without executing writes/providers
       --print-prompt          Print the exact AI prompt and exit without executing provider CLIs
       --fix                   For doctor, apply safe non-destructive repairs
       --execute               For ai execute-plan, run the planned slices instead of printing commands
@@ -333,6 +338,7 @@ Examples:
   cd ./my-project && npx create-quiver ai specs list
   cd ./my-project && npx create-quiver ai slices list --json
   cd ./my-project && npx create-quiver ai trace report
+  cd ./my-project && npx create-quiver ai agent set planner --provider codex --model gpt-5.5 --dry-run
   cd ./my-project && npx create-quiver ai agent set planner --provider codex --model gpt-5.5
   cd ./my-project && npx create-quiver ai agent list
   cd ./my-project && npx create-quiver ai plan --phase acceptance --input requirements.md --dry-run
@@ -2110,7 +2116,7 @@ function runMigrate(targetDir, options = {}) {
       if (installResult === 'installed') {
         console.log(`Added create-quiver@${CLI_VERSION} as dev dependency`);
       } else if (installResult === 'failed') {
-        console.warn(`Warning: could not install create-quiver automatically. Run: npm install -D create-quiver@${CLI_VERSION}`);
+        console.warn(`Warning: could not install create-quiver automatically. Run: ${formatInstallSelfCommand(projectRoot, CLI_VERSION)}`);
       }
     }
 
@@ -2431,6 +2437,7 @@ async function run(argv) {
         model: args.aiModel || undefined,
         provider: args.aiProviderExplicit ? args.aiProvider : undefined,
         role: args.aiAgentRole || undefined,
+        dryRun: args.dryRun,
       });
       return;
     }
@@ -2803,7 +2810,7 @@ async function run(argv) {
       if (installResult === 'installed') {
         console.log(`Added create-quiver@${CLI_VERSION} as dev dependency`);
       } else if (installResult === 'failed') {
-        console.warn(`Warning: could not install create-quiver automatically. Run: npm install -D create-quiver@${CLI_VERSION}`);
+        console.warn(`Warning: could not install create-quiver automatically. Run: ${formatInstallSelfCommand(targetDir, CLI_VERSION)}`);
       }
     }
 

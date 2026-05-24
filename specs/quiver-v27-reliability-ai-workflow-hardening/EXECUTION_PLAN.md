@@ -46,9 +46,11 @@ Status: Wave 4 is complete.
 Run after Wave 4:
 
 1. `slice-07-context-analysis-and-doctor-flow` - completed
-2. `slice-08-cross-platform-help-auth-and-dx` - next
+2. `slice-08-cross-platform-help-auth-and-dx` - completed
 
 `slice-08` depends on `slice-07` because help/auth guidance should reference the hardened diagnostics contract.
+
+Status: Wave 5 is complete.
 
 ## Wave 6 - Final Readiness
 
