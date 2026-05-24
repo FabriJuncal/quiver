@@ -151,7 +151,7 @@ The full coverage matrix lives in `COVERAGE_MATRIX.md`. Summary:
 | slice-04 | AI artifact storage, redaction, and token compaction | completed | slice-01 |
 | slice-05 | Worktree lifecycle, locks, and recovery | completed | slice-01 |
 | slice-06 | Validation gates and scope safety | completed | slice-01, slice-05 |
-| slice-07 | Context analysis and doctor flow | planned | slice-01, slice-06 |
+| slice-07 | Context analysis and doctor flow | completed | slice-01, slice-06 |
 | slice-08 | Cross-platform help, auth, and DX | planned | slice-07 |
 | slice-09 | Fixtures, smoke, docs, and release readiness | planned | slice-02, slice-03, slice-04, slice-05, slice-06, slice-07, slice-08 |
 

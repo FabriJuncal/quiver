@@ -82,7 +82,7 @@
     "Use fixtures with stale docs and real completed slices."
   ],
   "estimated_hours": 6,
-  "status": "planned",
+  "status": "completed",
+  "completed_at": "2026-05-24",
   "blocked_reason": null
 }
-

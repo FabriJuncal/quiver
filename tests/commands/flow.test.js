@@ -120,6 +120,7 @@ test('flow command reports analysis guidance when initialized context docs are m
     assert.match(output, /Stage: context needs refresh/);
     assert.match(output, /Next safe command: npx create-quiver analyze/);
     assert.match(output, /Missing docs\/PROJECT_MAP\.md\./);
+    assert.match(output, /Context source: missing analysis artifacts/);
   } finally {
     repo.cleanup();
   }
@@ -150,6 +151,7 @@ test('flow command uses the generated project map after analyze', () => {
 
     assert.doesNotMatch(output, /Missing docs\/PROJECT_MAP\.md\./);
     assert.match(output, /Stage: agent profiles need setup/);
+    assert.match(output, /Context source: \.quiver\/scans\/PROJECT_SCAN\.json \(current, updated /);
   } finally {
     repo.cleanup();
   }
@@ -314,6 +316,7 @@ test('flow command supports machine-readable output', () => {
 
     assert.equal(parsed.stage, 'not-initialized');
     assert.equal(parsed.nextCommand, 'npx create-quiver init --name "Project Name"');
+    assert.equal(parsed.facts.contextSource.status, 'missing');
   } finally {
     repo.cleanup();
   }

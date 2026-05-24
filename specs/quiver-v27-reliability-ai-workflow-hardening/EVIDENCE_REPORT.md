@@ -95,6 +95,23 @@
 - Ran `node --test tests/commands/spec-create.test.js tests/commands/spec-worktree.test.js tests/commands/spec-close.test.js tests/commands/ai-execute-slice.test.js tests/commands/ai-execute-plan.test.js tests/lib/scope.test.js tests/lib/check-slice.test.js tests/lib/handoff.test.js tests/lib/paths.test.js`.
 - Ran full Node test suite: `node --test tests/**/*.test.js` passed with 343 tests.
 
+## Slice 07 Evidence - 2026-05-24
+
+- Added `analyze --dry-run` as a true no-write mode that reports planned scan, project map, and AI context writes without creating `.quiver/` or `docs/`.
+- Fixed React + Vite detection so `vite.config.*` no longer classifies a project as Vue unless Vue evidence exists.
+- Added project scan source/freshness metadata through `readProjectScanStatus`, including current, legacy, partial, stale, invalid, and missing states.
+- Updated `flow` to print the context source summary and include the same metadata in JSON output.
+- Updated `doctor` examples to prefer an active non-completed slice, use the only spec when unambiguous, or fall back to placeholders when multiple specs have no active slice.
+- Added prepare-context coverage showing evidence-backed stack and command facts are preserved while unknown architecture boundaries remain marked for confirmation.
+- Added tests for analyze dry-run, React/Vite classification, scan source summaries, flow context source output, doctor active/generic examples, and prepare-context evidence behavior.
+- Ran `node --test tests/commands/analyze.test.js tests/commands/ai-onboard.test.js tests/commands/flow.test.js tests/commands/doctor.test.js tests/lib/project-scan.test.js tests/lib/doctor.test.js`.
+- Ran `npm run smoke:doctor-fixtures`.
+- Ran `node bin/create-quiver.js spec validate specs/quiver-v27-reliability-ai-workflow-hardening`.
+- Ran `git diff --check`.
+- Ran full Node test suite: `node --test tests/**/*.test.js` passed with 349 tests.
+- Ran `node bin/create-quiver.js plan --spec quiver-v27-reliability-ai-workflow-hardening --include-completed`.
+- Ran `node bin/create-quiver.js graph --spec quiver-v27-reliability-ai-workflow-hardening`.
+
 ## Spec Package Validation - 2026-05-24
 
 - Every `slice.json` under `specs/quiver-v27-reliability-ai-workflow-hardening` parsed successfully with Node.
@@ -116,6 +133,6 @@
 | slice-04 | Completed: clean drafts/reviews, redacted run-scoped raw provider artifacts, revise compaction, prompt-size guardrails, approval metadata, and raw artifact package-safety coverage. |
 | slice-05 | Completed: spec/slice worktree locks, stale and missing worktree recovery, nested worktree prevention, delegated run lock safety, and lifecycle/git helper coverage. |
 | slice-06 | Completed: stronger local slice gates, base-aware scope validation, actionable handoff templates, spec validate, and repo-bound path safety. |
-| slice-07 | Pending |
+| slice-07 | Completed: read-only analyze dry-run, React/Vite stack detection, scan source/freshness reporting, flow context source output, active/generic doctor examples, and prepare-context evidence coverage. |
 | slice-08 | Pending |
 | slice-09 | Pending |

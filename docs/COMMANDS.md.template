@@ -15,8 +15,9 @@ This document is the canonical command reference for the orchestration roadmap.
 | `npx create-quiver --help` | Lists all public commands with descriptions, key options, and recommended examples | macOS, Linux, Windows | current | `npx create-quiver --help` |
 | `npx create-quiver help` | Readable alias for the complete CLI help | macOS, Linux, Windows | current | `npx create-quiver help` |
 | `quiver --help` | Shows the same help when Quiver is installed locally as a project dependency | macOS, Linux, Windows | current | `quiver --help` |
-| `npx create-quiver flow` | Shows the read-only guided flow entrypoint and next safe command | macOS, Linux, Windows | v0.11 | `npx create-quiver flow` |
-| `quiver:analyze` | Writes raw analyzer data to `.quiver/scans/PROJECT_SCAN.json` and the visible project map to `docs/PROJECT_MAP.md` | macOS, Linux, Windows | v0.8 | `npm run quiver:analyze` |
+| `npx create-quiver flow` | Shows the read-only guided flow entrypoint, context source/freshness, and next safe command | macOS, Linux, Windows | v0.11 | `npx create-quiver flow` |
+| `npx create-quiver analyze --dry-run` | Previews scan, project-map, and AI context writes without creating files | macOS, Linux, Windows | v0.13 | `npx create-quiver analyze --dry-run` |
+| `quiver:analyze` | Writes raw analyzer data to `.quiver/scans/PROJECT_SCAN.json`, the visible project map to `docs/PROJECT_MAP.md`, and refreshed AI context | macOS, Linux, Windows | v0.8 | `npm run quiver:analyze` |
 | `quiver:flow` | Runs the guided flow entrypoint through the generated npm script | macOS, Linux, Windows | v0.11 | `npm run quiver:flow` |
 | `quiver:prepare` | Runs guided setup diagnostics and context preparation | macOS, Linux, Windows | v0.10 | `npm run quiver:prepare -- --dry-run --provider codex` |
 | `quiver:doctor` | Validates the Quiver contract and reports layout or migration guidance | macOS, Linux, Windows | v0.8 | `npm run quiver:doctor` |

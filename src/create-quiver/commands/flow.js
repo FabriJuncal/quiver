@@ -4,6 +4,7 @@ const path = require('path');
 const { readPhaseApproval } = require('../lib/approvals');
 const { readPlanReview } = require('../lib/ai/plan-review');
 const { listAgentProfiles } = require('../lib/agent-profiles');
+const { readProjectScanStatus } = require('../lib/project-scan');
 const { buildGraph, naturalNumberFromSliceId, readAllSlices } = require('../lib/slice-graph');
 const { hasQuiverInitializationEvidence, readState } = require('../lib/state');
 
@@ -53,6 +54,7 @@ function summarizeDocs(projectRoot) {
     hasProjectMap: exists(projectRoot, 'docs/PROJECT_MAP.md'),
     hasAiContext: exists(projectRoot, 'docs/AI_CONTEXT.md'),
     hasOnboardingPrompt: exists(projectRoot, 'docs/AI_ONBOARDING_PROMPT.md'),
+    scanStatus: readProjectScanStatus(projectRoot),
   };
   const missing = [
     ['docs/PROJECT_MAP.md', docs.hasProjectMap],
@@ -91,6 +93,7 @@ function buildFacts({ initialized, docs, approvals, planReview, agents, specSlug
     agents,
     specSlugs,
     slices,
+    contextSource: docs.scanStatus,
     quiverVersion: state?.quiver_version || null,
   };
 }
@@ -520,6 +523,7 @@ function formatFlowReport(report) {
     '',
     `Stage: ${report.label}`,
     `Next safe command: ${report.nextCommand}`,
+    `Context source: ${report.facts.contextSource.summary}`,
   ];
 
   if (report.blockers.length > 0) {

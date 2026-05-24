@@ -6,6 +6,7 @@ const { execFileSync } = require('node:child_process');
 const test = require('node:test');
 
 const { runOnboard, runPrepareContext } = require('../../src/create-quiver/commands/ai');
+const { buildContextPreparationDrafts } = require('../../src/create-quiver/lib/ai/onboarding-template');
 
 const BIN_PATH = path.resolve(__dirname, '../../bin/create-quiver.js');
 
@@ -296,6 +297,45 @@ test('ai prepare-context reports contradictions between project map and current 
     assert.ok(output.includes("docs/PROJECT_MAP.md reports project name 'other-project'"));
     assert.ok(output.includes("docs/PROJECT_MAP.md reports package manager 'pnpm'"));
     assert.equal(fs.readFileSync(path.join(repo.root, 'docs', 'PROJECT_MAP.md'), 'utf8').includes('quiver:context-prep:start'), false);
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('ai prepare-context uses root evidence for known facts and keeps unknowns marked as pending', () => {
+  const repo = makeRepo({
+    'README.md': '# React Vite Demo\n',
+    'package.json': JSON.stringify({
+      name: 'react-vite-demo',
+      dependencies: {
+        react: '^19.0.0',
+      },
+      devDependencies: {
+        vite: '^7.0.0',
+        typescript: '^5.0.0',
+      },
+      scripts: {
+        dev: 'vite',
+        build: 'vite build',
+      },
+    }, null, 2),
+    'vite.config.ts': 'export default {};\n',
+    'src/App.tsx': 'export function App() { return null; }\n',
+    'docs/PROJECT_MAP.md': '# Project Map\n\n## Project\n- Name: react-vite-demo\n- Package manager: npm\n',
+    'docs/INDEX.md': '# Index\n',
+  });
+
+  try {
+    const draftPack = buildContextPreparationDrafts(repo.root);
+    const projectMap = draftPack.docs.find((doc) => doc.path === 'docs/PROJECT_MAP.md').content;
+    const architecture = draftPack.docs.find((doc) => doc.path === 'docs/ARCHITECTURE.md').content;
+
+    assert.match(projectMap, /- Stack summary: Vite, React/);
+    assert.match(projectMap, /- Dev: vite/);
+    assert.match(projectMap, /- Build: vite build/);
+    assert.match(architecture, /- Stack: Vite, React/);
+    assert.doesNotMatch(projectMap, /Pending confirmation: no primary stack could be inferred/);
+    assert.match(architecture, /TODO: confirm application boundaries with the team/);
   } finally {
     repo.cleanup();
   }

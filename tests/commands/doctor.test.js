@@ -216,3 +216,57 @@ test('doctor reports a hybrid layout when explicit full compatibility assets exi
     cleanup();
   }
 });
+
+test('doctor examples prefer an active slice over the first spec alphabetically', () => {
+  const { dir, cleanup } = makeTmpDir();
+  const target = path.join(dir, 'target');
+  try {
+    runCli(['init', '--name', 'Doctor Active Spec Project', '--dir', target, '--skip-install']);
+    for (const specSlug of ['alpha-spec', 'zeta-active-spec']) {
+      writeFile(target, `specs/${specSlug}/SPEC.md`, `# ${specSlug}\n`);
+      writeFile(target, `specs/${specSlug}/STATUS.md`, '# Status\n');
+      writeFile(target, `specs/${specSlug}/EVIDENCE_REPORT.md`, '# Evidence\n');
+    }
+    writeJson(target, 'specs/alpha-spec/slices/slice-00/slice.json', {
+      slice_id: 'slice-00',
+      status: 'completed',
+    });
+    writeJson(target, 'specs/zeta-active-spec/slices/slice-01/slice.json', {
+      slice_id: 'slice-01-active',
+      status: 'in-progress',
+    });
+
+    const output = runCli(['doctor'], { cwd: target });
+
+    assert.match(output, /Example target: zeta-active-spec\/slice-01-active \(in-progress\)/);
+    assert.match(output, /start-slice specs\/zeta-active-spec\/slices\/slice-01-active\/slice\.json/);
+    assert.doesNotMatch(output, /start-slice specs\/alpha-spec\/slices\/<slice-id>\/slice\.json/);
+  } finally {
+    cleanup();
+  }
+});
+
+test('doctor uses generic examples when multiple specs have no active slice', () => {
+  const { dir, cleanup } = makeTmpDir();
+  const target = path.join(dir, 'target');
+  try {
+    runCli(['init', '--name', 'Doctor Generic Spec Project', '--dir', target, '--skip-install']);
+    for (const specSlug of ['alpha-spec', 'zeta-spec']) {
+      writeFile(target, `specs/${specSlug}/SPEC.md`, `# ${specSlug}\n`);
+      writeFile(target, `specs/${specSlug}/STATUS.md`, '# Status\n');
+      writeFile(target, `specs/${specSlug}/EVIDENCE_REPORT.md`, '# Evidence\n');
+      writeJson(target, `specs/${specSlug}/slices/slice-00/slice.json`, {
+        slice_id: 'slice-00',
+        status: 'completed',
+      });
+    }
+
+    const output = runCli(['doctor'], { cwd: target });
+
+    assert.match(output, /Example target: specs\/<spec-slug>\/slices\/<slice-id>\/slice\.json/);
+    assert.match(output, /start-slice specs\/<spec-slug>\/slices\/<slice-id>\/slice\.json/);
+    assert.doesNotMatch(output, /start-slice specs\/alpha-spec\/slices\/<slice-id>\/slice\.json/);
+  } finally {
+    cleanup();
+  }
+});

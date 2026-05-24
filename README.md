@@ -317,7 +317,7 @@ El paquete también publica el alias binario `quiver`, que apunta al mismo CLI. 
 | `npx create-quiver --help` | Lista todos los comandos públicos con descripción, opciones principales y ejemplos recomendados. |
 | `npx create-quiver help` | Alias legible de la ayuda completa. |
 | `quiver --help` | Muestra la misma ayuda cuando Quiver ya está instalado localmente. |
-| `npx create-quiver flow` | Muestra el estado inicial del flujo guiado y el próximo comando seguro sin escribir estado ni llamar providers. |
+| `npx create-quiver flow` | Muestra el estado inicial del flujo guiado, la fuente/frescura del contexto y el próximo comando seguro sin escribir estado ni llamar providers. |
 | `npx create-quiver ai agent set <role> --provider <provider> --model <label>` | Guarda perfiles reutilizables para planner, executor, reviewer o doctor sin guardar secretos. |
 | `npx create-quiver ai agent list` | Lista los perfiles configurados. |
 | `npx create-quiver ai agent show <role>` | Muestra un perfil específico. |
@@ -336,7 +336,8 @@ El paquete también publica el alias binario `quiver`, que apunta al mismo CLI. 
 | `npx create-quiver init --full` | Crea el layout amplio de compatibilidad. |
 | `npx create-quiver init --legacy-scripts` | Agrega wrappers Bash legacy bajo `tools/scripts/`. |
 | `npx create-quiver init --include-templates` | Exporta templates empaquetados bajo `.quiver/templates/`. |
-| `npx create-quiver analyze` | Genera `.quiver/scans/PROJECT_SCAN.json` y `docs/PROJECT_MAP.md`. |
+| `npx create-quiver analyze --dry-run` | Previsualiza el scan, el mapa de proyecto y el refresh de contexto sin escribir archivos. |
+| `npx create-quiver analyze` | Genera `.quiver/scans/PROJECT_SCAN.json`, `docs/PROJECT_MAP.md` y refresca `docs/AI_CONTEXT.md`. |
 | `npx create-quiver doctor` | Valida que el contrato de Quiver esté completo. |
 | `npx create-quiver doctor --fix --dry-run` | Muestra reparaciones seguras sin escribir archivos. |
 | `npx create-quiver doctor --fix` | Aplica reparaciones no destructivas e idempotentes. |
@@ -463,7 +464,7 @@ Notas reales del estado actual:
 
 | Script | Uso |
 |---|---|
-| `npm run quiver:analyze` | Ejecuta `npx create-quiver analyze`. |
+| `npm run quiver:analyze` | Ejecuta `npx create-quiver analyze`; usalo con `-- --dry-run` para previsualizar sin escribir. |
 | `npm run quiver:flow` | Ejecuta `npx create-quiver flow`. |
 | `npm run quiver:plan` | Ejecuta `npx create-quiver plan`. |
 | `npm run quiver:prepare` | Ejecuta preparación guiada y diagnósticos. |

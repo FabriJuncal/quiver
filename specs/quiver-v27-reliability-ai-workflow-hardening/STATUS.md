@@ -3,8 +3,8 @@
 ## Overall Status
 
 - Phase: active
-- Progress: 70%
-- Current recommended slice: `slice-07-context-analysis-and-doctor-flow`
+- Progress: 80%
+- Current recommended slice: `slice-08-cross-platform-help-auth-and-dx`
 - Source evidence: Pixel Quiver final dogfooding traceability (`QP-001` to `QP-019`, `QIS-001` to `QIS-022`)
 
 ## Slices
@@ -18,13 +18,13 @@
 | slice-04 | AI artifact storage, redaction, and token compaction | completed | 100% | slice-01 |
 | slice-05 | Worktree lifecycle, locks, and recovery | completed | 100% | slice-01 |
 | slice-06 | Validation gates and scope safety | completed | 100% | slice-01, slice-05 |
-| slice-07 | Context analysis and doctor flow | planned | 0% | slice-01, slice-06 |
+| slice-07 | Context analysis and doctor flow | completed | 100% | slice-01, slice-06 |
 | slice-08 | Cross-platform help, auth, and DX | planned | 0% | slice-07 |
 | slice-09 | Fixtures, smoke, docs, and release readiness | planned | 0% | slice-02, slice-03, slice-04, slice-05, slice-06, slice-07, slice-08 |
 
 ## Blockers
 
-- No blockers after `slice-06`.
+- No blockers after `slice-07`.
 
 ## Known Production Concerns
 
@@ -34,4 +34,4 @@
 
 ## Next Step
 
-Execute `slice-07-context-analysis-and-doctor-flow` next.
+Execute `slice-08-cross-platform-help-auth-and-dx` next.

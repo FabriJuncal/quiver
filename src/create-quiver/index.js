@@ -290,7 +290,7 @@ Options:
       --full                  Plan or run the full compatibility init profile
       --legacy-scripts        Include legacy Bash wrappers in init profile
       --include-templates     Export packaged templates in init profile
-      --dry-run               Preview init, migrate, prepare, spec create/start/close, demo, or AI work without executing writes/providers
+      --dry-run               Preview init, analyze, migrate, prepare, spec create/start/close, demo, or AI work without executing writes/providers
       --print-prompt          Print the exact AI prompt and exit without executing provider CLIs
       --fix                   For doctor, apply safe non-destructive repairs
       --execute               For ai execute-plan, run the planned slices instead of printing commands
@@ -1578,8 +1578,8 @@ function detectFrameworks(projectRoot, files, rootEntries, packageJson) {
     },
     {
       name: 'vue',
-      matches: () => dependencies.has('vue') || rootFileSet.has('vue.config.js') || rootFileSet.has('vite.config.js') || rootFileSet.has('vite.config.ts'),
-      signals: ['vue', 'vue.config.*', 'vite.config.*'],
+      matches: () => dependencies.has('vue') || rootFileSet.has('vue.config.js'),
+      signals: ['vue', 'vue.config.*'],
     },
     {
       name: 'react',
@@ -2002,7 +2002,7 @@ function writeProjectScanArtifacts(projectRoot, scan) {
   return { jsonPath, mdPath: scanPaths.projectMapPath };
 }
 
-function runAnalyze(targetDir) {
+function runAnalyze(targetDir, options = {}) {
   const projectRoot = resolveTargetRoot(process.cwd(), targetDir);
 
   if (!fs.existsSync(projectRoot)) {
@@ -2010,6 +2010,26 @@ function runAnalyze(targetDir) {
   }
 
   const scan = buildProjectScan(projectRoot);
+
+  if (options.dryRun) {
+    console.log(`Project analysis dry-run for ${projectRoot}`);
+    console.log('Writes: none');
+    console.log(`Would write ${CURRENT_SCAN_RELATIVE_PATH}`);
+    console.log(`Would write ${PROJECT_MAP_RELATIVE_PATH}`);
+    console.log('Would refresh docs/AI_CONTEXT.md');
+    console.log(`Detected primary stack: ${scan.stack.primary}`);
+    console.log(`Detected frameworks: ${scan.stack.frameworks.length > 0 ? scan.stack.frameworks.join(', ') : 'none detected'}`);
+    console.log(`Detected package manager: ${scan.project.package_manager}`);
+    return {
+      artifacts: {
+        jsonPath: path.join(projectRoot, CURRENT_SCAN_RELATIVE_PATH),
+        mdPath: path.join(projectRoot, PROJECT_MAP_RELATIVE_PATH),
+      },
+      dryRun: true,
+      scan,
+    };
+  }
+
   const artifacts = writeProjectScanArtifacts(projectRoot, scan);
   const aiContextPath = refreshAiContextDoc(projectRoot, scan);
   updateStateForAnalyze(projectRoot, CLI_VERSION);
@@ -2020,6 +2040,13 @@ function runAnalyze(targetDir) {
   console.log(`Wrote ${relativePosixPath(projectRoot, aiContextPath)}`);
   console.log(`Detected primary stack: ${scan.stack.primary}`);
   console.log(`Detected package manager: ${scan.project.package_manager}`);
+
+  return {
+    artifacts,
+    aiContextPath,
+    dryRun: false,
+    scan,
+  };
 }
 
 function runMigrate(targetDir, options = {}) {
@@ -2121,6 +2148,11 @@ function runDoctor(targetDir, options = {}) {
 
   const doctorReport = collectDoctorReport(projectRoot);
   const specSlugs = doctorReport.specSlugs;
+  const doctorExampleTarget = doctorReport.exampleTarget || {
+    sliceId: '<slice-id>',
+    source: 'generic',
+    specSlug: '<spec-slug>',
+  };
   const specRequiredFiles = specSlugs.flatMap((projectSlug) => [
     `specs/${projectSlug}/SPEC.md`,
     `specs/${projectSlug}/STATUS.md`,
@@ -2241,16 +2273,22 @@ function runDoctor(targetDir, options = {}) {
   if (!hasQuiverState) {
     console.log('- Run migration first: npx create-quiver migrate');
   } else if (!hasScanArtifacts) {
-  console.log('- Analyze the project first: npx create-quiver analyze');
+    console.log('- Analyze the project first: npx create-quiver analyze');
   } else {
     console.log('- Ask your AI agent: Read AGENTS.md, then docs/AI_ONBOARDING_PROMPT.md and execute it.');
   }
   console.log('- Check the next ready slice: npx create-quiver next');
   if (specSlugs.length > 0) {
-    const projectSlug = specSlugs[0];
-    console.log(`- Start a slice: npx create-quiver start-slice specs/${projectSlug}/slices/<slice-id>/slice.json`);
-    console.log(`- Validate a slice: npx create-quiver check-slice specs/${projectSlug}/slices/<slice-id>/slice.json`);
-    console.log(`- Validate the PR gate: npx create-quiver check-pr specs/${projectSlug}/slices/<slice-id>/slice.json`);
+    const projectSlug = doctorExampleTarget.specSlug;
+    const sliceId = doctorExampleTarget.sliceId || '<slice-id>';
+    if (doctorExampleTarget.source === 'active-slice') {
+      console.log(`- Example target: ${projectSlug}/${sliceId} (${doctorExampleTarget.status})`);
+    } else if (doctorExampleTarget.source === 'generic-multiple-specs') {
+      console.log('- Example target: specs/<spec-slug>/slices/<slice-id>/slice.json (generic because no active slice is obvious)');
+    }
+    console.log(`- Start a slice: npx create-quiver start-slice specs/${projectSlug}/slices/${sliceId}/slice.json`);
+    console.log(`- Validate a slice: npx create-quiver check-slice specs/${projectSlug}/slices/${sliceId}/slice.json`);
+    console.log(`- Validate the PR gate: npx create-quiver check-pr specs/${projectSlug}/slices/${sliceId}/slice.json`);
   } else {
     console.log('- Create real specs and slices only after acceptance criteria are approved and the technical plan is reviewed and approved.');
   }
@@ -2284,7 +2322,9 @@ async function run(argv) {
   }
 
   if (args.mode === 'analyze') {
-    runAnalyze(args.targetDir);
+    runAnalyze(args.targetDir, {
+      dryRun: args.dryRun,
+    });
     return;
   }
 
