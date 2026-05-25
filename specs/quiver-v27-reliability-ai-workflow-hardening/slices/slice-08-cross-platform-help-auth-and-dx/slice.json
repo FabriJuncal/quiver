@@ -1,0 +1,85 @@
+{
+  "slice_id": "slice-08-cross-platform-help-auth-and-dx",
+  "ticket": "QUIVER-27-08",
+  "type": "implementation",
+  "title": "Cross-platform help, auth, and DX",
+  "objective": "Improve cross-platform command guidance, GitHub auth diagnostics, help output, agent profile dry-runs, and next safe command messaging.",
+  "description": "Hardens copy-safe command output for macOS/Linux/Windows, paths with spaces, GitHub/SSH auth diagnostics, top-level help coverage, agent profile dry-runs, and actionable error messages.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v27-cross-platform-help-auth-dx",
+    "branch_name": "feature/QUIVER-27-08-cross-platform-help-auth-dx"
+  },
+  "files": [
+    "src/create-quiver/index.js",
+    "src/create-quiver/lib/actionable-error.js",
+    "src/create-quiver/lib/ai/github.js",
+    "src/create-quiver/lib/ai/preflight.js",
+    "src/create-quiver/lib/agent-profiles.js",
+    "src/create-quiver/lib/doctor.js",
+    "docs/**",
+    "tests/lib/**",
+    "tests/commands/**",
+    "specs/quiver-v27-reliability-ai-workflow-hardening/**"
+  ],
+  "expected_read_paths": [
+    "src/create-quiver/index.js",
+    "src/create-quiver/lib/ai/github.js",
+    "src/create-quiver/lib/ai/preflight.js",
+    "src/create-quiver/lib/agent-profiles.js",
+    "tests/commands/cli-contract.test.js",
+    "tests/commands/ai-agent.test.js",
+    "tests/lib/ai-github.test.js"
+  ],
+  "allowed_write_paths": [
+    "src/create-quiver/index.js",
+    "src/create-quiver/lib/actionable-error.js",
+    "src/create-quiver/lib/ai/github.js",
+    "src/create-quiver/lib/ai/preflight.js",
+    "src/create-quiver/lib/agent-profiles.js",
+    "src/create-quiver/lib/doctor.js",
+    "docs/**",
+    "tests/lib/**",
+    "tests/commands/**",
+    "specs/quiver-v27-reliability-ai-workflow-hardening/**"
+  ],
+  "depends_on": [
+    "slice-07-context-analysis-and-doctor-flow"
+  ],
+  "parallel_safe": "no",
+  "parallel_safe_reason": "DX/help output should reference the final hardened context and doctor behavior.",
+  "must": [
+    "Provide copy-safe path guidance for spaces and OS variants.",
+    "Improve GitHub auth diagnostics and SSH alias guidance.",
+    "Keep --help complete and grouped.",
+    "Add ai agent set --dry-run or equivalent safe preview.",
+    "Improve next safe command messages.",
+    "Respect package manager detection in suggested commands."
+  ],
+  "not_included": [
+    "Installing gh or SSH keys automatically.",
+    "Executing provider APIs.",
+    "Publishing npm."
+  ],
+  "acceptance": [
+    "Help output includes new/changed commands and key options.",
+    "Paths with spaces produce copy-safe guidance for macOS, Linux, PowerShell, Git Bash, and WSL.",
+    "GitHub auth errors identify likely account/scope/alias issues and next safe commands.",
+    "ai agent set dry-run previews file changes without writing.",
+    "Package manager suggestions respect detected npm/pnpm/yarn/bun."
+  ],
+  "tests": [
+    "node --test tests/commands/cli-contract.test.js tests/commands/ai-agent.test.js tests/lib/ai-github.test.js tests/lib/doctor.test.js",
+    "npm run smoke:doctor-fixtures",
+    "git diff --check"
+  ],
+  "validation_hints": [
+    "Use fixtures for paths with spaces and missing/ambiguous gh auth.",
+    "Do not require real GitHub credentials in tests."
+  ],
+  "estimated_hours": 4,
+  "status": "completed",
+  "completed_at": "2026-05-24",
+  "blocked_reason": null
+}

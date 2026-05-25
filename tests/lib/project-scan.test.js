@@ -10,6 +10,7 @@ const {
   hasProjectScanArtifact,
   projectScanPaths,
   readProjectScanArtifact,
+  readProjectScanStatus,
   writeProjectScanJson,
 } = require('../../src/create-quiver/lib/project-scan');
 const { buildContextPackMetadata } = require('../../src/create-quiver/lib/ai/context-packs');
@@ -86,6 +87,28 @@ test('context pack metadata reports current or legacy scan source when repoRoot 
       path: CURRENT_SCAN_RELATIVE_PATH,
       source: 'current',
     });
+  } finally {
+    cleanup();
+  }
+});
+
+test('readProjectScanStatus reports source and missing visible map state', () => {
+  const { dir, cleanup } = makeTmpDir();
+  try {
+    assert.equal(readProjectScanStatus(dir).status, 'missing');
+
+    writeProjectScanJson(dir, { project: { name: 'current' } });
+    const partial = readProjectScanStatus(dir);
+    assert.equal(partial.status, 'partial');
+    assert.equal(partial.source, 'current');
+    assert.match(partial.summary, /docs\/PROJECT_MAP\.md is missing/);
+
+    fs.mkdirSync(path.join(dir, 'docs'), { recursive: true });
+    fs.writeFileSync(path.join(dir, 'docs', 'PROJECT_MAP.md'), '# Project Map\n');
+    const fresh = readProjectScanStatus(dir);
+    assert.equal(fresh.status, 'fresh');
+    assert.equal(fresh.artifactPath, CURRENT_SCAN_RELATIVE_PATH);
+    assert.equal(fresh.projectMapPath, 'docs/PROJECT_MAP.md');
   } finally {
     cleanup();
   }

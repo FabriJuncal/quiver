@@ -120,6 +120,7 @@ test('flow command reports analysis guidance when initialized context docs are m
     assert.match(output, /Stage: context needs refresh/);
     assert.match(output, /Next safe command: npx create-quiver analyze/);
     assert.match(output, /Missing docs\/PROJECT_MAP\.md\./);
+    assert.match(output, /Context source: missing analysis artifacts/);
   } finally {
     repo.cleanup();
   }
@@ -139,6 +140,25 @@ test('flow command reports agent profile guidance before planning when context d
   }
 });
 
+test('flow command reports package-manager-aware generated script guidance', () => {
+  const repo = makeRepo({
+    'package.json': JSON.stringify({
+      name: 'flow-pnpm-project',
+      packageManager: 'pnpm@9.0.0',
+    }, null, 2),
+  });
+
+  try {
+    seedInitializedContext(repo.root);
+    const output = runFlow(repo.root);
+
+    assert.match(output, /Package manager: pnpm/);
+    assert.match(output, /Generated project script: pnpm run quiver:flow/);
+  } finally {
+    repo.cleanup();
+  }
+});
+
 test('flow command uses the generated project map after analyze', () => {
   const repo = makeRepo();
 
@@ -150,6 +170,7 @@ test('flow command uses the generated project map after analyze', () => {
 
     assert.doesNotMatch(output, /Missing docs\/PROJECT_MAP\.md\./);
     assert.match(output, /Stage: agent profiles need setup/);
+    assert.match(output, /Context source: \.quiver\/scans\/PROJECT_SCAN\.json \(current, updated /);
   } finally {
     repo.cleanup();
   }
@@ -314,6 +335,7 @@ test('flow command supports machine-readable output', () => {
 
     assert.equal(parsed.stage, 'not-initialized');
     assert.equal(parsed.nextCommand, 'npx create-quiver init --name "Project Name"');
+    assert.equal(parsed.facts.contextSource.status, 'missing');
   } finally {
     repo.cleanup();
   }

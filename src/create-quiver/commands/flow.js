@@ -4,11 +4,52 @@ const path = require('path');
 const { readPhaseApproval } = require('../lib/approvals');
 const { readPlanReview } = require('../lib/ai/plan-review');
 const { listAgentProfiles } = require('../lib/agent-profiles');
+const { readProjectScanStatus } = require('../lib/project-scan');
 const { buildGraph, naturalNumberFromSliceId, readAllSlices } = require('../lib/slice-graph');
 const { hasQuiverInitializationEvidence, readState } = require('../lib/state');
 
 function exists(projectRoot, relativePath) {
   return fs.existsSync(path.join(projectRoot, relativePath));
+}
+
+function readJsonIfExists(filePath) {
+  if (!fs.existsSync(filePath)) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(fs.readFileSync(filePath, 'utf8'));
+  } catch {
+    return null;
+  }
+}
+
+function detectPackageManager(projectRoot) {
+  const packageManagerField = readJsonIfExists(path.join(projectRoot, 'package.json'))?.packageManager;
+  if (typeof packageManagerField === 'string' && packageManagerField.trim()) {
+    return packageManagerField.split('@')[0];
+  }
+
+  const signals = [
+    ['bun', 'bun.lockb'],
+    ['bun', 'bun.lock'],
+    ['pnpm', 'pnpm-lock.yaml'],
+    ['yarn', 'yarn.lock'],
+    ['npm', 'package-lock.json'],
+  ];
+
+  for (const [manager, filename] of signals) {
+    if (exists(projectRoot, filename)) {
+      return manager;
+    }
+  }
+
+  return 'npm';
+}
+
+function formatRunScriptCommand(packageManager, scriptName) {
+  const manager = ['npm', 'pnpm', 'yarn', 'bun'].includes(packageManager) ? packageManager : 'npm';
+  return `${manager} run ${scriptName}`;
 }
 
 function listSpecSlugs(projectRoot) {
@@ -53,6 +94,7 @@ function summarizeDocs(projectRoot) {
     hasProjectMap: exists(projectRoot, 'docs/PROJECT_MAP.md'),
     hasAiContext: exists(projectRoot, 'docs/AI_CONTEXT.md'),
     hasOnboardingPrompt: exists(projectRoot, 'docs/AI_ONBOARDING_PROMPT.md'),
+    scanStatus: readProjectScanStatus(projectRoot),
   };
   const missing = [
     ['docs/PROJECT_MAP.md', docs.hasProjectMap],
@@ -77,7 +119,7 @@ function summarizeAgentProfiles(projectRoot) {
   };
 }
 
-function buildFacts({ initialized, docs, approvals, planReview, agents, specSlugs, state, slices = null }) {
+function buildFacts({ initialized, docs, approvals, planReview, agents, packageManager, specSlugs, state, slices = null }) {
   return {
     initialized,
     hasProjectMap: docs.hasProjectMap,
@@ -91,6 +133,9 @@ function buildFacts({ initialized, docs, approvals, planReview, agents, specSlug
     agents,
     specSlugs,
     slices,
+    contextSource: docs.scanStatus,
+    packageManager,
+    flowScriptCommand: formatRunScriptCommand(packageManager, 'quiver:flow'),
     quiverVersion: state?.quiver_version || null,
   };
 }
@@ -207,8 +252,9 @@ function detectFlowState(projectRoot) {
   };
   const planReview = safeReadPlanReview(projectRoot);
   const agents = summarizeAgentProfiles(projectRoot);
+  const packageManager = detectPackageManager(projectRoot);
   const specSlugs = listSpecSlugs(projectRoot);
-  const facts = buildFacts({ initialized, docs, approvals, planReview, agents, specSlugs, state });
+  const facts = buildFacts({ initialized, docs, approvals, planReview, agents, packageManager, specSlugs, state });
 
   if (!initialized) {
     return baseReport({
@@ -430,7 +476,7 @@ function detectFlowState(projectRoot) {
   }
 
   const slices = summarizeSlices(projectRoot, specSlugs);
-  const sliceFacts = buildFacts({ initialized, docs, approvals, planReview, agents, specSlugs, state, slices: {
+  const sliceFacts = buildFacts({ initialized, docs, approvals, planReview, agents, packageManager, specSlugs, state, slices: {
     completed: slices.completedCount,
     pending: slices.pendingCount,
     ready: slices.ready.map((slice) => slice.ref),
@@ -516,10 +562,12 @@ function formatFlowReport(report) {
     'Command path:',
     '- Bootstrap and remote use: npx create-quiver <command>',
     '- Short alias after local install: quiver <command>',
-    '- Generated npm script: npm run quiver:flow',
+    `- Generated project script: ${report.facts.flowScriptCommand}`,
     '',
+    `Package manager: ${report.facts.packageManager}`,
     `Stage: ${report.label}`,
     `Next safe command: ${report.nextCommand}`,
+    `Context source: ${report.facts.contextSource.summary}`,
   ];
 
   if (report.blockers.length > 0) {

@@ -204,6 +204,12 @@ if [[ "$doctor_before_analyze" == *"bash "* ]]; then
   exit 1
 fi
 
+flow_before_analyze="$(cd "$new_target" && node "$cli" flow)"
+if [[ "$flow_before_analyze" != *"Package manager: npm"* ]] || [[ "$flow_before_analyze" != *"Generated project script: npm run quiver:flow"* ]]; then
+  echo "Flow output did not include package-manager-aware script guidance" >&2
+  exit 1
+fi
+
 (
   cd "$new_target"
   node "$cli" analyze >/dev/null
@@ -228,6 +234,13 @@ if [[ "$doctor_after_analyze" == *"bash "* ]]; then
   echo "Doctor output still references bash after analyze" >&2
   exit 1
 fi
+
+agent_profile_dry_run="$(cd "$new_target" && node "$cli" ai agent set planner --provider codex --model smoke-planner --dry-run)"
+if [[ "$agent_profile_dry_run" != *"AI agent profile dry-run"* ]] || [[ "$agent_profile_dry_run" != *"Writes: none"* ]] || [[ "$agent_profile_dry_run" != *"Would create: .quiver/agents/profiles.json"* ]]; then
+  echo "ai agent set --dry-run did not preview the profile write" >&2
+  exit 1
+fi
+assert_missing "$new_target/.quiver/agents/profiles.json"
 
 if [[ "$graph_mermaid_output" != *'```mermaid'* ]] || [[ "$graph_mermaid_output" != *'flowchart TD'* ]]; then
   echo "Graph mermaid output is missing the expected Mermaid fence or flowchart header" >&2
@@ -873,11 +886,28 @@ tarball_path="$(pack_installer)"
 mkdir -p "$installer_root"
 npm_config_cache="$temp_root/npm-cache" npm install --prefix "$installer_root" "$tarball_path" --ignore-scripts --no-audit --no-fund >/dev/null
 
+packaged_help_output="$(node "$installer_root/node_modules/create-quiver/bin/create-quiver.js" --help)"
+if [[ "$packaged_help_output" != *"ai agent set|list|show"* ]] || [[ "$packaged_help_output" != *"use set --dry-run to preview"* ]]; then
+  echo "Packaged help output did not expose ai agent dry-run guidance" >&2
+  exit 1
+fi
+
 node "$installer_root/node_modules/create-quiver/bin/create-quiver.js" --name "Packaged Project" --dir "$release_target" --full --skip-install >/dev/null
 (
   cd "$release_target"
   node "$installer_root/node_modules/create-quiver/bin/create-quiver.js" analyze >/dev/null
 )
+packaged_flow_output="$(cd "$release_target" && node "$installer_root/node_modules/create-quiver/bin/create-quiver.js" flow)"
+if [[ "$packaged_flow_output" != *"Package manager: npm"* ]] || [[ "$packaged_flow_output" != *"Generated project script: npm run quiver:flow"* ]]; then
+  echo "Packaged flow output did not include package-manager-aware script guidance" >&2
+  exit 1
+fi
+packaged_agent_dry_run="$(cd "$release_target" && node "$installer_root/node_modules/create-quiver/bin/create-quiver.js" ai agent set planner --provider codex --model smoke-planner --dry-run)"
+if [[ "$packaged_agent_dry_run" != *"AI agent profile dry-run"* ]] || [[ "$packaged_agent_dry_run" != *"Writes: none"* ]]; then
+  echo "Packaged ai agent set --dry-run did not preview the profile write" >&2
+  exit 1
+fi
+assert_missing "$release_target/.quiver/agents/profiles.json"
 release_doctor_output="$(cd "$release_target" && node "$installer_root/node_modules/create-quiver/bin/create-quiver.js" doctor)"
 
 if [[ "$release_doctor_output" != *"Read AGENTS.md, then docs/AI_ONBOARDING_PROMPT.md and execute it."* ]]; then

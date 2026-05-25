@@ -7,6 +7,7 @@ const test = require('node:test');
 
 const { buildSpecStatus, ensureSpecSliceZeroComplete, startSpecWorktree } = require('../../src/create-quiver/lib/spec-worktrees');
 const { startSlice } = require('../../src/create-quiver/lib/lifecycle');
+const { acquireLock, releaseLock } = require('../../src/create-quiver/lib/locks');
 
 function writeJson(filePath, data) {
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
@@ -132,6 +133,61 @@ test('startSpecWorktree refuses to reuse a dirty existing worktree', () => {
       (error) => String(error.message || error).includes('existing spec worktree is dirty'),
     );
   } finally {
+    repo.cleanup();
+  }
+});
+
+test('startSpecWorktree reports a stale registered worktree with recovery steps', () => {
+  const repo = makeRepo('main');
+  try {
+    const created = startSpecWorktree(repo.root, 'specs/quiver-v22-guided-ai-workflow');
+    fs.rmSync(created.worktreePath, { recursive: true, force: true });
+
+    assert.throws(
+      () => startSpecWorktree(repo.root, 'specs/quiver-v22-guided-ai-workflow'),
+      (error) => String(error.message || error).includes('missing or stale')
+        && String(error.message || error).includes('git worktree prune')
+        && String(error.message || error).includes('Do not create a nested replacement worktree'),
+    );
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('startSpecWorktree rejects concurrent spec operations with a lock', () => {
+  const repo = makeRepo('main');
+  let lock;
+  try {
+    lock = acquireLock(repo.root, 'spec-worktree-quiver-v22-guided-ai-workflow', {
+      command: 'test spec operation',
+      now: new Date('2026-05-24T00:00:00.000Z'),
+    });
+
+    assert.throws(
+      () => startSpecWorktree(repo.root, 'specs/quiver-v22-guided-ai-workflow'),
+      (error) => String(error.message || error).includes('operation is locked')
+        && String(error.message || error).includes('command=test spec operation'),
+    );
+  } finally {
+    releaseLock(lock);
+    repo.cleanup();
+  }
+});
+
+test('startSlice refuses to create nested worktrees from an existing worktree', () => {
+  const repo = makeRepo('main');
+  const previous = process.cwd();
+  try {
+    const specWorktree = startSpecWorktree(repo.root, 'specs/quiver-v22-guided-ai-workflow');
+    process.chdir(specWorktree.worktreePath);
+
+    assert.throws(
+      () => startSlice('specs/quiver-v22-guided-ai-workflow/slices/slice-05-spec-worktree-lifecycle/slice.json', { allowDraft: true }),
+      (error) => String(error.message || error).includes('refusing to create a slice worktree from inside a linked worktree')
+        && String(error.message || error).includes('prevents nested .worktrees paths'),
+    );
+  } finally {
+    process.chdir(previous);
     repo.cleanup();
   }
 });

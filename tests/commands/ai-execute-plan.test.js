@@ -6,6 +6,7 @@ const { execFileSync } = require('node:child_process');
 const test = require('node:test');
 
 const { runExecutePlan } = require('../../src/create-quiver/commands/ai');
+const { acquireLock, releaseLock } = require('../../src/create-quiver/lib/locks');
 
 const BIN_PATH = path.resolve(__dirname, '../../bin/create-quiver.js');
 
@@ -231,5 +232,34 @@ test('runExecutePlan delegated mode uses temporary worktrees for parallel slices
   } finally {
     project.cleanup();
     fs.rmSync(worktreesRoot, { recursive: true, force: true });
+  }
+});
+
+test('runExecutePlan delegated mode rejects a concurrent run lock', async () => {
+  const project = makeGitProject();
+  let lock;
+  try {
+    lock = acquireLock(project.root, 'execute-plan-testrun', {
+      command: 'other delegated run',
+      now: new Date('2026-05-24T00:00:00.000Z'),
+    });
+
+    await assert.rejects(
+      runExecutePlan(project.root, {
+        commit: true,
+        execute: true,
+        mode: 'delegated',
+        provider: 'codex',
+        runId: 'testrun',
+        runExecuteSliceFn: async () => {
+          throw new Error('provider should not run');
+        },
+      }),
+      (error) => String(error.message || error).includes('operation is locked')
+        && String(error.message || error).includes('command=other delegated run'),
+    );
+  } finally {
+    releaseLock(lock);
+    project.cleanup();
   }
 });

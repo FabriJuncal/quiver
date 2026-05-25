@@ -156,13 +156,64 @@ test('ai plan redacts likely secrets before saving provider output drafts', asyn
     });
 
     const draftPath = path.join(repo.root, '.quiver', 'approvals', 'acceptance', 'draft.md');
+    const metaPath = path.join(repo.root, '.quiver', 'approvals', 'acceptance', 'meta.json');
     const draft = fs.readFileSync(draftPath, 'utf8');
+    const meta = JSON.parse(fs.readFileSync(metaPath, 'utf8'));
+    const raw = JSON.parse(fs.readFileSync(path.join(repo.root, meta.draft.raw_artifact_path), 'utf8'));
 
     assert.equal(draft.includes('abc123'), false);
     assert.equal(draft.includes('secret-value'), false);
     assert.ok(draft.includes('token=[REDACTED]'));
-    assert.ok(draft.includes('authorization: bearer [REDACTED]'));
     assert.ok(draft.includes('criteria draft'));
+    assert.equal(draft.includes('authorization: bearer [REDACTED]'), false);
+    assert.ok(meta.draft.raw_artifact_path.startsWith('.quiver/runs/'));
+    assert.ok(meta.draft.raw_artifact_path.includes('/raw/'));
+    assert.ok(raw.stdout.includes('token=[REDACTED]'));
+    assert.ok(raw.stderr.includes('authorization: bearer [REDACTED]'));
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('ai plan stores clean drafts and separates redacted raw provider logs', async () => {
+  const repo = makeRepo({
+    'requirements.md': '# requirements\n- Keep the draft useful.',
+  });
+
+  try {
+    await runPlan(repo.root, {
+      input: 'requirements.md',
+      phase: 'acceptance',
+      runProviderFn: async (provider, options) => ({
+        ok: true,
+        dryRun: false,
+        provider,
+        command: 'codex',
+        args: ['exec'],
+        cwd: repo.root,
+        timeoutMs: 0,
+        promptTransport: { mode: 'stdin' },
+        exitCode: 0,
+        stdout: `${options.prompt}\nINFO provider started\n# Acceptance\n- Clear criterion.\n`,
+        stderr: `debug token=abc123 cwd=${repo.root}\n`,
+        error: null,
+        preflight: { ok: true },
+      }),
+    });
+
+    const draft = fs.readFileSync(path.join(repo.root, '.quiver', 'approvals', 'acceptance', 'draft.md'), 'utf8');
+    const meta = JSON.parse(fs.readFileSync(path.join(repo.root, '.quiver', 'approvals', 'acceptance', 'meta.json'), 'utf8'));
+    const rawPath = path.join(repo.root, meta.draft.raw_artifact_path);
+    const raw = JSON.parse(fs.readFileSync(rawPath, 'utf8'));
+
+    assert.equal(draft, '# Acceptance\n- Clear criterion.\n');
+    assert.equal(meta.draft.output_source, 'stdout');
+    assert.ok(meta.draft.raw_artifact_path.startsWith('.quiver/runs/'));
+    assert.ok(meta.draft.raw_artifact_path.includes('/raw/'));
+    assert.equal(raw.stderr.includes('abc123'), false);
+    assert.ok(raw.stderr.includes('token=[REDACTED]'));
+    assert.equal(raw.stderr.includes(repo.root), false);
+    assert.ok(raw.stderr.includes('[PROJECT_ROOT]'));
   } finally {
     repo.cleanup();
   }
@@ -336,6 +387,105 @@ test('ai revise creates a new draft version without approving the phase', async 
     assert.equal(meta.drafts.length, 2);
     assert.equal(fs.readFileSync(path.join(repo.root, '.quiver', 'approvals', 'acceptance', 'drafts', '002.md'), 'utf8'), 'acceptance draft v2\n');
     assert.ok(status.includes('Status: draft'));
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('ai revise compacts oversized feedback before provider execution', async () => {
+  const filler = Array.from({ length: 160 }, (_, index) => `filler line ${index}: repeated context that should not be sent in full`).join('\n');
+  const repo = makeRepo({
+    'requirements.md': '# requirements\n- Iterate criteria.',
+    'feedback.md': [
+      '# feedback',
+      '- Decision: keep the planner gate mandatory.',
+      '- Risk: provider context can overflow.',
+      '- Files: src/create-quiver/commands/ai.js and tests/commands/ai-plan.test.js.',
+      '- Acceptance criteria: compact feedback before provider execution.',
+      filler,
+    ].join('\n'),
+  });
+
+  try {
+    await runPlan(repo.root, {
+      input: 'requirements.md',
+      phase: 'acceptance',
+      runProviderFn: async (provider) => ({
+        ok: true,
+        dryRun: false,
+        provider,
+        command: 'codex',
+        args: ['exec'],
+        cwd: repo.root,
+        timeoutMs: 0,
+        promptTransport: { mode: 'stdin' },
+        exitCode: 0,
+        stdout: 'acceptance draft v1\n',
+        stderr: '',
+        error: null,
+        preflight: { ok: true },
+      }),
+    });
+
+    await runRevise(repo.root, {
+      input: 'feedback.md',
+      phase: 'acceptance',
+      maxRevisionInputBytes: 1800,
+      compactedRevisionInputBytes: 1500,
+      maxProviderPromptBytes: 20000,
+      runProviderFn: async (provider, options) => {
+        assert.ok(options.prompt.includes('[Quiver compacted oversized revise input'));
+        assert.ok(options.prompt.includes('Decision: keep the planner gate mandatory.'));
+        assert.ok(options.prompt.includes('Risk: provider context can overflow.'));
+        assert.ok(options.prompt.includes('Files: src/create-quiver/commands/ai.js'));
+        assert.ok(options.prompt.includes('Acceptance criteria: compact feedback'));
+        assert.equal(options.prompt.includes('filler line 159'), false);
+        return {
+          ok: true,
+          dryRun: false,
+          provider,
+          command: 'codex',
+          args: ['exec'],
+          cwd: repo.root,
+          timeoutMs: 0,
+          promptTransport: { mode: 'stdin' },
+          exitCode: 0,
+          stdout: 'acceptance draft v2\n',
+          stderr: '',
+          error: null,
+          preflight: { ok: true },
+        };
+      },
+    });
+
+    const meta = JSON.parse(fs.readFileSync(path.join(repo.root, '.quiver', 'approvals', 'acceptance', 'meta.json'), 'utf8'));
+    assert.equal(meta.draft.version, 2);
+    assert.equal(meta.draft.input_compaction.compacted, true);
+    assert.ok(meta.draft.input_compaction.original_bytes > meta.draft.input_compaction.compacted_bytes);
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('ai plan rejects oversized prompts before provider execution', async () => {
+  const repo = makeRepo({
+    'requirements.md': `# requirements\n${'large input\n'.repeat(100)}`,
+  });
+
+  try {
+    await assert.rejects(
+      runPlan(repo.root, {
+        input: 'requirements.md',
+        phase: 'acceptance',
+        maxProviderPromptBytes: 100,
+        runProviderFn: async () => {
+          throw new Error('provider should not run');
+        },
+      }),
+      (error) => error.code === 'AI_PROMPT_TOO_LARGE'
+        && error.message.includes('provider prompt is too large')
+        && error.message.includes('before invoking the provider'),
+    );
   } finally {
     repo.cleanup();
   }

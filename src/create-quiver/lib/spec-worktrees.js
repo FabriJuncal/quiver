@@ -6,6 +6,8 @@ const {
   fetchRemote,
   hasLocalBranch,
   hasRemoteBranch,
+  isGitWorktree,
+  isLinkedWorktree,
   isCleanWorktree,
   lsRemoteHeads,
   mergeBaseIsAncestor,
@@ -17,6 +19,7 @@ const {
   worktreeRemove,
 } = require('./git');
 const { parseJsonWithComments } = require('./json');
+const { acquireLock, releaseLock, withLockSync } = require('./locks');
 const { safeBranchName, worktreesRootForRepo } = require('./slice');
 
 function formatError(message) {
@@ -88,6 +91,47 @@ function findExistingWorktree(repoRoot, branchName) {
   return '';
 }
 
+function sameRealPath(left, right) {
+  try {
+    return fs.realpathSync(left) === fs.realpathSync(right);
+  } catch {
+    return path.resolve(left) === path.resolve(right);
+  }
+}
+
+function recoveryForMissingWorktree(branchName, worktreePath) {
+  return [
+    `registered spec worktree is missing or stale for ${branchName}: ${worktreePath}`,
+    'Recovery:',
+    '- Run `git worktree prune` from the main checkout, then retry `npx create-quiver spec start specs/<spec-slug>`.',
+    '- If the directory was moved manually, restore it or remove the stale git worktree registration intentionally.',
+    '- Do not create a nested replacement worktree from inside another worktree.',
+  ].join('\n');
+}
+
+function recoveryForNestedWorktree(branchName, existingWorktree = '') {
+  return [
+    `refusing to create a spec worktree from inside a linked worktree for ${branchName}.`,
+    'Recovery:',
+    existingWorktree
+      ? `- Use the existing spec worktree: ${existingWorktree}`
+      : '- Return to the main checkout and rerun the command.',
+    '- This prevents nested .worktrees paths and conflicting persistent spec worktrees.',
+  ].join('\n');
+}
+
+function assertExistingWorktreeUsable(branchName, worktreePath) {
+  if (!worktreePath) {
+    return;
+  }
+  if (!fs.existsSync(worktreePath) || !isGitWorktree(worktreePath)) {
+    throw new Error(formatError(recoveryForMissingWorktree(branchName, worktreePath)));
+  }
+  if (!isCleanWorktree(worktreePath)) {
+    throw new Error(formatError(`existing spec worktree is dirty: ${worktreePath}\nRecovery:\n- Commit or stash changes inside the spec worktree.\n- Then rerun the command.`));
+  }
+}
+
 function resolveBaseRef(repoRoot, preferred = '') {
   const candidates = [preferred, 'main', 'develop'].filter(Boolean);
   for (const candidate of candidates) {
@@ -133,7 +177,8 @@ function buildSpecStatus(repoRoot, specInput) {
   const pendingSlices = slices.filter((slice) => slice.status !== 'completed');
   const laterSlicesBlocked = !slice00 || slice00.status !== 'completed';
   const existingWorktree = findExistingWorktree(repoRoot, identity.branchName);
-  const worktreeDirty = existingWorktree ? !isCleanWorktree(existingWorktree) : false;
+  const worktreeMissing = Boolean(existingWorktree && (!fs.existsSync(existingWorktree) || !isGitWorktree(existingWorktree)));
+  const worktreeDirty = existingWorktree && !worktreeMissing ? !isCleanWorktree(existingWorktree) : false;
 
   return {
     ...identity,
@@ -144,6 +189,7 @@ function buildSpecStatus(repoRoot, specInput) {
     slices,
     specDir,
     worktreeDirty,
+    worktreeMissing,
   };
 }
 
@@ -153,6 +199,7 @@ function formatSpecStatus(status) {
     `Spec: ${status.relativeSpecDir}`,
     `Branch: ${status.branchName}`,
     `Worktree: ${status.existingWorktree || status.worktreePath}`,
+    `Worktree missing/stale: ${status.worktreeMissing ? 'yes' : 'no'}`,
     `Worktree dirty: ${status.worktreeDirty ? 'yes' : 'no'}`,
     `slice-00: ${status.slice00 ? status.slice00.status : 'missing'}`,
     `Later slices blocked: ${status.laterSlicesBlocked ? 'yes' : 'no'}`,
@@ -173,61 +220,82 @@ function formatSpecStatus(status) {
 function startSpecWorktree(repoRoot, specInput, options = {}) {
   const specDir = findSpecDir(repoRoot, specInput);
   const identity = resolveSpecIdentity(repoRoot, specDir);
-  const existingWorktree = findExistingWorktree(repoRoot, identity.branchName);
   const slices = listSpecSlices(specDir);
   const slice00 = slices.find((slice) => slice.id.startsWith('slice-00')) || null;
   const baseRef = resolveBaseRef(repoRoot, options.baseBranch);
 
-  if (existingWorktree) {
-    if (!isCleanWorktree(existingWorktree)) {
-      throw new Error(formatError(`existing spec worktree is dirty: ${existingWorktree}`));
+  const run = () => {
+    const existingWorktree = findExistingWorktree(repoRoot, identity.branchName);
+    const currentIsLinkedWorktree = isLinkedWorktree(repoRoot);
+
+    if (existingWorktree) {
+      assertExistingWorktreeUsable(identity.branchName, existingWorktree);
+      if (currentIsLinkedWorktree && !sameRealPath(repoRoot, existingWorktree)) {
+        throw new Error(formatError(recoveryForNestedWorktree(identity.branchName, existingWorktree)));
+      }
+      return {
+        ...identity,
+        baseRef,
+        dryRun: options.dryRun === true,
+        reused: true,
+        slice00,
+        worktreePath: existingWorktree,
+      };
     }
-    return {
-      ...identity,
-      baseRef,
-      dryRun: options.dryRun === true,
-      reused: true,
-      slice00,
-      worktreePath: existingWorktree,
-    };
-  }
 
-  if (fs.existsSync(identity.worktreePath)) {
-    throw new Error(formatError(`worktree path already exists and is not registered for ${identity.branchName}: ${identity.worktreePath}`));
-  }
+    if (currentIsLinkedWorktree) {
+      throw new Error(formatError(recoveryForNestedWorktree(identity.branchName)));
+    }
 
-  if (!isCleanWorktree(repoRoot)) {
-    throw new Error(formatError('current checkout is not clean. Commit or stash before starting a spec worktree.'));
-  }
+    if (fs.existsSync(identity.worktreePath)) {
+      throw new Error(formatError(`worktree path already exists and is not registered for ${identity.branchName}: ${identity.worktreePath}\nRecovery:\n- Inspect the path and move or remove it intentionally before rerunning.\n- Run \`git worktree list\` to verify registered worktrees.`));
+    }
 
-  if (options.dryRun === true) {
+    if (!isCleanWorktree(repoRoot)) {
+      throw new Error(formatError('current checkout is not clean. Commit or stash before starting a spec worktree.'));
+    }
+
+    if (options.dryRun === true) {
+      return {
+        ...identity,
+        baseRef,
+        currentBranch: currentBranch(repoRoot),
+        dryRun: true,
+        reused: false,
+        slice00,
+      };
+    }
+
+    worktreePrune(repoRoot);
+    fs.mkdirSync(path.dirname(identity.worktreePath), { recursive: true });
+
+    if (hasLocalBranch(repoRoot, identity.branchName)) {
+      worktreeAdd(repoRoot, identity.worktreePath, identity.branchName);
+    } else {
+      worktreeAdd(repoRoot, identity.worktreePath, baseRef, { branch: identity.branchName });
+    }
+
     return {
       ...identity,
       baseRef,
       currentBranch: currentBranch(repoRoot),
-      dryRun: true,
+      dryRun: false,
       reused: false,
       slice00,
     };
-  }
-
-  worktreePrune(repoRoot);
-  fs.mkdirSync(path.dirname(identity.worktreePath), { recursive: true });
-
-  if (hasLocalBranch(repoRoot, identity.branchName)) {
-    worktreeAdd(repoRoot, identity.worktreePath, identity.branchName);
-  } else {
-    worktreeAdd(repoRoot, identity.worktreePath, baseRef, { branch: identity.branchName });
-  }
-
-  return {
-    ...identity,
-    baseRef,
-    currentBranch: currentBranch(repoRoot),
-    dryRun: false,
-    reused: false,
-    slice00,
   };
+
+  if (options.dryRun === true) {
+    return run();
+  }
+
+  return withLockSync(repoRoot, `spec-worktree-${identity.specSlug}`, {
+    command: 'spec start',
+    metadata: {
+      branch: identity.branchName,
+      spec: identity.relativeSpecDir,
+    },
+  }, run);
 }
 
 function formatSpecStartResult(result) {
@@ -245,6 +313,14 @@ function formatSpecStartResult(result) {
 function closeSpecWorktree(repoRoot, specInput, options = {}) {
   const specDir = findSpecDir(repoRoot, specInput);
   const identity = resolveSpecIdentity(repoRoot, specDir);
+  const lock = options.dryRun === true ? null : acquireLock(repoRoot, `spec-worktree-${identity.specSlug}`, {
+    command: 'spec close',
+    metadata: {
+      branch: identity.branchName,
+      spec: identity.relativeSpecDir,
+    },
+  });
+  try {
   const existingWorktree = findExistingWorktree(repoRoot, identity.branchName);
   const discard = options.discard === true;
   const dryRun = options.dryRun === true;
@@ -254,6 +330,10 @@ function closeSpecWorktree(repoRoot, specInput, options = {}) {
 
   if (!existingWorktree) {
     throw new Error(formatError(`missing spec worktree for branch ${identity.branchName}.`));
+  }
+
+  if (!fs.existsSync(existingWorktree) || !isGitWorktree(existingWorktree)) {
+    throw new Error(formatError(recoveryForMissingWorktree(identity.branchName, existingWorktree)));
   }
 
   if (!discard && !isCleanWorktree(existingWorktree)) {
@@ -310,6 +390,9 @@ function closeSpecWorktree(repoRoot, specInput, options = {}) {
     removed: true,
     worktreePath: existingWorktree,
   };
+  } finally {
+    releaseLock(lock);
+  }
 }
 
 function formatSpecCloseResult(result) {

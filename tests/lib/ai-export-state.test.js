@@ -84,13 +84,24 @@ test('collectLifecycleExport exposes dashboard-friendly specs, slices, runs, and
     const report = collectLifecycleExport(repo.root);
     const slice = report.slices.find((item) => item.ref === 'demo/slice-01-viewer');
 
-    assert.equal(report.schema_version, 1);
+    assert.equal(report.schema_version, 2);
+    assert.equal(report.source_metadata.resolver, 'project-state-resolver');
+    assert.equal(report.source_metadata.include_completed, false);
     assert.equal(report.project.name, 'demo-project');
     assert.equal(report.summary.specs, 1);
     assert.equal(report.summary.slices, 1);
     assert.equal(report.summary.configured_agents, 1);
+    assert.equal(report.summary.approvals, 3);
+    assert.equal(Array.isArray(report.warnings), true);
+    assert.equal(Array.isArray(report.approvals), true);
+    assert.equal(Array.isArray(report.evidence), true);
+    assert.equal(Array.isArray(report.next_steps), true);
+    assert.equal(report.lifecycle.phase, 'created');
+    assert.equal(report.aggregates.slices_by_status.planned, 1);
     assert.equal(report.runs[0].run_id, 'run-demo');
+    assert.equal(report.runs[0].canonical_status, 'running');
     assert.deepEqual(slice.dependencies, ['demo/slice-00-foundation']);
+    assert.equal(slice.canonical_status, 'planned');
     assert.deepEqual(slice.allowed_write_paths, ['src/create-quiver/**']);
     assert.equal(report.graph.ok, true);
     assert(report.dashboard.dependencies.some((edge) => edge.to === 'demo/slice-01-viewer'));

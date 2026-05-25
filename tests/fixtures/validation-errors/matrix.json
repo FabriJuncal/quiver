@@ -3,52 +3,80 @@
     {
       "id": "new",
       "purpose": "Fresh Quiver init with no real specs yet.",
-      "expected": "doctor passes and recommends analyze/onboarding."
+      "expected": "doctor passes and recommends analyze/onboarding.",
+      "covered_by": ["tests/commands/doctor.test.js", "scripts/ci/smoke-create-quiver.sh"]
     },
     {
       "id": "existing",
       "purpose": "Existing app after Quiver init/migrate.",
-      "expected": "doctor preserves app files and reports missing context only as warnings."
+      "expected": "doctor preserves app files and reports missing context only as warnings.",
+      "covered_by": ["scripts/ci/smoke-create-quiver.sh"]
     },
     {
       "id": "old-quiver",
       "purpose": "Legacy Quiver layout before the .quiver contract.",
-      "expected": "doctor reports legacy layout and recommends migrate."
+      "expected": "doctor reports legacy layout and recommends migrate.",
+      "covered_by": ["tests/commands/doctor.test.js", "scripts/ci/smoke-create-quiver.sh"]
     },
     {
       "id": "monorepo",
       "purpose": "Workspace-style repo with multiple app/package folders.",
-      "expected": "doctor avoids scanning dependency/build folders and keeps project map guidance."
+      "expected": "doctor avoids scanning dependency/build folders and keeps project map guidance.",
+      "covered_by": ["tests/commands/analyze.test.js", "tests/commands/ai-onboard.test.js"]
     },
     {
       "id": "no-git",
       "purpose": "Initialized project without a Git repository.",
-      "expected": "doctor warns that Git is required for slices, worktrees, commits, and PRs."
+      "expected": "doctor warns that Git is required for slices, worktrees, commits, and PRs.",
+      "covered_by": ["tests/lib/doctor.test.js", "tests/lib/check-slice.test.js"]
     },
     {
       "id": "dirty-git",
       "purpose": "Git repo with uncommitted changes.",
-      "expected": "mutating lifecycle commands block or dry-run before writing."
+      "expected": "mutating lifecycle commands block or dry-run before writing.",
+      "covered_by": ["tests/commands/spec-worktree.test.js", "tests/commands/ai-execute-slice.test.js"]
     },
     {
       "id": "no-gh",
       "purpose": "Project without GitHub CLI available.",
-      "expected": "doctor/PR preflight give install guidance for macOS, Linux, and Windows."
+      "expected": "doctor/PR preflight give install guidance for macOS, Linux, and Windows.",
+      "covered_by": ["tests/lib/doctor.test.js", "tests/lib/ai-github.test.js"]
     },
     {
       "id": "paths-with-spaces",
       "purpose": "Project path contains spaces.",
-      "expected": "doctor warns to quote copied commands."
+      "expected": "doctor warns to quote copied commands.",
+      "covered_by": ["tests/lib/doctor.test.js", "tests/lib/ai-github.test.js", "scripts/ci/smoke-create-quiver.sh"]
     },
     {
       "id": "docs-contradiction",
       "purpose": "Project docs disagree on project identity or package manager.",
-      "expected": "prepare-context reports contradictions without modifying product code."
+      "expected": "prepare-context reports contradictions without modifying product code.",
+      "covered_by": ["tests/commands/ai-onboard.test.js"]
     },
     {
       "id": "missing-agent-profile",
       "purpose": "AI agent/profile context is absent or incomplete.",
-      "expected": "doctor reports actionable agent/profile warnings."
+      "expected": "doctor reports actionable agent/profile warnings.",
+      "covered_by": ["tests/commands/flow.test.js", "tests/commands/ai-agent.test.js"]
+    },
+    {
+      "id": "pixel-quiver-completed-specs",
+      "purpose": "Sanitized Pixel Quiver-style project with completed specs and slice history.",
+      "expected": "plan, graph, export, and doctor use completed slices as history and do not suggest already completed work.",
+      "covered_by": ["tests/lib/project-state-resolver.test.js", "tests/commands/plan.test.js", "tests/commands/graph.test.js", "tests/commands/ai-export.test.js"]
+    },
+    {
+      "id": "multiple-specs",
+      "purpose": "Project has multiple specs and no single active slice.",
+      "expected": "doctor avoids pointing to the wrong spec and falls back to generic safe examples.",
+      "covered_by": ["tests/commands/doctor.test.js"]
+    },
+    {
+      "id": "stale-docs",
+      "purpose": "Generated context docs exist but the current scan is missing, stale, partial, or legacy.",
+      "expected": "flow and doctor report the source/freshness of context and suggest analyze or prepare-context before planning.",
+      "covered_by": ["tests/lib/project-scan.test.js", "tests/commands/flow.test.js", "tests/commands/doctor.test.js"]
     }
   ]
 }

@@ -1,6 +1,7 @@
 const { statusPorcelain } = require('./git');
 const { normalizeContextPath } = require('./ai/safety');
 const { checkScope } = require('./readiness');
+const { validateProjectRelativePaths } = require('./paths');
 
 class ScopeValidationError extends Error {
   constructor(code, message, details = {}) {
@@ -118,7 +119,7 @@ function diffWorktreeSnapshots(beforeSnapshot, afterSnapshot) {
 function validateScopeSnapshot({ allowedFiles = [], beforeSnapshot, afterSnapshot, strict = true } = {}) {
   const normalizedAllowedFiles = Array.from(new Set(
     Array.isArray(allowedFiles)
-      ? allowedFiles.map(normalizeScopePath).filter(Boolean)
+      ? validateProjectRelativePaths(allowedFiles, 'allowed scope path').map(normalizeScopePath).filter(Boolean)
       : [],
   ));
   const changedFiles = diffWorktreeSnapshots(beforeSnapshot, afterSnapshot);

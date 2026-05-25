@@ -41,6 +41,7 @@
     "quiver:spec:create": "npx create-quiver spec create",
     "quiver:spec:start": "npx create-quiver spec start",
     "quiver:spec:status": "npx create-quiver spec status",
+    "quiver:spec:validate": "npx create-quiver spec validate",
     "quiver:spec:close": "npx create-quiver spec close",
     "package:quiver": "bash scripts/package-quiver.sh",
     "smoke:create-quiver": "bash scripts/ci/smoke-create-quiver.sh",

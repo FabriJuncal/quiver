@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Implemented v27 reliability and AI workflow hardening under `specs/quiver-v27-reliability-ai-workflow-hardening/`, based on Pixel Quiver dogfooding findings.
+- Shared project-state resolver, canonical statuses, schema v2 lifecycle exports, structured approved-plan spec creation, AI artifact cleanup/redaction, token compaction, worktree locks/recovery, validation gates, context freshness diagnostics, cross-platform DX guidance, and release-readiness fixture coverage.
+- Final v27 package/tarball smoke coverage for packaged CLI help, `flow`, `ai agent set --dry-run`, doctor fixtures, guided workflow, and full test suite validation.
+
 ## [0.12.1] - 2026-05-23
 
 ### Added

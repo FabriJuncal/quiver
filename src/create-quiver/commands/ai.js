@@ -3,6 +3,12 @@ const path = require('node:path');
 
 const { redactSecrets } = require('../lib/evidence');
 const { formatActionableError } = require('../lib/actionable-error');
+const {
+  assertProviderPromptWithinLimit,
+  compactRevisionInput,
+  extractCleanProviderOutput,
+  writeRawProviderArtifact,
+} = require('../lib/ai/artifacts');
 const { buildContextPackMetadata, normalizeRole } = require('../lib/ai/context-packs');
 const { runExecuteSlice, runPromptSlice } = require('../lib/ai/executor');
 const { runExecutePlan } = require('../lib/ai/execution-plan');
@@ -38,6 +44,7 @@ const {
 } = require('../lib/ai/run-state');
 const {
   agentProfilesPath,
+  buildAgentProfileState,
   getAgentProfile,
   listAgentProfiles,
   resolveProfileProvider,
@@ -298,15 +305,11 @@ function writeProviderOutput(result) {
   }
 }
 
-function getRedactedProviderText(result) {
-  return redactSecrets([result.stdout, result.stderr].filter(Boolean).join(''));
-}
-
 function normalizeText(value) {
   return String(value || '').replace(/\r\n/g, '\n');
 }
 
-function buildRevisionInput({ phase, feedbackPath, feedbackText, repoRoot }) {
+function buildRevisionInput({ phase, feedbackPath, feedbackText, repoRoot, compactionOptions = {} }) {
   const current = readPhaseApproval(repoRoot, phase);
   if (!current.draft) {
     throw new Error(formatError(`ai revise --phase ${phase} requires an existing draft; current status is ${current.status}. Run \`npx create-quiver ai plan --phase ${phase} --input <file>\` first.`));
@@ -327,7 +330,7 @@ function buildRevisionInput({ phase, feedbackPath, feedbackText, repoRoot }) {
     feedbackText.trimEnd(),
   );
 
-  return sections.join('\n\n');
+  return compactRevisionInput(sections.join('\n\n'), compactionOptions);
 }
 
 function buildManagedContextBlock(content) {
@@ -723,6 +726,7 @@ async function runPlan(repoRoot, options = {}) {
   const context = options.context || DEFAULT_PLAN_CONTEXT;
   const timeoutMs = normalizeTimeout(options.timeout);
   let inputPath = options.input || '';
+  let inputCompaction = null;
 
   if (phase === 'spec') {
     const resolved = resolveReviewedTechnicalPlanInput(repoRoot, inputPath || undefined);
@@ -781,12 +785,15 @@ async function runPlan(repoRoot, options = {}) {
       throw new Error(formatError(`missing feedback input file for ai revise phase '${phase}'`));
     }
     const feedbackText = readTextFile(inputPath, repoRoot);
-    inputText = buildRevisionInput({
+    const revisionInput = buildRevisionInput({
       phase,
       feedbackPath: inputPath,
       feedbackText,
       repoRoot,
+      compactionOptions: options,
     });
+    inputText = revisionInput.text;
+    inputCompaction = revisionInput.compaction;
   } else if (phase === 'technical-plan') {
     const resolved = resolveApprovedPlannerInput(repoRoot, phase, inputPath || undefined);
     inputPath = resolved.inputPath;
@@ -809,6 +816,7 @@ async function runPlan(repoRoot, options = {}) {
     revise: options.revise === true,
   });
   const prompt = contextInfo.prompt;
+  assertProviderPromptWithinLimit(prompt, options);
   let invocation;
 
   try {
@@ -871,11 +879,26 @@ async function runPlan(repoRoot, options = {}) {
     throw annotateProviderError(result.error || new Error('provider run failed'), 'plan', phase);
   }
 
-  const draft = savePlannerDraft(repoRoot, phase, inputPath, getRedactedProviderText(result));
   const lifecycleRun = ensureAiRun(repoRoot, {
     command: `ai plan --phase ${phase}`,
     input: inputPath,
     runId: options.runId,
+  });
+  const clean = extractCleanProviderOutput(result, { prompt, projectRoot: repoRoot });
+  const rawArtifact = writeRawProviderArtifact(repoRoot, lifecycleRun.run_id, `ai-plan-${phase}`, result, {
+    metadata: {
+      phase,
+      input_path: inputPath,
+      prompt_bytes: invocation.promptLength,
+      clean_output_source: clean.source,
+      stripped_prompt_echo: clean.strippedPromptEcho,
+      input_compaction: inputCompaction,
+    },
+  });
+  const draft = savePlannerDraft(repoRoot, phase, inputPath, clean.cleanOutput, {
+    rawArtifactPath: rawArtifact.path,
+    outputSource: clean.source,
+    inputCompaction,
   });
   updateAiRunPhase(repoRoot, lifecycleRun.run_id, phase === 'acceptance' ? 'acceptance-draft' : 'technical-plan-draft', {
     artifact: path.relative(repoRoot, draft.filePath).split(path.sep).join('/'),
@@ -911,6 +934,7 @@ async function runReviewPlan(repoRoot, options = {}) {
     inputText,
     inputPath,
   });
+  assertProviderPromptWithinLimit(built.prompt, options);
   let invocation;
 
   try {
@@ -993,11 +1017,31 @@ async function runReviewPlan(repoRoot, options = {}) {
     throw annotateProviderError(result.error || new Error('provider run failed'), 'review-plan');
   }
 
+  const lifecycleRun = ensureAiRun(repoRoot, {
+    command: 'ai review-plan',
+    input: inputPath,
+    runId: options.runId,
+    phase: 'technical-plan-reviewed',
+  });
+  const clean = extractCleanProviderOutput(result, { prompt: built.prompt, projectRoot: repoRoot });
+  const rawArtifact = writeRawProviderArtifact(repoRoot, lifecycleRun.run_id, 'ai-review-plan', result, {
+    metadata: {
+      phase: 'plan-review',
+      input_path: inputPath,
+      input_kind: resolved.kind,
+      input_version: resolved.version || null,
+      prompt_bytes: invocation.promptLength,
+      clean_output_source: clean.source,
+      stripped_prompt_echo: clean.strippedPromptEcho,
+    },
+  });
   const saved = savePlanReview(repoRoot, {
-    contents: getRedactedProviderText(result),
+    contents: clean.cleanOutput,
     inputPath,
     inputKind: resolved.kind,
     inputVersion: resolved.version,
+    outputSource: clean.source,
+    rawArtifactPath: rawArtifact.path,
   });
   const relativePath = path.relative(repoRoot, saved.filePath).split(path.sep).join('/');
   process.stdout.write(`AI plan review saved\nArtifact: ${relativePath}\nPrompt source: ${PLAN_REVIEW_PROMPT_SOURCE}\n`);
@@ -1261,6 +1305,21 @@ function formatAgentProfileList(profiles) {
   return `${lines.join('\n')}\n`;
 }
 
+function formatAgentProfileDryRun(repoRoot, result) {
+  const relativePath = path.relative(repoRoot, result.filePath).split(path.sep).join('/');
+  const verb = result.action === 'update' ? 'update' : 'create';
+  return [
+    'AI agent profile dry-run',
+    '- Writes: none',
+    `- Would ${verb}: ${relativePath}`,
+    '',
+    formatAgentProfile(result.profile).trimEnd(),
+    '',
+    'No secrets or provider credentials are stored in agent profiles.',
+    '',
+  ].join('\n');
+}
+
 function runAgent(repoRoot, options = {}) {
   const command = String(options.command || '').trim().toLowerCase();
 
@@ -1270,6 +1329,22 @@ function runAgent(repoRoot, options = {}) {
     }
     if (!options.provider) {
       throw new Error(formatError('ai agent set requires --provider. Supported providers: codex, claude, gemini.'));
+    }
+    if (options.dryRun) {
+      const preview = buildAgentProfileState(repoRoot, options.role, {
+        context: options.context,
+        label: options.label,
+        model: options.model,
+        provider: options.provider,
+      });
+      process.stdout.write(formatAgentProfileDryRun(repoRoot, preview));
+      return {
+        task: 'agent',
+        command,
+        dryRun: true,
+        profile: preview.profile,
+        filePath: path.relative(repoRoot, preview.filePath).split(path.sep).join('/'),
+      };
     }
     const result = setAgentProfile(repoRoot, options.role, {
       context: options.context,

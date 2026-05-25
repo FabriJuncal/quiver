@@ -173,7 +173,7 @@ test('default generated package scripts target supported CLI commands', () => {
     'status',
     'trace',
   ]);
-  const supportedSpecCommands = new Set(['close', 'create', 'start', 'status']);
+  const supportedSpecCommands = new Set(['close', 'create', 'start', 'status', 'validate']);
 
   for (const [scriptName, command] of Object.entries(scripts)) {
     if (!command.startsWith('npx create-quiver ')) {

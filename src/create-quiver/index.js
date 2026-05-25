@@ -39,9 +39,14 @@ const { runFlow } = require('./commands/flow');
 const { runGraph } = require('./commands/graph');
 const { runNext } = require('./commands/next');
 const { runPlan } = require('./commands/plan');
-const { runCreateSpec } = require('./commands/spec');
+const { runCreateSpec, runValidateSpec } = require('./commands/spec');
 const { buildInitLayout, formatInitLayoutPlan } = require('./lib/init-layout');
-const { initializeProjectDocs, installSelfAsDevDep, refreshAiContextDoc } = require('./lib/init-docs');
+const {
+  formatInstallSelfCommand,
+  initializeProjectDocs,
+  installSelfAsDevDep,
+  refreshAiContextDoc,
+} = require('./lib/init-docs');
 const { checkPrReadiness, checkScope, checkSliceReadiness } = require('./lib/readiness');
 const { cleanupSlice, refreshActiveSlicesBoard, startSlice } = require('./lib/lifecycle');
 const { buildSpecStatus, closeSpecWorktree, formatSpecCloseResult, formatSpecStartResult, formatSpecStatus, startSpecWorktree } = require('./lib/spec-worktrees');
@@ -119,7 +124,7 @@ const SUPPORTED_AI_COMMANDS = new Set([
   'trace',
 ]);
 
-const SUPPORTED_SPEC_COMMANDS = new Set(['close', 'create', 'start', 'status']);
+const SUPPORTED_SPEC_COMMANDS = new Set(['close', 'create', 'start', 'status', 'validate']);
 const SUPPORTED_DEMO_COMMANDS = new Set(['create']);
 
 function unsupportedCommandMessage(commandName) {
@@ -159,7 +164,7 @@ const COMMAND_HELP_GROUPS = [
       ['ai resume', 'Resume guidance from the last valid lifecycle phase without chat memory.'],
       ['ai onboard', 'Run or print the planner onboarding prompt with a token-aware context pack.'],
       ['ai prepare-context', 'Preview or write docs-only AI context updates with assumptions and risks.'],
-      ['ai agent set|list|show', 'Manage planner, executor, reviewer, and doctor provider profiles without secrets.'],
+      ['ai agent set|list|show', 'Manage planner, executor, reviewer, and doctor provider profiles without secrets; use set --dry-run to preview.'],
       ['ai plan', 'Generate versioned planner drafts for acceptance criteria, technical plan, or spec phase.'],
       ['ai revise', 'Create a new planner draft from human feedback without approving it.'],
       ['ai review-plan', 'Review the technical-plan draft for production readiness before approval.'],
@@ -188,6 +193,7 @@ const COMMAND_HELP_GROUPS = [
       ['spec create', 'Create the real spec tree from a reviewed approved technical plan.'],
       ['spec start', 'Create or reuse the dedicated worktree and branch for one spec.'],
       ['spec status', 'Show spec worktree, branch, slice-00 state, and pending slices.'],
+      ['spec validate', 'Validate spec docs, slices, briefs, evidence, status, dependencies, and safe paths.'],
       ['spec close', 'Close a merged clean spec worktree and guide local sync.'],
       ['start-slice', 'Start work on one slice and mark it active.'],
       ['check-slice', 'Validate slice structure, dependencies, scope, and readiness.'],
@@ -263,6 +269,7 @@ function printUsage() {
   npx create-quiver spec create [options]
   npx create-quiver spec start <spec-dir>
   npx create-quiver spec status <spec-dir>
+  npx create-quiver spec validate <spec-dir>
   npx create-quiver spec close <spec-dir>
   npx create-quiver evidence run [options] -- <command>
   npx create-quiver demo create spec-viewer [options]
@@ -282,12 +289,13 @@ Options:
       --all-ready             List every ready slice returned by next
       --auto-start            Prompt for confirmation and run start-slice on next
       --local                 For check-slice, run structural validation without remote/base checks
+      --strict                Treat supported validation warnings as failures
       --unicode               Prefer Unicode output when supported
       --minimal               Plan or run the minimal init profile
       --full                  Plan or run the full compatibility init profile
       --legacy-scripts        Include legacy Bash wrappers in init profile
       --include-templates     Export packaged templates in init profile
-      --dry-run               Preview init, migrate, prepare, spec create/start/close, demo, or AI work without executing writes/providers
+      --dry-run               Preview init, analyze, migrate, prepare, spec create/start/close, demo, ai agent set, or AI work without executing writes/providers
       --print-prompt          Print the exact AI prompt and exit without executing provider CLIs
       --fix                   For doctor, apply safe non-destructive repairs
       --execute               For ai execute-plan, run the planned slices instead of printing commands
@@ -302,7 +310,7 @@ Options:
       --ssh-host-alias <name> SSH host alias to validate for prepare or AI commands
       --identity-file <path>  SSH identity file to validate for prepare or AI commands
       --remote <name>         Git remote name for check-slice or AI PR checks
-      --base <branch>         Base branch for check-slice, ai pr, or spec close (default: main)
+      --base <branch>         Base branch for check-slice, check-scope, ai pr, or spec close (default: main)
       --output <file>         Output file for evidence run
       --max-output <n>        Maximum stdout/stderr chars per evidence section
       --title <text>          Override PR title for ai pr create
@@ -330,6 +338,7 @@ Examples:
   cd ./my-project && npx create-quiver ai specs list
   cd ./my-project && npx create-quiver ai slices list --json
   cd ./my-project && npx create-quiver ai trace report
+  cd ./my-project && npx create-quiver ai agent set planner --provider codex --model gpt-5.5 --dry-run
   cd ./my-project && npx create-quiver ai agent set planner --provider codex --model gpt-5.5
   cd ./my-project && npx create-quiver ai agent list
   cd ./my-project && npx create-quiver ai plan --phase acceptance --input requirements.md --dry-run
@@ -368,6 +377,7 @@ Examples:
   cd ./my-project && npx create-quiver refresh-active-slices
   cd ./my-project && npx create-quiver spec start specs/my-project
   cd ./my-project && npx create-quiver spec status specs/my-project
+  cd ./my-project && npx create-quiver spec validate specs/my-project
   cd ./my-project && npx create-quiver spec close specs/my-project --dry-run
   cd ./my-project && npx create-quiver evidence run -- npm test
   cd ./my-project && npx create-quiver demo create spec-viewer --dry-run
@@ -951,7 +961,7 @@ function parseArgs(argv) {
       result.specCommand = positional.shift();
     }
     if (!result.specCommand) {
-      throw new Error(formatError('missing spec subcommand. Use: npx create-quiver spec <create|start|status|close>'));
+      throw new Error(formatError('missing spec subcommand. Use: npx create-quiver spec <create|start|status|validate|close>'));
     }
     if (result.specCommand !== 'create' && positional.length > 0) {
       result.targetDir = positional.shift();
@@ -1574,8 +1584,8 @@ function detectFrameworks(projectRoot, files, rootEntries, packageJson) {
     },
     {
       name: 'vue',
-      matches: () => dependencies.has('vue') || rootFileSet.has('vue.config.js') || rootFileSet.has('vite.config.js') || rootFileSet.has('vite.config.ts'),
-      signals: ['vue', 'vue.config.*', 'vite.config.*'],
+      matches: () => dependencies.has('vue') || rootFileSet.has('vue.config.js'),
+      signals: ['vue', 'vue.config.*'],
     },
     {
       name: 'react',
@@ -1998,7 +2008,7 @@ function writeProjectScanArtifacts(projectRoot, scan) {
   return { jsonPath, mdPath: scanPaths.projectMapPath };
 }
 
-function runAnalyze(targetDir) {
+function runAnalyze(targetDir, options = {}) {
   const projectRoot = resolveTargetRoot(process.cwd(), targetDir);
 
   if (!fs.existsSync(projectRoot)) {
@@ -2006,6 +2016,26 @@ function runAnalyze(targetDir) {
   }
 
   const scan = buildProjectScan(projectRoot);
+
+  if (options.dryRun) {
+    console.log(`Project analysis dry-run for ${projectRoot}`);
+    console.log('Writes: none');
+    console.log(`Would write ${CURRENT_SCAN_RELATIVE_PATH}`);
+    console.log(`Would write ${PROJECT_MAP_RELATIVE_PATH}`);
+    console.log('Would refresh docs/AI_CONTEXT.md');
+    console.log(`Detected primary stack: ${scan.stack.primary}`);
+    console.log(`Detected frameworks: ${scan.stack.frameworks.length > 0 ? scan.stack.frameworks.join(', ') : 'none detected'}`);
+    console.log(`Detected package manager: ${scan.project.package_manager}`);
+    return {
+      artifacts: {
+        jsonPath: path.join(projectRoot, CURRENT_SCAN_RELATIVE_PATH),
+        mdPath: path.join(projectRoot, PROJECT_MAP_RELATIVE_PATH),
+      },
+      dryRun: true,
+      scan,
+    };
+  }
+
   const artifacts = writeProjectScanArtifacts(projectRoot, scan);
   const aiContextPath = refreshAiContextDoc(projectRoot, scan);
   updateStateForAnalyze(projectRoot, CLI_VERSION);
@@ -2016,6 +2046,13 @@ function runAnalyze(targetDir) {
   console.log(`Wrote ${relativePosixPath(projectRoot, aiContextPath)}`);
   console.log(`Detected primary stack: ${scan.stack.primary}`);
   console.log(`Detected package manager: ${scan.project.package_manager}`);
+
+  return {
+    artifacts,
+    aiContextPath,
+    dryRun: false,
+    scan,
+  };
 }
 
 function runMigrate(targetDir, options = {}) {
@@ -2079,7 +2116,7 @@ function runMigrate(targetDir, options = {}) {
       if (installResult === 'installed') {
         console.log(`Added create-quiver@${CLI_VERSION} as dev dependency`);
       } else if (installResult === 'failed') {
-        console.warn(`Warning: could not install create-quiver automatically. Run: npm install -D create-quiver@${CLI_VERSION}`);
+        console.warn(`Warning: could not install create-quiver automatically. Run: ${formatInstallSelfCommand(projectRoot, CLI_VERSION)}`);
       }
     }
 
@@ -2117,6 +2154,11 @@ function runDoctor(targetDir, options = {}) {
 
   const doctorReport = collectDoctorReport(projectRoot);
   const specSlugs = doctorReport.specSlugs;
+  const doctorExampleTarget = doctorReport.exampleTarget || {
+    sliceId: '<slice-id>',
+    source: 'generic',
+    specSlug: '<spec-slug>',
+  };
   const specRequiredFiles = specSlugs.flatMap((projectSlug) => [
     `specs/${projectSlug}/SPEC.md`,
     `specs/${projectSlug}/STATUS.md`,
@@ -2237,16 +2279,22 @@ function runDoctor(targetDir, options = {}) {
   if (!hasQuiverState) {
     console.log('- Run migration first: npx create-quiver migrate');
   } else if (!hasScanArtifacts) {
-  console.log('- Analyze the project first: npx create-quiver analyze');
+    console.log('- Analyze the project first: npx create-quiver analyze');
   } else {
     console.log('- Ask your AI agent: Read AGENTS.md, then docs/AI_ONBOARDING_PROMPT.md and execute it.');
   }
   console.log('- Check the next ready slice: npx create-quiver next');
   if (specSlugs.length > 0) {
-    const projectSlug = specSlugs[0];
-    console.log(`- Start a slice: npx create-quiver start-slice specs/${projectSlug}/slices/<slice-id>/slice.json`);
-    console.log(`- Validate a slice: npx create-quiver check-slice specs/${projectSlug}/slices/<slice-id>/slice.json`);
-    console.log(`- Validate the PR gate: npx create-quiver check-pr specs/${projectSlug}/slices/<slice-id>/slice.json`);
+    const projectSlug = doctorExampleTarget.specSlug;
+    const sliceId = doctorExampleTarget.sliceId || '<slice-id>';
+    if (doctorExampleTarget.source === 'active-slice') {
+      console.log(`- Example target: ${projectSlug}/${sliceId} (${doctorExampleTarget.status})`);
+    } else if (doctorExampleTarget.source === 'generic-multiple-specs') {
+      console.log('- Example target: specs/<spec-slug>/slices/<slice-id>/slice.json (generic because no active slice is obvious)');
+    }
+    console.log(`- Start a slice: npx create-quiver start-slice specs/${projectSlug}/slices/${sliceId}/slice.json`);
+    console.log(`- Validate a slice: npx create-quiver check-slice specs/${projectSlug}/slices/${sliceId}/slice.json`);
+    console.log(`- Validate the PR gate: npx create-quiver check-pr specs/${projectSlug}/slices/${sliceId}/slice.json`);
   } else {
     console.log('- Create real specs and slices only after acceptance criteria are approved and the technical plan is reviewed and approved.');
   }
@@ -2280,7 +2328,9 @@ async function run(argv) {
   }
 
   if (args.mode === 'analyze') {
-    runAnalyze(args.targetDir);
+    runAnalyze(args.targetDir, {
+      dryRun: args.dryRun,
+    });
     return;
   }
 
@@ -2387,6 +2437,7 @@ async function run(argv) {
         model: args.aiModel || undefined,
         provider: args.aiProviderExplicit ? args.aiProvider : undefined,
         role: args.aiAgentRole || undefined,
+        dryRun: args.dryRun,
       });
       return;
     }
@@ -2655,7 +2706,11 @@ async function run(argv) {
   }
 
   if (args.mode === 'check-scope') {
-    checkScope(args.targetDir, { strict: args.strict });
+    checkScope(args.targetDir, {
+      baseBranch: args.baseBranchExplicit ? args.aiBaseBranch : '',
+      remote: args.aiRemote,
+      strict: args.strict,
+    });
     return;
   }
 
@@ -2676,7 +2731,7 @@ async function run(argv) {
     }
 
     if (!args.targetDir || args.targetDir === '.') {
-      throw new Error(formatError('missing spec directory. Use: npx create-quiver spec <start|status|close> <spec-dir>'));
+      throw new Error(formatError('missing spec directory. Use: npx create-quiver spec <start|status|validate|close> <spec-dir>'));
     }
 
     if (args.specCommand === 'start') {
@@ -2693,6 +2748,13 @@ async function run(argv) {
       return;
     }
 
+    if (args.specCommand === 'validate') {
+      runValidateSpec(process.cwd(), args.targetDir, {
+        strict: args.strict,
+      });
+      return;
+    }
+
     if (args.specCommand === 'close') {
       const report = closeSpecWorktree(process.cwd(), args.targetDir, {
         baseBranch: args.aiBaseBranch,
@@ -2705,7 +2767,7 @@ async function run(argv) {
       return;
     }
 
-    throw new Error(formatError(`unsupported spec subcommand: ${args.specCommand}. Supported tasks: create, start, status, close`));
+    throw new Error(formatError(`unsupported spec subcommand: ${args.specCommand}. Supported tasks: create, start, status, validate, close`));
   }
 
   const packageRoot = path.resolve(__dirname, '../..');
@@ -2748,7 +2810,7 @@ async function run(argv) {
       if (installResult === 'installed') {
         console.log(`Added create-quiver@${CLI_VERSION} as dev dependency`);
       } else if (installResult === 'failed') {
-        console.warn(`Warning: could not install create-quiver automatically. Run: npm install -D create-quiver@${CLI_VERSION}`);
+        console.warn(`Warning: could not install create-quiver automatically. Run: ${formatInstallSelfCommand(targetDir, CLI_VERSION)}`);
       }
     }
 

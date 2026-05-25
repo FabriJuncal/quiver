@@ -1,0 +1,79 @@
+{
+  "slice_id": "slice-01-core-state-resolver-and-canonical-statuses",
+  "ticket": "QUIVER-27-01",
+  "type": "implementation",
+  "title": "Core state resolver and canonical statuses",
+  "objective": "Create a shared internal resolver and canonical status model used by classic and AI commands.",
+  "description": "Unifies spec, slice, run, approval, agent, evidence, worktree, status, source metadata, root detection, and ordering behavior so commands stop disagreeing about project state.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v27-core-state-resolver-canonical-statuses",
+    "branch_name": "feature/QUIVER-27-01-v27-core-state-resolver-canonical-statuses"
+  },
+  "files": [
+    "src/create-quiver/lib/**",
+    "src/create-quiver/commands/**",
+    "tests/lib/**",
+    "tests/commands/**",
+    "specs/quiver-v27-reliability-ai-workflow-hardening/**"
+  ],
+  "expected_read_paths": [
+    "src/create-quiver/lib/slice-graph.js",
+    "src/create-quiver/lib/ai/export-state.js",
+    "src/create-quiver/lib/doctor.js",
+    "src/create-quiver/commands/plan.js",
+    "src/create-quiver/commands/graph.js",
+    "src/create-quiver/commands/next.js",
+    "src/create-quiver/commands/ai.js",
+    "tests/lib/ai-export-state.test.js",
+    "tests/commands/ai-export.test.js",
+    "tests/commands/plan.test.js",
+    "tests/commands/doctor.test.js"
+  ],
+  "allowed_write_paths": [
+    "src/create-quiver/lib/**",
+    "src/create-quiver/commands/**",
+    "tests/lib/**",
+    "tests/commands/**",
+    "specs/quiver-v27-reliability-ai-workflow-hardening/**"
+  ],
+  "depends_on": [
+    "slice-00-docs-audit-coverage-and-contracts"
+  ],
+  "parallel_safe": "no",
+  "parallel_safe_reason": "This slice defines shared contracts consumed by later slices.",
+  "must": [
+    "Define canonical statuses for specs, slices, runs, approvals, agents, and datasets.",
+    "Expose a shared resolver for classic and AI commands.",
+    "Support scoped reads with --spec without parsing unrelated historical specs unnecessarily.",
+    "Return deterministic ordering.",
+    "Preserve compatibility for existing commands."
+  ],
+  "not_included": [
+    "Public JSON export schema changes beyond resolver plumbing.",
+    "Spec create parsing changes.",
+    "Worktree lifecycle changes."
+  ],
+  "acceptance": [
+    "Classic and AI command tests share the same state resolver or a documented adapter over it.",
+    "Completed slices are visible when includeCompleted/include-completed is requested.",
+    "Scoped reads avoid unrelated specs where possible.",
+    "Status values are normalized through one canonical catalog.",
+    "Existing plan, graph, next, doctor, ai inspect, and ai list behavior remains compatible."
+  ],
+  "tests": [
+    "node --test tests/lib/*resolver*.test.js tests/lib/ai-export-state.test.js tests/commands/ai-export.test.js tests/commands/plan.test.js tests/commands/graph.test.js tests/commands/doctor.test.js",
+    "npm run smoke:doctor-fixtures",
+    "git diff --check"
+  ],
+  "validation_hints": [
+    "Add fixtures for multiple specs with completed and draft slices.",
+    "Assert ordering is stable across runs."
+  ],
+  "estimated_hours": 6,
+  "actual_hours": 6,
+  "status": "completed",
+  "completed_at": "2026-05-24T13:48:34Z",
+  "blocked_reason": null
+}

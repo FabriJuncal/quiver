@@ -63,6 +63,60 @@ function formatGhInstallGuidance() {
   ].join('\n');
 }
 
+function quotePosixArg(arg) {
+  const value = String(arg);
+  return /^[A-Za-z0-9_./:=@-]+$/.test(value) ? value : `'${value.replace(/'/g, "'\\''")}'`;
+}
+
+function quotePowerShellArg(arg) {
+  const value = String(arg);
+  return /^[A-Za-z0-9_./:=@-]+$/.test(value) ? value : `'${value.replace(/'/g, "''")}'`;
+}
+
+function hasShellSensitivePath(...values) {
+  return values.some((value) => /\s/.test(String(value || '')));
+}
+
+function formatShellPathGuidance(optionName, examplePath) {
+  const fallbackPath = examplePath || '~/ssh/github work';
+  const windowsFallback = examplePath || '$HOME\\ssh\\github work';
+  return [
+    'Path guidance:',
+    `- macOS/Linux: ${optionName} ${quotePosixArg(fallbackPath)}`,
+    `- Windows PowerShell: ${optionName} ${quotePowerShellArg(windowsFallback)}`,
+    `- Git Bash/WSL: ${optionName} ${quotePosixArg(fallbackPath)}`,
+    '- Quote paths with spaces; do not remove spaces from real file names.',
+  ].join('\n');
+}
+
+function formatCommandForShell(command, args, quoter) {
+  return `${command} ${args.map(quoter).join(' ')}`;
+}
+
+function classifyGhAuthFailure(output) {
+  const text = String(output || '').toLowerCase();
+  const issues = [];
+
+  if (/not logged|not authenticated|authentication required|no account/.test(text)) {
+    issues.push('no GitHub account is authenticated for this host');
+  }
+  if (/scope|permission|forbidden|403|oauth/.test(text)) {
+    issues.push('the active token may be missing repo/org scopes');
+  }
+  if (/account|user|login|host/.test(text) && !issues.some((issue) => issue.includes('account'))) {
+    issues.push('the active GitHub account or host may not match this repository');
+  }
+  if (/ssh|identity|alias|public key|permission denied/.test(text)) {
+    issues.push('the SSH alias or identity may not match the authenticated GitHub account');
+  }
+
+  if (issues.length === 0) {
+    issues.push('GitHub CLI authentication is not usable for this repository yet');
+  }
+
+  return `Likely issue: ${issues.join('; ')}.`;
+}
+
 function createError(code, message, details = {}) {
   return new GitHubPreflightError(code, message, details);
 }
@@ -150,7 +204,15 @@ function ensureGhAuthenticated(options = {}) {
     const details = [stderr, stdout].filter(Boolean).join('\n');
     throw createError(
       'GH_NOT_AUTHENTICATED',
-      `${formatError('gh auth status failed. Run gh auth login and then re-run the preflight.')}${details ? `\n${details}` : ''}`,
+      `${formatActionableError({
+        failure: 'gh auth status failed. GitHub CLI is not authenticated or the active account/scopes are not usable.',
+        impact: 'Quiver cannot verify the GitHub account, repository permissions, or PR readiness.',
+        fix: [
+          classifyGhAuthFailure(details),
+          'Run `gh auth login`, confirm the expected GitHub account and host, verify repo/org scopes, and if you use --ssh-host-alias run `ssh -T <alias>` to confirm the SSH identity.',
+        ].join(' '),
+        nextCommand: 'gh auth status',
+      })}${details ? `\nDetails:\n${details}` : ''}`,
       {
         command,
         authArgs,
@@ -240,7 +302,12 @@ function ensureIdentityFile(repoRoot, identityFile) {
   if (!fs.existsSync(resolved)) {
     throw createError(
       'MISSING_IDENTITY_FILE',
-      formatError(`missing SSH identity file at ${resolved}. Check the path you passed as identityFile.`),
+      formatActionableError({
+        failure: `missing SSH identity file at ${resolved}.`,
+        impact: 'Quiver cannot verify the SSH identity that should be used for GitHub PR commands.',
+        fix: `Check the path passed with --identity-file and quote it for your shell when it contains spaces.\n${formatShellPathGuidance('--identity-file', normalized)}`,
+        nextCommand: 'npx create-quiver ai doctor --dry-run --ssh-host-alias <alias> --identity-file <path>',
+      }),
       {
         identityFile: normalized,
         resolvedIdentityFile: resolved,
@@ -259,7 +326,7 @@ function ensureSshHostAlias(sshHostAlias) {
       formatActionableError({
         failure: 'missing SSH host alias. Pass --ssh-host-alias <alias> before opening the PR.',
         impact: 'Quiver cannot verify which GitHub SSH identity should be used for this PR flow.',
-        fix: 'macOS/Linux: add a Host entry in ~/.ssh/config, for example `Host github-work`. Windows: add the Host entry in %USERPROFILE%\\.ssh\\config.',
+        fix: 'macOS/Linux/Git Bash/WSL: add a Host entry in ~/.ssh/config, for example `Host github-work`. Windows PowerShell: add the Host entry in $HOME\\.ssh\\config.',
         nextCommand: 'ssh -T <alias>',
       }),
     );
@@ -531,6 +598,10 @@ function formatPreflightReport(report, options = {}) {
     lines.push(`Identity file: ${report.identityFile}`);
   }
 
+  if (hasShellSensitivePath(report.repoRoot, report.guidePath, report.identityFile)) {
+    lines.push(formatShellPathGuidance('--identity-file', report.identityFile || '<path with spaces>'));
+  }
+
   lines.push('Checks: gh, gh auth status, git remote, worktree branch, GitFlow guide, SSH identity file');
 
   if (dryRun) {
@@ -566,6 +637,12 @@ function formatPrCreateReport({ preflight, plan, result }, options = {}) {
 
   if (preflight.identityFile) {
     lines.push(`Identity file: ${preflight.identityFile}`);
+  }
+
+  if (hasShellSensitivePath(preflight.repoRoot, preflight.identityFile, plan.prBodyPath, ...plan.args)) {
+    lines.push('Shell-safe command examples:');
+    lines.push(`- macOS/Linux/Git Bash/WSL: ${formatCommandForShell(plan.ghCommand, plan.args, quotePosixArg)}`);
+    lines.push(`- Windows PowerShell: ${formatCommandForShell(plan.ghCommand, plan.args, quotePowerShellArg)}`);
   }
 
   if (dryRun) {

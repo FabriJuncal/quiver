@@ -3,6 +3,7 @@ const path = require('node:path');
 
 const { resolveProfileProvider } = require('../agent-profiles');
 const { branchDelete, runGit, statusPorcelain, worktreeAdd, worktreePrune, worktreeRemove } = require('../git');
+const { withLock } = require('../locks');
 const { safeBranchName, worktreesRootForRepo } = require('../slice');
 const { buildGraph, computeLevels, detectFileConflicts, isFoundationSliceId, readAllSlices, topoSort, SliceGraphError } = require('../slice-graph');
 const { runExecuteSlice } = require('./executor');
@@ -486,6 +487,13 @@ async function runParallelGroupInWorktrees(repoRoot, level, group, options = {})
   const slices = group.slice_refs.map((ref) => level.slices.find((item) => item.ref === ref));
   const workspaces = slices.map((slice, index) => buildDelegatedWorkspace(repoRoot, slice, runId, index, options));
 
+  return withLock(repoRoot, `execute-plan-${runId}`, {
+    command: 'ai execute-plan',
+    metadata: {
+      mode: 'delegated',
+      slices: group.slice_refs,
+    },
+  }, async () => {
   let runResults;
   try {
     worktreePrune(repoRoot);
@@ -542,6 +550,7 @@ async function runParallelGroupInWorktrees(repoRoot, level, group, options = {})
     workspace: item.workspace.worktreePath,
     integratedCommit: item.commit,
   }));
+  });
 }
 
 async function runExecutePlan(repoRoot, options = {}) {

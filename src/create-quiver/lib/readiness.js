@@ -3,7 +3,8 @@ const path = require('path');
 const { catFileExists, currentBranch, hasLocalBranch, hasRemoteBranch, mergeBaseIsAncestor, revListCount, runGit, statusPorcelain, worktreeList } = require('./git');
 const { parseJsonWithComments } = require('./json');
 const { buildGraph, normalizeDeclaredDependencies, readAllSlices, SliceGraphError, topoSort } = require('./slice-graph');
-const { resolveSliceContext, toAlias } = require('./slice');
+const { resolveSliceContext, toAlias, validateSliceMetaForStart } = require('./slice');
+const { validateProjectRelativePaths } = require('./paths');
 
 function ensureExists(filePath, message) {
   if (!fs.existsSync(filePath)) {
@@ -111,6 +112,13 @@ function validateLocalSliceArtifacts(repoRoot, slice) {
     throw new Error('create-quiver: slice.json.files contiene entradas invalidas.');
   }
   console.log('PASS: slice.json declara archivos de alcance.');
+
+  validateSliceMetaForStart(slice);
+  console.log('PASS: slice.json declara metadata git compatible con start-slice.');
+
+  validateProjectRelativePaths(slice.files, 'slice.json files/allowed_write_paths');
+  validateProjectRelativePaths(slice.expectedReadPaths, 'slice.json expected_read_paths');
+  console.log('PASS: slice.json declara rutas relativas seguras dentro del proyecto.');
 }
 
 function baseRecoveryMessage(remote, baseBranch) {
@@ -219,6 +227,11 @@ function validateDeclaredDependencyContract(repoRoot, slice) {
   }
 }
 
+function localCheckSummary() {
+  console.log('INFO: Modo local: checks ejecutados: spec docs, briefs, metadata git, scope declarado, rutas seguras, dependencias y gate.');
+  console.log('INFO: Modo local: checks omitidos: existencia en base remota/local y overlap contra worktrees activos.');
+}
+
 function checkSliceReadiness(sliceInput, options = {}) {
   const gate = options.gate || 'execution';
   const localMode = options.local === true;
@@ -262,6 +275,9 @@ function checkSliceReadiness(sliceInput, options = {}) {
   }
 
   validateDeclaredDependencyContract(repoRoot, slice);
+  if (localMode) {
+    localCheckSummary();
+  }
 
   switch (gate) {
     case 'ready':
@@ -371,22 +387,47 @@ function checkPrReadiness(sliceInput) {
 
 function checkScope(sliceInput, options = {}) {
   const strict = options.strict === true;
+  const remote = options.remote || 'origin';
   const repoRoot = runGit(['rev-parse', '--show-toplevel'], process.cwd());
   const slice = resolveSliceContext(repoRoot, sliceInput);
   const declared = slice.files;
+  validateProjectRelativePaths(declared, 'slice scope path');
+
+  const explicitBaseBranch = typeof options.baseBranch === 'string' ? options.baseBranch.trim() : '';
+  const candidateBaseBranches = Array.from(new Set([
+    explicitBaseBranch,
+    slice.baseBranch,
+    'main',
+    'develop',
+    'master',
+  ].filter(Boolean)));
+
+  let baseRef = '';
+  let baseSource = '';
+  for (const candidate of candidateBaseBranches) {
+    if (hasRemoteBranch(repoRoot, candidate, remote)) {
+      baseRef = `${remote}/${candidate}`;
+      baseSource = explicitBaseBranch === candidate ? '--base' : candidate === slice.baseBranch ? 'slice.git.base_branch' : 'fallback';
+      break;
+    }
+    if (hasLocalBranch(repoRoot, candidate)) {
+      baseRef = candidate;
+      baseSource = explicitBaseBranch === candidate ? '--base' : candidate === slice.baseBranch ? 'slice.git.base_branch' : 'fallback';
+      break;
+    }
+  }
 
   let touchedRaw = '';
-  if (hasRemoteBranch(repoRoot, 'develop')) {
-    touchedRaw = runGit(['diff', '--name-only', 'origin/develop...HEAD'], repoRoot);
-  } else if (hasLocalBranch(repoRoot, 'develop')) {
-    touchedRaw = runGit(['diff', '--name-only', 'develop...HEAD'], repoRoot);
+  if (baseRef) {
+    touchedRaw = runGit(['diff', '--name-only', `${baseRef}...HEAD`], repoRoot);
+    console.log(`INFO: check-scope base: ${baseRef} (${baseSource}).`);
   } else {
-    console.log('WARN: No se encontro rama origin/develop ni develop. Saltando check de scope.');
+    console.log(`WARN: No se encontro base para check-scope. Probadas: ${candidateBaseBranches.join(', ')}. Usa --base <branch> o configura git.base_branch en slice.json.`);
     return;
   }
 
   if (!touchedRaw) {
-    console.log('WARN: No se encontraron archivos modificados respecto de develop.');
+    console.log(`WARN: No se encontraron archivos modificados respecto de ${baseRef}.`);
     return;
   }
 

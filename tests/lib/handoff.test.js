@@ -120,7 +120,13 @@ test('check-handoff rejects incomplete per-slice execution briefs with an action
       () => checkHandoff('specs/spec-a/slices/slice-01-alpha/EXECUTION_BRIEF.md', project.root),
       (error) => {
         const message = String(error.message || error);
-        return message.includes('execution brief') && message.includes('objective') && message.includes('acceptance criteria');
+        return message.includes('execution brief')
+          && message.includes('objective')
+          && message.includes('acceptance criteria')
+          && message.includes('Accepted headings/aliases:')
+          && message.includes('## Objective')
+          && message.includes('## Objetivo')
+          && message.includes('Minimal template:');
       },
     );
   } finally {

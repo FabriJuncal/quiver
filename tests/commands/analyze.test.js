@@ -68,6 +68,30 @@ test('analyze writes raw scan under .quiver and keeps project map visible', () =
   }
 });
 
+test('analyze dry-run reports planned artifacts without writing files', () => {
+  const { dir, cleanup } = makeTmpDir();
+  try {
+    const projectRoot = path.join(dir, 'project');
+    fs.mkdirSync(projectRoot, { recursive: true });
+    fs.writeFileSync(path.join(projectRoot, 'package.json'), JSON.stringify({
+      name: 'dry-run-project',
+      scripts: { test: 'node --test' },
+    }, null, 2));
+
+    const output = runCli(['analyze', '--dry-run'], { cwd: projectRoot });
+
+    assert.match(output, /Project analysis dry-run/);
+    assert.match(output, /Writes: none/);
+    assert.match(output, /Would write \.quiver\/scans\/PROJECT_SCAN\.json/);
+    assert.match(output, /Would write docs\/PROJECT_MAP\.md/);
+    assert.match(output, /Would refresh docs\/AI_CONTEXT\.md/);
+    assert.equal(fs.existsSync(path.join(projectRoot, '.quiver')), false);
+    assert.equal(fs.existsSync(path.join(projectRoot, 'docs')), false);
+  } finally {
+    cleanup();
+  }
+});
+
 test('analyze recognizes a plain Node/JavaScript project and surfaces useful scripts', () => {
   const { dir, cleanup } = makeTmpDir();
   try {
@@ -107,6 +131,43 @@ test('analyze recognizes a plain Node/JavaScript project and surfaces useful scr
     assert.match(projectMap, /- test: `node --test`/);
     assert.match(projectMap, /## Skipped Paths/);
     assert.match(projectMap, /## Do Not Read First/);
+  } finally {
+    cleanup();
+  }
+});
+
+test('analyze recognizes React plus Vite without misclassifying it as Vue', () => {
+  const { dir, cleanup } = makeTmpDir();
+  try {
+    const projectRoot = path.join(dir, 'project');
+    fs.mkdirSync(path.join(projectRoot, 'src'), { recursive: true });
+    fs.writeFileSync(path.join(projectRoot, 'package.json'), JSON.stringify({
+      name: 'react-vite-project',
+      dependencies: {
+        react: '^19.0.0',
+      },
+      devDependencies: {
+        vite: '^7.0.0',
+        typescript: '^5.0.0',
+      },
+      scripts: {
+        dev: 'vite',
+        build: 'vite build',
+      },
+    }, null, 2));
+    fs.writeFileSync(path.join(projectRoot, 'vite.config.ts'), 'export default {};\n');
+    fs.writeFileSync(path.join(projectRoot, 'src', 'App.tsx'), 'export function App() { return null; }\n');
+
+    const output = runCli(['analyze'], { cwd: projectRoot });
+    const scan = JSON.parse(fs.readFileSync(path.join(projectRoot, '.quiver', 'scans', 'PROJECT_SCAN.json'), 'utf8'));
+    const projectMap = fs.readFileSync(path.join(projectRoot, 'docs', 'PROJECT_MAP.md'), 'utf8');
+
+    assert.match(output, /Detected primary stack: react/);
+    assert.equal(scan.stack.primary, 'react');
+    assert.deepEqual(scan.stack.frameworks, ['react', 'vite']);
+    assert.equal(scan.stack.frameworks.includes('vue'), false);
+    assert.match(projectMap, /- Frameworks: react, vite/);
+    assert.doesNotMatch(projectMap, /- Primary: vue/);
   } finally {
     cleanup();
   }

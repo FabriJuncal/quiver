@@ -1,0 +1,99 @@
+{
+  "slice_id": "slice-06-validation-gates-and-scope-safety",
+  "ticket": "QUIVER-27-06",
+  "type": "implementation",
+  "title": "Validation gates and scope safety",
+  "objective": "Harden check-slice, check-scope, check-handoff, spec validate, and path safety so validation gates catch real execution failures.",
+  "description": "Aligns local slice validation with execution preconditions, fixes base branch resolution, improves handoff template errors and aliases, adds spec validate, and prevents path traversal/out-of-scope writes.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v27-validation-gates-scope-safety",
+    "branch_name": "feature/QUIVER-27-06-v27-validation-gates-scope-safety"
+  },
+  "files": [
+    "src/create-quiver/lib/readiness.js",
+    "src/create-quiver/lib/scope.js",
+    "src/create-quiver/lib/handoff.js",
+    "src/create-quiver/lib/paths.js",
+    "src/create-quiver/lib/slice.js",
+    "src/create-quiver/lib/ai/executor.js",
+    "src/create-quiver/lib/init-layout.js",
+    "src/create-quiver/commands/spec.js",
+    "src/create-quiver/index.js",
+    "package.json",
+    "README.md",
+    "README_FOR_AI.md",
+    "docs/COMMANDS.md.template",
+    "tests/lib/**",
+    "tests/commands/**",
+    "specs/quiver-v27-reliability-ai-workflow-hardening/**"
+  ],
+  "expected_read_paths": [
+    "src/create-quiver/lib/readiness.js",
+    "src/create-quiver/lib/scope.js",
+    "src/create-quiver/lib/handoff.js",
+    "src/create-quiver/lib/paths.js",
+    "src/create-quiver/lib/slice.js",
+    "src/create-quiver/lib/init-layout.js",
+    "tests/lib/check-slice.test.js",
+    "tests/lib/scope.test.js",
+    "tests/lib/handoff.test.js"
+  ],
+  "allowed_write_paths": [
+    "src/create-quiver/lib/readiness.js",
+    "src/create-quiver/lib/scope.js",
+    "src/create-quiver/lib/handoff.js",
+    "src/create-quiver/lib/paths.js",
+    "src/create-quiver/lib/slice.js",
+    "src/create-quiver/lib/ai/executor.js",
+    "src/create-quiver/lib/init-layout.js",
+    "src/create-quiver/commands/spec.js",
+    "src/create-quiver/index.js",
+    "package.json",
+    "README.md",
+    "README_FOR_AI.md",
+    "docs/COMMANDS.md.template",
+    "tests/lib/**",
+    "tests/commands/**",
+    "specs/quiver-v27-reliability-ai-workflow-hardening/**"
+  ],
+  "depends_on": [
+    "slice-01-core-state-resolver-and-canonical-statuses",
+    "slice-05-worktree-lifecycle-locks-and-recovery"
+  ],
+  "parallel_safe": "no",
+  "parallel_safe_reason": "Validation gates depend on resolver and worktree lifecycle behavior.",
+  "must": [
+    "Align check-slice --local with start/execute preconditions or list skipped checks.",
+    "Make check-scope respect --base and slice git.base_branch before fallbacks.",
+    "Add or harden spec validate.",
+    "Improve check-handoff error templates and Spanish/English aliases.",
+    "Reject path traversal and writes outside project root.",
+    "Support legacy/strict validation modes where needed."
+  ],
+  "not_included": [
+    "Changing export schema.",
+    "Changing AI provider behavior.",
+    "Publishing npm."
+  ],
+  "acceptance": [
+    "check-slice --local catches required local metadata for execution or documents skipped checks.",
+    "check-scope does not hardcode develop when --base or slice base_branch is provided.",
+    "check-handoff prints minimal templates or accepted aliases when headings are missing.",
+    "spec validate checks spec docs, slices, JSON, briefs, evidence, and status consistency.",
+    "Paths outside the repo root are rejected."
+  ],
+  "tests": [
+    "node --test tests/lib/check-slice.test.js tests/lib/scope.test.js tests/lib/handoff.test.js tests/lib/paths.test.js tests/commands/cli-contract.test.js",
+    "git diff --check"
+  ],
+  "validation_hints": [
+    "Add tests for main, master, develop, --base, and missing remote.",
+    "Add path traversal and symlink cases."
+  ],
+  "estimated_hours": 6,
+  "status": "completed",
+  "completed_at": "2026-05-24",
+  "blocked_reason": null
+}

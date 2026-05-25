@@ -1,7 +1,7 @@
 # Quiver v26 - 0.12.1 Smoke Hardening
 
 **Date:** 2026-05-23
-**Status:** Implemented; release-ready pending PR merge and npm publication
+**Status:** Implemented; shipped in `create-quiver@0.12.1`
 
 Slice numbering resets here. This spec intentionally starts at `slice-00`.
 
@@ -134,4 +134,4 @@ The production-readiness review added these constraints:
 
 ## Release Plan
 
-This spec targets `0.12.1`. Publication happens only after the implementation PR is merged, the local validation suite passes, and the candidate package is smoke-tested outside the repo.
+This spec targeted `0.12.1`, which has been published. Follow-up reliability findings from Pixel Quiver dogfooding are tracked in `specs/quiver-v27-reliability-ai-workflow-hardening/`.

@@ -1,4 +1,9 @@
 const path = require('path');
+const fs = require('fs');
+
+function formatError(message) {
+  return `create-quiver: ${message}`;
+}
 
 function resolveTargetRoot(cwd, targetDir, pathLib = path) {
   return pathLib.resolve(cwd, targetDir);
@@ -71,10 +76,79 @@ function specRelativePathFromPath(filePath, pathLib = path) {
   return parts.slice(specIndex).join('/');
 }
 
+function realpathOrResolve(filePath, pathLib = path) {
+  try {
+    return pathLib.resolve(fs.realpathSync(filePath));
+  } catch {
+    return pathLib.resolve(normalizeGitBashDrivePath(filePath, pathLib));
+  }
+}
+
+function isPathInsideRoot(root, target, pathLib = path) {
+  const rootPath = realpathOrResolve(root, pathLib);
+  const targetPath = realpathOrResolve(target, pathLib);
+  const windowsPath = pathLib === path.win32 || process.platform === 'win32';
+  const comparableRoot = windowsPath ? rootPath.toLowerCase() : rootPath;
+  const comparableTarget = windowsPath ? targetPath.toLowerCase() : targetPath;
+
+  if (comparableTarget === comparableRoot) {
+    return true;
+  }
+
+  const relative = pathLib.relative(comparableRoot, comparableTarget);
+  return Boolean(relative && !relative.startsWith('..') && !pathLib.isAbsolute(relative));
+}
+
+function assertPathInsideRoot(root, target, label = 'path', pathLib = path) {
+  if (!isPathInsideRoot(root, target, pathLib)) {
+    throw new Error(formatError(`${label} must stay inside the project root: ${toPosixPath(target, pathLib)}`));
+  }
+}
+
+function getProjectRelativePathIssue(filePath, pathLib = path) {
+  const original = String(filePath || '').trim();
+  if (!original) {
+    return 'empty-path';
+  }
+
+  if (/^file:/i.test(original)) {
+    return 'file-url';
+  }
+
+  const normalized = toPosixPath(normalizeGitBashDrivePath(original, pathLib), pathLib);
+  if (normalized.startsWith('/') || /^[A-Za-z]:\//.test(normalized) || pathLib.isAbsolute(original)) {
+    return 'absolute-path';
+  }
+
+  const segments = normalized.split('/').filter(Boolean);
+  if (segments.some((segment) => segment === '..')) {
+    return 'path-traversal';
+  }
+
+  return null;
+}
+
+function validateProjectRelativePath(filePath, fieldName = 'path', pathLib = path) {
+  const issue = getProjectRelativePathIssue(filePath, pathLib);
+  if (issue) {
+    throw new Error(formatError(`${fieldName} must be a project-relative path without traversal (got ${String(filePath || '<empty>')}; issue=${issue}).`));
+  }
+  return toPosixPath(normalizeGitBashDrivePath(String(filePath).trim(), pathLib), pathLib);
+}
+
+function validateProjectRelativePaths(paths, fieldName = 'paths', pathLib = path) {
+  return (Array.isArray(paths) ? paths : []).map((filePath) => validateProjectRelativePath(filePath, fieldName, pathLib));
+}
+
 module.exports = {
+  assertPathInsideRoot,
+  getProjectRelativePathIssue,
+  isPathInsideRoot,
   normalizeGitBashDrivePath,
   relativePosixPath,
   resolveTargetRoot,
   specRelativePathFromPath,
   toPosixPath,
+  validateProjectRelativePath,
+  validateProjectRelativePaths,
 };

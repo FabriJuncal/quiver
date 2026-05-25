@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const { parseJsonWithComments } = require('./json');
-const { normalizeGitBashDrivePath, relativePosixPath, resolveTargetRoot, specRelativePathFromPath, toPosixPath } = require('./paths');
+const { assertPathInsideRoot, normalizeGitBashDrivePath, relativePosixPath, resolveTargetRoot, specRelativePathFromPath, toPosixPath } = require('./paths');
 
 function readJson(filePath) {
   return JSON.parse(fs.readFileSync(filePath, 'utf8'));
@@ -89,9 +89,12 @@ function validateSliceMetaForStart(slice) {
     throw new Error(`create-quiver: git.branch_type invalido: "${slice.branchType}". Usa "feature", "bugfix" o "hotfix".`);
   }
 
-  const allowedBaseBranches = allowedBaseByType[slice.branchType];
-  if (!allowedBaseBranches.includes(slice.baseBranch)) {
-    throw new Error(`create-quiver: git.base_branch invalido para ${slice.branchType}. Usa "${allowedBaseBranches.join('" o "')}".`);
+  if (!/^[A-Za-z0-9._/-]+$/.test(slice.baseBranch)
+    || slice.baseBranch.includes('..')
+    || slice.baseBranch.startsWith('/')
+    || slice.baseBranch.endsWith('/')
+    || slice.baseBranch.includes('\\')) {
+    throw new Error('create-quiver: git.base_branch invalido. Usa una rama base valida como "main", "develop", "master" o "release/2026".');
   }
 
   const expectedBranchName = `${slice.branchType}/${slice.ticket}-${slice.branchSlug}`;
@@ -116,6 +119,7 @@ function resolveRepoSlicePath(repoRoot, relSlicePath) {
 function resolveSliceContext(repoRoot, slicePath) {
   const canonicalRepoRoot = canonicalizePath(repoRoot);
   let absSlicePath = resolveSlicePath(slicePath);
+  assertPathInsideRoot(canonicalRepoRoot, absSlicePath, 'slice path');
   let relSlicePath = relativePosixPath(canonicalRepoRoot, absSlicePath);
   let parts = relSlicePath.split('/');
 

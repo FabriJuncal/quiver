@@ -209,6 +209,7 @@ function resolveInitPackageScripts(profile, options = {}) {
     'quiver:spec:create': 'npx create-quiver spec create',
     'quiver:spec:start': 'npx create-quiver spec start',
     'quiver:spec:status': 'npx create-quiver spec status',
+    'quiver:spec:validate': 'npx create-quiver spec validate',
     'quiver:spec:close': 'npx create-quiver spec close',
     'quiver:start-slice': 'npx create-quiver start-slice',
     'quiver:check-slice': 'npx create-quiver check-slice',

@@ -1,4 +1,6 @@
 const cp = require('child_process');
+const fs = require('fs');
+const path = require('path');
 
 function runGit(args, cwd, options = {}) {
   return cp.execFileSync('git', args, {
@@ -98,6 +100,9 @@ function currentBranch(repoRoot) {
 }
 
 function statusPorcelain(repoRoot) {
+  if (!repoRoot || !fs.existsSync(repoRoot)) {
+    return '__MISSING_WORKTREE__';
+  }
   return tryGit(['status', '--porcelain'], repoRoot);
 }
 
@@ -111,7 +116,37 @@ function hasRemote(repoRoot, remoteName = 'origin') {
 }
 
 function isCleanWorktree(repoRoot) {
-  return statusPorcelain(repoRoot) === '';
+  return Boolean(repoRoot && fs.existsSync(repoRoot) && isGitWorktree(repoRoot) && statusPorcelain(repoRoot) === '');
+}
+
+function isGitWorktree(repoRoot) {
+  return tryGit(['rev-parse', '--is-inside-work-tree'], repoRoot) === 'true';
+}
+
+function absoluteGitDir(repoRoot) {
+  return tryGit(['rev-parse', '--absolute-git-dir'], repoRoot);
+}
+
+function gitCommonDir(repoRoot) {
+  const value = tryGit(['rev-parse', '--git-common-dir'], repoRoot);
+  if (!value) {
+    return '';
+  }
+  return path.isAbsolute(value) ? path.resolve(value) : path.resolve(repoRoot, value);
+}
+
+function realpathOrResolve(value) {
+  try {
+    return fs.realpathSync(value);
+  } catch {
+    return path.resolve(value);
+  }
+}
+
+function isLinkedWorktree(repoRoot) {
+  const gitDir = absoluteGitDir(repoRoot);
+  const commonDir = gitCommonDir(repoRoot);
+  return Boolean(gitDir && commonDir && realpathOrResolve(gitDir) !== realpathOrResolve(commonDir));
 }
 
 function isDetachedHead(repoRoot) {
@@ -161,8 +196,12 @@ module.exports = {
   lsRemoteHeads,
   mergeBaseIsAncestor,
   hasRemote,
+  absoluteGitDir,
+  gitCommonDir,
   isCleanWorktree,
   isDetachedHead,
+  isGitWorktree,
+  isLinkedWorktree,
   revListCount,
   remoteList,
   runGit,

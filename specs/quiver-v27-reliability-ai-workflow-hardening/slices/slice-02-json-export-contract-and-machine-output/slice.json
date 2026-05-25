@@ -1,0 +1,75 @@
+{
+  "slice_id": "slice-02-json-export-contract-and-machine-output",
+  "ticket": "QUIVER-27-02",
+  "type": "implementation",
+  "title": "JSON export contract and machine output",
+  "objective": "Define and implement a stable JSON export contract for dashboards, agents, and machine consumers.",
+  "description": "Adds a versioned export schema, pure stdout JSON behavior, deterministic ordering, source metadata, partial/empty/invalid semantics, sanitized paths, and alignment between ai export and export-specs.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v27-json-export-contract-machine-output",
+    "branch_name": "feature/QUIVER-27-02-v27-json-export-contract-machine-output"
+  },
+  "files": [
+    "src/create-quiver/lib/**",
+    "src/create-quiver/commands/**",
+    "src/create-quiver/index.js",
+    "tests/lib/**",
+    "tests/commands/**",
+    "specs/quiver-v27-reliability-ai-workflow-hardening/**"
+  ],
+  "expected_read_paths": [
+    "src/create-quiver/lib/ai/export-state.js",
+    "src/create-quiver/commands/ai.js",
+    "src/create-quiver/index.js",
+    "tests/lib/ai-export-state.test.js",
+    "tests/commands/ai-export.test.js"
+  ],
+  "allowed_write_paths": [
+    "src/create-quiver/lib/**",
+    "src/create-quiver/commands/**",
+    "src/create-quiver/index.js",
+    "tests/lib/**",
+    "tests/commands/**",
+    "specs/quiver-v27-reliability-ai-workflow-hardening/**"
+  ],
+  "depends_on": [
+    "slice-01-core-state-resolver-and-canonical-statuses"
+  ],
+  "parallel_safe": "no",
+  "parallel_safe_reason": "Export contract depends on the shared state resolver and is consumed by later slices.",
+  "must": [
+    "Define schemaVersion and stable field names.",
+    "Ensure --format json writes JSON only to stdout.",
+    "Route warnings/errors to structured JSON fields or stderr as appropriate.",
+    "Include source metadata and completed slices with --include-completed.",
+    "Sanitize local paths where needed."
+  ],
+  "not_included": [
+    "Dashboard UI implementation.",
+    "Provider execution.",
+    "Spec create parsing changes."
+  ],
+  "acceptance": [
+    "JSON output parses with JSON.parse without cleanup.",
+    "Export includes specs, slices, agents, runs, approvals, blockers, evidence, next steps, lifecycle, aggregates, warnings, and source metadata.",
+    "Completed slices appear when --include-completed is used.",
+    "Human logs are not mixed into JSON stdout.",
+    "Unsupported formats fail with non-zero exit and stderr error."
+  ],
+  "tests": [
+    "node --test tests/lib/ai-export-state.test.js tests/commands/ai-export.test.js",
+    "node --test tests/commands/cli-contract.test.js",
+    "git diff --check"
+  ],
+  "validation_hints": [
+    "Add tests that run the CLI and parse stdout directly.",
+    "Assert deterministic ordering in exported arrays."
+  ],
+  "estimated_hours": 5,
+  "actual_hours": 5,
+  "status": "completed",
+  "completed_at": "2026-05-24T13:54:36Z",
+  "blocked_reason": null
+}

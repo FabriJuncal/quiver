@@ -49,6 +49,79 @@ function readProjectScanArtifact(projectRoot) {
   return null;
 }
 
+function statIso(filePath) {
+  try {
+    return fs.statSync(filePath).mtime.toISOString();
+  } catch {
+    return null;
+  }
+}
+
+function readProjectScanStatus(projectRoot) {
+  const { currentScanPath, legacyScanPath, projectMapPath } = projectScanPaths(projectRoot);
+  const projectMapExists = fs.existsSync(projectMapPath);
+  let artifact = null;
+  let artifactError = '';
+
+  try {
+    artifact = readProjectScanArtifact(projectRoot);
+  } catch (error) {
+    artifactError = error.message;
+  }
+
+  const scanPath = artifact?.path || (fs.existsSync(currentScanPath) ? currentScanPath : fs.existsSync(legacyScanPath) ? legacyScanPath : '');
+  const source = artifact?.source || (artifactError ? 'invalid' : 'missing');
+  const scanUpdatedAt = scanPath ? statIso(scanPath) : null;
+  const projectMapUpdatedAt = projectMapExists ? statIso(projectMapPath) : null;
+  const stale = Boolean(
+    scanUpdatedAt
+    && projectMapUpdatedAt
+    && Date.parse(projectMapUpdatedAt) + 1000 < Date.parse(scanUpdatedAt),
+  );
+  let status = 'missing';
+
+  if (artifactError) {
+    status = 'invalid';
+  } else if (artifact && projectMapExists && stale) {
+    status = 'stale';
+  } else if (artifact && projectMapExists && source === 'current') {
+    status = 'fresh';
+  } else if (artifact && projectMapExists && source === 'legacy') {
+    status = 'legacy';
+  } else if (artifact || projectMapExists) {
+    status = 'partial';
+  }
+
+  let summary;
+  if (status === 'fresh') {
+    summary = `${artifact.relativePath} (current, updated ${scanUpdatedAt})`;
+  } else if (status === 'legacy') {
+    summary = `${artifact.relativePath} (legacy scan, updated ${scanUpdatedAt})`;
+  } else if (status === 'stale') {
+    summary = `${artifact.relativePath} newer than docs/PROJECT_MAP.md; run analyze to refresh visible context`;
+  } else if (status === 'partial' && artifact && !projectMapExists) {
+    summary = `${artifact.relativePath} exists but docs/PROJECT_MAP.md is missing`;
+  } else if (status === 'partial' && !artifact && projectMapExists) {
+    summary = `docs/PROJECT_MAP.md exists but no scan artifact was found`;
+  } else if (status === 'invalid') {
+    summary = `scan artifact is invalid: ${artifactError}`;
+  } else {
+    summary = 'missing analysis artifacts; run npx create-quiver analyze';
+  }
+
+  return {
+    artifactPath: artifact?.relativePath || (scanPath ? toRelativeScanPath(projectRoot, scanPath) : null),
+    error: artifactError || null,
+    projectMapPath: projectMapExists ? PROJECT_MAP_RELATIVE_PATH : null,
+    projectMapUpdatedAt,
+    scanUpdatedAt,
+    source,
+    status,
+    stale,
+    summary,
+  };
+}
+
 function hasProjectScanArtifact(projectRoot) {
   const { currentScanPath, legacyScanPath } = projectScanPaths(projectRoot);
   return fs.existsSync(currentScanPath) || fs.existsSync(legacyScanPath);
@@ -61,6 +134,7 @@ module.exports = {
   hasProjectScanArtifact,
   projectScanPaths,
   readProjectScanArtifact,
+  readProjectScanStatus,
   toRelativeScanPath,
   writeProjectScanJson,
 };

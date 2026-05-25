@@ -192,6 +192,8 @@ function savePlanReview(projectRoot, options = {}) {
     source_kind: options.inputKind || null,
     source_version: options.inputVersion || null,
     path: toRelativePosix(projectRoot, reviewPath),
+    raw_artifact_path: options.rawArtifactPath || null,
+    output_source: options.outputSource || null,
     reviewed_at: now,
   };
   fs.writeFileSync(planReviewMetaPath(projectRoot), `${JSON.stringify(meta, null, 2)}\n`);

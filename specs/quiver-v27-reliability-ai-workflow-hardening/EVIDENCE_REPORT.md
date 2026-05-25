@@ -1,0 +1,179 @@
+# Evidence Report - Quiver v27 Reliability and AI Workflow Hardening
+
+## Initial Evidence
+
+- Pixel Quiver final dogfooding produced `QP-001` to `QP-019` and `QIS-001` to `QIS-022`.
+- The approved plan requires a single spec with slices ordered by shared contracts first, command fixes second, and release readiness last.
+- `README_FOR_AI.md` was read before creating this spec.
+- `ROADMAP.md` and `BACKLOG.md` were reviewed before creating this spec.
+
+## Validation Status
+
+- v27 source, fixture, smoke, guided workflow, and packaged tarball validation passed on 2026-05-24.
+- npm publication was intentionally not performed by this spec.
+
+## Slice 00 Evidence - 2026-05-24
+
+- Created `COVERAGE_MATRIX.md` to map all `QP-001..QP-019` and `QIS-001..QIS-022` to a responsible slice, risk, and validation strategy.
+- Created `COMMAND_CONTRACTS.md` to define shared production contracts for output streams, exit codes, dry-run behavior, write classes, atomicity, idempotency, path safety, root detection, package manager detection, deterministic ordering, status catalogs, JSON versioning, legacy/strict modes, security, and validation.
+- Created `AUDIT_V24_V25_V26.md` to separate existing v24/v25/v26 implementation surfaces from the dogfooding gaps that v27 must still close.
+- Audited existing command and test surfaces with `rg` across `src/create-quiver`, `tests`, and v24/v25/v26 specs for resolver/export/spec-create/check-scope/check-handoff/worktree/analyze/dry-run/doctor/path/redaction surfaces.
+- Confirmed `README_FOR_AI.md`, `ROADMAP.md`, and `CHANGELOG.md` were updated so v26 remains the shipped release and v27 is not described as published.
+
+## Slice 01 Evidence - 2026-05-24
+
+- Added `src/create-quiver/lib/statuses.js` with shared canonical status catalogs and alias normalization for specs, slices, runs, approvals, agents, and datasets.
+- Added `src/create-quiver/lib/project-state-resolver.js` as the shared resolver over slice discovery, graph building, deterministic ordering, scoped reads, completed-slice filtering, progress, spec grouping, and graph summaries.
+- Routed classic `plan` and `graph` commands through the shared resolver while preserving existing human output and adding `canonical_status` to machine payloads.
+- Routed AI lifecycle export/list/inspect state through the shared resolver so classic and AI surfaces agree about completed slices when `includeCompleted` is requested.
+- Added `tests/lib/project-state-resolver.test.js` for canonical statuses, scoped read safety, and plan/export agreement on completed slices.
+- Ran targeted command and library tests for resolver, AI export, plan, graph, next, and doctor.
+- Ran `npm run smoke:doctor-fixtures`.
+- Ran full Node test suite: `node --test tests/**/*.test.js` passed with 320 tests.
+- Ran `git diff --check`.
+
+## Slice 02 Evidence - 2026-05-24
+
+- Bumped lifecycle export schema to `schema_version: 2`.
+- Extended `ai export` JSON with `source_metadata`, `warnings`, `approvals`, top-level `blockers`, `evidence`, `next_steps`, `lifecycle`, and `aggregates` while preserving existing `summary`, `project`, `agents`, `runs`, `specs`, `slices`, `graph`, `migration`, and `dashboard` fields.
+- Kept source metadata sanitized by exposing the project root name rather than an absolute local path.
+- Added canonical statuses to exported slices, runs, agents, specs, and approvals.
+- Added CLI tests that parse stdout JSON directly, assert stderr is empty on success, assert unsupported formats write to stderr with non-zero exit, and assert `--include-completed` includes completed slices.
+- Ran `node --test tests/lib/ai-export-state.test.js tests/commands/ai-export.test.js`.
+- Ran `node --test tests/commands/cli-contract.test.js tests/lib/project-state-resolver.test.js`.
+- Ran full Node test suite: `node --test tests/**/*.test.js` passed with 321 tests.
+- Ran `git diff --check`.
+
+## Slice 03 Evidence - 2026-05-24
+
+- Updated approved-plan parsing to extract structured slice data from full JSON input or fenced JSON blocks inside Markdown.
+- Removed silent generic fallback behavior for plans without structured slices.
+- Added pre-write validation for duplicate slice IDs, missing dependencies, invalid slice IDs, and dependency cycles.
+- Kept `slice-00-spec-foundation` mandatory while preserving every approved implementation slice from the plan.
+- Added atomic failure coverage showing missing structured slices fail before creating a spec directory or temporary build remnant.
+- Added command-level coverage for `spec create --dry-run` failing safely when the reviewed approved plan lacks structured slices.
+- Ran `node --test tests/lib/ai-spec-generator.test.js tests/commands/spec-create.test.js tests/commands/ai-plan-spec-phase.test.js`.
+- Ran full Node test suite: `node --test tests/**/*.test.js` passed with 327 tests.
+
+## Slice 04 Evidence - 2026-05-24
+
+- Added `src/create-quiver/lib/ai/artifacts.js` to centralize clean AI output extraction, raw provider artifact persistence, local path redaction, prompt-size checks, and revise-input compaction.
+- Updated `ai plan`, `ai revise`, and `ai review-plan` persistence so saved drafts/reviews use clean provider output while raw stdout/stderr are stored separately under `.quiver/runs/<run-id>/raw/*.json`.
+- Added prompt echo stripping and provider-log edge cleanup so draft artifacts do not include provider logs or prompt echoes when useful stdout is available.
+- Added raw artifact metadata to planner approval and plan-review metadata, including `raw_artifact_path`, `output_source`, and revise `input_compaction`.
+- Preserved explicit approved draft versions while carrying raw artifact metadata from the selected draft into approved metadata.
+- Added revise-input compaction for oversized feedback, preserving decisions, risks, files, acceptance criteria, validation, blockers, dependencies, assumptions, rollback, and evidence lines.
+- Added prompt-size rejection before provider execution with an actionable `AI_PROMPT_TOO_LARGE` error.
+- Added package-safety coverage for raw AI artifacts under `.quiver/runs/*/raw/`.
+- Ran `node --test tests/commands/ai-plan.test.js tests/commands/ai-review-plan.test.js tests/lib/ai-providers.test.js tests/lib/package-safety.test.js`.
+- Ran `node --test tests/lib/ai-*.test.js tests/commands/ai-plan.test.js tests/commands/ai-review-plan.test.js`.
+- Ran full Node test suite: `node --test tests/**/*.test.js` passed with 330 tests.
+- Ran `node bin/create-quiver.js plan --spec quiver-v27-reliability-ai-workflow-hardening --include-completed`.
+- Ran `node bin/create-quiver.js graph --spec quiver-v27-reliability-ai-workflow-hardening`.
+- Ran `git diff --check`.
+
+## Slice 05 Evidence - 2026-05-24
+
+- Added `src/create-quiver/lib/locks.js` to centralize `.quiver/locks` lock acquisition, release, stale lock diagnostics, and automatic local exclusion of Quiver runtime state.
+- Hardened `spec start` and `spec close` with spec-level locks, persistent worktree reuse, stale/missing worktree detection, and actionable recovery guidance.
+- Hardened slice worktree startup to reject nested worktree creation when commands run from an existing linked worktree.
+- Hardened git helpers to detect missing paths, linked worktrees, absolute git dirs, and shared git common dirs reliably across realpath differences such as `/var` and `/private/var`.
+- Added delegated execution locks for parallel AI execution runs so duplicate concurrent run IDs fail before provider execution.
+- Added tests for stale spec worktrees, concurrent spec locks, nested slice worktrees, and delegated execution lock collisions.
+- Ran `node --test tests/lib/lifecycle.test.js tests/commands/spec-worktree.test.js tests/commands/spec-close.test.js tests/commands/ai-execute-plan.test.js`.
+- Ran full Node test suite: `node --test tests/**/*.test.js` passed with 334 tests.
+
+## Slice 06 Evidence - 2026-05-24
+
+- Hardened `check-slice --local` so it validates execution git metadata, declared write/read paths, dependency contracts, and reports exactly which checks are executed or skipped in local mode.
+- Updated `check-scope` to resolve base branches from `--base`, then `slice.git.base_branch`, then safe fallbacks instead of hardcoding `develop`.
+- Added actionable `check-handoff` failures with accepted heading aliases and a minimal copyable template for legacy handoffs, execution briefs, and closure briefs.
+- Added `spec validate` to validate spec docs, slices, JSON parseability, brief contracts, dependency cycles, safe paths, evidence references, and status references.
+- Added shared path safety helpers and applied them to slice resolution, scope validation, and AI executor prompt/scope construction so absolute, traversal, and external slice paths are rejected.
+- Synced the new `spec validate` command into generated `quiver:spec:validate` scripts, README command references, `README_FOR_AI.md`, and `docs/COMMANDS.md.template`.
+- Ran `node bin/create-quiver.js spec validate specs/quiver-v27-reliability-ai-workflow-hardening`.
+- Ran `node --test tests/lib/check-slice.test.js tests/lib/scope.test.js tests/lib/handoff.test.js tests/lib/paths.test.js tests/commands/spec-validate.test.js tests/commands/cli-contract.test.js`.
+- Ran `node --test tests/commands/spec-create.test.js tests/commands/spec-worktree.test.js tests/commands/spec-close.test.js tests/commands/ai-execute-slice.test.js tests/commands/ai-execute-plan.test.js tests/lib/scope.test.js tests/lib/check-slice.test.js tests/lib/handoff.test.js tests/lib/paths.test.js`.
+- Ran full Node test suite: `node --test tests/**/*.test.js` passed with 343 tests.
+
+## Slice 07 Evidence - 2026-05-24
+
+- Added `analyze --dry-run` as a true no-write mode that reports planned scan, project map, and AI context writes without creating `.quiver/` or `docs/`.
+- Fixed React + Vite detection so `vite.config.*` no longer classifies a project as Vue unless Vue evidence exists.
+- Added project scan source/freshness metadata through `readProjectScanStatus`, including current, legacy, partial, stale, invalid, and missing states.
+- Updated `flow` to print the context source summary and include the same metadata in JSON output.
+- Updated `doctor` examples to prefer an active non-completed slice, use the only spec when unambiguous, or fall back to placeholders when multiple specs have no active slice.
+- Added prepare-context coverage showing evidence-backed stack and command facts are preserved while unknown architecture boundaries remain marked for confirmation.
+- Added tests for analyze dry-run, React/Vite classification, scan source summaries, flow context source output, doctor active/generic examples, and prepare-context evidence behavior.
+- Ran `node --test tests/commands/analyze.test.js tests/commands/ai-onboard.test.js tests/commands/flow.test.js tests/commands/doctor.test.js tests/lib/project-scan.test.js tests/lib/doctor.test.js`.
+- Ran `npm run smoke:doctor-fixtures`.
+- Ran `node bin/create-quiver.js spec validate specs/quiver-v27-reliability-ai-workflow-hardening`.
+- Ran `git diff --check`.
+- Ran full Node test suite: `node --test tests/**/*.test.js` passed with 349 tests.
+- Ran `node bin/create-quiver.js plan --spec quiver-v27-reliability-ai-workflow-hardening --include-completed`.
+- Ran `node bin/create-quiver.js graph --spec quiver-v27-reliability-ai-workflow-hardening`.
+
+## Slice 08 Evidence - 2026-05-24
+
+- Added real `ai agent set --dry-run` preview behavior that validates the requested profile and reports the planned `.quiver/agents/profiles.json` change without writing files.
+- Updated top-level help and examples so `--help` includes the agent dry-run flow.
+- Hardened GitHub auth failures with actionable account, scope, and SSH alias guidance plus a safe `gh auth status` next command.
+- Added shell-specific path guidance for identity files and PR commands with spaces across macOS/Linux, Windows PowerShell, Git Bash, and WSL.
+- Updated `flow` to report the detected package manager and matching generated `quiver:flow` script command.
+- Updated init/migrate auto-install fallback warnings to respect the detected package manager instead of always printing npm.
+- Synced `README.md`, `README_FOR_AI.md`, and `docs/COMMANDS.md.template` with the new help/auth/dry-run behavior.
+- Ran `node --test tests/commands/cli-contract.test.js tests/commands/ai-agent.test.js tests/lib/ai-github.test.js tests/commands/flow.test.js`.
+- Ran `node --test tests/commands/cli-contract.test.js tests/commands/ai-agent.test.js tests/lib/ai-github.test.js tests/commands/flow.test.js tests/lib/init-docs.test.js`.
+- Ran `node --test tests/commands/cli-contract.test.js tests/commands/ai-agent.test.js tests/lib/ai-github.test.js tests/lib/doctor.test.js tests/commands/flow.test.js tests/lib/init-docs.test.js`.
+- Ran `npm run smoke:doctor-fixtures`.
+- Ran `node bin/create-quiver.js spec validate specs/quiver-v27-reliability-ai-workflow-hardening`.
+- Ran `node --test tests/**/*.test.js` passed with 354 tests.
+- Ran `node bin/create-quiver.js plan --spec quiver-v27-reliability-ai-workflow-hardening --include-completed`.
+- Ran `node bin/create-quiver.js graph --spec quiver-v27-reliability-ai-workflow-hardening`.
+- Ran `git diff --check`.
+
+## Slice 09 Evidence - 2026-05-24
+
+- Extended the sanitized doctor fixture matrix to cover Pixel Quiver-style completed specs, multiple-spec fallback behavior, stale generated context, old `.quiver` state, no-Git projects, and paths with spaces.
+- Hardened `scripts/ci/smoke-doctor-fixtures.js` so every declared fixture state must have executable coverage references and those references must exist.
+- Added doctor command coverage for stale generated docs when the scan is newer than `docs/PROJECT_MAP.md`.
+- Added doctor command coverage for old incomplete `.quiver` state so legacy projects recommend `migrate` instead of `init`.
+- Extended `scripts/ci/smoke-create-quiver.sh` to smoke `flow` package-manager guidance, source `ai agent set --dry-run`, packaged CLI `--help`, packaged `flow`, and packaged `ai agent set --dry-run`.
+- Synced `README_FOR_AI.md`, `ROADMAP.md`, `CHANGELOG.md`, `README.md`, v27 `STATUS.md`, `SPEC.md`, `EXECUTION_PLAN.md`, `pr.md`, and this evidence report with the implemented-but-unpublished v27 state.
+- Ran `node --test tests/commands/doctor.test.js`.
+- Ran `npm run smoke:doctor-fixtures`.
+- Ran `npm run smoke:create-quiver`.
+- Ran `npm run smoke:guided-workflow`.
+- Ran `npm run package:quiver`.
+- Ran full Node test suite: `node --test tests/**/*.test.js` passed with 356 tests.
+- Ran `node bin/create-quiver.js spec validate specs/quiver-v27-reliability-ai-workflow-hardening`.
+- Ran `node bin/create-quiver.js plan --spec quiver-v27-reliability-ai-workflow-hardening --include-completed`.
+- Ran `node bin/create-quiver.js graph --spec quiver-v27-reliability-ai-workflow-hardening --include-completed`.
+- Ran `node bin/create-quiver.js next --spec quiver-v27-reliability-ai-workflow-hardening`; no ready slices remain.
+- Ran targeted regression suite: `node --test tests/commands/doctor.test.js tests/lib/project-state-resolver.test.js tests/commands/plan.test.js tests/commands/graph.test.js` passed with 31 tests.
+- Ran `git diff --check`.
+
+## Spec Package Validation - 2026-05-24
+
+- Every `slice.json` under `specs/quiver-v27-reliability-ai-workflow-hardening` parsed successfully with Node.
+- Every `EXECUTION_BRIEF.md` passed `node bin/create-quiver.js check-handoff`.
+- Every `CLOSURE_BRIEF.md` passed `node bin/create-quiver.js check-handoff`.
+- `node bin/create-quiver.js plan --spec quiver-v27-reliability-ai-workflow-hardening --include-completed` passed and reported 10 planned slices.
+- `node bin/create-quiver.js graph --spec quiver-v27-reliability-ai-workflow-hardening` passed and produced the expected dependency levels.
+- `node bin/create-quiver.js check-slice --local <slice.json>` passed for all 10 slices.
+- `git diff --check` passed.
+
+## Slice Evidence
+
+| Slice | Evidence |
+|---|---|
+| slice-00 | Completed: coverage matrix, command contracts, v24/v25/v26 audit, source-of-truth docs sync, and spec package validation. |
+| slice-01 | Completed: shared resolver, canonical status catalogs, classic/AI resolver adapters, scoped-read tests, completed-slice consistency tests, and targeted validation. |
+| slice-02 | Completed: schema v2 export contract, pure stdout/stderr CLI checks, completed-slice export coverage, source metadata, warnings, approvals, evidence, next steps, lifecycle, and aggregates. |
+| slice-03 | Completed: structured approved-plan extraction, no generic fallback, duplicate/dependency/cycle validation, eight-slice preservation, safe failure cleanup, and command coverage. |
+| slice-04 | Completed: clean drafts/reviews, redacted run-scoped raw provider artifacts, revise compaction, prompt-size guardrails, approval metadata, and raw artifact package-safety coverage. |
+| slice-05 | Completed: spec/slice worktree locks, stale and missing worktree recovery, nested worktree prevention, delegated run lock safety, and lifecycle/git helper coverage. |
+| slice-06 | Completed: stronger local slice gates, base-aware scope validation, actionable handoff templates, spec validate, and repo-bound path safety. |
+| slice-07 | Completed: read-only analyze dry-run, React/Vite stack detection, scan source/freshness reporting, flow context source output, active/generic doctor examples, and prepare-context evidence coverage. |
+| slice-08 | Completed: agent profile dry-run, grouped help sync, cross-platform path guidance, GitHub account/scope/alias diagnostics, package-manager-aware flow guidance, install fallback messages, and focused command/library tests. |
+| slice-09 | Completed: sanitized fixture matrix coverage, fixture coverage validator, stale-doc and old-state doctor regressions, source and packaged CLI smokes, full test suite, package smoke, and docs/release readiness sync. |

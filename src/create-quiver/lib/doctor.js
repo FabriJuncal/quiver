@@ -331,6 +331,7 @@ function collectLayoutReport(projectRoot) {
   const hasStateMetadata = hasInitializedStateMetadata(readState(projectRoot));
   const realSlices = readAllSlices(projectRoot);
   const specSlugs = Array.from(new Set(realSlices.map((slice) => slice.specSlug))).sort((left, right) => left.localeCompare(right));
+  const exampleTarget = selectDoctorExampleTarget(realSlices, specSlugs);
   const newLayoutFiles = collectPresentPaths(projectRoot, NEW_LAYOUT_REQUIRED_PATHS);
   const missingNewLayoutFiles = collectMissingPaths(projectRoot, NEW_LAYOUT_REQUIRED_PATHS);
   const legacySignals = collectPresentPaths(projectRoot, LEGACY_LAYOUT_PROBES);
@@ -379,7 +380,14 @@ function collectLayoutReport(projectRoot) {
     }
   }
 
+  if (exampleTarget.source === 'generic-multiple-specs') {
+    recommendations.push('Multiple specs were found and no active slice is obvious. Doctor examples use placeholders so they do not point to the wrong spec.');
+  } else if (exampleTarget.source === 'active-slice') {
+    recommendations.push(`Doctor examples target the active slice candidate ${exampleTarget.specSlug}/${exampleTarget.sliceId} (${exampleTarget.status}).`);
+  }
+
   return {
+    exampleTarget,
     hasLegacyLayout,
     hasNewLayout,
     hasStateMetadata,
@@ -390,6 +398,76 @@ function collectLayoutReport(projectRoot) {
     recommendations,
     realSlices,
     specSlugs,
+  };
+}
+
+function normalizeStatus(value) {
+  return String(value || '').trim().toLowerCase().replace(/_/g, '-');
+}
+
+function statusRank(status) {
+  const normalized = normalizeStatus(status);
+  const ranks = new Map([
+    ['in-progress', 0],
+    ['review', 1],
+    ['ready', 2],
+    ['planned', 3],
+    ['approved', 4],
+    ['blocked', 5],
+    ['draft', 6],
+    ['completed', 99],
+    ['done', 99],
+  ]);
+
+  return ranks.has(normalized) ? ranks.get(normalized) : 20;
+}
+
+function selectDoctorExampleTarget(realSlices, specSlugs) {
+  if (!Array.isArray(specSlugs) || specSlugs.length === 0) {
+    return {
+      sliceId: '<slice-id>',
+      source: 'no-specs',
+      specSlug: '<spec-slug>',
+      status: '',
+    };
+  }
+
+  const rankedSlices = (Array.isArray(realSlices) ? realSlices : [])
+    .filter((slice) => specSlugs.includes(slice.specSlug))
+    .slice()
+    .sort((left, right) => {
+      const rankDelta = statusRank(left.status) - statusRank(right.status);
+      if (rankDelta !== 0) {
+        return rankDelta;
+      }
+
+      return left.ref.localeCompare(right.ref);
+    });
+  const activeSlice = rankedSlices.find((slice) => statusRank(slice.status) < 99);
+
+  if (activeSlice) {
+    return {
+      sliceId: activeSlice.sliceId,
+      source: 'active-slice',
+      specSlug: activeSlice.specSlug,
+      status: activeSlice.status || '',
+    };
+  }
+
+  if (specSlugs.length === 1) {
+    return {
+      sliceId: '<slice-id>',
+      source: 'single-spec',
+      specSlug: specSlugs[0],
+      status: '',
+    };
+  }
+
+  return {
+    sliceId: '<slice-id>',
+    source: 'generic-multiple-specs',
+    specSlug: '<spec-slug>',
+    status: '',
   };
 }
 
@@ -632,4 +710,5 @@ module.exports = {
   collectDoctorWarnings,
   collectLayoutReport,
   formatDoctorFixPlan,
+  selectDoctorExampleTarget,
 };

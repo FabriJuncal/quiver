@@ -1,0 +1,84 @@
+{
+  "slice_id": "slice-05-worktree-lifecycle-locks-and-recovery",
+  "ticket": "QUIVER-27-05",
+  "type": "implementation",
+  "title": "Worktree lifecycle, locks, and recovery",
+  "objective": "Harden the spec worktree lifecycle so Quiver supports one persistent worktree per spec, one commit per slice, temporary delegated worktrees, locks, and recovery.",
+  "description": "Clarifies spec vs temporary slice worktrees, prevents nested/conflicting paths, handles dirty root and missing worktrees, adds locks for concurrent execution, and reports recovery paths.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v27-worktree-lifecycle-locks-recovery",
+    "branch_name": "feature/QUIVER-27-05-v27-worktree-lifecycle-locks-recovery"
+  },
+  "files": [
+    "src/create-quiver/lib/spec-worktrees.js",
+    "src/create-quiver/lib/lifecycle.js",
+    "src/create-quiver/lib/locks.js",
+    "src/create-quiver/lib/ai/execution-plan.js",
+    "src/create-quiver/lib/ai/executor.js",
+    "src/create-quiver/lib/git.js",
+    "tests/lib/*worktree*.test.js",
+    "tests/commands/spec-worktree.test.js",
+    "tests/commands/ai-execute-plan.test.js",
+    "specs/quiver-v27-reliability-ai-workflow-hardening/**"
+  ],
+  "expected_read_paths": [
+    "src/create-quiver/lib/spec-worktrees.js",
+    "src/create-quiver/lib/lifecycle.js",
+    "src/create-quiver/lib/git.js",
+    "src/create-quiver/lib/ai/execution-plan.js",
+    "src/create-quiver/lib/ai/executor.js",
+    "tests/commands/spec-worktree.test.js",
+    "tests/commands/ai-execute-plan.test.js",
+    "tests/lib/lifecycle.test.js"
+  ],
+  "allowed_write_paths": [
+    "src/create-quiver/lib/spec-worktrees.js",
+    "src/create-quiver/lib/lifecycle.js",
+    "src/create-quiver/lib/locks.js",
+    "src/create-quiver/lib/ai/execution-plan.js",
+    "src/create-quiver/lib/ai/executor.js",
+    "src/create-quiver/lib/git.js",
+    "tests/lib/**",
+    "tests/commands/**",
+    "specs/quiver-v27-reliability-ai-workflow-hardening/**"
+  ],
+  "depends_on": [
+    "slice-01-core-state-resolver-and-canonical-statuses"
+  ],
+  "parallel_safe": "yes",
+  "parallel_safe_reason": "Can run after shared resolver if it avoids AI artifact files touched by slice-04.",
+  "must": [
+    "Preserve one persistent worktree per spec.",
+    "Keep temporary per-slice worktrees only for delegated parallel execution.",
+    "Avoid nested worktree paths.",
+    "Handle dirty root/worktree states with clear recovery.",
+    "Add locks for concurrent spec/run operations.",
+    "Detect stale or manually deleted worktrees."
+  ],
+  "not_included": [
+    "Changing PR creation behavior unless required by worktree recovery.",
+    "Publishing npm.",
+    "Changing provider execution."
+  ],
+  "acceptance": [
+    "spec start dry-run and real run report/reuse the same persistent spec worktree.",
+    "Running from an existing spec worktree does not propose a nested worktree.",
+    "Delegated execution can still use temporary worktrees safely.",
+    "Dirty, missing, stale, or deleted worktrees produce actionable recovery messages.",
+    "Concurrent operations use locks or fail safely."
+  ],
+  "tests": [
+    "node --test tests/commands/spec-worktree.test.js tests/commands/spec-close.test.js tests/commands/ai-execute-plan.test.js tests/lib/lifecycle.test.js",
+    "git diff --check"
+  ],
+  "validation_hints": [
+    "Test from repo root and from inside a spec worktree.",
+    "Simulate manually deleted worktree paths."
+  ],
+  "estimated_hours": 6,
+  "status": "completed",
+  "completed_at": "2026-05-24",
+  "blocked_reason": null
+}

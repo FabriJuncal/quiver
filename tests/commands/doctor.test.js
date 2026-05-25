@@ -216,3 +216,100 @@ test('doctor reports a hybrid layout when explicit full compatibility assets exi
     cleanup();
   }
 });
+
+test('doctor examples prefer an active slice over the first spec alphabetically', () => {
+  const { dir, cleanup } = makeTmpDir();
+  const target = path.join(dir, 'target');
+  try {
+    runCli(['init', '--name', 'Doctor Active Spec Project', '--dir', target, '--skip-install']);
+    for (const specSlug of ['alpha-spec', 'zeta-active-spec']) {
+      writeFile(target, `specs/${specSlug}/SPEC.md`, `# ${specSlug}\n`);
+      writeFile(target, `specs/${specSlug}/STATUS.md`, '# Status\n');
+      writeFile(target, `specs/${specSlug}/EVIDENCE_REPORT.md`, '# Evidence\n');
+    }
+    writeJson(target, 'specs/alpha-spec/slices/slice-00/slice.json', {
+      slice_id: 'slice-00',
+      status: 'completed',
+    });
+    writeJson(target, 'specs/zeta-active-spec/slices/slice-01/slice.json', {
+      slice_id: 'slice-01-active',
+      status: 'in-progress',
+    });
+
+    const output = runCli(['doctor'], { cwd: target });
+
+    assert.match(output, /Example target: zeta-active-spec\/slice-01-active \(in-progress\)/);
+    assert.match(output, /start-slice specs\/zeta-active-spec\/slices\/slice-01-active\/slice\.json/);
+    assert.doesNotMatch(output, /start-slice specs\/alpha-spec\/slices\/<slice-id>\/slice\.json/);
+  } finally {
+    cleanup();
+  }
+});
+
+test('doctor uses generic examples when multiple specs have no active slice', () => {
+  const { dir, cleanup } = makeTmpDir();
+  const target = path.join(dir, 'target');
+  try {
+    runCli(['init', '--name', 'Doctor Generic Spec Project', '--dir', target, '--skip-install']);
+    for (const specSlug of ['alpha-spec', 'zeta-spec']) {
+      writeFile(target, `specs/${specSlug}/SPEC.md`, `# ${specSlug}\n`);
+      writeFile(target, `specs/${specSlug}/STATUS.md`, '# Status\n');
+      writeFile(target, `specs/${specSlug}/EVIDENCE_REPORT.md`, '# Evidence\n');
+      writeJson(target, `specs/${specSlug}/slices/slice-00/slice.json`, {
+        slice_id: 'slice-00',
+        status: 'completed',
+      });
+    }
+
+    const output = runCli(['doctor'], { cwd: target });
+
+    assert.match(output, /Example target: specs\/<spec-slug>\/slices\/<slice-id>\/slice\.json/);
+    assert.match(output, /start-slice specs\/<spec-slug>\/slices\/<slice-id>\/slice\.json/);
+    assert.doesNotMatch(output, /start-slice specs\/alpha-spec\/slices\/<slice-id>\/slice\.json/);
+  } finally {
+    cleanup();
+  }
+});
+
+test('doctor reports stale generated context when scan is newer than project map', () => {
+  const { dir, cleanup } = makeTmpDir();
+  const target = path.join(dir, 'target');
+  try {
+    runCli(['init', '--name', 'Doctor Stale Docs Project', '--dir', target, '--skip-install']);
+    runCli(['analyze'], { cwd: target });
+
+    const projectMapPath = path.join(target, 'docs', 'PROJECT_MAP.md');
+    const scanPath = path.join(target, '.quiver', 'scans', 'PROJECT_SCAN.json');
+    const oldDate = new Date('2026-01-01T00:00:00.000Z');
+    const newDate = new Date('2026-01-01T00:00:05.000Z');
+    fs.utimesSync(projectMapPath, oldDate, oldDate);
+    fs.utimesSync(scanPath, newDate, newDate);
+
+    const output = runCli(['flow'], { cwd: target });
+
+    assert.match(output, /Context source: \.quiver\/scans\/PROJECT_SCAN\.json newer than docs\/PROJECT_MAP\.md; run analyze to refresh visible context/);
+  } finally {
+    cleanup();
+  }
+});
+
+test('doctor reports old incomplete .quiver state as migration-needed instead of init bootstrap', () => {
+  const { dir, cleanup } = makeTmpDir();
+  const target = path.join(dir, 'target');
+  try {
+    runCli(['init', '--name', 'Old State Project', '--dir', target, '--full', '--skip-install']);
+    fs.rmSync(path.join(target, '.quiver', 'state.json'));
+    writeJson(target, '.quiver/state.json', {
+      migrated_version: '0.7.0',
+    });
+    fs.rmSync(path.join(target, 'docs', 'AI_ONBOARDING_PROMPT.md'));
+
+    const output = runCli(['doctor'], { cwd: target });
+
+    assert.match(output, /Layout: legacy/);
+    assert.match(output, /Legacy layout detected\. Run `npx create-quiver migrate`/);
+    assert.doesNotMatch(output, /Run init first: npx create-quiver --name "Project Name"/);
+  } finally {
+    cleanup();
+  }
+});

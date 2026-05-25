@@ -14,6 +14,12 @@ const SAFETY_RULES = [
     },
   },
   {
+    code: 'ai-raw-artifact',
+    match(relativePath) {
+      return /(^|\/)\.quiver\/runs\/[^/]+\/raw(\/|$)/.test(relativePath);
+    },
+  },
+  {
     code: 'ai-tool-state',
     match(relativePath) {
       return /(^|\/)\.(claude|codex|quiver)(\/|$)/.test(relativePath);
@@ -80,6 +86,7 @@ function collectPackageSafetyViolations(paths) {
         code: rule.code,
         path: normalizedPath,
       });
+      break;
     }
   }
 

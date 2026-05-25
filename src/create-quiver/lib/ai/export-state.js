@@ -2,11 +2,24 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const { listAgentProfiles } = require('../agent-profiles');
+const { PLANNER_APPROVAL_PHASES, readPhaseApproval } = require('../approvals');
 const { collectLayoutReport } = require('../doctor');
-const { buildGraph, computeLevels, detectFileConflicts, readAllSlices, SliceGraphError } = require('../slice-graph');
+const {
+  filterSlicesForExecution,
+  groupSlicesBySpec: groupResolvedSlicesBySpec,
+  isBlockedStatus: isCanonicalBlockedStatus,
+  isCompletedStatus: isCanonicalCompletedStatus,
+  normalizeStatus,
+  progressForSlice: resolveProgressForSlice,
+  resolveProjectState,
+  summarizeGraph: summarizeResolvedGraph,
+  summarizeSliceProgress,
+} = require('../project-state-resolver');
+const { detectFileConflicts } = require('../slice-graph');
+const { readPlanReview } = require('./plan-review');
 const { listAiRuns, nextCommandForPhase } = require('./run-state');
 
-const EXPORT_SCHEMA_VERSION = 1;
+const EXPORT_SCHEMA_VERSION = 2;
 
 function toPosix(relativePath) {
   return String(relativePath || '').split(path.sep).join('/');
@@ -38,43 +51,19 @@ function readPackageSummary(projectRoot) {
 }
 
 function isCompletedStatus(status) {
-  return ['closed', 'completed', 'done'].includes(String(status || '').toLowerCase());
+  return isCanonicalCompletedStatus('slice', status);
 }
 
 function isBlockedStatus(slice) {
-  return String(slice?.status || '').toLowerCase() === 'blocked' || Boolean(slice?.json?.blocked_reason);
+  return isCanonicalBlockedStatus('slice', slice?.canonical_status || slice?.status, slice);
 }
 
 function progressForSlice(slice) {
-  const explicit = Number(slice?.json?.progress);
-  if (Number.isFinite(explicit)) {
-    return Math.max(0, Math.min(100, explicit));
-  }
-
-  const status = String(slice?.status || '').toLowerCase();
-  if (isCompletedStatus(status)) {
-    return 100;
-  }
-  if (status === 'in-progress' || status === 'active' || status === 'review') {
-    return 50;
-  }
-  return 0;
+  return resolveProgressForSlice(slice);
 }
 
 function summarizeProgress(items) {
-  const total = items.length;
-  const completed = items.filter((item) => isCompletedStatus(item.status)).length;
-  const blocked = items.filter((item) => isBlockedStatus(item)).length;
-  const open = Math.max(0, total - completed);
-  const percent = total === 0 ? 0 : Math.round((completed / total) * 100);
-
-  return {
-    total,
-    completed,
-    open,
-    blocked,
-    percent,
-  };
+  return summarizeSliceProgress(items);
 }
 
 function statusForSpec(specSlices) {
@@ -94,59 +83,11 @@ function statusForSpec(specSlices) {
 }
 
 function groupSlicesBySpec(slices) {
-  const groups = new Map();
-
-  for (const slice of slices) {
-    const key = `${slice.specFamily}/${slice.specSlug}`;
-    if (!groups.has(key)) {
-      groups.set(key, []);
-    }
-    groups.get(key).push(slice);
-  }
-
-  return Array.from(groups.entries())
-    .map(([key, specSlices]) => {
-      const [specFamily, specSlug] = key.split('/');
-      return { specFamily, specSlug, slices: specSlices };
-    })
-    .sort((left, right) => left.specSlug.localeCompare(right.specSlug));
+  return groupResolvedSlicesBySpec(slices);
 }
 
 function buildGraphSummary(slices) {
-  try {
-    const graph = buildGraph(slices);
-    const levels = computeLevels(graph).map((level, index) => ({
-      level: index,
-      slices: level.map((slice) => slice.ref),
-    }));
-
-    return {
-      ok: true,
-      edges: graph.edges.map((edge) => ({ from: edge.from, to: edge.to })),
-      levels,
-      conflicts: detectFileConflicts(graph.nodes).map((conflict) => ({
-        files: conflict.files,
-        slices: conflict.slices,
-      })),
-      error: null,
-      nodes: graph.nodes,
-    };
-  } catch (error) {
-    if (error instanceof SliceGraphError) {
-      return {
-        ok: false,
-        edges: [],
-        levels: [],
-        conflicts: [],
-        error: {
-          code: error.code,
-          message: error.message,
-        },
-        nodes: slices,
-      };
-    }
-    throw error;
-  }
+  return summarizeResolvedGraph(slices);
 }
 
 function filterGraphSummary(graph, selectedRefs) {
@@ -187,6 +128,7 @@ function normalizeSlice(projectRoot, slice, dependencyMap) {
     id: slice.sliceId,
     title: slice.title,
     status: slice.status,
+    canonical_status: slice.canonical_status || normalizeStatus('slice', slice.status, 'planned'),
     progress: progressForSlice(slice),
     spec_slug: slice.specSlug,
     spec_family: slice.specFamily,
@@ -209,6 +151,7 @@ function normalizeRuns(projectRoot) {
   return listAiRuns(projectRoot).map((run) => ({
     run_id: run.run_id,
     status: run.status,
+    canonical_status: normalizeStatus('run', run.status, 'draft'),
     phase: run.phase,
     spec_slug: run.spec_slug || null,
     requirement_path: run.requirement?.path || null,
@@ -219,9 +162,73 @@ function normalizeRuns(projectRoot) {
   }));
 }
 
+function safeReadApproval(projectRoot, phase) {
+  try {
+    return readPhaseApproval(projectRoot, phase);
+  } catch (error) {
+    return {
+      phase,
+      status: 'invalid',
+      draft: null,
+      approved: null,
+      meta: null,
+      error: error.message,
+    };
+  }
+}
+
+function safeReadPlanReview(projectRoot) {
+  try {
+    return readPlanReview(projectRoot);
+  } catch (error) {
+    return {
+      status: 'invalid',
+      review: null,
+      meta: null,
+      error: error.message,
+    };
+  }
+}
+
+function normalizeApproval(projectRoot, phase, approval) {
+  const drafts = Array.isArray(approval?.meta?.drafts) ? approval.meta.drafts : [];
+  return {
+    phase,
+    status: approval?.status || 'missing',
+    canonical_status: normalizeStatus('approval', approval?.status || 'missing', 'pending'),
+    draft_path: approval?.draft?.path || null,
+    approved_path: approval?.approved?.path || null,
+    latest_draft_version: Number(approval?.meta?.draft?.version || 0) || null,
+    approved_version: Number(approval?.meta?.approved?.version || 0) || null,
+    draft_count: drafts.length,
+    source_file: approval?.meta?.approved?.source_file || approval?.meta?.draft?.source_file || null,
+    error: approval?.error || null,
+  };
+}
+
+function normalizeApprovals(projectRoot) {
+  const plannerApprovals = PLANNER_APPROVAL_PHASES.map((phase) => normalizeApproval(projectRoot, phase, safeReadApproval(projectRoot, phase)));
+  const planReview = safeReadPlanReview(projectRoot);
+
+  return plannerApprovals.concat({
+    phase: 'plan-review',
+    status: planReview.status || 'missing',
+    canonical_status: normalizeStatus('approval', planReview.status || 'missing', 'pending'),
+    draft_path: null,
+    approved_path: planReview.review?.path || null,
+    latest_draft_version: Number(planReview.meta?.source_version || 0) || null,
+    approved_version: null,
+    draft_count: 0,
+    source_file: planReview.meta?.source_file || null,
+    error: planReview.error || null,
+  });
+}
+
 function normalizeAgents(projectRoot) {
   return listAgentProfiles(projectRoot).map((item) => ({
     role: item.role,
+    status: 'idle',
+    canonical_status: normalizeStatus('agent', 'idle', 'idle'),
     configured: item.configured,
     provider: item.profile?.provider || null,
     model: item.profile?.model || null,
@@ -231,10 +238,111 @@ function normalizeAgents(projectRoot) {
   }));
 }
 
+function collectEvidenceEntries(slices) {
+  return (Array.isArray(slices) ? slices : [])
+    .flatMap((slice) => {
+      const evidence = Array.isArray(slice.json?.evidence) ? slice.json.evidence : [];
+      return evidence.map((item, index) => ({
+        slice_ref: slice.ref,
+        index,
+        value: item,
+      }));
+    })
+    .sort((left, right) => left.slice_ref.localeCompare(right.slice_ref) || left.index - right.index);
+}
+
+function countByStatus(items, statusKey = 'canonical_status') {
+  return (Array.isArray(items) ? items : []).reduce((acc, item) => {
+    const key = item?.[statusKey] || item?.status || 'unknown';
+    acc[key] = (acc[key] || 0) + 1;
+    return acc;
+  }, {});
+}
+
+function collectWarnings({ graph, layout, specs, slices }) {
+  const warnings = [];
+
+  if (!graph.ok && graph.error?.message) {
+    warnings.push({
+      code: graph.error.code || 'GRAPH_ERROR',
+      message: graph.error.message,
+    });
+  }
+
+  if (layout.layout === 'legacy' || layout.layout === 'hybrid' || layout.layout === 'incomplete') {
+    warnings.push({
+      code: 'LAYOUT_REQUIRES_ATTENTION',
+      message: layout.recommendations.join(' '),
+    });
+  }
+
+  if (specs.length === 0) {
+    warnings.push({
+      code: 'NO_SPECS_FOUND',
+      message: 'No specs were found for the selected export filters.',
+    });
+  }
+
+  if (slices.length === 0) {
+    warnings.push({
+      code: 'NO_SLICES_FOUND',
+      message: 'No slices were found for the selected export filters.',
+    });
+  }
+
+  return warnings;
+}
+
+function collectNextSteps(data) {
+  const activeRun = [...data.runs].reverse().find((run) => run.status !== 'closed');
+  const commands = [];
+
+  commands.push({
+    id: activeRun ? 'continue-active-run' : 'create-ai-run',
+    command: activeRun ? activeRun.next_command : 'npx create-quiver ai run create --input <requirements.md>',
+    reason: activeRun ? `Continue AI run ${activeRun.run_id}.` : 'Start a new AI lifecycle run.',
+  });
+
+  if (data.summary.slices > 0) {
+    commands.push({
+      id: 'inspect-slices',
+      command: 'npx create-quiver ai slices list',
+      reason: 'Inspect current slice state.',
+    });
+    commands.push({
+      id: 'export-json',
+      command: 'npx create-quiver ai export --format json',
+      reason: 'Export machine-readable lifecycle state.',
+    });
+  } else {
+    commands.push({
+      id: 'draft-acceptance',
+      command: 'npx create-quiver ai plan --phase acceptance --input <requirements.md> --dry-run',
+      reason: 'Preview acceptance criteria generation.',
+    });
+  }
+
+  if (data.migration.layout === 'legacy' || data.migration.layout === 'hybrid' || data.migration.layout === 'incomplete') {
+    commands.push({
+      id: 'preview-migration',
+      command: 'npx create-quiver migrate --dry-run',
+      reason: 'Preview migration to the current layout.',
+    });
+  }
+
+  return commands;
+}
+
 function collectLifecycleExport(projectRoot, options = {}) {
-  const allSlices = readAllSlices(projectRoot);
-  const slices = options.includeCompleted ? allSlices : allSlices.filter((slice) => !isCompletedStatus(slice.status));
-  const fullGraph = buildGraphSummary(allSlices);
+  const state = resolveProjectState(projectRoot, {
+    allowGraphErrors: true,
+    specSlug: options.specSlug,
+  });
+  const allSlices = state.graph.nodes;
+  const slices = filterSlicesForExecution(allSlices, {
+    includeCompleted: options.includeCompleted === true,
+  });
+  const fullGraph = buildGraphSummary(state.graph);
   const selectedRefs = new Set(slices.map((slice) => slice.ref));
   const graph = filterGraphSummary(fullGraph, selectedRefs);
   if (graph.ok) {
@@ -255,7 +363,8 @@ function collectLifecycleExport(projectRoot, options = {}) {
       spec_path: fs.existsSync(path.join(projectRoot, specPath, 'SPEC.md')) ? toPosix(path.join(specPath, 'SPEC.md')) : null,
       status_path: fs.existsSync(path.join(projectRoot, specPath, 'STATUS.md')) ? toPosix(path.join(specPath, 'STATUS.md')) : null,
       pr_path: fs.existsSync(path.join(projectRoot, specPath, 'pr.md')) ? toPosix(path.join(specPath, 'pr.md')) : null,
-      status: statusForSpec(spec.slices),
+      status: spec.status || statusForSpec(spec.slices),
+      canonical_status: spec.canonical_status || normalizeStatus('spec', spec.status || statusForSpec(spec.slices), 'planned'),
       progress,
       slices: spec.slices.map((slice) => slice.ref),
       blockers: spec.slices.filter((slice) => isBlockedStatus(slice)).map((slice) => ({
@@ -267,7 +376,9 @@ function collectLifecycleExport(projectRoot, options = {}) {
   const layout = collectLayoutReport(projectRoot);
   const runs = normalizeRuns(projectRoot);
   const agents = normalizeAgents(projectRoot);
+  const approvals = normalizeApprovals(projectRoot);
   const progress = summarizeProgress(slices);
+  const evidence = collectEvidenceEntries(slices);
   const blockers = normalizedSlices
     .filter((slice) => slice.blocked_reason || String(slice.status).toLowerCase() === 'blocked')
     .map((slice) => ({ ref: slice.ref, reason: slice.blocked_reason || 'blocked' }));
@@ -279,9 +390,18 @@ function collectLifecycleExport(projectRoot, options = {}) {
     blockers.push({ ref: 'migration', reason: layout.recommendations.join(' ') });
   }
 
-  return {
+  const exportData = {
     schema_version: EXPORT_SCHEMA_VERSION,
     generated_at: new Date().toISOString(),
+    source_metadata: {
+      generator: 'create-quiver',
+      command: 'ai export',
+      resolver: 'project-state-resolver',
+      project_root_name: path.basename(projectRoot),
+      include_completed: options.includeCompleted === true,
+      spec_filter: options.specSlug || null,
+      families: Array.from(new Set(allSlices.map((slice) => slice.specFamily))).sort((left, right) => left.localeCompare(right)),
+    },
     project: readPackageSummary(projectRoot),
     summary: {
       specs: specs.length,
@@ -292,8 +412,11 @@ function collectLifecycleExport(projectRoot, options = {}) {
       progress_percent: progress.percent,
       runs: runs.length,
       configured_agents: agents.filter((agent) => agent.configured).length,
+      approvals: approvals.length,
+      warnings: 0,
     },
     agents,
+    approvals,
     runs,
     specs,
     slices: normalizedSlices,
@@ -312,6 +435,26 @@ function collectLifecycleExport(projectRoot, options = {}) {
       missing_new_layout_files: layout.missingNewLayoutFiles,
       recommendations: layout.recommendations,
       dry_run_command: 'npx create-quiver migrate --dry-run',
+    },
+    evidence,
+    warnings: [],
+    blockers,
+    next_steps: [],
+    lifecycle: {
+      phase: runs.length > 0 ? runs[runs.length - 1].phase : 'no-active-run',
+      active_run_id: (runs.length > 0 ? [...runs].reverse().find((run) => run.status !== 'closed') : null)?.run_id || null,
+      include_completed: options.includeCompleted === true,
+      spec_filter: options.specSlug || null,
+      levels: graph.levels,
+    },
+    aggregates: {
+      specs_by_status: countByStatus(specs),
+      slices_by_status: countByStatus(normalizedSlices),
+      runs_by_status: countByStatus(runs),
+      approvals_by_status: countByStatus(approvals),
+      blockers: blockers.length,
+      evidence: evidence.length,
+      progress_percent: progress.percent,
     },
     dashboard: {
       progress,
@@ -339,6 +482,18 @@ function collectLifecycleExport(projectRoot, options = {}) {
       dependencies: graph.edges,
     },
   };
+
+  exportData.warnings = collectWarnings({
+    graph,
+    layout,
+    specs,
+    slices: normalizedSlices,
+  });
+  exportData.summary.warnings = exportData.warnings.length;
+  exportData.next_steps = collectNextSteps(exportData);
+  exportData.lifecycle.next_commands = exportData.next_steps.map((step) => step.command);
+
+  return exportData;
 }
 
 function formatLifecycleInspect(data) {
@@ -354,18 +509,8 @@ function formatLifecycleInspect(data) {
     'Next safe commands',
   ];
 
-  const activeRun = [...data.runs].reverse().find((run) => run.status !== 'closed');
-  lines.push(`- ${activeRun ? activeRun.next_command : 'npx create-quiver ai run create --input <requirements.md>'}`);
-
-  if (data.summary.slices > 0) {
-    lines.push('- npx create-quiver ai slices list');
-    lines.push('- npx create-quiver ai export --format json');
-  } else {
-    lines.push('- npx create-quiver ai plan --phase acceptance --input <requirements.md> --dry-run');
-  }
-
-  if (data.migration.layout === 'legacy' || data.migration.layout === 'hybrid' || data.migration.layout === 'incomplete') {
-    lines.push('- npx create-quiver migrate --dry-run');
+  for (const step of data.next_steps || collectNextSteps(data)) {
+    lines.push(`- ${step.command}`);
   }
 
   if (data.dashboard.blockers.length > 0) {
