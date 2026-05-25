@@ -1,0 +1,81 @@
+{
+  "slice_id": "slice-01-ai-run-state-approvals-and-clean-output",
+  "ticket": "QUIVER-28-01",
+  "type": "feature",
+  "title": "AI run state, approvals, and clean output",
+  "objective": "Harden AI run lifecycle, approval visibility, and provider output persistence so scopes and drafts do not get mixed.",
+  "description": "Separates active and historical runs, groups approvals by run, persists clean drafts and raw logs separately, and prevents stale approvals from appearing current.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v28-ai-run-state-approvals-clean-output",
+    "branch_name": "feature/QUIVER-28-01-v28-ai-run-state-approvals-clean-output"
+  },
+  "files": [
+    "src/create-quiver/commands/ai.js",
+    "src/create-quiver/lib/ai/run-state.js",
+    "src/create-quiver/lib/ai/artifacts.js",
+    "src/create-quiver/lib/ai/export-state.js",
+    "src/create-quiver/lib/approvals.js",
+    "tests/commands/ai-run-state.test.js",
+    "tests/commands/ai-plan.test.js",
+    "tests/commands/ai-export.test.js",
+    "tests/lib/ai-run-state.test.js",
+    "tests/lib/approvals.test.js",
+    "tests/lib/ai-export-state.test.js",
+    "specs/quiver-v28-pixel-quiver-feedback-reconciliation/**"
+  ],
+  "expected_read_paths": [
+    "src/create-quiver/commands/ai.js",
+    "src/create-quiver/lib/ai/**",
+    "src/create-quiver/lib/approvals.js",
+    "tests/commands/ai-*.test.js",
+    "tests/lib/ai-*.test.js"
+  ],
+  "allowed_write_paths": [
+    "src/create-quiver/commands/ai.js",
+    "src/create-quiver/lib/ai/run-state.js",
+    "src/create-quiver/lib/ai/artifacts.js",
+    "src/create-quiver/lib/ai/export-state.js",
+    "src/create-quiver/lib/approvals.js",
+    "tests/commands/ai-run-state.test.js",
+    "tests/commands/ai-plan.test.js",
+    "tests/commands/ai-export.test.js",
+    "tests/lib/ai-run-state.test.js",
+    "tests/lib/approvals.test.js",
+    "tests/lib/ai-export-state.test.js",
+    "specs/quiver-v28-pixel-quiver-feedback-reconciliation/**"
+  ],
+  "depends_on": [
+    "slice-00-reconciliation-and-evidence-freeze"
+  ],
+  "parallel_safe": "after_dependencies",
+  "parallel_safe_reason": "Can run after slice-00 if no overlap with slice-04 is introduced.",
+  "must": [
+    "Distinguish active, historical, stale, and orphaned approvals.",
+    "Keep clean drafts separate from raw provider logs.",
+    "Redact raw logs before persistence.",
+    "Avoid breaking existing run directories."
+  ],
+  "not_included": [
+    "Technical-plan schema repair.",
+    "Active-slice reconciliation.",
+    "PR creation."
+  ],
+  "acceptance": [
+    "AI commands do not mix current run output with historical approvals.",
+    "Raw provider logs are persisted separately from useful drafts.",
+    "Tests cover old, current, stale, and incomplete run states.",
+    "JSON export remains parseable without human log cleanup."
+  ],
+  "tests": [
+    "node --test tests/commands/ai-run-state.test.js tests/commands/ai-plan.test.js tests/commands/ai-export.test.js",
+    "node --test tests/lib/ai-run-state.test.js tests/lib/approvals.test.js tests/lib/ai-export-state.test.js"
+  ],
+  "validation_hints": [
+    "Add fixtures for old approvals before changing behavior.",
+    "Keep backward compatibility for existing .quiver/runs."
+  ],
+  "estimated_hours": 8,
+  "status": "ready"
+}
