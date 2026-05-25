@@ -79,5 +79,7 @@
     "Assert no files are written on invalid structure."
   ],
   "estimated_hours": 10,
-  "status": "ready"
+  "actual_hours": 10,
+  "status": "completed",
+  "completed_at": "2026-05-25T21:50:35Z"
 }

@@ -50,7 +50,6 @@ Detected IDs:
 
 | Slice | Required evidence |
 |---|---|
-| slice-02 | Tests for valid, invalid, and missing `spec.slices[]`; no-write dry-run/failure coverage; repair-flow tests requiring review plus approval. |
 | slice-03 | Tests for `ACTIVE_SLICE.md` plus `ACTIVE_SLICES.md` conflicts; dry-run reconciliation; `ai inspect` fallback when specs already exist. |
 | slice-05 | Tests for structured `ai review-plan` metadata; approve-with-risk/revise recommendations; agent-safe commands; GitHub auth/alias guidance. |
 | slice-06 | Full source tests, smoke tests, package/tarball smoke, docs sync, final matrix status, and release-readiness risks. |
@@ -108,3 +107,23 @@ Passed:
 
 - `node --test tests/commands/spec-validate.test.js tests/commands/spec-worktree.test.js`
 - `node --test tests/lib/check-slice.test.js tests/lib/scope.test.js tests/lib/paths.test.js`
+
+## slice-02-structured-technical-plan-contract-and-repair-flow
+
+Completed on 2026-05-25.
+
+### Implementation Evidence
+
+- Updated `src/create-quiver/commands/ai.js` so technical-plan prompts require a fenced structured JSON contract with `spec.slices[]`.
+- Added approval-time validation for `ai approve --phase technical-plan` so invalid drafts fail before `approved.md` is written.
+- Added `ai repair-plan` to repair legacy approved technical plans missing `spec.slices[]` into a new provider-backed draft without mutating the approved artifact.
+- Added shared `validateTechnicalPlanSpecContract` in `src/create-quiver/lib/ai/spec-generator.js`.
+- Updated CLI help and dispatch so `ai repair-plan --dry-run` and `--print-prompt` are first-class commands.
+
+### Validation Evidence
+
+Passed:
+
+- `node --test tests/commands/ai-plan.test.js tests/commands/ai-plan-spec-phase.test.js tests/commands/spec-create.test.js`
+- `node --test tests/commands/ai-review-plan.test.js tests/commands/flow.test.js tests/commands/cli-contract.test.js`
+- `node --test tests/lib/ai-spec-generator.test.js tests/lib/approvals.test.js`

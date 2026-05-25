@@ -62,6 +62,7 @@ test('help output documents important public commands', () => {
     'ai agent set|list|show',
     'ai plan',
     'ai revise',
+    'ai repair-plan',
     'ai review-plan',
     'ai approve',
     'ai approvals',

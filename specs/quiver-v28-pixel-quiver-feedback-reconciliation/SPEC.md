@@ -103,7 +103,7 @@ Repository source-of-truth files:
 |---|---|---|---|
 | slice-00 | Reconciliation and evidence freeze | completed | none |
 | slice-01 | AI run state, approvals, and clean output | completed | slice-00 |
-| slice-02 | Structured technical plan contract and repair flow | ready | slice-00, slice-01 |
+| slice-02 | Structured technical plan contract and repair flow | completed | slice-00, slice-01 |
 | slice-03 | Active slice reconciliation and AI inspect | ready | slice-00, slice-01 |
 | slice-04 | Spec validation, scope, and worktree reliability | completed | slice-00 |
 | slice-05 | Review-plan closure and agent DX | ready | slice-00, slice-01 |

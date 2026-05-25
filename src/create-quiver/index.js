@@ -25,6 +25,7 @@ const {
   runPlan: runAiPlan,
   runPrepareContext: runAiPrepareContext,
   runPr: runAiPr,
+  runRepairPlan: runAiRepairPlan,
   runPromptSlice: runAiPromptSlice,
   runReviewPlan: runAiReviewPlan,
   runRevise: runAiRevise,
@@ -114,6 +115,7 @@ const SUPPORTED_AI_COMMANDS = new Set([
   'prepare-context',
   'pr',
   'prompt-slice',
+  'repair-plan',
   'review-plan',
   'revise',
   'resume',
@@ -167,6 +169,7 @@ const COMMAND_HELP_GROUPS = [
       ['ai agent set|list|show', 'Manage planner, executor, reviewer, and doctor provider profiles without secrets; use set --dry-run to preview.'],
       ['ai plan', 'Generate versioned planner drafts for acceptance criteria, technical plan, or spec phase.'],
       ['ai revise', 'Create a new planner draft from human feedback without approving it.'],
+      ['ai repair-plan', 'Repair an approved technical plan into a new structured draft without mutating the approved artifact.'],
       ['ai review-plan', 'Review the technical-plan draft for production readiness before approval.'],
       ['ai approve', 'Approve a concrete saved draft version for the next planner phase.'],
       ['ai approvals', 'Inspect approval status and saved planner drafts.'],
@@ -254,6 +257,7 @@ function printUsage() {
   npx create-quiver ai agent <set|list|show> [role] [options]
   npx create-quiver ai prepare-context [options]
   npx create-quiver ai revise [options]
+  npx create-quiver ai repair-plan [options]
   npx create-quiver graph [options]
   npx create-quiver next [options]
   npx create-quiver migrate [options]
@@ -346,6 +350,7 @@ Examples:
   cd ./my-project && npx create-quiver ai revise --phase acceptance --input feedback.md --dry-run
   cd ./my-project && npx create-quiver ai approve --phase acceptance --version 1
   cd ./my-project && npx create-quiver ai plan --phase technical-plan --dry-run
+  cd ./my-project && npx create-quiver ai repair-plan --dry-run
   cd ./my-project && npx create-quiver ai review-plan --dry-run
   cd ./my-project && npx create-quiver ai approve --phase technical-plan --version 1
   cd ./my-project && npx create-quiver spec create --dry-run
@@ -2365,7 +2370,7 @@ async function run(argv) {
 
   if (args.mode === 'ai') {
     if (!args.aiCommand) {
-      throw new Error(formatError('missing ai subcommand. Use: npx create-quiver ai onboard | prepare-context | run | status | resume | inspect | export | specs | slices | trace | plan | revise | review-plan | approve | approvals | agent | prompt-slice | execute-slice | execute-plan | doctor | pr'));
+      throw new Error(formatError('missing ai subcommand. Use: npx create-quiver ai onboard | prepare-context | run | status | resume | inspect | export | specs | slices | trace | plan | revise | repair-plan | review-plan | approve | approvals | agent | prompt-slice | execute-slice | execute-plan | doctor | pr'));
     }
 
     if (args.aiCommand === 'run') {
@@ -2495,6 +2500,21 @@ async function run(argv) {
       return;
     }
 
+    if (args.aiCommand === 'repair-plan') {
+      await runAiRepairPlan(process.cwd(), {
+        context: args.aiContext || undefined,
+        dryRun: args.dryRun,
+        input: args.aiInput || undefined,
+        printPrompt: args.aiPrintPrompt,
+        provider: args.aiProvider,
+        providerExplicit: args.aiProviderExplicit,
+        role: args.aiRole,
+        runId: args.aiRunId || undefined,
+        timeout: args.aiTimeout,
+      });
+      return;
+    }
+
     if (args.aiCommand === 'revise') {
       await runAiRevise(process.cwd(), {
         context: args.aiContext || undefined,
@@ -2591,7 +2611,7 @@ async function run(argv) {
       return;
     }
 
-    throw new Error(formatError(`unsupported ai subcommand: ${args.aiCommand}. Supported tasks: onboard, prepare-context, run, status, resume, inspect, export, specs, slices, trace, plan, revise, review-plan, approve, approvals, agent, prompt-slice, execute-slice, execute-plan, doctor, pr`));
+    throw new Error(formatError(`unsupported ai subcommand: ${args.aiCommand}. Supported tasks: onboard, prepare-context, run, status, resume, inspect, export, specs, slices, trace, plan, revise, repair-plan, review-plan, approve, approvals, agent, prompt-slice, execute-slice, execute-plan, doctor, pr`));
   }
 
   if (args.mode === 'graph') {

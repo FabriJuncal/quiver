@@ -38,6 +38,24 @@ function execAi(repoRoot, args = [], env = {}) {
   });
 }
 
+function structuredTechnicalPlanText(slug = 'reviewed-plan') {
+  return `${JSON.stringify({
+    spec: {
+      slug,
+      title: 'Reviewed plan',
+      objective: 'Create specs from a reviewed technical plan.',
+      slices: [
+        {
+          slice_id: 'slice-01-reviewed-plan',
+          title: 'Reviewed plan implementation',
+          objective: 'Implement the reviewed plan.',
+          files: ['src/app.js'],
+        },
+      ],
+    },
+  }, null, 2)}\n`;
+}
+
 test('ai review-plan dry-run uses the latest technical-plan draft', () => {
   const repo = makeRepo({
     'technical-plan.md': '# Technical plan\n- Build the flow.\n',
@@ -96,11 +114,11 @@ test('ai review-plan rejects missing technical-plan draft', () => {
 
 test('ai review-plan persists review state and becomes valid after approving the reviewed draft', async () => {
   const repo = makeRepo({
-    'technical-plan.md': '# Technical plan\n- Build the flow.\n',
+    'technical-plan.md': structuredTechnicalPlanText(),
   });
 
   try {
-    savePlannerDraft(repo.root, 'technical-plan', 'technical-plan.md', '# Technical plan v1\n');
+    savePlannerDraft(repo.root, 'technical-plan', 'technical-plan.md', structuredTechnicalPlanText());
 
     const result = await runReviewPlan(repo.root, {
       runProviderFn: async (provider, options) => {
@@ -108,7 +126,7 @@ test('ai review-plan persists review state and becomes valid after approving the
         assert.match(options.prompt, /review the technical plan/);
         assert.match(options.prompt, /Do not question the approved scope/);
         assert.match(options.prompt, /fragile assumptions/);
-        assert.match(options.prompt, /# Technical plan v1/);
+        assert.match(options.prompt, /slice-01-reviewed-plan/);
         return {
           ok: true,
           dryRun: false,
