@@ -5,9 +5,13 @@ const path = require('node:path');
 const { execFileSync } = require('node:child_process');
 const test = require('node:test');
 
-const { runPlan, runRevise } = require('../../src/create-quiver/commands/ai');
+const { runPlan, runRepairPlan, runRevise } = require('../../src/create-quiver/commands/ai');
 const { savePlanReview } = require('../../src/create-quiver/lib/ai/plan-review');
-const { savePlannerDraft } = require('../../src/create-quiver/lib/approvals');
+const {
+  approvePlannerPhase,
+  readPhaseApproval,
+  savePlannerDraft,
+} = require('../../src/create-quiver/lib/approvals');
 
 const BIN_PATH = path.resolve(__dirname, '../../bin/create-quiver.js');
 
@@ -43,6 +47,58 @@ function execAiSubcommand(repoRoot, args = [], env = {}) {
     encoding: 'utf8',
     env: { ...process.env, ...env },
   });
+}
+
+function structuredTechnicalPlanText(slug = 'repairable-spec') {
+  return `${JSON.stringify({
+    spec: {
+      slug,
+      title: 'Repairable spec',
+      objective: 'Create specs from a structured technical plan.',
+      slices: [
+        {
+          slice_id: 'slice-01-structured-plan',
+          title: 'Structured plan slice',
+          objective: 'Implement the structured technical plan.',
+          files: ['src/app.js'],
+        },
+      ],
+    },
+  }, null, 2)}\n`;
+}
+
+async function captureProcessOutput(fn) {
+  const originalStdoutWrite = process.stdout.write;
+  const originalStderrWrite = process.stderr.write;
+  let stdout = '';
+  let stderr = '';
+
+  process.stdout.write = (chunk, encoding, callback) => {
+    stdout += String(chunk);
+    if (typeof encoding === 'function') {
+      encoding();
+    } else if (typeof callback === 'function') {
+      callback();
+    }
+    return true;
+  };
+  process.stderr.write = (chunk, encoding, callback) => {
+    stderr += String(chunk);
+    if (typeof encoding === 'function') {
+      encoding();
+    } else if (typeof callback === 'function') {
+      callback();
+    }
+    return true;
+  };
+
+  try {
+    const result = await fn();
+    return { result, stdout, stderr };
+  } finally {
+    process.stdout.write = originalStdoutWrite;
+    process.stderr.write = originalStderrWrite;
+  }
 }
 
 test('ai plan CLI dry-run defaults to acceptance phase and planning context', () => {
@@ -214,6 +270,43 @@ test('ai plan stores clean drafts and separates redacted raw provider logs', asy
     assert.ok(raw.stderr.includes('token=[REDACTED]'));
     assert.equal(raw.stderr.includes(repo.root), false);
     assert.ok(raw.stderr.includes('[PROJECT_ROOT]'));
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('ai plan prints clean provider output without raw prompt echo or stderr logs', async () => {
+  const repo = makeRepo({
+    'requirements.md': '# requirements\n- Keep console output clean.',
+  });
+
+  try {
+    const captured = await captureProcessOutput(() => runPlan(repo.root, {
+      input: 'requirements.md',
+      phase: 'acceptance',
+      runProviderFn: async (provider, options) => ({
+        ok: true,
+        dryRun: false,
+        provider,
+        command: 'codex',
+        args: ['exec'],
+        cwd: repo.root,
+        timeoutMs: 0,
+        promptTransport: { mode: 'stdin' },
+        exitCode: 0,
+        stdout: `${options.prompt}\nINFO provider started\n# Acceptance\n- Clean criterion.\n`,
+        stderr: `debug token=abc123 cwd=${repo.root}\n`,
+        error: null,
+        preflight: { ok: true },
+      }),
+    }));
+
+    assert.equal(captured.stdout, '# Acceptance\n- Clean criterion.\n');
+    assert.equal(captured.stderr, '');
+    assert.equal(captured.stdout.includes('Keep console output clean'), false);
+    assert.equal(captured.stdout.includes('provider started'), false);
+    assert.equal(captured.stdout.includes('abc123'), false);
+    assert.equal(captured.stdout.includes(repo.root), false);
   } finally {
     repo.cleanup();
   }
@@ -653,6 +746,114 @@ test('ai approvals prints draft and approved status', async () => {
     assert.ok(output.includes('Status: approved'));
     assert.ok(output.includes('Phase: technical-plan'));
     assert.ok(output.includes('Status: missing'));
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('ai approve rejects technical-plan drafts without structured spec slices before writing approved artifacts', () => {
+  const repo = makeRepo({
+    'technical-plan.md': '# Technical plan\n\nThis plan has no structured slices.\n',
+  });
+
+  try {
+    savePlannerDraft(repo.root, 'technical-plan', 'technical-plan.md', fs.readFileSync(path.join(repo.root, 'technical-plan.md'), 'utf8'));
+    savePlanReview(repo.root, {
+      contents: 'production review\n',
+      inputPath: '.quiver/approvals/technical-plan/drafts/001.md',
+      inputKind: 'draft',
+      inputVersion: 1,
+    });
+
+    assert.throws(
+      () => execAiSubcommand(repo.root, ['approve', '--phase', 'technical-plan', '--version', '1']),
+      (error) => {
+        const output = `${error.stdout || ''}${error.stderr || ''}`;
+        assert.match(output, /technical-plan draft v1 cannot be approved because it cannot create specs/);
+        assert.match(output, /structured slices array/);
+        assert.match(output, /ai revise --phase technical-plan/);
+        return true;
+      },
+    );
+    assert.equal(fs.existsSync(path.join(repo.root, '.quiver', 'approvals', 'technical-plan', 'approved.md')), false);
+    assert.equal(readPhaseApproval(repo.root, 'technical-plan').status, 'draft');
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('ai repair-plan creates a derived structured draft and preserves the legacy approved artifact', async () => {
+  const repo = makeRepo({
+    'legacy-plan.md': '# Technical plan\n\nApproved before structured slices were required.\n',
+  });
+
+  try {
+    savePlannerDraft(repo.root, 'technical-plan', 'legacy-plan.md', fs.readFileSync(path.join(repo.root, 'legacy-plan.md'), 'utf8'));
+    approvePlannerPhase(repo.root, 'technical-plan', '', '', { version: 1 });
+
+    const approvedPath = path.join(repo.root, '.quiver', 'approvals', 'technical-plan', 'approved.md');
+    const approvedBefore = fs.readFileSync(approvedPath, 'utf8');
+    const repairedPlan = structuredTechnicalPlanText('repaired-spec');
+
+    const { result, stdout } = await captureProcessOutput(() => runRepairPlan(repo.root, {
+      runProviderFn: async (provider, options) => {
+        assert.equal(provider, 'codex');
+        assert.match(options.prompt, /repair the approved technical plan into a new draft only/);
+        assert.match(options.prompt, /Approved before structured slices were required/);
+        assert.match(options.prompt, /spec\.slices/);
+        return {
+          ok: true,
+          dryRun: false,
+          provider,
+          command: 'codex',
+          args: ['exec'],
+          cwd: repo.root,
+          timeoutMs: 0,
+          promptTransport: { mode: 'stdin' },
+          exitCode: 0,
+          stdout: repairedPlan,
+          stderr: '',
+          error: null,
+          preflight: { ok: true },
+        };
+      },
+    }));
+
+    const state = readPhaseApproval(repo.root, 'technical-plan');
+
+    assert.equal(result.version, 2);
+    assert.match(stdout, /AI technical-plan repair draft saved/);
+    assert.equal(fs.readFileSync(approvedPath, 'utf8'), approvedBefore);
+    assert.equal(fs.readFileSync(path.join(repo.root, '.quiver', 'approvals', 'technical-plan', 'draft.md'), 'utf8'), repairedPlan);
+    assert.equal(fs.readFileSync(path.join(repo.root, '.quiver', 'approvals', 'technical-plan', 'drafts', '002.md'), 'utf8'), repairedPlan);
+    assert.equal(state.status, 'stale');
+    assert.equal(state.meta.approved.version, 1);
+    assert.equal(state.meta.draft.version, 2);
+    assert.equal(state.meta.draft.source_file, '.quiver/approvals/technical-plan/approved.md');
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('ai repair-plan dry-run previews repair without mutating approval state', () => {
+  const repo = makeRepo({
+    'legacy-plan.md': '# Technical plan\n\nApproved before structured slices were required.\n',
+  });
+
+  try {
+    savePlannerDraft(repo.root, 'technical-plan', 'legacy-plan.md', fs.readFileSync(path.join(repo.root, 'legacy-plan.md'), 'utf8'));
+    approvePlannerPhase(repo.root, 'technical-plan', '', '', { version: 1 });
+
+    const output = execAiSubcommand(repo.root, ['repair-plan', '--dry-run']);
+    const state = readPhaseApproval(repo.root, 'technical-plan');
+
+    assert.match(output, /AI repair-plan dry-run/);
+    assert.match(output, /Source approved artifact: \.quiver\/approvals\/technical-plan\/approved\.md/);
+    assert.match(output, /Validation failure: approved technical plan must include a structured slices array/);
+    assert.equal(state.status, 'approved');
+    assert.equal(state.meta.drafts.length, 1);
+    assert.equal(state.meta.draft.version, 1);
+    assert.equal(state.meta.approved.version, 1);
   } finally {
     repo.cleanup();
   }

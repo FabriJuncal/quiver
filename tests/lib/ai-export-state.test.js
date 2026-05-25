@@ -12,7 +12,7 @@ const {
   formatSpecsList,
   formatTraceReport,
 } = require('../../src/create-quiver/lib/ai/export-state');
-const { createAiRun } = require('../../src/create-quiver/lib/ai/run-state');
+const { createAiRun, updateAiRunPhase } = require('../../src/create-quiver/lib/ai/run-state');
 const { setAgentProfile } = require('../../src/create-quiver/lib/agent-profiles');
 
 function makeRepo() {
@@ -123,6 +123,30 @@ test('lifecycle export formatters produce human-readable inspection and markdown
     assert.match(formatTraceReport(report), /Quiver trace report/);
     assert.match(formatLifecycleExportMarkdown(report), /# Quiver Lifecycle Export/);
     assert.match(formatLifecycleExportMarkdown(report), /\| demo\/slice-01-viewer \| planned \|/);
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('lifecycle inspect prefers existing spec commands over stale spec create guidance', () => {
+  const repo = makeRepo();
+
+  try {
+    updateAiRunPhase(repo.root, 'run-demo', 'technical-plan-approved', {
+      command: 'test',
+    });
+
+    const report = collectLifecycleExport(repo.root);
+    const commands = report.next_steps.map((step) => step.command);
+    const inspect = formatLifecycleInspect(report);
+
+    assert(commands.some((command) => command === 'npx create-quiver spec validate specs/demo'));
+    assert(commands.some((command) => command === 'npx create-quiver next --all-ready'));
+    assert(commands.some((command) => command === 'npx create-quiver ai prompt-slice --slice specs/demo/slices/slice-01-viewer/slice.json'));
+    assert(!commands.some((command) => command === 'npx create-quiver spec create --dry-run'));
+    assert.match(inspect, /Active slice state/);
+    assert.equal(typeof report.summary.active_slice_sources, 'number');
+    assert.equal(report.active_slice.reconciliation.decision, 'preserve');
   } finally {
     repo.cleanup();
   }

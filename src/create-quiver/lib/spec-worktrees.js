@@ -132,6 +132,48 @@ function assertExistingWorktreeUsable(branchName, worktreePath) {
   }
 }
 
+function parseDirtyStatusFiles(rawStatus) {
+  return String(rawStatus || '')
+    .split('\n')
+    .map((line) => line.trimEnd())
+    .filter(Boolean)
+    .map((line) => {
+      if (line.startsWith('?? ')) {
+        return line.slice(3).trim();
+      }
+      const entry = (line[2] === ' ' ? line.slice(3) : line[1] === ' ' ? line.slice(2) : line.slice(3)).trim();
+      return entry.includes(' -> ') ? entry.split(' -> ').pop().trim() : entry;
+    })
+    .filter(Boolean);
+}
+
+function formatDirtyCheckoutRecovery(repoRoot) {
+  const files = parseDirtyStatusFiles(statusPorcelain(repoRoot));
+  const lines = [
+    'current checkout is not clean. Starting a spec worktree needs a clean main checkout.',
+  ];
+
+  if (files.length > 0) {
+    lines.push('Dirty files:');
+    for (const file of files.slice(0, 20)) {
+      lines.push(`- ${file}`);
+    }
+    if (files.length > 20) {
+      lines.push(`- ...and ${files.length - 20} more`);
+    }
+  }
+
+  lines.push(
+    'Safe options:',
+    '- Commit the current changes if they belong to the active slice.',
+    '- Stash changes manually after reviewing them.',
+    '- Move this work to a separate worktree before starting the spec.',
+    '- Abort and rerun from a clean checkout.',
+  );
+
+  return lines.filter((line) => line !== '').join('\n');
+}
+
 function resolveBaseRef(repoRoot, preferred = '') {
   const candidates = [preferred, 'main', 'develop'].filter(Boolean);
   for (const candidate of candidates) {
@@ -177,7 +219,10 @@ function buildSpecStatus(repoRoot, specInput) {
   const pendingSlices = slices.filter((slice) => slice.status !== 'completed');
   const laterSlicesBlocked = !slice00 || slice00.status !== 'completed';
   const existingWorktree = findExistingWorktree(repoRoot, identity.branchName);
-  const worktreeMissing = Boolean(existingWorktree && (!fs.existsSync(existingWorktree) || !isGitWorktree(existingWorktree)));
+  const expectedPathExists = fs.existsSync(identity.worktreePath);
+  const expectedPathUnregistered = Boolean(!existingWorktree && expectedPathExists);
+  const worktreeMissing = Boolean(existingWorktree && (!fs.existsSync(existingWorktree) || !isGitWorktree(existingWorktree)))
+    || expectedPathUnregistered;
   const worktreeDirty = existingWorktree && !worktreeMissing ? !isCleanWorktree(existingWorktree) : false;
 
   return {
@@ -189,6 +234,7 @@ function buildSpecStatus(repoRoot, specInput) {
     slices,
     specDir,
     worktreeDirty,
+    worktreeExpectedPathUnregistered: expectedPathUnregistered,
     worktreeMissing,
   };
 }
@@ -200,6 +246,8 @@ function formatSpecStatus(status) {
     `Branch: ${status.branchName}`,
     `Worktree: ${status.existingWorktree || status.worktreePath}`,
     `Worktree missing/stale: ${status.worktreeMissing ? 'yes' : 'no'}`,
+    `Worktree registered: ${status.existingWorktree ? 'yes' : 'no'}`,
+    status.worktreeExpectedPathUnregistered ? 'Worktree note: expected path exists but is not registered in git worktree list.' : '',
     `Worktree dirty: ${status.worktreeDirty ? 'yes' : 'no'}`,
     `slice-00: ${status.slice00 ? status.slice00.status : 'missing'}`,
     `Later slices blocked: ${status.laterSlicesBlocked ? 'yes' : 'no'}`,
@@ -252,7 +300,7 @@ function startSpecWorktree(repoRoot, specInput, options = {}) {
     }
 
     if (!isCleanWorktree(repoRoot)) {
-      throw new Error(formatError('current checkout is not clean. Commit or stash before starting a spec worktree.'));
+      throw new Error(formatError(formatDirtyCheckoutRecovery(repoRoot)));
     }
 
     if (options.dryRun === true) {

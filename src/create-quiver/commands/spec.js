@@ -129,6 +129,12 @@ function detectCycle(nodes) {
   return null;
 }
 
+function missingGitFields(git) {
+  const data = git && typeof git === 'object' ? git : {};
+  return ['branch_type', 'base_branch', 'branch_slug', 'branch_name']
+    .filter((field) => !String(data[field] || '').trim());
+}
+
 function buildSpecValidationReport(repoRoot, specInput, options = {}) {
   const strict = options.strict === true;
   const specDir = resolveSpecDir(repoRoot, specInput);
@@ -189,6 +195,10 @@ function buildSpecValidationReport(repoRoot, specInput, options = {}) {
       : json.files;
     if (!Array.isArray(writeScope) || writeScope.length === 0) {
       errors.push(`${relativeSliceFile} must declare files or allowed_write_paths`);
+    }
+    const missingGit = missingGitFields(json.git);
+    if (missingGit.length > 0) {
+      errors.push(`${relativeSliceFile} must declare git.branch_type, git.base_branch, git.branch_slug, and git.branch_name for local execution (missing: ${missingGit.join(', ')}).`);
     }
     try {
       validateProjectRelativePaths(writeScope, `${relativeSliceFile} write scope`);

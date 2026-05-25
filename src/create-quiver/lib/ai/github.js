@@ -59,7 +59,8 @@ function formatGhInstallGuidance() {
     'GitHub CLI is not installed.',
     'macOS: brew install gh',
     'Linux: follow https://github.com/cli/cli/blob/trunk/docs/install_linux.md or use your distro package manager',
-    'Windows: winget install GitHub.cli',
+    'Windows PowerShell: winget install GitHub.cli',
+    'Git Bash/WSL: install gh inside the environment where the command will run, then authenticate there',
   ].join('\n');
 }
 
@@ -86,6 +87,16 @@ function formatShellPathGuidance(optionName, examplePath) {
     `- Windows PowerShell: ${optionName} ${quotePowerShellArg(windowsFallback)}`,
     `- Git Bash/WSL: ${optionName} ${quotePosixArg(fallbackPath)}`,
     '- Quote paths with spaces; do not remove spaces from real file names.',
+  ].join('\n');
+}
+
+function formatSshAliasGuidance(alias = '<alias>') {
+  const resolvedAlias = alias || '<alias>';
+  return [
+    'SSH alias setup:',
+    `- macOS/Linux/Git Bash/WSL: edit ~/.ssh/config and add a Host entry such as \`Host ${resolvedAlias}\`, \`HostName github.com\`, \`User git\`, and \`IdentityFile ~/.ssh/<key>\`.`,
+    `- Windows PowerShell: edit $HOME\\.ssh\\config and add the same Host entry for ${resolvedAlias}.`,
+    `- Verify the alias with: ssh -T ${resolvedAlias}`,
   ].join('\n');
 }
 
@@ -326,7 +337,7 @@ function ensureSshHostAlias(sshHostAlias) {
       formatActionableError({
         failure: 'missing SSH host alias. Pass --ssh-host-alias <alias> before opening the PR.',
         impact: 'Quiver cannot verify which GitHub SSH identity should be used for this PR flow.',
-        fix: 'macOS/Linux/Git Bash/WSL: add a Host entry in ~/.ssh/config, for example `Host github-work`. Windows PowerShell: add the Host entry in $HOME\\.ssh\\config.',
+        fix: formatSshAliasGuidance('github-work'),
         nextCommand: 'ssh -T <alias>',
       }),
     );
@@ -675,6 +686,7 @@ module.exports = {
   ensureWorktreeReady,
   findPrBodyCandidates,
   formatGhInstallGuidance,
+  formatSshAliasGuidance,
   formatPreflightReport,
   formatPrCreateReport,
   preflightGitHubPr,

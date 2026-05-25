@@ -26,18 +26,25 @@ const {
   PLAN_REVIEW_PROMPT_SOURCE,
   buildPlanReviewPrompt,
   readPlanReview,
+  reviewBlocksApproval,
   resolveReviewedTechnicalPlanInput,
   resolveTechnicalPlanReviewInput,
   savePlanReview,
   summarizePlanReview,
 } = require('../lib/ai/plan-review');
-const { buildSpecGenerationManifest, describeSpecGeneration, generateSpecArtifacts } = require('../lib/ai/spec-generator');
+const {
+  buildSpecGenerationManifest,
+  describeSpecGeneration,
+  generateSpecArtifacts,
+  validateTechnicalPlanSpecContract,
+} = require('../lib/ai/spec-generator');
 const { buildProviderInvocation, runProvider } = require('../lib/ai/providers');
 const {
   createAiRun,
   ensureAiRun,
   formatAiRunResume,
   formatAiRunStatus,
+  listAiRuns,
   recordAiRunApproval,
   resolveAiRun,
   updateAiRunPhase,
@@ -53,12 +60,15 @@ const {
 const {
   PLANNER_APPROVAL_PHASES,
   approvePlannerPhase,
+  findDraftVersion,
+  latestDraftVersion,
   readPhaseApproval,
   resolveApprovedPlannerInput,
   savePlannerDraft,
   summarizePlannerApproval,
 } = require('../lib/approvals');
 const { assertPlannerPhaseReady, getPlannerPhaseDetails, normalizePlannerPhase, PlannerPhaseError } = require('../lib/ai/phase-gates');
+const { collectActiveSliceState, resolveProjectState } = require('../lib/project-state-resolver');
 
 const DEFAULT_ONBOARD_PROVIDER = 'codex';
 const DEFAULT_ONBOARD_ROLE = 'planner';
@@ -132,6 +142,13 @@ function buildPlanContext({ role, context, phase, inputText, inputPath, repoRoot
       ? 'Task: produce acceptance criteria only. Do not create files or modify product code.'
       : 'Task: produce a technical plan only. Do not create files or modify product code.',
   ];
+
+  if (phaseDetails.phase === 'technical-plan') {
+    sections.push(
+      'Required output contract: include a fenced json block with `{ "spec": { "slices": [...] } }` so Quiver can create specs after review and approval.',
+      'Each `spec.slices[]` item must include at least `slice_id`, `title`, `objective`, and `files`.',
+    );
+  }
 
   if (relativeInputPath) {
     sections.push(`Input file: ${relativeInputPath}`);
@@ -303,6 +320,14 @@ function writeProviderOutput(result) {
   if (result.stderr) {
     process.stderr.write(redactSecrets(result.stderr));
   }
+}
+
+function writeCleanProviderOutput(clean) {
+  const output = String(clean?.cleanOutput || '');
+  if (!output) {
+    return;
+  }
+  process.stdout.write(output.endsWith('\n') ? output : `${output}\n`);
 }
 
 function normalizeText(value) {
@@ -548,10 +573,262 @@ function formatApprovalDryRunResult({ phase, input, version }) {
   return `${lines.join('\n')}\n`;
 }
 
+function stripCreateQuiverPrefix(message) {
+  return String(message || '').replace(/^create-quiver:\s*/, '');
+}
+
+function readCurrentDraftForApproval(repoRoot, phase, version) {
+  const approval = readPhaseApproval(repoRoot, phase);
+  const selectedDraft = findDraftVersion(approval.meta, version);
+  if (!selectedDraft) {
+    throw new Error(formatError(`missing ${phase} draft version ${version}`));
+  }
+  const latestVersion = latestDraftVersion(approval.meta);
+  if (latestVersion && Number(selectedDraft.version) !== latestVersion) {
+    throw new Error(formatError(`${phase} draft version ${version} is not current; latest draft version is ${latestVersion}. Approve the latest version or revise again.`));
+  }
+  const draftPath = path.resolve(repoRoot, selectedDraft.path);
+  if (!fs.existsSync(draftPath)) {
+    throw new Error(formatError(`missing ${phase} draft artifact: ${selectedDraft.path}`));
+  }
+  return {
+    approval,
+    contents: fs.readFileSync(draftPath, 'utf8'),
+    draft: selectedDraft,
+    path: selectedDraft.path,
+  };
+}
+
+function assertTechnicalPlanDraftHasSpecContract(repoRoot, version) {
+  const draft = readCurrentDraftForApproval(repoRoot, 'technical-plan', version);
+  try {
+    validateTechnicalPlanSpecContract(repoRoot, {
+      inputPath: draft.path,
+      inputText: draft.contents,
+    });
+  } catch (error) {
+    throw new Error(formatError([
+      `technical-plan draft v${version} cannot be approved because it cannot create specs.`,
+      stripCreateQuiverPrefix(error.message || error),
+      'Required contract: include a structured JSON block with `spec.slices[]` before approval.',
+      'Next safe command: npx create-quiver ai revise --phase technical-plan --input <feedback.md> --dry-run',
+    ].join('\n')));
+  }
+  return draft;
+}
+
+function resolveApprovedTechnicalPlanForRepair(repoRoot, explicitInput = '') {
+  const approval = readPhaseApproval(repoRoot, 'technical-plan');
+  if (!approval.approved?.path) {
+    throw new Error(formatError('ai repair-plan requires an approved technical-plan artifact. Run `npx create-quiver ai approvals` to inspect planner state.'));
+  }
+
+  const approvedPath = approval.approved.path;
+  if (explicitInput) {
+    const explicit = path.resolve(repoRoot, explicitInput);
+    const approved = path.resolve(repoRoot, approvedPath);
+    if (explicit !== approved) {
+      throw new Error(formatError(`ai repair-plan input must match the approved technical-plan artifact: ${approvedPath}`));
+    }
+  }
+
+  const contents = readTextFile(approvedPath, repoRoot);
+  try {
+    validateTechnicalPlanSpecContract(repoRoot, {
+      inputPath: approvedPath,
+      inputText: contents,
+    });
+  } catch (error) {
+    return {
+      approval,
+      contents,
+      path: approvedPath,
+      validationError: stripCreateQuiverPrefix(error.message || error),
+    };
+  }
+
+  throw new Error(formatError('approved technical-plan already includes a valid structured `spec.slices[]` contract. No repair draft is needed.'));
+}
+
+function buildRepairPlanContext({ context, inputText, inputPath, repoRoot, role, validationError }) {
+  const pack = buildContextPackMetadata({
+    role,
+    packName: context,
+    repoRoot,
+  });
+  const prompt = [
+    pack.prompt,
+    'Phase: technical-plan',
+    'Task: repair the approved technical plan into a new draft only. Do not approve it, create specs, modify product code, or expand scope.',
+    'Preserve the approved intent, scope, risks, and decisions.',
+    'Add the required Quiver structured JSON contract in a fenced json block.',
+    'The JSON must include `{ "spec": { "slug": "...", "title": "...", "objective": "...", "slices": [...] } }`.',
+    'Each item in `spec.slices[]` must include at least `slice_id`, `title`, `objective`, and `files`.',
+    `Validation failure to repair: ${validationError}`,
+    `Approved technical-plan artifact: ${inputPath}`,
+    'Approved technical-plan contents:',
+    inputText.trimEnd(),
+  ].join('\n\n');
+
+  return {
+    pack,
+    prompt,
+  };
+}
+
+function formatRepairPlanResult(result, repoRoot) {
+  const relativePath = path.relative(repoRoot, result.filePath).split(path.sep).join('/');
+  return [
+    'AI technical-plan repair draft saved',
+    `Draft: ${relativePath}`,
+    `Version: v${result.version}`,
+    `Source approved artifact: ${result.sourcePath}`,
+    'Original approved artifact: preserved',
+    'Next safe commands:',
+    '- npx create-quiver ai review-plan --dry-run',
+    '- npx create-quiver ai review-plan',
+    `- npx create-quiver ai approve --phase technical-plan --version ${result.version}`,
+  ].join('\n').concat('\n');
+}
+
+function formatActiveSliceReconciliationReport(report, options = {}) {
+  const lines = [
+    'AI active-slice reconciliation',
+    `Mode: ${options.dryRun ? 'dry-run' : 'read-only'}`,
+    `Decision: ${report.reconciliation.decision}`,
+    `Reason: ${report.reconciliation.reason}`,
+    '',
+    'Supported sources:',
+  ];
+
+  for (const source of report.supported_sources) {
+    lines.push(`- ${source.path}: ${source.exists ? 'exists' : 'missing'}`);
+  }
+
+  lines.push('', 'Detected sources:');
+  if (report.sources.length === 0) {
+    lines.push('- none');
+  } else {
+    for (const source of report.sources) {
+      const ref = source.ref || '(unresolved)';
+      const status = source.status ? ` status=${source.status}` : '';
+      const issue = source.issue ? ` issue=${source.issue}` : '';
+      lines.push(`- ${source.source_id}: ${ref}${status}${issue}`);
+    }
+  }
+
+  lines.push('', 'Planned changes:');
+  if (report.reconciliation.planned_changes.length === 0) {
+    lines.push('- none');
+  } else {
+    for (const change of report.reconciliation.planned_changes) {
+      lines.push(`- ${change}`);
+    }
+  }
+
+  lines.push('', 'Risks:');
+  if (report.reconciliation.risks.length === 0) {
+    lines.push('- none');
+  } else {
+    for (const risk of report.reconciliation.risks) {
+      lines.push(`- ${risk}`);
+    }
+  }
+
+  lines.push('', options.dryRun ? 'No files were changed.' : 'This command is read-only; use start-slice or cleanup-slice for intentional writes.');
+  return `${lines.join('\n')}\n`;
+}
+
+function readRunApprovals(repoRoot, run) {
+  if (!run?.approvals_path) {
+    return [];
+  }
+  const filePath = path.resolve(repoRoot, run.approvals_path);
+  if (!fs.existsSync(filePath)) {
+    return [];
+  }
+  try {
+    const parsed = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+    return Array.isArray(parsed.approvals) ? parsed.approvals : [];
+  } catch {
+    return [];
+  }
+}
+
+function collectRunApprovalRows(repoRoot) {
+  const activeRun = resolveAiRun(repoRoot, '');
+  return listAiRuns(repoRoot)
+    .flatMap((run) => readRunApprovals(repoRoot, run).map((approval) => ({
+      run,
+      approval,
+      relation: activeRun && run.run_id === activeRun.run_id
+        ? 'active'
+        : run.status === 'closed'
+          ? 'historical'
+          : 'other-open',
+    })));
+}
+
+function approvalArtifactForRelation(report) {
+  return report?.approved?.path || report?.draft?.path || '';
+}
+
+function classifyGlobalApprovalRelation(report, runApprovalRows) {
+  const artifact = approvalArtifactForRelation(report);
+  if (!artifact || report.status === 'missing') {
+    return 'none';
+  }
+  const matches = runApprovalRows.filter((row) => row.approval?.artifact === artifact);
+  if (matches.some((row) => row.relation === 'active')) {
+    return 'active';
+  }
+  if (matches.length > 0) {
+    return 'historical';
+  }
+  return 'orphaned';
+}
+
+function formatRunScopedApprovals(repoRoot, runApprovalRows) {
+  const runs = listAiRuns(repoRoot);
+  const activeRun = resolveAiRun(repoRoot, '');
+  const lines = [
+    'Run-scoped approvals',
+    `Active run: ${activeRun ? activeRun.run_id : '(none)'}`,
+  ];
+
+  if (runs.length === 0) {
+    lines.push('- no AI runs found');
+    return `${lines.join('\n')}\n`;
+  }
+
+  for (const run of runs.slice().reverse()) {
+    const relation = activeRun && run.run_id === activeRun.run_id
+      ? 'active'
+      : run.status === 'closed'
+        ? 'historical'
+        : 'other-open';
+    const approvals = runApprovalRows.filter((row) => row.run.run_id === run.run_id);
+    lines.push(`Run: ${run.run_id} (${relation}, phase: ${run.phase}, status: ${run.status})`);
+    if (approvals.length === 0) {
+      lines.push('- no run-scoped approvals');
+      continue;
+    }
+    for (const row of approvals) {
+      const version = row.approval.version ? ` v${row.approval.version}` : '';
+      lines.push(`- ${row.approval.phase || 'unknown'}${version}: ${row.approval.artifact || '(missing artifact)'}`);
+    }
+  }
+
+  return `${lines.join('\n')}\n`;
+}
+
 function formatApprovalStatusReport(repoRoot) {
-  const sections = ['AI approvals status'];
+  const runApprovalRows = collectRunApprovalRows(repoRoot);
+  const sections = ['AI approvals status', formatRunScopedApprovals(repoRoot, runApprovalRows).trimEnd(), 'Global planner approvals'];
   for (const phase of PLANNER_APPROVAL_PHASES) {
-    sections.push(summarizePlannerApproval(repoRoot, phase).trimEnd());
+    const summary = summarizePlannerApproval(repoRoot, phase).trimEnd();
+    const relation = classifyGlobalApprovalRelation(readPhaseApproval(repoRoot, phase), runApprovalRows);
+    sections.push(`${summary}\nRun relation: ${relation}`);
   }
   sections.push(summarizePlanReview(repoRoot).trimEnd());
   return `${sections.join('\n\n')}\n`;
@@ -640,11 +917,13 @@ async function runOnboard(repoRoot, options = {}) {
     throw annotateProviderError(error, 'onboard');
   }
 
-  writeProviderOutput(result);
-
   if (!result.ok) {
+    writeProviderOutput(result);
     throw annotateProviderError(result.error || new Error('provider run failed'), 'onboard');
   }
+
+  const clean = extractCleanProviderOutput(result, { prompt, projectRoot: repoRoot });
+  writeCleanProviderOutput(clean);
 
   return {
     task: 'onboard',
@@ -873,9 +1152,8 @@ async function runPlan(repoRoot, options = {}) {
     throw annotateProviderError(error, 'plan', phase);
   }
 
-  writeProviderOutput(result);
-
   if (!result.ok) {
+    writeProviderOutput(result);
     throw annotateProviderError(result.error || new Error('provider run failed'), 'plan', phase);
   }
 
@@ -885,6 +1163,7 @@ async function runPlan(repoRoot, options = {}) {
     runId: options.runId,
   });
   const clean = extractCleanProviderOutput(result, { prompt, projectRoot: repoRoot });
+  writeCleanProviderOutput(clean);
   const rawArtifact = writeRawProviderArtifact(repoRoot, lifecycleRun.run_id, `ai-plan-${phase}`, result, {
     metadata: {
       phase,
@@ -1011,9 +1290,8 @@ async function runReviewPlan(repoRoot, options = {}) {
     throw annotateProviderError(error, 'review-plan');
   }
 
-  writeProviderOutput(result);
-
   if (!result.ok) {
+    writeProviderOutput(result);
     throw annotateProviderError(result.error || new Error('provider run failed'), 'review-plan');
   }
 
@@ -1035,6 +1313,7 @@ async function runReviewPlan(repoRoot, options = {}) {
       stripped_prompt_echo: clean.strippedPromptEcho,
     },
   });
+  writeCleanProviderOutput(clean);
   const saved = savePlanReview(repoRoot, {
     contents: clean.cleanOutput,
     inputPath,
@@ -1044,7 +1323,8 @@ async function runReviewPlan(repoRoot, options = {}) {
     rawArtifactPath: rawArtifact.path,
   });
   const relativePath = path.relative(repoRoot, saved.filePath).split(path.sep).join('/');
-  process.stdout.write(`AI plan review saved\nArtifact: ${relativePath}\nPrompt source: ${PLAN_REVIEW_PROMPT_SOURCE}\n`);
+  const summary = summarizePlanReview(repoRoot).trimEnd();
+  process.stdout.write(`AI plan review saved\nArtifact: ${relativePath}\nPrompt source: ${PLAN_REVIEW_PROMPT_SOURCE}\n${summary}\n`);
 
   return {
     task: 'review-plan',
@@ -1057,6 +1337,146 @@ async function runReviewPlan(repoRoot, options = {}) {
     filePath: relativePath,
     invocation,
     result,
+  };
+}
+
+async function runRepairPlan(repoRoot, options = {}) {
+  const role = normalizeRole(options.role || DEFAULT_PLAN_ROLE);
+  const provider = resolveProviderForProfile(repoRoot, role, options.provider, options.providerExplicit, DEFAULT_PLAN_PROVIDER);
+  const context = options.context || DEFAULT_PLAN_CONTEXT;
+  const timeoutMs = normalizeTimeout(options.timeout);
+  const source = resolveApprovedTechnicalPlanForRepair(repoRoot, options.input || '');
+  const built = buildRepairPlanContext({
+    context,
+    inputText: source.contents,
+    inputPath: source.path,
+    repoRoot,
+    role,
+    validationError: source.validationError,
+  });
+  assertProviderPromptWithinLimit(built.prompt, options);
+  let invocation;
+
+  try {
+    invocation = buildProviderInvocation(provider, {
+      prompt: built.prompt,
+      cwd: repoRoot,
+      timeoutMs,
+    });
+  } catch (error) {
+    throw annotateProviderError(error, 'repair-plan');
+  }
+
+  if (options.dryRun) {
+    const report = {
+      task: 'repair-plan',
+      provider,
+      role,
+      contextPack: built.pack.packName,
+      phase: 'technical-plan',
+      invocation,
+    };
+    process.stdout.write(formatDryRunReport(report));
+    process.stdout.write(`Source approved artifact: ${source.path}\n`);
+    process.stdout.write(`Validation failure: ${source.validationError}\n`);
+    return report;
+  }
+
+  if (options.printPrompt) {
+    const report = {
+      task: 'repair-plan',
+      provider,
+      role,
+      contextPack: built.pack.packName,
+      phase: 'technical-plan',
+      invocation,
+      prompt: built.prompt,
+      inputPath: source.path,
+      inputKind: 'approved',
+      inputVersion: source.approval.meta?.approved?.version || null,
+    };
+    process.stdout.write(formatPromptOnlyReport(report));
+    return report;
+  }
+
+  let providerResult;
+  try {
+    providerResult = await (options.runProviderFn || runProvider)(provider, {
+      prompt: built.prompt,
+      cwd: repoRoot,
+      timeoutMs,
+      dryRun: false,
+      probe: options.probe,
+      spawn: options.spawn,
+      tempRoot: options.tempRoot,
+      tempFileName: options.tempFileName,
+      tempFilePrefix: options.tempFilePrefix,
+    });
+  } catch (error) {
+    throw annotateProviderError(error, 'repair-plan');
+  }
+
+  if (!providerResult.ok) {
+    writeProviderOutput(providerResult);
+    throw annotateProviderError(providerResult.error || new Error('provider run failed'), 'repair-plan');
+  }
+
+  const lifecycleRun = ensureAiRun(repoRoot, {
+    command: 'ai repair-plan',
+    input: source.path,
+    runId: options.runId,
+  });
+  const clean = extractCleanProviderOutput(providerResult, { prompt: built.prompt, projectRoot: repoRoot });
+  const rawArtifact = writeRawProviderArtifact(repoRoot, lifecycleRun.run_id, 'ai-repair-plan', providerResult, {
+    metadata: {
+      phase: 'technical-plan-repair',
+      input_path: source.path,
+      prompt_bytes: invocation.promptLength,
+      clean_output_source: clean.source,
+      stripped_prompt_echo: clean.strippedPromptEcho,
+      validation_failure: source.validationError,
+    },
+  });
+
+  try {
+    validateTechnicalPlanSpecContract(repoRoot, {
+      inputPath: source.path,
+      inputText: clean.cleanOutput,
+    });
+  } catch (error) {
+    throw new Error(formatError([
+      'ai repair-plan provider output is still missing the required structured `spec.slices[]` contract.',
+      stripCreateQuiverPrefix(error.message || error),
+      `Raw provider artifact: ${rawArtifact.path}`,
+      'No technical-plan draft was written.',
+    ].join('\n')));
+  }
+
+  writeCleanProviderOutput(clean);
+  const draft = savePlannerDraft(repoRoot, 'technical-plan', source.path, clean.cleanOutput, {
+    rawArtifactPath: rawArtifact.path,
+    outputSource: clean.source,
+  });
+  updateAiRunPhase(repoRoot, lifecycleRun.run_id, 'technical-plan-draft', {
+    artifact: path.relative(repoRoot, draft.filePath).split(path.sep).join('/'),
+    command: 'ai repair-plan',
+  });
+  process.stdout.write(formatRepairPlanResult({
+    ...draft,
+    sourcePath: source.path,
+  }, repoRoot));
+
+  return {
+    task: 'repair-plan',
+    provider,
+    role,
+    contextPack: built.pack.packName,
+    phase: 'technical-plan',
+    inputPath: source.path,
+    filePath: path.relative(repoRoot, draft.filePath).split(path.sep).join('/'),
+    version: draft.version || null,
+    invocation,
+    result: providerResult,
   };
 }
 
@@ -1095,8 +1515,14 @@ async function runApprove(repoRoot, options = {}) {
   if (phase === 'technical-plan') {
     const review = readPlanReview(repoRoot);
     if (review.status !== 'unapproved' && review.status !== 'reviewed') {
-      throw new Error(formatError(`ai approve --phase technical-plan requires a production review for the current draft; current review status is ${review.status}. Run \`npx create-quiver ai review-plan\`.`));
+      throw new Error(formatError(`ai approve --phase technical-plan requires a production review for the current draft; current review status is ${review.status}. Run \`npx create-quiver ai review-plan --dry-run\`, then \`npx create-quiver ai review-plan\`.`));
     }
+    if (reviewBlocksApproval(review)) {
+      const result = review.meta.review_result;
+      const requiredFixes = Array.isArray(result.required_fixes) ? result.required_fixes.length : 0;
+      throw new Error(formatError(`ai approve --phase technical-plan is blocked by plan review; approval recommendation is ${result.approval_recommendation}. Required fixes: ${requiredFixes}. Next command: ${result.next_command}`));
+    }
+    assertTechnicalPlanDraftHasSpecContract(repoRoot, options.version);
   }
 
   const inputText = '';
@@ -1255,13 +1681,52 @@ function runTraceReport(repoRoot, options = {}) {
   };
 }
 
+function runActiveSlice(repoRoot, options = {}) {
+  const command = String(options.command || 'status').trim().toLowerCase();
+  if (command !== 'status' && command !== 'reconcile') {
+    throw new Error(formatError(`unsupported ai active-slice subcommand: ${command}. Supported tasks: status, reconcile`));
+  }
+  if (command === 'reconcile' && options.dryRun !== true) {
+    throw new Error(formatError('ai active-slice reconcile is dry-run first. Run `npx create-quiver ai active-slice reconcile --dry-run`.'));
+  }
+
+  const state = resolveProjectState(repoRoot, { allowGraphErrors: true });
+  const report = collectActiveSliceState(repoRoot, { slices: state.graph.nodes });
+  process.stdout.write(formatActiveSliceReconciliationReport(report, {
+    dryRun: options.dryRun === true,
+  }));
+  return {
+    task: 'active-slice',
+    command,
+    dryRun: options.dryRun === true,
+    report,
+  };
+}
+
 function runLifecycleRun(repoRoot, options = {}) {
   const command = String(options.command || '').trim().toLowerCase();
-  if (command !== 'create') {
-    throw new Error(formatError(`unsupported ai run subcommand: ${command}. Supported tasks: create`));
+  if (command !== 'create' && command !== 'close') {
+    throw new Error(formatError(`unsupported ai run subcommand: ${command}. Supported tasks: create, close`));
   }
-  if (!options.input) {
+  if (command === 'create' && !options.input) {
     throw new Error(formatError('ai run create requires --input <requirements.md>'));
+  }
+  if (command === 'close') {
+    const current = resolveAiRun(repoRoot, options.runId || '');
+    if (!current) {
+      throw new Error(formatError('ai run close requires an active run or --run <id>'));
+    }
+    const run = updateAiRunPhase(repoRoot, current.run_id, 'closed', {
+      command: 'ai run close',
+    });
+    const report = `AI run closed\n${formatAiRunStatus(repoRoot, run)}`;
+    process.stdout.write(report);
+    return {
+      task: 'run',
+      command,
+      run,
+      report,
+    };
   }
   const run = createAiRun(repoRoot, {
     command: 'ai run create',
@@ -1516,6 +1981,7 @@ module.exports = {
   normalizeTimeout,
   readTextFile,
   runAgent,
+  runActiveSlice,
   runDoctor,
   runExecutePlan,
   runExecuteSlice,
@@ -1528,6 +1994,7 @@ module.exports = {
   runApprove,
   runApprovalStatus,
   runPrepareContext,
+  runRepairPlan,
   runReviewPlan,
   runRevise,
   runPr,

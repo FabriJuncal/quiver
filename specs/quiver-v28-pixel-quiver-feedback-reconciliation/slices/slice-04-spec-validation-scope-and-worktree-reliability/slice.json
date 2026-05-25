@@ -1,0 +1,85 @@
+{
+  "slice_id": "slice-04-spec-validation-scope-and-worktree-reliability",
+  "ticket": "QUIVER-28-04",
+  "type": "feature",
+  "title": "Spec validation, scope, and worktree reliability",
+  "objective": "Align spec validation with slice execution preconditions and make worktree/scope diagnostics reflect the real filesystem and Git state.",
+  "description": "Hardens `spec validate`, `check-slice`, `check-scope`, `spec status`, and `spec start` so users do not get false readiness signals.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v28-spec-validation-scope-worktree-reliability",
+    "branch_name": "feature/QUIVER-28-04-v28-spec-validation-scope-worktree-reliability"
+  },
+  "files": [
+    "src/create-quiver/commands/spec.js",
+    "src/create-quiver/lib/readiness.js",
+    "src/create-quiver/lib/scope.js",
+    "src/create-quiver/lib/slice.js",
+    "src/create-quiver/lib/spec-worktrees.js",
+    "src/create-quiver/lib/git.js",
+    "tests/commands/spec-validate.test.js",
+    "tests/commands/spec-worktree.test.js",
+    "tests/lib/check-slice.test.js",
+    "tests/lib/scope.test.js",
+    "tests/lib/paths.test.js",
+    "specs/quiver-v28-pixel-quiver-feedback-reconciliation/**"
+  ],
+  "expected_read_paths": [
+    "src/create-quiver/commands/spec.js",
+    "src/create-quiver/lib/readiness.js",
+    "src/create-quiver/lib/scope.js",
+    "src/create-quiver/lib/spec-worktrees.js",
+    "tests/commands/spec-*.test.js",
+    "tests/lib/check-slice.test.js",
+    "tests/lib/scope.test.js"
+  ],
+  "allowed_write_paths": [
+    "src/create-quiver/commands/spec.js",
+    "src/create-quiver/lib/readiness.js",
+    "src/create-quiver/lib/scope.js",
+    "src/create-quiver/lib/slice.js",
+    "src/create-quiver/lib/spec-worktrees.js",
+    "src/create-quiver/lib/git.js",
+    "tests/commands/spec-validate.test.js",
+    "tests/commands/spec-worktree.test.js",
+    "tests/lib/check-slice.test.js",
+    "tests/lib/scope.test.js",
+    "tests/lib/paths.test.js",
+    "specs/quiver-v28-pixel-quiver-feedback-reconciliation/**"
+  ],
+  "depends_on": [
+    "slice-00-reconciliation-and-evidence-freeze"
+  ],
+  "parallel_safe": "after_dependencies",
+  "parallel_safe_reason": "Can run after slice-00 if it does not alter AI run state files.",
+  "must": [
+    "Make spec validate catch local slice execution metadata problems.",
+    "Make spec status verify filesystem and git worktree list.",
+    "Make spec start dirty-check failures actionable.",
+    "Verify scope matching behavior and support expected globs if slice-00 confirms the gap."
+  ],
+  "not_included": [
+    "AI approval lifecycle changes.",
+    "Plan repair flow.",
+    "Deleting worktrees automatically."
+  ],
+  "acceptance": [
+    "spec validate catches slice metadata required by check-slice --local or reports strict warnings.",
+    "spec status reports missing/stale worktrees accurately.",
+    "spec start --dry-run lists dirty checkout blockers and safe options.",
+    "check-scope behavior is covered by tests for exact paths and supported globs."
+  ],
+  "tests": [
+    "node --test tests/commands/spec-validate.test.js tests/commands/spec-worktree.test.js",
+    "node --test tests/lib/check-slice.test.js tests/lib/scope.test.js tests/lib/paths.test.js"
+  ],
+  "validation_hints": [
+    "Use temp repos/worktrees in tests.",
+    "Keep default behavior backward compatible unless --strict is used."
+  ],
+  "estimated_hours": 9,
+  "actual_hours": 9,
+  "status": "completed",
+  "completed_at": "2026-05-25T15:38:16Z"
+}

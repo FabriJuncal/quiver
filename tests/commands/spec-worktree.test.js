@@ -5,6 +5,11 @@ const path = require('node:path');
 const { execFileSync } = require('node:child_process');
 const test = require('node:test');
 
+const {
+  safeBranchName,
+  worktreesRootForRepo,
+} = require('../../src/create-quiver/lib/slice');
+
 const BIN_PATH = path.resolve(__dirname, '../../bin/create-quiver.js');
 
 function writeFile(filePath, contents) {
@@ -108,6 +113,28 @@ test('spec status blocks later slices until slice-00 is completed', () => {
   }
 });
 
+test('spec status reports an expected worktree path that exists but is not registered as stale', () => {
+  const repo = makeRepo({
+    'specs/example-spec/SPEC.md': '# Example\n',
+    'specs/example-spec/slices/slice-00-spec-foundation/slice.json': sliceJson('slice-00-spec-foundation', 'completed'),
+  });
+
+  try {
+    const branchName = 'feature/example-spec';
+    const expectedWorktree = path.join(worktreesRootForRepo(repo.root, branchName), safeBranchName(branchName));
+    fs.mkdirSync(expectedWorktree, { recursive: true });
+    writeFile(path.join(expectedWorktree, 'README.md'), '# unregistered path\n');
+
+    const output = execCli(repo.root, ['spec', 'status', 'specs/example-spec']);
+
+    assert.ok(output.includes('Worktree missing/stale: yes'));
+    assert.ok(output.includes('Worktree registered: no'));
+    assert.ok(output.includes('expected path exists but is not registered in git worktree list'));
+  } finally {
+    repo.cleanup();
+  }
+});
+
 test('spec start creates and then reuses a dedicated worktree from main', () => {
   const repo = makeRepo({
     'specs/example-spec/SPEC.md': '# Example\n',
@@ -138,8 +165,12 @@ test('spec start refuses a dirty checkout', () => {
     writeFile(path.join(repo.root, 'dirty.txt'), 'dirty\n');
 
     assert.throws(
-      () => execCli(repo.root, ['spec', 'start', 'specs/example-spec']),
-      (error) => error.stderr.includes('current checkout is not clean'),
+      () => execCli(repo.root, ['spec', 'start', 'specs/example-spec', '--dry-run']),
+      (error) => error.stderr.includes('current checkout is not clean')
+        && error.stderr.includes('Dirty files:')
+        && error.stderr.includes('dirty.txt')
+        && error.stderr.includes('Safe options:')
+        && error.stderr.includes('Commit the current changes'),
     );
   } finally {
     repo.cleanup();

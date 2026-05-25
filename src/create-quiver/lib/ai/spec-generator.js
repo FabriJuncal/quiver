@@ -278,6 +278,20 @@ function buildSpecGenerationManifest({ inputText, inputPath, repoRoot, specSlug 
   return manifest;
 }
 
+function validateTechnicalPlanSpecContract(repoRoot, options = {}) {
+  const inputPath = options.inputPath || options.input;
+  const inputText = typeof options.inputText === 'string'
+    ? options.inputText
+    : readSourceText(inputPath, repoRoot);
+
+  return buildSpecGenerationManifest({
+    inputPath,
+    inputText,
+    repoRoot,
+    specSlug: options.specSlug,
+  });
+}
+
 function validateSpecCollision(specDir) {
   if (fs.existsSync(specDir)) {
     throw new Error(formatError(`spec directory already exists: ${path.relative(process.cwd(), specDir)}`));
@@ -381,5 +395,6 @@ module.exports = {
   generateSpecArtifacts,
   parseApprovedManifest,
   readSourceText,
+  validateTechnicalPlanSpecContract,
   validateGeneratedSliceJson,
 };

@@ -75,6 +75,24 @@ function seedInitializedContext(repoRoot) {
   writeFile(repoRoot, 'docs/AI_ONBOARDING_PROMPT.md', '# Prompt\n');
 }
 
+function structuredTechnicalPlanText(slug = 'flow-spec') {
+  return `${JSON.stringify({
+    spec: {
+      slug,
+      title: 'Flow spec',
+      objective: 'Create specs from the approved flow plan.',
+      slices: [
+        {
+          slice_id: 'slice-01-flow',
+          title: 'Flow slice',
+          objective: 'Implement the flow slice.',
+          files: ['src/index.js'],
+        },
+      ],
+    },
+  }, null, 2)}\n`;
+}
+
 test('package exposes quiver as an alias to the create-quiver binary', () => {
   assert.equal(packageJson.bin['create-quiver'], 'bin/create-quiver.js');
   assert.equal(packageJson.bin.quiver, 'bin/create-quiver.js');
@@ -199,10 +217,10 @@ test('flow command asks for production review before technical-plan approval', (
   try {
     seedInitializedContext(repo.root);
     writeFile(repo.root, 'acceptance.md', '# Approved acceptance\n');
-    writeFile(repo.root, 'technical-plan.md', '# Technical plan\n');
+    writeFile(repo.root, 'technical-plan.md', structuredTechnicalPlanText());
     savePlannerDraft(repo.root, 'acceptance', 'acceptance.md', '# Approved acceptance\n');
     approvePlannerPhase(repo.root, 'acceptance', '', '', { version: 1 });
-    savePlannerDraft(repo.root, 'technical-plan', 'technical-plan.md', '# Technical plan draft\n');
+    savePlannerDraft(repo.root, 'technical-plan', 'technical-plan.md', structuredTechnicalPlanText());
 
     const output = runFlow(repo.root);
 
@@ -219,10 +237,10 @@ test('flow command asks for technical-plan approval after production review', ()
   try {
     seedInitializedContext(repo.root);
     writeFile(repo.root, 'acceptance.md', '# Approved acceptance\n');
-    writeFile(repo.root, 'technical-plan.md', '# Technical plan\n');
+    writeFile(repo.root, 'technical-plan.md', structuredTechnicalPlanText());
     savePlannerDraft(repo.root, 'acceptance', 'acceptance.md', '# Approved acceptance\n');
     approvePlannerPhase(repo.root, 'acceptance', '', '', { version: 1 });
-    savePlannerDraft(repo.root, 'technical-plan', 'technical-plan.md', '# Technical plan draft\n');
+    savePlannerDraft(repo.root, 'technical-plan', 'technical-plan.md', structuredTechnicalPlanText());
     savePlanReview(repo.root, {
       contents: 'review\n',
       inputPath: '.quiver/approvals/technical-plan/drafts/001.md',
@@ -245,10 +263,10 @@ test('flow command reports spec create after reviewed and approved technical pla
   try {
     seedInitializedContext(repo.root);
     writeFile(repo.root, 'acceptance.md', '# Approved acceptance\n');
-    writeFile(repo.root, 'technical-plan.md', '# Technical plan\n');
+    writeFile(repo.root, 'technical-plan.md', structuredTechnicalPlanText());
     savePlannerDraft(repo.root, 'acceptance', 'acceptance.md', '# Approved acceptance\n');
     approvePlannerPhase(repo.root, 'acceptance', '', '', { version: 1 });
-    savePlannerDraft(repo.root, 'technical-plan', 'technical-plan.md', '# Technical plan draft\n');
+    savePlannerDraft(repo.root, 'technical-plan', 'technical-plan.md', structuredTechnicalPlanText());
     savePlanReview(repo.root, {
       contents: 'review\n',
       inputPath: '.quiver/approvals/technical-plan/drafts/001.md',

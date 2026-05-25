@@ -75,6 +75,11 @@
 - Published package `0.13.0`.
 - **v27** — Reliability hardening from Pixel Quiver dogfooding: shared state resolver, canonical statuses, JSON export contract, approved-plan spec generation, AI artifact cleanup, token compaction, worktree lifecycle, validation gates, context diagnostics, cross-platform DX, fixtures, smoke tests, and package/tarball release readiness live in `specs/quiver-v27-reliability-ai-workflow-hardening/`.
 
+## v0.14 — Pixel Quiver Feedback Reconciliation (unreleased)
+
+- **v28** — Follow-up hardening from Pixel Quiver dogfooding: active-slice reconciliation, spec-aware `ai inspect` recovery, structured plan-review closure, safer technical-plan approval, stronger spec/worktree validation, agent-safe command examples, GitHub auth/alias guidance, and final release-readiness evidence live in `specs/quiver-v28-pixel-quiver-feedback-reconciliation/`.
+- This line is not published yet. Do not claim npm availability until the package is explicitly released.
+
 ## Post-Checkpoint Plan (do not execute before validating v14)
 
 > This section now records the follow-up line from the v14-era plan.
@@ -91,6 +96,7 @@
 - **v25 — AI-First Lifecycle Orchestrator** (shipped in `0.12.0`): safe AI onboarding docs, strict run state, phase locks, agent adapters, approval gates, generated specs/slices/handoffs/PR body, execution waves, controlled slice execution, worktree/PR lifecycle, validation hardening, export, and migration live in `specs/quiver-v25-ai-first-lifecycle-orchestrator/`.
 - **v26 — 0.12.1 Smoke Hardening** (shipped in `0.12.1`): first-use hardening from clean npm smoke testing, covering CLI help/version output, generated doc links, AI approval/review guidance, local validation, slice brief validation, demo readiness, scoped plan/graph performance, and release smoke coverage live in `specs/quiver-v26-0121-smoke-hardening/`.
 - **v27 — Reliability and AI Workflow Hardening** (shipped in `0.13.0`): Pixel Quiver dogfooding follow-up covering resolver/export/spec-create/AI-artifact/worktree/validation/context/DX hardening lives in `specs/quiver-v27-reliability-ai-workflow-hardening/`.
+- **v28 — Pixel Quiver Feedback Reconciliation** (unreleased): active-slice reconciliation, stale inspect recovery, structured review closure, validation/worktree hardening, agent-safe commands, GitHub auth guidance, and release-readiness evidence live in `specs/quiver-v28-pixel-quiver-feedback-reconciliation/`.
 
 The shipped v20/v21/v22/v23 work is no longer pending. The older context-diagnostics and slice-archaeology ideas remain deferred until real demand justifies them.
 

@@ -55,6 +55,7 @@ test('help output documents important public commands', () => {
     'graph',
     'next',
     'ai run create',
+    'ai active-slice status|reconcile',
     'ai status',
     'ai resume',
     'ai onboard',
@@ -62,6 +63,7 @@ test('help output documents important public commands', () => {
     'ai agent set|list|show',
     'ai plan',
     'ai revise',
+    'ai repair-plan',
     'ai review-plan',
     'ai approve',
     'ai approvals',
@@ -100,6 +102,7 @@ test('help output documents important public commands', () => {
   }
   assert.match(output, /--dry-run\s+Preview .*ai agent set/);
   assert.match(output, /ai agent set planner --provider codex --model gpt-5\.5 --dry-run/);
+  assert.match(output, new RegExp(`npx --yes create-quiver@${packageJson.version.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')} ai prompt-slice`));
 });
 
 test('ai approve --version remains a draft-version option', () => {

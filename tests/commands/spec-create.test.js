@@ -158,7 +158,7 @@ test('spec create fails before writing when approved plan lacks structured slice
       inputKind: 'draft',
       inputVersion: 1,
     });
-    execCli(repo.root, ['ai', 'approve', '--phase', 'technical-plan', '--version', '1']);
+    approvePlannerPhase(repo.root, 'technical-plan', '', '', { version: 1 });
 
     assert.throws(
       () => execCli(repo.root, ['spec', 'create', '--dry-run']),

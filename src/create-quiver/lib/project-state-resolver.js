@@ -1,3 +1,4 @@
+const fs = require('fs');
 const path = require('path');
 
 const {
@@ -215,12 +216,206 @@ function relativeProjectPath(projectRoot, filePath) {
   return toPosix(path.relative(projectRoot, filePath));
 }
 
+function readMarkdownSectionValue(text, heading) {
+  const lines = String(text || '').split(/\r?\n/);
+  const normalizedHeading = String(heading || '').trim().toLowerCase();
+  let capture = false;
+
+  for (const rawLine of lines) {
+    const line = rawLine.trim();
+    const match = line.match(/^##\s+(.+)$/);
+    if (match) {
+      capture = match[1].trim().toLowerCase() === normalizedHeading;
+      continue;
+    }
+    if (capture && line && !line.startsWith('---')) {
+      return line.replace(/^[-*]\s+/, '').trim();
+    }
+  }
+
+  return '';
+}
+
+function buildSliceLookup(slices) {
+  const byRef = new Map();
+  const bySliceId = new Map();
+
+  for (const slice of Array.isArray(slices) ? slices : []) {
+    if (slice.ref) {
+      byRef.set(slice.ref, slice);
+    }
+    const sliceId = slice.sliceId || slice.json?.slice_id || '';
+    if (!sliceId) {
+      continue;
+    }
+    if (!bySliceId.has(sliceId)) {
+      bySliceId.set(sliceId, []);
+    }
+    bySliceId.get(sliceId).push(slice);
+  }
+
+  return { byRef, bySliceId };
+}
+
+function normalizeActiveSliceSource(source, lookup) {
+  const ref = source.ref || (source.spec_slug && source.slice_id ? `${source.spec_slug}/${source.slice_id}` : '');
+  let resolved = ref ? lookup.byRef.get(ref) : null;
+  let issue = '';
+
+  if (!resolved && source.slice_id && !source.spec_slug) {
+    const matches = lookup.bySliceId.get(source.slice_id) || [];
+    if (matches.length === 1) {
+      resolved = matches[0];
+    } else if (matches.length > 1) {
+      issue = `ambiguous slice id '${source.slice_id}' appears in multiple specs`;
+    }
+  }
+
+  if (!resolved && !issue) {
+    issue = source.slice_id ? `slice '${source.slice_id}' was not found` : 'active slice source did not declare a slice id';
+  }
+
+  return {
+    ...source,
+    ref: resolved?.ref || ref || null,
+    spec_slug: source.spec_slug || resolved?.specSlug || null,
+    slice_id: source.slice_id || resolved?.sliceId || null,
+    status: resolved?.status || source.status || null,
+    canonical_status: resolved ? normalizeStatus('slice', resolved.canonical_status || resolved.status, DEFAULT_SLICE_STATUS) : null,
+    title: resolved?.title || source.title || null,
+    valid: Boolean(resolved),
+    issue: resolved ? null : issue,
+  };
+}
+
+function parseActiveSliceDoc(projectRoot, lookup) {
+  const relativePath = 'docs/ai/ACTIVE_SLICE.md';
+  const filePath = path.join(projectRoot, relativePath);
+  if (!fs.existsSync(filePath)) {
+    return [];
+  }
+  const text = fs.readFileSync(filePath, 'utf8');
+  return [normalizeActiveSliceSource({
+    kind: 'active-doc',
+    path: relativePath,
+    source_id: relativePath,
+    slice_id: readMarkdownSectionValue(text, 'Slice ID'),
+    title: readMarkdownSectionValue(text, 'Title'),
+  }, lookup)];
+}
+
+function isMarkdownSeparatorCell(value) {
+  return /^:?-{3,}:?$/.test(String(value || '').trim());
+}
+
+function parseActiveSlicesBoard(projectRoot, lookup) {
+  const relativePath = 'ACTIVE_SLICES.md';
+  const filePath = path.join(projectRoot, relativePath);
+  if (!fs.existsSync(filePath)) {
+    return [];
+  }
+
+  const sources = [];
+  const lines = fs.readFileSync(filePath, 'utf8').split(/\r?\n/);
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index].trim();
+    if (!line.startsWith('|') || !line.endsWith('|')) {
+      continue;
+    }
+    const cells = line.split('|').slice(1, -1).map((cell) => cell.trim());
+    if (cells.length < 6 || cells[1] === 'Spec' || cells.every(isMarkdownSeparatorCell)) {
+      continue;
+    }
+    const specSlug = cells[1];
+    const sliceId = cells[2];
+    if (!specSlug || !sliceId || specSlug === '-' || sliceId === '-') {
+      continue;
+    }
+    sources.push(normalizeActiveSliceSource({
+      branch: cells[3] || null,
+      kind: 'active-board',
+      path: relativePath,
+      row: index + 1,
+      source_id: `${relativePath}:${index + 1}`,
+      spec_slug: specSlug,
+      slice_id: sliceId,
+      status: cells[4] || null,
+      worktree_path: cells[5] || null,
+    }, lookup));
+  }
+
+  return sources;
+}
+
+function buildActiveSliceReconciliation(sources) {
+  const activeSources = Array.isArray(sources) ? sources : [];
+  const existingRefs = Array.from(new Set(activeSources.filter((source) => source.valid && source.ref).map((source) => source.ref)));
+  const invalidSources = activeSources.filter((source) => !source.valid);
+  const hasActiveDoc = activeSources.some((source) => source.kind === 'active-doc');
+  const hasBoard = activeSources.some((source) => source.kind === 'active-board');
+  const planned_changes = [];
+  const risks = [];
+  let decision = 'preserve';
+  let reason = 'No active-slice source needs changes.';
+
+  if (activeSources.length === 0) {
+    reason = 'No active-slice source exists.';
+  } else if (invalidSources.length > 0) {
+    decision = 'blocked';
+    reason = 'One or more active-slice sources reference missing or ambiguous slices.';
+    risks.push(...invalidSources.map((source) => `${source.source_id}: ${source.issue}`));
+  } else if (existingRefs.length > 1) {
+    decision = 'blocked';
+    reason = 'Active-slice sources disagree about the active slice.';
+    risks.push(`Conflicting refs: ${existingRefs.join(', ')}`);
+  } else {
+    const active = activeSources.find((source) => source.ref === existingRefs[0]) || activeSources[0];
+    if (active && isCompletedStatus('slice', active.canonical_status || active.status)) {
+      decision = 'close';
+      reason = 'The active slice is already completed and local active-state files should be closed intentionally.';
+      planned_changes.push('remove docs/ai/ACTIVE_SLICE.md if it exists');
+      planned_changes.push('refresh ACTIVE_SLICES.md from current worktrees');
+    } else if (!hasActiveDoc && hasBoard) {
+      decision = 'replace';
+      reason = 'ACTIVE_SLICES.md reports an active slice but docs/ai/ACTIVE_SLICE.md is missing.';
+      planned_changes.push(`recreate docs/ai/ACTIVE_SLICE.md from ${active?.ref || 'the board source'}`);
+    }
+  }
+
+  return {
+    decision,
+    planned_changes,
+    possible_decisions: ['preserve', 'close', 'replace', 'blocked'],
+    reason,
+    risks,
+  };
+}
+
+function collectActiveSliceState(projectRoot, options = {}) {
+  const slices = Array.isArray(options.slices) ? options.slices : readResolverSlices(projectRoot, options.specSlug || '');
+  const lookup = buildSliceLookup(slices);
+  const sources = [
+    ...parseActiveSliceDoc(projectRoot, lookup),
+    ...parseActiveSlicesBoard(projectRoot, lookup),
+  ];
+
+  return {
+    supported_sources: [
+      { path: 'docs/ai/ACTIVE_SLICE.md', kind: 'active-doc', exists: fs.existsSync(path.join(projectRoot, 'docs', 'ai', 'ACTIVE_SLICE.md')) },
+      { path: 'ACTIVE_SLICES.md', kind: 'active-board', exists: fs.existsSync(path.join(projectRoot, 'ACTIVE_SLICES.md')) },
+    ],
+    sources,
+    reconciliation: buildActiveSliceReconciliation(sources),
+  };
+}
+
 module.exports = {
   CANONICAL_STATUSES,
   DEFAULT_AGENT_STATUS,
   DEFAULT_RUN_STATUS,
   DEFAULT_SLICE_STATUS,
   DEFAULT_SPEC_STATUS,
+  collectActiveSliceState,
   filterSlicesForExecution,
   groupSlicesBySpec,
   isBlockedStatus,
@@ -233,4 +428,3 @@ module.exports = {
   summarizeSliceProgress,
   toPosix,
 };
-

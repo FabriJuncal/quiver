@@ -4,6 +4,23 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- v28 Pixel Quiver feedback reconciliation under `specs/quiver-v28-pixel-quiver-feedback-reconciliation/`.
+- `ai active-slice status|reconcile` for dry-run-first active-slice state inspection across `docs/ai/ACTIVE_SLICE.md` and `ACTIVE_SLICES.md`.
+- Structured `ai review-plan` closure metadata with `approve`, `approve-with-risk`, and `revise` recommendations.
+
+### Changed
+
+- `ai inspect` now prefers existing-spec recovery commands (`spec validate`, `next`, `ai prompt-slice`) when a lifecycle run still points to stale `spec create` guidance.
+- Agent-facing docs/help now include non-interactive `npx --yes create-quiver@<version>` examples.
+- GitHub PR preflight guidance now gives clearer macOS, Linux, Windows PowerShell, Git Bash, and WSL recovery copy for `gh` and SSH aliases.
+
+### Fixed
+
+- Technical-plan approval now blocks reviews with required fixes or a `revise` recommendation.
+- `spec validate`, `spec status`, and `spec start --dry-run` were hardened for execution metadata, stale worktree paths, dirty checkout recovery, and scope diagnostics.
+
 ## [0.13.0] - 2026-05-25
 
 ### Added

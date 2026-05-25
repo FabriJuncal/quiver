@@ -11,6 +11,7 @@ const {
   extractPrTitle,
   formatPreflightReport,
   formatPrCreateReport,
+  formatSshAliasGuidance,
   preflightGitHubPr,
   resolvePrBodyPath,
   resolveConfiguredPath,
@@ -73,7 +74,8 @@ test('preflightGitHubPr reports a missing gh with cross-platform install guidanc
       (error) => error.code === 'MISSING_GH_CLI'
         && error.message.includes('macOS: brew install gh')
         && error.message.includes('Linux:')
-        && error.message.includes('Windows: winget install GitHub.cli'),
+        && error.message.includes('Windows PowerShell: winget install GitHub.cli')
+        && error.message.includes('Git Bash/WSL'),
     );
   } finally {
     repo.cleanup();
@@ -168,6 +170,16 @@ test('preflightGitHubPr reports missing SSH host alias with platform guidance', 
   } finally {
     repo.cleanup();
   }
+});
+
+test('formatSshAliasGuidance gives shell-specific alias setup and verification', () => {
+  const output = formatSshAliasGuidance('github-work');
+
+  assert.match(output, /SSH alias setup/);
+  assert.match(output, /macOS\/Linux\/Git Bash\/WSL/);
+  assert.match(output, /Windows PowerShell/);
+  assert.match(output, /Host github-work/);
+  assert.match(output, /ssh -T github-work/);
 });
 
 test('preflightGitHubPr reports the reviewed identity file path when it is missing', () => {

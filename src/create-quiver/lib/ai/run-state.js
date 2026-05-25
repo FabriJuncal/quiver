@@ -357,7 +357,9 @@ function formatAiRunStatus(projectRoot, run) {
     ].join('\n');
   }
 
-  return [
+  const openRuns = listAiRuns(projectRoot).filter((item) => item.status !== 'closed');
+  const otherOpenRuns = openRuns.filter((item) => item.run_id !== run.run_id);
+  const lines = [
     'AI run status',
     `Run: ${run.run_id}`,
     `Status: ${run.status}`,
@@ -366,9 +368,22 @@ function formatAiRunStatus(projectRoot, run) {
     `Requirement: ${run.requirement?.path || '(missing)'}`,
     `State: ${toRelativePosix(projectRoot, runStatePath(projectRoot, run.run_id))}`,
     `Approvals: ${run.approvals_path}`,
+    `Open runs: ${openRuns.length}`,
+  ];
+
+  if (otherOpenRuns.length > 0) {
+    lines.push('Other open runs:');
+    for (const item of otherOpenRuns) {
+      lines.push(`- ${item.run_id}: ${item.phase} (${item.status}) -> ${nextCommandForPhase(item.phase)}`);
+    }
+  }
+
+  lines.push(
     `Next safe command: ${nextCommandForPhase(run.phase)}`,
     '',
-  ].join('\n');
+  );
+
+  return lines.join('\n');
 }
 
 function formatAiRunResume(projectRoot, run) {

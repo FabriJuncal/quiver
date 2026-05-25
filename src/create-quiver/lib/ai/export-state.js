@@ -5,6 +5,7 @@ const { listAgentProfiles } = require('../agent-profiles');
 const { PLANNER_APPROVAL_PHASES, readPhaseApproval } = require('../approvals');
 const { collectLayoutReport } = require('../doctor');
 const {
+  collectActiveSliceState,
   filterSlicesForExecution,
   groupSlicesBySpec: groupResolvedSlicesBySpec,
   isBlockedStatus: isCanonicalBlockedStatus,
@@ -296,14 +297,44 @@ function collectWarnings({ graph, layout, specs, slices }) {
 function collectNextSteps(data) {
   const activeRun = [...data.runs].reverse().find((run) => run.status !== 'closed');
   const commands = [];
+  const firstSpec = data.specs[0] || null;
+  const firstSlice = data.slices[0] || null;
+  const activeRunWantsSpecCreate = Boolean(activeRun?.next_command && activeRun.next_command.includes('spec create'));
 
-  commands.push({
-    id: activeRun ? 'continue-active-run' : 'create-ai-run',
-    command: activeRun ? activeRun.next_command : 'npx create-quiver ai run create --input <requirements.md>',
-    reason: activeRun ? `Continue AI run ${activeRun.run_id}.` : 'Start a new AI lifecycle run.',
-  });
+  if (activeRun && activeRunWantsSpecCreate && firstSpec) {
+    commands.push({
+      id: 'validate-existing-spec',
+      command: `npx create-quiver spec validate ${firstSpec.path}`,
+      reason: `A spec already exists while run ${activeRun.run_id} points to spec creation.`,
+    });
+    commands.push({
+      id: 'find-ready-slice',
+      command: 'npx create-quiver next --all-ready',
+      reason: 'Find ready slices before creating another spec.',
+    });
+    if (firstSlice?.slice_json) {
+      commands.push({
+        id: 'prompt-existing-slice',
+        command: `npx create-quiver ai prompt-slice --slice ${firstSlice.slice_json}`,
+        reason: 'Prepare a minimal executor prompt for the existing spec.',
+      });
+    }
+  } else {
+    commands.push({
+      id: activeRun ? 'continue-active-run' : 'create-ai-run',
+      command: activeRun ? activeRun.next_command : 'npx create-quiver ai run create --input <requirements.md>',
+      reason: activeRun ? `Continue AI run ${activeRun.run_id}.` : 'Start a new AI lifecycle run.',
+    });
+  }
 
   if (data.summary.slices > 0) {
+    if (data.active_slice?.reconciliation?.decision && data.active_slice.reconciliation.decision !== 'preserve') {
+      commands.push({
+        id: 'reconcile-active-slice',
+        command: 'npx create-quiver ai active-slice reconcile --dry-run',
+        reason: 'Review active-slice state before assigning more execution work.',
+      });
+    }
     commands.push({
       id: 'inspect-slices',
       command: 'npx create-quiver ai slices list',
@@ -379,6 +410,7 @@ function collectLifecycleExport(projectRoot, options = {}) {
   const approvals = normalizeApprovals(projectRoot);
   const progress = summarizeProgress(slices);
   const evidence = collectEvidenceEntries(slices);
+  const activeSlice = collectActiveSliceState(projectRoot, { slices: allSlices });
   const blockers = normalizedSlices
     .filter((slice) => slice.blocked_reason || String(slice.status).toLowerCase() === 'blocked')
     .map((slice) => ({ ref: slice.ref, reason: slice.blocked_reason || 'blocked' }));
@@ -388,6 +420,9 @@ function collectLifecycleExport(projectRoot, options = {}) {
   }
   if (layout.layout === 'legacy' || layout.layout === 'hybrid' || layout.layout === 'incomplete') {
     blockers.push({ ref: 'migration', reason: layout.recommendations.join(' ') });
+  }
+  if (activeSlice.reconciliation.decision === 'blocked') {
+    blockers.push({ ref: 'active-slice', reason: activeSlice.reconciliation.reason });
   }
 
   const exportData = {
@@ -413,6 +448,7 @@ function collectLifecycleExport(projectRoot, options = {}) {
       runs: runs.length,
       configured_agents: agents.filter((agent) => agent.configured).length,
       approvals: approvals.length,
+      active_slice_sources: activeSlice.sources.length,
       warnings: 0,
     },
     agents,
@@ -437,6 +473,7 @@ function collectLifecycleExport(projectRoot, options = {}) {
       dry_run_command: 'npx create-quiver migrate --dry-run',
     },
     evidence,
+    active_slice: activeSlice,
     warnings: [],
     blockers,
     next_steps: [],
@@ -480,6 +517,7 @@ function collectLifecycleExport(projectRoot, options = {}) {
         blocker: slice.blocked_reason,
       })),
       dependencies: graph.edges,
+      active_slice: activeSlice,
     },
   };
 
@@ -511,6 +549,15 @@ function formatLifecycleInspect(data) {
 
   for (const step of data.next_steps || collectNextSteps(data)) {
     lines.push(`- ${step.command}`);
+  }
+
+  if (data.active_slice) {
+    lines.push(
+      '',
+      'Active slice state',
+      `- Sources: ${data.active_slice.sources.length}`,
+      `- Reconciliation: ${data.active_slice.reconciliation.decision} (${data.active_slice.reconciliation.reason})`,
+    );
   }
 
   if (data.dashboard.blockers.length > 0) {

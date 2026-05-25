@@ -10,6 +10,7 @@ const {
   formatDoctorFixPlan,
 } = require('./lib/doctor');
 const {
+  runActiveSlice: runAiActiveSlice,
   runAgent: runAiAgent,
   runApprovalStatus: runAiApprovalStatus,
   runApprove: runAiApprove,
@@ -25,6 +26,7 @@ const {
   runPlan: runAiPlan,
   runPrepareContext: runAiPrepareContext,
   runPr: runAiPr,
+  runRepairPlan: runAiRepairPlan,
   runPromptSlice: runAiPromptSlice,
   runReviewPlan: runAiReviewPlan,
   runRevise: runAiRevise,
@@ -99,6 +101,7 @@ const SUPPORTED_COMMAND_MODES = new Set([
 ]);
 
 const SUPPORTED_AI_COMMANDS = new Set([
+  'active-slice',
   'agent',
   'approve',
   'approval-status',
@@ -114,6 +117,7 @@ const SUPPORTED_AI_COMMANDS = new Set([
   'prepare-context',
   'pr',
   'prompt-slice',
+  'repair-plan',
   'review-plan',
   'revise',
   'resume',
@@ -159,7 +163,8 @@ const COMMAND_HELP_GROUPS = [
   {
     title: 'AI lifecycle',
     commands: [
-      ['ai run create', 'Create a durable AI lifecycle run from a requirements file.'],
+      ['ai run create|close', 'Create a durable AI lifecycle run or close/archive a completed or stale run without deleting evidence.'],
+      ['ai active-slice status|reconcile', 'Inspect or dry-run reconcile local active-slice state from every supported source.'],
       ['ai status', 'Show current AI lifecycle phase, approved versions, blockers, and next command.'],
       ['ai resume', 'Resume guidance from the last valid lifecycle phase without chat memory.'],
       ['ai onboard', 'Run or print the planner onboarding prompt with a token-aware context pack.'],
@@ -167,6 +172,7 @@ const COMMAND_HELP_GROUPS = [
       ['ai agent set|list|show', 'Manage planner, executor, reviewer, and doctor provider profiles without secrets; use set --dry-run to preview.'],
       ['ai plan', 'Generate versioned planner drafts for acceptance criteria, technical plan, or spec phase.'],
       ['ai revise', 'Create a new planner draft from human feedback without approving it.'],
+      ['ai repair-plan', 'Repair an approved technical plan into a new structured draft without mutating the approved artifact.'],
       ['ai review-plan', 'Review the technical-plan draft for production readiness before approval.'],
       ['ai approve', 'Approve a concrete saved draft version for the next planner phase.'],
       ['ai approvals', 'Inspect approval status and saved planner drafts.'],
@@ -243,6 +249,8 @@ function printUsage() {
   npx create-quiver plan [options]
   npx create-quiver ai <task> [options]
   npx create-quiver ai run create --input <requirements.md>
+  npx create-quiver ai run close --run <id>
+  npx create-quiver ai active-slice reconcile --dry-run
   npx create-quiver ai status [options]
   npx create-quiver ai resume [options]
   npx create-quiver ai inspect [options]
@@ -253,6 +261,7 @@ function printUsage() {
   npx create-quiver ai agent <set|list|show> [role] [options]
   npx create-quiver ai prepare-context [options]
   npx create-quiver ai revise [options]
+  npx create-quiver ai repair-plan [options]
   npx create-quiver graph [options]
   npx create-quiver next [options]
   npx create-quiver migrate [options]
@@ -330,6 +339,7 @@ Examples:
   cd ./my-project && npx create-quiver ai onboard --print-prompt
   cd ./my-project && npx create-quiver ai prepare-context --dry-run
   cd ./my-project && npx create-quiver ai run create --input requirements.md
+  cd ./my-project && npx create-quiver ai active-slice reconcile --dry-run
   cd ./my-project && npx create-quiver ai status
   cd ./my-project && npx create-quiver ai resume
   cd ./my-project && npx create-quiver ai inspect
@@ -345,12 +355,14 @@ Examples:
   cd ./my-project && npx create-quiver ai revise --phase acceptance --input feedback.md --dry-run
   cd ./my-project && npx create-quiver ai approve --phase acceptance --version 1
   cd ./my-project && npx create-quiver ai plan --phase technical-plan --dry-run
+  cd ./my-project && npx create-quiver ai repair-plan --dry-run
   cd ./my-project && npx create-quiver ai review-plan --dry-run
   cd ./my-project && npx create-quiver ai approve --phase technical-plan --version 1
   cd ./my-project && npx create-quiver spec create --dry-run
   cd ./my-project && npx create-quiver spec start specs/my-project --dry-run
   cd ./my-project && npx create-quiver ai approvals
   cd ./my-project && npx create-quiver ai prompt-slice --slice specs/my-project/slices/slice-01/slice.json --dry-run
+  cd ./my-project && npx --yes create-quiver@${CLI_VERSION} ai prompt-slice --slice specs/my-project/slices/slice-01/slice.json --dry-run
   cd ./my-project && npx create-quiver ai execute-slice --slice specs/my-project/slices/slice-01/slice.json --dry-run
   cd ./my-project && npx create-quiver ai execute-slice --slice specs/my-project/slices/slice-01/slice.json --commit
   cd ./my-project && npx create-quiver ai execute-plan --dry-run --commit
@@ -936,7 +948,7 @@ function parseArgs(argv) {
     if (result.aiCommand === 'run' && !result.aiRunCommand && positional.length > 0) {
       result.aiRunCommand = positional.shift();
     }
-    if ((result.aiCommand === 'specs' || result.aiCommand === 'slices' || result.aiCommand === 'trace') && !result.aiSecondaryCommand && positional.length > 0) {
+    if ((result.aiCommand === 'specs' || result.aiCommand === 'slices' || result.aiCommand === 'trace' || result.aiCommand === 'active-slice') && !result.aiSecondaryCommand && positional.length > 0) {
       result.aiSecondaryCommand = positional.shift();
     }
     if ((result.aiCommand === 'specs' || result.aiCommand === 'slices') && result.aiSecondaryCommand && result.aiSecondaryCommand !== 'list') {
@@ -944,6 +956,9 @@ function parseArgs(argv) {
     }
     if (result.aiCommand === 'trace' && result.aiSecondaryCommand && result.aiSecondaryCommand !== 'report') {
       throw new Error(formatError(`unsupported ai trace subcommand: ${result.aiSecondaryCommand}. Supported tasks: report`));
+    }
+    if (result.aiCommand === 'active-slice' && result.aiSecondaryCommand && result.aiSecondaryCommand !== 'status' && result.aiSecondaryCommand !== 'reconcile') {
+      throw new Error(formatError(`unsupported ai active-slice subcommand: ${result.aiSecondaryCommand}. Supported tasks: status, reconcile`));
     }
     if (positional.length > 0) {
       throw new Error(formatError('ai does not accept extra positional arguments'));
@@ -2364,7 +2379,7 @@ async function run(argv) {
 
   if (args.mode === 'ai') {
     if (!args.aiCommand) {
-      throw new Error(formatError('missing ai subcommand. Use: npx create-quiver ai onboard | prepare-context | run | status | resume | inspect | export | specs | slices | trace | plan | revise | review-plan | approve | approvals | agent | prompt-slice | execute-slice | execute-plan | doctor | pr'));
+      throw new Error(formatError('missing ai subcommand. Use: npx create-quiver ai onboard | prepare-context | run | active-slice | status | resume | inspect | export | specs | slices | trace | plan | revise | repair-plan | review-plan | approve | approvals | agent | prompt-slice | execute-slice | execute-plan | doctor | pr'));
     }
 
     if (args.aiCommand === 'run') {
@@ -2373,6 +2388,14 @@ async function run(argv) {
         input: args.aiInput || undefined,
         runId: args.aiRunId || undefined,
         specSlug: args.specSlug || undefined,
+      });
+      return;
+    }
+
+    if (args.aiCommand === 'active-slice') {
+      runAiActiveSlice(process.cwd(), {
+        command: args.aiSecondaryCommand || 'status',
+        dryRun: args.dryRun,
       });
       return;
     }
@@ -2494,6 +2517,21 @@ async function run(argv) {
       return;
     }
 
+    if (args.aiCommand === 'repair-plan') {
+      await runAiRepairPlan(process.cwd(), {
+        context: args.aiContext || undefined,
+        dryRun: args.dryRun,
+        input: args.aiInput || undefined,
+        printPrompt: args.aiPrintPrompt,
+        provider: args.aiProvider,
+        providerExplicit: args.aiProviderExplicit,
+        role: args.aiRole,
+        runId: args.aiRunId || undefined,
+        timeout: args.aiTimeout,
+      });
+      return;
+    }
+
     if (args.aiCommand === 'revise') {
       await runAiRevise(process.cwd(), {
         context: args.aiContext || undefined,
@@ -2590,7 +2628,7 @@ async function run(argv) {
       return;
     }
 
-    throw new Error(formatError(`unsupported ai subcommand: ${args.aiCommand}. Supported tasks: onboard, prepare-context, run, status, resume, inspect, export, specs, slices, trace, plan, revise, review-plan, approve, approvals, agent, prompt-slice, execute-slice, execute-plan, doctor, pr`));
+    throw new Error(formatError(`unsupported ai subcommand: ${args.aiCommand}. Supported tasks: onboard, prepare-context, run, active-slice, status, resume, inspect, export, specs, slices, trace, plan, revise, repair-plan, review-plan, approve, approvals, agent, prompt-slice, execute-slice, execute-plan, doctor, pr`));
   }
 
   if (args.mode === 'graph') {

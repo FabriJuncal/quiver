@@ -147,6 +147,35 @@ Use this guide when a first-run bootstrap or gate check fails. The recovery path
 3. Use `--provider codex`, `--provider claude`, or `--provider gemini` explicitly if your default is unclear.
 4. Re-run the command from a clean worktree when using `ai execute-slice`.
 
+## Plan Review Blocks Approval
+
+### Symptom
+
+- `ai approve --phase technical-plan` says the plan review blocks approval
+- `ai approvals` shows `Approval recommendation: revise`
+
+### Recovery
+
+1. Read `.quiver/approvals/plan-review/review.md` and the `required_fixes` in `.quiver/approvals/plan-review/meta.json`.
+2. Create a revised technical-plan draft with `npx create-quiver ai revise --phase technical-plan --input <feedback.md> --dry-run`.
+3. Run `npx create-quiver ai review-plan --dry-run`, then `npx create-quiver ai review-plan` after inspecting the prompt.
+4. Approve only when the review recommendation is `approve` or `approve-with-risk`.
+
+## Active Slice State Conflict
+
+### Symptom
+
+- `ai inspect` reports an active-slice blocker
+- `docs/ai/ACTIVE_SLICE.md` and `ACTIVE_SLICES.md` point to different slices
+- The current active slice was already completed but local active-state files still exist
+
+### Recovery
+
+1. Run `npx create-quiver ai active-slice reconcile --dry-run`.
+2. If the decision is `preserve`, continue with the suggested next command.
+3. If the decision is `close` or `replace`, review the planned file changes before changing local active-state files.
+4. If the decision is `blocked`, fix the missing, ambiguous, or conflicting slice reference before assigning more executor work.
+
 ## GitHub PR Preflight Failure
 
 ### Symptom

@@ -1,0 +1,98 @@
+{
+  "slice_id": "slice-06-backward-compatibility-docs-and-release-readiness",
+  "ticket": "QUIVER-28-06",
+  "type": "docs",
+  "title": "Backward compatibility, docs, and release readiness",
+  "objective": "Close v28 with compatibility validation, documentation synchronization, smoke tests, and package/tarball readiness evidence.",
+  "description": "Runs after all implementation slices to ensure the final behavior is documented, backward compatible, and validated from both source and packaged artifacts.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v28-compat-docs-release-readiness",
+    "branch_name": "feature/QUIVER-28-06-v28-compat-docs-release-readiness"
+  },
+  "files": [
+    "README.md",
+    "README_FOR_AI.md",
+    "ROADMAP.md",
+    "CHANGELOG.md",
+    ".npmignore",
+    "docs/COMMANDS.md.template",
+    "docs/WORKFLOW.md.template",
+    "docs/TROUBLESHOOTING.md.template",
+    "scripts/ci/**",
+    "tests/commands/**",
+    "tests/lib/**",
+    "specs/quiver-v28-pixel-quiver-feedback-reconciliation/**"
+  ],
+  "expected_read_paths": [
+    "README.md",
+    "README_FOR_AI.md",
+    "ROADMAP.md",
+    "CHANGELOG.md",
+    "package.json",
+    "scripts/package-quiver.sh",
+    "scripts/ci/**",
+    "tests/**",
+    "specs/quiver-v28-pixel-quiver-feedback-reconciliation/**"
+  ],
+  "allowed_write_paths": [
+    "README.md",
+    "README_FOR_AI.md",
+    "ROADMAP.md",
+    "CHANGELOG.md",
+    ".npmignore",
+    "docs/COMMANDS.md.template",
+    "docs/WORKFLOW.md.template",
+    "docs/TROUBLESHOOTING.md.template",
+    "scripts/ci/**",
+    "tests/commands/**",
+    "tests/lib/**",
+    "specs/quiver-v28-pixel-quiver-feedback-reconciliation/**"
+  ],
+  "depends_on": [
+    "slice-01-ai-run-state-approvals-and-clean-output",
+    "slice-02-structured-technical-plan-contract-and-repair-flow",
+    "slice-03-active-slice-reconciliation-and-ai-inspect",
+    "slice-04-spec-validation-scope-and-worktree-reliability",
+    "slice-05-review-plan-closure-and-agent-dx"
+  ],
+  "parallel_safe": "no",
+  "parallel_safe_reason": "Final closure slice depends on every implementation slice and updates shared docs/tests.",
+  "must": [
+    "Run backward compatibility tests for older .quiver states.",
+    "Run source tests and package/tarball smoke where available.",
+    "Update source-of-truth docs without claiming npm publication.",
+    "Complete final coverage matrix with final statuses.",
+    "Do not publish npm."
+  ],
+  "not_included": [
+    "npm publish.",
+    "PR creation.",
+    "New feature behavior outside documented v28 scope."
+  ],
+  "acceptance": [
+    "Final coverage matrix has a final status and evidence for every finding.",
+    "Docs and help do not contradict implemented behavior.",
+    "Smoke tests pass from source and packaged artifact where available.",
+    "No npm publication is claimed or performed.",
+    "Release readiness risks are documented."
+  ],
+  "tests": [
+    "node --test tests/**/*.test.js",
+    "npm run smoke:doctor-fixtures",
+    "npm run smoke:guided-workflow",
+    "npm run smoke:create-quiver",
+    "npm run package:quiver",
+    "git diff --check",
+    "npx create-quiver spec validate specs/quiver-v28-pixel-quiver-feedback-reconciliation"
+  ],
+  "validation_hints": [
+    "Use packaged tarball smoke before claiming release readiness.",
+    "Do not modify package version unless explicitly authorized."
+  ],
+  "estimated_hours": 6,
+  "actual_hours": 6,
+  "status": "completed",
+  "completed_at": "2026-05-25T22:25:05Z"
+}

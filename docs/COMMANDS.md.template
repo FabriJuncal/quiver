@@ -30,6 +30,7 @@ This document is the canonical command reference for the orchestration roadmap.
 | `npx create-quiver ai inspect` | Shows actionable lifecycle state for specs, slices, runs, agents, layout, and next commands | macOS, Linux, Windows | v0.13 | `npx create-quiver ai inspect` |
 | `npx create-quiver ai export --format json` | Emits machine-readable specs, slices, runs, agents, dependencies, blockers, and migration state | macOS, Linux, Windows | v0.13 | `npx create-quiver ai export --format json` |
 | `npx create-quiver ai export --format markdown` | Emits readable Markdown lifecycle state for PRs or docs | macOS, Linux, Windows | v0.13 | `npx create-quiver ai export --format markdown` |
+| `npx create-quiver ai active-slice reconcile --dry-run` | Reports active-slice state from supported local sources and previews preserve, close, replace, or blocked reconciliation decisions without writing files | macOS, Linux, Windows | next | `npx create-quiver ai active-slice reconcile --dry-run` |
 | `npx create-quiver ai specs list` | Lists specs with state, progress, slice counts, and paths | macOS, Linux, Windows | v0.13 | `npx create-quiver ai specs list` |
 | `npx create-quiver ai slices list` | Lists slices with state, progress, dependencies, and blockers | macOS, Linux, Windows | v0.13 | `npx create-quiver ai slices list --json` |
 | `npx create-quiver ai trace report` | Reports AI runs, execution waves, and migration guidance | macOS, Linux, Windows | v0.13 | `npx create-quiver ai trace report` |
@@ -124,8 +125,9 @@ This document is the canonical command reference for the orchestration roadmap.
 - `quiver:ai:agent` stores provider/model labels under `.quiver/agents/profiles.json`; credentials stay in the provider CLI or OS credential store.
 - `quiver:ai:inspect`, `quiver:ai:specs`, `quiver:ai:slices`, and `quiver:ai:trace` are read-only inspection surfaces for humans and agents.
 - `quiver:ai:export -- --format json` is the dashboard/agent-friendly state contract; `--format markdown` is the PR/docs-friendly version.
-- Planner drafts are versioned under `.quiver/approvals/<phase>/drafts/`; use `quiver:ai:review-plan -- --dry-run` before approving a technical-plan draft, then `quiver:ai:approve -- --phase technical-plan --version 1` to approve the reviewed version.
+- Planner drafts are versioned under `.quiver/approvals/<phase>/drafts/`; use `quiver:ai:review-plan -- --dry-run` before approving a technical-plan draft, then `quiver:ai:approve -- --phase technical-plan --version 1` to approve the reviewed version. Plan reviews store structured recommendations: `approve`, `approve-with-risk`, or `revise`.
 - `quiver:ai:prompt-slice -- --dry-run` prints a paste-ready manual executor prompt and does not call a provider.
+- For commands pasted into another AI agent, prefer a non-interactive pinned form such as `npx --yes create-quiver@<version> ai prompt-slice --slice specs/<spec>/slices/<slice>/slice.json --dry-run`.
 - `quiver:evidence -- run -- <command>` preserves the wrapped command exit code. Redaction is best effort; avoid commands that intentionally print secrets.
 - `demo create spec-viewer` is optional and static; it must stay outside default `init`.
 - `quiver:spec:start -- --dry-run specs/<spec>` previews the spec worktree path and branch without creating a worktree.

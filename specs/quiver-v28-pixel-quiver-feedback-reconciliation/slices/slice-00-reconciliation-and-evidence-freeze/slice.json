@@ -1,0 +1,71 @@
+{
+  "slice_id": "slice-00-reconciliation-and-evidence-freeze",
+  "ticket": "QUIVER-28-00",
+  "type": "docs",
+  "title": "Reconciliation and evidence freeze",
+  "objective": "Freeze Pixel Quiver evidence, reconcile every supplied finding against v27, and produce the final implementation matrix before code changes.",
+  "description": "This mandatory documentary slice prevents duplicate fixes by classifying every QP, QIS, and framework improvement as resolved, partial, pending, regression, duplicate, or out of scope with evidence.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v28-reconciliation-evidence-freeze",
+    "branch_name": "feature/QUIVER-28-00-v28-reconciliation-evidence-freeze"
+  },
+  "files": [
+    "specs/quiver-v28-pixel-quiver-feedback-reconciliation/**",
+    "README_FOR_AI.md",
+    "ROADMAP.md",
+    "CHANGELOG.md"
+  ],
+  "expected_read_paths": [
+    "README_FOR_AI.md",
+    "ROADMAP.md",
+    "BACKLOG.md",
+    "CHANGELOG.md",
+    "specs/quiver-v27-reliability-ai-workflow-hardening/**",
+    "src/create-quiver/**",
+    "tests/**"
+  ],
+  "allowed_write_paths": [
+    "specs/quiver-v28-pixel-quiver-feedback-reconciliation/**",
+    "README_FOR_AI.md",
+    "ROADMAP.md",
+    "CHANGELOG.md"
+  ],
+  "depends_on": [],
+  "parallel_safe": "no",
+  "parallel_safe_reason": "slice-00 is the mandatory foundation and controls what later slices are allowed to fix.",
+  "must": [
+    "Freeze input evidence with paths, timestamps or hashes, and source notes.",
+    "Compare Pixel Quiver findings against v27 implementation, docs, and tests.",
+    "Produce the final coverage matrix with one final status per finding.",
+    "Update docs only if needed to reflect planned state.",
+    "Do not modify product code."
+  ],
+  "not_included": [
+    "CLI behavior changes.",
+    "New tests beyond documentation validation.",
+    "npm publishing.",
+    "PR creation."
+  ],
+  "acceptance": [
+    "Every supplied QP/QIS/framework improvement is classified with evidence.",
+    "Every pending or partial finding is mapped to a primary implementation slice.",
+    "Every already-resolved finding has a test, code, or doc reference.",
+    "No implementation slice starts before this matrix is complete.",
+    "No product code is modified."
+  ],
+  "tests": [
+    "git diff --check",
+    "find specs/quiver-v28-pixel-quiver-feedback-reconciliation -name \"slice.json\" -print -exec node -e \"JSON.parse(require('fs').readFileSync(process.argv[1], 'utf8'))\" {} \\;",
+    "npx create-quiver spec validate specs/quiver-v28-pixel-quiver-feedback-reconciliation"
+  ],
+  "validation_hints": [
+    "Do not copy unsanitized absolute paths into fixtures.",
+    "Treat v27 claims as hypotheses until verified against code and tests."
+  ],
+  "estimated_hours": 4,
+  "actual_hours": 4,
+  "completed_at": "2026-05-25T15:19:49Z",
+  "status": "completed"
+}
