@@ -45,6 +45,40 @@ function execAiSubcommand(repoRoot, args = [], env = {}) {
   });
 }
 
+async function captureProcessOutput(fn) {
+  const originalStdoutWrite = process.stdout.write;
+  const originalStderrWrite = process.stderr.write;
+  let stdout = '';
+  let stderr = '';
+
+  process.stdout.write = (chunk, encoding, callback) => {
+    stdout += String(chunk);
+    if (typeof encoding === 'function') {
+      encoding();
+    } else if (typeof callback === 'function') {
+      callback();
+    }
+    return true;
+  };
+  process.stderr.write = (chunk, encoding, callback) => {
+    stderr += String(chunk);
+    if (typeof encoding === 'function') {
+      encoding();
+    } else if (typeof callback === 'function') {
+      callback();
+    }
+    return true;
+  };
+
+  try {
+    const result = await fn();
+    return { result, stdout, stderr };
+  } finally {
+    process.stdout.write = originalStdoutWrite;
+    process.stderr.write = originalStderrWrite;
+  }
+}
+
 test('ai plan CLI dry-run defaults to acceptance phase and planning context', () => {
   const repo = makeRepo({
     'requirements.md': '# requirements\n- Ship a gated planner flow.',
@@ -214,6 +248,43 @@ test('ai plan stores clean drafts and separates redacted raw provider logs', asy
     assert.ok(raw.stderr.includes('token=[REDACTED]'));
     assert.equal(raw.stderr.includes(repo.root), false);
     assert.ok(raw.stderr.includes('[PROJECT_ROOT]'));
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('ai plan prints clean provider output without raw prompt echo or stderr logs', async () => {
+  const repo = makeRepo({
+    'requirements.md': '# requirements\n- Keep console output clean.',
+  });
+
+  try {
+    const captured = await captureProcessOutput(() => runPlan(repo.root, {
+      input: 'requirements.md',
+      phase: 'acceptance',
+      runProviderFn: async (provider, options) => ({
+        ok: true,
+        dryRun: false,
+        provider,
+        command: 'codex',
+        args: ['exec'],
+        cwd: repo.root,
+        timeoutMs: 0,
+        promptTransport: { mode: 'stdin' },
+        exitCode: 0,
+        stdout: `${options.prompt}\nINFO provider started\n# Acceptance\n- Clean criterion.\n`,
+        stderr: `debug token=abc123 cwd=${repo.root}\n`,
+        error: null,
+        preflight: { ok: true },
+      }),
+    }));
+
+    assert.equal(captured.stdout, '# Acceptance\n- Clean criterion.\n');
+    assert.equal(captured.stderr, '');
+    assert.equal(captured.stdout.includes('Keep console output clean'), false);
+    assert.equal(captured.stdout.includes('provider started'), false);
+    assert.equal(captured.stdout.includes('abc123'), false);
+    assert.equal(captured.stdout.includes(repo.root), false);
   } finally {
     repo.cleanup();
   }

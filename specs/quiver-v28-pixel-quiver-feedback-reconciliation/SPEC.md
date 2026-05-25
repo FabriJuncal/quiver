@@ -1,7 +1,7 @@
 # Quiver v28 - Pixel Quiver Feedback Reconciliation
 
 **Date:** 2026-05-25
-**Status:** slice-00 completed; implementation ready
+**Status:** Wave 1 partially complete
 **Source:** Pixel Quiver dogfooding follow-up after `create-quiver@0.13.0`
 
 Slice numbering resets here. This spec intentionally starts at `slice-00`.
@@ -102,11 +102,11 @@ Repository source-of-truth files:
 | Slice | Title | Status | Dependencies |
 |---|---|---|---|
 | slice-00 | Reconciliation and evidence freeze | completed | none |
-| slice-01 | AI run state, approvals, and clean output | ready | slice-00 |
-| slice-02 | Structured technical plan contract and repair flow | draft | slice-00, slice-01 |
-| slice-03 | Active slice reconciliation and AI inspect | draft | slice-00, slice-01 |
+| slice-01 | AI run state, approvals, and clean output | completed | slice-00 |
+| slice-02 | Structured technical plan contract and repair flow | ready | slice-00, slice-01 |
+| slice-03 | Active slice reconciliation and AI inspect | ready | slice-00, slice-01 |
 | slice-04 | Spec validation, scope, and worktree reliability | ready | slice-00 |
-| slice-05 | Review-plan closure and agent DX | draft | slice-00, slice-01 |
+| slice-05 | Review-plan closure and agent DX | ready | slice-00, slice-01 |
 | slice-06 | Backward compatibility, docs, and release readiness | draft | slice-01, slice-02, slice-03, slice-04, slice-05 |
 
 ## Validation Strategy

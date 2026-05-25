@@ -88,5 +88,5 @@
     "Ensure --json output stays machine-parseable if present."
   ],
   "estimated_hours": 8,
-  "status": "draft"
+  "status": "ready"
 }

@@ -32,12 +32,12 @@ Status meanings used during this spec:
 | QP-007 | verified-resolved | slice-00 | v27 matrix maps agent docs gaps to slice-07/slice-08; generated templates include current docs instead of missing `docs/ai/QUICK.md` style paths. | Do not reimplement. |
 | QP-008 | verified-resolved | slice-00 | v27 status is 100%; v27 evidence says source-of-truth docs were synchronized; `README_FOR_AI.md` documents v27 coverage. | Do not reimplement. |
 | QP-009 | verified-resolved | slice-00 | `src/create-quiver/lib/ai/artifacts.js`; `tests/commands/ai-plan.test.js`; v27 slice-04 closure covers revise compaction. | Do not reimplement. |
-| QP-010 | partial | slice-01 | Clean draft/raw log persistence exists in `src/create-quiver/lib/ai/artifacts.js`, but `runReviewPlan`/`runPlan` still print provider output before saving clean artifacts. | Make console output clean while preserving raw logs separately. |
+| QP-010 | fixed | slice-01 | `src/create-quiver/commands/ai.js`; `tests/commands/ai-plan.test.js` covers clean console output without prompt echo/stderr logs while raw artifacts remain persisted. | Completed in slice-01. |
 | QP-011 | partial | slice-02 | `tests/commands/spec-create.test.js` proves safe failure for missing structured slices; Pixel still needs planner-generated `spec.slices[]`. | Require/generate structured technical-plan contract before approval/spec create. |
 | QP-012 | verified-resolved | slice-00 | `tests/lib/ai-spec-generator.test.js` covers fail-before-writing and no build remnants. | Do not reimplement. |
-| QP-013 | pending | slice-01 | `src/create-quiver/lib/ai/run-state.js` selects the latest non-closed run; no explicit archive/replace/continue guard for a new scope. | Add active/historical/stale run management and clear next actions. |
-| QP-014 | pending | slice-01 | Pixel evidence shows console noise; current code still calls `writeProviderOutput(result)` before clean artifact handling. | Separate useful CLI output from provider transcript/logs. |
-| QP-015 | pending | slice-01 | Global approvals in `.quiver/approvals/*` coexist with run-scoped `.quiver/runs/*/approvals.json`; output is not clearly active-only. | Group approvals by active, historical, stale, and orphaned run state. |
+| QP-013 | fixed | slice-01 | `ai status` reports multiple open runs; `ai run close --run <id>` archives stale runs without deleting evidence; covered by `tests/commands/ai-run-state.test.js`. | Completed in slice-01. |
+| QP-014 | fixed | slice-01 | Provider-backed `ai onboard`, `ai plan`, and `ai review-plan` print clean output on success; raw output is only printed on provider failure. Covered by focused `ai plan` test. | Completed in slice-01. |
+| QP-015 | fixed | slice-01 | `ai approvals` now separates run-scoped approvals, active run, global planner approvals, and run relation (`active`, `historical`, `orphaned`, `none`). | Completed in slice-01. |
 | QP-016 | pending | slice-03 | Current lifecycle writes `docs/ai/ACTIVE_SLICE.md` and root `ACTIVE_SLICES.md`; no dry-run reconciliation command exists. | Add multi-source active-slice reconciliation. |
 | QP-017 | partial | slice-05 | `readPlanReview` tracks stale/unapproved/reviewed, but review output lacks structured approval recommendation. | Add review metadata for blocking vs optional issues. |
 | QP-018 | partial | slice-05 | `ai approve` blocks stale reviews; error is not recovery-rich enough for the observed stale-review loop. | Add clearer recovery and recommended next command. |
@@ -68,12 +68,12 @@ Status meanings used during this spec:
 | QIS-010 | verified-resolved | slice-00 | v27 agent docs/template cleanup. | Do not reimplement. |
 | QIS-011 | verified-resolved | slice-00 | `tests/commands/ai-agent.test.js` covers `ai agent set --dry-run`. | Do not reimplement. |
 | QIS-012 | verified-resolved | slice-00 | v27 artifact compaction tests and `src/create-quiver/lib/ai/artifacts.js`. | Do not reimplement. |
-| QIS-013 | partial | slice-01 | Clean/raw persistence exists; console output still needs cleanup. | Complete clean output behavior. |
+| QIS-013 | fixed | slice-01 | Clean/raw persistence remains, and console output no longer emits provider transcript/logs on successful planner commands. | Completed in slice-01. |
 | QIS-014 | partial | slice-02 | `spec create` parses structured slices and fails safely; planner contract is not guaranteed before approval. | Enforce structured plans in planner flow. |
 | QIS-015 | partial | slice-02 | Slug generation exists in `spec-templates.js`; default titles/slug collisions remain tied to structured spec generation. | Add focused regressions while changing spec generator. |
-| QIS-016 | pending | slice-01 | Active run replacement/archive/continue UX is missing. | Add explicit run management. |
-| QIS-017 | pending | slice-01 | Provider logs still print during AI commands. | Clean CLI output by default. |
-| QIS-018 | pending | slice-01 | Approval status is global plus run-scoped; no active-only grouping found. | Add active-only/grouped approvals. |
+| QIS-016 | fixed | slice-01 | `ai status` exposes other open runs and `ai run close --run <id>` provides a safe archive path. | Completed in slice-01. |
+| QIS-017 | fixed | slice-01 | Successful provider-backed planner commands print clean output only; raw logs remain stored/redacted. | Completed in slice-01. |
+| QIS-018 | fixed | slice-01 | `ai approvals` groups active/historical run-scoped approvals separately from global approval files. | Completed in slice-01. |
 | QIS-019 | pending | slice-03 | No active-slice reconciliation command found. | Add protocol and CLI. |
 | QIS-020 | pending | slice-05 | Review/revise status lacks structured closure state. | Add state summary and next action. |
 | QIS-021 | pending | slice-05 | No structured approvability metadata found. | Add machine-readable review result. |
@@ -97,8 +97,8 @@ Status meanings used during this spec:
 | Standard names for improvement files | documented-risk | slice-06 | Pixel used several similar feedback files. | Document accepted feedback filenames and aliases. |
 | Graph conflicts summary | out-of-scope-with-reason | slice-06 | Useful but not required for the AI lifecycle failures in v28. | Record as future graph UX work. |
 | Visual validation command | out-of-scope-with-reason | slice-06 | Valuable for frontend projects, but would require browser tooling and a larger product decision. | Record as future visual evidence feature. |
-| Active run management | pending | slice-01 | Matches QP-013/QIS-016. | Implement in run-state slice. |
-| Clean AI output | pending | slice-01 | Matches QP-014/QIS-017. | Implement in run-state/output slice. |
+| Active run management | fixed | slice-01 | `ai status` surfaces multiple open runs; `ai run close --run <id>` closes stale runs while preserving `.quiver/runs/<id>`. | Completed in slice-01. |
+| Clean AI output | fixed | slice-01 | Successful provider-backed planner commands now print clean extracted output instead of raw stdout/stderr. | Completed in slice-01. |
 | Active slice reconciliation | pending | slice-03 | Matches QP-016/QP-020/QIS-019/QIS-022/QIS-025. | Implement in active-slice slice. |
 | Structured plan/spec create | partial | slice-02 | Matches QP-023/QIS-026. | Implement contract/repair slice. |
 | Worktree and validation hardening | partial | slice-04 | Matches QP-025 to QP-027 and QIS-028 to QIS-030. | Implement validation/worktree slice. |

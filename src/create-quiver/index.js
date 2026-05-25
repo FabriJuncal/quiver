@@ -159,7 +159,7 @@ const COMMAND_HELP_GROUPS = [
   {
     title: 'AI lifecycle',
     commands: [
-      ['ai run create', 'Create a durable AI lifecycle run from a requirements file.'],
+      ['ai run create|close', 'Create a durable AI lifecycle run or close/archive a completed or stale run without deleting evidence.'],
       ['ai status', 'Show current AI lifecycle phase, approved versions, blockers, and next command.'],
       ['ai resume', 'Resume guidance from the last valid lifecycle phase without chat memory.'],
       ['ai onboard', 'Run or print the planner onboarding prompt with a token-aware context pack.'],
@@ -243,6 +243,7 @@ function printUsage() {
   npx create-quiver plan [options]
   npx create-quiver ai <task> [options]
   npx create-quiver ai run create --input <requirements.md>
+  npx create-quiver ai run close --run <id>
   npx create-quiver ai status [options]
   npx create-quiver ai resume [options]
   npx create-quiver ai inspect [options]

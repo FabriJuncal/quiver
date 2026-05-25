@@ -77,5 +77,7 @@
     "Keep backward compatibility for existing .quiver/runs."
   ],
   "estimated_hours": 8,
-  "status": "ready"
+  "actual_hours": 8,
+  "completed_at": "2026-05-25T15:19:49Z",
+  "status": "completed"
 }

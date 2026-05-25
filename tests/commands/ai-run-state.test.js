@@ -5,6 +5,16 @@ const os = require('node:os');
 const path = require('node:path');
 const test = require('node:test');
 
+const {
+  createAiRun,
+  recordAiRunApproval,
+  updateAiRunPhase,
+} = require('../../src/create-quiver/lib/ai/run-state');
+const {
+  approvePlannerPhase,
+  savePlannerDraft,
+} = require('../../src/create-quiver/lib/approvals');
+
 const BIN_PATH = path.resolve(__dirname, '../../bin/create-quiver.js');
 
 function makeRepo() {
@@ -43,6 +53,88 @@ test('ai run create creates persistent run state and ai status can inspect it', 
     const resume = execAi(repo.root, ['resume']);
     assert.match(resume, /AI run resume/);
     assert.match(resume, /Current phase: created/);
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('ai status makes multiple open runs visible', () => {
+  const repo = makeRepo();
+
+  try {
+    execAi(repo.root, ['run', 'create', '--input', 'requirements.md', '--run', 'run-old']);
+    const created = execAi(repo.root, ['run', 'create', '--input', 'requirements.md', '--run', 'run-new']);
+
+    assert.match(created, /Run: run-new/);
+    assert.match(created, /Open runs: 2/);
+    assert.match(created, /Other open runs:/);
+    assert.match(created, /run-old: created \(active\)/);
+
+    const status = execAi(repo.root, ['status']);
+    assert.match(status, /Run: run-new/);
+    assert.match(status, /Open runs: 2/);
+    assert.match(status, /run-old: created \(active\)/);
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('ai run close archives a selected run without deleting evidence', () => {
+  const repo = makeRepo();
+
+  try {
+    execAi(repo.root, ['run', 'create', '--input', 'requirements.md', '--run', 'run-to-close']);
+    const output = execAi(repo.root, ['run', 'close', '--run', 'run-to-close']);
+
+    assert.match(output, /AI run closed/);
+    assert.match(output, /Run: run-to-close/);
+    assert.match(output, /Status: closed/);
+    assert.match(output, /Phase: closed/);
+    assert.equal(fs.existsSync(path.join(repo.root, '.quiver/runs/run-to-close/state.json')), true);
+
+    const status = execAi(repo.root, ['status']);
+    assert.match(status, /Status: no active run/);
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('ai approvals separates run-scoped approvals from global planner approvals', () => {
+  const repo = makeRepo();
+
+  try {
+    savePlannerDraft(repo.root, 'acceptance', 'requirements.md', '# Acceptance\n');
+    const approved = approvePlannerPhase(repo.root, 'acceptance', '', '', { version: 1 });
+
+    createAiRun(repo.root, {
+      input: 'requirements.md',
+      runId: 'run-old',
+    });
+    recordAiRunApproval(repo.root, 'run-old', {
+      phase: 'acceptance',
+      artifact: path.relative(repo.root, approved.filePath).split(path.sep).join('/'),
+      version: 1,
+      at: '2026-05-25T00:00:00.000Z',
+    });
+    updateAiRunPhase(repo.root, 'run-old', 'closed', {
+      command: 'test close',
+      now: new Date('2026-05-25T00:01:00.000Z'),
+    });
+    createAiRun(repo.root, {
+      input: 'requirements.md',
+      runId: 'run-active',
+    });
+
+    const output = execAi(repo.root, ['approvals']);
+
+    assert.match(output, /Run-scoped approvals/);
+    assert.match(output, /Active run: run-active/);
+    assert.match(output, /Run: run-active \(active, phase: created, status: active\)/);
+    assert.match(output, /Run: run-old \(historical, phase: closed, status: closed\)/);
+    assert.match(output, /- acceptance v1: \.quiver\/approvals\/acceptance\/approved\.md/);
+    assert.match(output, /Global planner approvals/);
+    assert.match(output, /Phase: acceptance/);
+    assert.match(output, /Run relation: historical/);
   } finally {
     repo.cleanup();
   }

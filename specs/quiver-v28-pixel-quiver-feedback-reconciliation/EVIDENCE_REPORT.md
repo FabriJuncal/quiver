@@ -50,7 +50,6 @@ Detected IDs:
 
 | Slice | Required evidence |
 |---|---|
-| slice-01 | Tests for active/historical/stale/orphaned runs and approvals; tests proving clean console output while raw logs remain persisted/redacted. |
 | slice-02 | Tests for valid, invalid, and missing `spec.slices[]`; no-write dry-run/failure coverage; repair-flow tests requiring review plus approval. |
 | slice-03 | Tests for `ACTIVE_SLICE.md` plus `ACTIVE_SLICES.md` conflicts; dry-run reconciliation; `ai inspect` fallback when specs already exist. |
 | slice-04 | Tests for `spec validate` vs `check-slice --local`; stale/missing worktree status; dirty checkout diagnostics; scope/path behavior. |
@@ -73,3 +72,22 @@ Ready slices reported after `slice-00`:
 
 - `slice-01-ai-run-state-approvals-and-clean-output`
 - `slice-04-spec-validation-scope-and-worktree-reliability`
+
+## slice-01-ai-run-state-approvals-and-clean-output
+
+Completed on 2026-05-25.
+
+### Implementation Evidence
+
+- Updated `src/create-quiver/commands/ai.js` so successful provider-backed planner commands print clean extracted output instead of raw stdout/stderr.
+- Preserved raw provider artifact persistence and redaction for `ai plan` and `ai review-plan`.
+- Updated `ai approvals` output to separate run-scoped approvals, active run, global planner approvals, and run relation.
+- Added `ai run close --run <id>` to close/archive stale runs without deleting `.quiver/runs/<id>` evidence.
+- Updated `src/create-quiver/lib/ai/run-state.js` so `ai status` reports the number of open runs and lists other open runs with next safe commands.
+
+### Validation Evidence
+
+Passed:
+
+- `node --test tests/commands/ai-run-state.test.js tests/commands/ai-plan.test.js tests/commands/ai-export.test.js tests/commands/cli-contract.test.js`
+- `node --test tests/lib/ai-run-state.test.js tests/lib/approvals.test.js tests/lib/ai-export-state.test.js`

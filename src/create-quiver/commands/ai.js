@@ -38,6 +38,7 @@ const {
   ensureAiRun,
   formatAiRunResume,
   formatAiRunStatus,
+  listAiRuns,
   recordAiRunApproval,
   resolveAiRun,
   updateAiRunPhase,
@@ -305,6 +306,14 @@ function writeProviderOutput(result) {
   }
 }
 
+function writeCleanProviderOutput(clean) {
+  const output = String(clean?.cleanOutput || '');
+  if (!output) {
+    return;
+  }
+  process.stdout.write(output.endsWith('\n') ? output : `${output}\n`);
+}
+
 function normalizeText(value) {
   return String(value || '').replace(/\r\n/g, '\n');
 }
@@ -548,10 +557,96 @@ function formatApprovalDryRunResult({ phase, input, version }) {
   return `${lines.join('\n')}\n`;
 }
 
+function readRunApprovals(repoRoot, run) {
+  if (!run?.approvals_path) {
+    return [];
+  }
+  const filePath = path.resolve(repoRoot, run.approvals_path);
+  if (!fs.existsSync(filePath)) {
+    return [];
+  }
+  try {
+    const parsed = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+    return Array.isArray(parsed.approvals) ? parsed.approvals : [];
+  } catch {
+    return [];
+  }
+}
+
+function collectRunApprovalRows(repoRoot) {
+  const activeRun = resolveAiRun(repoRoot, '');
+  return listAiRuns(repoRoot)
+    .flatMap((run) => readRunApprovals(repoRoot, run).map((approval) => ({
+      run,
+      approval,
+      relation: activeRun && run.run_id === activeRun.run_id
+        ? 'active'
+        : run.status === 'closed'
+          ? 'historical'
+          : 'other-open',
+    })));
+}
+
+function approvalArtifactForRelation(report) {
+  return report?.approved?.path || report?.draft?.path || '';
+}
+
+function classifyGlobalApprovalRelation(report, runApprovalRows) {
+  const artifact = approvalArtifactForRelation(report);
+  if (!artifact || report.status === 'missing') {
+    return 'none';
+  }
+  const matches = runApprovalRows.filter((row) => row.approval?.artifact === artifact);
+  if (matches.some((row) => row.relation === 'active')) {
+    return 'active';
+  }
+  if (matches.length > 0) {
+    return 'historical';
+  }
+  return 'orphaned';
+}
+
+function formatRunScopedApprovals(repoRoot, runApprovalRows) {
+  const runs = listAiRuns(repoRoot);
+  const activeRun = resolveAiRun(repoRoot, '');
+  const lines = [
+    'Run-scoped approvals',
+    `Active run: ${activeRun ? activeRun.run_id : '(none)'}`,
+  ];
+
+  if (runs.length === 0) {
+    lines.push('- no AI runs found');
+    return `${lines.join('\n')}\n`;
+  }
+
+  for (const run of runs.slice().reverse()) {
+    const relation = activeRun && run.run_id === activeRun.run_id
+      ? 'active'
+      : run.status === 'closed'
+        ? 'historical'
+        : 'other-open';
+    const approvals = runApprovalRows.filter((row) => row.run.run_id === run.run_id);
+    lines.push(`Run: ${run.run_id} (${relation}, phase: ${run.phase}, status: ${run.status})`);
+    if (approvals.length === 0) {
+      lines.push('- no run-scoped approvals');
+      continue;
+    }
+    for (const row of approvals) {
+      const version = row.approval.version ? ` v${row.approval.version}` : '';
+      lines.push(`- ${row.approval.phase || 'unknown'}${version}: ${row.approval.artifact || '(missing artifact)'}`);
+    }
+  }
+
+  return `${lines.join('\n')}\n`;
+}
+
 function formatApprovalStatusReport(repoRoot) {
-  const sections = ['AI approvals status'];
+  const runApprovalRows = collectRunApprovalRows(repoRoot);
+  const sections = ['AI approvals status', formatRunScopedApprovals(repoRoot, runApprovalRows).trimEnd(), 'Global planner approvals'];
   for (const phase of PLANNER_APPROVAL_PHASES) {
-    sections.push(summarizePlannerApproval(repoRoot, phase).trimEnd());
+    const summary = summarizePlannerApproval(repoRoot, phase).trimEnd();
+    const relation = classifyGlobalApprovalRelation(readPhaseApproval(repoRoot, phase), runApprovalRows);
+    sections.push(`${summary}\nRun relation: ${relation}`);
   }
   sections.push(summarizePlanReview(repoRoot).trimEnd());
   return `${sections.join('\n\n')}\n`;
@@ -640,11 +735,13 @@ async function runOnboard(repoRoot, options = {}) {
     throw annotateProviderError(error, 'onboard');
   }
 
-  writeProviderOutput(result);
-
   if (!result.ok) {
+    writeProviderOutput(result);
     throw annotateProviderError(result.error || new Error('provider run failed'), 'onboard');
   }
+
+  const clean = extractCleanProviderOutput(result, { prompt, projectRoot: repoRoot });
+  writeCleanProviderOutput(clean);
 
   return {
     task: 'onboard',
@@ -873,9 +970,8 @@ async function runPlan(repoRoot, options = {}) {
     throw annotateProviderError(error, 'plan', phase);
   }
 
-  writeProviderOutput(result);
-
   if (!result.ok) {
+    writeProviderOutput(result);
     throw annotateProviderError(result.error || new Error('provider run failed'), 'plan', phase);
   }
 
@@ -885,6 +981,7 @@ async function runPlan(repoRoot, options = {}) {
     runId: options.runId,
   });
   const clean = extractCleanProviderOutput(result, { prompt, projectRoot: repoRoot });
+  writeCleanProviderOutput(clean);
   const rawArtifact = writeRawProviderArtifact(repoRoot, lifecycleRun.run_id, `ai-plan-${phase}`, result, {
     metadata: {
       phase,
@@ -1011,9 +1108,8 @@ async function runReviewPlan(repoRoot, options = {}) {
     throw annotateProviderError(error, 'review-plan');
   }
 
-  writeProviderOutput(result);
-
   if (!result.ok) {
+    writeProviderOutput(result);
     throw annotateProviderError(result.error || new Error('provider run failed'), 'review-plan');
   }
 
@@ -1035,6 +1131,7 @@ async function runReviewPlan(repoRoot, options = {}) {
       stripped_prompt_echo: clean.strippedPromptEcho,
     },
   });
+  writeCleanProviderOutput(clean);
   const saved = savePlanReview(repoRoot, {
     contents: clean.cleanOutput,
     inputPath,
@@ -1257,11 +1354,28 @@ function runTraceReport(repoRoot, options = {}) {
 
 function runLifecycleRun(repoRoot, options = {}) {
   const command = String(options.command || '').trim().toLowerCase();
-  if (command !== 'create') {
-    throw new Error(formatError(`unsupported ai run subcommand: ${command}. Supported tasks: create`));
+  if (command !== 'create' && command !== 'close') {
+    throw new Error(formatError(`unsupported ai run subcommand: ${command}. Supported tasks: create, close`));
   }
-  if (!options.input) {
+  if (command === 'create' && !options.input) {
     throw new Error(formatError('ai run create requires --input <requirements.md>'));
+  }
+  if (command === 'close') {
+    const current = resolveAiRun(repoRoot, options.runId || '');
+    if (!current) {
+      throw new Error(formatError('ai run close requires an active run or --run <id>'));
+    }
+    const run = updateAiRunPhase(repoRoot, current.run_id, 'closed', {
+      command: 'ai run close',
+    });
+    const report = `AI run closed\n${formatAiRunStatus(repoRoot, run)}`;
+    process.stdout.write(report);
+    return {
+      task: 'run',
+      command,
+      run,
+      report,
+    };
   }
   const run = createAiRun(repoRoot, {
     command: 'ai run create',
