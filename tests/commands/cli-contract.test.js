@@ -55,6 +55,7 @@ test('help output documents important public commands', () => {
     'graph',
     'next',
     'ai run create',
+    'ai active-slice status|reconcile',
     'ai status',
     'ai resume',
     'ai onboard',

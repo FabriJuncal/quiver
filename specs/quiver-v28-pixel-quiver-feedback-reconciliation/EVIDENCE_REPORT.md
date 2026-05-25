@@ -50,7 +50,6 @@ Detected IDs:
 
 | Slice | Required evidence |
 |---|---|
-| slice-03 | Tests for `ACTIVE_SLICE.md` plus `ACTIVE_SLICES.md` conflicts; dry-run reconciliation; `ai inspect` fallback when specs already exist. |
 | slice-05 | Tests for structured `ai review-plan` metadata; approve-with-risk/revise recommendations; agent-safe commands; GitHub auth/alias guidance. |
 | slice-06 | Full source tests, smoke tests, package/tarball smoke, docs sync, final matrix status, and release-readiness risks. |
 
@@ -127,3 +126,23 @@ Passed:
 - `node --test tests/commands/ai-plan.test.js tests/commands/ai-plan-spec-phase.test.js tests/commands/spec-create.test.js`
 - `node --test tests/commands/ai-review-plan.test.js tests/commands/flow.test.js tests/commands/cli-contract.test.js`
 - `node --test tests/lib/ai-spec-generator.test.js tests/lib/approvals.test.js`
+
+## slice-03-active-slice-reconciliation-and-ai-inspect
+
+Completed on 2026-05-25.
+
+### Implementation Evidence
+
+- Added resolver-backed active-slice source collection for `docs/ai/ACTIVE_SLICE.md` and `ACTIVE_SLICES.md`.
+- Added canonical reconciliation decisions: `preserve`, `close`, `replace`, and `blocked`.
+- Added `ai active-slice status|reconcile` with dry-run-first behavior; live reconcile currently refuses writes.
+- Updated `ai inspect`/lifecycle export so existing specs take precedence over stale `spec create --dry-run` lifecycle guidance.
+- Added active-slice state to lifecycle export summary, dashboard data, blockers, and human inspect output.
+- Hardened `ACTIVE_SLICES.md` table parsing so Markdown separator rows are ignored.
+
+### Validation Evidence
+
+Passed:
+
+- `node --test tests/commands/ai-export.test.js tests/commands/cli-contract.test.js`
+- `node --test tests/lib/project-state-resolver.test.js tests/lib/ai-export-state.test.js`

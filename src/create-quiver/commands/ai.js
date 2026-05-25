@@ -67,6 +67,7 @@ const {
   summarizePlannerApproval,
 } = require('../lib/approvals');
 const { assertPlannerPhaseReady, getPlannerPhaseDetails, normalizePlannerPhase, PlannerPhaseError } = require('../lib/ai/phase-gates');
+const { collectActiveSliceState, resolveProjectState } = require('../lib/project-state-resolver');
 
 const DEFAULT_ONBOARD_PROVIDER = 'codex';
 const DEFAULT_ONBOARD_ROLE = 'planner';
@@ -687,6 +688,54 @@ function formatRepairPlanResult(result, repoRoot) {
     '- npx create-quiver ai review-plan',
     `- npx create-quiver ai approve --phase technical-plan --version ${result.version}`,
   ].join('\n').concat('\n');
+}
+
+function formatActiveSliceReconciliationReport(report, options = {}) {
+  const lines = [
+    'AI active-slice reconciliation',
+    `Mode: ${options.dryRun ? 'dry-run' : 'read-only'}`,
+    `Decision: ${report.reconciliation.decision}`,
+    `Reason: ${report.reconciliation.reason}`,
+    '',
+    'Supported sources:',
+  ];
+
+  for (const source of report.supported_sources) {
+    lines.push(`- ${source.path}: ${source.exists ? 'exists' : 'missing'}`);
+  }
+
+  lines.push('', 'Detected sources:');
+  if (report.sources.length === 0) {
+    lines.push('- none');
+  } else {
+    for (const source of report.sources) {
+      const ref = source.ref || '(unresolved)';
+      const status = source.status ? ` status=${source.status}` : '';
+      const issue = source.issue ? ` issue=${source.issue}` : '';
+      lines.push(`- ${source.source_id}: ${ref}${status}${issue}`);
+    }
+  }
+
+  lines.push('', 'Planned changes:');
+  if (report.reconciliation.planned_changes.length === 0) {
+    lines.push('- none');
+  } else {
+    for (const change of report.reconciliation.planned_changes) {
+      lines.push(`- ${change}`);
+    }
+  }
+
+  lines.push('', 'Risks:');
+  if (report.reconciliation.risks.length === 0) {
+    lines.push('- none');
+  } else {
+    for (const risk of report.reconciliation.risks) {
+      lines.push(`- ${risk}`);
+    }
+  }
+
+  lines.push('', options.dryRun ? 'No files were changed.' : 'This command is read-only; use start-slice or cleanup-slice for intentional writes.');
+  return `${lines.join('\n')}\n`;
 }
 
 function readRunApprovals(repoRoot, run) {
@@ -1625,6 +1674,28 @@ function runTraceReport(repoRoot, options = {}) {
   };
 }
 
+function runActiveSlice(repoRoot, options = {}) {
+  const command = String(options.command || 'status').trim().toLowerCase();
+  if (command !== 'status' && command !== 'reconcile') {
+    throw new Error(formatError(`unsupported ai active-slice subcommand: ${command}. Supported tasks: status, reconcile`));
+  }
+  if (command === 'reconcile' && options.dryRun !== true) {
+    throw new Error(formatError('ai active-slice reconcile is dry-run first. Run `npx create-quiver ai active-slice reconcile --dry-run`.'));
+  }
+
+  const state = resolveProjectState(repoRoot, { allowGraphErrors: true });
+  const report = collectActiveSliceState(repoRoot, { slices: state.graph.nodes });
+  process.stdout.write(formatActiveSliceReconciliationReport(report, {
+    dryRun: options.dryRun === true,
+  }));
+  return {
+    task: 'active-slice',
+    command,
+    dryRun: options.dryRun === true,
+    report,
+  };
+}
+
 function runLifecycleRun(repoRoot, options = {}) {
   const command = String(options.command || '').trim().toLowerCase();
   if (command !== 'create' && command !== 'close') {
@@ -1903,6 +1974,7 @@ module.exports = {
   normalizeTimeout,
   readTextFile,
   runAgent,
+  runActiveSlice,
   runDoctor,
   runExecutePlan,
   runExecuteSlice,

@@ -153,3 +153,48 @@ test('ai export JSON writes parseable JSON to stdout and diagnostics to stderr',
     repo.cleanup();
   }
 });
+
+test('ai active-slice reconcile dry-run reports conflicts without writing files', () => {
+  const repo = makeRepo();
+  writeFile(repo.root, 'docs/ai/ACTIVE_SLICE.md', [
+    '# Active Slice',
+    '',
+    '## Slice ID',
+    'slice-01-dashboard',
+    '',
+    '## Title',
+    'Dashboard',
+    '',
+  ].join('\n'));
+  writeFile(repo.root, 'ACTIVE_SLICES.md', [
+    '| Alias | Spec | Slice | Branch | Estado | Path |',
+    '| --- | --- | --- | --- | --- | --- |',
+    '| foundation | demo | slice-00-foundation | main | completed | /tmp/foundation |',
+    '',
+  ].join('\n'));
+
+  try {
+    const output = execAi(repo.root, ['active-slice', 'reconcile', '--dry-run']);
+
+    assert.match(output, /AI active-slice reconciliation/);
+    assert.match(output, /Mode: dry-run/);
+    assert.match(output, /Decision: blocked/);
+    assert.match(output, /Conflicting refs: demo\/slice-01-dashboard, demo\/slice-00-foundation|Conflicting refs: demo\/slice-00-foundation, demo\/slice-01-dashboard/);
+    assert.match(output, /No files were changed/);
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('ai active-slice reconcile requires dry-run before writes exist', () => {
+  const repo = makeRepo();
+
+  try {
+    assert.throws(
+      () => execAi(repo.root, ['active-slice', 'reconcile']),
+      /ai active-slice reconcile is dry-run first/,
+    );
+  } finally {
+    repo.cleanup();
+  }
+});

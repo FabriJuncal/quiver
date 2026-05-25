@@ -8,6 +8,7 @@ const { collectPlan } = require('../../src/create-quiver/commands/plan');
 const { collectLifecycleExport } = require('../../src/create-quiver/lib/ai/export-state');
 const {
   CANONICAL_STATUSES,
+  collectActiveSliceState,
   filterSlicesForExecution,
   normalizeStatus,
   resolveProjectState,
@@ -140,3 +141,95 @@ test('plan and AI export consume the same resolver state for completed slices', 
   }
 });
 
+test('active slice reconciliation blocks conflicting active sources', () => {
+  const repo = makeRepo();
+  seedLayout(repo.root);
+  writeJson(path.join(repo.root, 'specs/demo/slices/slice-01-alpha/slice.json'), slice('demo/slice-01-alpha', ['src/alpha.js'], {
+    status: 'in-progress',
+  }));
+  writeJson(path.join(repo.root, 'specs/demo/slices/slice-02-beta/slice.json'), slice('demo/slice-02-beta', ['src/beta.js'], {
+    status: 'planned',
+  }));
+  writeFile(path.join(repo.root, 'docs/ai/ACTIVE_SLICE.md'), [
+    '# Active Slice',
+    '',
+    '## Slice ID',
+    'slice-01-alpha',
+    '',
+    '## Title',
+    'Alpha',
+    '',
+  ].join('\n'));
+  writeFile(path.join(repo.root, 'ACTIVE_SLICES.md'), [
+    '| Alias | Spec | Slice | Branch | Estado | Path |',
+    '| --- | --- | --- | --- | --- | --- |',
+    '| beta | demo | slice-02-beta | feature/beta | planned | /tmp/beta |',
+    '',
+  ].join('\n'));
+
+  try {
+    const report = collectActiveSliceState(repo.root);
+
+    assert.equal(report.sources.length, 2);
+    assert.deepEqual(report.sources.map((item) => item.ref).sort(), ['demo/slice-01-alpha', 'demo/slice-02-beta']);
+    assert.equal(report.reconciliation.decision, 'blocked');
+    assert.match(report.reconciliation.reason, /disagree/);
+    assert(report.reconciliation.risks.some((item) => item.includes('Conflicting refs')));
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('active slice reconciliation proposes replacing a missing active doc from board state', () => {
+  const repo = makeRepo();
+  seedLayout(repo.root);
+  writeJson(path.join(repo.root, 'specs/demo/slices/slice-01-alpha/slice.json'), slice('demo/slice-01-alpha', ['src/alpha.js'], {
+    status: 'planned',
+  }));
+  writeFile(path.join(repo.root, 'ACTIVE_SLICES.md'), [
+    '| Alias | Spec | Slice | Branch | Estado | Path |',
+    '| :--- | :--- | :--- | :--- | :--- | :--- |',
+    '| alpha | demo | slice-01-alpha | feature/alpha | planned | /tmp/alpha |',
+    '',
+  ].join('\n'));
+
+  try {
+    const report = collectActiveSliceState(repo.root);
+
+    assert.equal(report.sources.length, 1);
+    assert.equal(report.sources[0].ref, 'demo/slice-01-alpha');
+    assert.equal(report.reconciliation.decision, 'replace');
+    assert(report.reconciliation.planned_changes.some((item) => item.includes('recreate docs/ai/ACTIVE_SLICE.md')));
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('active slice reconciliation proposes closing completed active slice state', () => {
+  const repo = makeRepo();
+  seedLayout(repo.root);
+  writeJson(path.join(repo.root, 'specs/demo/slices/slice-01-alpha/slice.json'), slice('demo/slice-01-alpha', ['src/alpha.js'], {
+    status: 'completed',
+  }));
+  writeFile(path.join(repo.root, 'docs/ai/ACTIVE_SLICE.md'), [
+    '# Active Slice',
+    '',
+    '## Slice ID',
+    'slice-01-alpha',
+    '',
+    '## Title',
+    'Alpha',
+    '',
+  ].join('\n'));
+
+  try {
+    const report = collectActiveSliceState(repo.root);
+
+    assert.equal(report.sources.length, 1);
+    assert.equal(report.sources[0].ref, 'demo/slice-01-alpha');
+    assert.equal(report.reconciliation.decision, 'close');
+    assert(report.reconciliation.planned_changes.some((item) => item.includes('remove docs/ai/ACTIVE_SLICE.md')));
+  } finally {
+    repo.cleanup();
+  }
+});
