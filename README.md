@@ -586,7 +586,7 @@ Checklist de release:
 
 ## Información confirmada y pendiente
 
-- `package.json` está en `0.13.0`, `CHANGELOG.md` reconoce `0.13.0` y mantiene cambios v28 en `Unreleased` hasta una futura publicación.
+- `package.json` está en `0.14.0` y `CHANGELOG.md` reconoce `0.14.0`.
 - `package.json` no declara `engines`; la versión mínima real de Node queda pendiente. La CI usa Node 22.
 - Si aparece alguna referencia vieja a `0.9.0`, hay que actualizarla al contrato actual antes de seguir.
 - Los scripts legacy de `package.json` que apuntan a `tools/scripts/*` deben confirmarse para este repo fuente o separarse de los scripts pensados para proyectos generados con `--legacy-scripts` o `--full`.

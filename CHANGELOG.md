@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.14.0] - 2026-05-25
+
 ### Added
 
 - v28 Pixel Quiver feedback reconciliation under `specs/quiver-v28-pixel-quiver-feedback-reconciliation/`.
