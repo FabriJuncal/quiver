@@ -139,6 +139,29 @@ test('validateScopeSnapshot supports simple glob write scopes', () => {
   assert.equal(result.ok, true);
 });
 
+test('validateScopeSnapshot supports exact paths and mixed exact plus glob scopes', () => {
+  assert.equal(allowedPathMatches('src/app.js', 'src/app.js'), true);
+  assert.equal(allowedPathMatches('src/app.test.js', 'src/app.js'), false);
+  assert.equal(allowedPathMatches('src/features/demo/view.ts', 'src/features/**'), true);
+
+  const result = validateScopeSnapshot({
+    allowedFiles: ['src/app.js', 'tests/**'],
+    beforeSnapshot: {
+      files: [],
+      raw: '',
+      repoRoot: '/tmp/repo',
+    },
+    afterSnapshot: {
+      files: ['src/app.js', 'tests/app.test.js'],
+      raw: '',
+      repoRoot: '/tmp/repo',
+    },
+    strict: true,
+  });
+
+  assert.equal(result.ok, true);
+});
+
 test('checkScope uses slice git.base_branch instead of hardcoded develop', () => {
   const repo = makeGitRepo();
   const previous = process.cwd();

@@ -3,8 +3,8 @@
 ## Overall Status
 
 - Phase: Wave 1 partially complete
-- Progress: 29%
-- Current recommended slices: `slice-04-spec-validation-scope-and-worktree-reliability`, `slice-02-structured-technical-plan-contract-and-repair-flow`, `slice-03-active-slice-reconciliation-and-ai-inspect`, `slice-05-review-plan-closure-and-agent-dx`
+- Progress: 43%
+- Current recommended slices: `slice-02-structured-technical-plan-contract-and-repair-flow`, `slice-03-active-slice-reconciliation-and-ai-inspect`, `slice-05-review-plan-closure-and-agent-dx`
 - Source evidence: Pixel Quiver feedback files after `create-quiver@0.13.0`
 
 ## Slices
@@ -15,13 +15,13 @@
 | slice-01 | AI run state, approvals, and clean output | completed | 100% | slice-00 |
 | slice-02 | Structured technical plan contract and repair flow | ready | 0% | slice-00, slice-01 |
 | slice-03 | Active slice reconciliation and AI inspect | ready | 0% | slice-00, slice-01 |
-| slice-04 | Spec validation, scope, and worktree reliability | ready | 0% | slice-00 |
+| slice-04 | Spec validation, scope, and worktree reliability | completed | 100% | slice-00 |
 | slice-05 | Review-plan closure and agent DX | ready | 0% | slice-00, slice-01 |
 | slice-06 | Backward compatibility, docs, and release readiness | draft | 0% | slice-01, slice-02, slice-03, slice-04, slice-05 |
 
 ## Blockers
 
-- None for `slice-02`, `slice-03`, `slice-04`, or `slice-05`.
+- None for `slice-02`, `slice-03`, or `slice-05`.
 - `slice-06` remains blocked until all implementation slices are complete.
 
 ## Known Production Concerns
@@ -33,4 +33,4 @@
 
 ## Next Step
 
-Execute remaining ready slices. If working sequentially, prefer `slice-04` next because it is already independent and does not touch AI approval internals.
+Execute remaining ready slices. If working sequentially, prefer `slice-02` next because it owns the structured technical-plan contract needed before later agent DX polish.

@@ -79,5 +79,7 @@
     "Keep default behavior backward compatible unless --strict is used."
   ],
   "estimated_hours": 9,
-  "status": "ready"
+  "actual_hours": 9,
+  "status": "completed",
+  "completed_at": "2026-05-25T15:38:16Z"
 }

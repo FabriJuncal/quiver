@@ -47,9 +47,9 @@ Status meanings used during this spec:
 | QP-022 | pending | slice-03 | No official `active-slice reconcile --dry-run` style command exists. | Add dry-run-first reconciliation. |
 | QP-023 | partial | slice-02 | `spec create` fails safely when `spec.slices[]` is missing, but the planner can still produce an approved plan without that structure. | Enforce the contract before approval and support repair. |
 | QP-024 | pending | slice-02 | No official post-approval repair command was found. | Add derived repair draft requiring review and approval. |
-| QP-025 | partial | slice-04 | `spec validate` checks docs/briefs/safe paths but not the full `check-slice --local` execution metadata contract. | Align validation gates or report strict warnings. |
-| QP-026 | partial | slice-04 | Current `spec-worktrees.js` has missing/stale fields, but Pixel found a false healthy report and command-level coverage is thin. | Add regression coverage and fix remaining false-negative paths. |
-| QP-027 | partial | slice-04 | `tests/commands/spec-worktree.test.js` checks dirty refusal, but the message remains generic. | Print blocking files and safe options. |
+| QP-025 | fixed | slice-04 | `spec validate` now rejects slices missing execution git metadata required by `check-slice --local`; covered by `tests/commands/spec-validate.test.js`. | Completed in slice-04. |
+| QP-026 | fixed | slice-04 | `spec status` now reports expected worktree paths that exist but are not registered in `git worktree list` as missing/stale; covered by `tests/commands/spec-worktree.test.js`. | Completed in slice-04. |
+| QP-027 | fixed | slice-04 | `spec start --dry-run` dirty checkout failures now list dirty files and safe recovery options; covered by `tests/commands/spec-worktree.test.js`. | Completed in slice-04. |
 | QP-028 | pending | slice-03 | `run-state.js` has phase-based next command `spec create --dry-run`; no reconciliation with existing fallback specs. | Make `ai inspect` prefer `spec validate`, `next`, or slice prompts when a spec already exists. |
 
 ## Suggestion Coverage
@@ -58,7 +58,7 @@ Status meanings used during this spec:
 |---|---|---|---|---|
 | QIS-001 | verified-resolved | slice-00 | v27 flow source/freshness coverage; `tests/commands/flow.test.js`. | Do not reimplement. |
 | QIS-002 | partial | slice-05 | v27 path handling exists; agent examples still need `npx --yes create-quiver@<version>` and shell-safe copy. | Update help/prompts/docs for agent-safe examples. |
-| QIS-003 | partial | slice-04 | `spec validate` exists, but execution metadata parity is incomplete. | Harden validation. |
+| QIS-003 | fixed | slice-04 | `spec validate` now catches missing execution git metadata before users reach local slice execution. | Completed in slice-04. |
 | QIS-004 | verified-resolved | slice-00 | `src/create-quiver/lib/ai/export-state.js` exposes schema v2 dashboard data. | Do not reimplement unless schema gaps appear. |
 | QIS-005 | partial | slice-05 | Handoff/brief validation exists; no dedicated compact executor handoff/package command was confirmed. | Add or document minimal context handoff output for agents. |
 | QIS-006 | partial | slice-03 | Shared resolver exists; Pixel still saw AI/classic command drift. | Route inspect/list/fallback recovery through the same resolver. |
@@ -83,9 +83,9 @@ Status meanings used during this spec:
 | QIS-025 | pending | slice-03 | Active-slice dry-run missing. | Add dry-run output with planned writes and risks. |
 | QIS-026 | partial | slice-02 | Safe failure exists, but planner output can still omit `spec.slices[]`. | Make structured plan contract mandatory. |
 | QIS-027 | pending | slice-02 | Repair flow missing. | Add repair command/phase. |
-| QIS-028 | partial | slice-04 | Validation exists but does not fully match `check-slice --local`. | Align validators. |
-| QIS-029 | partial | slice-04 | Worktree missing/stale code exists; add command-level regression for observed false healthy state. | Harden `spec status`. |
-| QIS-030 | partial | slice-04 | Dirty checkout refusal exists; recovery copy is not actionable enough. | Improve diagnostics. |
+| QIS-028 | fixed | slice-04 | `spec validate` enforces local execution metadata parity with focused regression coverage. | Completed in slice-04. |
+| QIS-029 | fixed | slice-04 | `spec status` detects unregistered expected worktree directories and reports them as stale. | Completed in slice-04. |
+| QIS-030 | fixed | slice-04 | Dirty checkout recovery now includes blocking files and safe options. | Completed in slice-04. |
 | QIS-031 | pending | slice-03 | `ai inspect` next command remains phase-based, not spec-aware after fallback. | Reconcile with existing specs. |
 
 ## Framework Improvement Sections
@@ -101,14 +101,14 @@ Status meanings used during this spec:
 | Clean AI output | fixed | slice-01 | Successful provider-backed planner commands now print clean extracted output instead of raw stdout/stderr. | Completed in slice-01. |
 | Active slice reconciliation | pending | slice-03 | Matches QP-016/QP-020/QIS-019/QIS-022/QIS-025. | Implement in active-slice slice. |
 | Structured plan/spec create | partial | slice-02 | Matches QP-023/QIS-026. | Implement contract/repair slice. |
-| Worktree and validation hardening | partial | slice-04 | Matches QP-025 to QP-027 and QIS-028 to QIS-030. | Implement validation/worktree slice. |
+| Worktree and validation hardening | fixed | slice-04 | Matches QP-025 to QP-027 and QIS-028 to QIS-030; validated by spec validation, worktree, check-slice, scope, and path tests. | Completed in slice-04. |
 | Review-plan closure | pending | slice-05 | Matches QP-017/QP-019/QP-021 and QIS-020/QIS-021/QIS-024. | Implement review metadata. |
 | Agent-safe `npx --yes create-quiver@<version>` examples | pending | slice-05 | Matches QIS-023 and Pixel command log. | Update prompts/help/docs. |
 | GitHub auth/alias guidance | partial | slice-05 | Matches QP-004/QIS-009. | Improve diagnostic copy and tests. |
 
 ## Execution Decisions
 
-- `slice-01` and `slice-04` are ready after `slice-00`.
+- `slice-01` and `slice-04` are completed after `slice-00`.
 - `slice-02`, `slice-03`, and `slice-05` remain blocked on `slice-01` because they depend on clarified run/approval state.
 - `slice-05` owns agent DX, including GitHub auth copy, handoff context packaging, and versioned command examples.
 - Graph conflict summaries and visual validation commands are kept as documented future work, not v28 blocking implementation.

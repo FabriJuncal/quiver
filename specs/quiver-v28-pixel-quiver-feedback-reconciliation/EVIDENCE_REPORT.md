@@ -46,13 +46,12 @@ Detected IDs:
 - The final execution mapping is now captured in `COVERAGE_MATRIX.md`.
 - `slice-01` and `slice-04` are the only implementation slices ready immediately after `slice-00`.
 
-## Evidence Required by Remaining Slices
+## Evidence Required by Pending Slices
 
 | Slice | Required evidence |
 |---|---|
 | slice-02 | Tests for valid, invalid, and missing `spec.slices[]`; no-write dry-run/failure coverage; repair-flow tests requiring review plus approval. |
 | slice-03 | Tests for `ACTIVE_SLICE.md` plus `ACTIVE_SLICES.md` conflicts; dry-run reconciliation; `ai inspect` fallback when specs already exist. |
-| slice-04 | Tests for `spec validate` vs `check-slice --local`; stale/missing worktree status; dirty checkout diagnostics; scope/path behavior. |
 | slice-05 | Tests for structured `ai review-plan` metadata; approve-with-risk/revise recommendations; agent-safe commands; GitHub auth/alias guidance. |
 | slice-06 | Full source tests, smoke tests, package/tarball smoke, docs sync, final matrix status, and release-readiness risks. |
 
@@ -91,3 +90,21 @@ Passed:
 
 - `node --test tests/commands/ai-run-state.test.js tests/commands/ai-plan.test.js tests/commands/ai-export.test.js tests/commands/cli-contract.test.js`
 - `node --test tests/lib/ai-run-state.test.js tests/lib/approvals.test.js tests/lib/ai-export-state.test.js`
+
+## slice-04-spec-validation-scope-and-worktree-reliability
+
+Completed on 2026-05-25.
+
+### Implementation Evidence
+
+- Updated `src/create-quiver/commands/spec.js` so `spec validate` rejects slices missing execution git metadata required by local slice execution: `git.branch_type`, `git.base_branch`, `git.branch_slug`, and `git.branch_name`.
+- Updated `src/create-quiver/lib/spec-worktrees.js` so `spec status` reports expected worktree paths that exist on disk but are not registered in `git worktree list` as missing/stale.
+- Updated dirty checkout failures in `spec start --dry-run` to list blocking dirty files and safe recovery options without modifying state.
+- Added regression coverage for exact path plus supported glob scope matching.
+
+### Validation Evidence
+
+Passed:
+
+- `node --test tests/commands/spec-validate.test.js tests/commands/spec-worktree.test.js`
+- `node --test tests/lib/check-slice.test.js tests/lib/scope.test.js tests/lib/paths.test.js`

@@ -120,6 +120,28 @@ test('spec validate fails on unsafe paths and incomplete briefs', () => {
   }
 });
 
+test('spec validate fails when slice execution git metadata is missing', () => {
+  const project = makeProject();
+  try {
+    seedValidSpec(project.root, {
+      git: undefined,
+    });
+
+    assert.throws(
+      () => execCli(project.root, ['spec', 'validate', 'specs/demo']),
+      (error) => {
+        const output = `${error.stdout || ''}${error.stderr || ''}`;
+        assert.match(output, /must declare git\.branch_type, git\.base_branch, git\.branch_slug, and git\.branch_name/);
+        assert.match(output, /missing: branch_type, base_branch, branch_slug, branch_name/);
+        assert.match(output, /FAIL: spec validation failed/);
+        return true;
+      },
+    );
+  } finally {
+    project.cleanup();
+  }
+});
+
 test('spec validate strict mode promotes status and evidence warnings', () => {
   const project = makeProject();
   try {
