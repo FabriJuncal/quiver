@@ -46,11 +46,9 @@ Detected IDs:
 - The final execution mapping is now captured in `COVERAGE_MATRIX.md`.
 - `slice-01` and `slice-04` are the only implementation slices ready immediately after `slice-00`.
 
-## Evidence Required by Pending Slices
+## Final Release-Readiness Evidence
 
-| Slice | Required evidence |
-|---|---|
-| slice-06 | Full source tests, smoke tests, package/tarball smoke, docs sync, final matrix status, and release-readiness risks. |
+`slice-06` completed the pending final checks for source compatibility, generated docs, smoke coverage, and package contents.
 
 ## Validation Evidence for slice-00
 
@@ -166,3 +164,37 @@ Passed:
 
 - `node --test tests/commands/ai-review-plan.test.js tests/commands/cli-contract.test.js`
 - `node --test tests/lib/ai-context-packs.test.js tests/lib/ai-github.test.js`
+
+## slice-06-backward-compatibility-docs-and-release-readiness
+
+Completed on 2026-05-25.
+
+### Implementation Evidence
+
+- Updated `CHANGELOG.md` with unreleased v28 additions, changes, and fixes without claiming npm publication.
+- Updated `ROADMAP.md` so v28 is visible as an unreleased reconciliation/release-readiness milestone.
+- Updated `README.md`, `docs/WORKFLOW.md.template`, and `docs/TROUBLESHOOTING.md.template` to match implemented review-plan, active-slice, and pinned agent-command behavior.
+- Expanded `slice-06` scope to include `.npmignore` after package dry-run evidence showed a local requirements PDF would otherwise be included in the npm tarball.
+- Updated `.npmignore` to exclude local `*.pdf` files from published packages.
+
+### Validation Evidence
+
+Passed:
+
+- `node --test tests/**/*.test.js` (`376` tests passed)
+- `npm run smoke:doctor-fixtures` (`13` doctor fixture states passed)
+- `npm run smoke:guided-workflow`
+- `npm run smoke:create-quiver`
+- `npm run package:quiver`
+- `npm pack --dry-run --json` with a follow-up assertion that no `.pdf` files are included (`543` files)
+- `git diff --check`
+- `node bin/create-quiver.js spec validate specs/quiver-v28-pixel-quiver-feedback-reconciliation --strict`
+- `node bin/create-quiver.js check-slice --local specs/quiver-v28-pixel-quiver-feedback-reconciliation/slices/slice-06-backward-compatibility-docs-and-release-readiness/slice.json`
+- `node bin/create-quiver.js next --all-ready --spec quiver-v28-pixel-quiver-feedback-reconciliation`
+
+### Release Notes
+
+- npm publication was not performed.
+- PR creation was not performed.
+- `package.json` version remains `0.13.0`.
+- Pre-fix package evidence showed `Quiver_Spec_Viewer_requisitos.pdf` would be packed. The file was left in the working tree and excluded through `.npmignore`.

@@ -16,6 +16,7 @@
     "README_FOR_AI.md",
     "ROADMAP.md",
     "CHANGELOG.md",
+    ".npmignore",
     "docs/COMMANDS.md.template",
     "docs/WORKFLOW.md.template",
     "docs/TROUBLESHOOTING.md.template",
@@ -40,6 +41,7 @@
     "README_FOR_AI.md",
     "ROADMAP.md",
     "CHANGELOG.md",
+    ".npmignore",
     "docs/COMMANDS.md.template",
     "docs/WORKFLOW.md.template",
     "docs/TROUBLESHOOTING.md.template",
@@ -90,5 +92,7 @@
     "Do not modify package version unless explicitly authorized."
   ],
   "estimated_hours": 6,
-  "status": "ready"
+  "actual_hours": 6,
+  "status": "completed",
+  "completed_at": "2026-05-25T22:25:05Z"
 }

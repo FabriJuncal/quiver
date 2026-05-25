@@ -9,6 +9,7 @@
 .DS_Store
 WORKTREE_CONTEXT.md
 npm-debug.log*
+*.pdf
 tests
 examples
 quiver-spec-viewer

@@ -1,7 +1,7 @@
 # Quiver v28 - Pixel Quiver Feedback Reconciliation
 
 **Date:** 2026-05-25
-**Status:** Wave 1 partially complete
+**Status:** Completed
 **Source:** Pixel Quiver dogfooding follow-up after `create-quiver@0.13.0`
 
 Slice numbering resets here. This spec intentionally starts at `slice-00`.
@@ -107,7 +107,7 @@ Repository source-of-truth files:
 | slice-03 | Active slice reconciliation and AI inspect | completed | slice-00, slice-01 |
 | slice-04 | Spec validation, scope, and worktree reliability | completed | slice-00 |
 | slice-05 | Review-plan closure and agent DX | completed | slice-00, slice-01 |
-| slice-06 | Backward compatibility, docs, and release readiness | ready | slice-01, slice-02, slice-03, slice-04, slice-05 |
+| slice-06 | Backward compatibility, docs, and release readiness | completed | slice-01, slice-02, slice-03, slice-04, slice-05 |
 
 ## Validation Strategy
 
@@ -129,3 +129,4 @@ Repository source-of-truth files:
 - AI lifecycle changes can affect existing `.quiver/runs` and `.quiver/approvals` state.
 - Worktree changes can affect users with in-flight branches.
 - Real dogfooding evidence contains absolute local paths and must not be copied into fixtures without sanitization.
+- Local non-package files can accidentally enter npm tarballs unless ignored; v28 added `*.pdf` to `.npmignore` after package dry-run evidence.

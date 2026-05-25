@@ -93,8 +93,8 @@ Status meanings used during this spec:
 | Area from Pixel Quiver improvement file | Status | Primary slice | Evidence | Required action |
 |---|---|---|---|---|
 | Intent/spec selection before a spec exists | fixed | slice-03 | `ai inspect` now reconciles existing specs and ready slices before suggesting another spec creation path. | Completed in slice-03 without adding a separate intent system. |
-| Local vs latest Quiver version visibility | documented-risk | slice-06 | Pixel saw local dependency drift vs `@latest`. | Document release-readiness check; consider future `status --versions`. |
-| Standard names for improvement files | documented-risk | slice-06 | Pixel used several similar feedback files. | Document accepted feedback filenames and aliases. |
+| Local vs latest Quiver version visibility | documented-risk | slice-06 | README now states the package remains `0.13.0` and v28 changes are unreleased until future publication; package smoke ran against the local package artifact without claiming npm publish. | Future work: consider `status --versions`. |
+| Standard names for improvement files | documented-risk | slice-06 | v28 preserved the three Pixel Quiver evidence files as explicit source inputs and frozen hashes in this matrix/evidence report. | Future work: document accepted feedback filenames and aliases. |
 | Graph conflicts summary | out-of-scope-with-reason | slice-06 | Useful but not required for the AI lifecycle failures in v28. | Record as future graph UX work. |
 | Visual validation command | out-of-scope-with-reason | slice-06 | Valuable for frontend projects, but would require browser tooling and a larger product decision. | Record as future visual evidence feature. |
 | Active run management | fixed | slice-01 | `ai status` surfaces multiple open runs; `ai run close --run <id>` closes stale runs while preserving `.quiver/runs/<id>`. | Completed in slice-01. |
@@ -105,6 +105,7 @@ Status meanings used during this spec:
 | Review-plan closure | fixed | slice-05 | Matches QP-017/QP-019/QP-021 and QIS-020/QIS-021/QIS-024; implemented with structured review metadata and approval gating. | Completed in slice-05. |
 | Agent-safe `npx --yes create-quiver@<version>` examples | fixed | slice-05 | Matches QIS-023 and Pixel command log; help/docs now include non-interactive pinned examples for agents. | Completed in slice-05. |
 | GitHub auth/alias guidance | fixed | slice-05 | Matches QP-004/QIS-009; guidance and tests cover gh install/auth plus SSH alias setup across supported shells. | Completed in slice-05. |
+| Package contents safety | fixed | slice-06 | `npm pack --dry-run` first showed `Quiver_Spec_Viewer_requisitos.pdf` would be included. `.npmignore` now excludes `*.pdf`, and the follow-up JSON dry-run confirmed no PDF files in the package. | Completed in slice-06. |
 
 ## Execution Decisions
 
@@ -113,3 +114,4 @@ Status meanings used during this spec:
 - `slice-05` is completed after `slice-01`; `slice-06` owns final compatibility, docs sync, smoke, and release readiness.
 - Graph conflict summaries and visual validation commands are kept as documented future work, not v28 blocking implementation.
 - No product code was modified by `slice-00`.
+- `slice-06` did not publish npm or open a PR; it only established source and package-readiness evidence.
