@@ -24,9 +24,9 @@ Status meanings used during this spec:
 | Finding | Status | Primary slice | Evidence | Required action |
 |---|---|---|---|---|
 | QP-001 | verified-resolved | slice-00 | v27 matrix maps flow freshness to slice-07; `tests/commands/flow.test.js`; `src/create-quiver/commands/flow.js`. | Do not reimplement. |
-| QP-002 | partial | slice-05 | v27 matrix maps path examples to slice-08; `tests/lib/paths.test.js`; Pixel still asks for agent-safe command examples. | Extend agent-facing examples with copy-safe, versioned commands. |
+| QP-002 | fixed | slice-05 | v27 path handling remains, and help/docs now include non-interactive `npx --yes create-quiver@<version>` examples for agents. | Completed in slice-05. |
 | QP-003 | fixed | slice-03 | `collectLifecycleExport` now includes active-slice state, uses shared resolver data, and `ai inspect` next steps reconcile existing specs before suggesting stale creation. Covered by `tests/lib/ai-export-state.test.js` and `tests/commands/ai-export.test.js`. | Completed in slice-03. |
-| QP-004 | partial | slice-05 | v27 covers GitHub auth preflight; `src/create-quiver/lib/ai/github.js`; Pixel found `ai doctor --dry-run` unclear vs `gh auth status`. | Improve GitHub auth/alias recovery copy for agents. |
+| QP-004 | fixed | slice-05 | GitHub install/auth/alias guidance now includes account/scope/alias diagnosis plus macOS, Linux, Windows PowerShell, Git Bash, and WSL recovery copy. Covered by `tests/lib/ai-github.test.js`. | Completed in slice-05. |
 | QP-005 | verified-resolved | slice-00 | v27 matrix maps React/Vite analyzer detection to slice-07; `tests/commands/analyze.test.js`; `tests/fixtures/validation-errors/matrix.json`. | Do not reimplement unless a new failing fixture appears. |
 | QP-006 | verified-resolved | slice-00 | v27 matrix maps evidence-backed `prepare-context` to slice-07; `README_FOR_AI.md`; `docs/PROJECT_MAP.md` contract in templates. | Do not reimplement. |
 | QP-007 | verified-resolved | slice-00 | v27 matrix maps agent docs gaps to slice-07/slice-08; generated templates include current docs instead of missing `docs/ai/QUICK.md` style paths. | Do not reimplement. |
@@ -39,11 +39,11 @@ Status meanings used during this spec:
 | QP-014 | fixed | slice-01 | Provider-backed `ai onboard`, `ai plan`, and `ai review-plan` print clean output on success; raw output is only printed on provider failure. Covered by focused `ai plan` test. | Completed in slice-01. |
 | QP-015 | fixed | slice-01 | `ai approvals` now separates run-scoped approvals, active run, global planner approvals, and run relation (`active`, `historical`, `orphaned`, `none`). | Completed in slice-01. |
 | QP-016 | fixed | slice-03 | Added active-source detection for `docs/ai/ACTIVE_SLICE.md` and `ACTIVE_SLICES.md`, conflict detection, and `ai active-slice reconcile --dry-run`. Covered by resolver and CLI tests. | Completed in slice-03. |
-| QP-017 | partial | slice-05 | `readPlanReview` tracks stale/unapproved/reviewed, but review output lacks structured approval recommendation. | Add review metadata for blocking vs optional issues. |
-| QP-018 | partial | slice-05 | `ai approve` blocks stale reviews; error is not recovery-rich enough for the observed stale-review loop. | Add clearer recovery and recommended next command. |
-| QP-019 | pending | slice-05 | No structured review closure threshold was found. | Add P0/P1/P2, `approvalRecommendation`, required fixes, optional hardening. |
+| QP-017 | fixed | slice-05 | `ai review-plan` now stores structured `review_result` metadata with approval recommendation, blocking status, required fixes, optional hardening, risks, and next command. | Completed in slice-05. |
+| QP-018 | fixed | slice-05 | Stale technical-plan review approval errors now recommend dry-run review followed by live review, and blocking review results surface the exact next command. | Completed in slice-05. |
+| QP-019 | fixed | slice-05 | Review closure now distinguishes `approve`, `approve-with-risk`, and `revise`, with required fixes blocking approval and optional hardening remaining non-blocking. | Completed in slice-05. |
 | QP-020 | fixed | slice-03 | `collectActiveSliceState` defines supported sources and canonical dry-run decisions: `preserve`, `close`, `replace`, and `blocked`. | Completed in slice-03. |
-| QP-021 | pending | slice-05 | Current review metadata lacks "blocking vs optional" closure result. | Add formal approvability status. |
+| QP-021 | fixed | slice-05 | Review metadata separates `required_fixes` from `optional_hardening`, and approval checks block only revise/blocking results. | Completed in slice-05. |
 | QP-022 | fixed | slice-03 | Added `npx create-quiver ai active-slice status|reconcile`; `reconcile` is dry-run-first and refuses live writes. | Completed in slice-03. |
 | QP-023 | fixed | slice-02 | Technical-plan approval now validates that the selected draft can generate a spec package before approving it. | Completed in slice-02. |
 | QP-024 | fixed | slice-02 | Added `ai repair-plan` to create a provider-backed derived structured draft from a legacy approved invalid technical plan while preserving the original approved artifact. | Completed in slice-02. |
@@ -57,14 +57,14 @@ Status meanings used during this spec:
 | Finding | Status | Primary slice | Evidence | Required action |
 |---|---|---|---|---|
 | QIS-001 | verified-resolved | slice-00 | v27 flow source/freshness coverage; `tests/commands/flow.test.js`. | Do not reimplement. |
-| QIS-002 | partial | slice-05 | v27 path handling exists; agent examples still need `npx --yes create-quiver@<version>` and shell-safe copy. | Update help/prompts/docs for agent-safe examples. |
+| QIS-002 | fixed | slice-05 | Agent examples now include `npx --yes create-quiver@<version>` and existing shell-safe copy remains covered. | Completed in slice-05. |
 | QIS-003 | fixed | slice-04 | `spec validate` now catches missing execution git metadata before users reach local slice execution. | Completed in slice-04. |
 | QIS-004 | verified-resolved | slice-00 | `src/create-quiver/lib/ai/export-state.js` exposes schema v2 dashboard data. | Do not reimplement unless schema gaps appear. |
-| QIS-005 | partial | slice-05 | Handoff/brief validation exists; no dedicated compact executor handoff/package command was confirmed. | Add or document minimal context handoff output for agents. |
+| QIS-005 | fixed | slice-05 | Executor context pack guidance now explicitly limits agents to `slice.json`, `EXECUTION_BRIEF`, `CLOSURE_BRIEF`, allowed files, acceptance criteria, and validation commands; docs include non-interactive prompt-slice examples. | Completed in slice-05. |
 | QIS-006 | fixed | slice-03 | `ai inspect`, `ai export`, active-slice status, spec listing, and slice listing share resolver-backed lifecycle export data. | Completed in slice-03. |
 | QIS-007 | verified-resolved | slice-00 | v27 analyzer coverage and fixtures. | Do not reimplement. |
 | QIS-008 | verified-resolved | slice-00 | v27 context evidence coverage and source-backed docs contract. | Do not reimplement. |
-| QIS-009 | partial | slice-05 | GitHub auth preflight exists; Pixel evidence asks for clearer auth/alias guidance. | Improve diagnostic output and tests. |
+| QIS-009 | fixed | slice-05 | GitHub preflight guidance now includes shell-specific `gh` installation and SSH alias setup/verification copy. | Completed in slice-05. |
 | QIS-010 | verified-resolved | slice-00 | v27 agent docs/template cleanup. | Do not reimplement. |
 | QIS-011 | verified-resolved | slice-00 | `tests/commands/ai-agent.test.js` covers `ai agent set --dry-run`. | Do not reimplement. |
 | QIS-012 | verified-resolved | slice-00 | v27 artifact compaction tests and `src/create-quiver/lib/ai/artifacts.js`. | Do not reimplement. |
@@ -75,11 +75,11 @@ Status meanings used during this spec:
 | QIS-017 | fixed | slice-01 | Successful provider-backed planner commands print clean output only; raw logs remain stored/redacted. | Completed in slice-01. |
 | QIS-018 | fixed | slice-01 | `ai approvals` groups active/historical run-scoped approvals separately from global approval files. | Completed in slice-01. |
 | QIS-019 | fixed | slice-03 | Added `ai active-slice status|reconcile` with multi-source reporting and dry-run output. | Completed in slice-03. |
-| QIS-020 | pending | slice-05 | Review/revise status lacks structured closure state. | Add state summary and next action. |
-| QIS-021 | pending | slice-05 | No structured approvability metadata found. | Add machine-readable review result. |
+| QIS-020 | fixed | slice-05 | `summarizePlanReview` now reports approval recommendation, blocking status, required fixes, optional hardening, and next command. | Completed in slice-05. |
+| QIS-021 | fixed | slice-05 | `meta.json` stores machine-readable `review_result` data for downstream agents and gates. | Completed in slice-05. |
 | QIS-022 | fixed | slice-03 | Added canonical multi-source active-slice reconciliation from active doc plus root board. | Completed in slice-03. |
-| QIS-023 | pending | slice-05 | Help/docs still include plain `npx create-quiver` examples in several places. | Prefer non-interactive versioned examples for agent prompts. |
-| QIS-024 | pending | slice-05 | Review close threshold missing. | Add threshold/status contract. |
+| QIS-023 | fixed | slice-05 | CLI help, README, README_FOR_AI, and generated command docs now include `npx --yes create-quiver@<version>` guidance for agent-pasted commands. | Completed in slice-05. |
+| QIS-024 | fixed | slice-05 | Review close threshold is now `approve`, `approve-with-risk`, or `revise`; `revise` and blocking required fixes prevent technical-plan approval. | Completed in slice-05. |
 | QIS-025 | fixed | slice-03 | `ai active-slice reconcile --dry-run` reports supported sources, detected sources, planned changes, risks, and no-write guarantee. | Completed in slice-03. |
 | QIS-026 | fixed | slice-02 | Missing `spec.slices[]` is now caught before approval and before spec creation. | Completed in slice-02. |
 | QIS-027 | fixed | slice-02 | `ai repair-plan` provides a traceable repair path for approved legacy plans missing structure. | Completed in slice-02. |
@@ -102,15 +102,14 @@ Status meanings used during this spec:
 | Active slice reconciliation | fixed | slice-03 | Matches QP-016/QP-020/QIS-019/QIS-022/QIS-025; implemented through resolver state and `ai active-slice` CLI. | Completed in slice-03. |
 | Structured plan/spec create | fixed | slice-02 | Matches QP-011, QP-023, QP-024, QIS-014, QIS-015, QIS-026, and QIS-027; validated by approval, repair, spec-create, and generator tests. | Completed in slice-02. |
 | Worktree and validation hardening | fixed | slice-04 | Matches QP-025 to QP-027 and QIS-028 to QIS-030; validated by spec validation, worktree, check-slice, scope, and path tests. | Completed in slice-04. |
-| Review-plan closure | pending | slice-05 | Matches QP-017/QP-019/QP-021 and QIS-020/QIS-021/QIS-024. | Implement review metadata. |
-| Agent-safe `npx --yes create-quiver@<version>` examples | pending | slice-05 | Matches QIS-023 and Pixel command log. | Update prompts/help/docs. |
-| GitHub auth/alias guidance | partial | slice-05 | Matches QP-004/QIS-009. | Improve diagnostic copy and tests. |
+| Review-plan closure | fixed | slice-05 | Matches QP-017/QP-019/QP-021 and QIS-020/QIS-021/QIS-024; implemented with structured review metadata and approval gating. | Completed in slice-05. |
+| Agent-safe `npx --yes create-quiver@<version>` examples | fixed | slice-05 | Matches QIS-023 and Pixel command log; help/docs now include non-interactive pinned examples for agents. | Completed in slice-05. |
+| GitHub auth/alias guidance | fixed | slice-05 | Matches QP-004/QIS-009; guidance and tests cover gh install/auth plus SSH alias setup across supported shells. | Completed in slice-05. |
 
 ## Execution Decisions
 
 - `slice-01` and `slice-04` are completed after `slice-00`.
 - `slice-02`, `slice-03`, and `slice-04` are completed after `slice-01`.
-- `slice-05` remains ready after `slice-01` because it depends on clarified run/approval state.
-- `slice-05` owns agent DX, including GitHub auth copy, handoff context packaging, and versioned command examples.
+- `slice-05` is completed after `slice-01`; `slice-06` owns final compatibility, docs sync, smoke, and release readiness.
 - Graph conflict summaries and visual validation commands are kept as documented future work, not v28 blocking implementation.
 - No product code was modified by `slice-00`.

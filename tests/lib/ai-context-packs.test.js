@@ -32,6 +32,8 @@ test('executor defaults to slice and never full', () => {
   const resolved = resolveContextPack({ role: 'executor' });
 
   assert.equal(resolved.packName, 'slice');
+  assert.match(resolved.pack.roleGuidance, /EXECUTION_BRIEF/);
+  assert.match(resolved.pack.roleGuidance, /Do not request the full spec/);
   assert.equal(getDefaultContextPack('executor'), 'slice');
   assert.throws(() => resolveContextPack({ role: 'executor', packName: 'full' }), /executor context cannot use the full pack/);
 });

@@ -362,6 +362,7 @@ Examples:
   cd ./my-project && npx create-quiver spec start specs/my-project --dry-run
   cd ./my-project && npx create-quiver ai approvals
   cd ./my-project && npx create-quiver ai prompt-slice --slice specs/my-project/slices/slice-01/slice.json --dry-run
+  cd ./my-project && npx --yes create-quiver@${CLI_VERSION} ai prompt-slice --slice specs/my-project/slices/slice-01/slice.json --dry-run
   cd ./my-project && npx create-quiver ai execute-slice --slice specs/my-project/slices/slice-01/slice.json --dry-run
   cd ./my-project && npx create-quiver ai execute-slice --slice specs/my-project/slices/slice-01/slice.json --commit
   cd ./my-project && npx create-quiver ai execute-plan --dry-run --commit

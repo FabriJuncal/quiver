@@ -50,7 +50,6 @@ Detected IDs:
 
 | Slice | Required evidence |
 |---|---|
-| slice-05 | Tests for structured `ai review-plan` metadata; approve-with-risk/revise recommendations; agent-safe commands; GitHub auth/alias guidance. |
 | slice-06 | Full source tests, smoke tests, package/tarball smoke, docs sync, final matrix status, and release-readiness risks. |
 
 ## Validation Evidence for slice-00
@@ -146,3 +145,24 @@ Passed:
 
 - `node --test tests/commands/ai-export.test.js tests/commands/cli-contract.test.js`
 - `node --test tests/lib/project-state-resolver.test.js tests/lib/ai-export-state.test.js`
+
+## slice-05-review-plan-closure-and-agent-dx
+
+Completed on 2026-05-25.
+
+### Implementation Evidence
+
+- Added structured `review_result` metadata to saved plan reviews with `approve`, `approve-with-risk`, and `revise` recommendations.
+- Updated the review prompt to require a fenced JSON review contract.
+- Updated `ai approve --phase technical-plan` to block reviews with required fixes or `revise` recommendation.
+- Updated `ai approvals`/plan-review summary to include approval recommendation, blocking status, required fixes, optional hardening, and next command.
+- Updated executor context-pack guidance to avoid full-spec context unless explicitly required.
+- Added shell-specific GitHub CLI install and SSH alias setup guidance for macOS, Linux, Windows PowerShell, Git Bash, and WSL.
+- Added agent-facing non-interactive `npx --yes create-quiver@<version>` examples to help and docs.
+
+### Validation Evidence
+
+Passed:
+
+- `node --test tests/commands/ai-review-plan.test.js tests/commands/cli-contract.test.js`
+- `node --test tests/lib/ai-context-packs.test.js tests/lib/ai-github.test.js`

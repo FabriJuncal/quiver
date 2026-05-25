@@ -117,6 +117,12 @@ npx create-quiver ai execute-plan --dry-run --commit --mode delegated
 npx create-quiver ai pr --dry-run --input specs/<project-slug>/pr.md --ssh-host-alias github-work --identity-file ~/.ssh/github-work
 ```
 
+Cuando pegues comandos en un agente externo y quieras evitar prompts interactivos de `npx`, usá la forma versionada y no interactiva:
+
+```bash
+npx --yes create-quiver@<version> ai prompt-slice --slice specs/<project-slug>/slices/slice-01/slice.json --dry-run
+```
+
 Regla práctica: el planner no modifica código de producto; el executor solo trabaja sobre un slice aprobado y dentro de los archivos declarados en `slice.json`.
 
 ## 🛠️ Empezar a usar Quiver según tu caso
@@ -330,6 +336,7 @@ El paquete también publica el alias binario `quiver`, que apunta al mismo CLI. 
 | `npx create-quiver ai inspect` | Resume specs, slices, runs, agentes, layout y próximos comandos accionables. |
 | `npx create-quiver ai export --format json` | Exporta estado de specs, slices, runs, agentes, dependencias y migración para dashboards o agentes. |
 | `npx create-quiver ai export --format markdown` | Exporta el mismo estado en Markdown legible para PRs o docs. |
+| `npx create-quiver ai active-slice reconcile --dry-run` | Inspecciona y reconcilia en modo lectura el estado local del slice activo entre `docs/ai/ACTIVE_SLICE.md` y `ACTIVE_SLICES.md`. |
 | `npx create-quiver ai specs list` | Lista specs con estado, progreso y cantidad de slices. |
 | `npx create-quiver ai slices list` | Lista slices con estado, progreso, dependencias y bloqueos. |
 | `npx create-quiver ai trace report` | Muestra runs, olas de ejecución y estado de migración en formato humano. |
@@ -410,7 +417,7 @@ Orden recomendado:
 2. `ai onboard`: el planner entiende el repo y el workflow.
 3. `ai plan --phase acceptance`: convierte requerimientos en criterios de aceptación.
 4. `ai plan --phase technical-plan`: propone el plan técnico.
-5. `ai review-plan`: revisa el plan como si fuera a producción, sin tocar código ni cuestionar el alcance aprobado.
+5. `ai review-plan`: revisa el plan como si fuera a producción, sin tocar código ni cuestionar el alcance aprobado. La salida guarda metadata con recomendación `approve`, `approve-with-risk` o `revise`.
 6. `ai approve`: guarda criterios o la versión revisada del plan técnico.
 7. `spec create`: genera spec, slices, handoffs y PR body desde el plan revisado y aprobado.
 8. `spec start`: prepara un worktree por spec.

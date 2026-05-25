@@ -26,6 +26,7 @@ const {
   PLAN_REVIEW_PROMPT_SOURCE,
   buildPlanReviewPrompt,
   readPlanReview,
+  reviewBlocksApproval,
   resolveReviewedTechnicalPlanInput,
   resolveTechnicalPlanReviewInput,
   savePlanReview,
@@ -1322,7 +1323,8 @@ async function runReviewPlan(repoRoot, options = {}) {
     rawArtifactPath: rawArtifact.path,
   });
   const relativePath = path.relative(repoRoot, saved.filePath).split(path.sep).join('/');
-  process.stdout.write(`AI plan review saved\nArtifact: ${relativePath}\nPrompt source: ${PLAN_REVIEW_PROMPT_SOURCE}\n`);
+  const summary = summarizePlanReview(repoRoot).trimEnd();
+  process.stdout.write(`AI plan review saved\nArtifact: ${relativePath}\nPrompt source: ${PLAN_REVIEW_PROMPT_SOURCE}\n${summary}\n`);
 
   return {
     task: 'review-plan',
@@ -1513,7 +1515,12 @@ async function runApprove(repoRoot, options = {}) {
   if (phase === 'technical-plan') {
     const review = readPlanReview(repoRoot);
     if (review.status !== 'unapproved' && review.status !== 'reviewed') {
-      throw new Error(formatError(`ai approve --phase technical-plan requires a production review for the current draft; current review status is ${review.status}. Run \`npx create-quiver ai review-plan\`.`));
+      throw new Error(formatError(`ai approve --phase technical-plan requires a production review for the current draft; current review status is ${review.status}. Run \`npx create-quiver ai review-plan --dry-run\`, then \`npx create-quiver ai review-plan\`.`));
+    }
+    if (reviewBlocksApproval(review)) {
+      const result = review.meta.review_result;
+      const requiredFixes = Array.isArray(result.required_fixes) ? result.required_fixes.length : 0;
+      throw new Error(formatError(`ai approve --phase technical-plan is blocked by plan review; approval recommendation is ${result.approval_recommendation}. Required fixes: ${requiredFixes}. Next command: ${result.next_command}`));
     }
     assertTechnicalPlanDraftHasSpecContract(repoRoot, options.version);
   }

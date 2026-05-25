@@ -102,6 +102,7 @@ test('help output documents important public commands', () => {
   }
   assert.match(output, /--dry-run\s+Preview .*ai agent set/);
   assert.match(output, /ai agent set planner --provider codex --model gpt-5\.5 --dry-run/);
+  assert.match(output, new RegExp(`npx --yes create-quiver@${packageJson.version.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')} ai prompt-slice`));
 });
 
 test('ai approve --version remains a draft-version option', () => {

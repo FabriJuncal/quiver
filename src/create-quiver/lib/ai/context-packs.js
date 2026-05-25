@@ -27,14 +27,14 @@ const CONTEXT_PACKS = Object.freeze({
     description: 'Executor context for a single slice handoff.',
     role: ROLES.EXECUTOR,
     tokenBudgetHint: 3200,
-    roleGuidance: 'Use slice handoff, allowed files, acceptance criteria, and validation commands only.',
+    roleGuidance: 'Use the slice.json, EXECUTION_BRIEF, CLOSURE_BRIEF, allowed files, acceptance criteria, and validation commands only. Do not request the full spec unless the slice brief explicitly requires it.',
   }),
   minimal: Object.freeze({
     name: 'minimal',
     description: 'Smallest executor context for narrowly-scoped tasks.',
     role: ROLES.EXECUTOR,
     tokenBudgetHint: 1200,
-    roleGuidance: 'Use the smallest safe set of slice details and avoid onboarding context.',
+    roleGuidance: 'Use the smallest safe set of slice details, avoid onboarding context, and avoid full-spec context by default.',
   }),
 });
 

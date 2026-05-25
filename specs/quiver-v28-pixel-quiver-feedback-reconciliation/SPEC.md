@@ -106,8 +106,8 @@ Repository source-of-truth files:
 | slice-02 | Structured technical plan contract and repair flow | completed | slice-00, slice-01 |
 | slice-03 | Active slice reconciliation and AI inspect | completed | slice-00, slice-01 |
 | slice-04 | Spec validation, scope, and worktree reliability | completed | slice-00 |
-| slice-05 | Review-plan closure and agent DX | ready | slice-00, slice-01 |
-| slice-06 | Backward compatibility, docs, and release readiness | draft | slice-01, slice-02, slice-03, slice-04, slice-05 |
+| slice-05 | Review-plan closure and agent DX | completed | slice-00, slice-01 |
+| slice-06 | Backward compatibility, docs, and release readiness | ready | slice-01, slice-02, slice-03, slice-04, slice-05 |
 
 ## Validation Strategy
 

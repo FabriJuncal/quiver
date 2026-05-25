@@ -7,7 +7,7 @@ const test = require('node:test');
 
 const { runReviewPlan } = require('../../src/create-quiver/commands/ai');
 const { approvePlannerPhase, savePlannerDraft } = require('../../src/create-quiver/lib/approvals');
-const { readPlanReview } = require('../../src/create-quiver/lib/ai/plan-review');
+const { readPlanReview, summarizePlanReview } = require('../../src/create-quiver/lib/ai/plan-review');
 
 const BIN_PATH = path.resolve(__dirname, '../../bin/create-quiver.js');
 
@@ -93,6 +93,8 @@ test('ai review-plan print-prompt renders review prompt without provider auth', 
     assert.match(output, /Phase: plan-review/);
     assert.match(output, /--- PROMPT START ---/);
     assert.match(output, /# Technical plan v1/);
+    assert.match(output, /approvalRecommendation/);
+    assert.match(output, /approve\|approve-with-risk\|revise/);
     assert.match(output, /--- PROMPT END ---/);
   } finally {
     repo.cleanup();
@@ -156,6 +158,9 @@ test('ai review-plan persists review state and becomes valid after approving the
     assert.equal(meta.source_file, '.quiver/approvals/technical-plan/drafts/001.md');
     assert.equal(meta.source_kind, 'draft');
     assert.equal(meta.source_version, 1);
+    assert.equal(meta.review_result.approval_recommendation, 'approve-with-risk');
+    assert.equal(meta.review_result.blocking, false);
+    assert.match(meta.review_result.next_command, /ai approve --phase technical-plan --version 1/);
     assert.ok(meta.raw_artifact_path.startsWith('.quiver/runs/'));
     assert.equal(raw.stderr.includes('secret-value'), false);
     assert.ok(raw.stderr.includes('authorization: bearer [REDACTED]'));
@@ -168,6 +173,7 @@ test('ai review-plan persists review state and becomes valid after approving the
     assert.equal(readPlanReview(repo.root).status, 'reviewed');
     assert.match(approvalsOutput, /Phase: plan-review/);
     assert.match(approvalsOutput, /Status: reviewed/);
+    assert.match(approvalsOutput, /Approval recommendation: approve-with-risk/);
   } finally {
     repo.cleanup();
   }
@@ -236,6 +242,122 @@ test('ai approve blocks technical-plan approval when the latest review is stale'
       () => execAi(repo.root, ['approve', '--phase', 'technical-plan', '--version', '2']),
       (error) => error.stderr.includes('requires a production review for the current draft')
         && error.stderr.includes('current review status is stale'),
+    );
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('ai review-plan persists approve recommendation metadata', async () => {
+  const repo = makeRepo({
+    'technical-plan.md': structuredTechnicalPlanText('approve-plan'),
+  });
+
+  try {
+    savePlannerDraft(repo.root, 'technical-plan', 'technical-plan.md', structuredTechnicalPlanText('approve-plan'));
+    await runReviewPlan(repo.root, {
+      runProviderFn: async (provider) => ({
+        ok: true,
+        dryRun: false,
+        provider,
+        command: 'codex',
+        args: ['exec'],
+        cwd: repo.root,
+        timeoutMs: 0,
+        promptTransport: { mode: 'stdin' },
+        exitCode: 0,
+        stdout: '```json\n{"review":{"blocking":false,"approvalRecommendation":"approve","requiredFixes":[],"optionalHardening":[],"risks":[]}}\n```\n',
+        stderr: '',
+        error: null,
+        preflight: { ok: true },
+      }),
+    });
+
+    const review = readPlanReview(repo.root);
+
+    assert.equal(review.meta.review_result.approval_recommendation, 'approve');
+    assert.equal(review.meta.review_result.blocking, false);
+    assert.deepEqual(review.meta.review_result.required_fixes, []);
+    assert.match(summarizePlanReview(repo.root), /Next command: npx create-quiver ai approve --phase technical-plan --version 1/);
+    assert.doesNotThrow(() => execAi(repo.root, ['approve', '--phase', 'technical-plan', '--version', '1']));
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('ai review-plan approve-with-risk recommendation still allows explicit approval', async () => {
+  const repo = makeRepo({
+    'technical-plan.md': structuredTechnicalPlanText('risk-plan'),
+  });
+
+  try {
+    savePlannerDraft(repo.root, 'technical-plan', 'technical-plan.md', structuredTechnicalPlanText('risk-plan'));
+    await runReviewPlan(repo.root, {
+      runProviderFn: async (provider) => ({
+        ok: true,
+        dryRun: false,
+        provider,
+        command: 'codex',
+        args: ['exec'],
+        cwd: repo.root,
+        timeoutMs: 0,
+        promptTransport: { mode: 'stdin' },
+        exitCode: 0,
+        stdout: '```json\n{"review":{"blocking":false,"approvalRecommendation":"approve-with-risk","requiredFixes":[],"optionalHardening":["Add one extra smoke test"],"risks":["Minor docs drift"]}}\n```\n',
+        stderr: '',
+        error: null,
+        preflight: { ok: true },
+      }),
+    });
+
+    const review = readPlanReview(repo.root);
+    const output = execAi(repo.root, ['approve', '--phase', 'technical-plan', '--version', '1']);
+
+    assert.equal(review.meta.review_result.approval_recommendation, 'approve-with-risk');
+    assert.equal(review.meta.review_result.blocking, false);
+    assert.deepEqual(review.meta.review_result.optional_hardening, ['Add one extra smoke test']);
+    assert.match(output, /Version: v1/);
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('ai review-plan revise recommendation blocks technical-plan approval', async () => {
+  const repo = makeRepo({
+    'technical-plan.md': structuredTechnicalPlanText('revise-plan'),
+  });
+
+  try {
+    savePlannerDraft(repo.root, 'technical-plan', 'technical-plan.md', structuredTechnicalPlanText('revise-plan'));
+    await runReviewPlan(repo.root, {
+      runProviderFn: async (provider) => ({
+        ok: true,
+        dryRun: false,
+        provider,
+        command: 'codex',
+        args: ['exec'],
+        cwd: repo.root,
+        timeoutMs: 0,
+        promptTransport: { mode: 'stdin' },
+        exitCode: 0,
+        stdout: '```json\n{"review":{"blocking":true,"approvalRecommendation":"revise","requiredFixes":["Define rollback validation"],"optionalHardening":["Add screenshots"],"risks":["Plan cannot be tested safely yet"]}}\n```\n',
+        stderr: '',
+        error: null,
+        preflight: { ok: true },
+      }),
+    });
+
+    const review = readPlanReview(repo.root);
+
+    assert.equal(review.meta.review_result.approval_recommendation, 'revise');
+    assert.equal(review.meta.review_result.blocking, true);
+    assert.deepEqual(review.meta.review_result.required_fixes, ['Define rollback validation']);
+    assert.throws(
+      () => execAi(repo.root, ['approve', '--phase', 'technical-plan', '--version', '1']),
+      (error) => error.stderr.includes('blocked by plan review')
+        && error.stderr.includes('approval recommendation is revise')
+        && error.stderr.includes('Required fixes: 1')
+        && error.stderr.includes('Next command: npx create-quiver ai revise --phase technical-plan --input <feedback.md> --dry-run'),
     );
   } finally {
     repo.cleanup();
