@@ -57,7 +57,9 @@ const {
   agentProfilesPath,
   buildAgentProfileState,
   getAgentProfile,
+  getAgentProfileById,
   listAgentProfiles,
+  resolveAgentProfileDisplayName,
   resolveProfileProvider,
   setAgentProfile,
 } = require('../lib/agent-profiles');
@@ -2174,10 +2176,13 @@ function runLifecycleRun(repoRoot, options = {}) {
 
 function formatAgentProfile(profile) {
   const lines = [
+    `ID: ${profile.id || 'default'}`,
     `Role: ${profile.role}`,
     `Provider: ${profile.provider}`,
     `Model: ${profile.model || '(not set)'}`,
     `Label: ${profile.label || '(not set)'}`,
+    `Display name: ${resolveAgentProfileDisplayName(profile) || '(not set)'}`,
+    `Default: ${profile.default === true ? 'yes' : 'no'}`,
     `Context: ${profile.context || '(not set)'}`,
     `Updated: ${profile.updated_at}`,
   ];
@@ -2193,7 +2198,9 @@ function formatAgentProfileList(profiles) {
     }
     const model = item.profile.model ? ` model=${item.profile.model}` : '';
     const label = item.profile.label ? ` label=${item.profile.label}` : '';
-    lines.push(`- ${item.role}: provider=${item.profile.provider}${model}${label}`);
+    const displayName = resolveAgentProfileDisplayName(item.profile);
+    const alternatives = item.profiles.length > 1 ? ` options=${item.profiles.length}` : '';
+    lines.push(`- ${item.role}: provider=${item.profile.provider}${model}${label} displayName=${displayName}${alternatives}`);
   }
   return `${lines.join('\n')}\n`;
 }
@@ -2226,6 +2233,9 @@ function runAgent(repoRoot, options = {}) {
     if (options.dryRun) {
       const preview = buildAgentProfileState(repoRoot, options.role, {
         context: options.context,
+        default: options.defaultProfile,
+        displayName: options.displayName,
+        id: options.id,
         label: options.label,
         model: options.model,
         provider: options.provider,
@@ -2241,6 +2251,9 @@ function runAgent(repoRoot, options = {}) {
     }
     const result = setAgentProfile(repoRoot, options.role, {
       context: options.context,
+      default: options.defaultProfile,
+      displayName: options.displayName,
+      id: options.id,
       label: options.label,
       model: options.model,
       provider: options.provider,
@@ -2260,10 +2273,14 @@ function runAgent(repoRoot, options = {}) {
     if (!options.role) {
       throw new Error(formatError('missing agent role. Use: npx create-quiver ai agent show <planner|executor|reviewer|doctor>'));
     }
-    const profile = getAgentProfile(repoRoot, options.role);
+    const profile = options.id
+      ? getAgentProfileById(repoRoot, options.role, options.id)
+      : getAgentProfile(repoRoot, options.role);
     if (!profile) {
       throw new Error(formatActionableError({
-        failure: `agent profile '${options.role}' is not configured.`,
+        failure: options.id
+          ? `agent profile '${options.role}/${options.id}' is not configured.`
+          : `agent profile '${options.role}' is not configured.`,
         impact: 'Quiver will fall back to default provider behavior and may use the wrong model/cost profile.',
         fix: `Configure the ${options.role} profile with a supported provider and optional model label.`,
         nextCommand: `npx create-quiver ai agent set ${options.role} --provider <provider> --model <label>`,

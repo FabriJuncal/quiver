@@ -749,6 +749,74 @@ function parseArgs(argv) {
       continue;
     }
 
+    if (arg === '--id') {
+      const value = args[++index];
+      if (!value) {
+        throw new Error(formatError('missing value for --id'));
+      }
+      result.aiProfileId = value;
+      continue;
+    }
+
+    if (arg === '--display-name') {
+      const value = args[++index];
+      if (!value) {
+        throw new Error(formatError('missing value for --display-name'));
+      }
+      result.aiDisplayName = value;
+      continue;
+    }
+
+    if (arg === '--default') {
+      result.aiDefaultProfile = true;
+      continue;
+    }
+
+    if (arg === '--planner') {
+      const value = args[++index];
+      if (!value) {
+        throw new Error(formatError('missing value for --planner'));
+      }
+      result.aiPlannerProfile = value;
+      continue;
+    }
+
+    if (arg === '--executor') {
+      const value = args[++index];
+      if (!value) {
+        throw new Error(formatError('missing value for --executor'));
+      }
+      result.aiExecutorProfile = value;
+      continue;
+    }
+
+    if (arg === '--reviewer') {
+      const value = args[++index];
+      if (!value) {
+        throw new Error(formatError('missing value for --reviewer'));
+      }
+      result.aiReviewerProfile = value;
+      continue;
+    }
+
+    if (arg === '--doctor') {
+      const value = args[++index];
+      if (!value) {
+        throw new Error(formatError('missing value for --doctor'));
+      }
+      result.aiDoctorProfile = value;
+      continue;
+    }
+
+    if (arg === '--methodology') {
+      const value = args[++index];
+      if (!value) {
+        throw new Error(formatError('missing value for --methodology'));
+      }
+      result.methodology = value;
+      continue;
+    }
+
     if (arg === '--label') {
       const value = args[++index];
       if (!value) {
@@ -2487,6 +2555,9 @@ async function run(argv) {
       runAiAgent(process.cwd(), {
         command: args.aiAgentCommand,
         context: args.aiContext || undefined,
+        defaultProfile: args.aiDefaultProfile,
+        displayName: args.aiDisplayName || undefined,
+        id: args.aiProfileId || undefined,
         label: args.aiLabel || undefined,
         model: args.aiModel || undefined,
         provider: args.aiProviderExplicit ? args.aiProvider : undefined,

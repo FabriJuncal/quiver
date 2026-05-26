@@ -52,3 +52,26 @@ Each implementation slice must append:
 ### Risks
 
 - Command adoption is intentionally deferred to later slices; this slice only adds the runtime.
+
+## slice-02 - Agent profile selection and selectors
+
+### Completed
+
+- Added backward-compatible multiple named agent profiles per role.
+- Kept legacy single-profile behavior by preserving the default profile under `profiles.<role>`.
+- Added profile sets under `profile_sets.<role>s`.
+- Added display-name resolution order for profile output.
+- Added CLI flags for profile identity and future selectors: `--id`, `--display-name`, `--default`, `--planner`, `--executor`, `--reviewer`, `--doctor`, and `--methodology`.
+- Added `src/create-quiver/lib/cli/selectors.js` for reusable interactive/non-interactive selection.
+- Extended `ai agent set/list/show` for named profiles.
+
+### Validation
+
+- `node --test tests/lib/agent-profiles.test.js tests/lib/cli-selectors.test.js tests/commands/ai-agent.test.js` passed: 16 tests.
+- `git diff --check` passed.
+- `node bin/create-quiver.js spec validate specs/quiver-v30-interactive-cli-ux-agent-selection` passed.
+
+### Risks
+
+- Command flows do not yet consume the new profile selector flags; that adoption belongs to later slices.
+- Provider model correctness is not enforced until slice-03.

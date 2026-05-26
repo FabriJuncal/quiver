@@ -2,18 +2,23 @@
 
 ## Summary
 
-Pending execution.
+Added backward-compatible named agent profiles per role and a reusable selector helper with non-interactive fallback behavior.
 
 ## Validation Against Acceptance Criteria
 
-- [ ] Multiple profiles per role validated.
-- [ ] Backward compatibility validated.
-- [ ] Selectors use configured data only.
-- [ ] No-TTY/CI/JSON fallback validated.
+- [x] Multiple profiles per role validated.
+- [x] Backward compatibility validated.
+- [x] Selectors use configured data only.
+- [x] No-TTY/CI/JSON fallback validated.
 
 ## Relevant Changes
 
-Pending execution.
+- Updated `src/create-quiver/lib/agent-profiles.js`.
+- Added `src/create-quiver/lib/cli/selectors.js`.
+- Updated parser support in `src/create-quiver/index.js`.
+- Updated `ai agent` output in `src/create-quiver/commands/ai.js`.
+- Added `tests/lib/cli-selectors.test.js`.
+- Updated agent profile command/library tests.
 
 ## Pending
 
@@ -21,7 +26,7 @@ Pending execution.
 
 ## Remaining Risks
 
-Pending execution.
+- New selector flags are parsed but not fully consumed by every command until later slices.
 
 ## Future Recommendations
 

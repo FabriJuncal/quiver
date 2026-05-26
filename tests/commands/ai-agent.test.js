@@ -31,13 +31,16 @@ test('ai agent set, list, and show persist reusable profile settings', () => {
   try {
     const saved = runCli(repo.root, ['ai', 'agent', 'set', 'planner', '--provider', 'codex', '--model', 'gpt-5.5-xhigh', '--label', 'planner']);
     assert.match(saved, /AI agent profile saved/);
+    assert.match(saved, /ID: planner/);
     assert.match(saved, /Role: planner/);
     assert.match(saved, /Provider: codex/);
     assert.match(saved, /Model: gpt-5\.5-xhigh/);
+    assert.match(saved, /Display name: gpt-5\.5-xhigh/);
     assert.equal(fs.existsSync(path.join(repo.root, '.quiver', 'agents', 'profiles.json')), true);
 
     const list = runCli(repo.root, ['ai', 'agent', 'list']);
     assert.match(list, /planner: provider=codex model=gpt-5\.5-xhigh label=planner/);
+    assert.match(list, /displayName=gpt-5\.5-xhigh/);
     assert.match(list, /executor: not configured/);
     assert.match(list, /doctor: not configured/);
     assert.doesNotMatch(list, /researcher/);
@@ -45,6 +48,30 @@ test('ai agent set, list, and show persist reusable profile settings', () => {
     const show = runCli(repo.root, ['ai', 'agent', 'show', 'planner']);
     assert.match(show, /Role: planner/);
     assert.match(show, /Provider: codex/);
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('ai agent supports named planner profiles and default selection', () => {
+  const repo = makeRepo();
+
+  try {
+    const gpt = runCli(repo.root, ['ai', 'agent', 'set', 'planner', '--id', 'gpt-55', '--provider', 'codex', '--model', 'gpt-5.5', '--display-name', 'GPT 5.5', '--default']);
+    assert.match(gpt, /ID: gpt-55/);
+    assert.match(gpt, /Display name: GPT 5\.5/);
+    assert.match(gpt, /Default: yes/);
+
+    const opus = runCli(repo.root, ['ai', 'agent', 'set', 'planner', '--id', 'opus-47', '--provider', 'claude', '--model', 'opus-4.7', '--display-name', 'OPUS 4.7']);
+    assert.match(opus, /ID: opus-47/);
+    assert.match(opus, /Default: no/);
+
+    const list = runCli(repo.root, ['ai', 'agent', 'list']);
+    assert.match(list, /planner: provider=codex model=gpt-5\.5 displayName=GPT 5\.5 options=2/);
+
+    const show = runCli(repo.root, ['ai', 'agent', 'show', 'planner', '--id', 'opus-47']);
+    assert.match(show, /Provider: claude/);
+    assert.match(show, /Display name: OPUS 4\.7/);
   } finally {
     repo.cleanup();
   }

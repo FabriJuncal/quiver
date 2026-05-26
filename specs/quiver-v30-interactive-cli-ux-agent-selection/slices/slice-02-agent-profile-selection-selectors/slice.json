@@ -74,8 +74,8 @@
     "Keep selector labels human-friendly but values path/id stable."
   ],
   "estimated_hours": 10,
-  "status": "planned",
+  "status": "completed",
   "blocked_reason": null,
-  "actual_hours": null,
-  "completed_at": null
+  "actual_hours": 4,
+  "completed_at": "2026-05-26"
 }
