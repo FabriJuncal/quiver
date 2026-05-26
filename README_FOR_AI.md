@@ -8,6 +8,7 @@ Important: slice numbering resets inside each spec. `slice-00` is the mandatory 
 The canonical installer entrypoint is `npx create-quiver` run from the target project root.
 Do not recommend global installation; use `npx` or a project-local devDependency when the team needs a pinned version.
 The package also exposes `quiver` as a binary alias to the same CLI. Treat it as a local installed shortcut, not as a replacement for the bootstrap command `npx create-quiver`.
+The root `README.md` is the public landing/onboarding page: keep it concise, Spanish-first, AI-first, and focused on what Quiver is, what problem it solves, the WDD + SDD flow, core commands, and links to deeper guides. Long step-by-step instructions live in `docs/getting-started/`, `docs/workflows/`, and `docs/reference/commands.md`; do not duplicate every procedural detail in the root README.
 The post-init contract is validated with `npx create-quiver doctor` from the project root. Use `npx create-quiver doctor --fix --dry-run` to preview safe non-destructive repairs, then `npx create-quiver doctor --fix` only after reviewing the plan.
 If the project already exists from an older Quiver version and was previously initialized by Quiver, run `npx create-quiver migrate` before `analyze` from the project root.
 If the project was never initialized by Quiver, do not use `migrate` as bootstrap; run `npx create-quiver init --name "Project Name"` first.
