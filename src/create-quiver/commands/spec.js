@@ -2,6 +2,8 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const { checkHandoff } = require('../lib/handoff');
+const { openEditor } = require('../lib/cli/editor');
+const { createUx } = require('../lib/cli/ux');
 const { parseJsonWithComments } = require('../lib/json');
 const { assertPathInsideRoot, validateProjectRelativePaths } = require('../lib/paths');
 const { resolveReviewedTechnicalPlanInput } = require('../lib/ai/plan-review');
@@ -362,6 +364,10 @@ function formatSpecCreateDryRun(preview) {
     lines.push(`- ${file}`);
   }
 
+  if (preview.reviewRequested) {
+    lines.push('Review requested: yes (dry-run preview only; no editor opened and no files written).');
+  }
+
   lines.push(...formatNextCommands(preview.relativeSpecDir));
   lines.push('No files will be written in dry-run mode.');
   return `${lines.join('\n')}\n`;
@@ -384,11 +390,63 @@ function formatSpecCreateResult(result, repoRoot) {
   return `${lines.join('\n')}\n`;
 }
 
-function runCreateSpec(repoRoot, options = {}) {
+function createSpecReviewFile(preview, options = {}) {
+  const os = require('node:os');
+  const reviewDir = options.reviewDir || fs.mkdtempSync(path.join(os.tmpdir(), 'quiver-spec-create-review-'));
+  const reviewPath = path.join(reviewDir, 'spec-create-preview.md');
+  fs.mkdirSync(reviewDir, { recursive: true });
+  fs.writeFileSync(reviewPath, formatSpecCreateDryRun({ ...preview, reviewRequested: false }));
+  return reviewPath;
+}
+
+async function confirmSpecCreate(message, options = {}) {
+  if (options.interactive !== true) {
+    return;
+  }
+
+  const ux = options.ux || createUx({
+    interactive: true,
+    promptConfirm: options.promptConfirm,
+    stdinIsTTY: options.stdinIsTTY,
+    stdoutIsTTY: options.stdoutIsTTY,
+    stderrIsTTY: options.stderrIsTTY,
+    write: options.write,
+  });
+  const confirmed = await ux.promptConfirm(message, { initialValue: false });
+  if (!confirmed) {
+    throw new Error(formatError('spec create interactive approval declined. No files were written.'));
+  }
+}
+
+async function reviewSpecCreatePreview(repoRoot, preview, options = {}) {
+  if (options.review !== true) {
+    return '';
+  }
+
+  const reviewPath = createSpecReviewFile(preview, options);
+  const hasEditorRunner = typeof options.openEditorFn === 'function';
+  const canOpenEditor = hasEditorRunner || options.stdinIsTTY === true || (options.stdinIsTTY !== false && Boolean(process.stdin.isTTY));
+
+  if (!canOpenEditor) {
+    throw new Error(formatError(`spec create --review requires an interactive terminal or an injected editor runner.\nReview artifact: ${reviewPath}`));
+  }
+
+  const editorResult = hasEditorRunner
+    ? options.openEditorFn(reviewPath, { cwd: repoRoot, env: options.env || process.env })
+    : openEditor(reviewPath, { cwd: repoRoot, env: options.env || process.env });
+
+  if (!editorResult || editorResult.ok !== true) {
+    throw new Error(formatError(`${editorResult?.reason || 'spec create review was canceled.'}\nReview artifact: ${reviewPath}`));
+  }
+
+  return reviewPath;
+}
+
+async function runCreateSpec(repoRoot, options = {}) {
   const preview = buildSpecCreatePreview(repoRoot, options);
 
   if (options.dryRun) {
-    process.stdout.write(formatSpecCreateDryRun(preview));
+    process.stdout.write(formatSpecCreateDryRun({ ...preview, reviewRequested: options.review === true }));
     return {
       task: 'spec-create',
       dryRun: true,
@@ -397,6 +455,9 @@ function runCreateSpec(repoRoot, options = {}) {
       files: preview.preview.files,
     };
   }
+
+  const reviewPath = await reviewSpecCreatePreview(repoRoot, preview, options);
+  await confirmSpecCreate(`Create spec '${preview.manifest.slug}'?`, options);
 
   const result = generateSpecArtifacts(repoRoot, {
     input: preview.inputPath,
@@ -411,6 +472,7 @@ function runCreateSpec(repoRoot, options = {}) {
     specDir: toRelativePosix(repoRoot, result.specDir),
     files: result.files.map((filePath) => toRelativePosix(repoRoot, filePath)),
     manifest: result.manifest,
+    reviewPath,
   };
 }
 

@@ -1,0 +1,163 @@
+# Evidence Report - Quiver v29 Planner Prepare Context CLI UX
+
+**Status:** Initial documentation package evidence
+**Date:** 2026-05-26
+
+## Scope
+
+This evidence report currently covers creation of the approved spec/slice package only. Implementation evidence must be appended by each execution slice.
+
+## Commands Run During Spec Creation
+
+```bash
+find specs/quiver-v29-planner-prepare-context-cli-ux -name 'slice.json' -print -exec node -e "JSON.parse(require('fs').readFileSync(process.argv[1], 'utf8')); console.log('ok ' + process.argv[1])" {} \;
+git diff --check
+for f in specs/quiver-v29-planner-prepare-context-cli-ux/slices/*/EXECUTION_BRIEF.md specs/quiver-v29-planner-prepare-context-cli-ux/slices/*/CLOSURE_BRIEF.md; do node bin/create-quiver.js check-handoff "$f" >/dev/null || exit 1; done; echo "handoff briefs ok"
+node bin/create-quiver.js spec validate specs/quiver-v29-planner-prepare-context-cli-ux
+```
+
+## Results
+
+- `slice-00-cli-ux-spec-foundation` completed as the documentation foundation slice.
+- Every `slice.json` parsed successfully.
+- `git diff --check` passed.
+- Every `EXECUTION_BRIEF.md` and `CLOSURE_BRIEF.md` passed `check-handoff` after normalizing the required `Acceptance Criteria` heading.
+- Initial `spec validate` reported this file as missing; this report was added to satisfy the spec validation contract.
+- `node bin/create-quiver.js spec validate specs/quiver-v29-planner-prepare-context-cli-ux` passed after adding this report.
+
+## Pending Evidence
+
+Implementation slices must append:
+
+- focused unit tests;
+- command integration tests;
+- CI/no-TTY/JSON validation;
+- package smoke;
+- tarball dry-run;
+- final docs sync validation.
+
+## slice-01-cli-ux-primitives-theme Evidence
+
+**Date:** 2026-05-26
+**Status:** Passed
+
+### Commands
+
+```bash
+node --test tests/lib/cli-theme.test.js tests/lib/cli-ux.test.js tests/lib/cli-editor.test.js
+npm run package:quiver
+git diff --check
+```
+
+### Results
+
+- `node --test tests/lib/cli-theme.test.js tests/lib/cli-ux.test.js tests/lib/cli-editor.test.js` passed with 18 tests.
+- `npm run package:quiver` passed and produced package smoke output for `create-quiver-0.14.0.tgz`.
+- `git diff --check` passed.
+- Dependencies were added through npm so `package-lock.json` records the resolved package metadata.
+
+## slice-02-planner-context-proposal-contract Evidence
+
+**Date:** 2026-05-26
+**Status:** Passed
+
+### Commands
+
+```bash
+node --test tests/lib/ai-context-proposal.test.js
+```
+
+### Results
+
+- `node --test tests/lib/ai-context-proposal.test.js` passed with 8 tests.
+- Fixtures cover valid JSON, fenced JSON, malformed output, product-code path, absolute path, and path traversal.
+- The slice did not invoke providers and did not modify `runPrepareContext` write behavior.
+
+## slice-04-ux-flag-matrix-compatibility Evidence
+
+**Date:** 2026-05-26
+**Status:** Passed
+
+### Commands
+
+```bash
+node --test tests/commands/ux-flags.test.js tests/commands/cli-contract.test.js tests/lib/cli-ux.test.js
+```
+
+### Results
+
+- `node --test tests/commands/ux-flags.test.js tests/commands/cli-contract.test.js tests/lib/cli-ux.test.js` passed with 22 tests.
+- Tests cover matrix support, unsupported flags, incompatible `--json` combinations, read-only commands, `ai pr --with-planner`, and parseable JSON output for existing commands.
+
+## slice-03-prepare-context-planner-review-flow Evidence
+
+**Date:** 2026-05-26
+**Status:** Passed
+
+### Commands
+
+```bash
+node --test tests/commands/ai-onboard.test.js tests/commands/ai-prepare-context-planner.test.js tests/lib/ai-context-proposal.test.js
+node --test tests/commands/ux-flags.test.js tests/commands/cli-contract.test.js tests/lib/cli-ux.test.js
+git diff --check
+```
+
+### Results
+
+- `node --test tests/commands/ai-onboard.test.js tests/commands/ai-prepare-context-planner.test.js tests/lib/ai-context-proposal.test.js` passed with 25 tests.
+- `node --test tests/commands/ux-flags.test.js tests/commands/cli-contract.test.js tests/lib/cli-ux.test.js` passed with 22 tests.
+- Tests cover deterministic compatibility, planner dry-run, prompt printing, provider success, provider failure, invalid planner output, review cancellation, review edit/revalidation, and interactive decline.
+- `git diff --check` passed.
+
+## slice-05-progressive-command-adoption Evidence
+
+**Date:** 2026-05-26
+**Status:** Passed
+
+### Commands
+
+```bash
+node --test tests/commands/ai-plan.test.js tests/commands/spec-create.test.js tests/commands/ai-pr.test.js tests/commands/ux-flags.test.js
+```
+
+### Results
+
+- `node --test tests/commands/ai-plan.test.js tests/commands/spec-create.test.js tests/commands/ai-pr.test.js tests/commands/ux-flags.test.js` passed with 46 tests.
+- Tests cover `ai plan` UX flags, draft review, interactive decline, `spec create --review`, `spec create --interactive`, `ai pr --review`, `ai pr --interactive`, and the central unsupported flag matrix.
+
+## slice-06-docs-tests-smoke-readiness Evidence
+
+**Date:** 2026-05-26
+**Status:** Passed
+
+### Commands
+
+```bash
+node --test tests/commands/ai-prepare-context-planner.test.js tests/commands/ai-plan.test.js tests/commands/spec-create.test.js tests/commands/ai-pr.test.js tests/commands/ux-flags.test.js tests/commands/cli-contract.test.js tests/lib/cli-theme.test.js tests/lib/cli-ux.test.js tests/lib/cli-editor.test.js tests/lib/ai-context-proposal.test.js
+node bin/create-quiver.js --help >/tmp/quiver-help.txt && rg -- '--with-planner|--interactive|--review|--no-color' /tmp/quiver-help.txt
+node --test tests/**/*.test.js
+npm run smoke:create-quiver
+npm run smoke:doctor-fixtures
+npm run smoke:guided-workflow
+npm run package:quiver
+npm pack --dry-run
+git diff --check
+node bin/create-quiver.js spec validate specs/quiver-v29-planner-prepare-context-cli-ux
+```
+
+### Results
+
+- Focused command/UX validation passed with 87 tests and confirmed the public help includes `--with-planner`, `--interactive`, `--review`, and `--no-color`.
+- Full test suite passed with 426 tests.
+- `npm run smoke:create-quiver` passed.
+- `npm run smoke:doctor-fixtures` passed with 13 fixture states.
+- `npm run smoke:guided-workflow` passed.
+- `npm run package:quiver` passed and validated package safety.
+- `npm pack --dry-run` passed and produced a clean dry-run tarball report for `create-quiver@0.14.0`.
+- `git diff --check` passed.
+- `node bin/create-quiver.js spec validate specs/quiver-v29-planner-prepare-context-cli-ux` passed after closure metadata updates.
+
+### Notes
+
+- Npm printed a non-blocking update notice for npm `11.12.1 -> 11.15.0`.
+- Publishing and PR creation remain outside this slice.

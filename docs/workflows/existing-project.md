@@ -86,6 +86,13 @@ npx --yes create-quiver@latest ai prepare-context --dry-run
 npx --yes create-quiver@latest ai prepare-context
 ```
 
+Modo asistido por planner, recomendado cuando querés que una IA complete el contexto inicial:
+
+```bash
+npx --yes create-quiver@latest ai prepare-context --with-planner --dry-run
+npx --yes create-quiver@latest ai prepare-context --with-planner --review --interactive
+```
+
 Qué hace:
 
 - previsualiza actualizaciones documentales;

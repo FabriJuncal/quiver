@@ -18,7 +18,8 @@
   <a href="#primeros-pasos">Primeros pasos</a> ·
   <a href="./docs/workflows/existing-project.md">Proyecto existente</a> ·
   <a href="./docs/workflows/full-ai-spec-to-pr.md">Flujo completo</a> ·
-  <a href="./docs/reference/commands.md">Comandos</a>
+  <a href="./docs/reference/commands.md">Comandos</a> ·
+  <a href="./docs/CLI_UX_GUIDE.md">UX del CLI</a>
 </p>
 
 # Quiver
@@ -104,6 +105,13 @@ npx --yes create-quiver@latest ai prepare-context --dry-run
 npx --yes create-quiver@latest ai prepare-context
 ```
 
+Ese flujo usa el modo determinístico de Quiver: analiza el proyecto y actualiza solo documentación de contexto sin llamar a un proveedor de IA. Si querés que un agente planificador proponga el contexto, usá el modo asistido:
+
+```bash
+npx --yes create-quiver@latest ai prepare-context --with-planner --dry-run
+npx --yes create-quiver@latest ai prepare-context --with-planner --review --interactive
+```
+
 La inicialización crea un contrato visible para humanos y agentes, más estado interno de Quiver:
 
 - `AGENTS.md`
@@ -145,7 +153,8 @@ Usá la guía que corresponda al estado de tu proyecto:
 | `npx --yes create-quiver@latest analyze` | Genera el mapa del proyecto usado por humanos y agentes. |
 | `npx --yes create-quiver@latest doctor` | Revisa si el contrato de Quiver está sano. |
 | `npx --yes create-quiver@latest flow` | Indica el próximo paso seguro. |
-| `npx --yes create-quiver@latest ai prepare-context` | Prepara contexto de onboarding para IA sin tocar código de producto. |
+| `npx --yes create-quiver@latest ai prepare-context --dry-run` | Previsualiza contexto de onboarding para IA sin tocar código de producto. |
+| `npx --yes create-quiver@latest ai prepare-context --with-planner --dry-run` | Previsualiza una propuesta de contexto generada por el planner. |
 | `npx --yes create-quiver@latest ai plan --phase acceptance` | Genera un borrador de criterios de aceptación. |
 | `npx --yes create-quiver@latest ai plan --phase technical-plan` | Genera un borrador de plan técnico. |
 | `npx --yes create-quiver@latest ai review-plan` | Revisa el plan técnico antes de aprobarlo. |
@@ -157,6 +166,20 @@ Usá la guía que corresponda al estado de tu proyecto:
 | `npx --yes create-quiver@latest spec close specs/<spec>` | Cierra el worktree de una spec ya mergeada. |
 
 La referencia completa está en [docs/reference/commands.md](./docs/reference/commands.md).
+
+## UX del CLI
+
+Quiver usa un estándar único para que los comandos sean claros tanto para humanos como para automatizaciones:
+
+- `--dry-run` muestra qué pasaría sin escribir ni ejecutar proveedores.
+- `--print-prompt` imprime el prompt exacto y no ejecuta IA.
+- `--with-planner` activa un modo asistido por planner solo en comandos que lo soportan.
+- `--review` abre o prepara una revisión humana antes de escrituras persistentes.
+- `--interactive` habilita confirmaciones explícitas cuando el comando puede cambiar estado.
+- `--json` mantiene salida legible por máquinas y no se combina con `--interactive` ni `--review`.
+- `--no-color` desactiva colores cuando el entorno no los necesita.
+
+El detalle del estándar, la matriz de comandos y los colores de Quiver están en [docs/CLI_UX_GUIDE.md](./docs/CLI_UX_GUIDE.md).
 
 ## ¿Qué crea Quiver?
 
@@ -227,6 +250,7 @@ npm pack --dry-run
 - [Flujo completo](./docs/workflows/full-ai-spec-to-pr.md)
 - [Guía para proyectos existentes](./docs/workflows/existing-project.md)
 - [Referencia de comandos](./docs/reference/commands.md)
+- [Guía de UX del CLI](./docs/CLI_UX_GUIDE.md)
 - [Troubleshooting template](./docs/TROUBLESHOOTING.md.template)
 - [Guía de IA de este repositorio](./README_FOR_AI.md)
 - [Changelog](./CHANGELOG.md)

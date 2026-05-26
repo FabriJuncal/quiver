@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "kind": "quiver-context-proposal",
+  "summary": "Prepare project onboarding docs with planner findings.",
+  "assumptions": [
+    "The project uses npm because package-lock.json exists."
+  ],
+  "risks": [
+    "Architecture needs team confirmation."
+  ],
+  "docs": [
+    {
+      "path": "docs/AI_CONTEXT.md",
+      "action": "update",
+      "reason": "Refresh agent-facing context.",
+      "content": "# AI Context\n\nPlanner-generated context draft.\n",
+      "assumptions": [
+        "Use docs/INDEX.md as the navigation map."
+      ],
+      "risks": [
+        "Do not treat inferred architecture as approved."
+      ]
+    },
+    {
+      "path": "docs/STATUS.md",
+      "action": "create",
+      "reason": "Capture current status.",
+      "content": "# Status\n\nPending team confirmation.\n"
+    }
+  ],
+  "omitted_paths": [
+    "src/"
+  ],
+  "next_steps": [
+    "Review docs before feature work."
+  ]
+}

@@ -21,10 +21,14 @@ Usá `npx --yes create-quiver@latest --help` para ver la lista viva de comandos 
 |---|---|
 | `npx --yes create-quiver@latest ai prepare-context --dry-run` | Previsualiza actualizaciones documentales de contexto para IA. |
 | `npx --yes create-quiver@latest ai prepare-context` | Escribe actualizaciones documentales de contexto para IA. |
+| `npx --yes create-quiver@latest ai prepare-context --with-planner --dry-run` | Previsualiza una propuesta docs-only generada por el planner sin escribir archivos. |
+| `npx --yes create-quiver@latest ai prepare-context --with-planner --print-prompt` | Imprime el prompt exacto para ejecutar el planner en otro entorno. |
+| `npx --yes create-quiver@latest ai prepare-context --with-planner --review --interactive` | Ejecuta planner, abre revisión humana y pide confirmación antes de escribir docs permitidos. |
 | `npx --yes create-quiver@latest ai agent set <role> --provider <provider> --model "<label>"` | Guarda un perfil de agente sin secretos. |
 | `npx --yes create-quiver@latest ai run create --input <file>` | Inicia una ejecución persistente de IA. |
 | `npx --yes create-quiver@latest ai status` | Muestra el estado de la ejecución actual. |
 | `npx --yes create-quiver@latest ai plan --phase acceptance --input <file>` | Genera criterios de aceptación. |
+| `npx --yes create-quiver@latest ai plan --phase acceptance --review --interactive --input <file>` | Permite revisar y confirmar el borrador del planner antes de guardarlo. |
 | `npx --yes create-quiver@latest ai revise --phase acceptance --input <file>` | Crea una nueva versión de criterios. |
 | `npx --yes create-quiver@latest ai approve --phase acceptance --version <n>` | Aprueba criterios. |
 | `npx --yes create-quiver@latest ai plan --phase technical-plan` | Genera plan técnico. |
@@ -37,6 +41,7 @@ Usá `npx --yes create-quiver@latest --help` para ver la lista viva de comandos 
 |---|---|
 | `npx --yes create-quiver@latest spec create --dry-run` | Previsualiza archivos de spec generados. |
 | `npx --yes create-quiver@latest spec create` | Genera spec, slices, briefs, plan de ejecución y cuerpo del PR. |
+| `npx --yes create-quiver@latest spec create --review --interactive` | Abre una revisión del paquete a generar y pide confirmación antes de escribir. |
 | `npx --yes create-quiver@latest spec validate specs/<spec> --strict` | Valida el paquete de spec. |
 | `npx --yes create-quiver@latest spec start specs/<spec>` | Crea o reutiliza el worktree de una spec. |
 | `npx --yes create-quiver@latest plan --spec <spec>` | Muestra el orden de ejecución de slices. |
@@ -51,6 +56,7 @@ Usá `npx --yes create-quiver@latest --help` para ver la lista viva de comandos 
 | Comando | Para qué sirve |
 |---|---|
 | `npx --yes create-quiver@latest ai pr --dry-run --input specs/<spec>/pr.md` | Previsualiza creación de PR y readiness de GitHub. |
+| `npx --yes create-quiver@latest ai pr --review --dry-run --input specs/<spec>/pr.md` | Abre `pr.md` para revisión y vuelve a armar el plan de PR sin crear el PR. |
 | `npx --yes create-quiver@latest ai pr --create --input specs/<spec>/pr.md` | Crea el PR usando `gh`. |
 | `npx --yes create-quiver@latest spec close specs/<spec> --dry-run` | Previsualiza limpieza del worktree después del merge. |
 | `npx --yes create-quiver@latest spec close specs/<spec>` | Cierra el worktree de la spec mergeada. |
@@ -61,9 +67,28 @@ Usá `npx --yes create-quiver@latest --help` para ver la lista viva de comandos 
 |---|---|
 | `--dry-run` | Previsualiza sin escribir archivos ni ejecutar proveedores. |
 | `--print-prompt` | Imprime el prompt del proveedor sin ejecutarlo. |
+| `--with-planner` | Activa comportamiento asistido por planner solo en comandos que lo soportan. |
+| `--interactive` | Habilita prompts humanos de confirmación o elección. |
+| `--review` | Abre o prepara revisión humana antes de escrituras persistentes. |
+| `--no-color` | Desactiva colores ANSI en salida humana. |
 | `--provider codex\|claude\|gemini` | Selecciona CLI local de proveedor. |
 | `--commit` | Permite que Quiver commitee trabajo validado del slice. |
 | `--mode manual` | Imprime prompts para asignación manual de ejecutores. |
 | `--mode delegated` | Usa ejecución delegada con worktrees temporales cuando es seguro. |
 | `--ssh-host-alias <alias>` | Alias SSH de GitHub para validaciones de PR. |
 | `--identity-file <path>` | Ruta de la clave SSH para validaciones de PR. |
+
+## Matriz de flags UX
+
+| Comando | `--with-planner` | `--interactive` | `--review` |
+|---|---:|---:|---:|
+| `ai prepare-context` | sí | sí | sí |
+| `ai plan` | sí | sí | sí |
+| `spec create` | sí | sí | sí |
+| `ai pr` | no | sí | sí |
+| `flow`, `next`, `graph` | no | no | no |
+| `ai inspect`, `ai export`, `ai specs list`, `ai slices list`, `ai trace report` | no | no | no |
+
+`--json` no se puede combinar con `--interactive` ni `--review`, porque la salida debe mantenerse legible por máquinas. El estándar completo vive en [docs/CLI_UX_GUIDE.md](../CLI_UX_GUIDE.md).
+
+Nota: `spec create --with-planner` no ejecuta un proveedor nuevo; indica que el comando consume el plan técnico aprobado generado por el planner.

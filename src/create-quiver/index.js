@@ -53,6 +53,7 @@ const { checkPrReadiness, checkScope, checkSliceReadiness } = require('./lib/rea
 const { cleanupSlice, refreshActiveSlicesBoard, startSlice } = require('./lib/lifecycle');
 const { buildSpecStatus, closeSpecWorktree, formatSpecCloseResult, formatSpecStartResult, formatSpecStatus, startSpecWorktree } = require('./lib/spec-worktrees');
 const { getContextPathExclusionReason } = require('./lib/ai/safety');
+const { validateUxFlags } = require('./lib/cli/ux-flags');
 const { relativePosixPath, resolveTargetRoot } = require('./lib/paths');
 const {
   CURRENT_SCAN_RELATIVE_PATH,
@@ -306,6 +307,10 @@ Options:
       --include-templates     Export packaged templates in init profile
       --dry-run               Preview init, analyze, migrate, prepare, spec create/start/close, demo, ai agent set, or AI work without executing writes/providers
       --print-prompt          Print the exact AI prompt and exit without executing provider CLIs
+      --with-planner          Enable planner-assisted behavior on commands that explicitly support it
+      --interactive           Enable prompts on commands that explicitly support interactive choices
+      --review                Open or prepare human review before persistent writes where supported
+      --no-color              Disable ANSI colors in human output
       --fix                   For doctor, apply safe non-destructive repairs
       --execute               For ai execute-plan, run the planned slices instead of printing commands
       --create                For ai pr, create the PR after preflight instead of printing the plan only
@@ -417,6 +422,10 @@ function parseArgs(argv) {
     strict: false,
     strictOverlap: false,
     json: false,
+    noColor: false,
+    withPlanner: false,
+    interactive: false,
+    review: false,
     includeCompleted: false,
     onlyReady: false,
     allReady: false,
@@ -644,6 +653,26 @@ function parseArgs(argv) {
 
     if (arg === '--json') {
       result.json = true;
+      continue;
+    }
+
+    if (arg === '--no-color') {
+      result.noColor = true;
+      continue;
+    }
+
+    if (arg === '--with-planner') {
+      result.withPlanner = true;
+      continue;
+    }
+
+    if (arg === '--interactive') {
+      result.interactive = true;
+      continue;
+    }
+
+    if (arg === '--review') {
+      result.review = true;
       continue;
     }
 
@@ -2342,6 +2371,8 @@ async function run(argv) {
     return;
   }
 
+  validateUxFlags(args);
+
   if (args.mode === 'analyze') {
     runAnalyze(args.targetDir, {
       dryRun: args.dryRun,
@@ -2481,8 +2512,17 @@ async function run(argv) {
 
     if (args.aiCommand === 'prepare-context') {
       await runAiPrepareContext(process.cwd(), {
+        context: args.aiContext || undefined,
         dryRun: args.dryRun,
+        interactive: args.interactive,
+        printPrompt: args.aiPrintPrompt,
+        provider: args.aiProvider,
+        providerExplicit: args.aiProviderExplicit,
+        review: args.review,
+        role: args.aiRole,
         runId: args.aiRunId || undefined,
+        timeout: args.aiTimeout,
+        withPlanner: args.withPlanner,
       });
       return;
     }
@@ -2496,10 +2536,13 @@ async function run(argv) {
         printPrompt: args.aiPrintPrompt,
         provider: args.aiProvider,
         providerExplicit: args.aiProviderExplicit,
+        interactive: args.interactive,
+        review: args.review,
         role: args.aiRole,
         runId: args.aiRunId || undefined,
         specSlug: args.specSlug || undefined,
         timeout: args.aiTimeout,
+        withPlanner: args.withPlanner,
       });
       return;
     }
@@ -2620,7 +2663,9 @@ async function run(argv) {
         create: args.aiCreate,
         dryRun: args.dryRun,
         input: args.aiInput || undefined,
+        interactive: args.interactive,
         remote: args.aiRemote || undefined,
+        review: args.review,
         sshHostAlias: args.aiSshHostAlias || undefined,
         identityFile: args.aiIdentityFile || undefined,
         title: args.aiTitle || undefined,
@@ -2760,10 +2805,13 @@ async function run(argv) {
 
   if (args.mode === 'spec') {
     if (args.specCommand === 'create') {
-      runCreateSpec(process.cwd(), {
+      await runCreateSpec(process.cwd(), {
         dryRun: args.dryRun,
         input: args.aiInput || undefined,
+        interactive: args.interactive,
+        review: args.review,
         specSlug: args.specSlug || undefined,
+        withPlanner: args.withPlanner,
       });
       return;
     }

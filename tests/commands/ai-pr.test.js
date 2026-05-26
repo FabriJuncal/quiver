@@ -152,6 +152,72 @@ test('ai pr CLI dry-run wires through the new router and avoids opening a PR', (
   }
 });
 
+test('ai pr --review lets a human edit pr.md before the PR plan is built', async () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'quiver-ai-pr-review-'));
+  writeFile(path.join(root, 'specs/demo/pr.md'), '## Title\nOriginal PR\n\n## Summary\nBody\n');
+
+  try {
+    const result = await runPr(root, {
+      dryRun: true,
+      input: 'specs/demo/pr.md',
+      review: true,
+      preflightFn: async (repoRoot) => ({
+        ok: true,
+        repoRoot,
+        remote: 'origin',
+        branchName: 'feature/demo',
+        guidePath: `${repoRoot}/docs/GITFLOW_PR_GUIDE.md`,
+      }),
+      openEditorFn: (prBodyPath) => {
+        fs.writeFileSync(prBodyPath, '## Title\nEdited PR\n\n## Summary\nUpdated body\n');
+        return { ok: true, canceled: false };
+      },
+    });
+
+    assert.equal(result.plan.title, 'Edited PR');
+    assert.equal(fs.readFileSync(path.join(root, 'specs/demo/pr.md'), 'utf8'), '## Title\nEdited PR\n\n## Summary\nUpdated body\n');
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('ai pr --interactive can decline PR creation before gh runs', async () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'quiver-ai-pr-interactive-'));
+  writeFile(path.join(root, 'specs/demo/pr.md'), '## Title\nDemo PR\n\n## Summary\nBody\n');
+  let ghCalled = false;
+
+  try {
+    await assert.rejects(
+      runPr(root, {
+        create: true,
+        input: 'specs/demo/pr.md',
+        interactive: true,
+        promptConfirm: async () => false,
+        stdinIsTTY: true,
+        stdoutIsTTY: true,
+        stderrIsTTY: true,
+        write: () => {},
+        preflightFn: async (repoRoot) => ({
+          ok: true,
+          repoRoot,
+          remote: 'origin',
+          branchName: 'feature/demo',
+          guidePath: `${repoRoot}/docs/GITFLOW_PR_GUIDE.md`,
+        }),
+        ghCreateRunner() {
+          ghCalled = true;
+          return { status: 0, stdout: '', stderr: '' };
+        },
+      }),
+      /interactive approval declined/,
+    );
+
+    assert.equal(ghCalled, false);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test('ai pr create runs gh pr create with pr.md after preflight', async () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'quiver-ai-pr-create-'));
   writeFile(path.join(root, 'specs/demo/pr.md'), '## Title\nDemo PR\n\n## Summary\nBody\n');

@@ -49,5 +49,9 @@
     "smoke:tiered-pack": "bash scripts/ci/smoke-tiered-pack.sh",
     "smoke:guided-workflow": "bash scripts/ci/smoke-guided-workflow.sh",
     "release:quiver": "bash scripts/release-quiver.sh"
+  },
+  "dependencies": {
+    "@clack/prompts": "^1.4.0",
+    "zod": "^4.4.3"
   }
 }

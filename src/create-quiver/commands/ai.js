@@ -1,4 +1,5 @@
 const fs = require('node:fs');
+const os = require('node:os');
 const path = require('node:path');
 
 const { redactSecrets } = require('../lib/evidence');
@@ -10,6 +11,9 @@ const {
   writeRawProviderArtifact,
 } = require('../lib/ai/artifacts');
 const { buildContextPackMetadata, normalizeRole } = require('../lib/ai/context-packs');
+const { parseContextProposalOutput } = require('../lib/ai/context-proposal');
+const { openEditor } = require('../lib/cli/editor');
+const { createUx } = require('../lib/cli/ux');
 const { runExecuteSlice, runPromptSlice } = require('../lib/ai/executor');
 const { runExecutePlan } = require('../lib/ai/execution-plan');
 const { buildPrCreatePlan, formatPreflightReport, formatPrCreateReport, preflightGitHubPr, runGhPrCreate } = require('../lib/ai/github');
@@ -311,6 +315,255 @@ function formatContextPreparationReport({ dryRun, plan, writePlan, writtenDocs, 
   );
 
   return `${lines.join('\n')}\n`;
+}
+
+function truncatePromptSection(text, maxChars = 1200) {
+  const value = String(text || '').trimEnd();
+  if (value.length <= maxChars) {
+    return value;
+  }
+  return `${value.slice(0, maxChars).trimEnd()}\n[... truncated ${value.length - maxChars} chars ...]`;
+}
+
+function buildPrepareContextPlannerPrompt({ pack, draftPack }) {
+  const plan = draftPack.plan;
+  const allowedPaths = draftPack.docs.map((doc) => doc.path);
+  const sections = [
+    pack.prompt,
+    'Task: planner-assisted Quiver context preparation.',
+    'Goal: improve the docs-only onboarding context for future AI work while preserving WDD + SDD safety.',
+    'Rules:',
+    '- Return only valid JSON. Do not include Markdown outside the JSON object.',
+    '- Do not modify product code, UI code, tests, migrations, dependencies, lockfiles, build files, runtime config, generated files, or paths outside the repo.',
+    '- Only propose writes to the allowed docs paths listed below.',
+    '- If information is ambiguous, document assumptions and risks instead of inventing facts.',
+    '- Keep human-authored content safe; Quiver will merge proposals through managed context blocks.',
+    '',
+    'Allowed docs-only output paths:',
+    ...allowedPaths.map((item) => `- ${item}`),
+    '',
+    'Project context:',
+    `- Project: ${plan.projectName}`,
+    `- Project slug: ${plan.projectSlug}`,
+    `- Package manager: ${plan.facts.packageManager}`,
+    `- Stack summary: ${plan.facts.stackSummary}`,
+    '',
+    'Files considered by deterministic prepare-context:',
+    ...plan.filesConsidered.map((item) => `- ${item.path}: ${item.present ? 'present' : 'absent'}${item.reason ? ` (${item.reason})` : ''}`),
+    '',
+    'Known assumptions:',
+    ...formatPathList(plan.assumptions),
+    '',
+    'Known risks:',
+    ...formatPathList(plan.risks),
+    '',
+    'Known contradictions:',
+    ...formatPathList(plan.contradictions),
+    '',
+    'Deterministic candidate docs:',
+    ...draftPack.docs.flatMap((doc) => [
+      `### ${doc.path}`,
+      truncatePromptSection(doc.content),
+    ]),
+    '',
+    'Required JSON output shape:',
+    JSON.stringify({
+      schema_version: 1,
+      kind: 'quiver-context-proposal',
+      summary: 'short summary',
+      assumptions: ['assumption to confirm'],
+      risks: ['risk to track'],
+      docs: [
+        {
+          path: 'docs/AI_CONTEXT.md',
+          action: 'update',
+          reason: 'why this doc should change',
+          content: '# AI Context\\n\\nFull proposed content or managed section content.\\n',
+          assumptions: [],
+          risks: [],
+        },
+      ],
+      omitted_paths: ['paths intentionally omitted'],
+      next_steps: ['safe next step'],
+    }, null, 2),
+  ];
+
+  return {
+    allowedPaths,
+    plan,
+    prompt: sections.join('\n'),
+    promptSource: 'quiver prepare-context planner proposal contract',
+  };
+}
+
+function formatPrepareContextPlannerDryRunReport({ provider, role, context, invocation, promptInfo, review, interactive }) {
+  const plan = promptInfo.plan;
+  const lines = [
+    'AI prepare-context planner dry-run',
+    'Mode: dry-run',
+    'Planner: enabled',
+    `Provider: ${provider}`,
+    `Role: ${role}`,
+    `Context pack: ${context}`,
+    `Command: ${invocation.command} ${invocation.args.join(' ')}`.trim(),
+    `Prompt bytes: ${invocation.promptLength}`,
+    `Prompt source: ${promptInfo.promptSource}`,
+    `Review requested: ${review ? 'yes' : 'no'}`,
+    `Interactive requested: ${interactive ? 'yes' : 'no'}`,
+    'Provider execution: skipped',
+    'Writes: none',
+    'Product code: untouched',
+    `Candidate docs: ${promptInfo.allowedPaths.join(', ')}`,
+    'Files considered:',
+    ...plan.filesConsidered.map((item) => `- ${item.path}: ${item.present ? 'present' : 'absent'}`),
+    'Allowed docs-only paths:',
+    ...promptInfo.allowedPaths.map((item) => `- ${item}`),
+    'Next safe commands:',
+    '- npx create-quiver ai prepare-context --with-planner --print-prompt',
+    '- npx create-quiver ai prepare-context --with-planner --dry-run --review',
+    '- npx create-quiver ai prepare-context --with-planner',
+  ];
+
+  return `${lines.join('\n')}\n`;
+}
+
+function serializeProposalForReview(proposal) {
+  return {
+    schema_version: proposal.schemaVersion,
+    kind: proposal.kind,
+    summary: proposal.summary,
+    assumptions: proposal.assumptions,
+    risks: proposal.risks,
+    docs: proposal.docs.map((doc) => ({
+      path: doc.path,
+      action: doc.action,
+      reason: doc.reason,
+      content: doc.content,
+      assumptions: doc.assumptions,
+      risks: doc.risks,
+    })),
+    omitted_paths: proposal.omittedPaths,
+    next_steps: proposal.nextSteps,
+  };
+}
+
+function createProposalReviewFile(proposal, options = {}) {
+  const reviewDir = options.reviewDir || fs.mkdtempSync(path.join(os.tmpdir(), 'quiver-context-review-'));
+  const reviewPath = path.join(reviewDir, 'context-proposal.json');
+  fs.mkdirSync(reviewDir, { recursive: true });
+  fs.writeFileSync(reviewPath, `${JSON.stringify(serializeProposalForReview(proposal), null, 2)}\n`);
+  return reviewPath;
+}
+
+function makeReviewError(message, reviewPath, cause) {
+  const error = new Error(formatError(`${message}\nReview artifact: ${reviewPath}\nNext safe step: edit the artifact into valid proposal JSON or rerun with --with-planner --dry-run.`));
+  error.code = cause?.code || 'AI_CONTEXT_REVIEW_FAILED';
+  error.cause = cause;
+  error.reviewPath = reviewPath;
+  return error;
+}
+
+function createReviewTextFile(contents, options = {}) {
+  const reviewDir = options.reviewDir || fs.mkdtempSync(path.join(os.tmpdir(), 'quiver-review-'));
+  const filename = options.reviewFileName || 'review.md';
+  const reviewPath = path.join(reviewDir, filename);
+  fs.mkdirSync(reviewDir, { recursive: true });
+  fs.writeFileSync(reviewPath, String(contents || ''));
+  return reviewPath;
+}
+
+async function reviewTextWithEditor(repoRoot, contents, options = {}) {
+  const reviewPath = createReviewTextFile(contents, options);
+  const hasEditorRunner = typeof options.openEditorFn === 'function';
+  const canOpenEditor = hasEditorRunner || options.stdinIsTTY === true || (options.stdinIsTTY !== false && Boolean(process.stdin.isTTY));
+
+  if (!canOpenEditor) {
+    throw makeReviewError(`${options.reviewLabel || 'review'} requires an interactive terminal or an injected editor runner.`, reviewPath);
+  }
+
+  const editorResult = hasEditorRunner
+    ? options.openEditorFn(reviewPath, { cwd: repoRoot, env: options.env || process.env })
+    : openEditor(reviewPath, { cwd: repoRoot, env: options.env || process.env });
+
+  if (!editorResult || editorResult.ok !== true) {
+    throw makeReviewError(editorResult?.reason || `${options.reviewLabel || 'review'} was canceled.`, reviewPath);
+  }
+
+  return {
+    reviewPath,
+    text: fs.readFileSync(reviewPath, 'utf8'),
+  };
+}
+
+async function confirmInteractiveAction(message, options = {}) {
+  if (options.interactive !== true) {
+    return;
+  }
+
+  const ux = options.ux || createUx({
+    interactive: true,
+    promptConfirm: options.promptConfirm,
+    stdinIsTTY: options.stdinIsTTY,
+    stdoutIsTTY: options.stdoutIsTTY,
+    stderrIsTTY: options.stderrIsTTY,
+    write: options.write,
+  });
+  const confirmed = await ux.promptConfirm(message, {
+    initialValue: false,
+  });
+
+  if (!confirmed) {
+    const error = new Error(formatError('interactive approval declined. No files were written.'));
+    error.code = 'AI_INTERACTIVE_APPROVAL_DECLINED';
+    throw error;
+  }
+}
+
+async function reviewPlannerContextProposal(repoRoot, proposal, options = {}) {
+  const reviewPath = createProposalReviewFile(proposal, options);
+  const hasEditorRunner = typeof options.openEditorFn === 'function';
+  const canOpenEditor = hasEditorRunner || options.stdinIsTTY === true || (options.stdinIsTTY !== false && Boolean(process.stdin.isTTY));
+
+  if (!canOpenEditor) {
+    throw makeReviewError('ai prepare-context review requires an interactive terminal or an injected editor runner.', reviewPath);
+  }
+
+  const editorResult = hasEditorRunner
+    ? options.openEditorFn(reviewPath, { cwd: repoRoot, env: options.env || process.env })
+    : openEditor(reviewPath, { cwd: repoRoot, env: options.env || process.env });
+
+  if (!editorResult || editorResult.ok !== true) {
+    throw makeReviewError(editorResult?.reason || 'ai prepare-context review was canceled before applying docs.', reviewPath);
+  }
+
+  try {
+    return {
+      proposal: parseContextProposalOutput(fs.readFileSync(reviewPath, 'utf8')),
+      reviewPath,
+    };
+  } catch (error) {
+    throw makeReviewError('edited planner proposal is invalid after review.', reviewPath, error);
+  }
+}
+
+async function confirmPlannerContextWrites(writePlan, options = {}) {
+  const changed = writePlan.filter((item) => item.action !== 'skip').length;
+  await confirmInteractiveAction(`Apply ${changed} docs-only context update${changed === 1 ? '' : 's'}?`, options);
+}
+
+function buildPlannerContextWritePlan(repoRoot, proposal) {
+  const reasonByPath = new Map(proposal.docs.map((doc) => [doc.path, doc.reason]));
+  const draftDocs = proposal.docs
+    .filter((doc) => doc.action !== 'skip')
+    .map((doc) => ({
+      path: doc.path,
+      content: doc.content,
+    }));
+
+  return buildContextWritePlan(repoRoot, draftDocs).map((item) => ({
+    ...item,
+    reason: item.action === 'skip' ? item.reason : reasonByPath.get(item.path) || item.reason,
+  }));
 }
 
 function writeProviderOutput(result) {
@@ -937,6 +1190,10 @@ async function runOnboard(repoRoot, options = {}) {
 }
 
 async function runPrepareContext(repoRoot, options = {}) {
+  if (options.withPlanner === true) {
+    return runPrepareContextWithPlanner(repoRoot, options);
+  }
+
   const draftPack = buildContextPreparationDrafts(repoRoot);
   const writePlan = buildContextWritePlan(repoRoot, draftPack.docs);
   const report = {
@@ -992,6 +1249,152 @@ async function runPrepareContext(repoRoot, options = {}) {
 
   return {
     ...report,
+    runId: lifecycleRun.run_id,
+    snapshot,
+    writtenDocs,
+  };
+}
+
+async function runPrepareContextWithPlanner(repoRoot, options = {}) {
+  const role = normalizeRole(options.role || DEFAULT_PLAN_ROLE);
+  const provider = resolveProviderForProfile(repoRoot, role, options.provider, options.providerExplicit, DEFAULT_PLAN_PROVIDER);
+  const context = options.context || DEFAULT_PLAN_CONTEXT;
+  const timeoutMs = normalizeTimeout(options.timeout);
+  const draftPack = buildContextPreparationDrafts(repoRoot);
+  const pack = buildContextPackMetadata({
+    role,
+    packName: context,
+    repoRoot,
+  });
+  const promptInfo = buildPrepareContextPlannerPrompt({ pack, draftPack });
+  const prompt = promptInfo.prompt;
+  assertProviderPromptWithinLimit(prompt, options.promptLimitOptions || {});
+  let invocation;
+
+  try {
+    invocation = buildProviderInvocation(provider, {
+      prompt,
+      cwd: repoRoot,
+      timeoutMs,
+    });
+  } catch (error) {
+    throw annotateProviderError(error, 'prepare-context');
+  }
+
+  if (options.dryRun) {
+    const report = {
+      task: 'prepare-context',
+      mode: 'planner',
+      dryRun: true,
+      provider,
+      role,
+      contextPack: context,
+      invocation,
+      candidateDocs: promptInfo.allowedPaths,
+      plan: draftPack.plan,
+    };
+    process.stdout.write(formatPrepareContextPlannerDryRunReport({
+      provider,
+      role,
+      context,
+      invocation,
+      promptInfo,
+      review: options.review === true,
+      interactive: options.interactive === true,
+    }));
+    return report;
+  }
+
+  if (options.printPrompt) {
+    const report = {
+      task: 'prepare-context',
+      provider,
+      role,
+      contextPack: context,
+      invocation,
+      prompt,
+      promptSource: promptInfo.promptSource,
+    };
+    process.stdout.write(formatPromptOnlyReport(report));
+    return report;
+  }
+
+  let result;
+  try {
+    result = await (options.runProviderFn || runProvider)(provider, {
+      prompt,
+      cwd: repoRoot,
+      timeoutMs,
+      dryRun: false,
+      probe: options.probe,
+      spawn: options.spawn,
+      tempRoot: options.tempRoot,
+      tempFileName: options.tempFileName,
+      tempFilePrefix: options.tempFilePrefix,
+    });
+  } catch (error) {
+    throw annotateProviderError(error, 'prepare-context');
+  }
+
+  if (!result.ok) {
+    writeProviderOutput(result);
+    throw annotateProviderError(result.error || new Error('provider run failed'), 'prepare-context');
+  }
+
+  const clean = extractCleanProviderOutput(result, { prompt, projectRoot: repoRoot });
+  let proposal = parseContextProposalOutput(clean.cleanOutput);
+  let reviewPath = '';
+
+  if (options.review === true) {
+    const reviewed = await reviewPlannerContextProposal(repoRoot, proposal, options);
+    proposal = reviewed.proposal;
+    reviewPath = reviewed.reviewPath;
+  }
+
+  const writePlan = buildPlannerContextWritePlan(repoRoot, proposal);
+  await confirmPlannerContextWrites(writePlan, options);
+
+  const lifecycleRun = ensureAiRun(repoRoot, {
+    command: 'ai prepare-context --with-planner',
+    input: options.input || '',
+    runId: options.runId,
+    phase: 'created',
+  });
+  const snapshot = createContextSnapshots(repoRoot, lifecycleRun, writePlan, options.now || new Date());
+  const plannedDocs = writePlan.filter((item) => item.action !== 'skip').map((item) => item.path);
+
+  process.stdout.write(formatContextPreparationReport({
+    dryRun: false,
+    plan: draftPack.plan,
+    writePlan,
+    writtenDocs: plannedDocs,
+    snapshot,
+  }));
+
+  const writtenDocs = writeDraftDocs(writePlan);
+  updateAiRunPhase(repoRoot, lifecycleRun.run_id, 'onboarding-ready', {
+    artifact: snapshot.manifestPath,
+    command: 'ai prepare-context --with-planner',
+  });
+  process.stdout.write(formatContextPreparationReport({
+    dryRun: false,
+    plan: draftPack.plan,
+    writePlan,
+    writtenDocs,
+    snapshot,
+    completed: true,
+  }));
+
+  return {
+    task: 'prepare-context',
+    mode: 'planner',
+    dryRun: false,
+    provider,
+    role,
+    contextPack: context,
+    invocation,
+    proposal,
+    reviewPath,
     runId: lifecycleRun.run_id,
     snapshot,
     writtenDocs,
@@ -1118,6 +1521,15 @@ async function runPlan(repoRoot, options = {}) {
       invocation,
     };
     process.stdout.write(formatDryRunReport(report));
+    if (options.withPlanner === true) {
+      process.stdout.write('Planner mode: already active for ai plan; --with-planner is accepted for UX consistency.\n');
+    }
+    if (options.review === true) {
+      process.stdout.write('Review requested: provider output will be opened for review before saving the draft in live mode.\n');
+    }
+    if (options.interactive === true) {
+      process.stdout.write('Interactive requested: live mode will ask before saving the draft.\n');
+    }
     return report;
   }
 
@@ -1157,13 +1569,27 @@ async function runPlan(repoRoot, options = {}) {
     throw annotateProviderError(result.error || new Error('provider run failed'), 'plan', phase);
   }
 
+  const clean = extractCleanProviderOutput(result, { prompt, projectRoot: repoRoot });
+  let cleanOutput = clean.cleanOutput;
+  let reviewPath = '';
+
+  if (options.review === true) {
+    const reviewed = await reviewTextWithEditor(repoRoot, cleanOutput, {
+      ...options,
+      reviewFileName: `ai-plan-${phase}-draft.md`,
+      reviewLabel: `ai plan --phase ${phase} review`,
+    });
+    cleanOutput = reviewed.text;
+    reviewPath = reviewed.reviewPath;
+  }
+
+  await confirmInteractiveAction(`Save ${phase} planner draft?`, options);
   const lifecycleRun = ensureAiRun(repoRoot, {
     command: `ai plan --phase ${phase}`,
     input: inputPath,
     runId: options.runId,
   });
-  const clean = extractCleanProviderOutput(result, { prompt, projectRoot: repoRoot });
-  writeCleanProviderOutput(clean);
+  writeCleanProviderOutput({ cleanOutput });
   const rawArtifact = writeRawProviderArtifact(repoRoot, lifecycleRun.run_id, `ai-plan-${phase}`, result, {
     metadata: {
       phase,
@@ -1174,10 +1600,11 @@ async function runPlan(repoRoot, options = {}) {
       input_compaction: inputCompaction,
     },
   });
-  const draft = savePlannerDraft(repoRoot, phase, inputPath, clean.cleanOutput, {
+  const draft = savePlannerDraft(repoRoot, phase, inputPath, cleanOutput, {
     rawArtifactPath: rawArtifact.path,
     outputSource: clean.source,
     inputCompaction,
+    reviewPath,
   });
   updateAiRunPhase(repoRoot, lifecycleRun.run_id, phase === 'acceptance' ? 'acceptance-draft' : 'technical-plan-draft', {
     artifact: path.relative(repoRoot, draft.filePath).split(path.sep).join('/'),
@@ -1192,6 +1619,7 @@ async function runPlan(repoRoot, options = {}) {
     phase,
     invocation,
     result,
+    reviewPath,
   };
 }
 
@@ -1928,6 +2356,31 @@ async function runPr(repoRoot, options = {}) {
     throw annotateGitHubError(error, 'pr');
   }
 
+  if (options.review === true) {
+    const hasEditorRunner = typeof options.openEditorFn === 'function';
+    const canOpenEditor = hasEditorRunner || options.stdinIsTTY === true || (options.stdinIsTTY !== false && Boolean(process.stdin.isTTY));
+    if (!canOpenEditor) {
+      throw annotateGitHubError(makeReviewError('ai pr --review requires an interactive terminal or an injected editor runner.', plan.prBodyPath), 'pr');
+    }
+    const editorResult = hasEditorRunner
+      ? options.openEditorFn(plan.prBodyPath, { cwd: repoRoot, env: options.env || process.env })
+      : openEditor(plan.prBodyPath, { cwd: repoRoot, env: options.env || process.env });
+    if (!editorResult || editorResult.ok !== true) {
+      throw annotateGitHubError(makeReviewError(editorResult?.reason || 'ai pr review was canceled.', plan.prBodyPath), 'pr');
+    }
+    try {
+      plan = buildPrCreatePlan(repoRoot, preflight, {
+        baseBranch: options.baseBranch,
+        ghCommand: options.ghCommand,
+        input: options.input,
+        prBodyPath: options.prBodyPath,
+        title: options.title,
+      });
+    } catch (error) {
+      throw annotateGitHubError(error, 'pr');
+    }
+  }
+
   if (dryRun || !create) {
     process.stdout.write(formatPrCreateReport({ preflight, plan }, { dryRun, create }));
     return {
@@ -1938,6 +2391,8 @@ async function runPr(repoRoot, options = {}) {
       plan,
     };
   }
+
+  await confirmInteractiveAction(`Create GitHub PR '${plan.title}'?`, options);
 
   let result;
   try {

@@ -7,6 +7,7 @@ const test = require('node:test');
 
 const { approvePlannerPhase, savePlannerDraft } = require('../../src/create-quiver/lib/approvals');
 const { savePlanReview } = require('../../src/create-quiver/lib/ai/plan-review');
+const { runCreateSpec } = require('../../src/create-quiver/commands/spec');
 
 const BIN_PATH = path.resolve(__dirname, '../../bin/create-quiver.js');
 
@@ -88,6 +89,61 @@ test('spec create dry-run previews files and next safe commands without writing'
     assert.match(output, /slices\/slice-00-spec-foundation\/slice\.json/);
     assert.match(output, /Next safe commands:/);
     assert.match(output, /npx create-quiver spec start specs\/quiver-v23-created-spec/);
+    assert.equal(fs.existsSync(path.join(repo.root, 'specs', 'quiver-v23-created-spec')), false);
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('spec create --review dry-run advertises review without opening an editor or writing', () => {
+  const repo = makeRepo();
+
+  try {
+    seedReviewedApprovedPlan(repo.root);
+    const output = execCli(repo.root, ['spec', 'create', '--dry-run', '--review']);
+
+    assert.match(output, /Quiver spec create dry-run/);
+    assert.match(output, /Review requested: yes \(dry-run preview only; no editor opened and no files written\)\./);
+    assert.equal(fs.existsSync(path.join(repo.root, 'specs', 'quiver-v23-created-spec')), false);
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('spec create --review cancellation blocks writes', async () => {
+  const repo = makeRepo();
+
+  try {
+    seedReviewedApprovedPlan(repo.root);
+    await assert.rejects(
+      runCreateSpec(repo.root, {
+        review: true,
+        openEditorFn: () => ({ ok: false, canceled: true, reason: 'review canceled' }),
+      }),
+      /review canceled/,
+    );
+    assert.equal(fs.existsSync(path.join(repo.root, 'specs', 'quiver-v23-created-spec')), false);
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('spec create --interactive can decline writes', async () => {
+  const repo = makeRepo();
+
+  try {
+    seedReviewedApprovedPlan(repo.root);
+    await assert.rejects(
+      runCreateSpec(repo.root, {
+        interactive: true,
+        promptConfirm: async () => false,
+        stdinIsTTY: true,
+        stdoutIsTTY: true,
+        stderrIsTTY: true,
+        write: () => {},
+      }),
+      /spec create interactive approval declined/,
+    );
     assert.equal(fs.existsSync(path.join(repo.root, 'specs', 'quiver-v23-created-spec')), false);
   } finally {
     repo.cleanup();

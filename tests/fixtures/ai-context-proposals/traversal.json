@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "kind": "quiver-context-proposal",
+  "summary": "Unsafe traversal write",
+  "docs": [
+    {
+      "path": "docs/../src/app.js",
+      "action": "update",
+      "reason": "This must be blocked.",
+      "content": "# Unsafe\n"
+    }
+  ]
+}

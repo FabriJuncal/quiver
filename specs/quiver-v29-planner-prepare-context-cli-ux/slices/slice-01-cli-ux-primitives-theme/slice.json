@@ -1,0 +1,75 @@
+{
+  "slice_id": "slice-01-cli-ux-primitives-theme",
+  "ticket": "QUIVER-29-01",
+  "type": "feature",
+  "title": "CLI UX primitives, theme, and dependencies",
+  "objective": "Add shared CLI UX primitives for human output, TTY/CI detection, Quiver colors, prompts, spinners, and editor support without changing command behavior yet.",
+  "description": "Introduces the reusable internal UX layer that later command slices can adopt safely.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v29-cli-ux-primitives-theme",
+    "branch_name": "feature/QUIVER-29-01-v29-cli-ux-primitives-theme"
+  },
+  "files": [
+    "package.json",
+    "package-lock.json",
+    "src/create-quiver/lib/cli/theme.js",
+    "src/create-quiver/lib/cli/ux.js",
+    "src/create-quiver/lib/cli/editor.js",
+    "tests/lib/cli-theme.test.js",
+    "tests/lib/cli-ux.test.js",
+    "tests/lib/cli-editor.test.js",
+    "specs/quiver-v29-planner-prepare-context-cli-ux/**"
+  ],
+  "expected_read_paths": [
+    "src/create-quiver/index.js",
+    "src/create-quiver/commands/next.js",
+    "package.json",
+    "tests/**"
+  ],
+  "allowed_write_paths": [
+    "package.json",
+    "package-lock.json",
+    "src/create-quiver/lib/cli/**",
+    "tests/lib/cli-theme.test.js",
+    "tests/lib/cli-ux.test.js",
+    "tests/lib/cli-editor.test.js",
+    "specs/quiver-v29-planner-prepare-context-cli-ux/**"
+  ],
+  "depends_on": [
+    "slice-00-cli-ux-spec-foundation"
+  ],
+  "parallel_safe": "after_dependencies",
+  "parallel_safe_reason": "Must run before other implementation slices because it owns shared helpers and dependencies.",
+  "must": [
+    "Add Quiver color tokens in one shared module.",
+    "Detect TTY, CI, JSON, no-color, and machine-output modes.",
+    "Wrap @clack/prompts behind internal helpers so command code is not coupled directly.",
+    "Add editor helper using VISUAL, EDITOR, and safe fallback.",
+    "Keep existing command behavior unchanged."
+  ],
+  "not_included": [
+    "Planner proposal parsing.",
+    "prepare-context behavior changes.",
+    "Full parser migration to commander/yargs/oclif."
+  ],
+  "acceptance": [
+    "Theme tokens are centralized and tested.",
+    "UX helpers disable decoration for CI, no-TTY, --json, and no-color mode.",
+    "Editor helper handles missing editor and cancellation without writes.",
+    "Package smoke still passes after dependencies are added."
+  ],
+  "tests": [
+    "node --test tests/lib/cli-theme.test.js tests/lib/cli-ux.test.js tests/lib/cli-editor.test.js",
+    "npm run package:quiver"
+  ],
+  "validation_hints": [
+    "Prefer small wrappers over direct @clack usage in commands.",
+    "Do not hardcode color values outside theme.js."
+  ],
+  "estimated_hours": 6,
+  "actual_hours": 3,
+  "status": "completed",
+  "completed_at": "2026-05-26"
+}

@@ -49,6 +49,12 @@ npx --yes create-quiver@latest ai plan --phase acceptance --input requirements/m
 npx --yes create-quiver@latest ai plan --phase acceptance --input requirements/mi-requerimiento.md
 ```
 
+Si querés revisar y confirmar el borrador antes de guardarlo:
+
+```bash
+npx --yes create-quiver@latest ai plan --phase acceptance --input requirements/mi-requerimiento.md --review --interactive
+```
+
 Qué hace:
 
 - previsualiza la invocación al proveedor;
@@ -89,6 +95,12 @@ npx --yes create-quiver@latest ai plan --phase technical-plan --dry-run
 npx --yes create-quiver@latest ai plan --phase technical-plan
 ```
 
+Si querés editar el borrador antes de guardarlo:
+
+```bash
+npx --yes create-quiver@latest ai plan --phase technical-plan --review --interactive
+```
+
 Qué hace:
 
 - genera un plan técnico desde los criterios aprobados;
@@ -118,6 +130,12 @@ npx --yes create-quiver@latest ai approve --phase technical-plan --version <n>
 ```bash
 npx --yes create-quiver@latest spec create --dry-run
 npx --yes create-quiver@latest spec create
+```
+
+Si querés revisar el paquete antes de escribirlo:
+
+```bash
+npx --yes create-quiver@latest spec create --review --interactive
 ```
 
 Qué hace:
@@ -243,6 +261,7 @@ Usá solo los scripts que existan en el proyecto.
 
 ```bash
 npx --yes create-quiver@latest ai pr \
+  --review \
   --dry-run \
   --input specs/<spec-slug>/pr.md \
   --ssh-host-alias github-personal \
@@ -264,6 +283,7 @@ Adaptá `--identity-file` a la ruta real de tu máquina, por ejemplo `~/ssh/gith
 ```bash
 npx --yes create-quiver@latest ai pr \
   --create \
+  --interactive \
   --input specs/<spec-slug>/pr.md \
   --ssh-host-alias github-personal \
   --identity-file ~/.ssh/github-personal
