@@ -1,0 +1,75 @@
+{
+  "slice_id": "slice-03-provider-model-selection-contract",
+  "ticket": "QUIVER-30-03",
+  "type": "feature",
+  "title": "Provider model selection contract",
+  "objective": "Ensure selected profile/model values either affect real provider invocations or block live execution with clear guidance.",
+  "description": "Adds provider adapter metadata for model selection support, model argument mapping, display-only restrictions, and validation before live IA execution.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v30-provider-model-selection-contract",
+    "branch_name": "feature/QUIVER-30-03-v30-provider-model-selection-contract"
+  },
+  "files": [
+    "src/create-quiver/lib/ai/providers.js",
+    "src/create-quiver/lib/ai/preflight.js",
+    "src/create-quiver/commands/ai.js",
+    "tests/lib/ai-providers.test.js",
+    "tests/commands/ai-*.test.js",
+    "specs/quiver-v30-interactive-cli-ux-agent-selection/**"
+  ],
+  "expected_read_paths": [
+    "src/create-quiver/lib/ai/providers.js",
+    "src/create-quiver/lib/agent-profiles.js",
+    "src/create-quiver/commands/ai.js",
+    "tests/lib/ai-providers.test.js"
+  ],
+  "allowed_write_paths": [
+    "src/create-quiver/lib/ai/providers.js",
+    "src/create-quiver/lib/ai/preflight.js",
+    "src/create-quiver/commands/ai.js",
+    "tests/lib/ai-providers.test.js",
+    "tests/commands/ai-*.test.js",
+    "docs/CLI_UX_GUIDE.md",
+    "docs/reference/commands.md",
+    "specs/quiver-v30-interactive-cli-ux-agent-selection/**"
+  ],
+  "depends_on": [
+    "slice-02-agent-profile-selection-selectors"
+  ],
+  "parallel_safe": "after_dependencies",
+  "parallel_safe_reason": "Depends on selected profile shape and display-name semantics.",
+  "must": [
+    "Add provider adapter metadata for supportsModelSelection.",
+    "Add model argument builder per supported provider where safe.",
+    "Validate selected profile model before live provider execution.",
+    "Block live execution if model selection is unsupported and the selected model would be misleading.",
+    "Expose clear dry-run output showing command, provider, profile, model, and whether model selection is enforced."
+  ],
+  "not_included": [
+    "Adding new providers.",
+    "Storing credentials.",
+    "Changing profile selector UI."
+  ],
+  "acceptance": [
+    "Provider invocation includes model args when adapter support exists.",
+    "Unsupported model selection blocks live mode with an actionable message.",
+    "Dry-run makes model support status visible.",
+    "Prompt-only mode does not require provider auth.",
+    "Existing provider behavior without model profiles remains compatible."
+  ],
+  "tests": [
+    "node --test tests/lib/ai-providers.test.js tests/commands/ai-onboard.test.js tests/commands/ai-plan.test.js",
+    "git diff --check"
+  ],
+  "validation_hints": [
+    "Do not claim support for a provider model flag unless the actual CLI supports it.",
+    "Prefer explicit blocking over display-only ambiguity in live mode."
+  ],
+  "estimated_hours": 8,
+  "status": "planned",
+  "blocked_reason": null,
+  "actual_hours": null,
+  "completed_at": null
+}

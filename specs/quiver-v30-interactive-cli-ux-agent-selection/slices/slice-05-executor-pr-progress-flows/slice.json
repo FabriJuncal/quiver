@@ -1,0 +1,85 @@
+{
+  "slice_id": "slice-05-executor-pr-progress-flows",
+  "ticket": "QUIVER-30-05",
+  "type": "feature",
+  "title": "Executor, execution-plan, and PR progress flows",
+  "objective": "Apply the UX runtime, selectors, and progress contract to executor-oriented, execution-plan, and PR commands.",
+  "description": "Adds visible progress and selector-safe execution to ai execute-slice, ai execute-plan, ai prompt-slice where useful, and ai pr.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v30-executor-pr-progress-flows",
+    "branch_name": "feature/QUIVER-30-05-v30-executor-pr-progress-flows"
+  },
+  "files": [
+    "src/create-quiver/commands/ai.js",
+    "src/create-quiver/lib/ai/executor.js",
+    "src/create-quiver/lib/ai/execution-plan.js",
+    "src/create-quiver/lib/ai/github.js",
+    "src/create-quiver/lib/cli/**",
+    "tests/commands/ai-execute-*.test.js",
+    "tests/commands/ai-pr.test.js",
+    "specs/quiver-v30-interactive-cli-ux-agent-selection/**"
+  ],
+  "expected_read_paths": [
+    "src/create-quiver/commands/ai.js",
+    "src/create-quiver/lib/ai/executor.js",
+    "src/create-quiver/lib/ai/execution-plan.js",
+    "src/create-quiver/lib/ai/github.js",
+    "src/create-quiver/lib/slice-graph.js",
+    "docs/GITFLOW_PR_GUIDE.md"
+  ],
+  "allowed_write_paths": [
+    "src/create-quiver/commands/ai.js",
+    "src/create-quiver/lib/ai/executor.js",
+    "src/create-quiver/lib/ai/execution-plan.js",
+    "src/create-quiver/lib/ai/github.js",
+    "src/create-quiver/lib/cli/**",
+    "tests/commands/ai-execute-*.test.js",
+    "tests/commands/ai-pr.test.js",
+    "docs/CLI_UX_GUIDE.md",
+    "docs/reference/commands.md",
+    "README_FOR_AI.md",
+    "specs/quiver-v30-interactive-cli-ux-agent-selection/**"
+  ],
+  "depends_on": [
+    "slice-01-cli-ux-runtime-progress-engine",
+    "slice-02-agent-profile-selection-selectors",
+    "slice-03-provider-model-selection-contract"
+  ],
+  "parallel_safe": "after_dependencies",
+  "parallel_safe_reason": "Can run after shared contracts, but may conflict with slice-04 in commands/ai.js.",
+  "must": [
+    "Use Executor display names for slice execution headings.",
+    "Add real stages for reading handoff, validating scope, preparing prompt, executing agent, validating diff, running checks, and committing when requested.",
+    "Add selector support for spec, slice, executor, execution strategy, and PR input when interactive.",
+    "Add real progress for ai pr preflight and PR creation.",
+    "Keep ai prompt-slice copyable and avoid unnecessary spinners.",
+    "Keep one-slice/one-commit behavior unchanged."
+  ],
+  "not_included": [
+    "Planner progress flows.",
+    "Doctor output.",
+    "Changing GitHub authentication semantics."
+  ],
+  "acceptance": [
+    "Executor commands show selected Executor display name.",
+    "Spec and slice selectors use unique internal values and respect dependencies.",
+    "Blocked slices are not silently selected as ready.",
+    "ai pr shows validation and creation progress without hiding gh errors.",
+    "Machine output remains clean."
+  ],
+  "tests": [
+    "node --test tests/commands/ai-execute-slice.test.js tests/commands/ai-execute-plan.test.js tests/commands/ai-pr.test.js",
+    "git diff --check"
+  ],
+  "validation_hints": [
+    "Use dry-run/manual modes for tests that should not execute provider CLIs.",
+    "Do not stream noisy provider output unless --verbose is introduced and tested."
+  ],
+  "estimated_hours": 12,
+  "status": "planned",
+  "blocked_reason": null,
+  "actual_hours": null,
+  "completed_at": null
+}

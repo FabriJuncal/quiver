@@ -6,6 +6,12 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- Planned v30 interactive CLI UX and agent selection under `specs/quiver-v30-interactive-cli-ux-agent-selection/`.
+
+## [0.14.1] - 2026-05-26
+
+### Added
+
 - v29 planner-assisted context and CLI UX standard under `specs/quiver-v29-planner-prepare-context-cli-ux/`.
 - Shared Quiver-branded CLI UX helpers, color tokens, editor review support, and guarded UX flag matrix.
 - Optional `ai prepare-context --with-planner` flow with prompt printing, review, interactive approval, and docs-only proposal validation.

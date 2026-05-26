@@ -1,0 +1,85 @@
+{
+  "slice_id": "slice-07-interactive-init-spec-create",
+  "ticket": "QUIVER-30-07",
+  "type": "feature",
+  "title": "Interactive init and spec create flows",
+  "objective": "Add guided interactive selection to init and spec create without making prompts mandatory or breaking automation.",
+  "description": "Applies the selector contract to project onboarding and spec package creation, including methodology, profile defaults, approved plan selection, and review mode.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v30-interactive-init-spec-create",
+    "branch_name": "feature/QUIVER-30-07-v30-interactive-init-spec-create"
+  },
+  "files": [
+    "src/create-quiver/index.js",
+    "src/create-quiver/commands/spec.js",
+    "src/create-quiver/lib/init-layout.js",
+    "src/create-quiver/lib/init-docs.js",
+    "src/create-quiver/lib/cli/**",
+    "tests/commands/init-*.test.js",
+    "tests/commands/spec-*.test.js",
+    "specs/quiver-v30-interactive-cli-ux-agent-selection/**"
+  ],
+  "expected_read_paths": [
+    "src/create-quiver/index.js",
+    "src/create-quiver/commands/spec.js",
+    "src/create-quiver/lib/init-layout.js",
+    "src/create-quiver/lib/init-docs.js",
+    "tests/commands/init-profiles.test.js",
+    "tests/commands/spec-create.test.js"
+  ],
+  "allowed_write_paths": [
+    "src/create-quiver/index.js",
+    "src/create-quiver/commands/spec.js",
+    "src/create-quiver/lib/init-layout.js",
+    "src/create-quiver/lib/init-docs.js",
+    "src/create-quiver/lib/cli/**",
+    "tests/commands/init-*.test.js",
+    "tests/commands/spec-*.test.js",
+    "docs/CLI_UX_GUIDE.md",
+    "docs/reference/commands.md",
+    "README.md",
+    "README_FOR_AI.md",
+    "specs/quiver-v30-interactive-cli-ux-agent-selection/**"
+  ],
+  "depends_on": [
+    "slice-01-cli-ux-runtime-progress-engine",
+    "slice-02-agent-profile-selection-selectors"
+  ],
+  "parallel_safe": "after_dependencies",
+  "parallel_safe_reason": "Init/spec-create interaction can be implemented after UX and selector contracts are available.",
+  "must": [
+    "Add `init --interactive` prompts for project mode, methodology, and optional default agent profile guidance.",
+    "Show only real methodology option: WDD + SDD.",
+    "Keep init non-interactive behavior unchanged without --interactive.",
+    "Add `spec create --interactive` selectors for approved inputs and review choices where appropriate.",
+    "Show summary before writes in interactive mode.",
+    "Provide equivalent flags for automation."
+  ],
+  "not_included": [
+    "Adding unsupported methodologies.",
+    "Changing default init output shape beyond documented options.",
+    "Running provider CLIs from init."
+  ],
+  "acceptance": [
+    "init --interactive is guided and safe.",
+    "init without --interactive remains script-compatible.",
+    "spec create --interactive shows reviewable choices before writes.",
+    "No prompt opens in CI/no-TTY/JSON.",
+    "Methodology selector lists WDD + SDD only."
+  ],
+  "tests": [
+    "node --test tests/commands/init-profiles.test.js tests/commands/spec-create.test.js",
+    "git diff --check"
+  ],
+  "validation_hints": [
+    "Inject prompt responses in tests.",
+    "Do not prompt for values that existing flags already provide unless --interactive is explicit."
+  ],
+  "estimated_hours": 8,
+  "status": "planned",
+  "blocked_reason": null,
+  "actual_hours": null,
+  "completed_at": null
+}

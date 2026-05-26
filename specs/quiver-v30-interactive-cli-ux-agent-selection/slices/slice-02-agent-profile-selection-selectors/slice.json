@@ -1,0 +1,81 @@
+{
+  "slice_id": "slice-02-agent-profile-selection-selectors",
+  "ticket": "QUIVER-30-02",
+  "type": "feature",
+  "title": "Agent profile selection and selectors",
+  "objective": "Support multiple named IA profiles per role and reusable interactive selectors with non-interactive equivalents.",
+  "description": "Adds role-specific profile selection for Planner, Executor, Reviewer, and Doctor plus selectors for specs, slices, methodology, modes, verbosity, and execution strategy.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v30-agent-profile-selection-selectors",
+    "branch_name": "feature/QUIVER-30-02-v30-agent-profile-selection-selectors"
+  },
+  "files": [
+    "src/create-quiver/lib/agent-profiles.js",
+    "src/create-quiver/lib/cli/**",
+    "src/create-quiver/commands/ai.js",
+    "src/create-quiver/index.js",
+    "tests/lib/agent-profiles.test.js",
+    "tests/commands/ai-agent.test.js",
+    "specs/quiver-v30-interactive-cli-ux-agent-selection/**"
+  ],
+  "expected_read_paths": [
+    "src/create-quiver/lib/agent-profiles.js",
+    "src/create-quiver/lib/ai/export-state.js",
+    "src/create-quiver/lib/slice-graph.js",
+    "src/create-quiver/commands/spec.js",
+    "tests/commands/ai-agent.test.js"
+  ],
+  "allowed_write_paths": [
+    "src/create-quiver/lib/agent-profiles.js",
+    "src/create-quiver/lib/cli/**",
+    "src/create-quiver/commands/ai.js",
+    "src/create-quiver/index.js",
+    "tests/lib/agent-profiles.test.js",
+    "tests/lib/cli-*.test.js",
+    "tests/commands/ai-agent.test.js",
+    "docs/CLI_UX_GUIDE.md",
+    "docs/reference/commands.md",
+    "specs/quiver-v30-interactive-cli-ux-agent-selection/**"
+  ],
+  "depends_on": [
+    "slice-01-cli-ux-runtime-progress-engine"
+  ],
+  "parallel_safe": "after_dependencies",
+  "parallel_safe_reason": "Selector work depends on UX runtime but can precede provider model mapping.",
+  "must": [
+    "Support multiple named profiles per role while keeping existing profile config backward compatible.",
+    "Resolve display name from displayName, model, provider, then role.",
+    "Add selectors only when --interactive is used.",
+    "Add non-interactive flags for planner, executor, reviewer, doctor, spec, slice, and methodology selections.",
+    "Fail actionably when multiple options exist and no default or flag is available.",
+    "Use unique values internally for specs and slices."
+  ],
+  "not_included": [
+    "Passing model arguments to provider commands.",
+    "Adopting selectors in every command.",
+    "Adding methodologies beyond WDD + SDD."
+  ],
+  "acceptance": [
+    "Configured profiles populate selector options.",
+    "No hardcoded model choices appear unless configured by the user.",
+    "Display names are used in headings and summaries.",
+    "CI/no-TTY/JSON modes never open selectors.",
+    "Equivalent flags exist for selector decisions.",
+    "Existing single-profile configurations continue to work."
+  ],
+  "tests": [
+    "node --test tests/lib/agent-profiles.test.js tests/commands/ai-agent.test.js tests/lib/cli-*.test.js",
+    "git diff --check"
+  ],
+  "validation_hints": [
+    "Treat old .quiver/agents/profiles.json shape as backward-compatible input.",
+    "Keep selector labels human-friendly but values path/id stable."
+  ],
+  "estimated_hours": 10,
+  "status": "planned",
+  "blocked_reason": null,
+  "actual_hours": null,
+  "completed_at": null
+}

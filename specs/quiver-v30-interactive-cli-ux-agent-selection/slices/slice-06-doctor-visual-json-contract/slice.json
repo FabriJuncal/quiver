@@ -1,0 +1,81 @@
+{
+  "slice_id": "slice-06-doctor-visual-json-contract",
+  "ticket": "QUIVER-30-06",
+  "type": "feature",
+  "title": "Doctor visual and JSON contract",
+  "objective": "Make doctor output visually clear for humans while preserving stable JSON diagnostics for automation.",
+  "description": "Applies the Quiver Doctor output structure with checks, warnings, errors, suggested fixes, exit-code semantics, and JSON parity.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v30-doctor-visual-json-contract",
+    "branch_name": "feature/QUIVER-30-06-v30-doctor-visual-json-contract"
+  },
+  "files": [
+    "src/create-quiver/lib/doctor.js",
+    "src/create-quiver/index.js",
+    "src/create-quiver/lib/cli/**",
+    "tests/commands/doctor.test.js",
+    "tests/fixtures/doctor/**",
+    "scripts/ci/smoke-doctor-fixtures.js",
+    "specs/quiver-v30-interactive-cli-ux-agent-selection/**"
+  ],
+  "expected_read_paths": [
+    "src/create-quiver/lib/doctor.js",
+    "src/create-quiver/index.js",
+    "scripts/ci/smoke-doctor-fixtures.js",
+    "tests/fixtures/doctor/**",
+    "docs/CLI_UX_GUIDE.md"
+  ],
+  "allowed_write_paths": [
+    "src/create-quiver/lib/doctor.js",
+    "src/create-quiver/index.js",
+    "src/create-quiver/lib/cli/**",
+    "tests/commands/doctor.test.js",
+    "tests/fixtures/doctor/**",
+    "scripts/ci/smoke-doctor-fixtures.js",
+    "docs/CLI_UX_GUIDE.md",
+    "docs/reference/commands.md",
+    "README.md",
+    "README_FOR_AI.md",
+    "specs/quiver-v30-interactive-cli-ux-agent-selection/**"
+  ],
+  "depends_on": [
+    "slice-01-cli-ux-runtime-progress-engine"
+  ],
+  "parallel_safe": "after_dependencies",
+  "parallel_safe_reason": "Doctor can adopt the shared runtime independently after slice-01.",
+  "must": [
+    "Render human doctor output with a `Quiver Doctor` heading, `Checks`, and `Suggested fixes` sections.",
+    "Preserve a stable JSON schema for doctor diagnostics.",
+    "Ensure human and JSON modes report the same underlying findings.",
+    "Keep exit codes consistent for ok, warning, blocking error, and internal CLI error.",
+    "Add tests for missing docs, missing briefs, warnings, and fix suggestions."
+  ],
+  "not_included": [
+    "Adding automatic repairs.",
+    "Running Doctor IA provider by default.",
+    "Changing project initialization."
+  ],
+  "acceptance": [
+    "Human doctor output matches the approved hierarchy.",
+    "doctor --json emits parseable stable JSON.",
+    "Human and JSON outputs have parity for findings.",
+    "Exit codes remain deterministic.",
+    "Smoke doctor fixtures pass."
+  ],
+  "tests": [
+    "node --test tests/commands/doctor.test.js",
+    "npm run smoke:doctor-fixtures",
+    "git diff --check"
+  ],
+  "validation_hints": [
+    "Do not make doctor visual-only; automation compatibility is part of the slice.",
+    "Fixture expected output should avoid brittle spinner frames."
+  ],
+  "estimated_hours": 8,
+  "status": "planned",
+  "blocked_reason": null,
+  "actual_hours": null,
+  "completed_at": null
+}

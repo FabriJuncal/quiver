@@ -1,0 +1,71 @@
+{
+  "slice_id": "slice-00-spec-foundation",
+  "ticket": "QUIVER-30-00",
+  "type": "docs",
+  "title": "Spec foundation and source-of-truth sync",
+  "objective": "Create the v30 documentation package and synchronize source-of-truth planning docs before implementation starts.",
+  "description": "Publishes the approved spec, execution plan, PR body, status, evidence report, slice definitions, and handoffs. It also records that v29 shipped in 0.14.1 and v30 is planned work.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v30-interactive-cli-ux-spec-foundation",
+    "branch_name": "feature/QUIVER-30-00-v30-interactive-cli-ux-spec-foundation"
+  },
+  "files": [
+    "README_FOR_AI.md",
+    "ROADMAP.md",
+    "CHANGELOG.md",
+    "specs/quiver-v30-interactive-cli-ux-agent-selection/**"
+  ],
+  "expected_read_paths": [
+    "README_FOR_AI.md",
+    "ROADMAP.md",
+    "BACKLOG.md",
+    "docs/CLI_UX_GUIDE.md",
+    "specs/quiver-v29-planner-prepare-context-cli-ux/**"
+  ],
+  "allowed_write_paths": [
+    "README_FOR_AI.md",
+    "ROADMAP.md",
+    "CHANGELOG.md",
+    "specs/quiver-v30-interactive-cli-ux-agent-selection/**"
+  ],
+  "depends_on": [],
+  "parallel_safe": "no",
+  "parallel_safe_reason": "slice-00 must land before every implementation slice.",
+  "must": [
+    "Create SPEC.md, STATUS.md, EVIDENCE_REPORT.md, EXECUTION_PLAN.md, and pr.md.",
+    "Create slice.json, EXECUTION_BRIEF.md, and CLOSURE_BRIEF.md for every slice.",
+    "Record v29 as shipped in 0.14.1 where source-of-truth docs were stale.",
+    "Record v30 as planned work only.",
+    "Avoid product code changes."
+  ],
+  "not_included": [
+    "Implementing CLI UX runtime.",
+    "Changing provider execution.",
+    "Changing command behavior.",
+    "Publishing a package."
+  ],
+  "acceptance": [
+    "Spec folder exists under specs/quiver-v30-interactive-cli-ux-agent-selection.",
+    "Mandatory slice-00 exists.",
+    "Every slice has slice.json, EXECUTION_BRIEF.md, and CLOSURE_BRIEF.md.",
+    "Every slice.json parses successfully.",
+    "README_FOR_AI.md, ROADMAP.md, and CHANGELOG.md do not claim stale v29 publication status.",
+    "No product code is modified."
+  ],
+  "tests": [
+    "git diff --check",
+    "find specs/quiver-v30-interactive-cli-ux-agent-selection -name \"slice.json\" -print -exec node -e \"JSON.parse(require('fs').readFileSync(process.argv[1], 'utf8'))\" {} \\;",
+    "node bin/create-quiver.js spec validate specs/quiver-v30-interactive-cli-ux-agent-selection"
+  ],
+  "validation_hints": [
+    "Keep this slice documentation-only.",
+    "If source-of-truth docs mention v30, say planned, not implemented."
+  ],
+  "estimated_hours": 2,
+  "status": "completed",
+  "blocked_reason": null,
+  "actual_hours": 2,
+  "completed_at": "2026-05-26"
+}
