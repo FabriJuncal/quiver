@@ -1,0 +1,69 @@
+{
+  "slice_id": "slice-02-planner-context-proposal-contract",
+  "ticket": "QUIVER-29-02",
+  "type": "feature",
+  "title": "Planner context proposal contract",
+  "objective": "Define and validate the structured proposal format used when a planner IA suggests context documentation updates.",
+  "description": "Adds the parser, schema, path safety, allowlist checks, and diff-ready internal model for planner-generated context proposals.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v29-planner-context-proposal-contract",
+    "branch_name": "feature/QUIVER-29-02-v29-planner-context-proposal-contract"
+  },
+  "files": [
+    "src/create-quiver/lib/ai/context-proposal.js",
+    "src/create-quiver/lib/ai/context-proposal.schema.js",
+    "src/create-quiver/lib/ai/onboarding-template.js",
+    "tests/lib/ai-context-proposal.test.js",
+    "tests/fixtures/ai-context-proposals/**",
+    "specs/quiver-v29-planner-prepare-context-cli-ux/**"
+  ],
+  "expected_read_paths": [
+    "src/create-quiver/lib/ai/onboarding-template.js",
+    "src/create-quiver/lib/ai/safety.js",
+    "src/create-quiver/commands/ai.js",
+    "tests/commands/ai-onboard.test.js",
+    "tests/lib/ai-context-packs.test.js"
+  ],
+  "allowed_write_paths": [
+    "src/create-quiver/lib/ai/context-proposal.js",
+    "src/create-quiver/lib/ai/context-proposal.schema.js",
+    "src/create-quiver/lib/ai/onboarding-template.js",
+    "tests/lib/ai-context-proposal.test.js",
+    "tests/fixtures/ai-context-proposals/**",
+    "specs/quiver-v29-planner-prepare-context-cli-ux/**"
+  ],
+  "depends_on": [
+    "slice-01-cli-ux-primitives-theme"
+  ],
+  "parallel_safe": "after_dependencies",
+  "parallel_safe_reason": "Can run in parallel with slice-04 if both avoid central CLI parser conflicts.",
+  "must": [
+    "Validate planner proposals with zod.",
+    "Accept structured JSON or fenced JSON output when safe.",
+    "Reject paths outside the repo, path traversal, absolute writes, product code, dependencies, lockfiles, build files, generated files, and runtime config.",
+    "Produce a normalized docs-only write plan that existing prepare-context logic can consume.",
+    "Persist invalid raw output as an artifact only when safe and redacted."
+  ],
+  "not_included": [
+    "Invoking provider CLIs.",
+    "Writing docs from planner proposals.",
+    "Interactive editor review."
+  ],
+  "acceptance": [
+    "Valid planner proposal fixtures parse into a normalized internal model.",
+    "Invalid or unsafe proposals fail before writes.",
+    "Allowed docs-only paths are explicit and tested.",
+    "The parser reports actionable errors with next safe commands."
+  ],
+  "tests": [
+    "node --test tests/lib/ai-context-proposal.test.js"
+  ],
+  "validation_hints": [
+    "Treat planner output as untrusted input.",
+    "Keep schema and allowlist close to the proposal parser."
+  ],
+  "estimated_hours": 8,
+  "status": "planned"
+}

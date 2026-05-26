@@ -1,0 +1,81 @@
+{
+  "slice_id": "slice-05-progressive-command-adoption",
+  "ticket": "QUIVER-29-05",
+  "type": "feature",
+  "title": "Progressive command adoption",
+  "objective": "Apply the new UX standard to selected high-value commands after `ai prepare-context` proves the pattern.",
+  "description": "Adds focused UX improvements to `ai plan`, `spec create`, and `ai pr` without redesigning the whole CLI.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v29-progressive-command-adoption",
+    "branch_name": "feature/QUIVER-29-05-v29-progressive-command-adoption"
+  },
+  "files": [
+    "src/create-quiver/index.js",
+    "src/create-quiver/commands/ai.js",
+    "src/create-quiver/commands/spec.js",
+    "src/create-quiver/lib/ai/github.js",
+    "src/create-quiver/lib/ai/spec-generator.js",
+    "tests/commands/ai-plan.test.js",
+    "tests/commands/spec-create.test.js",
+    "tests/commands/ai-pr.test.js",
+    "tests/commands/ux-flags.test.js",
+    "specs/quiver-v29-planner-prepare-context-cli-ux/**"
+  ],
+  "expected_read_paths": [
+    "src/create-quiver/index.js",
+    "src/create-quiver/commands/ai.js",
+    "src/create-quiver/commands/spec.js",
+    "src/create-quiver/lib/ai/**",
+    "tests/commands/ai-plan.test.js",
+    "tests/commands/spec-create.test.js",
+    "tests/commands/ai-pr.test.js"
+  ],
+  "allowed_write_paths": [
+    "src/create-quiver/index.js",
+    "src/create-quiver/commands/ai.js",
+    "src/create-quiver/commands/spec.js",
+    "src/create-quiver/lib/ai/github.js",
+    "src/create-quiver/lib/ai/spec-generator.js",
+    "tests/commands/ai-plan.test.js",
+    "tests/commands/spec-create.test.js",
+    "tests/commands/ai-pr.test.js",
+    "tests/commands/ux-flags.test.js",
+    "specs/quiver-v29-planner-prepare-context-cli-ux/**"
+  ],
+  "depends_on": [
+    "slice-03-prepare-context-planner-review-flow",
+    "slice-04-ux-flag-matrix-compatibility"
+  ],
+  "parallel_safe": "no",
+  "parallel_safe_reason": "Touches multiple command integrations and should run after the prepare-context pattern stabilizes.",
+  "must": [
+    "Apply the standard to `ai plan` only where planner semantics are already natural.",
+    "Apply the standard to `spec create` with safe review/interactive guardrails.",
+    "Apply `--interactive` and `--review` to `ai pr` without adding `--with-planner`.",
+    "Keep non-interactive flag equivalents for every prompt.",
+    "Avoid changing command outputs in --json and CI modes."
+  ],
+  "not_included": [
+    "Full UX migration for all commands.",
+    "TUI dashboards.",
+    "Planner behavior for ai pr."
+  ],
+  "acceptance": [
+    "`ai plan` supports documented UX flags without breaking existing planner drafts.",
+    "`spec create` supports documented review/interactive guardrails where safe.",
+    "`ai pr` can review/edit PR body and interactive inputs without planner mode.",
+    "Existing tests for those commands still pass.",
+    "New tests cover unsupported and compatible flag combinations."
+  ],
+  "tests": [
+    "node --test tests/commands/ai-plan.test.js tests/commands/spec-create.test.js tests/commands/ai-pr.test.js tests/commands/ux-flags.test.js"
+  ],
+  "validation_hints": [
+    "Prefer minimal adoption over broad rewrites.",
+    "Keep generated artifacts backward compatible."
+  ],
+  "estimated_hours": 9,
+  "status": "planned"
+}

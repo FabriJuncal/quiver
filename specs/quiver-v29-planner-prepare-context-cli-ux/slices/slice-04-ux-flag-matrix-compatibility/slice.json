@@ -1,0 +1,71 @@
+{
+  "slice_id": "slice-04-ux-flag-matrix-compatibility",
+  "ticket": "QUIVER-29-04",
+  "type": "feature",
+  "title": "UX flag matrix and compatibility guardrails",
+  "objective": "Add centralized rules for UX flags, incompatible combinations, machine-output modes, and unsupported command guidance.",
+  "description": "Prevents inconsistent adoption of `--with-planner`, `--interactive`, and `--review` by making command support explicit and testable.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v29-ux-flag-matrix-compatibility",
+    "branch_name": "feature/QUIVER-29-04-v29-ux-flag-matrix-compatibility"
+  },
+  "files": [
+    "src/create-quiver/index.js",
+    "src/create-quiver/lib/cli/ux-flags.js",
+    "src/create-quiver/lib/cli/ux.js",
+    "tests/commands/cli-contract.test.js",
+    "tests/commands/ux-flags.test.js",
+    "tests/lib/cli-ux.test.js",
+    "specs/quiver-v29-planner-prepare-context-cli-ux/**"
+  ],
+  "expected_read_paths": [
+    "src/create-quiver/index.js",
+    "src/create-quiver/lib/cli/**",
+    "tests/commands/cli-contract.test.js"
+  ],
+  "allowed_write_paths": [
+    "src/create-quiver/index.js",
+    "src/create-quiver/lib/cli/ux-flags.js",
+    "src/create-quiver/lib/cli/ux.js",
+    "tests/commands/cli-contract.test.js",
+    "tests/commands/ux-flags.test.js",
+    "tests/lib/cli-ux.test.js",
+    "specs/quiver-v29-planner-prepare-context-cli-ux/**"
+  ],
+  "depends_on": [
+    "slice-01-cli-ux-primitives-theme"
+  ],
+  "parallel_safe": "after_dependencies",
+  "parallel_safe_reason": "Can run in parallel with slice-02 if central parser conflicts are avoided.",
+  "must": [
+    "Define which commands support --with-planner, --interactive, and --review.",
+    "Reject unsupported UX flags with actionable messages.",
+    "Reject incompatible combinations such as --json --interactive and --json --review.",
+    "Ensure CI/no-TTY/--json disables spinners, colors, prompts, and decorative output.",
+    "Keep machine-readable stdout parseable."
+  ],
+  "not_included": [
+    "Implementing planner mode itself.",
+    "Migrating all commands to interactive mode.",
+    "Changing existing command semantics beyond flag validation."
+  ],
+  "acceptance": [
+    "Command/flag matrix is enforced in code and documented.",
+    "Unsupported flags fail before side effects.",
+    "Incompatible flag combinations fail before side effects.",
+    "JSON output stays undecorated.",
+    "Human-mode helpers remain opt-in."
+  ],
+  "tests": [
+    "node --test tests/commands/ux-flags.test.js tests/commands/cli-contract.test.js",
+    "node --test tests/lib/cli-ux.test.js"
+  ],
+  "validation_hints": [
+    "Tests should cover both supported and unsupported commands.",
+    "Do not allow partial command execution after flag validation failure."
+  ],
+  "estimated_hours": 7,
+  "status": "planned"
+}

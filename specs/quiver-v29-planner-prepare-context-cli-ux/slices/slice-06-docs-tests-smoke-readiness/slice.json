@@ -1,0 +1,91 @@
+{
+  "slice_id": "slice-06-docs-tests-smoke-readiness",
+  "ticket": "QUIVER-29-06",
+  "type": "docs",
+  "title": "Docs, tests, smoke, and release readiness",
+  "objective": "Close the spec by synchronizing documentation, templates, tests, package safety, and release evidence.",
+  "description": "Ensures the implemented CLI UX standard and planner-assisted prepare-context flow are documented, tested, and package-ready.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v29-docs-tests-smoke-readiness",
+    "branch_name": "feature/QUIVER-29-06-v29-docs-tests-smoke-readiness"
+  },
+  "files": [
+    "README.md",
+    "README_FOR_AI.md",
+    "CHANGELOG.md",
+    "ROADMAP.md",
+    "docs/COMMANDS.md.template",
+    "docs/AI_CONTEXT.md.template",
+    "docs/AI_ONBOARDING_PROMPT.md.template",
+    "docs/CLI_UX_GUIDE.md",
+    "docs/reference/commands.md",
+    "tests/**",
+    "specs/quiver-v29-planner-prepare-context-cli-ux/**"
+  ],
+  "expected_read_paths": [
+    "README.md",
+    "README_FOR_AI.md",
+    "docs/**",
+    "tests/**",
+    "scripts/package-quiver.sh",
+    "scripts/ci/**"
+  ],
+  "allowed_write_paths": [
+    "README.md",
+    "README_FOR_AI.md",
+    "CHANGELOG.md",
+    "ROADMAP.md",
+    "docs/COMMANDS.md.template",
+    "docs/AI_CONTEXT.md.template",
+    "docs/AI_ONBOARDING_PROMPT.md.template",
+    "docs/CLI_UX_GUIDE.md",
+    "docs/reference/commands.md",
+    "tests/**",
+    "specs/quiver-v29-planner-prepare-context-cli-ux/**"
+  ],
+  "depends_on": [
+    "slice-02-planner-context-proposal-contract",
+    "slice-03-prepare-context-planner-review-flow",
+    "slice-04-ux-flag-matrix-compatibility",
+    "slice-05-progressive-command-adoption"
+  ],
+  "parallel_safe": "no",
+  "parallel_safe_reason": "Final validation and docs sync must run after all behavior slices.",
+  "must": [
+    "Document the UX standard, color tokens, and flag matrix.",
+    "Document deterministic and planner-assisted prepare-context flows.",
+    "Update generated templates where needed.",
+    "Run full test and smoke suite.",
+    "Record validation evidence in the spec.",
+    "Keep README_FOR_AI.md synchronized with implemented behavior."
+  ],
+  "not_included": [
+    "Publishing npm.",
+    "Opening the final PR.",
+    "Adding new behavior beyond closing docs/tests."
+  ],
+  "acceptance": [
+    "Docs do not contradict implemented command behavior.",
+    "Generated docs/templates include the new UX and planner guidance.",
+    "Full tests and smoke commands pass or documented blockers are explicit.",
+    "Package/tarball dry-run is clean.",
+    "Spec status and closure briefs reflect final implementation state."
+  ],
+  "tests": [
+    "node --test tests/**/*.test.js",
+    "npm run smoke:create-quiver",
+    "npm run smoke:doctor-fixtures",
+    "npm run smoke:guided-workflow",
+    "npm run package:quiver",
+    "npm pack --dry-run",
+    "git diff --check"
+  ],
+  "validation_hints": [
+    "Run this slice last.",
+    "Check README_FOR_AI.md against actual CLI behavior before closing."
+  ],
+  "estimated_hours": 6,
+  "status": "planned"
+}
