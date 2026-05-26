@@ -71,6 +71,18 @@ npx create-quiver ai prepare-context --with-planner --review --interactive
 
 El planner debe devolver una propuesta validable. Quiver solo acepta cambios en documentación/contexto permitida y rechaza rutas de producto, dependencias, build, runtime, lockfiles, salidas generadas, rutas absolutas y traversal.
 
+## Seleccion de agentes, proveedores y modelos
+
+Los perfiles de agente son configuracion de DX, no almacenamiento de credenciales. Deben guardar solo rol, proveedor, etiqueta de modelo, contexto, nombre visible y perfil por defecto.
+
+Reglas:
+
+- Si un comando usa un perfil con modelo, el dry-run debe mostrar proveedor, modelo, comando y si el adapter puede aplicar ese modelo.
+- En ejecucion real, Quiver debe pasar el modelo al CLI del proveedor cuando el adapter lo soporta.
+- Si un adapter no puede aplicar el modelo seleccionado, la ejecucion real debe bloquearse con un proximo paso claro.
+- `--print-prompt` y `--dry-run` no deben exigir autenticacion del proveedor.
+- Si no hay modelo seleccionado, los comandos existentes deben conservar su comportamiento anterior.
+
 ## Loaders y prompts
 
 Usar loaders solo cuando aportan claridad:

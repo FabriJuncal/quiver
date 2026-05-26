@@ -59,6 +59,7 @@ const {
   getAgentProfile,
   getAgentProfileById,
   listAgentProfiles,
+  normalizeAgentProfileRole,
   resolveAgentProfileDisplayName,
   resolveProfileProvider,
   setAgentProfile,
@@ -124,11 +125,54 @@ function normalizeTimeout(timeoutMs) {
   return parsed;
 }
 
-function resolveProviderForProfile(repoRoot, role, provider, providerExplicit, fallbackProvider) {
-  if (providerExplicit === true || (provider && providerExplicit !== false)) {
-    return String(provider || fallbackProvider).trim().toLowerCase();
+function profileOptionForRole(options, role) {
+  const normalized = normalizeAgentProfileRole(role);
+  if (normalized === 'planner') {
+    return options.plannerProfile || options.profileId || '';
   }
-  return resolveProfileProvider(repoRoot, role, fallbackProvider);
+  if (normalized === 'executor') {
+    return options.executorProfile || options.profileId || '';
+  }
+  if (normalized === 'reviewer') {
+    return options.reviewerProfile || options.profileId || '';
+  }
+  if (normalized === 'doctor') {
+    return options.doctorProfile || options.profileId || '';
+  }
+  return options.profileId || '';
+}
+
+function resolveRuntimeAgentProfile(repoRoot, role, options = {}, fallbackProvider = DEFAULT_PLAN_PROVIDER) {
+  const normalizedRole = normalizeAgentProfileRole(role);
+  const explicitProvider = options.providerExplicit === true || (options.provider && options.providerExplicit !== false);
+  const explicitModel = String(options.model || '').trim();
+
+  if (explicitProvider) {
+    const provider = String(options.provider || fallbackProvider).trim().toLowerCase();
+    return {
+      role: normalizedRole,
+      profile: null,
+      profileId: '',
+      displayName: provider,
+      provider,
+      model: explicitModel,
+    };
+  }
+
+  const profileId = profileOptionForRole(options, normalizedRole);
+  const profile = profileId
+    ? getAgentProfileById(repoRoot, normalizedRole, profileId)
+    : getAgentProfile(repoRoot, normalizedRole);
+  const provider = profile?.provider || resolveProfileProvider(repoRoot, normalizedRole, fallbackProvider);
+
+  return {
+    role: normalizedRole,
+    profile,
+    profileId: profile?.id || profileId || '',
+    displayName: profile ? resolveAgentProfileDisplayName(profile) : provider,
+    provider,
+    model: explicitModel || profile?.model || '',
+  };
 }
 
 function buildPlanContext({ role, context, phase, inputText, inputPath, repoRoot, revise = false }) {
@@ -212,6 +256,10 @@ function formatDryRunReport({ task, provider, role, contextPack, phase, invocati
   lines.push(`Timeout: ${invocation.timeoutMs}ms`);
   lines.push(`Prompt transport: ${invocation.promptTransport.mode}`);
   lines.push(`Prompt length: ${invocation.promptLength} bytes`);
+  if (invocation.modelSelection && invocation.modelSelection.model) {
+    lines.push(`Model: ${invocation.modelSelection.model}`);
+    lines.push(`Model support: ${invocation.modelSelection.supported ? 'supported' : 'unsupported'} (${invocation.modelSelection.reason})`);
+  }
 
   if (onboardingPlan) {
     lines.push(`Prompt source: ${onboardingPlan.promptSource}`);
@@ -238,6 +286,10 @@ function formatPromptOnlyReport({ task, provider, role, contextPack, phase, invo
   lines.push(`Timeout: ${invocation.timeoutMs}ms`);
   lines.push(`Prompt transport: ${invocation.promptTransport.mode}`);
   lines.push(`Prompt length: ${invocation.promptLength} bytes`);
+  if (invocation.modelSelection && invocation.modelSelection.model) {
+    lines.push(`Model: ${invocation.modelSelection.model}`);
+    lines.push(`Model support: ${invocation.modelSelection.supported ? 'supported' : 'unsupported'} (${invocation.modelSelection.reason})`);
+  }
 
   if (onboardingPlan) {
     lines.push(`Prompt source: ${onboardingPlan.promptSource}`);
@@ -409,6 +461,12 @@ function formatPrepareContextPlannerDryRunReport({ provider, role, context, invo
     `Context pack: ${context}`,
     `Command: ${invocation.command} ${invocation.args.join(' ')}`.trim(),
     `Prompt bytes: ${invocation.promptLength}`,
+    invocation.modelSelection && invocation.modelSelection.model
+      ? `Model: ${invocation.modelSelection.model}`
+      : '',
+    invocation.modelSelection && invocation.modelSelection.model
+      ? `Model support: ${invocation.modelSelection.supported ? 'supported' : 'unsupported'} (${invocation.modelSelection.reason})`
+      : '',
     `Prompt source: ${promptInfo.promptSource}`,
     `Review requested: ${review ? 'yes' : 'no'}`,
     `Interactive requested: ${interactive ? 'yes' : 'no'}`,
@@ -426,7 +484,7 @@ function formatPrepareContextPlannerDryRunReport({ provider, role, context, invo
     '- npx create-quiver ai prepare-context --with-planner',
   ];
 
-  return `${lines.join('\n')}\n`;
+  return `${lines.filter(Boolean).join('\n')}\n`;
 }
 
 function serializeProposalForReview(proposal) {
@@ -1110,7 +1168,8 @@ function annotateGitHubError(error, scope) {
 
 async function runOnboard(repoRoot, options = {}) {
   const role = normalizeRole(options.role || DEFAULT_ONBOARD_ROLE);
-  const provider = resolveProviderForProfile(repoRoot, role, options.provider, options.providerExplicit, DEFAULT_ONBOARD_PROVIDER);
+  const runtimeProfile = resolveRuntimeAgentProfile(repoRoot, role, options, DEFAULT_ONBOARD_PROVIDER);
+  const provider = runtimeProfile.provider;
   const context = options.context || DEFAULT_ONBOARD_CONTEXT;
   const timeoutMs = normalizeTimeout(options.timeout);
   const inputText = readTextFile(options.input, repoRoot);
@@ -1123,6 +1182,8 @@ async function runOnboard(repoRoot, options = {}) {
       prompt,
       cwd: repoRoot,
       timeoutMs,
+      model: runtimeProfile.model,
+      enforceModelSelection: false,
     });
   } catch (error) {
     throw annotateProviderError(error, 'onboard');
@@ -1136,6 +1197,7 @@ async function runOnboard(repoRoot, options = {}) {
       contextPack: context,
       invocation,
       onboardingPlan: contextInfo.plan,
+      profile: runtimeProfile,
     };
     process.stdout.write(formatDryRunReport(report));
     return report;
@@ -1150,6 +1212,7 @@ async function runOnboard(repoRoot, options = {}) {
       invocation,
       onboardingPlan: contextInfo.plan,
       prompt,
+      profile: runtimeProfile,
     };
     process.stdout.write(formatPromptOnlyReport(report));
     return report;
@@ -1167,6 +1230,8 @@ async function runOnboard(repoRoot, options = {}) {
       tempRoot: options.tempRoot,
       tempFileName: options.tempFileName,
       tempFilePrefix: options.tempFilePrefix,
+      model: runtimeProfile.model,
+      enforceModelSelection: Boolean(runtimeProfile.model),
     });
   } catch (error) {
     throw annotateProviderError(error, 'onboard');
@@ -1187,6 +1252,7 @@ async function runOnboard(repoRoot, options = {}) {
     contextPack: context,
     invocation,
     onboardingPlan: contextInfo.plan,
+    profile: runtimeProfile,
     result,
   };
 }
@@ -1259,7 +1325,8 @@ async function runPrepareContext(repoRoot, options = {}) {
 
 async function runPrepareContextWithPlanner(repoRoot, options = {}) {
   const role = normalizeRole(options.role || DEFAULT_PLAN_ROLE);
-  const provider = resolveProviderForProfile(repoRoot, role, options.provider, options.providerExplicit, DEFAULT_PLAN_PROVIDER);
+  const runtimeProfile = resolveRuntimeAgentProfile(repoRoot, role, options, DEFAULT_PLAN_PROVIDER);
+  const provider = runtimeProfile.provider;
   const context = options.context || DEFAULT_PLAN_CONTEXT;
   const timeoutMs = normalizeTimeout(options.timeout);
   const draftPack = buildContextPreparationDrafts(repoRoot);
@@ -1278,6 +1345,8 @@ async function runPrepareContextWithPlanner(repoRoot, options = {}) {
       prompt,
       cwd: repoRoot,
       timeoutMs,
+      model: runtimeProfile.model,
+      enforceModelSelection: false,
     });
   } catch (error) {
     throw annotateProviderError(error, 'prepare-context');
@@ -1294,6 +1363,7 @@ async function runPrepareContextWithPlanner(repoRoot, options = {}) {
       invocation,
       candidateDocs: promptInfo.allowedPaths,
       plan: draftPack.plan,
+      profile: runtimeProfile,
     };
     process.stdout.write(formatPrepareContextPlannerDryRunReport({
       provider,
@@ -1316,6 +1386,7 @@ async function runPrepareContextWithPlanner(repoRoot, options = {}) {
       invocation,
       prompt,
       promptSource: promptInfo.promptSource,
+      profile: runtimeProfile,
     };
     process.stdout.write(formatPromptOnlyReport(report));
     return report;
@@ -1333,6 +1404,8 @@ async function runPrepareContextWithPlanner(repoRoot, options = {}) {
       tempRoot: options.tempRoot,
       tempFileName: options.tempFileName,
       tempFilePrefix: options.tempFilePrefix,
+      model: runtimeProfile.model,
+      enforceModelSelection: Boolean(runtimeProfile.model),
     });
   } catch (error) {
     throw annotateProviderError(error, 'prepare-context');
@@ -1406,7 +1479,8 @@ async function runPrepareContextWithPlanner(repoRoot, options = {}) {
 async function runPlan(repoRoot, options = {}) {
   const phase = normalizePlannerPhase(options.phase || DEFAULT_PLAN_PHASE);
   const role = normalizeRole(options.role || DEFAULT_PLAN_ROLE);
-  const provider = resolveProviderForProfile(repoRoot, role, options.provider, options.providerExplicit, DEFAULT_PLAN_PROVIDER);
+  const runtimeProfile = resolveRuntimeAgentProfile(repoRoot, role, options, DEFAULT_PLAN_PROVIDER);
+  const provider = runtimeProfile.provider;
   const context = options.context || DEFAULT_PLAN_CONTEXT;
   const timeoutMs = normalizeTimeout(options.timeout);
   let inputPath = options.input || '';
@@ -1508,6 +1582,8 @@ async function runPlan(repoRoot, options = {}) {
       prompt,
       cwd: repoRoot,
       timeoutMs,
+      model: runtimeProfile.model,
+      enforceModelSelection: false,
     });
   } catch (error) {
     throw annotateProviderError(error, 'plan', phase);
@@ -1521,6 +1597,7 @@ async function runPlan(repoRoot, options = {}) {
       contextPack: contextInfo.pack.packName,
       phase,
       invocation,
+      profile: runtimeProfile,
     };
     process.stdout.write(formatDryRunReport(report));
     if (options.withPlanner === true) {
@@ -1544,6 +1621,7 @@ async function runPlan(repoRoot, options = {}) {
       phase,
       invocation,
       prompt,
+      profile: runtimeProfile,
     };
     process.stdout.write(formatPromptOnlyReport(report));
     return report;
@@ -1561,6 +1639,8 @@ async function runPlan(repoRoot, options = {}) {
       tempRoot: options.tempRoot,
       tempFileName: options.tempFileName,
       tempFilePrefix: options.tempFilePrefix,
+      model: runtimeProfile.model,
+      enforceModelSelection: Boolean(runtimeProfile.model),
     });
   } catch (error) {
     throw annotateProviderError(error, 'plan', phase);
@@ -1627,7 +1707,8 @@ async function runPlan(repoRoot, options = {}) {
 
 async function runReviewPlan(repoRoot, options = {}) {
   const role = 'planner';
-  const provider = resolveProviderForProfile(repoRoot, 'reviewer', options.provider, options.providerExplicit, DEFAULT_PLAN_PROVIDER);
+  const runtimeProfile = resolveRuntimeAgentProfile(repoRoot, 'reviewer', options, DEFAULT_PLAN_PROVIDER);
+  const provider = runtimeProfile.provider;
   const context = options.context || DEFAULT_PLAN_CONTEXT;
   const timeoutMs = normalizeTimeout(options.timeout);
   const resolved = resolveTechnicalPlanReviewInput(repoRoot, options.input || undefined);
@@ -1651,6 +1732,8 @@ async function runReviewPlan(repoRoot, options = {}) {
       prompt: built.prompt,
       cwd: repoRoot,
       timeoutMs,
+      model: runtimeProfile.model,
+      enforceModelSelection: false,
     });
   } catch (error) {
     throw annotateProviderError(error, 'review-plan');
@@ -1667,6 +1750,7 @@ async function runReviewPlan(repoRoot, options = {}) {
       inputPath,
       inputKind: resolved.kind,
       inputVersion: resolved.version,
+      profile: runtimeProfile,
     };
     process.stdout.write(formatDryRunReport({
       task: 'review-plan',
@@ -1698,6 +1782,7 @@ async function runReviewPlan(repoRoot, options = {}) {
       inputPath,
       inputKind: resolved.kind,
       inputVersion: resolved.version,
+      profile: runtimeProfile,
     };
     process.stdout.write(formatPromptOnlyReport(report));
     return report;
@@ -1715,6 +1800,8 @@ async function runReviewPlan(repoRoot, options = {}) {
       tempRoot: options.tempRoot,
       tempFileName: options.tempFileName,
       tempFilePrefix: options.tempFilePrefix,
+      model: runtimeProfile.model,
+      enforceModelSelection: Boolean(runtimeProfile.model),
     });
   } catch (error) {
     throw annotateProviderError(error, 'review-plan');
@@ -1772,7 +1859,8 @@ async function runReviewPlan(repoRoot, options = {}) {
 
 async function runRepairPlan(repoRoot, options = {}) {
   const role = normalizeRole(options.role || DEFAULT_PLAN_ROLE);
-  const provider = resolveProviderForProfile(repoRoot, role, options.provider, options.providerExplicit, DEFAULT_PLAN_PROVIDER);
+  const runtimeProfile = resolveRuntimeAgentProfile(repoRoot, role, options, DEFAULT_PLAN_PROVIDER);
+  const provider = runtimeProfile.provider;
   const context = options.context || DEFAULT_PLAN_CONTEXT;
   const timeoutMs = normalizeTimeout(options.timeout);
   const source = resolveApprovedTechnicalPlanForRepair(repoRoot, options.input || '');
@@ -1792,6 +1880,8 @@ async function runRepairPlan(repoRoot, options = {}) {
       prompt: built.prompt,
       cwd: repoRoot,
       timeoutMs,
+      model: runtimeProfile.model,
+      enforceModelSelection: false,
     });
   } catch (error) {
     throw annotateProviderError(error, 'repair-plan');
@@ -1805,6 +1895,7 @@ async function runRepairPlan(repoRoot, options = {}) {
       contextPack: built.pack.packName,
       phase: 'technical-plan',
       invocation,
+      profile: runtimeProfile,
     };
     process.stdout.write(formatDryRunReport(report));
     process.stdout.write(`Source approved artifact: ${source.path}\n`);
@@ -1824,6 +1915,7 @@ async function runRepairPlan(repoRoot, options = {}) {
       inputPath: source.path,
       inputKind: 'approved',
       inputVersion: source.approval.meta?.approved?.version || null,
+      profile: runtimeProfile,
     };
     process.stdout.write(formatPromptOnlyReport(report));
     return report;
@@ -1841,6 +1933,8 @@ async function runRepairPlan(repoRoot, options = {}) {
       tempRoot: options.tempRoot,
       tempFileName: options.tempFileName,
       tempFilePrefix: options.tempFilePrefix,
+      model: runtimeProfile.model,
+      enforceModelSelection: Boolean(runtimeProfile.model),
     });
   } catch (error) {
     throw annotateProviderError(error, 'repair-plan');

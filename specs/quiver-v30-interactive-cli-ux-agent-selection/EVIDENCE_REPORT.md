@@ -75,3 +75,25 @@ Each implementation slice must append:
 
 - Command flows do not yet consume the new profile selector flags; that adoption belongs to later slices.
 - Provider model correctness is not enforced until slice-03.
+
+## slice-03 - Provider model selection contract
+
+### Completed
+
+- Added provider adapter metadata for model selection support and model argument construction.
+- Added model-selection metadata to provider invocations and dry-run results.
+- Added live execution enforcement so selected models are passed to provider adapters or block with actionable guidance when unsupported.
+- Wired planner/reviewer profile model selection into `ai onboard`, `ai prepare-context --with-planner`, `ai plan`, `ai review-plan`, `ai repair-plan`, and `ai revise`.
+- Added command flag propagation for `--model`, `--planner`, and `--reviewer` in planner/reviewer flows.
+- Documented the model-selection contract in `docs/CLI_UX_GUIDE.md` and synchronized `README_FOR_AI.md`.
+
+### Validation
+
+- `node --test tests/lib/ai-providers.test.js tests/commands/ai-agent.test.js tests/commands/ai-onboard.test.js tests/commands/ai-plan.test.js tests/commands/ai-review-plan.test.js tests/commands/ai-prepare-context-planner.test.js` passed: 72 tests.
+- `git diff --check` passed.
+- `node bin/create-quiver.js spec validate specs/quiver-v30-interactive-cli-ux-agent-selection` passed.
+
+### Risks
+
+- Provider model flags are implemented through the current adapter contract. Installed provider CLIs can still vary by version, so later release validation should dogfood dry-run and live commands with available local CLIs.
+- Executor provider/model propagation remains for slice-05.

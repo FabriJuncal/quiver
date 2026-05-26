@@ -68,8 +68,8 @@
     "Prefer explicit blocking over display-only ambiguity in live mode."
   ],
   "estimated_hours": 8,
-  "status": "planned",
+  "status": "completed",
   "blocked_reason": null,
-  "actual_hours": null,
-  "completed_at": null
+  "actual_hours": 5,
+  "completed_at": "2026-05-26"
 }

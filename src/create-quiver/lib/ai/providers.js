@@ -11,6 +11,8 @@ const PROVIDERS = {
     id: 'codex',
     command: 'codex',
     args: ['exec'],
+    supportsModelSelection: true,
+    modelArgBuilder: (model) => ['--model', model],
     timeoutMs: 10 * 60 * 1000,
     installHint: 'Install the Codex CLI and make sure it is available on PATH.',
   },
@@ -18,6 +20,8 @@ const PROVIDERS = {
     id: 'claude',
     command: 'claude',
     args: ['-p'],
+    supportsModelSelection: true,
+    modelArgBuilder: (model) => ['--model', model],
     timeoutMs: 10 * 60 * 1000,
     installHint: 'Install the Claude CLI and make sure it is available on PATH.',
   },
@@ -25,6 +29,8 @@ const PROVIDERS = {
     id: 'gemini',
     command: 'gemini',
     args: ['--prompt', ''],
+    supportsModelSelection: true,
+    modelArgBuilder: (model) => ['--model', model],
     timeoutMs: 10 * 60 * 1000,
     installHint: 'Install the Gemini CLI and make sure it is available on PATH.',
   },
@@ -61,9 +67,68 @@ function getProviderDefinition(providerId) {
   return PROVIDERS[normalized];
 }
 
+function normalizeProviderModel(model) {
+  const value = String(model || '').trim();
+  return value || '';
+}
+
+function buildProviderModelArgs(providerId, model, options = {}) {
+  const provider = getProviderDefinition(providerId);
+  const normalizedModel = normalizeProviderModel(model);
+  const enforce = options.enforce === true;
+
+  if (!normalizedModel) {
+    return {
+      model: '',
+      supported: Boolean(provider.supportsModelSelection),
+      enforced: enforce,
+      args: [],
+      reason: 'no model selected',
+    };
+  }
+
+  if (provider.supportsModelSelection !== true || typeof provider.modelArgBuilder !== 'function') {
+    if (enforce) {
+      throw new ProviderRunnerError(
+        'UNSUPPORTED_PROVIDER_MODEL_SELECTION',
+        `Provider '${provider.id}' cannot receive model '${normalizedModel}' through its Quiver adapter. Remove the model selection or update the provider adapter before live execution.`,
+        {
+          provider: provider.id,
+          model: normalizedModel,
+          nextSteps: [
+            `Run without a model override for provider '${provider.id}'.`,
+            `Update the '${provider.id}' provider adapter with model argument support.`,
+            'Use --dry-run to inspect the invocation before live execution.',
+          ],
+        },
+      );
+    }
+
+    return {
+      model: normalizedModel,
+      supported: false,
+      enforced: false,
+      args: [],
+      reason: 'provider adapter does not support model arguments',
+    };
+  }
+
+  const args = provider.modelArgBuilder(normalizedModel);
+  return {
+    model: normalizedModel,
+    supported: true,
+    enforced: enforce,
+    args: Array.isArray(args) ? args.map((arg) => String(arg)) : [],
+    reason: 'model argument supported',
+  };
+}
+
 function buildProviderInvocation(providerId, options = {}) {
   const provider = getProviderDefinition(providerId);
   const extraArgs = Array.isArray(options.args) ? options.args.map((arg) => String(arg)) : [];
+  const modelSelection = buildProviderModelArgs(provider.id, options.model, {
+    enforce: options.enforceModelSelection === true,
+  });
   const prompt = String(options.prompt ?? '');
   const timeoutMs = Number.isFinite(options.timeoutMs) ? Number(options.timeoutMs) : provider.timeoutMs;
   const cwd = options.cwd ? String(options.cwd) : process.cwd();
@@ -72,10 +137,11 @@ function buildProviderInvocation(providerId, options = {}) {
   return {
     provider: provider.id,
     command: provider.command,
-    args: provider.args.concat(extraArgs),
+    args: provider.args.concat(modelSelection.args, extraArgs),
     cwd,
     timeoutMs,
     promptLength: Buffer.byteLength(prompt, 'utf8'),
+    modelSelection,
     promptTransport: {
       mode: transportMode,
       promptLength: Buffer.byteLength(prompt, 'utf8'),
@@ -93,6 +159,7 @@ function createDryRunResult(invocation) {
     args: invocation.args.slice(),
     cwd: invocation.cwd,
     timeoutMs: invocation.timeoutMs,
+    modelSelection: invocation.modelSelection,
     promptTransport: invocation.promptTransport,
     exitCode: 0,
     stdout: '',
@@ -256,6 +323,7 @@ async function runProvider(providerId, options = {}) {
       args: invocation.args.slice(),
       cwd: invocation.cwd,
       timeoutMs: invocation.timeoutMs,
+      modelSelection: invocation.modelSelection,
       promptTransport: invocation.promptTransport,
       exitCode: null,
       stdout: '',
@@ -292,6 +360,7 @@ async function runProvider(providerId, options = {}) {
       args: invocation.args.slice(),
       cwd: invocation.cwd,
       timeoutMs: invocation.timeoutMs,
+      modelSelection: invocation.modelSelection,
       promptTransport: describePromptTransport(transport),
       exitCode: execution.exitCode,
       signal: execution.signal,
@@ -309,6 +378,7 @@ module.exports = {
   SUPPORTED_PROVIDERS,
   ProviderRunnerError,
   assertSupportedProvider,
+  buildProviderModelArgs,
   buildProviderInvocation,
   formatProviderList,
   getProviderDefinition,

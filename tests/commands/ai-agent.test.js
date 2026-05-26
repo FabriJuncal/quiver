@@ -153,6 +153,24 @@ test('ai onboard uses planner profile provider when provider is not explicit', (
 
     assert.match(output, /Provider: claude/);
     assert.match(output, /Role: planner/);
+    assert.match(output, /Model: opus/);
+    assert.match(output, /Command: claude -p --model opus/);
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('ai onboard can select a named planner profile for provider and model', () => {
+  const repo = makeRepo();
+
+  try {
+    runCli(repo.root, ['ai', 'agent', 'set', 'planner', '--id', 'gpt-55', '--provider', 'codex', '--model', 'gpt-5.5', '--default']);
+    runCli(repo.root, ['ai', 'agent', 'set', 'planner', '--id', 'opus-47', '--provider', 'claude', '--model', 'opus-4.7', '--display-name', 'OPUS 4.7']);
+    const output = runCli(repo.root, ['ai', 'onboard', '--dry-run', '--planner', 'opus-47']);
+
+    assert.match(output, /Provider: claude/);
+    assert.match(output, /Model: opus-4\.7/);
+    assert.match(output, /Command: claude -p --model opus-4\.7/);
   } finally {
     repo.cleanup();
   }
