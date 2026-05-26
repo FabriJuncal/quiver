@@ -76,5 +76,7 @@
     "Verify no product-code writes through path allowlist tests."
   ],
   "estimated_hours": 10,
-  "status": "planned"
+  "actual_hours": 5,
+  "status": "completed",
+  "completed_at": "2026-05-26"
 }

@@ -2512,10 +2512,16 @@ async function run(argv) {
 
     if (args.aiCommand === 'prepare-context') {
       await runAiPrepareContext(process.cwd(), {
+        context: args.aiContext || undefined,
         dryRun: args.dryRun,
         interactive: args.interactive,
+        printPrompt: args.aiPrintPrompt,
+        provider: args.aiProvider,
+        providerExplicit: args.aiProviderExplicit,
         review: args.review,
+        role: args.aiRole,
         runId: args.aiRunId || undefined,
+        timeout: args.aiTimeout,
         withPlanner: args.withPlanner,
       });
       return;

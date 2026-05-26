@@ -88,3 +88,23 @@ node --test tests/commands/ux-flags.test.js tests/commands/cli-contract.test.js 
 
 - `node --test tests/commands/ux-flags.test.js tests/commands/cli-contract.test.js tests/lib/cli-ux.test.js` passed with 22 tests.
 - Tests cover matrix support, unsupported flags, incompatible `--json` combinations, read-only commands, `ai pr --with-planner`, and parseable JSON output for existing commands.
+
+## slice-03-prepare-context-planner-review-flow Evidence
+
+**Date:** 2026-05-26
+**Status:** Passed
+
+### Commands
+
+```bash
+node --test tests/commands/ai-onboard.test.js tests/commands/ai-prepare-context-planner.test.js tests/lib/ai-context-proposal.test.js
+node --test tests/commands/ux-flags.test.js tests/commands/cli-contract.test.js tests/lib/cli-ux.test.js
+git diff --check
+```
+
+### Results
+
+- `node --test tests/commands/ai-onboard.test.js tests/commands/ai-prepare-context-planner.test.js tests/lib/ai-context-proposal.test.js` passed with 25 tests.
+- `node --test tests/commands/ux-flags.test.js tests/commands/cli-contract.test.js tests/lib/cli-ux.test.js` passed with 22 tests.
+- Tests cover deterministic compatibility, planner dry-run, prompt printing, provider success, provider failure, invalid planner output, review cancellation, review edit/revalidation, and interactive decline.
+- `git diff --check` passed.
