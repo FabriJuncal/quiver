@@ -124,3 +124,40 @@ node --test tests/commands/ai-plan.test.js tests/commands/spec-create.test.js te
 
 - `node --test tests/commands/ai-plan.test.js tests/commands/spec-create.test.js tests/commands/ai-pr.test.js tests/commands/ux-flags.test.js` passed with 46 tests.
 - Tests cover `ai plan` UX flags, draft review, interactive decline, `spec create --review`, `spec create --interactive`, `ai pr --review`, `ai pr --interactive`, and the central unsupported flag matrix.
+
+## slice-06-docs-tests-smoke-readiness Evidence
+
+**Date:** 2026-05-26
+**Status:** Passed
+
+### Commands
+
+```bash
+node --test tests/commands/ai-prepare-context-planner.test.js tests/commands/ai-plan.test.js tests/commands/spec-create.test.js tests/commands/ai-pr.test.js tests/commands/ux-flags.test.js tests/commands/cli-contract.test.js tests/lib/cli-theme.test.js tests/lib/cli-ux.test.js tests/lib/cli-editor.test.js tests/lib/ai-context-proposal.test.js
+node bin/create-quiver.js --help >/tmp/quiver-help.txt && rg -- '--with-planner|--interactive|--review|--no-color' /tmp/quiver-help.txt
+node --test tests/**/*.test.js
+npm run smoke:create-quiver
+npm run smoke:doctor-fixtures
+npm run smoke:guided-workflow
+npm run package:quiver
+npm pack --dry-run
+git diff --check
+node bin/create-quiver.js spec validate specs/quiver-v29-planner-prepare-context-cli-ux
+```
+
+### Results
+
+- Focused command/UX validation passed with 87 tests and confirmed the public help includes `--with-planner`, `--interactive`, `--review`, and `--no-color`.
+- Full test suite passed with 426 tests.
+- `npm run smoke:create-quiver` passed.
+- `npm run smoke:doctor-fixtures` passed with 13 fixture states.
+- `npm run smoke:guided-workflow` passed.
+- `npm run package:quiver` passed and validated package safety.
+- `npm pack --dry-run` passed and produced a clean dry-run tarball report for `create-quiver@0.14.0`.
+- `git diff --check` passed.
+- `node bin/create-quiver.js spec validate specs/quiver-v29-planner-prepare-context-cli-ux` passed after closure metadata updates.
+
+### Notes
+
+- Npm printed a non-blocking update notice for npm `11.12.1 -> 11.15.0`.
+- Publishing and PR creation remain outside this slice.

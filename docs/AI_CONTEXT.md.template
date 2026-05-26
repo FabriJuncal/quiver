@@ -26,6 +26,7 @@ This file is the main context pack after `AGENTS.md` and `docs/PROJECT_MAP.md`. 
 - `docs/DECISIONS.md` tracks durable choices so agents do not re-litigate them.
 - `docs/STATUS.md` tracks progress, blockers, and the current slice.
 - `npx create-quiver ai prepare-context --dry-run` previews docs-only context drafts before writing.
+- `npx create-quiver ai prepare-context --with-planner --dry-run` previews an optional planner-generated context proposal. Use `--print-prompt` to run the prompt elsewhere, `--review` to inspect the proposal, and `--interactive` to confirm before writing.
 
 ## Critical Rules
 
@@ -37,6 +38,7 @@ This file is the main context pack after `AGENTS.md` and `docs/PROJECT_MAP.md`. 
 - Never overwrite user-authored content without checking whether the file is meant to be preserved.
 - If a command or path is ambiguous, prefer the local project root and the generated docs.
 - Context preparation must stay in docs/context files and should use TODO, Assumption, or Pending confirmation markers for uncertain statements.
+- Planner-assisted context proposals must remain docs-only. Do not accept product-code, dependency, build, runtime, lockfile, generated-output, absolute-path, or traversal writes.
 
 ## What To Update After A Slice
 

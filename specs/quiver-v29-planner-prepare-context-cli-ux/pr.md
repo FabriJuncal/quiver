@@ -74,7 +74,15 @@ This is a CLI framework change. Run command-level tests and smoke commands from 
 
 ## Evidence
 
-To be filled by implementation slices.
+- Focused command/UX tests passed with 87 tests.
+- Full suite passed with 426 tests.
+- `npm run smoke:create-quiver` passed.
+- `npm run smoke:doctor-fixtures` passed with 13 fixture states.
+- `npm run smoke:guided-workflow` passed.
+- `npm run package:quiver` passed.
+- `npm pack --dry-run` passed for `create-quiver@0.14.0`.
+- `git diff --check` passed.
+- `node bin/create-quiver.js spec validate specs/quiver-v29-planner-prepare-context-cli-ux` passed.
 
 ## Rollback
 

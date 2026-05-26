@@ -139,7 +139,7 @@ Create a CLI UX standard for Quiver and implement the first high-value applicati
 | slice-03 | Planner-assisted prepare-context review flow | completed | slice-01, slice-02 |
 | slice-04 | UX flag matrix and compatibility guardrails | completed | slice-01 |
 | slice-05 | Progressive command adoption | completed | slice-03, slice-04 |
-| slice-06 | Docs, tests, smoke, and release readiness | planned | slice-02, slice-03, slice-04, slice-05 |
+| slice-06 | Docs, tests, smoke, and release readiness | completed | slice-02, slice-03, slice-04, slice-05 |
 
 ## Validation Strategy
 
@@ -166,8 +166,8 @@ Create a CLI UX standard for Quiver and implement the first high-value applicati
 - `--review` can become ambiguous unless consistently defined as "review before persistent writes".
 - Progressive adoption can create inconsistent UX if the matrix is not documented and enforced.
 
-## Open Questions
+## Resolved Decisions
 
-- Exact option spelling for no-color behavior: `--no-color`, environment detection only, or both.
-- Whether `ai plan --with-planner` should be accepted as an alias even though planner behavior is already implicit.
-- Whether `spec create --with-planner` should be implemented fully now or only guarded/documented until planner output contracts are more mature.
+- No-color behavior uses both `--no-color` and environment detection (`NO_COLOR`, CI, and no-TTY).
+- `ai plan --with-planner` is accepted for UX consistency because planner behavior is already implicit.
+- `spec create --with-planner` is accepted because the command consumes an already reviewed and approved planner output; it does not execute a provider again.

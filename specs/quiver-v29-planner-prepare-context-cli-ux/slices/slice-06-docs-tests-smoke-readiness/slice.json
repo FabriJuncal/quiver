@@ -21,6 +21,7 @@
     "docs/AI_ONBOARDING_PROMPT.md.template",
     "docs/CLI_UX_GUIDE.md",
     "docs/reference/commands.md",
+    "docs/workflows/*.md",
     "tests/**",
     "specs/quiver-v29-planner-prepare-context-cli-ux/**"
   ],
@@ -42,6 +43,7 @@
     "docs/AI_ONBOARDING_PROMPT.md.template",
     "docs/CLI_UX_GUIDE.md",
     "docs/reference/commands.md",
+    "docs/workflows/*.md",
     "tests/**",
     "specs/quiver-v29-planner-prepare-context-cli-ux/**"
   ],
@@ -87,5 +89,7 @@
     "Check README_FOR_AI.md against actual CLI behavior before closing."
   ],
   "estimated_hours": 6,
-  "status": "planned"
+  "actual_hours": 4,
+  "status": "completed",
+  "completed_at": "2026-05-26"
 }

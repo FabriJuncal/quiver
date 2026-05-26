@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- v29 planner-assisted context and CLI UX standard under `specs/quiver-v29-planner-prepare-context-cli-ux/`.
+- Shared Quiver-branded CLI UX helpers, color tokens, editor review support, and guarded UX flag matrix.
+- Optional `ai prepare-context --with-planner` flow with prompt printing, review, interactive approval, and docs-only proposal validation.
+
+### Changed
+
+- `ai plan`, `spec create`, and `ai pr` now support selected review/interactive flows where they add real human approval value.
+- Public docs, generated command templates, and AI-facing docs now describe deterministic context prep, planner-assisted context prep, and the CLI UX standard.
+
 ## [0.14.0] - 2026-05-25
 
 ### Added

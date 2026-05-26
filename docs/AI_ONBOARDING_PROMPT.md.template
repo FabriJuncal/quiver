@@ -15,7 +15,8 @@ Actúa como asistente de onboarding de IA para este proyecto. Tu objetivo es com
    - Lee `docs/INDEX.md`, si existe, y úsalo como mapa para decidir qué abrir después.
    - Lee `docs/PROJECT_MAP.md` para stack, comandos y estructura. Usa `.quiver/scans/PROJECT_SCAN.json` solo si el mapa visible no alcanza.
    - Lee `docs/AI_CONTEXT.md`, `docs/AI_ONBOARDING_PROMPT.md`, `docs/WORKFLOW.md`, `docs/STATUS.md` y `docs/DECISIONS.md` solo cuando existan y sean relevantes para la tarea.
-   - Si usás `npx create-quiver ai prepare-context`, revisá los borradores propuestos antes de escribir y mantené las escrituras limitadas a docs/context.
+   - Si usás `npx create-quiver ai prepare-context`, empezá con `--dry-run`, revisá los borradores propuestos antes de escribir y mantené las escrituras limitadas a docs/context.
+   - Usá `--with-planner` solo cuando el humano quiera una propuesta generada por un planner IA; combiná `--review` y `--interactive` antes de aplicar escrituras.
    - Lee specs, slices o handoffs solo si la tarea actual lo requiere.
    - No leas todo `docs/` por defecto.
    - Si un documento referenciado no existe, repórtalo como deuda documental.
@@ -73,6 +74,9 @@ Si usás los comandos de IA de Quiver, empezá con `--dry-run` para revisar prov
 ```bash
 npm run quiver:prepare -- --dry-run
 npm run quiver:ai:prepare-context -- --dry-run
+npm run quiver:ai:prepare-context -- --with-planner --dry-run
+npm run quiver:ai:prepare-context -- --with-planner --print-prompt
+npm run quiver:ai:prepare-context -- --with-planner --review --interactive
 npm run quiver:ai:onboard -- --dry-run
 npm run quiver:ai:inspect
 npm run quiver:ai:export -- --format json
@@ -80,18 +84,21 @@ npm run quiver:ai:specs
 npm run quiver:ai:slices
 npm run quiver:ai:trace
 npm run quiver:ai:plan -- --phase acceptance --input requirements.md --dry-run
+npm run quiver:ai:plan -- --phase acceptance --input requirements.md --review --interactive
 npm run quiver:ai:revise -- --phase acceptance --input feedback.md --dry-run
 npm run quiver:ai:approve -- --phase acceptance --version <n>
 npm run quiver:ai:plan -- --phase technical-plan --dry-run
 npm run quiver:ai:review-plan -- --dry-run
 npm run quiver:ai:approve -- --phase technical-plan --version <n>
 npm run quiver:spec:create -- --dry-run
+npm run quiver:spec:create -- --review --interactive
 npm run quiver:spec:start -- specs/{{PROJECT_SLUG}}
 npm run quiver:ai:prompt-slice -- --slice specs/{{PROJECT_SLUG}}/slices/<slice-id>/slice.json --dry-run
 npm run quiver:ai:execute-slice -- --slice specs/{{PROJECT_SLUG}}/slices/<slice-id>/slice.json --dry-run --commit
 npm run quiver:ai:execute-plan -- --dry-run --commit --mode manual
 npm run quiver:ai:execute-plan -- --dry-run --commit --mode delegated
 npm run quiver:ai:pr -- --dry-run --input specs/{{PROJECT_SLUG}}/pr.md --ssh-host-alias github-work --identity-file ~/.ssh/github-work
+npm run quiver:ai:pr -- --review --dry-run --input specs/{{PROJECT_SLUG}}/pr.md --ssh-host-alias github-work --identity-file ~/.ssh/github-work
 npm run quiver:spec:close -- specs/{{PROJECT_SLUG}} --dry-run
 ```
 
@@ -113,6 +120,7 @@ npm run quiver:spec:close -- specs/{{PROJECT_SLUG}} --dry-run
 - Indica rutas omitidas o señales faltantes.
 - Mantén la respuesta enfocada en documentación y contexto de onboarding salvo que el usuario haya autorizado cambios de código de producto.
 - No cambies reglas del workflow de Quiver salvo que el usuario lo pida explícitamente.
+- No combines `--json` con `--interactive` ni `--review`. Si necesitás salida machine-readable, evitá prompts, editores y loaders humanos.
 
 ## Reporte final
 
