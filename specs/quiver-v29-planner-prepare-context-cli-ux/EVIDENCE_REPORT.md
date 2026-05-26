@@ -72,3 +72,19 @@ node --test tests/lib/ai-context-proposal.test.js
 - `node --test tests/lib/ai-context-proposal.test.js` passed with 8 tests.
 - Fixtures cover valid JSON, fenced JSON, malformed output, product-code path, absolute path, and path traversal.
 - The slice did not invoke providers and did not modify `runPrepareContext` write behavior.
+
+## slice-04-ux-flag-matrix-compatibility Evidence
+
+**Date:** 2026-05-26
+**Status:** Passed
+
+### Commands
+
+```bash
+node --test tests/commands/ux-flags.test.js tests/commands/cli-contract.test.js tests/lib/cli-ux.test.js
+```
+
+### Results
+
+- `node --test tests/commands/ux-flags.test.js tests/commands/cli-contract.test.js tests/lib/cli-ux.test.js` passed with 22 tests.
+- Tests cover matrix support, unsupported flags, incompatible `--json` combinations, read-only commands, `ai pr --with-planner`, and parseable JSON output for existing commands.
