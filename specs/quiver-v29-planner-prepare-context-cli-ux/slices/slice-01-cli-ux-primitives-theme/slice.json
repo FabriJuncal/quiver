@@ -69,5 +69,7 @@
     "Do not hardcode color values outside theme.js."
   ],
   "estimated_hours": 6,
-  "status": "planned"
+  "actual_hours": 3,
+  "status": "completed",
+  "completed_at": "2026-05-26"
 }
