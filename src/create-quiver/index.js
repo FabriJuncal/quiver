@@ -2805,7 +2805,7 @@ async function run(argv) {
 
   if (args.mode === 'spec') {
     if (args.specCommand === 'create') {
-      runCreateSpec(process.cwd(), {
+      await runCreateSpec(process.cwd(), {
         dryRun: args.dryRun,
         input: args.aiInput || undefined,
         interactive: args.interactive,

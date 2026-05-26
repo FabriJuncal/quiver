@@ -108,3 +108,19 @@ git diff --check
 - `node --test tests/commands/ux-flags.test.js tests/commands/cli-contract.test.js tests/lib/cli-ux.test.js` passed with 22 tests.
 - Tests cover deterministic compatibility, planner dry-run, prompt printing, provider success, provider failure, invalid planner output, review cancellation, review edit/revalidation, and interactive decline.
 - `git diff --check` passed.
+
+## slice-05-progressive-command-adoption Evidence
+
+**Date:** 2026-05-26
+**Status:** Passed
+
+### Commands
+
+```bash
+node --test tests/commands/ai-plan.test.js tests/commands/spec-create.test.js tests/commands/ai-pr.test.js tests/commands/ux-flags.test.js
+```
+
+### Results
+
+- `node --test tests/commands/ai-plan.test.js tests/commands/spec-create.test.js tests/commands/ai-pr.test.js tests/commands/ux-flags.test.js` passed with 46 tests.
+- Tests cover `ai plan` UX flags, draft review, interactive decline, `spec create --review`, `spec create --interactive`, `ai pr --review`, `ai pr --interactive`, and the central unsupported flag matrix.

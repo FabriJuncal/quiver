@@ -463,6 +463,62 @@ function makeReviewError(message, reviewPath, cause) {
   return error;
 }
 
+function createReviewTextFile(contents, options = {}) {
+  const reviewDir = options.reviewDir || fs.mkdtempSync(path.join(os.tmpdir(), 'quiver-review-'));
+  const filename = options.reviewFileName || 'review.md';
+  const reviewPath = path.join(reviewDir, filename);
+  fs.mkdirSync(reviewDir, { recursive: true });
+  fs.writeFileSync(reviewPath, String(contents || ''));
+  return reviewPath;
+}
+
+async function reviewTextWithEditor(repoRoot, contents, options = {}) {
+  const reviewPath = createReviewTextFile(contents, options);
+  const hasEditorRunner = typeof options.openEditorFn === 'function';
+  const canOpenEditor = hasEditorRunner || options.stdinIsTTY === true || (options.stdinIsTTY !== false && Boolean(process.stdin.isTTY));
+
+  if (!canOpenEditor) {
+    throw makeReviewError(`${options.reviewLabel || 'review'} requires an interactive terminal or an injected editor runner.`, reviewPath);
+  }
+
+  const editorResult = hasEditorRunner
+    ? options.openEditorFn(reviewPath, { cwd: repoRoot, env: options.env || process.env })
+    : openEditor(reviewPath, { cwd: repoRoot, env: options.env || process.env });
+
+  if (!editorResult || editorResult.ok !== true) {
+    throw makeReviewError(editorResult?.reason || `${options.reviewLabel || 'review'} was canceled.`, reviewPath);
+  }
+
+  return {
+    reviewPath,
+    text: fs.readFileSync(reviewPath, 'utf8'),
+  };
+}
+
+async function confirmInteractiveAction(message, options = {}) {
+  if (options.interactive !== true) {
+    return;
+  }
+
+  const ux = options.ux || createUx({
+    interactive: true,
+    promptConfirm: options.promptConfirm,
+    stdinIsTTY: options.stdinIsTTY,
+    stdoutIsTTY: options.stdoutIsTTY,
+    stderrIsTTY: options.stderrIsTTY,
+    write: options.write,
+  });
+  const confirmed = await ux.promptConfirm(message, {
+    initialValue: false,
+  });
+
+  if (!confirmed) {
+    const error = new Error(formatError('interactive approval declined. No files were written.'));
+    error.code = 'AI_INTERACTIVE_APPROVAL_DECLINED';
+    throw error;
+  }
+}
+
 async function reviewPlannerContextProposal(repoRoot, proposal, options = {}) {
   const reviewPath = createProposalReviewFile(proposal, options);
   const hasEditorRunner = typeof options.openEditorFn === 'function';
@@ -491,28 +547,8 @@ async function reviewPlannerContextProposal(repoRoot, proposal, options = {}) {
 }
 
 async function confirmPlannerContextWrites(writePlan, options = {}) {
-  if (options.interactive !== true) {
-    return;
-  }
-
-  const ux = options.ux || createUx({
-    interactive: true,
-    promptConfirm: options.promptConfirm,
-    stdinIsTTY: options.stdinIsTTY,
-    stdoutIsTTY: options.stdoutIsTTY,
-    stderrIsTTY: options.stderrIsTTY,
-    write: options.write,
-  });
   const changed = writePlan.filter((item) => item.action !== 'skip').length;
-  const confirmed = await ux.promptConfirm(`Apply ${changed} docs-only context update${changed === 1 ? '' : 's'}?`, {
-    initialValue: false,
-  });
-
-  if (!confirmed) {
-    const error = new Error(formatError('ai prepare-context interactive approval declined. No files were written.'));
-    error.code = 'AI_CONTEXT_APPROVAL_DECLINED';
-    throw error;
-  }
+  await confirmInteractiveAction(`Apply ${changed} docs-only context update${changed === 1 ? '' : 's'}?`, options);
 }
 
 function buildPlannerContextWritePlan(repoRoot, proposal) {
@@ -1485,6 +1521,15 @@ async function runPlan(repoRoot, options = {}) {
       invocation,
     };
     process.stdout.write(formatDryRunReport(report));
+    if (options.withPlanner === true) {
+      process.stdout.write('Planner mode: already active for ai plan; --with-planner is accepted for UX consistency.\n');
+    }
+    if (options.review === true) {
+      process.stdout.write('Review requested: provider output will be opened for review before saving the draft in live mode.\n');
+    }
+    if (options.interactive === true) {
+      process.stdout.write('Interactive requested: live mode will ask before saving the draft.\n');
+    }
     return report;
   }
 
@@ -1524,13 +1569,27 @@ async function runPlan(repoRoot, options = {}) {
     throw annotateProviderError(result.error || new Error('provider run failed'), 'plan', phase);
   }
 
+  const clean = extractCleanProviderOutput(result, { prompt, projectRoot: repoRoot });
+  let cleanOutput = clean.cleanOutput;
+  let reviewPath = '';
+
+  if (options.review === true) {
+    const reviewed = await reviewTextWithEditor(repoRoot, cleanOutput, {
+      ...options,
+      reviewFileName: `ai-plan-${phase}-draft.md`,
+      reviewLabel: `ai plan --phase ${phase} review`,
+    });
+    cleanOutput = reviewed.text;
+    reviewPath = reviewed.reviewPath;
+  }
+
+  await confirmInteractiveAction(`Save ${phase} planner draft?`, options);
   const lifecycleRun = ensureAiRun(repoRoot, {
     command: `ai plan --phase ${phase}`,
     input: inputPath,
     runId: options.runId,
   });
-  const clean = extractCleanProviderOutput(result, { prompt, projectRoot: repoRoot });
-  writeCleanProviderOutput(clean);
+  writeCleanProviderOutput({ cleanOutput });
   const rawArtifact = writeRawProviderArtifact(repoRoot, lifecycleRun.run_id, `ai-plan-${phase}`, result, {
     metadata: {
       phase,
@@ -1541,10 +1600,11 @@ async function runPlan(repoRoot, options = {}) {
       input_compaction: inputCompaction,
     },
   });
-  const draft = savePlannerDraft(repoRoot, phase, inputPath, clean.cleanOutput, {
+  const draft = savePlannerDraft(repoRoot, phase, inputPath, cleanOutput, {
     rawArtifactPath: rawArtifact.path,
     outputSource: clean.source,
     inputCompaction,
+    reviewPath,
   });
   updateAiRunPhase(repoRoot, lifecycleRun.run_id, phase === 'acceptance' ? 'acceptance-draft' : 'technical-plan-draft', {
     artifact: path.relative(repoRoot, draft.filePath).split(path.sep).join('/'),
@@ -1559,6 +1619,7 @@ async function runPlan(repoRoot, options = {}) {
     phase,
     invocation,
     result,
+    reviewPath,
   };
 }
 
@@ -2295,6 +2356,31 @@ async function runPr(repoRoot, options = {}) {
     throw annotateGitHubError(error, 'pr');
   }
 
+  if (options.review === true) {
+    const hasEditorRunner = typeof options.openEditorFn === 'function';
+    const canOpenEditor = hasEditorRunner || options.stdinIsTTY === true || (options.stdinIsTTY !== false && Boolean(process.stdin.isTTY));
+    if (!canOpenEditor) {
+      throw annotateGitHubError(makeReviewError('ai pr --review requires an interactive terminal or an injected editor runner.', plan.prBodyPath), 'pr');
+    }
+    const editorResult = hasEditorRunner
+      ? options.openEditorFn(plan.prBodyPath, { cwd: repoRoot, env: options.env || process.env })
+      : openEditor(plan.prBodyPath, { cwd: repoRoot, env: options.env || process.env });
+    if (!editorResult || editorResult.ok !== true) {
+      throw annotateGitHubError(makeReviewError(editorResult?.reason || 'ai pr review was canceled.', plan.prBodyPath), 'pr');
+    }
+    try {
+      plan = buildPrCreatePlan(repoRoot, preflight, {
+        baseBranch: options.baseBranch,
+        ghCommand: options.ghCommand,
+        input: options.input,
+        prBodyPath: options.prBodyPath,
+        title: options.title,
+      });
+    } catch (error) {
+      throw annotateGitHubError(error, 'pr');
+    }
+  }
+
   if (dryRun || !create) {
     process.stdout.write(formatPrCreateReport({ preflight, plan }, { dryRun, create }));
     return {
@@ -2305,6 +2391,8 @@ async function runPr(repoRoot, options = {}) {
       plan,
     };
   }
+
+  await confirmInteractiveAction(`Create GitHub PR '${plan.title}'?`, options);
 
   let result;
   try {

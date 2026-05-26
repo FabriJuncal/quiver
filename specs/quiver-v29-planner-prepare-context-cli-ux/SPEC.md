@@ -138,7 +138,7 @@ Create a CLI UX standard for Quiver and implement the first high-value applicati
 | slice-02 | Planner context proposal contract | completed | slice-01 |
 | slice-03 | Planner-assisted prepare-context review flow | completed | slice-01, slice-02 |
 | slice-04 | UX flag matrix and compatibility guardrails | completed | slice-01 |
-| slice-05 | Progressive command adoption | planned | slice-03, slice-04 |
+| slice-05 | Progressive command adoption | completed | slice-03, slice-04 |
 | slice-06 | Docs, tests, smoke, and release readiness | planned | slice-02, slice-03, slice-04, slice-05 |
 
 ## Validation Strategy

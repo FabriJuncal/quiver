@@ -119,6 +119,114 @@ test('ai plan CLI dry-run defaults to acceptance phase and planning context', ()
   }
 });
 
+test('ai plan accepts UX flags in dry-run without changing planner draft behavior', () => {
+  const repo = makeRepo({
+    'requirements.md': '# requirements\n- Review planner UX flags.',
+  });
+
+  try {
+    const output = execAi(repo.root, [
+      '--with-planner',
+      '--interactive',
+      '--review',
+      '--dry-run',
+      '--input',
+      'requirements.md',
+    ]);
+
+    assert.ok(output.includes('AI plan dry-run'));
+    assert.ok(output.includes('Planner mode: already active for ai plan'));
+    assert.ok(output.includes('Review requested: provider output will be opened for review before saving the draft in live mode.'));
+    assert.ok(output.includes('Interactive requested: live mode will ask before saving the draft.'));
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('ai plan --review lets a human edit the provider draft before saving', async () => {
+  const repo = makeRepo({
+    'requirements.md': '# requirements\n- Review the provider draft.',
+  });
+  const reviewDir = fs.mkdtempSync(path.join(os.tmpdir(), 'quiver-ai-plan-review-'));
+
+  try {
+    const result = await runPlan(repo.root, {
+      input: 'requirements.md',
+      phase: 'acceptance',
+      review: true,
+      reviewDir,
+      openEditorFn: (reviewPath) => {
+        fs.writeFileSync(reviewPath, '# Reviewed acceptance\n- Edited criterion.\n');
+        return { ok: true, canceled: false };
+      },
+      runProviderFn: async (provider) => ({
+        ok: true,
+        dryRun: false,
+        provider,
+        command: 'codex',
+        args: ['exec'],
+        cwd: repo.root,
+        timeoutMs: 0,
+        promptTransport: { mode: 'stdin' },
+        exitCode: 0,
+        stdout: '# Original acceptance\n- Provider criterion.\n',
+        stderr: '',
+        error: null,
+        preflight: { ok: true },
+      }),
+    });
+
+    const draftPath = path.join(repo.root, '.quiver', 'approvals', 'acceptance', 'draft.md');
+    assert.equal(result.reviewPath, path.join(reviewDir, 'ai-plan-acceptance-draft.md'));
+    assert.equal(fs.readFileSync(draftPath, 'utf8'), '# Reviewed acceptance\n- Edited criterion.\n');
+  } finally {
+    fs.rmSync(reviewDir, { recursive: true, force: true });
+    repo.cleanup();
+  }
+});
+
+test('ai plan --interactive can decline saving the provider draft', async () => {
+  const repo = makeRepo({
+    'requirements.md': '# requirements\n- Confirm before saving.',
+  });
+
+  try {
+    await assert.rejects(
+      runPlan(repo.root, {
+        input: 'requirements.md',
+        phase: 'acceptance',
+        interactive: true,
+        promptConfirm: async () => false,
+        stdinIsTTY: true,
+        stdoutIsTTY: true,
+        stderrIsTTY: true,
+        write: () => {},
+        runProviderFn: async (provider) => ({
+          ok: true,
+          dryRun: false,
+          provider,
+          command: 'codex',
+          args: ['exec'],
+          cwd: repo.root,
+          timeoutMs: 0,
+          promptTransport: { mode: 'stdin' },
+          exitCode: 0,
+          stdout: 'acceptance draft\n',
+          stderr: '',
+          error: null,
+          preflight: { ok: true },
+        }),
+      }),
+      /interactive approval declined/,
+    );
+
+    assert.equal(fs.existsSync(path.join(repo.root, '.quiver', 'approvals', 'acceptance', 'draft.md')), false);
+    assert.equal(fs.existsSync(path.join(repo.root, '.quiver', 'runs')), false);
+  } finally {
+    repo.cleanup();
+  }
+});
+
 test('ai plan print-prompt renders acceptance prompt without provider auth', () => {
   const repo = makeRepo({
     'requirements.md': '# requirements\n- Ship a gated planner flow.',

@@ -14,6 +14,7 @@
 - `slice-02` completed with planner proposal schema, parser, docs-only allowlist, unsafe path rejection, and redacted invalid-output artifacts.
 - `slice-04` completed with centralized UX flag support, unsupported/incompatible flag guardrails, and CLI contract tests.
 - `slice-03` completed with explicit planner-assisted `ai prepare-context`, dry-run, prompt printing, provider execution, review, interactive approval, docs-only snapshots, and tests.
+- `slice-05` completed with progressive UX adoption for `ai plan`, `spec create`, and `ai pr`.
 
 ## Slice Status
 
@@ -24,9 +25,9 @@
 | slice-02-planner-context-proposal-contract | completed | Added zod proposal contract, parser, path safety, fixtures, and tests. |
 | slice-03-prepare-context-planner-review-flow | completed | Implemented planner-assisted prepare-context while preserving deterministic default behavior. |
 | slice-04-ux-flag-matrix-compatibility | completed | Added flag matrix, early validation, help entries, and tests for unsupported/incompatible UX flags. |
-| slice-05-progressive-command-adoption | planned | Apply standard to selected commands. |
+| slice-05-progressive-command-adoption | completed | Added review/interactive paths for selected planner/spec/PR commands and tests. |
 | slice-06-docs-tests-smoke-readiness | planned | Final docs, tests, package readiness. |
 
 ## Next Step
 
-Execute `slice-05-progressive-command-adoption` next, then finish docs/tests/smoke in `slice-06`.
+Execute `slice-06-docs-tests-smoke-readiness` to update docs, templates, final smoke, and release readiness evidence.
