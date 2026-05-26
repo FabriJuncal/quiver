@@ -1,0 +1,1 @@
+Planner output without a valid JSON object.

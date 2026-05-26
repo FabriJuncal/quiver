@@ -65,5 +65,7 @@
     "Keep schema and allowlist close to the proposal parser."
   ],
   "estimated_hours": 8,
-  "status": "planned"
+  "actual_hours": 3,
+  "status": "completed",
+  "completed_at": "2026-05-26"
 }

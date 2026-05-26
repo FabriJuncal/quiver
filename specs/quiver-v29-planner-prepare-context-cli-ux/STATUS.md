@@ -11,6 +11,7 @@
 - Spec package prepared for execution.
 - `slice-00` completed as the documentary foundation.
 - `slice-01` completed with shared CLI UX primitives, Quiver theme tokens, editor helper, and focused tests.
+- `slice-02` completed with planner proposal schema, parser, docs-only allowlist, unsafe path rejection, and redacted invalid-output artifacts.
 
 ## Slice Status
 
@@ -18,7 +19,7 @@
 |---|---|---|
 | slice-00-cli-ux-spec-foundation | completed | Spec package validated and ready as foundation commit. |
 | slice-01-cli-ux-primitives-theme | completed | Added shared CLI theme/UX/editor helpers and focused unit tests; package smoke passed. |
-| slice-02-planner-context-proposal-contract | planned | Planner proposal schema and path safety. |
+| slice-02-planner-context-proposal-contract | completed | Added zod proposal contract, parser, path safety, fixtures, and tests. |
 | slice-03-prepare-context-planner-review-flow | planned | Main `ai prepare-context` implementation. |
 | slice-04-ux-flag-matrix-compatibility | planned | Flag matrix, CI/no-TTY/JSON compatibility. |
 | slice-05-progressive-command-adoption | planned | Apply standard to selected commands. |
@@ -26,4 +27,4 @@
 
 ## Next Step
 
-Execute `slice-02-planner-context-proposal-contract` and `slice-04-ux-flag-matrix-compatibility`; both are unblocked by `slice-01` and can be implemented in parallel if write scopes remain separate.
+Execute `slice-04-ux-flag-matrix-compatibility`, then integrate `slice-03-prepare-context-planner-review-flow` once the UX flag guardrails are in place.

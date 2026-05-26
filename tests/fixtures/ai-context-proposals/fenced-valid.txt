@@ -1,0 +1,19 @@
+Planner result:
+
+```json
+{
+  "schema_version": 1,
+  "kind": "quiver-context-proposal",
+  "summary": "Fenced proposal",
+  "docs": [
+    {
+      "path": "docs/PROJECT_MAP.md",
+      "action": "update",
+      "reason": "Refresh project map.",
+      "content": "# Project Map\n\nGenerated from planner output.\n"
+    }
+  ]
+}
+```
+
+Use the proposal only after validation.
