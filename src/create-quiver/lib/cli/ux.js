@@ -49,6 +49,11 @@ function createUx(options = {}) {
     write(`${text}\n`);
   }
 
+  function formatStatus(status, text) {
+    const symbol = mode.theme.symbols[status] || mode.theme.symbols.bullet;
+    return mode.theme.status(status, `${symbol} ${text}`);
+  }
+
   function heading(text) {
     if (mode.json) return;
     if (!mode.decoration) {
@@ -59,15 +64,65 @@ function createUx(options = {}) {
     line(mode.theme.status('planner', `${prefix} ${text}`));
   }
 
+  function section(text) {
+    if (mode.json) return;
+    if (!mode.decoration) {
+      line(text);
+      return;
+    }
+    const prefix = mode.theme.symbols.section || mode.theme.symbols.start;
+    line(mode.theme.status('command', `${prefix} ${text}`));
+  }
+
   function writeStatus(status, text) {
     if (mode.json) return;
     if (!mode.decoration) {
       line(text);
       return;
     }
-    const symbol = mode.theme.symbols[status] || mode.theme.symbols.bullet;
-    const body = mode.theme.status(status, `${symbol} ${text}`);
-    line(body);
+    line(formatStatus(status, text));
+  }
+
+  function check(text) {
+    writeStatus('success', text);
+  }
+
+  function warning(text) {
+    writeStatus('warning', text);
+  }
+
+  function error(text) {
+    writeStatus('error', text);
+  }
+
+  function info(text) {
+    writeStatus('info', text);
+  }
+
+  function summary(items = [], summaryOptions = {}) {
+    if (mode.json) return;
+    const title = summaryOptions.title || 'Summary';
+    section(title);
+    for (const item of items) {
+      if (typeof item === 'string') {
+        line(mode.decoration ? mode.theme.status('muted', `  ${mode.theme.symbols.bullet} ${item}`) : `- ${item}`);
+        continue;
+      }
+      if (item && typeof item === 'object') {
+        const label = item.label || item.key || '';
+        const value = item.value == null ? '' : String(item.value);
+        const text = label ? `${label}: ${value}` : value;
+        line(mode.decoration ? mode.theme.status(item.status || 'muted', `  ${mode.theme.symbols.bullet} ${text}`) : `- ${text}`);
+      }
+    }
+  }
+
+  function nextSteps(steps = [], stepOptions = {}) {
+    if (mode.json || !Array.isArray(steps) || steps.length === 0) return;
+    section(stepOptions.title || 'Next steps');
+    for (const step of steps) {
+      line(mode.decoration ? mode.theme.status('command', `  ${mode.theme.symbols.bullet} ${step}`) : `- ${step}`);
+    }
   }
 
   async function withSpinner(message, task, spinnerOptions = {}) {
@@ -84,15 +139,47 @@ function createUx(options = {}) {
 
     const clack = await loadClack(options.prompts);
     const spinner = clack.spinner();
+    let stopped = false;
+    function stop(message, code) {
+      if (stopped) return;
+      stopped = true;
+      spinner.stop(message, code);
+    }
     spinner.start(message);
     try {
       const result = await task();
-      spinner.stop(spinnerOptions.successMessage || message);
+      stop(spinnerOptions.successMessage || message);
       return result;
     } catch (error) {
-      spinner.stop(spinnerOptions.failureMessage || `Failed: ${message}`, 1);
+      stop(spinnerOptions.failureMessage || `Failed: ${message}`, 1);
       throw error;
     }
+  }
+
+  async function taskGroup(title, stages = []) {
+    heading(title);
+    const results = [];
+    for (const stage of stages) {
+      const run = typeof stage === 'function' ? stage : stage.run;
+      const message = typeof stage === 'function' ? stage.name || 'Running task' : stage.message;
+      const successMessage = stage.successMessage || message;
+      const useSpinner = stage.spinner === true;
+      if (typeof run !== 'function') {
+        throw new Error('create-quiver: taskGroup stage requires a run function.');
+      }
+      const result = useSpinner
+        ? await withSpinner(message, run, {
+          successMessage,
+          failureMessage: stage.failureMessage,
+          echo: stage.echo,
+        })
+        : await run();
+      if (!useSpinner) {
+        check(successMessage);
+      }
+      results.push(result);
+    }
+    return results;
   }
 
   async function promptConfirm(message, promptOptions = {}) {
@@ -114,11 +201,19 @@ function createUx(options = {}) {
   }
 
   return {
+    check,
+    error,
     heading,
+    info,
     line,
     mode,
+    nextSteps,
     promptConfirm,
+    section,
+    summary,
+    taskGroup,
     theme: mode.theme,
+    warning,
     withSpinner,
     writeStatus,
   };

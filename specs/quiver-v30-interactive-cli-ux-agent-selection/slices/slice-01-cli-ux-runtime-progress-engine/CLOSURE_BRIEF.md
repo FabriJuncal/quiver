@@ -2,18 +2,21 @@
 
 ## Summary
 
-Pending execution.
+Added shared CLI UX runtime helpers for branded hierarchy, checks, summaries, next steps, task groups, and safer spinner lifecycle.
 
 ## Validation Against Acceptance Criteria
 
-- [ ] Human TTY progress output validated.
-- [ ] No-TTY fallback validated.
-- [ ] JSON/CI/no-color cleanliness validated.
-- [ ] Spinner cleanup validated.
+- [x] Human TTY progress output validated.
+- [x] No-TTY fallback validated.
+- [x] JSON/CI/no-color cleanliness validated.
+- [x] Spinner cleanup validated.
 
 ## Relevant Changes
 
-Pending execution.
+- Updated `src/create-quiver/lib/cli/theme.js`.
+- Updated `src/create-quiver/lib/cli/ux.js`.
+- Updated `tests/lib/cli-theme.test.js`.
+- Updated `tests/lib/cli-ux.test.js`.
 
 ## Pending
 
@@ -21,7 +24,7 @@ Pending execution.
 
 ## Remaining Risks
 
-Pending execution.
+- Signal and child-process cleanup for live providers remains for later provider/adoption slices.
 
 ## Future Recommendations
 

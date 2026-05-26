@@ -2,7 +2,7 @@
 
 **Overall status:** Planned
 **Created:** 2026-05-26
-**Current slice:** slice-00 completed; slice-01 ready
+**Current slice:** slice-01 completed; slice-02 ready
 
 ## Summary
 
@@ -13,7 +13,7 @@ This spec is planned to harden Quiver's CLI UX after dogfooding showed that long
 | Slice | Status | Notes |
 |---|---|---|
 | slice-00-spec-foundation | Completed | Documentation package created, source-of-truth docs synchronized, validation passed. |
-| slice-01-cli-ux-runtime-progress-engine | Planned | Shared output/runtime/progress primitives. |
+| slice-01-cli-ux-runtime-progress-engine | Completed | Shared output/runtime/progress primitives added and tested. |
 | slice-02-agent-profile-selection-selectors | Planned | Multiple named role profiles and selectors. |
 | slice-03-provider-model-selection-contract | Planned | Provider adapter model support and blocking rules. |
 | slice-04-planner-ia-progress-flows | Planned | Onboard, prepare-context, plan, review-plan progress. |

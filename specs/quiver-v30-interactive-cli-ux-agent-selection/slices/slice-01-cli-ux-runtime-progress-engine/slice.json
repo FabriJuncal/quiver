@@ -62,8 +62,8 @@
     "Do not couple command code directly to @clack/prompts."
   ],
   "estimated_hours": 8,
-  "status": "planned",
+  "status": "completed",
   "blocked_reason": null,
-  "actual_hours": null,
-  "completed_at": null
+  "actual_hours": 3,
+  "completed_at": "2026-05-26"
 }

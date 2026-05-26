@@ -34,3 +34,21 @@ Each implementation slice must append:
 - UX/machine-output evidence;
 - remaining risks;
 - evidence location.
+
+## slice-01 - CLI UX runtime and progress engine
+
+### Completed
+
+- Extended `src/create-quiver/lib/cli/theme.js` with section, success, warning, and error semantics while keeping the approved Quiver palette centralized.
+- Extended `src/create-quiver/lib/cli/ux.js` with helpers for sections, checks, warnings, errors, summaries, next steps, and task groups.
+- Hardened spinner stop behavior so a spinner is stopped once on success or failure.
+- Added tests for branded human hierarchy, plain no-TTY fallback, JSON suppression, and real stage execution through `taskGroup`.
+
+### Validation
+
+- `node --test tests/lib/cli-theme.test.js tests/lib/cli-ux.test.js` passed: 15 tests.
+- `git diff --check` passed.
+
+### Risks
+
+- Command adoption is intentionally deferred to later slices; this slice only adds the runtime.

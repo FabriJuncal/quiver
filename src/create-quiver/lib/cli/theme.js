@@ -9,8 +9,11 @@ const QUIVER_COLORS = Object.freeze({
 const STATUS_COLORS = Object.freeze({
   info: 'sky',
   command: 'blue',
+  success: 'blue',
   planner: 'violet',
   review: 'magenta',
+  warning: 'magenta',
+  error: 'magenta',
   risk: 'magenta',
   muted: 'periwinkle',
 });
@@ -70,8 +73,8 @@ function resolveTheme(options = {}, env = process.env, tty = {}) {
   const useColor = shouldUseColor(options, env, tty);
   const useUnicode = shouldUseUnicode(options, env, tty);
   const symbols = useUnicode
-    ? { start: '◇', success: '✓', warning: '!', error: '✖', bullet: '•' }
-    : { start: '*', success: 'OK', warning: 'WARN', error: 'ERR', bullet: '-' };
+    ? { start: '◇', section: '◆', success: '✓', warning: '!', error: '✖', bullet: '•' }
+    : { start: '*', section: '*', success: 'OK', warning: 'WARN', error: 'ERR', bullet: '-' };
   const theme = {
     colors: QUIVER_COLORS,
     statusColors: STATUS_COLORS,
