@@ -18,7 +18,12 @@ const { createUx } = require('../lib/cli/ux');
 const { runExecuteSlice, runPromptSlice } = require('../lib/ai/executor');
 const { runExecutePlan } = require('../lib/ai/execution-plan');
 const { buildPrCreatePlan, formatPreflightReport, formatPrCreateReport, preflightGitHubPr, runGhPrCreate } = require('../lib/ai/github');
-const { getKnownModelsForProvider, listCatalogProviders } = require('../lib/ai/model-catalog');
+const {
+  MODEL_CATALOG_LAST_UPDATED,
+  MODEL_CATALOG_VERSION,
+  getKnownModelsForProvider,
+  listCatalogProviders,
+} = require('../lib/ai/model-catalog');
 const { buildContextPreparationDrafts, buildPlannerOnboardingPrompt } = require('../lib/ai/onboarding-template');
 const {
   collectLifecycleExport,
@@ -2747,6 +2752,75 @@ function formatAgentRepairPlan(plan) {
   return `${lines.join('\n')}\n`;
 }
 
+function buildModelsListReport(options = {}) {
+  const providerFilter = String(options.provider || '').trim().toLowerCase();
+  const providers = providerFilter
+    ? [listCatalogProviders().find((provider) => provider.id === providerFilter)].filter(Boolean)
+    : listCatalogProviders();
+
+  if (providerFilter && providers.length === 0) {
+    throw new Error(formatError(`unsupported provider filter '${options.provider}'. Supported providers: ${listCatalogProviders().map((provider) => provider.id).join(', ')}.`));
+  }
+
+  return {
+    catalogVersion: MODEL_CATALOG_VERSION,
+    lastUpdated: MODEL_CATALOG_LAST_UPDATED,
+    note: 'Models are known by Quiver. This does not guarantee provider account access.',
+    providers: providers.map((provider) => ({
+      id: provider.id,
+      displayName: provider.displayName,
+      models: getKnownModelsForProvider(provider.id).map((model) => ({
+        id: model.id,
+        displayName: model.displayName,
+        recommendedFor: model.recommendedFor,
+        costTier: model.costTier,
+        qualityTier: model.qualityTier,
+        stability: model.stability,
+        custom: model.custom === true,
+      })),
+    })),
+  };
+}
+
+function formatModelsListReport(report) {
+  const lines = [
+    'AI models known by Quiver',
+    `Catalog version: ${report.catalogVersion}`,
+    `Last updated: ${report.lastUpdated}`,
+    'Note: Models are known by Quiver; provider account access is not guaranteed.',
+    '',
+  ];
+
+  for (const provider of report.providers) {
+    lines.push(`${provider.displayName} (${provider.id})`);
+    for (const model of provider.models) {
+      const roles = model.recommendedFor.length > 0 ? model.recommendedFor.join(', ') : 'custom/manual';
+      lines.push(`  - ${model.id} (${model.displayName})`);
+      lines.push(`    roles: ${roles}`);
+      lines.push(`    cost=${model.costTier} quality=${model.qualityTier} stability=${model.stability}`);
+    }
+    lines.push('');
+  }
+
+  return `${lines.join('\n')}\n`;
+}
+
+function runModelsList(options = {}) {
+  const report = buildModelsListReport({
+    provider: options.provider,
+  });
+  if (options.json) {
+    process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
+  } else {
+    process.stdout.write(formatModelsListReport(report));
+  }
+  return {
+    task: 'models',
+    command: 'list',
+    report,
+  };
+}
+
 async function runAgent(repoRoot, options = {}) {
   const command = String(options.command || '').trim().toLowerCase();
 
@@ -3066,6 +3140,7 @@ module.exports = {
   runLifecycleResume,
   runLifecycleRun,
   runLifecycleStatus,
+  runModelsList,
   runExport,
   runInspect,
   runPromptSlice,

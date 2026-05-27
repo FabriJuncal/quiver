@@ -119,3 +119,21 @@ Each implementation slice must append:
 
 - Provider stderr patterns can change; future observed failures should become fixtures.
 - Custom models remain allowed and can only be proven through live provider validation.
+
+## slice-05 - AI models list command
+
+### Completed
+
+- Added `ai models list`.
+- Added `--provider <id>` filtering for catalog providers.
+- Added `--json` clean machine output with `catalogVersion` and `lastUpdated`.
+- Updated CLI help and contract tests.
+- Added human output wording that says models are known by Quiver and avoids claiming availability.
+
+### Validation
+
+- `node --test tests/commands/ai-models.test.js tests/commands/cli-contract.test.js` passed: 11 tests.
+
+### Risks
+
+- The model catalog is local and can become stale until Quiver has a remote/update mechanism.

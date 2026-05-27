@@ -22,6 +22,7 @@ const {
   runLifecycleResume: runAiLifecycleResume,
   runLifecycleRun: runAiLifecycleRun,
   runLifecycleStatus: runAiLifecycleStatus,
+  runModelsList: runAiModelsList,
   runOnboard,
   runPlan: runAiPlan,
   runPrepareContext: runAiPrepareContext,
@@ -173,6 +174,7 @@ const COMMAND_HELP_GROUPS = [
       ['ai onboard', 'Run or print the planner onboarding prompt with a token-aware context pack.'],
       ['ai prepare-context', 'Preview or write docs-only AI context updates with assumptions and risks.'],
       ['ai agent set|list|show|doctor|repair', 'Manage, diagnose, and dry-run repair planner, executor, reviewer, and doctor provider profiles without secrets.'],
+      ['ai models list', 'List provider/model ids known by Quiver without claiming account availability.'],
       ['ai plan', 'Generate versioned planner drafts for acceptance criteria, technical plan, or spec phase.'],
       ['ai revise', 'Create a new planner draft from human feedback without approving it.'],
       ['ai repair-plan', 'Repair an approved technical plan into a new structured draft without mutating the approved artifact.'],
@@ -262,6 +264,7 @@ function printUsage() {
   npx create-quiver ai slices list [--json]
   npx create-quiver ai trace report [options]
   npx create-quiver ai agent <set|list|show|doctor|repair> [role] [options]
+  npx create-quiver ai models list [--provider codex|claude|gemini] [--json]
   npx create-quiver ai prepare-context [options]
   npx create-quiver ai revise [options]
   npx create-quiver ai repair-plan [options]
@@ -362,6 +365,7 @@ Examples:
   cd ./my-project && npx create-quiver ai agent doctor
   cd ./my-project && npx create-quiver ai agent repair --dry-run
   cd ./my-project && npx create-quiver ai agent list
+  cd ./my-project && npx create-quiver ai models list --provider codex
   cd ./my-project && npx create-quiver ai plan --phase acceptance --input requirements.md --dry-run
   cd ./my-project && npx create-quiver ai revise --phase acceptance --input feedback.md --dry-run
   cd ./my-project && npx create-quiver ai approve --phase acceptance --version 1
@@ -1052,10 +1056,10 @@ function parseArgs(argv) {
     if (result.aiCommand === 'run' && !result.aiRunCommand && positional.length > 0) {
       result.aiRunCommand = positional.shift();
     }
-    if ((result.aiCommand === 'specs' || result.aiCommand === 'slices' || result.aiCommand === 'trace' || result.aiCommand === 'active-slice') && !result.aiSecondaryCommand && positional.length > 0) {
+    if ((result.aiCommand === 'specs' || result.aiCommand === 'slices' || result.aiCommand === 'models' || result.aiCommand === 'trace' || result.aiCommand === 'active-slice') && !result.aiSecondaryCommand && positional.length > 0) {
       result.aiSecondaryCommand = positional.shift();
     }
-    if ((result.aiCommand === 'specs' || result.aiCommand === 'slices') && result.aiSecondaryCommand && result.aiSecondaryCommand !== 'list') {
+    if ((result.aiCommand === 'specs' || result.aiCommand === 'slices' || result.aiCommand === 'models') && result.aiSecondaryCommand && result.aiSecondaryCommand !== 'list') {
       throw new Error(formatError(`unsupported ai ${result.aiCommand} subcommand: ${result.aiSecondaryCommand}. Supported tasks: list`));
     }
     if (result.aiCommand === 'trace' && result.aiSecondaryCommand && result.aiSecondaryCommand !== 'report') {
@@ -2838,7 +2842,7 @@ async function run(argv) {
 
   if (args.mode === 'ai') {
     if (!args.aiCommand) {
-      throw new Error(formatError('missing ai subcommand. Use: npx create-quiver ai onboard | prepare-context | run | active-slice | status | resume | inspect | export | specs | slices | trace | plan | revise | repair-plan | review-plan | approve | approvals | agent | prompt-slice | execute-slice | execute-plan | doctor | pr'));
+      throw new Error(formatError('missing ai subcommand. Use: npx create-quiver ai onboard | prepare-context | run | active-slice | status | resume | inspect | export | specs | slices | models | trace | plan | revise | repair-plan | review-plan | approve | approvals | agent | prompt-slice | execute-slice | execute-plan | doctor | pr'));
     }
 
     if (args.aiCommand === 'run') {
@@ -2907,6 +2911,14 @@ async function run(argv) {
     if (args.aiCommand === 'trace') {
       runAiTraceReport(process.cwd(), {
         includeCompleted: args.includeCompleted,
+      });
+      return;
+    }
+
+    if (args.aiCommand === 'models') {
+      runAiModelsList({
+        json: args.json,
+        provider: args.aiProviderExplicit ? args.aiProvider : undefined,
       });
       return;
     }
@@ -3124,7 +3136,7 @@ async function run(argv) {
       return;
     }
 
-    throw new Error(formatError(`unsupported ai subcommand: ${args.aiCommand}. Supported tasks: onboard, prepare-context, run, active-slice, status, resume, inspect, export, specs, slices, trace, plan, revise, repair-plan, review-plan, approve, approvals, agent, prompt-slice, execute-slice, execute-plan, doctor, pr`));
+    throw new Error(formatError(`unsupported ai subcommand: ${args.aiCommand}. Supported tasks: onboard, prepare-context, run, active-slice, status, resume, inspect, export, specs, slices, models, trace, plan, revise, repair-plan, review-plan, approve, approvals, agent, prompt-slice, execute-slice, execute-plan, doctor, pr`));
   }
 
   if (args.mode === 'graph') {
