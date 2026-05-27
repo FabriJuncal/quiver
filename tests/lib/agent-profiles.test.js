@@ -6,6 +6,8 @@ const test = require('node:test');
 
 const {
   agentProfilesPath,
+  buildAgentProfileDoctorReport,
+  buildAgentProfileRepairPlan,
   getAgentProfileById,
   getAgentProfilesForRole,
   getAgentProfile,
@@ -24,6 +26,13 @@ function makeRepo() {
       fs.rmSync(root, { recursive: true, force: true });
     },
   };
+}
+
+function writeProfiles(repoRoot, state) {
+  const filePath = agentProfilesPath(repoRoot);
+  fs.mkdirSync(path.dirname(filePath), { recursive: true });
+  fs.writeFileSync(filePath, `${JSON.stringify(state, null, 2)}\n`);
+  return filePath;
 }
 
 test('agent profiles persist provider and free-form model labels without secrets', () => {
@@ -161,6 +170,68 @@ test('agent profiles reject unsupported providers and secret-like values', () =>
       () => setAgentProfile(repo.root, 'researcher', { provider: 'codex', model: 'safe-label' }),
       /unsupported agent profile role 'researcher'.*planner, executor, reviewer, doctor/,
     );
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('agent profile doctor classifies aliases, custom models, and unsupported providers', () => {
+  const repo = makeRepo();
+
+  try {
+    writeProfiles(repo.root, {
+      version: 2,
+      profiles: {},
+      profile_sets: {
+        planners: [
+          { id: 'alias', role: 'planner', provider: 'codex', model: 'GPT 5.5', default: true },
+          { id: 'custom', role: 'planner', provider: 'codex', model: 'local-planner' },
+        ],
+        executors: [
+          { id: 'bad', role: 'executor', provider: 'openai', model: 'gpt' },
+        ],
+      },
+    });
+
+    const report = buildAgentProfileDoctorReport(repo.root, {
+      checkProviderCli: false,
+    });
+
+    assert.equal(report.ok, false);
+    assert.equal(report.summary.profiles, 3);
+    assert.equal(report.summary.errors, 1);
+    assert.equal(report.findings.some((finding) => finding.code === 'display-model-alias'), true);
+    assert.equal(report.findings.some((finding) => finding.code === 'custom-model-unvalidated'), true);
+    assert.equal(report.findings.some((finding) => finding.code === 'unsupported-provider'), true);
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('agent profile repair plan previews alias normalization without writes', () => {
+  const repo = makeRepo();
+
+  try {
+    writeProfiles(repo.root, {
+      version: 2,
+      profiles: {},
+      profile_sets: {
+        planners: [
+          { id: 'alias', role: 'planner', provider: 'codex', model: 'GPT 5.5', default: true },
+        ],
+      },
+    });
+
+    const plan = buildAgentProfileRepairPlan(repo.root);
+    const state = readAgentProfiles(repo.root);
+
+    assert.equal(plan.dryRun, true);
+    assert.equal(plan.wouldWrite, false);
+    assert.equal(plan.changes.length, 1);
+    assert.equal(plan.changes[0].before.model, 'GPT 5.5');
+    assert.equal(plan.changes[0].after.model, 'gpt-5.5');
+    assert.equal(plan.changes[0].after.displayName, 'GPT 5.5');
+    assert.equal(state.profile_sets.planners[0].model, 'GPT 5.5');
   } finally {
     repo.cleanup();
   }

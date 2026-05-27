@@ -70,8 +70,8 @@
     "Include the real bug profile with `model: \"GPT 5.5\"`."
   ],
   "estimated_hours": 8,
-  "status": "planned",
+  "status": "completed",
   "blocked_reason": null,
-  "actual_hours": null,
-  "completed_at": null
+  "actual_hours": 7,
+  "completed_at": "2026-05-27"
 }

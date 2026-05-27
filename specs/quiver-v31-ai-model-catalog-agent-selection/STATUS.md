@@ -2,7 +2,7 @@
 
 **Overall status:** In progress
 **Created:** 2026-05-27
-**Current slice:** slice-02 completed; slice-03 ready
+**Current slice:** slice-03 completed; slice-04 ready
 
 ## Summary
 
@@ -15,7 +15,7 @@ This spec is planned to improve AI agent setup by adding a local model catalog, 
 | slice-00-spec-foundation | Completed | Documentation package created, source-of-truth docs synchronized, validation passed. |
 | slice-01-model-catalog-alias-normalization | Completed | Local catalog, role metadata, aliases, custom model support, and profile normalization added. |
 | slice-02-interactive-agent-set-selectors | Completed | Guided `ai agent set <role>` provider/model flow, no-TTY guardrails, custom models, and profile actions added. |
-| slice-03-agent-doctor-repair | Planned | Profile diagnostics and dry-run repair. |
+| slice-03-agent-doctor-repair | Completed | Profile diagnostics, JSON output, error exit codes, and dry-run alias repair added. |
 | slice-04-shared-preflight-provider-errors | Planned | Shared live command preflight and error extraction. |
 | slice-05-ai-models-list | Planned | Human/JSON model catalog listing command. |
 | slice-06-docs-templates-alignment | Planned | Repo docs and generated templates. |
@@ -27,4 +27,4 @@ This spec is planned to improve AI agent setup by adding a local model catalog, 
 
 ## Next Step
 
-Continue with `slice-03-agent-doctor-repair`.
+Continue with `slice-04-shared-preflight-provider-errors`.

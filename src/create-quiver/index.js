@@ -172,7 +172,7 @@ const COMMAND_HELP_GROUPS = [
       ['ai resume', 'Resume guidance from the last valid lifecycle phase without chat memory.'],
       ['ai onboard', 'Run or print the planner onboarding prompt with a token-aware context pack.'],
       ['ai prepare-context', 'Preview or write docs-only AI context updates with assumptions and risks.'],
-      ['ai agent set|list|show', 'Manage planner, executor, reviewer, and doctor provider profiles without secrets; use set --dry-run to preview.'],
+      ['ai agent set|list|show|doctor|repair', 'Manage, diagnose, and dry-run repair planner, executor, reviewer, and doctor provider profiles without secrets.'],
       ['ai plan', 'Generate versioned planner drafts for acceptance criteria, technical plan, or spec phase.'],
       ['ai revise', 'Create a new planner draft from human feedback without approving it.'],
       ['ai repair-plan', 'Repair an approved technical plan into a new structured draft without mutating the approved artifact.'],
@@ -261,7 +261,7 @@ function printUsage() {
   npx create-quiver ai specs list [--json]
   npx create-quiver ai slices list [--json]
   npx create-quiver ai trace report [options]
-  npx create-quiver ai agent <set|list|show> [role] [options]
+  npx create-quiver ai agent <set|list|show|doctor|repair> [role] [options]
   npx create-quiver ai prepare-context [options]
   npx create-quiver ai revise [options]
   npx create-quiver ai repair-plan [options]
@@ -359,6 +359,8 @@ Examples:
   cd ./my-project && npx create-quiver ai trace report
   cd ./my-project && npx create-quiver ai agent set planner --provider codex --model gpt-5.5 --dry-run
   cd ./my-project && npx create-quiver ai agent set planner --provider codex --model gpt-5.5
+  cd ./my-project && npx create-quiver ai agent doctor
+  cd ./my-project && npx create-quiver ai agent repair --dry-run
   cd ./my-project && npx create-quiver ai agent list
   cd ./my-project && npx create-quiver ai plan --phase acceptance --input requirements.md --dry-run
   cd ./my-project && npx create-quiver ai revise --phase acceptance --input feedback.md --dry-run
@@ -2917,6 +2919,7 @@ async function run(argv) {
         displayName: args.aiDisplayName || undefined,
         id: args.aiProfileId || undefined,
         interactive: args.interactive,
+        json: args.json,
         label: args.aiLabel || undefined,
         model: args.aiModel || undefined,
         provider: args.aiProviderExplicit ? args.aiProvider : undefined,

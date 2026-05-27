@@ -58,6 +58,8 @@ const {
 } = require('../lib/ai/run-state');
 const {
   agentProfilesPath,
+  buildAgentProfileDoctorReport,
+  buildAgentProfileRepairPlan,
   buildAgentProfileState,
   getAgentProfile,
   getAgentProfileById,
@@ -2674,6 +2676,70 @@ function formatAgentProfileDryRun(repoRoot, result) {
   ].join('\n');
 }
 
+function agentDoctorSymbol(status) {
+  if (status === 'error') return 'x';
+  if (status === 'warning') return '!';
+  return 'OK';
+}
+
+function formatAgentDoctorReport(report) {
+  const lines = [
+    'Quiver Agent Doctor',
+    '',
+    'Checks',
+  ];
+
+  if (report.checks.length === 0) {
+    lines.push('  ! No agent profiles configured');
+  }
+
+  for (const check of report.checks) {
+    const target = `${check.role}/${check.id}`;
+    const model = check.model || '(no model)';
+    const provider = check.provider || '(no provider)';
+    const defaultText = check.default ? ' default' : '';
+    lines.push(`  ${agentDoctorSymbol(check.status)} ${target}: provider=${provider} model=${model}${defaultText}`);
+    for (const finding of check.findings.filter((item) => item.severity !== 'info')) {
+      lines.push(`    - ${finding.severity}: ${finding.message}`);
+    }
+  }
+
+  lines.push('', 'Suggested fixes');
+  if (report.suggestedFixes.length === 0) {
+    lines.push('  OK No fixes suggested.');
+  } else {
+    for (const fix of report.suggestedFixes) {
+      lines.push(`  - ${fix}`);
+    }
+  }
+  lines.push('');
+  lines.push(`Summary: profiles=${report.summary.profiles} errors=${report.summary.errors} warnings=${report.summary.warnings} info=${report.summary.info}`);
+  lines.push('');
+  return `${lines.join('\n')}\n`;
+}
+
+function formatAgentRepairPlan(plan) {
+  const lines = [
+    'AI agent profile repair dry-run',
+    '- Writes: none',
+    '',
+    'Proposed changes',
+  ];
+
+  if (plan.changes.length === 0) {
+    lines.push('  OK No safe repairs found.');
+  }
+
+  for (const change of plan.changes) {
+    lines.push(`  - ${change.role}/${change.profileId}: ${change.reason}`);
+    lines.push(`    Before: model=${change.before.model || '(not set)'} displayName=${change.before.displayName || '(not set)'}`);
+    lines.push(`    After: model=${change.after.model || '(not set)'} displayName=${change.after.displayName || '(not set)'}`);
+  }
+
+  lines.push('');
+  return `${lines.join('\n')}\n`;
+}
+
 async function runAgent(repoRoot, options = {}) {
   const command = String(options.command || '').trim().toLowerCase();
 
@@ -2778,7 +2844,44 @@ async function runAgent(repoRoot, options = {}) {
     };
   }
 
-  throw new Error(formatError(`unsupported ai agent subcommand: ${command}. Supported tasks: set, list, show`));
+  if (command === 'doctor') {
+    const report = buildAgentProfileDoctorReport(repoRoot);
+    if (options.json) {
+      process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
+    } else {
+      process.stdout.write(formatAgentDoctorReport(report));
+    }
+    if (report.summary.errors > 0) {
+      process.exitCode = 1;
+    }
+    return {
+      task: 'agent',
+      command,
+      report,
+    };
+  }
+
+  if (command === 'repair') {
+    if (options.dryRun !== true) {
+      throw new Error(formatError('ai agent repair only supports --dry-run for now. No files were written.'));
+    }
+    const plan = buildAgentProfileRepairPlan(repoRoot, {
+      includeState: options.json === true,
+    });
+    if (options.json) {
+      process.stdout.write(`${JSON.stringify(plan, null, 2)}\n`);
+    } else {
+      process.stdout.write(formatAgentRepairPlan(plan));
+    }
+    return {
+      task: 'agent',
+      command,
+      dryRun: true,
+      plan,
+    };
+  }
+
+  throw new Error(formatError(`unsupported ai agent subcommand: ${command}. Supported tasks: set, list, show, doctor, repair`));
 }
 
 async function runGitHubTask(repoRoot, options = {}, mode = 'pr') {

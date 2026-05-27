@@ -3,6 +3,7 @@ const path = require('node:path');
 
 const { assertSupportedProvider, formatProviderList } = require('./ai/providers');
 const { normalizeModelSelection } = require('./ai/model-catalog');
+const { preflightProvider } = require('./ai/preflight');
 const { quiverInternalPaths } = require('./init-layout');
 
 const AGENT_PROFILE_ROLES = Object.freeze(['planner', 'executor', 'reviewer', 'doctor']);
@@ -268,10 +269,312 @@ function resolveProfileProvider(projectRoot, role, fallbackProvider) {
   return assertSupportedProvider(fallbackProvider);
 }
 
+function cloneJson(value) {
+  return JSON.parse(JSON.stringify(value));
+}
+
+function rawText(value) {
+  return String(value || '').trim();
+}
+
+function rawDisplayName(profile, role) {
+  return rawText(profile.displayName || profile.display_name || profile.model || profile.provider || role);
+}
+
+function collectRawAgentProfileEntries(state) {
+  const entries = [];
+  for (const role of AGENT_PROFILE_ROLES) {
+    const setKey = profileSetKey(role);
+    const setProfiles = Array.isArray(state.profile_sets?.[setKey]) ? state.profile_sets[setKey] : [];
+    if (setProfiles.length > 0) {
+      setProfiles.forEach((profile, index) => {
+        entries.push({
+          role,
+          profile,
+          id: normalizeProfileId(profile?.id || profile?.label, index === 0 ? 'default' : `${role}-${index + 1}`),
+          source: 'profile_sets',
+          setKey,
+          index,
+        });
+      });
+      continue;
+    }
+
+    if (state.profiles?.[role]) {
+      entries.push({
+        role,
+        profile: state.profiles[role],
+        id: normalizeProfileId(state.profiles[role]?.id || state.profiles[role]?.label, 'default'),
+        source: 'profiles',
+        index: null,
+      });
+    }
+  }
+  return entries;
+}
+
+function createAgentProfileFinding(severity, code, message, entry, extra = {}) {
+  return {
+    severity,
+    code,
+    message,
+    role: entry.role,
+    profileId: entry.id,
+    fix: extra.fix || '',
+    before: extra.before,
+    after: extra.after,
+  };
+}
+
+function classifyAgentProfileEntry(projectRoot, entry, options = {}) {
+  const findings = [];
+  const profile = entry.profile || {};
+  const providerInput = rawText(profile.provider).toLowerCase();
+  const modelInput = rawText(profile.model);
+  const displayName = rawDisplayName(profile, entry.role);
+  let provider = providerInput;
+  let status = 'ok';
+
+  if (!providerInput) {
+    findings.push(createAgentProfileFinding(
+      'error',
+      'missing-provider',
+      `Profile ${entry.role}/${entry.id} is missing provider.`,
+      entry,
+      { fix: `npx create-quiver ai agent set ${entry.role} --provider <provider> --model <model>` },
+    ));
+  } else {
+    try {
+      provider = assertSupportedProvider(providerInput);
+      const runPreflight = options.checkProviderCli !== false;
+      if (runPreflight) {
+        const preflight = options.preflightProvider || preflightProvider;
+        try {
+          preflight(provider, {
+            cwd: projectRoot,
+            probe: options.providerProbe,
+            probeArgs: options.providerProbeArgs,
+          });
+        } catch (error) {
+          findings.push(createAgentProfileFinding(
+            'warning',
+            error && error.code === 'MISSING_PROVIDER_CLI' ? 'provider-cli-missing' : 'provider-cli-unverified',
+            `Provider CLI for '${provider}' could not be verified.`,
+            entry,
+            { fix: `Install and authenticate the ${provider} CLI, then rerun npx create-quiver ai agent doctor.` },
+          ));
+        }
+      }
+    } catch (error) {
+      findings.push(createAgentProfileFinding(
+        'error',
+        'unsupported-provider',
+        `Profile ${entry.role}/${entry.id} uses unsupported provider '${profile.provider}'.`,
+        entry,
+        { fix: `Use one of: ${formatProviderList()}.` },
+      ));
+      provider = providerInput;
+    }
+  }
+
+  if (!modelInput) {
+    findings.push(createAgentProfileFinding(
+      'warning',
+      'missing-model',
+      `Profile ${entry.role}/${entry.id} has no model selected.`,
+      entry,
+      { fix: `npx create-quiver ai agent set ${entry.role} --provider ${provider || '<provider>'} --model <model>` },
+    ));
+  } else if (providerInput && findings.every((finding) => finding.code !== 'unsupported-provider')) {
+    const modelSelection = normalizeModelSelection(provider, modelInput, {
+      displayName: rawText(profile.displayName || profile.display_name),
+    });
+    if (modelSelection.modelSource === 'catalog' && modelSelection.model !== modelInput) {
+      findings.push(createAgentProfileFinding(
+        'warning',
+        'display-model-alias',
+        `Profile ${entry.role}/${entry.id} stores display alias '${modelInput}' as the technical model id.`,
+        entry,
+        {
+          fix: 'Run npx create-quiver ai agent repair --dry-run to preview the normalized profile.',
+          before: { model: modelInput, displayName: rawText(profile.displayName || profile.display_name) },
+          after: { model: modelSelection.model, displayName: modelSelection.displayName },
+        },
+      ));
+    }
+    if (modelSelection.modelSource === 'custom') {
+      const validationStatus = rawText(profile.validation_status || profile.validationStatus);
+      if (!['validated', 'ok', 'passed'].includes(validationStatus.toLowerCase())) {
+        findings.push(createAgentProfileFinding(
+          'warning',
+          'custom-model-unvalidated',
+          `Profile ${entry.role}/${entry.id} uses custom model '${modelInput}' without live validation evidence.`,
+          entry,
+          { fix: `Run a dry-run or provider smoke with ${provider} before using this profile in automation.` },
+        ));
+      }
+    }
+  }
+
+  if (profile.default === true) {
+    findings.push(createAgentProfileFinding(
+      'info',
+      'default-profile',
+      `Profile ${entry.role}/${entry.id} is the default ${entry.role} profile.`,
+      entry,
+    ));
+  }
+
+  if (findings.some((finding) => finding.severity === 'error')) status = 'error';
+  else if (findings.some((finding) => finding.severity === 'warning')) status = 'warning';
+
+  return {
+    role: entry.role,
+    id: entry.id,
+    source: entry.source,
+    provider,
+    model: modelInput,
+    displayName,
+    default: profile.default === true,
+    status,
+    findings,
+  };
+}
+
+function addDuplicateDisplayNameFindings(checks) {
+  const groups = new Map();
+  for (const check of checks) {
+    const key = `${check.role}:${rawText(check.displayName).toLowerCase()}`;
+    if (!check.displayName) continue;
+    const group = groups.get(key) || [];
+    group.push(check);
+    groups.set(key, group);
+  }
+
+  for (const group of groups.values()) {
+    if (group.length < 2) continue;
+    const ids = group.map((item) => `${item.role}/${item.id}`).join(', ');
+    for (const check of group) {
+      check.findings.push({
+        severity: 'warning',
+        code: 'duplicate-display-name',
+        message: `Display name '${check.displayName}' is shared by ${ids}.`,
+        role: check.role,
+        profileId: check.id,
+        fix: 'Use --display-name or --id to make selector entries easier to distinguish.',
+      });
+      if (check.status !== 'error') check.status = 'warning';
+    }
+  }
+}
+
+function buildAgentProfileDoctorReport(projectRoot, options = {}) {
+  const state = readAgentProfiles(projectRoot);
+  const entries = collectRawAgentProfileEntries(state);
+  const checks = entries.map((entry) => classifyAgentProfileEntry(projectRoot, entry, options));
+  addDuplicateDisplayNameFindings(checks);
+  const findings = checks.flatMap((check) => check.findings);
+  const errors = findings.filter((finding) => finding.severity === 'error').length;
+  const warnings = findings.filter((finding) => finding.severity === 'warning').length;
+  const info = findings.filter((finding) => finding.severity === 'info').length;
+  const suggestedFixes = Array.from(new Set(findings
+    .map((finding) => finding.fix)
+    .filter(Boolean)));
+
+  return {
+    ok: errors === 0,
+    summary: {
+      profiles: checks.length,
+      defaults: checks.filter((check) => check.default).length,
+      errors,
+      warnings,
+      info,
+    },
+    checks,
+    findings,
+    suggestedFixes,
+  };
+}
+
+function repairProfileObject(profile, provider, modelSelection) {
+  const before = {
+    model: rawText(profile.model),
+    displayName: rawText(profile.displayName || profile.display_name),
+    modelSource: rawText(profile.modelSource || profile.model_source),
+    modelAlias: rawText(profile.modelAlias || profile.model_alias),
+    validation_status: rawText(profile.validation_status || profile.validationStatus),
+  };
+  const after = {
+    ...before,
+    model: modelSelection.model,
+    displayName: before.displayName || modelSelection.displayName,
+    modelSource: 'catalog',
+    modelAlias: before.model,
+    validation_status: before.validation_status || 'not-tested',
+  };
+
+  profile.model = after.model;
+  profile.displayName = after.displayName;
+  profile.modelSource = after.modelSource;
+  profile.modelAlias = after.modelAlias;
+  profile.validation_status = after.validation_status;
+  return { before, after, provider };
+}
+
+function buildAgentProfileRepairPlan(projectRoot, options = {}) {
+  const state = readAgentProfiles(projectRoot);
+  const nextState = cloneJson(state);
+  const entries = collectRawAgentProfileEntries(state);
+  const changes = [];
+
+  for (const entry of entries) {
+    const profile = entry.profile || {};
+    const providerInput = rawText(profile.provider).toLowerCase();
+    const modelInput = rawText(profile.model);
+    if (!providerInput || !modelInput) continue;
+
+    let provider;
+    try {
+      provider = assertSupportedProvider(providerInput);
+    } catch (error) {
+      continue;
+    }
+
+    const modelSelection = normalizeModelSelection(provider, modelInput, {
+      displayName: rawText(profile.displayName || profile.display_name),
+    });
+    if (modelSelection.modelSource !== 'catalog' || modelSelection.model === modelInput) {
+      continue;
+    }
+
+    const target = entry.source === 'profile_sets'
+      ? nextState.profile_sets[entry.setKey][entry.index]
+      : nextState.profiles[entry.role];
+    const repair = repairProfileObject(target, provider, modelSelection);
+    changes.push({
+      role: entry.role,
+      profileId: entry.id,
+      provider,
+      reason: 'display-model-alias',
+      before: repair.before,
+      after: repair.after,
+    });
+  }
+
+  return {
+    dryRun: true,
+    wouldWrite: false,
+    changes,
+    nextState: options.includeState === true ? nextState : undefined,
+  };
+}
+
 module.exports = {
   AGENT_PROFILE_ROLES,
   PROFILE_STATE_VERSION,
   agentProfilesPath,
+  buildAgentProfileDoctorReport,
+  buildAgentProfileRepairPlan,
   getAgentProfileById,
   getAgentProfilesForRole,
   resolveAgentProfileDisplayName,

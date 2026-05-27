@@ -2,7 +2,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
-const { execFileSync } = require('node:child_process');
+const { execFileSync, spawnSync } = require('node:child_process');
 const test = require('node:test');
 
 const BIN_PATH = path.resolve(__dirname, '../../bin/create-quiver.js');
@@ -24,6 +24,21 @@ function runCli(repoRoot, args) {
     encoding: 'utf8',
     stdio: ['ignore', 'pipe', 'pipe'],
   });
+}
+
+function runCliResult(repoRoot, args) {
+  return spawnSync(process.execPath, [BIN_PATH, ...args], {
+    cwd: repoRoot,
+    encoding: 'utf8',
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
+}
+
+function writeProfiles(repoRoot, state) {
+  const filePath = path.join(repoRoot, '.quiver', 'agents', 'profiles.json');
+  fs.mkdirSync(path.dirname(filePath), { recursive: true });
+  fs.writeFileSync(filePath, `${JSON.stringify(state, null, 2)}\n`);
+  return filePath;
 }
 
 test('ai agent set, list, and show persist reusable profile settings', () => {
@@ -273,6 +288,120 @@ test('ai agent interactive set supports custom model id and display name', async
     assert.equal(resolved.provider, 'codex');
     assert.equal(resolved.model, 'gpt-custom-executor');
     assert.equal(resolved.displayName, 'Custom Executor');
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('ai agent doctor reports profile errors and warnings as JSON', () => {
+  const repo = makeRepo();
+
+  try {
+    writeProfiles(repo.root, {
+      version: 2,
+      profiles: {},
+      profile_sets: {
+        planners: [
+          {
+            id: 'default',
+            role: 'planner',
+            provider: 'codex',
+            model: 'GPT 5.5',
+            default: true,
+          },
+          {
+            id: 'custom',
+            role: 'planner',
+            provider: 'codex',
+            model: 'local-planner',
+            displayName: 'Local Planner',
+          },
+        ],
+        executors: [
+          {
+            id: 'bad-provider',
+            role: 'executor',
+            provider: 'openai',
+            model: 'gpt-5.5',
+            default: true,
+          },
+        ],
+      },
+    });
+
+    const result = runCliResult(repo.root, ['ai', 'agent', 'doctor', '--json']);
+    assert.equal(result.status, 1);
+    assert.equal(result.stderr, '');
+    const report = JSON.parse(result.stdout);
+
+    assert.equal(report.summary.profiles, 3);
+    assert.equal(report.summary.errors, 1);
+    assert.ok(report.summary.warnings >= 2);
+    assert.ok(report.findings.some((finding) => finding.code === 'unsupported-provider' && finding.severity === 'error'));
+    assert.ok(report.findings.some((finding) => finding.code === 'display-model-alias' && finding.severity === 'warning'));
+    assert.ok(report.findings.some((finding) => finding.code === 'custom-model-unvalidated' && finding.severity === 'warning'));
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('ai agent doctor human output uses checks and suggested fixes sections', () => {
+  const repo = makeRepo();
+
+  try {
+    runCli(repo.root, ['ai', 'agent', 'set', 'planner', '--provider', 'codex', '--model', 'gpt-5.5']);
+    const output = runCli(repo.root, ['ai', 'agent', 'doctor']);
+
+    assert.match(output, /Quiver Agent Doctor/);
+    assert.match(output, /Checks/);
+    assert.match(output, /planner\/gpt-5-5: provider=codex model=gpt-5\.5 default/);
+    assert.match(output, /Suggested fixes/);
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('ai agent repair --dry-run previews alias normalization without writing', () => {
+  const repo = makeRepo();
+
+  try {
+    const filePath = writeProfiles(repo.root, {
+      version: 2,
+      profiles: {},
+      profile_sets: {
+        planners: [
+          {
+            id: 'legacy',
+            role: 'planner',
+            provider: 'codex',
+            model: 'GPT 5.5',
+            default: true,
+          },
+        ],
+      },
+    });
+    const before = fs.readFileSync(filePath, 'utf8');
+    const output = runCli(repo.root, ['ai', 'agent', 'repair', '--dry-run']);
+    const after = fs.readFileSync(filePath, 'utf8');
+
+    assert.match(output, /AI agent profile repair dry-run/);
+    assert.match(output, /Writes: none/);
+    assert.match(output, /Before: model=GPT 5\.5 displayName=\(not set\)/);
+    assert.match(output, /After: model=gpt-5\.5 displayName=GPT 5\.5/);
+    assert.equal(after, before);
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('ai agent repair without dry-run refuses to write', () => {
+  const repo = makeRepo();
+
+  try {
+    assert.throws(
+      () => runCli(repo.root, ['ai', 'agent', 'repair']),
+      /ai agent repair only supports --dry-run/,
+    );
   } finally {
     repo.cleanup();
   }

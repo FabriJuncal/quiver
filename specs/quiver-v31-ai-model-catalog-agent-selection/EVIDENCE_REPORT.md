@@ -75,3 +75,25 @@ Each implementation slice must append:
 
 - Provider status is best-effort CLI detection and does not guarantee account-level model availability.
 - Interactive rendering is validated through injectable prompt helpers; real terminal behavior should be covered by smoke testing in the final slice.
+
+## slice-03 - Agent profile doctor and repair dry-run
+
+### Completed
+
+- Added pure profile diagnostics that evaluate every configured agent profile.
+- Added `ai agent doctor` with human output sections `Checks` and `Suggested fixes`.
+- Added `ai agent doctor --json` with parseable JSON output and no human prose.
+- Added exit code 1 when doctor errors are present.
+- Added `ai agent repair --dry-run` with before/after changes and no writes.
+- Added safe catalog-alias repair for legacy profiles such as `model: "GPT 5.5"`.
+- Added warnings for custom unvalidated models and provider CLI checks.
+- Updated CLI help for `ai agent doctor` and `ai agent repair`.
+
+### Validation
+
+- `node --test tests/commands/ai-agent.test.js tests/lib/agent-profiles.test.js tests/lib/model-catalog.test.js tests/lib/cli-selectors.test.js` passed: 36 tests.
+
+### Risks
+
+- Provider CLI checks are best-effort and do not prove selected model entitlement.
+- Repair write mode is intentionally unavailable until dry-run behavior is dogfooded.
