@@ -44,8 +44,13 @@ This document is the canonical command reference for the orchestration roadmap.
 | `quiver:plan -- --include-completed` | Shows completed slices for audit/demo history | macOS, Linux, Windows | v0.11 | `npm run quiver:plan -- --include-completed --spec <spec>` |
 | `quiver:graph -- --include-completed` | Includes completed slices in the dependency graph history view | macOS, Linux, Windows | v0.11 | `npm run quiver:graph -- --include-completed --spec <spec>` |
 | `quiver:next -- --include-completed` | Keeps actionable next-slice output and appends completed history | macOS, Linux, Windows | v0.11 | `npm run quiver:next -- --include-completed --spec <spec>` |
-| `quiver:ai:agent -- set <role> ... --dry-run` | Previews planner/executor/reviewer/doctor provider profile writes without creating `.quiver/agents/profiles.json` | macOS, Linux, Windows | v0.13 | `npm run quiver:ai:agent -- set planner --provider codex --model "planner-model" --dry-run` |
-| `quiver:ai:agent` | Stores reusable planner/executor/reviewer/doctor provider profiles without secrets | macOS, Linux, Windows | v0.11 | `npm run quiver:ai:agent -- set planner --provider codex --model "planner-model"` |
+| `npx create-quiver ai models list` | Lists provider/model ids known by Quiver without claiming account availability | macOS, Linux, Windows | next | `npx create-quiver ai models list --provider codex` |
+| `npx create-quiver ai models list --json` | Emits the local known-model catalog as clean machine-readable JSON | macOS, Linux, Windows | next | `npx create-quiver ai models list --json` |
+| `quiver:ai:agent -- set <role>` | Guides provider/model selection in an interactive TTY without storing credentials | macOS, Linux, Windows | next | `npm run quiver:ai:agent -- set planner` |
+| `quiver:ai:agent -- set <role> ... --dry-run` | Previews planner/executor/reviewer/doctor provider profile writes without creating `.quiver/agents/profiles.json` | macOS, Linux, Windows | v0.13 | `npm run quiver:ai:agent -- set planner --provider codex --model gpt-5.5 --dry-run` |
+| `quiver:ai:agent` | Stores reusable planner/executor/reviewer/doctor provider profiles without secrets | macOS, Linux, Windows | v0.11 | `npm run quiver:ai:agent -- set planner --provider codex --model gpt-5.5` |
+| `quiver:ai:agent -- doctor` | Diagnoses stored agent profiles, legacy display aliases, custom unvalidated models, duplicate labels, and provider CLI readiness | macOS, Linux, Windows | next | `npm run quiver:ai:agent -- doctor` |
+| `quiver:ai:agent -- repair --dry-run` | Previews safe profile repairs, such as normalizing display aliases into technical model ids, without writing files | macOS, Linux, Windows | next | `npm run quiver:ai:agent -- repair --dry-run` |
 | `quiver:ai:inspect` | Shows actionable lifecycle state through the generated npm script | macOS, Linux, Windows | v0.13 | `npm run quiver:ai:inspect` |
 | `quiver:ai:export` | Exports lifecycle state as JSON or Markdown through the generated npm script | macOS, Linux, Windows | v0.13 | `npm run quiver:ai:export -- --format json` |
 | `quiver:ai:specs` | Lists specs through the generated npm script | macOS, Linux, Windows | v0.13 | `npm run quiver:ai:specs` |
@@ -98,7 +103,7 @@ This document is the canonical command reference for the orchestration roadmap.
 | `--spec <slug>` | `plan`, `graph`, `spec create` | Restrict output to one spec or override the generated spec slug |
 | `--format <tree\|mermaid\|dot\|json\|markdown>` | `graph`, `ai export` | Select graph or lifecycle export output format |
 | `--provider <codex\|claude\|gemini>` | `ai onboard`, `ai plan`, `ai revise`, `ai review-plan`, `ai execute-slice`, `ai execute-plan` | Select the local AI CLI adapter |
-| `--model <label>` | `ai agent set` | Store a free-form model label in an agent profile; Quiver does not verify model availability |
+| `--model <model-id>` | `ai agent set`, provider-backed AI commands | Store or pass the technical model id. Quiver normalizes known display aliases, but the catalog is known by Quiver and does not guarantee account availability |
 | `--label <label>` | `ai agent set` | Store a display label for the profile |
 | `--dry-run` | init, analyze, migrate, prepare, spec, demo, AI, PR, worktree, and repair commands that support preview | Preview planned actions without writes, provider execution, PR creation, or irreversible changes |
 | `--with-planner` | `ai prepare-context`, `ai plan`, `spec create` | Enable planner-assisted behavior only on commands that explicitly support it |
@@ -140,8 +145,12 @@ This document is the canonical command reference for the orchestration roadmap.
 - `init --interactive` and `spec create --interactive` are human-only wrappers. They fail in no-TTY/CI/JSON and always keep `WDD + SDD` as the only methodology option.
 - Quiver human output uses the palette `#86C8F2`, `#6BADEB`, `#7F9EE8`, `#9B82E6`, and `#D56AB0`; respect `--no-color`, `NO_COLOR`, CI, and no-TTY environments.
 - `quiver:flow` reports the detected package manager and the matching generated project script, for example `npm run quiver:flow`, `pnpm run quiver:flow`, `yarn run quiver:flow`, or `bun run quiver:flow`.
+- `npx create-quiver ai models list` shows the local catalog of provider/model ids known by Quiver. It does not prove account-level access in Codex, Claude, or Gemini.
+- Agent profiles separate `model` and `displayName`: `model` is the technical id passed to the provider CLI, while `displayName` is the human label used in selectors and reports.
 - `quiver:ai:agent -- set ... --dry-run` previews provider/model profile changes without writing `.quiver/agents/profiles.json`.
-- `quiver:ai:agent` stores provider/model labels under `.quiver/agents/profiles.json`; credentials stay in the provider CLI or OS credential store.
+- `quiver:ai:agent` stores provider/model configuration under `.quiver/agents/profiles.json`; credentials stay in the provider CLI or OS credential store.
+- `quiver:ai:agent -- doctor` diagnoses bad or legacy profiles. Start there when live IA commands fail before provider execution.
+- `quiver:ai:agent -- repair --dry-run` previews safe normalizations such as `model: "GPT 5.5"` to `model: "gpt-5.5"` plus `displayName: "GPT 5.5"`; it does not write files.
 - `quiver:ai:inspect`, `quiver:ai:specs`, `quiver:ai:slices`, and `quiver:ai:trace` are read-only inspection surfaces for humans and agents.
 - `quiver:ai:export -- --format json` is the dashboard/agent-friendly state contract; `--format markdown` is the PR/docs-friendly version.
 - Planner drafts are versioned under `.quiver/approvals/<phase>/drafts/`; use `quiver:ai:review-plan -- --dry-run` before approving a technical-plan draft, then `quiver:ai:approve -- --phase technical-plan --version 1` to approve the reviewed version. Plan reviews store structured recommendations: `approve`, `approve-with-risk`, or `revise`.

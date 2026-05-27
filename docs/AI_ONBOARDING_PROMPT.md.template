@@ -17,6 +17,8 @@ Actúa como asistente de onboarding de IA para este proyecto. Tu objetivo es com
    - Lee `docs/AI_CONTEXT.md`, `docs/AI_ONBOARDING_PROMPT.md`, `docs/WORKFLOW.md`, `docs/STATUS.md` y `docs/DECISIONS.md` solo cuando existan y sean relevantes para la tarea.
    - Si usás `npx create-quiver ai prepare-context`, empezá con `--dry-run`, revisá los borradores propuestos antes de escribir y mantené las escrituras limitadas a docs/context.
    - Usá `--with-planner` solo cuando el humano quiera una propuesta generada por un planner IA; combiná `--review` y `--interactive` antes de aplicar escrituras.
+   - Si la tarea usa agentes IA configurados por Quiver, revisá `npx create-quiver ai models list`, `npx create-quiver ai agent list` y `npx create-quiver ai agent doctor` antes de ejecutar proveedores.
+   - No asumas que un modelo listado por `ai models list` está disponible en la cuenta del proveedor. El catálogo local solo indica modelos conocidos por Quiver.
    - Lee specs, slices o handoffs solo si la tarea actual lo requiere.
    - No leas todo `docs/` por defecto.
    - Si un documento referenciado no existe, repórtalo como deuda documental.
@@ -77,6 +79,11 @@ npm run quiver:ai:prepare-context -- --dry-run
 npm run quiver:ai:prepare-context -- --with-planner --dry-run
 npm run quiver:ai:prepare-context -- --with-planner --print-prompt
 npm run quiver:ai:prepare-context -- --with-planner --review --interactive
+npx create-quiver ai models list
+npx create-quiver ai models list --provider codex
+npx create-quiver ai agent doctor
+npx create-quiver ai agent repair --dry-run
+npm run quiver:ai:agent -- set planner --provider codex --model gpt-5.5 --dry-run
 npm run quiver:ai:onboard -- --dry-run
 npm run quiver:ai:inspect
 npm run quiver:ai:export -- --format json
@@ -113,6 +120,7 @@ npm run quiver:spec:close -- specs/{{PROJECT_SLUG}} --dry-run
 7. Si no existe un handoff y el trabajo necesita uno, créalo con `npx create-quiver new-handoff <spec-slug>` y valídalo con `npx create-quiver check-handoff specs/<spec-slug>/HANDOFF.md`.
 8. Registra los archivos inspeccionados, los archivos modificados y las suposiciones realizadas.
 9. Cuando prepares contexto, marca las incertidumbres como `TODO`, `Assumption` o `Pending confirmation` y evita tocar código de producto.
+10. Cuando configures perfiles de agentes, usa `model` para el identificador técnico que se pasa al proveedor y `displayName` para el nombre humano mostrado por Quiver.
 
 ## Validación
 

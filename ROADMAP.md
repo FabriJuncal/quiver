@@ -89,6 +89,10 @@
 
 - **v30** — Interactive CLI UX and agent selection: visible progress for long-running IA commands, selected Planner/Executor/Reviewer/Doctor display names, profile/spec/slice/methodology selectors, provider model-selection correctness, Doctor human/JSON parity, cross-platform automation safety, and release-readiness evidence live in `specs/quiver-v30-interactive-cli-ux-agent-selection/`.
 
+## v0.16 — AI Model Catalog and Guided Agent Setup (release-ready, pending package publication)
+
+- **v31** — AI model catalog and guided agent setup: local known-model catalog for Codex, Claude, and Gemini, technical model id vs display name separation, provider/model selectors, alias normalization, agent profile doctor/repair dry-run, shared live-command model preflight, better provider errors, model listing, docs/templates, tests, smokes, and package readiness live in `specs/quiver-v31-ai-model-catalog-agent-selection/`.
+
 ## Post-Checkpoint Plan (do not execute before validating v14)
 
 > This section now records the follow-up line from the v14-era plan.
@@ -108,6 +112,7 @@
 - **v28 — Pixel Quiver Feedback Reconciliation** (shipped in `0.14.0`): active-slice reconciliation, stale inspect recovery, structured review closure, validation/worktree hardening, agent-safe commands, GitHub auth guidance, and release-readiness evidence live in `specs/quiver-v28-pixel-quiver-feedback-reconciliation/`.
 - **v29 — Planner Context and CLI UX Standard** (shipped in `0.14.1`): planner-assisted `ai prepare-context`, CLI UX primitives, guarded UX flags, human review/interactive flows, and final docs/smoke readiness live in `specs/quiver-v29-planner-prepare-context-cli-ux/`.
 - **v30 — Interactive CLI UX and Agent Selection** (release-ready, pending package publication): visible IA progress, Quiver-branded output, profile/spec/slice selectors, provider model-selection correctness, Doctor human/JSON parity, and cross-platform release readiness live in `specs/quiver-v30-interactive-cli-ux-agent-selection/`.
+- **v31 — AI Model Catalog and Guided Agent Setup** (release-ready, pending package publication): known-model catalog, provider/model selectors, alias normalization, agent profile doctor/repair, shared model preflight, better provider errors, docs/templates, smokes, and release readiness live in `specs/quiver-v31-ai-model-catalog-agent-selection/`.
 
 The shipped v20/v21/v22/v23 work is no longer pending. The older context-diagnostics and slice-archaeology ideas remain deferred until real demand justifies them.
 

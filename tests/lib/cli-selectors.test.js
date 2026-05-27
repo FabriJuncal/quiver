@@ -3,6 +3,7 @@ const test = require('node:test');
 
 const {
   normalizeSelectorOptions,
+  promptText,
   selectOption,
 } = require('../../src/create-quiver/lib/cli/selectors');
 
@@ -87,4 +88,42 @@ test('selectOption uses injected prompt selector only in interactive TTY mode', 
   });
 
   assert.equal(selected.value, 'opus-47');
+});
+
+test('promptText returns explicit values without prompting', async () => {
+  const value = await promptText('Model?', {
+    value: 'gpt-5.5',
+    interactive: false,
+    stdoutIsTTY: false,
+    stdinIsTTY: false,
+  });
+
+  assert.equal(value, 'gpt-5.5');
+});
+
+test('promptText uses injected prompt text in interactive TTY mode', async () => {
+  const value = await promptText('Custom model?', {
+    interactive: true,
+    stdoutIsTTY: true,
+    stdinIsTTY: true,
+    promptText: async (message) => {
+      assert.equal(message, 'Custom model?');
+      return 'my-model';
+    },
+  });
+
+  assert.equal(value, 'my-model');
+});
+
+test('promptText fails actionably without TTY or explicit value', async () => {
+  await assert.rejects(
+    promptText('Custom model?', {
+      name: 'custom model',
+      flag: '--model',
+      interactive: false,
+      stdoutIsTTY: false,
+      stdinIsTTY: false,
+    }),
+    /custom model requires an explicit value[\s\S]*Use --model <value> or rerun with --interactive/,
+  );
 });

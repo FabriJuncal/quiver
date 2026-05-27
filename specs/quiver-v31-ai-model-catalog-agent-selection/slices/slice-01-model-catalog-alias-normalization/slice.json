@@ -1,0 +1,72 @@
+{
+  "slice_id": "slice-01-model-catalog-alias-normalization",
+  "ticket": "QUIVER-31-01",
+  "type": "feature",
+  "title": "Local model catalog and alias normalization",
+  "objective": "Create Quiver's local provider/model catalog and shared model resolution helpers.",
+  "description": "Adds the source of truth for known providers, model ids, display names, aliases, role recommendations, metadata, and normalization.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v31-model-catalog-alias-normalization",
+    "branch_name": "feature/QUIVER-31-01-v31-model-catalog-alias-normalization"
+  },
+  "files": [
+    "src/create-quiver/lib/ai/model-catalog.js",
+    "src/create-quiver/lib/agent-profiles.js",
+    "tests/lib/model-catalog.test.js",
+    "tests/lib/agent-profiles.test.js"
+  ],
+  "expected_read_paths": [
+    "SPEC.md",
+    "src/create-quiver/lib/ai/providers.js",
+    "src/create-quiver/lib/agent-profiles.js",
+    "tests/lib/ai-providers.test.js",
+    "tests/lib/agent-profiles.test.js"
+  ],
+  "allowed_write_paths": [
+    "src/create-quiver/lib/ai/model-catalog.js",
+    "src/create-quiver/lib/agent-profiles.js",
+    "tests/lib/model-catalog.test.js",
+    "tests/lib/agent-profiles.test.js",
+    "specs/quiver-v31-ai-model-catalog-agent-selection/**"
+  ],
+  "depends_on": [
+    "slice-00-spec-foundation"
+  ],
+  "parallel_safe": "no",
+  "parallel_safe_reason": "Catalog helpers are foundational for later selectors, doctor, repair, and preflight slices.",
+  "must": [
+    "Add a versioned catalog with catalogVersion and lastUpdated.",
+    "Include Codex, Claude, and Gemini models required by the spec.",
+    "Support aliases, role recommendations, cost/quality/stability metadata, and custom entries.",
+    "Normalize aliases case-insensitively and with tolerant spacing/dashes.",
+    "Keep existing v2 agent profiles readable.",
+    "Expose pure helpers that can be unit-tested without a TTY."
+  ],
+  "not_included": [
+    "Interactive prompts.",
+    "Live provider execution.",
+    "Remote catalog API."
+  ],
+  "acceptance": [
+    "All required model entries are available through the catalog.",
+    "`GPT 5.5`, `gpt 5.5`, `Gpt-5.5`, and `gpt-5.5` resolve to `gpt-5.5` for Codex.",
+    "Ambiguous aliases do not silently choose a model.",
+    "Custom models remain allowed with metadata indicating they are not catalog-validated.",
+    "Tests cover catalog shape, defaults, aliases, and legacy profile compatibility."
+  ],
+  "tests": [
+    "node --test tests/lib/model-catalog.test.js tests/lib/agent-profiles.test.js",
+    "git diff --check"
+  ],
+  "validation_hints": [
+    "Test pure functions directly instead of prompt flows.",
+    "Do not call provider CLIs in this slice."
+  ],
+  "estimated_hours": 6,
+  "status": "completed",
+  "blocked_reason": null,
+  "actual_hours": 5,
+  "completed_at": "2026-05-27"
+}

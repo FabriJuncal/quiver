@@ -1,0 +1,84 @@
+{
+  "slice_id": "slice-04-shared-preflight-provider-errors",
+  "ticket": "QUIVER-31-04",
+  "type": "feature",
+  "title": "Shared model preflight and provider error extraction",
+  "objective": "Apply model resolution and useful provider errors before every live AI command.",
+  "description": "Adds shared preflight for profile and CLI model overrides plus provider error extraction that prioritizes invalid model and auth causes over noisy secondary logs.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v31-shared-preflight-provider-errors",
+    "branch_name": "feature/QUIVER-31-04-v31-shared-preflight-provider-errors"
+  },
+  "files": [
+    "src/create-quiver/lib/ai/providers.js",
+    "src/create-quiver/lib/ai/executor.js",
+    "src/create-quiver/lib/ai/execution-plan.js",
+    "src/create-quiver/commands/ai.js",
+    "tests/lib/ai-providers.test.js",
+    "tests/commands/ai-prepare-context-planner.test.js",
+    "tests/commands/ai-plan.test.js",
+    "tests/commands/ai-execute-slice.test.js"
+  ],
+  "expected_read_paths": [
+    "SPEC.md",
+    "src/create-quiver/lib/ai/providers.js",
+    "src/create-quiver/lib/ai/model-catalog.js",
+    "src/create-quiver/lib/ai/executor.js",
+    "src/create-quiver/commands/ai.js"
+  ],
+  "allowed_write_paths": [
+    "src/create-quiver/lib/ai/providers.js",
+    "src/create-quiver/lib/ai/executor.js",
+    "src/create-quiver/lib/ai/execution-plan.js",
+    "src/create-quiver/commands/ai.js",
+    "tests/lib/ai-providers.test.js",
+    "tests/commands/ai-prepare-context-planner.test.js",
+    "tests/commands/ai-plan.test.js",
+    "tests/commands/ai-review-plan.test.js",
+    "tests/commands/ai-execute-slice.test.js",
+    "tests/commands/ai-execute-plan.test.js",
+    "specs/quiver-v31-ai-model-catalog-agent-selection/**"
+  ],
+  "depends_on": [
+    "slice-01-model-catalog-alias-normalization",
+    "slice-03-agent-doctor-repair"
+  ],
+  "parallel_safe": "no",
+  "parallel_safe_reason": "Touches shared provider and AI command runtime behavior.",
+  "must": [
+    "Create shared provider/model selection resolution used by live AI commands.",
+    "Apply normalization or blocking to profile models and CLI `--model` overrides.",
+    "Block before provider execution for known display aliases that can be corrected.",
+    "Keep dry-run output truthful with the real command and model args.",
+    "Extract invalid model, auth, missing CLI, timeout, and secondary warning causes.",
+    "Redact secrets in surfaced provider errors.",
+    "Preserve JSON/no-TTY cleanliness."
+  ],
+  "not_included": [
+    "Changing provider CLI install process.",
+    "Guaranteeing account-level access without live validation.",
+    "Changing prompt content unrelated to model selection."
+  ],
+  "acceptance": [
+    "Live AI commands block before provider execution for `model: \"GPT 5.5\"` with Codex.",
+    "CLI override `--model \"GPT 5.5\"` is normalized or blocked with a concrete suggestion.",
+    "Dry-run shows the real command and technical model id.",
+    "Provider stderr with invalid model plus MCP noise reports invalid model as primary cause.",
+    "Existing successful provider runs keep working."
+  ],
+  "tests": [
+    "node --test tests/lib/ai-providers.test.js tests/commands/ai-prepare-context-planner.test.js tests/commands/ai-plan.test.js tests/commands/ai-review-plan.test.js tests/commands/ai-execute-slice.test.js tests/commands/ai-execute-plan.test.js",
+    "git diff --check"
+  ],
+  "validation_hints": [
+    "Use fake provider runners for failure cases.",
+    "Do not require real provider auth in automated tests."
+  ],
+  "estimated_hours": 10,
+  "status": "completed",
+  "blocked_reason": null,
+  "actual_hours": 8,
+  "completed_at": "2026-05-27"
+}

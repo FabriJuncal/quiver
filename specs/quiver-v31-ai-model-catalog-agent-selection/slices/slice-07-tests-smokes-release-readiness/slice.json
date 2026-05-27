@@ -1,0 +1,94 @@
+{
+  "slice_id": "slice-07-tests-smokes-release-readiness",
+  "ticket": "QUIVER-31-07",
+  "type": "release",
+  "title": "Tests, smokes, package dry-run, and release readiness",
+  "objective": "Close the v31 spec with comprehensive validation, evidence, and package readiness.",
+  "description": "Runs full tests, smoke suites, package safety, npm pack dry-run, spec validation, and final docs/evidence closure.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v31-tests-smokes-release-readiness",
+    "branch_name": "feature/QUIVER-31-07-v31-tests-smokes-release-readiness"
+  },
+  "files": [
+    "CHANGELOG.md",
+    "README_FOR_AI.md",
+    "ROADMAP.md",
+    "src/create-quiver/index.js",
+    "src/create-quiver/commands/ai.js",
+    "src/create-quiver/commands/flow.js",
+    "tests/**",
+    "scripts/ci/**",
+    "specs/quiver-v31-ai-model-catalog-agent-selection/**"
+  ],
+  "expected_read_paths": [
+    "SPEC.md",
+    "README_FOR_AI.md",
+    "CHANGELOG.md",
+    "ROADMAP.md",
+    "scripts/release-quiver.sh",
+    "scripts/package-quiver.sh",
+    "tests/**"
+  ],
+  "allowed_write_paths": [
+    "CHANGELOG.md",
+    "README_FOR_AI.md",
+    "ROADMAP.md",
+    "src/create-quiver/index.js",
+    "src/create-quiver/commands/ai.js",
+    "src/create-quiver/commands/flow.js",
+    "tests/**",
+    "scripts/ci/**",
+    "specs/quiver-v31-ai-model-catalog-agent-selection/**"
+  ],
+  "depends_on": [
+    "slice-02-interactive-agent-set-selectors",
+    "slice-03-agent-doctor-repair",
+    "slice-04-shared-preflight-provider-errors",
+    "slice-05-ai-models-list",
+    "slice-06-docs-templates-alignment"
+  ],
+  "parallel_safe": "no",
+  "parallel_safe_reason": "Final release validation depends on every implementation and docs slice.",
+  "must": [
+    "Run full test suite.",
+    "Run smoke suites.",
+    "Run package safety and npm pack dry-run.",
+    "Validate spec.",
+    "Update evidence report, status, closure briefs, and PR body.",
+    "Do not publish npm without explicit release approval."
+  ],
+  "not_included": [
+    "Publishing npm.",
+    "Skipping failed tests.",
+    "Adding new product scope."
+  ],
+  "acceptance": [
+    "Full suite passes.",
+    "Smoke suites pass.",
+    "Package smoke and npm pack dry-run pass.",
+    "Spec validation passes.",
+    "Final evidence is recorded.",
+    "Known remaining risks are documented."
+  ],
+  "tests": [
+    "node --test tests/**/*.test.js",
+    "npm run smoke:create-quiver",
+    "npm run smoke:doctor-fixtures",
+    "npm run smoke:guided-workflow",
+    "npm run package:quiver",
+    "npm pack --dry-run",
+    "git diff --check",
+    "node bin/create-quiver.js spec validate specs/quiver-v31-ai-model-catalog-agent-selection"
+  ],
+  "validation_hints": [
+    "Include legacy bad-profile fixture coverage.",
+    "Document any live provider smoke separately from automated tests."
+  ],
+  "estimated_hours": 6,
+  "status": "completed",
+  "blocked_reason": null,
+  "actual_hours": 5,
+  "completed_at": "2026-05-27"
+}

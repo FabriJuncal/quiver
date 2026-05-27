@@ -152,7 +152,7 @@ test('flow command reports agent profile guidance before planning when context d
     const output = runFlow(repo.root);
 
     assert.match(output, /Stage: agent profiles need setup/);
-    assert.match(output, /Next safe command: npx create-quiver ai agent set planner --provider codex --model "<model-label>"/);
+    assert.match(output, /Next safe command: npx create-quiver ai agent set planner --provider codex --model gpt-5\.5/);
   } finally {
     repo.cleanup();
   }

@@ -101,7 +101,60 @@ async function selectOption(message, rawOptions, options = {}) {
   ].join('\n')));
 }
 
+async function promptText(message, options = {}) {
+  const explicit = String(options.value || '').trim();
+  if (explicit) return explicit;
+
+  const mode = resolveUxMode({
+    interactive: options.interactive === true,
+    json: options.json,
+    noColor: options.noColor,
+    stdinIsTTY: options.stdinIsTTY,
+    stdoutIsTTY: options.stdoutIsTTY,
+    stderrIsTTY: options.stderrIsTTY,
+  }, options.env || process.env, {
+    input: options.input || process.stdin,
+    output: options.output || process.stdout,
+    error: options.error || process.stderr,
+  });
+
+  if (mode.usePrompts) {
+    if (typeof options.promptText === 'function') {
+      const value = await options.promptText(message, options);
+      const normalized = String(value || '').trim();
+      if (!normalized && options.required !== false) {
+        throw new Error(formatError(`${options.name || 'input'} is required.`));
+      }
+      return normalized;
+    }
+    const clack = await loadClack(options.prompts);
+    const value = await clack.text({
+      message,
+      placeholder: options.placeholder,
+      initialValue: options.initialValue,
+      validate: options.required === false
+        ? undefined
+        : (input) => (String(input || '').trim() ? undefined : 'Required'),
+    });
+    if (clack.isCancel && clack.isCancel(value)) {
+      throw new Error(formatError(`${options.name || 'input'} was canceled.`));
+    }
+    return String(value || '').trim();
+  }
+
+  if (options.defaultValue !== undefined && options.defaultValue !== null) {
+    return String(options.defaultValue).trim();
+  }
+
+  const flag = options.flag || '--value';
+  throw new Error(formatError([
+    `${options.name || 'input'} requires an explicit value.`,
+    `Use ${flag} <value> or rerun with --interactive.`,
+  ].join('\n')));
+}
+
 module.exports = {
   normalizeSelectorOptions,
+  promptText,
   selectOption,
 };

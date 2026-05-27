@@ -37,7 +37,8 @@ test('top-level help command prints grouped command descriptions', () => {
   assert.match(output, /Specs, slices, and validation:/);
   assert.match(output, /init\s+Create the default AI-first Quiver contract/);
   assert.match(output, /ai plan\s+Generate versioned planner drafts/);
-  assert.match(output, /ai agent set\|list\|show\s+Manage planner, executor, reviewer, and doctor provider profiles without secrets; use set --dry-run to preview\./);
+  assert.match(output, /ai agent set\|list\|show\|doctor\|repair\s+Manage, diagnose, and dry-run repair planner, executor, reviewer, and doctor provider profiles without secrets\./);
+  assert.match(output, /ai models list\s+List provider\/model ids known by Quiver without claiming account availability\./);
   assert.match(output, /check-slice\s+Validate slice structure/);
   assert.match(output, /demo create spec-viewer\s+Create or preview the optional static Quiver Spec Viewer demo scaffold/);
 });
@@ -60,7 +61,8 @@ test('help output documents important public commands', () => {
     'ai resume',
     'ai onboard',
     'ai prepare-context',
-    'ai agent set|list|show',
+    'ai agent set|list|show|doctor|repair',
+    'ai models list',
     'ai plan',
     'ai revise',
     'ai repair-plan',
@@ -101,6 +103,7 @@ test('help output documents important public commands', () => {
     assert.match(output, new RegExp(`${command.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s+\\S`));
   }
   assert.match(output, /--dry-run\s+Preview .*ai agent set/);
+  assert.match(output, /--model <model-id>\s+Technical model id for AI agent profiles or provider-backed AI commands/);
   assert.match(output, /ai agent set planner --provider codex --model gpt-5\.5 --dry-run/);
   assert.match(output, new RegExp(`npx --yes create-quiver@${packageJson.version.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')} ai prompt-slice`));
 });

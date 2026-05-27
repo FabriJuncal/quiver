@@ -27,6 +27,9 @@ This file is the main context pack after `AGENTS.md` and `docs/PROJECT_MAP.md`. 
 - `docs/STATUS.md` tracks progress, blockers, and the current slice.
 - `npx create-quiver ai prepare-context --dry-run` previews docs-only context drafts before writing.
 - `npx create-quiver ai prepare-context --with-planner --dry-run` previews an optional planner-generated context proposal. Use `--print-prompt` to run the prompt elsewhere, `--review` to inspect the proposal, and `--interactive` to confirm before writing.
+- `npx create-quiver ai models list` shows provider/model ids known by Quiver. It is a local catalog, not a guarantee of account-level access.
+- Agent profiles live in `.quiver/agents/profiles.json` without credentials. `model` is the technical id passed to the provider CLI; `displayName` is the human label shown in selectors and reports.
+- `npx create-quiver ai agent doctor` diagnoses profile issues. `npx create-quiver ai agent repair --dry-run` previews safe legacy-profile repairs before any write mode exists.
 
 ## Critical Rules
 
@@ -39,6 +42,7 @@ This file is the main context pack after `AGENTS.md` and `docs/PROJECT_MAP.md`. 
 - If a command or path is ambiguous, prefer the local project root and the generated docs.
 - Context preparation must stay in docs/context files and should use TODO, Assumption, or Pending confirmation markers for uncertain statements.
 - Planner-assisted context proposals must remain docs-only. Do not accept product-code, dependency, build, runtime, lockfile, generated-output, absolute-path, or traversal writes.
+- Do not treat model names from chat or screenshots as technical ids until `ai models list` or the provider docs confirms the spelling. Use `ai agent doctor` when a profile looks suspicious.
 
 ## What To Update After A Slice
 

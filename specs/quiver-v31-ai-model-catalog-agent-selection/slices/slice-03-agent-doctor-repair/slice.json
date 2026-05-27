@@ -1,0 +1,77 @@
+{
+  "slice_id": "slice-03-agent-doctor-repair",
+  "ticket": "QUIVER-31-03",
+  "type": "feature",
+  "title": "Agent profile doctor and repair dry-run",
+  "objective": "Diagnose existing agent profile issues and preview safe repairs without writing files.",
+  "description": "Adds `ai agent doctor` and `ai agent repair --dry-run` for missing data, unsupported providers, display aliases stored as model ids, custom unvalidated models, duplicate labels, and missing provider CLIs.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v31-agent-doctor-repair",
+    "branch_name": "feature/QUIVER-31-03-v31-agent-doctor-repair"
+  },
+  "files": [
+    "src/create-quiver/commands/ai.js",
+    "src/create-quiver/lib/agent-profiles.js",
+    "src/create-quiver/lib/ai/model-catalog.js",
+    "tests/commands/ai-agent.test.js",
+    "tests/lib/agent-profiles.test.js"
+  ],
+  "expected_read_paths": [
+    "SPEC.md",
+    "src/create-quiver/lib/agent-profiles.js",
+    "src/create-quiver/lib/ai/model-catalog.js",
+    "src/create-quiver/lib/cli/ux.js",
+    "tests/commands/ai-agent.test.js"
+  ],
+  "allowed_write_paths": [
+    "src/create-quiver/commands/ai.js",
+    "src/create-quiver/lib/agent-profiles.js",
+    "src/create-quiver/lib/ai/model-catalog.js",
+    "tests/commands/ai-agent.test.js",
+    "tests/lib/agent-profiles.test.js",
+    "specs/quiver-v31-ai-model-catalog-agent-selection/**"
+  ],
+  "depends_on": [
+    "slice-01-model-catalog-alias-normalization",
+    "slice-02-interactive-agent-set-selectors"
+  ],
+  "parallel_safe": "no",
+  "parallel_safe_reason": "Doctor and repair depend on catalog issue classification and may share command wiring with selectors.",
+  "must": [
+    "Add human and JSON output for `ai agent doctor`.",
+    "Evaluate every profile, not only defaults.",
+    "Classify findings as error, warning, or info.",
+    "Set exit code 1 when errors exist.",
+    "Add `ai agent repair --dry-run` with before/after proposed changes.",
+    "Prevent repair writes without explicit confirmation or `--yes` if write mode is implemented.",
+    "Use v30 human output hierarchy with Checks and Suggested fixes."
+  ],
+  "not_included": [
+    "Remote validation against provider APIs.",
+    "Automatic destructive profile rewrites.",
+    "Installing provider CLIs."
+  ],
+  "acceptance": [
+    "Doctor reports unsupported providers as errors.",
+    "Doctor reports custom unvalidated models as warnings.",
+    "Doctor detects `model: \"GPT 5.5\"` and suggests repair.",
+    "Repair dry-run shows normalized `model: gpt-5.5` and `displayName: GPT 5.5` without writing.",
+    "`--json` outputs parseable JSON without human prose.",
+    "Human output uses Quiver Doctor-style sections."
+  ],
+  "tests": [
+    "node --test tests/commands/ai-agent.test.js tests/lib/agent-profiles.test.js",
+    "git diff --check"
+  ],
+  "validation_hints": [
+    "Include fixtures for multiple profiles and duplicate display names.",
+    "Include the real bug profile with `model: \"GPT 5.5\"`."
+  ],
+  "estimated_hours": 8,
+  "status": "completed",
+  "blocked_reason": null,
+  "actual_hours": 7,
+  "completed_at": "2026-05-27"
+}

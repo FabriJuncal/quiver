@@ -86,6 +86,13 @@ function resolveExecutorRuntimeProfile(repoRoot, role, options = {}) {
   };
 }
 
+function runtimeModelExecutionOptions(runtimeProfile, options = {}) {
+  return {
+    model: runtimeProfile.model,
+    blockModelAlias: Boolean(runtimeProfile.profile && !String(options.model || '').trim()),
+  };
+}
+
 function createCommandUx(options = {}) {
   if (options.ux) {
     return options.ux;
@@ -955,7 +962,7 @@ async function runExecuteSlice(repoRoot, options = {}) {
       prompt,
       cwd: canonicalRepoRoot,
       timeoutMs,
-      model: runtimeProfile.model,
+      ...runtimeModelExecutionOptions(runtimeProfile, options),
       enforceModelSelection: false,
     });
   } catch (error) {
@@ -1028,7 +1035,7 @@ async function runExecuteSlice(repoRoot, options = {}) {
         tempRoot: options.tempRoot,
         tempFileName: options.tempFileName,
         tempFilePrefix: options.tempFilePrefix,
-        model: runtimeProfile.model,
+      ...runtimeModelExecutionOptions(runtimeProfile, options),
         enforceModelSelection: Boolean(runtimeProfile.model),
       }),
     });

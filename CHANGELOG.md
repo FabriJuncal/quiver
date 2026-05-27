@@ -6,6 +6,9 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- Implemented v31 AI model catalog and guided agent setup under `specs/quiver-v31-ai-model-catalog-agent-selection/`.
+- Local known-model catalog for Codex, Claude, and Gemini, with role metadata, alias normalization, and `ai models list`.
+- Guided provider/model selection for `ai agent set <role>`, plus `ai agent doctor` and `ai agent repair --dry-run` for legacy or invalid profiles.
 - Implemented v30 interactive CLI UX and agent selection under `specs/quiver-v30-interactive-cli-ux-agent-selection/`.
 - Multiple named agent profiles for Planner, Executor, Reviewer, and Doctor, including display names, defaults, selectors, and model labels.
 - Visible progress output for planner, reviewer, executor, execution-plan, and PR flows in human TTY mode.
@@ -14,6 +17,9 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
+- Agent profiles now distinguish the technical `model` id passed to provider CLIs from the human `displayName` shown in Quiver output.
+- Live AI commands now normalize safe CLI model aliases, block persisted display aliases before provider execution, and surface invalid-model provider failures more clearly.
+- Public docs, generated templates, CLI help, and smoke checks now describe model catalog entries as known by Quiver, not guaranteed account availability.
 - Provider model selection now affects real provider invocations when supported, and blocks safely when a selected model cannot be applied.
 - CLI output now follows the shared Quiver palette and hierarchy while keeping `--json`, CI, no-TTY, and `--no-color` output clean.
 - Command docs now cover human-vs-machine output, selectors, Doctor output, and cross-platform usage.

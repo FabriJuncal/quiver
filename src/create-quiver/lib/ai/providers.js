@@ -72,9 +72,54 @@ function normalizeProviderModel(model) {
   return value || '';
 }
 
+function resolveProviderModelSelection(providerId, model, options = {}) {
+  const rawModel = normalizeProviderModel(model);
+  if (!rawModel) {
+    return {
+      input: '',
+      model: '',
+      displayName: '',
+      modelSource: '',
+      aliasNormalized: false,
+    };
+  }
+
+  const { normalizeModelSelection } = require('./model-catalog');
+  const selection = normalizeModelSelection(providerId, rawModel, {
+    displayName: options.displayName,
+  });
+  const aliasNormalized = selection.modelSource === 'catalog' && selection.model !== rawModel;
+  if (aliasNormalized && options.blockModelAlias === true) {
+    throw new ProviderRunnerError(
+      'DISPLAY_MODEL_ALIAS',
+      `Model '${rawModel}' is a display alias for provider '${providerId}', not the technical id. Use '${selection.model}' or run 'npx create-quiver ai agent repair --dry-run'.`,
+      {
+        provider: providerId,
+        inputModel: rawModel,
+        suggestedModel: selection.model,
+        displayName: selection.displayName,
+        nextSteps: [
+          `Use --model ${selection.model}.`,
+          'Run npx create-quiver ai agent repair --dry-run to preview profile normalization.',
+          'Run npx create-quiver ai agent doctor to inspect profile issues.',
+        ],
+      },
+    );
+  }
+
+  return {
+    input: rawModel,
+    model: selection.model,
+    displayName: selection.displayName,
+    modelSource: selection.modelSource,
+    aliasNormalized,
+  };
+}
+
 function buildProviderModelArgs(providerId, model, options = {}) {
   const provider = getProviderDefinition(providerId);
-  const normalizedModel = normalizeProviderModel(model);
+  const modelResolution = resolveProviderModelSelection(provider.id, model, options);
+  const normalizedModel = modelResolution.model;
   const enforce = options.enforce === true;
 
   if (!normalizedModel) {
@@ -114,13 +159,19 @@ function buildProviderModelArgs(providerId, model, options = {}) {
   }
 
   const args = provider.modelArgBuilder(normalizedModel);
-  return {
+  const result = {
     model: normalizedModel,
     supported: true,
     enforced: enforce,
     args: Array.isArray(args) ? args.map((arg) => String(arg)) : [],
-    reason: 'model argument supported',
+    reason: modelResolution.aliasNormalized ? `model alias normalized from ${modelResolution.input}` : 'model argument supported',
   };
+  if (modelResolution.aliasNormalized) {
+    result.input = modelResolution.input;
+    result.displayName = modelResolution.displayName;
+    result.modelSource = modelResolution.modelSource;
+  }
+  return result;
 }
 
 function buildProviderInvocation(providerId, options = {}) {
@@ -128,6 +179,8 @@ function buildProviderInvocation(providerId, options = {}) {
   const extraArgs = Array.isArray(options.args) ? options.args.map((arg) => String(arg)) : [];
   const modelSelection = buildProviderModelArgs(provider.id, options.model, {
     enforce: options.enforceModelSelection === true,
+    blockModelAlias: options.blockModelAlias === true,
+    displayName: options.displayName,
   });
   const prompt = String(options.prompt ?? '');
   const timeoutMs = Number.isFinite(options.timeoutMs) ? Number(options.timeoutMs) : provider.timeoutMs;
@@ -182,6 +235,85 @@ function serializeError(error, provider, invocation) {
     syscall: error.syscall || null,
     errno: typeof error.errno === 'number' ? error.errno : null,
   };
+}
+
+function compactProviderText(value) {
+  return redactSecrets(String(value || ''))
+    .replace(/\bsk-[A-Za-z0-9_-]{16,}\b/g, '[REDACTED]')
+    .replace(/\bghp_[A-Za-z0-9_]{16,}\b/g, '[REDACTED]')
+    .replace(/\bgithub_pat_[A-Za-z0-9_]{16,}\b/g, '[REDACTED]')
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .slice(0, 6)
+    .join(' ');
+}
+
+function extractProviderErrorCause(result = {}) {
+  const error = result.error || {};
+  const text = compactProviderText([
+    error.message,
+    result.stderr,
+    result.stdout,
+  ].filter(Boolean).join('\n'));
+  const lower = text.toLowerCase();
+
+  if (error.code === 'MISSING_PROVIDER_CLI') {
+    return {
+      code: 'MISSING_PROVIDER_CLI',
+      message: error.message || `Provider CLI '${result.command || result.provider}' is not available.`,
+    };
+  }
+
+  if (error.code === 'PROVIDER_TIMEOUT') {
+    return {
+      code: 'PROVIDER_TIMEOUT',
+      message: error.message || `Provider '${result.provider}' timed out.`,
+    };
+  }
+
+  const quotedUnsupportedModel = text.match(/the ['"`]([^'"`]+)['"`] model is not supported/i);
+  const genericInvalidModel = /invalid model|unknown model|model .*not supported|model .*not available|model .*does not exist|unsupported model/i.test(text);
+  if (quotedUnsupportedModel || genericInvalidModel) {
+    const model = quotedUnsupportedModel ? quotedUnsupportedModel[1] : result.modelSelection?.model;
+    return {
+      code: 'INVALID_PROVIDER_MODEL',
+      message: model
+        ? `Provider '${result.provider}' rejected model '${model}'. ${text}`
+        : `Provider '${result.provider}' rejected the selected model. ${text}`,
+    };
+  }
+
+  if (/unauthorized|forbidden|permission denied|not authenticated|authentication|api key|login required|log in/i.test(text)) {
+    return {
+      code: 'PROVIDER_AUTH_ERROR',
+      message: `Provider '${result.provider}' authentication failed. ${text}`,
+    };
+  }
+
+  if (text) {
+    return {
+      code: 'PROVIDER_RUN_FAILED',
+      message: text,
+    };
+  }
+
+  return {
+    code: 'PROVIDER_RUN_FAILED',
+    message: 'provider run failed',
+  };
+}
+
+function createProviderFailureError(result = {}) {
+  const cause = extractProviderErrorCause(result);
+  return new ProviderRunnerError(cause.code, cause.message, {
+    provider: result.provider,
+    command: result.command,
+    args: Array.isArray(result.args) ? result.args.slice() : [],
+    exitCode: result.exitCode,
+    signal: result.signal,
+    modelSelection: result.modelSelection,
+  });
 }
 
 function runSpawn(command, args, options = {}) {
@@ -352,7 +484,7 @@ async function runProvider(providerId, options = {}) {
       timeoutMs: invocation.timeoutMs,
     });
 
-    return {
+    const providerResult = {
       ok: execution.ok,
       dryRun: false,
       provider: invocation.provider,
@@ -369,6 +501,10 @@ async function runProvider(providerId, options = {}) {
       error: execution.error,
       preflight: preflightResult,
     };
+    if (!providerResult.ok && !providerResult.error) {
+      providerResult.error = serializeError(createProviderFailureError(providerResult), invocation.provider, invocation);
+    }
+    return providerResult;
   } finally {
     finalizePromptTransport(transport);
   }
@@ -380,7 +516,10 @@ module.exports = {
   assertSupportedProvider,
   buildProviderModelArgs,
   buildProviderInvocation,
+  createProviderFailureError,
+  extractProviderErrorCause,
   formatProviderList,
   getProviderDefinition,
+  resolveProviderModelSelection,
   runProvider,
 };

@@ -1,0 +1,84 @@
+{
+  "slice_id": "slice-06-docs-templates-alignment",
+  "ticket": "QUIVER-31-06",
+  "type": "documentation",
+  "title": "Documentation and generated template alignment",
+  "objective": "Document the new agent model setup contract in repo docs and generated project guidance.",
+  "description": "Explains model ids vs display names, known catalog limitations, interactive setup, script setup, model listing, doctor, repair, and legacy-profile repair guidance.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v31-docs-templates-alignment",
+    "branch_name": "feature/QUIVER-31-06-v31-docs-templates-alignment"
+  },
+  "files": [
+    "README.md",
+    "README_FOR_AI.md",
+    "ROADMAP.md",
+    "docs/CLI_UX_GUIDE.md",
+    "docs/reference/commands.md",
+    "docs/COMMANDS.md.template",
+    "docs/AI_ONBOARDING_PROMPT.md.template",
+    "docs/AI_CONTEXT.md.template"
+  ],
+  "expected_read_paths": [
+    "SPEC.md",
+    "README_FOR_AI.md",
+    "README.md",
+    "docs/CLI_UX_GUIDE.md",
+    "docs/reference/commands.md",
+    "docs/COMMANDS.md.template"
+  ],
+  "allowed_write_paths": [
+    "README.md",
+    "README_FOR_AI.md",
+    "ROADMAP.md",
+    "docs/CLI_UX_GUIDE.md",
+    "docs/reference/commands.md",
+    "docs/COMMANDS.md.template",
+    "docs/AI_ONBOARDING_PROMPT.md.template",
+    "docs/AI_CONTEXT.md.template",
+    "specs/quiver-v31-ai-model-catalog-agent-selection/**"
+  ],
+  "depends_on": [
+    "slice-04-shared-preflight-provider-errors",
+    "slice-05-ai-models-list"
+  ],
+  "parallel_safe": "no",
+  "parallel_safe_reason": "Docs should be written after final command contracts settle.",
+  "must": [
+    "Update README only with concise public-facing guidance if needed.",
+    "Update README_FOR_AI as source of truth.",
+    "Update command reference and CLI UX guide.",
+    "Update generated command templates.",
+    "Document known catalog vs available account model.",
+    "Document no-TTY/script-safe setup.",
+    "Document legacy repair flow for projects with bad profile models."
+  ],
+  "not_included": [
+    "Implementation code.",
+    "Long duplicated step-by-step content in root README.",
+    "Claiming npm publication."
+  ],
+  "acceptance": [
+    "Docs explain `model` vs `displayName`.",
+    "Docs explain catalog entries are known by Quiver, not guaranteed available.",
+    "Docs include `ai models list`, `ai agent doctor`, and `ai agent repair --dry-run`.",
+    "Generated project guidance includes current setup flow where appropriate.",
+    "README_FOR_AI stays synchronized with implemented behavior."
+  ],
+  "tests": [
+    "git diff --check",
+    "node bin/create-quiver.js --help",
+    "node bin/create-quiver.js spec validate specs/quiver-v31-ai-model-catalog-agent-selection"
+  ],
+  "validation_hints": [
+    "Keep root README concise.",
+    "Do not say v31 is shipped until release publication is complete."
+  ],
+  "estimated_hours": 5,
+  "status": "completed",
+  "blocked_reason": null,
+  "actual_hours": 3,
+  "completed_at": "2026-05-27"
+}

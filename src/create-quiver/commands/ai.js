@@ -13,10 +13,17 @@ const {
 const { buildContextPackMetadata, normalizeRole } = require('../lib/ai/context-packs');
 const { parseContextProposalOutput } = require('../lib/ai/context-proposal');
 const { openEditor } = require('../lib/cli/editor');
+const { selectOption, promptText } = require('../lib/cli/selectors');
 const { createUx } = require('../lib/cli/ux');
 const { runExecuteSlice, runPromptSlice } = require('../lib/ai/executor');
 const { runExecutePlan } = require('../lib/ai/execution-plan');
 const { buildPrCreatePlan, formatPreflightReport, formatPrCreateReport, preflightGitHubPr, runGhPrCreate } = require('../lib/ai/github');
+const {
+  MODEL_CATALOG_LAST_UPDATED,
+  MODEL_CATALOG_VERSION,
+  getKnownModelsForProvider,
+  listCatalogProviders,
+} = require('../lib/ai/model-catalog');
 const { buildContextPreparationDrafts, buildPlannerOnboardingPrompt } = require('../lib/ai/onboarding-template');
 const {
   collectLifecycleExport,
@@ -43,6 +50,7 @@ const {
   validateTechnicalPlanSpecContract,
 } = require('../lib/ai/spec-generator');
 const { buildProviderInvocation, runProvider } = require('../lib/ai/providers');
+const { preflightProvider } = require('../lib/ai/preflight');
 const {
   createAiRun,
   ensureAiRun,
@@ -55,9 +63,12 @@ const {
 } = require('../lib/ai/run-state');
 const {
   agentProfilesPath,
+  buildAgentProfileDoctorReport,
+  buildAgentProfileRepairPlan,
   buildAgentProfileState,
   getAgentProfile,
   getAgentProfileById,
+  getAgentProfilesForRole,
   listAgentProfiles,
   normalizeAgentProfileRole,
   resolveAgentProfileDisplayName,
@@ -172,6 +183,13 @@ function resolveRuntimeAgentProfile(repoRoot, role, options = {}, fallbackProvid
     displayName: profile ? resolveAgentProfileDisplayName(profile) : provider,
     provider,
     model: explicitModel || profile?.model || '',
+  };
+}
+
+function runtimeModelExecutionOptions(runtimeProfile, options = {}) {
+  return {
+    model: runtimeProfile.model,
+    blockModelAlias: Boolean(runtimeProfile.profile && !String(options.model || '').trim()),
   };
 }
 
@@ -1247,7 +1265,7 @@ async function runOnboard(repoRoot, options = {}) {
       prompt,
       cwd: repoRoot,
       timeoutMs,
-      model: runtimeProfile.model,
+        ...runtimeModelExecutionOptions(runtimeProfile, options),
       enforceModelSelection: false,
     });
   } catch (error) {
@@ -1311,7 +1329,7 @@ async function runOnboard(repoRoot, options = {}) {
         tempRoot: options.tempRoot,
         tempFileName: options.tempFileName,
         tempFilePrefix: options.tempFilePrefix,
-        model: runtimeProfile.model,
+        ...runtimeModelExecutionOptions(runtimeProfile, options),
         enforceModelSelection: Boolean(runtimeProfile.model),
       }),
     });
@@ -1427,7 +1445,7 @@ async function runPrepareContextWithPlanner(repoRoot, options = {}) {
       prompt,
       cwd: repoRoot,
       timeoutMs,
-      model: runtimeProfile.model,
+        ...runtimeModelExecutionOptions(runtimeProfile, options),
       enforceModelSelection: false,
     });
   } catch (error) {
@@ -1502,7 +1520,7 @@ async function runPrepareContextWithPlanner(repoRoot, options = {}) {
         tempRoot: options.tempRoot,
         tempFileName: options.tempFileName,
         tempFilePrefix: options.tempFilePrefix,
-        model: runtimeProfile.model,
+        ...runtimeModelExecutionOptions(runtimeProfile, options),
         enforceModelSelection: Boolean(runtimeProfile.model),
       }),
     });
@@ -1681,7 +1699,7 @@ async function runPlan(repoRoot, options = {}) {
       prompt,
       cwd: repoRoot,
       timeoutMs,
-      model: runtimeProfile.model,
+        ...runtimeModelExecutionOptions(runtimeProfile, options),
       enforceModelSelection: false,
     });
   } catch (error) {
@@ -1754,7 +1772,7 @@ async function runPlan(repoRoot, options = {}) {
         tempRoot: options.tempRoot,
         tempFileName: options.tempFileName,
         tempFilePrefix: options.tempFilePrefix,
-        model: runtimeProfile.model,
+        ...runtimeModelExecutionOptions(runtimeProfile, options),
         enforceModelSelection: Boolean(runtimeProfile.model),
       }),
     });
@@ -1848,7 +1866,7 @@ async function runReviewPlan(repoRoot, options = {}) {
       prompt: built.prompt,
       cwd: repoRoot,
       timeoutMs,
-      model: runtimeProfile.model,
+        ...runtimeModelExecutionOptions(runtimeProfile, options),
       enforceModelSelection: false,
     });
   } catch (error) {
@@ -1932,7 +1950,7 @@ async function runReviewPlan(repoRoot, options = {}) {
         tempRoot: options.tempRoot,
         tempFileName: options.tempFileName,
         tempFilePrefix: options.tempFilePrefix,
-        model: runtimeProfile.model,
+        ...runtimeModelExecutionOptions(runtimeProfile, options),
         enforceModelSelection: Boolean(runtimeProfile.model),
       }),
     });
@@ -2013,7 +2031,7 @@ async function runRepairPlan(repoRoot, options = {}) {
       prompt: built.prompt,
       cwd: repoRoot,
       timeoutMs,
-      model: runtimeProfile.model,
+        ...runtimeModelExecutionOptions(runtimeProfile, options),
       enforceModelSelection: false,
     });
   } catch (error) {
@@ -2082,7 +2100,7 @@ async function runRepairPlan(repoRoot, options = {}) {
         tempRoot: options.tempRoot,
         tempFileName: options.tempFileName,
         tempFilePrefix: options.tempFilePrefix,
-        model: runtimeProfile.model,
+        ...runtimeModelExecutionOptions(runtimeProfile, options),
         enforceModelSelection: Boolean(runtimeProfile.model),
       }),
     });
@@ -2418,6 +2436,212 @@ function runLifecycleRun(repoRoot, options = {}) {
   };
 }
 
+function isInteractiveAgentPromptAvailable(options = {}) {
+  const stdinIsTTY = options.stdinIsTTY ?? Boolean((options.input || process.stdin).isTTY);
+  const stdoutIsTTY = options.stdoutIsTTY ?? Boolean((options.output || process.stdout).isTTY);
+  const ci = String((options.env || process.env).CI || '').trim().toLowerCase();
+  return stdinIsTTY && stdoutIsTTY && ci !== '1' && ci !== 'true';
+}
+
+function providerInstallHint(repoRoot, providerId, options = {}) {
+  const probe = options.preflightProvider || preflightProvider;
+  try {
+    probe(providerId, {
+      cwd: repoRoot,
+      probe: options.providerProbe,
+      probeArgs: options.providerProbeArgs,
+    });
+    return 'installed';
+  } catch (error) {
+    if (error && error.code === 'MISSING_PROVIDER_CLI') {
+      return 'not installed';
+    }
+    return 'not verified';
+  }
+}
+
+function buildAgentProviderChoices(repoRoot, options = {}) {
+  return listCatalogProviders().map((provider) => {
+    const status = providerInstallHint(repoRoot, provider.id, options);
+    return {
+      label: provider.displayName,
+      value: provider.id,
+      hint: `${provider.modelCount} models, ${status}`,
+      raw: {
+        ...provider,
+        installStatus: status,
+      },
+    };
+  });
+}
+
+function buildAgentModelChoices(provider, role) {
+  return getKnownModelsForProvider(provider, { role }).map((model) => {
+    const recommended = model.recommendedFor.includes(role) ? 'recommended' : 'available';
+    const tier = [model.costTier, model.qualityTier, model.stability].filter(Boolean).join('/');
+    return {
+      label: model.displayName,
+      value: model.id,
+      hint: [recommended, tier].filter(Boolean).join(', '),
+      default: model.recommendedFor.includes(role),
+      raw: model,
+    };
+  });
+}
+
+async function resolveInteractiveAgentSetOptions(repoRoot, options = {}) {
+  const role = normalizeAgentProfileRole(options.role);
+  const hasProvider = Boolean(String(options.provider || '').trim());
+  const hasModel = Boolean(String(options.model || '').trim());
+  if (hasProvider && hasModel) {
+    return {
+      ...options,
+      role,
+    };
+  }
+
+  const canPrompt = isInteractiveAgentPromptAvailable(options);
+  const shouldPrompt = options.interactive === true || canPrompt;
+  if (!shouldPrompt || !canPrompt) {
+    throw new Error(formatActionableError({
+      failure: `ai agent set ${role} requires --provider and --model when prompts are not available.`,
+      impact: 'Quiver cannot safely guess the provider or technical model id for an agent profile.',
+      fix: 'Pass both flags explicitly, or rerun from an interactive terminal with --interactive.',
+      nextCommand: `npx create-quiver ai agent set ${role} --provider codex --model gpt-5.5`,
+    }));
+  }
+
+  const promptOptions = {
+    env: options.env,
+    error: options.error,
+    input: options.input,
+    interactive: true,
+    noColor: options.noColor,
+    output: options.output,
+    prompts: options.prompts,
+    promptSelect: options.promptSelect,
+    promptText: options.promptText,
+    stdinIsTTY: options.stdinIsTTY,
+    stdoutIsTTY: options.stdoutIsTTY,
+    stderrIsTTY: options.stderrIsTTY,
+    write: options.write,
+  };
+
+  const existingProfiles = getAgentProfilesForRole(repoRoot, role);
+  let next = { ...options, role };
+  if (existingProfiles.length > 0 && !options.id && !options.defaultProfile) {
+    const ux = createCommandUx(promptOptions);
+    ux.summary(existingProfiles.map((profile) => ({
+      label: profile.id,
+      value: `${profile.provider} ${profile.model || '(no model)'}${profile.default ? ' default' : ''}`,
+    })), {
+      title: `Existing ${role} profiles`,
+    });
+
+    const action = await selectOption(`Ya existe al menos un perfil ${role}. ¿Qué querés hacer?`, [
+      { label: 'Actualizar perfil actual', value: 'update-current', hint: 'Reutiliza el perfil default', default: true },
+      { label: 'Crear perfil nuevo', value: 'create-new', hint: 'Permite guardar otro modelo o provider' },
+      { label: 'Cambiar default', value: 'change-default', hint: 'Marca un perfil existente como default' },
+      { label: 'Cancelar', value: 'cancel', hint: 'No escribe archivos' },
+    ], {
+      ...promptOptions,
+      name: 'agent profile action',
+      flag: '--id',
+    });
+
+    if (action.value === 'cancel') {
+      throw new Error(formatError('ai agent set canceled. No files were written.'));
+    }
+
+    if (action.value === 'change-default') {
+      const profile = await selectOption(`Elegí el perfil ${role} default`, existingProfiles.map((item) => ({
+        label: resolveAgentProfileDisplayName(item),
+        value: item.id,
+        hint: `${item.provider} ${item.model || '(no model)'}`,
+        default: item.default === true,
+        raw: item,
+      })), {
+        ...promptOptions,
+        name: 'agent profile default',
+        flag: '--id',
+      });
+      return {
+        ...next,
+        id: profile.raw.id,
+        provider: profile.raw.provider,
+        model: profile.raw.model,
+        displayName: profile.raw.displayName,
+        label: profile.raw.label,
+        context: profile.raw.context,
+        defaultProfile: true,
+      };
+    }
+
+    if (action.value === 'update-current') {
+      const current = existingProfiles.find((profile) => profile.default) || existingProfiles[0];
+      next = {
+        ...next,
+        id: current.id,
+        context: next.context || current.context,
+        label: next.label || current.label,
+      };
+    }
+
+    if (action.value === 'create-new') {
+      const id = await promptText(`ID para el nuevo perfil ${role}`, {
+        ...promptOptions,
+        name: 'agent profile id',
+        flag: '--id',
+        placeholder: `${role}-gpt-55`,
+      });
+      next.id = id;
+      next.defaultProfile = options.defaultProfile === true;
+    }
+  }
+
+  if (!next.provider) {
+    const selectedProvider = await selectOption(`Elegí un provider para ${role}`, buildAgentProviderChoices(repoRoot, options), {
+      ...promptOptions,
+      name: 'agent provider',
+      flag: '--provider',
+    });
+    next.provider = selectedProvider.value;
+  }
+
+  if (!next.model) {
+    const selectedModel = await selectOption(`Elegí un modelo para ${role}`, buildAgentModelChoices(next.provider, role), {
+      ...promptOptions,
+      name: 'agent model',
+      flag: '--model',
+    });
+    if (selectedModel.value === 'custom') {
+      const model = await promptText(`Modelo custom para ${next.provider}`, {
+        ...promptOptions,
+        name: 'agent model',
+        flag: '--model',
+        placeholder: `${next.provider}-model-id`,
+      });
+      const displayName = await promptText('Nombre visible del modelo custom', {
+        ...promptOptions,
+        name: 'agent model display name',
+        flag: '--display-name',
+        initialValue: model,
+        required: false,
+      });
+      next.model = model;
+      next.displayName = next.displayName || displayName || model;
+    } else {
+      next.model = selectedModel.value;
+      next.displayName = next.displayName || selectedModel.raw.displayName;
+    }
+  }
+
+  return {
+    ...next,
+    interactiveResolved: true,
+  };
+}
+
 function formatAgentProfile(profile) {
   const lines = [
     `ID: ${profile.id || 'default'}`,
@@ -2464,25 +2688,156 @@ function formatAgentProfileDryRun(repoRoot, result) {
   ].join('\n');
 }
 
-function runAgent(repoRoot, options = {}) {
+function agentDoctorSymbol(status) {
+  if (status === 'error') return 'x';
+  if (status === 'warning') return '!';
+  return 'OK';
+}
+
+function formatAgentDoctorReport(report) {
+  const lines = [
+    'Quiver Agent Doctor',
+    '',
+    'Checks',
+  ];
+
+  if (report.checks.length === 0) {
+    lines.push('  ! No agent profiles configured');
+  }
+
+  for (const check of report.checks) {
+    const target = `${check.role}/${check.id}`;
+    const model = check.model || '(no model)';
+    const provider = check.provider || '(no provider)';
+    const defaultText = check.default ? ' default' : '';
+    lines.push(`  ${agentDoctorSymbol(check.status)} ${target}: provider=${provider} model=${model}${defaultText}`);
+    for (const finding of check.findings.filter((item) => item.severity !== 'info')) {
+      lines.push(`    - ${finding.severity}: ${finding.message}`);
+    }
+  }
+
+  lines.push('', 'Suggested fixes');
+  if (report.suggestedFixes.length === 0) {
+    lines.push('  OK No fixes suggested.');
+  } else {
+    for (const fix of report.suggestedFixes) {
+      lines.push(`  - ${fix}`);
+    }
+  }
+  lines.push('');
+  lines.push(`Summary: profiles=${report.summary.profiles} errors=${report.summary.errors} warnings=${report.summary.warnings} info=${report.summary.info}`);
+  lines.push('');
+  return `${lines.join('\n')}\n`;
+}
+
+function formatAgentRepairPlan(plan) {
+  const lines = [
+    'AI agent profile repair dry-run',
+    '- Writes: none',
+    '',
+    'Proposed changes',
+  ];
+
+  if (plan.changes.length === 0) {
+    lines.push('  OK No safe repairs found.');
+  }
+
+  for (const change of plan.changes) {
+    lines.push(`  - ${change.role}/${change.profileId}: ${change.reason}`);
+    lines.push(`    Before: model=${change.before.model || '(not set)'} displayName=${change.before.displayName || '(not set)'}`);
+    lines.push(`    After: model=${change.after.model || '(not set)'} displayName=${change.after.displayName || '(not set)'}`);
+  }
+
+  lines.push('');
+  return `${lines.join('\n')}\n`;
+}
+
+function buildModelsListReport(options = {}) {
+  const providerFilter = String(options.provider || '').trim().toLowerCase();
+  const providers = providerFilter
+    ? [listCatalogProviders().find((provider) => provider.id === providerFilter)].filter(Boolean)
+    : listCatalogProviders();
+
+  if (providerFilter && providers.length === 0) {
+    throw new Error(formatError(`unsupported provider filter '${options.provider}'. Supported providers: ${listCatalogProviders().map((provider) => provider.id).join(', ')}.`));
+  }
+
+  return {
+    catalogVersion: MODEL_CATALOG_VERSION,
+    lastUpdated: MODEL_CATALOG_LAST_UPDATED,
+    note: 'Models are known by Quiver. This does not guarantee provider account access.',
+    providers: providers.map((provider) => ({
+      id: provider.id,
+      displayName: provider.displayName,
+      models: getKnownModelsForProvider(provider.id).map((model) => ({
+        id: model.id,
+        displayName: model.displayName,
+        recommendedFor: model.recommendedFor,
+        costTier: model.costTier,
+        qualityTier: model.qualityTier,
+        stability: model.stability,
+        custom: model.custom === true,
+      })),
+    })),
+  };
+}
+
+function formatModelsListReport(report) {
+  const lines = [
+    'AI models known by Quiver',
+    `Catalog version: ${report.catalogVersion}`,
+    `Last updated: ${report.lastUpdated}`,
+    'Note: Models are known by Quiver; provider account access is not guaranteed.',
+    '',
+  ];
+
+  for (const provider of report.providers) {
+    lines.push(`${provider.displayName} (${provider.id})`);
+    for (const model of provider.models) {
+      const roles = model.recommendedFor.length > 0 ? model.recommendedFor.join(', ') : 'custom/manual';
+      lines.push(`  - ${model.id} (${model.displayName})`);
+      lines.push(`    roles: ${roles}`);
+      lines.push(`    cost=${model.costTier} quality=${model.qualityTier} stability=${model.stability}`);
+    }
+    lines.push('');
+  }
+
+  return `${lines.join('\n')}\n`;
+}
+
+function runModelsList(options = {}) {
+  const report = buildModelsListReport({
+    provider: options.provider,
+  });
+  if (options.json) {
+    process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
+  } else {
+    process.stdout.write(formatModelsListReport(report));
+  }
+  return {
+    task: 'models',
+    command: 'list',
+    report,
+  };
+}
+
+async function runAgent(repoRoot, options = {}) {
   const command = String(options.command || '').trim().toLowerCase();
 
   if (command === 'set') {
     if (!options.role) {
-      throw new Error(formatError('missing agent role. Use: npx create-quiver ai agent set <planner|executor|reviewer|doctor> --provider <provider>'));
+      throw new Error(formatError('missing agent role. Use: npx create-quiver ai agent set <planner|executor|reviewer|doctor> --provider <provider> --model <model>'));
     }
-    if (!options.provider) {
-      throw new Error(formatError('ai agent set requires --provider. Supported providers: codex, claude, gemini.'));
-    }
+    const profileOptions = await resolveInteractiveAgentSetOptions(repoRoot, options);
     if (options.dryRun) {
-      const preview = buildAgentProfileState(repoRoot, options.role, {
-        context: options.context,
-        default: options.defaultProfile,
-        displayName: options.displayName,
-        id: options.id,
-        label: options.label,
-        model: options.model,
-        provider: options.provider,
+      const preview = buildAgentProfileState(repoRoot, profileOptions.role, {
+        context: profileOptions.context,
+        default: profileOptions.defaultProfile,
+        displayName: profileOptions.displayName,
+        id: profileOptions.id,
+        label: profileOptions.label,
+        model: profileOptions.model,
+        provider: profileOptions.provider,
       });
       process.stdout.write(formatAgentProfileDryRun(repoRoot, preview));
       return {
@@ -2493,14 +2848,35 @@ function runAgent(repoRoot, options = {}) {
         filePath: path.relative(repoRoot, preview.filePath).split(path.sep).join('/'),
       };
     }
-    const result = setAgentProfile(repoRoot, options.role, {
-      context: options.context,
-      default: options.defaultProfile,
-      displayName: options.displayName,
-      id: options.id,
-      label: options.label,
-      model: options.model,
-      provider: options.provider,
+    if (profileOptions.interactiveResolved === true) {
+      const preview = buildAgentProfileState(repoRoot, profileOptions.role, {
+        context: profileOptions.context,
+        default: profileOptions.defaultProfile,
+        displayName: profileOptions.displayName,
+        id: profileOptions.id,
+        label: profileOptions.label,
+        model: profileOptions.model,
+        provider: profileOptions.provider,
+      });
+      const ux = createCommandUx(profileOptions);
+      ux.summary([
+        { label: 'Role', value: preview.profile.role },
+        { label: 'Provider', value: preview.profile.provider },
+        { label: 'Model', value: preview.profile.model || '(not set)' },
+        { label: 'Display name', value: resolveAgentProfileDisplayName(preview.profile) || '(not set)' },
+        { label: 'Default', value: preview.profile.default === true ? 'yes' : 'no' },
+      ], {
+        title: 'Profile to save',
+      });
+    }
+    const result = setAgentProfile(repoRoot, profileOptions.role, {
+      context: profileOptions.context,
+      default: profileOptions.defaultProfile,
+      displayName: profileOptions.displayName,
+      id: profileOptions.id,
+      label: profileOptions.label,
+      model: profileOptions.model,
+      provider: profileOptions.provider,
     });
     process.stdout.write('AI agent profile saved\n');
     process.stdout.write(formatAgentProfile(result.profile));
@@ -2526,8 +2902,8 @@ function runAgent(repoRoot, options = {}) {
           ? `agent profile '${options.role}/${options.id}' is not configured.`
           : `agent profile '${options.role}' is not configured.`,
         impact: 'Quiver will fall back to default provider behavior and may use the wrong model/cost profile.',
-        fix: `Configure the ${options.role} profile with a supported provider and optional model label.`,
-        nextCommand: `npx create-quiver ai agent set ${options.role} --provider <provider> --model <label>`,
+        fix: `Configure the ${options.role} profile with a supported provider and technical model id.`,
+        nextCommand: `npx create-quiver ai agent set ${options.role} --provider <provider> --model <model-id>`,
       }));
     }
     process.stdout.write(formatAgentProfile(profile));
@@ -2549,7 +2925,44 @@ function runAgent(repoRoot, options = {}) {
     };
   }
 
-  throw new Error(formatError(`unsupported ai agent subcommand: ${command}. Supported tasks: set, list, show`));
+  if (command === 'doctor') {
+    const report = buildAgentProfileDoctorReport(repoRoot);
+    if (options.json) {
+      process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
+    } else {
+      process.stdout.write(formatAgentDoctorReport(report));
+    }
+    if (report.summary.errors > 0) {
+      process.exitCode = 1;
+    }
+    return {
+      task: 'agent',
+      command,
+      report,
+    };
+  }
+
+  if (command === 'repair') {
+    if (options.dryRun !== true) {
+      throw new Error(formatError('ai agent repair only supports --dry-run for now. No files were written.'));
+    }
+    const plan = buildAgentProfileRepairPlan(repoRoot, {
+      includeState: options.json === true,
+    });
+    if (options.json) {
+      process.stdout.write(`${JSON.stringify(plan, null, 2)}\n`);
+    } else {
+      process.stdout.write(formatAgentRepairPlan(plan));
+    }
+    return {
+      task: 'agent',
+      command,
+      dryRun: true,
+      plan,
+    };
+  }
+
+  throw new Error(formatError(`unsupported ai agent subcommand: ${command}. Supported tasks: set, list, show, doctor, repair`));
 }
 
 async function runGitHubTask(repoRoot, options = {}, mode = 'pr') {
@@ -2718,6 +3131,7 @@ module.exports = {
   formatSpecDryRunReport,
   normalizeTimeout,
   readTextFile,
+  resolveInteractiveAgentSetOptions,
   runAgent,
   runActiveSlice,
   runDoctor,
@@ -2726,6 +3140,7 @@ module.exports = {
   runLifecycleResume,
   runLifecycleRun,
   runLifecycleStatus,
+  runModelsList,
   runExport,
   runInspect,
   runPromptSlice,
