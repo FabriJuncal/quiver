@@ -6,7 +6,17 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
-- Planned v30 interactive CLI UX and agent selection under `specs/quiver-v30-interactive-cli-ux-agent-selection/`.
+- Implemented v30 interactive CLI UX and agent selection under `specs/quiver-v30-interactive-cli-ux-agent-selection/`.
+- Multiple named agent profiles for Planner, Executor, Reviewer, and Doctor, including display names, defaults, selectors, and model labels.
+- Visible progress output for planner, reviewer, executor, execution-plan, and PR flows in human TTY mode.
+- `doctor --json` with a stable parseable diagnostics contract, backed by the same findings as the human `Quiver Doctor` output.
+- `init --interactive`, `spec create --interactive`, and `--methodology wdd-sdd` for guarded human choices.
+
+### Changed
+
+- Provider model selection now affects real provider invocations when supported, and blocks safely when a selected model cannot be applied.
+- CLI output now follows the shared Quiver palette and hierarchy while keeping `--json`, CI, no-TTY, and `--no-color` output clean.
+- Command docs now cover human-vs-machine output, selectors, Doctor output, and cross-platform usage.
 
 ## [0.14.1] - 2026-05-26
 

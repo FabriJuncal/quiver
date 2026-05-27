@@ -1,12 +1,12 @@
 # Status - Quiver v30 Interactive CLI UX and Agent Selection
 
-**Overall status:** Planned
+**Overall status:** Release-ready
 **Created:** 2026-05-26
-**Current slice:** slice-07 completed; slice-08 ready
+**Current slice:** slice-08 completed; ready for PR/release publication
 
 ## Summary
 
-This spec is planned to harden Quiver's CLI UX after dogfooding showed that long-running IA commands can look frozen and that selector/model behavior needs a production-grade contract. The work focuses on visible progress, Quiver colors, role-specific agent selectors, non-interactive fallbacks, model invocation correctness, doctor output, and cross-platform release readiness.
+This spec hardens Quiver's CLI UX after dogfooding showed that long-running IA commands can look frozen and that selector/model behavior needs a production-grade contract. The work adds visible progress, Quiver colors, role-specific agent selectors, non-interactive fallbacks, model invocation correctness, doctor output, interactive init/spec creation, and cross-platform release readiness.
 
 ## Slice Status
 
@@ -20,12 +20,12 @@ This spec is planned to harden Quiver's CLI UX after dogfooding showed that long
 | slice-05-executor-pr-progress-flows | Completed | Executor/execute-plan/PR progress, executor selector, ready-slice selector, and executor model propagation added. |
 | slice-06-doctor-visual-json-contract | Completed | Doctor now renders `Quiver Doctor`/`Checks`/`Suggested fixes` from a shared JSON-compatible diagnostics model. |
 | slice-07-interactive-init-spec-create | Completed | `init --interactive` and `spec create --interactive` now use guarded selectors, methodology `wdd-sdd`, and summaries before writes. |
-| slice-08-tests-docs-cross-platform-release | Planned | Tests, docs, smokes, package readiness. |
+| slice-08-tests-docs-cross-platform-release | Completed | Full tests, smokes, package dry-run, docs, evidence, and release readiness completed. |
 
 ## Current Blockers
 
-- None. Implementation must begin with `slice-00`.
+- None.
 
 ## Next Step
 
-Continue with `slice-08-tests-docs-cross-platform-release`.
+Open the PR if requested, then publish the package only after explicit human release approval.

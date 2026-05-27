@@ -10,6 +10,7 @@ This document is the canonical command reference for the orchestration roadmap.
 | Command | Purpose | OS | Since | Example |
 |---------|---------|----|-------|---------|
 | `npx create-quiver init --name "<project>"` | Creates the default AI-first Quiver contract for a project | macOS, Linux, Windows | current | `npx create-quiver init --name "{{PROJECT_NAME}}"` |
+| `npx create-quiver init --interactive` | Guides project mode, methodology `wdd-sdd`, init profile, and agent-profile next steps without running providers | macOS, Linux, Windows | next | `npx create-quiver init --interactive` |
 | `npx create-quiver --name "<project>"` | Compatibility alias for the recommended init flow | macOS, Linux, Windows | current | `npx create-quiver --name "{{PROJECT_NAME}}"` |
 | `npx create-quiver --version` | Prints the installed CLI version | macOS, Linux, Windows | current | `npx create-quiver --version` |
 | `npx create-quiver --help` | Lists all public commands with descriptions, key options, and recommended examples | macOS, Linux, Windows | current | `npx create-quiver --help` |
@@ -21,6 +22,7 @@ This document is the canonical command reference for the orchestration roadmap.
 | `quiver:flow` | Runs the guided flow entrypoint through the generated npm script | macOS, Linux, Windows | v0.11 | `npm run quiver:flow` |
 | `quiver:prepare` | Runs guided setup diagnostics and context preparation | macOS, Linux, Windows | v0.10 | `npm run quiver:prepare -- --dry-run --provider codex` |
 | `quiver:doctor` | Validates the Quiver contract and reports layout or migration guidance | macOS, Linux, Windows | v0.8 | `npm run quiver:doctor` |
+| `quiver:doctor -- --json` | Emits the Doctor checks and suggested fixes as stable machine-readable JSON | macOS, Linux, Windows | next | `npm run quiver:doctor -- --json` |
 | `quiver:doctor -- --fix --dry-run` | Previews safe non-destructive repairs without writing files | macOS, Linux, Windows | v0.11 | `npm run quiver:doctor -- --fix --dry-run` |
 | `quiver:doctor -- --fix` | Applies safe idempotent repairs after review | macOS, Linux, Windows | v0.11 | `npm run quiver:doctor -- --fix` |
 | `quiver:evidence -- run -- <command>` | Captures command validation evidence with exit code, duration, redacted/truncated output, and a local Markdown record | macOS, Linux, Windows | v0.11 | `npm run quiver:evidence -- run -- npm test` |
@@ -66,6 +68,7 @@ This document is the canonical command reference for the orchestration roadmap.
 | `quiver:ai:pr` | Validates `gh`, reads `pr.md`, prints a PR plan, and creates a PR only with `--create` | macOS, Linux, Windows | v0.10 | `npm run quiver:ai:pr -- --dry-run --input specs/<spec>/pr.md --ssh-host-alias github-work --identity-file ~/.ssh/github-work` |
 | `quiver:ai:pr -- --review` | Opens `pr.md` for human review and rebuilds the PR plan from the edited body | macOS, Linux, Windows | next | `npm run quiver:ai:pr -- --review --dry-run --input specs/<spec>/pr.md` |
 | `quiver:spec:create` | Creates the real spec tree from the reviewed approved technical plan | macOS, Linux, Windows | v0.11 | `npm run quiver:spec:create -- --dry-run` |
+| `quiver:spec:create -- --interactive` | Guides methodology `wdd-sdd`, approved technical-plan input, and direct-vs-review mode before writing | macOS, Linux, Windows | next | `npm run quiver:spec:create -- --interactive` |
 | `quiver:spec:create -- --review --interactive` | Reviews the generated spec package preview and asks before writing files | macOS, Linux, Windows | next | `npm run quiver:spec:create -- --review --interactive` |
 | `quiver:spec:start` | Creates or reuses the dedicated worktree for one spec | macOS, Linux, Windows | v0.10 | `npm run quiver:spec:start -- specs/<spec>` |
 | `quiver:spec:status` | Shows spec worktree, branch, `slice-00`, and pending slices | macOS, Linux, Windows | v0.10 | `npm run quiver:spec:status -- specs/<spec>` |
@@ -99,8 +102,9 @@ This document is the canonical command reference for the orchestration roadmap.
 | `--label <label>` | `ai agent set` | Store a display label for the profile |
 | `--dry-run` | init, analyze, migrate, prepare, spec, demo, AI, PR, worktree, and repair commands that support preview | Preview planned actions without writes, provider execution, PR creation, or irreversible changes |
 | `--with-planner` | `ai prepare-context`, `ai plan`, `spec create` | Enable planner-assisted behavior only on commands that explicitly support it |
-| `--interactive` | `ai prepare-context`, `ai plan`, `spec create`, `ai pr` | Enable human prompts for confirmation or choices |
+| `--interactive` | `init`, `ai prepare-context`, `ai plan`, `spec create`, `ai pr`, `ai execute-slice`, `ai execute-plan` | Enable human prompts for confirmation or choices |
 | `--review` | `ai prepare-context`, `ai plan`, `spec create`, `ai pr` | Open or prepare human review before persistent writes |
+| `--methodology wdd-sdd` | `init`, `spec create` | Select the only supported methodology exposed by guided flows |
 | `--no-color` | all human-output commands | Disable ANSI color in human output |
 | `--print-prompt` | `ai onboard`, `ai prepare-context`, `ai plan`, `ai revise`, `ai review-plan` | Print the exact provider prompt and exit without executing provider CLIs or requiring provider auth |
 | `--role <planner\|executor\|reviewer\|doctor>` | `ai onboard`, `ai plan`, `ai revise`, `ai execute-slice`, `ai execute-plan` | Select an AI role; execution requires executor |
@@ -132,6 +136,8 @@ This document is the canonical command reference for the orchestration roadmap.
 - `quiver:ai:prepare-context -- --dry-run` previews deterministic docs-only context drafts, diff snippets, assumptions, risks, contradictions, and omitted paths. Write mode stores snapshots under `.quiver/runs/<run-id>/snapshots/` and preserves human-authored content by appending or refreshing a Quiver-managed block.
 - `quiver:ai:prepare-context -- --with-planner` invokes a planner provider and only accepts a validated docs-only proposal. Use `--print-prompt` for external planners, `--review` to inspect the proposal before writing, and `--interactive` to require confirmation.
 - UX flags are centralized: `--with-planner`, `--interactive`, and `--review` are accepted only by commands where they add real behavior. Read-only inspection commands reject them with an actionable next step. `spec create --with-planner` consumes an already approved planner output and does not call a provider again. `--json` is incompatible with `--interactive` and `--review`.
+- `doctor --json` emits the same checks and suggested fixes as human `Quiver Doctor` output without colors, prompts, spinners, or prose.
+- `init --interactive` and `spec create --interactive` are human-only wrappers. They fail in no-TTY/CI/JSON and always keep `WDD + SDD` as the only methodology option.
 - Quiver human output uses the palette `#86C8F2`, `#6BADEB`, `#7F9EE8`, `#9B82E6`, and `#D56AB0`; respect `--no-color`, `NO_COLOR`, CI, and no-TTY environments.
 - `quiver:flow` reports the detected package manager and the matching generated project script, for example `npm run quiver:flow`, `pnpm run quiver:flow`, `yarn run quiver:flow`, or `bun run quiver:flow`.
 - `quiver:ai:agent -- set ... --dry-run` previews provider/model profile changes without writing `.quiver/agents/profiles.json`.

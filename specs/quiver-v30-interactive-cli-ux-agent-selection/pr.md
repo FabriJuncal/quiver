@@ -81,7 +81,14 @@ This is a CLI framework change. Run command-level tests and smoke commands from 
 
 ## Evidence
 
-- To be filled by implementation slices.
+- `node --test tests/**/*.test.js` passed: 449 tests.
+- `npm run smoke:create-quiver` passed.
+- `npm run smoke:doctor-fixtures` passed.
+- `npm run smoke:guided-workflow` passed.
+- `npm run package:quiver` passed.
+- `npm pack --dry-run` passed.
+- `git diff --check` passed.
+- `node bin/create-quiver.js spec validate specs/quiver-v30-interactive-cli-ux-agent-selection` passed.
 
 ## Rollback
 
@@ -92,3 +99,5 @@ Revert slice commits in reverse order. The existing deterministic and planner-as
 - Spinners and colors must not leak into machine-readable output.
 - Displayed model names must reflect real provider invocation semantics.
 - Interactive selectors must remain opt-in and script-safe.
+- Live provider smoke tests depend on installed/authenticated local provider CLIs and should be dogfooded before announcing a release broadly.
+- This PR prepares the package for release but does not publish to npm.

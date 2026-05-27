@@ -2,7 +2,7 @@
 
 ## Summary
 
-This report starts with documentation-only evidence for `slice-00`. Product implementation evidence must be appended by each later slice.
+This report records the evidence for every v30 slice, from the documentation foundation through final release readiness.
 
 ## slice-00 - Spec foundation
 
@@ -25,7 +25,7 @@ This report starts with documentation-only evidence for `slice-00`. Product impl
 
 ## Later Slices
 
-Each implementation slice must append:
+Each implementation slice appended:
 
 - commands executed;
 - tests or smokes run;
@@ -185,3 +185,29 @@ Each implementation slice must append:
 
 - The `init --interactive` validation-only path delegates to `doctor`, which still requires Quiver initialization evidence in the target project.
 - The spec-create approved-input selector currently exposes the resolved approved technical-plan input. Wider selection across historical approved inputs is intentionally deferred until the approval store defines that as a stable contract.
+
+## slice-08 - Tests, docs, cross-platform smokes, and release readiness
+
+### Completed
+
+- Synchronized release-facing documentation for the v30 CLI UX behavior.
+- Updated command templates with `init --interactive`, `doctor --json`, `spec create --interactive`, `--methodology wdd-sdd`, and interactive human-output guidance.
+- Updated `README.md`, `README_FOR_AI.md`, `ROADMAP.md`, and `CHANGELOG.md` with the implemented v30 behavior.
+- Closed the v30 spec metadata and PR body with final validation evidence.
+- Confirmed release readiness without publishing to npm.
+
+### Validation
+
+- `node --test tests/**/*.test.js` passed: 449 tests.
+- `npm run smoke:create-quiver` passed.
+- `npm run smoke:guided-workflow` passed.
+- `npm run smoke:doctor-fixtures` passed: 13 fixture states.
+- `npm run package:quiver` passed and produced package-smoke evidence for `create-quiver-0.14.1.tgz`.
+- `npm pack --dry-run` passed.
+- `git diff --check` passed.
+- `node bin/create-quiver.js spec validate specs/quiver-v30-interactive-cli-ux-agent-selection` passed.
+
+### Risks
+
+- Live provider smoke tests were not executed against every external IA CLI because those checks depend on local provider installation and authentication.
+- Cross-platform behavior is covered by documented script-safe modes and automated command contracts, but final human terminal rendering should still be dogfooded on Windows PowerShell, Git Bash, WSL, macOS, and Linux before broad announcement.
