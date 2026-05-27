@@ -130,6 +130,7 @@ This document is the canonical command reference for the orchestration roadmap.
 ## Notes
 
 - Add new rows here only when a command is officially shipped.
+- `npx --yes create-quiver@latest` runs Quiver from npm's execution cache and does not install it into the project `node_modules`. Install `create-quiver` as a `devDependency` only when the team needs a pinned local workflow tool.
 - The `quiver` binary is an alias to the same package CLI after local installation. Keep `npx create-quiver` as the bootstrap command.
 - Keep the table concise and cross-platform.
 - Shared graph library: `src/create-quiver/lib/slice-graph.js`.

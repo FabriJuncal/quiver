@@ -2,6 +2,25 @@
 
 Usá `npx --yes create-quiver@latest --help` para ver la lista viva de comandos soportados por la versión instalada.
 
+## npx vs instalación local
+
+Quiver está pensado para ejecutarse principalmente con `npx`:
+
+```bash
+npx --yes create-quiver@latest <comando>
+```
+
+En ese modo npm descarga o reutiliza el CLI desde su caché y no lo instala en `node_modules`. Eso es normal: `create-quiver` es una herramienta de workflow, no una dependencia runtime de la app.
+
+Instalalo como dependencia de desarrollo solo si querés fijar una versión para el equipo:
+
+```bash
+npm install --save-dev create-quiver
+npx create-quiver <comando>
+```
+
+Más detalle: [Instalación y uso con npx](../getting-started/installation.md).
+
 ## Configuración inicial
 
 | Comando | Para qué sirve |
