@@ -49,6 +49,8 @@ Reglas:
 | `ai plan` | si | si | si | El planner ya es implicito; `--with-planner` se acepta por consistencia. |
 | `spec create` | si | si | si | Consume un plan tecnico aprobado del planner; no vuelve a ejecutar proveedor. Review previsualiza el paquete antes de escribir. |
 | `ai pr` | no | si | si | Review edita `pr.md`; interactive confirma `gh pr create`. |
+| `ai execute-slice` | no | si | no | Interactive puede seleccionar un slice listo y un executor configurado. |
+| `ai execute-plan` | no | si | no | Interactive queda reservado para estrategia/seleccion; JSON sigue limpio. |
 | `flow`, `next`, `graph` | no | no | no | Lectura/inspeccion; no deben exponer flags decorativas. |
 | `ai inspect`, `ai export`, `ai specs list`, `ai slices list`, `ai trace report` | no | no | no | Superficies read-only o machine-readable. |
 

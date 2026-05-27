@@ -78,8 +78,8 @@
     "Do not stream noisy provider output unless --verbose is introduced and tested."
   ],
   "estimated_hours": 12,
-  "status": "planned",
+  "status": "completed",
   "blocked_reason": null,
-  "actual_hours": null,
-  "completed_at": null
+  "actual_hours": 7,
+  "completed_at": "2026-05-27"
 }

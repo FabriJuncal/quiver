@@ -1,7 +1,13 @@
 const fs = require('node:fs');
 const path = require('node:path');
 
-const { resolveProfileProvider } = require('../agent-profiles');
+const {
+  getAgentProfile,
+  getAgentProfileById,
+  resolveAgentProfileDisplayName,
+  resolveProfileProvider,
+} = require('../agent-profiles');
+const { createUx } = require('../cli/ux');
 const { branchDelete, runGit, statusPorcelain, worktreeAdd, worktreePrune, worktreeRemove } = require('../git');
 const { withLock } = require('../locks');
 const { safeBranchName, worktreesRootForRepo } = require('../slice');
@@ -17,6 +23,71 @@ function formatError(message) {
 
 function toRelativePath(repoRoot, filePath) {
   return path.relative(repoRoot, filePath).split(path.sep).join('/');
+}
+
+function resolveExecutorRuntimeProfile(repoRoot, options = {}) {
+  const explicitProvider = options.providerExplicit === true || (options.provider && options.providerExplicit !== false);
+  const explicitModel = String(options.model || '').trim();
+
+  if (explicitProvider) {
+    const provider = String(options.provider || 'codex').trim().toLowerCase();
+    return {
+      provider,
+      model: explicitModel,
+      displayName: explicitModel || provider,
+      profile: null,
+    };
+  }
+
+  const profile = options.executorProfile
+    ? getAgentProfileById(repoRoot, 'executor', options.executorProfile)
+    : getAgentProfile(repoRoot, 'executor');
+  const provider = profile?.provider || resolveProfileProvider(repoRoot, options.role || 'executor', 'codex');
+  const model = explicitModel || profile?.model || '';
+
+  return {
+    provider,
+    model,
+    displayName: profile ? resolveAgentProfileDisplayName(profile) : (model || provider),
+    profile,
+  };
+}
+
+function createCommandUx(options = {}) {
+  if (options.ux) {
+    return options.ux;
+  }
+
+  return createUx({
+    env: options.env || process.env,
+    interactive: options.interactive,
+    json: options.json,
+    noColor: options.noColor,
+    prompts: options.prompts,
+    spinner: options.spinner,
+    stdinIsTTY: options.stdinIsTTY,
+    stdoutIsTTY: options.stdoutIsTTY,
+    stderrIsTTY: options.stderrIsTTY,
+    write: options.write,
+  });
+}
+
+function shouldShowHumanProgress(ux, options = {}) {
+  return options.progress !== false
+    && options.dryRun !== true
+    && options.json !== true
+    && ux?.mode?.decoration === true;
+}
+
+async function runWithProgress({ ux, enabled, message, successMessage, failureMessage, run }) {
+  if (!enabled) {
+    return run();
+  }
+
+  return ux.withSpinner(message, run, {
+    successMessage,
+    failureMessage,
+  });
 }
 
 function normalizeExecutionMode(mode) {
@@ -316,12 +387,14 @@ function formatHumanExecutionPlan(report) {
 
 function formatExecutePlanDryRun(report, options = {}) {
   const provider = options.resolvedProvider || options.provider || 'codex';
+  const model = options.resolvedModel || options.model || '';
   const commitEnabled = options.commit === true;
   const executionMode = normalizeExecutionMode(options.mode || options.executionMode);
   const lines = [
     'AI execute-plan dry-run',
     `Execution mode: ${executionMode}`,
     `Provider: ${provider}`,
+    model ? `Model: ${model}` : '',
     `Commit after each slice: ${commitEnabled ? 'enabled' : 'disabled'}`,
     `Total slices: ${report.summary.total_slices}`,
     '',
@@ -334,6 +407,9 @@ function formatExecutePlanDryRun(report, options = {}) {
       `--slice ${JSON.stringify(slice.slice_path)}`,
       `--provider ${provider}`,
     ];
+    if (model) {
+      parts.push(`--model ${JSON.stringify(model)}`);
+    }
     if (commitEnabled) {
       parts.push('--commit');
     }
@@ -363,7 +439,7 @@ function formatExecutePlanDryRun(report, options = {}) {
     }
   }
 
-  return `${lines.join('\n')}\n`;
+  return `${lines.filter(Boolean).join('\n')}\n`;
 }
 
 function buildRecoveryGuidance(ref, workspaces = []) {
@@ -455,8 +531,11 @@ async function runSequentialGroup(repoRoot, level, group, options = {}) {
         commit: true,
         context: options.context,
         dryRun: false,
+        executorProfile: options.executorProfile,
         provider: options.provider,
         providerExplicit: options.providerExplicit,
+        progress: false,
+        model: options.model,
         role: options.role,
         slice: slice.slice_path,
         skipWorktreeBranchCheck: true,
@@ -507,8 +586,11 @@ async function runParallelGroupInWorktrees(repoRoot, level, group, options = {})
         commit: true,
         context: options.context,
         dryRun: false,
+        executorProfile: options.executorProfile,
         provider: options.provider,
         providerExplicit: options.providerExplicit,
+        progress: false,
+        model: options.model,
         role: options.role,
         slice: workspace.slice.slice_path,
         skipWorktreeBranchCheck: true,
@@ -557,13 +639,15 @@ async function runExecutePlan(repoRoot, options = {}) {
   const report = collectExecutionPlan(repoRoot, options);
   const execute = options.execute === true;
   const executionMode = normalizeExecutionMode(options.mode || options.executionMode);
-  const provider = options.providerExplicit === true || (options.provider && options.providerExplicit !== false)
-    ? options.provider
-    : resolveProfileProvider(repoRoot, options.role || 'executor', 'codex');
+  const runtimeProfile = resolveExecutorRuntimeProfile(repoRoot, options);
+  const provider = runtimeProfile.provider;
   const resolvedOptions = {
     ...options,
     mode: executionMode,
+    model: runtimeProfile.model,
     provider,
+    profile: runtimeProfile,
+    resolvedModel: runtimeProfile.model,
     resolvedProvider: provider,
   };
 
@@ -586,13 +670,27 @@ async function runExecutePlan(repoRoot, options = {}) {
   }
 
   const results = [];
+  const ux = createCommandUx(options);
+  const showProgress = shouldShowHumanProgress(ux, options);
+  if (showProgress) {
+    ux.heading(`Ejecutando plan de slices con ${runtimeProfile.displayName}`);
+    ux.check(`Plan cargado: ${report.summary.total_slices} slice${report.summary.total_slices === 1 ? '' : 's'}`);
+    ux.check(`Modo: ${executionMode}`);
+  }
 
   for (const level of report.ready_levels) {
     for (const group of level.execution_groups) {
       try {
-        const groupResults = executionMode === 'delegated' && group.mode === 'parallel' && group.slice_refs.length > 1
-          ? await runParallelGroupInWorktrees(repoRoot, level, group, resolvedOptions)
-          : await runSequentialGroup(repoRoot, level, group, resolvedOptions);
+        const groupResults = await runWithProgress({
+          ux,
+          enabled: showProgress,
+          message: `Ejecutando wave ${level.index}: ${group.slice_refs.join(', ')}`,
+          successMessage: `Wave ${level.index} completada`,
+          failureMessage: `Falló wave ${level.index}`,
+          run: () => (executionMode === 'delegated' && group.mode === 'parallel' && group.slice_refs.length > 1
+            ? runParallelGroupInWorktrees(repoRoot, level, group, resolvedOptions)
+            : runSequentialGroup(repoRoot, level, group, resolvedOptions)),
+        });
         results.push(...groupResults);
       } catch (error) {
         const wrapped = new Error(formatError(`ai execute-plan stopped at wave ${level.index} group ${group.slice_refs.join(', ')}: ${error.message || error}`));

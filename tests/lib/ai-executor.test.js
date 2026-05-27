@@ -12,6 +12,7 @@ const {
   resolveSliceJsonPath,
   runExecuteSlice,
 } = require('../../src/create-quiver/lib/ai/executor');
+const { setAgentProfile } = require('../../src/create-quiver/lib/agent-profiles');
 
 function writeFile(filePath, contents) {
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
@@ -231,6 +232,96 @@ test('runExecuteSlice dry-run does not execute the provider', async () => {
     assert.equal(report.role, 'executor');
     assert.equal(report.contextPack, 'slice');
     assert.equal(report.slice, 'slice-01-demo');
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('runExecuteSlice interactive mode selects a ready slice and executor profile', async () => {
+  const repo = createRepo();
+  const events = [];
+  const selected = [];
+  let capturedProvider = '';
+  let capturedOptions = null;
+
+  try {
+    setAgentProfile(repo.root, 'executor', {
+      id: 'mini',
+      provider: 'codex',
+      model: 'gpt-mini',
+      displayName: 'GPT Mini',
+      default: true,
+    });
+    setAgentProfile(repo.root, 'executor', {
+      id: 'sonnet',
+      provider: 'claude',
+      model: 'sonnet',
+      displayName: 'Sonnet',
+    });
+
+    const report = await runExecuteSlice(repo.root, {
+      allowDirty: true,
+      interactive: true,
+      stdoutIsTTY: true,
+      stdinIsTTY: true,
+      stderrIsTTY: true,
+      noColor: true,
+      env: { LANG: 'en_US.UTF-8' },
+      write: (text) => events.push(['write', text]),
+      promptSelect: async (message, options) => {
+        selected.push(message);
+        if (message.includes('Executor')) {
+          return options.find((option) => option.value === 'sonnet').value;
+        }
+        return options[0].value;
+      },
+      prompts: {
+        spinner() {
+          return {
+            start(message) {
+              events.push(['start', message]);
+            },
+            stop(message, code) {
+              events.push(['stop', message, code]);
+            },
+          };
+        },
+      },
+      runProviderFn: async (provider, options) => {
+        capturedProvider = provider;
+        capturedOptions = options;
+        fs.writeFileSync(path.join(repo.root, repo.allowedFile), 'module.exports = 2;\n');
+        return {
+          ok: true,
+          dryRun: false,
+          provider,
+          command: 'claude',
+          args: ['-p', '--model', 'sonnet'],
+          cwd: repo.root,
+          timeoutMs: 0,
+          promptTransport: { mode: 'stdin' },
+          exitCode: 0,
+          stdout: '',
+          stderr: '',
+          error: null,
+          preflight: { ok: true },
+        };
+      },
+    });
+
+    assert.equal(report.provider, 'claude');
+    assert.equal(capturedProvider, 'claude');
+    assert.equal(capturedOptions.model, 'sonnet');
+    assert.equal(capturedOptions.enforceModelSelection, true);
+    assert.deepEqual(selected, ['¿Qué slice querés ejecutar?', '¿Qué Executor querés usar?']);
+    assert.deepEqual(events.slice(0, 6), [
+      ['write', '◇ Ejecutando slice con Sonnet\n'],
+      ['write', '✓ Leyendo slice\n'],
+      ['write', '✓ Validando worktree\n'],
+      ['write', '✓ Preparando prompt\n'],
+      ['start', 'Ejecutando agente...'],
+      ['stop', 'Agente finalizado', undefined],
+    ]);
   } finally {
     repo.cleanup();
   }

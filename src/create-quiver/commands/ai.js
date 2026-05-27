@@ -2585,20 +2585,32 @@ async function runGitHubTask(repoRoot, options = {}, mode = 'pr') {
 async function runPr(repoRoot, options = {}) {
   const dryRun = options.dryRun === true;
   const create = options.create === true;
+  const ux = createCommandUx(options);
+  const showProgress = create && !dryRun && shouldShowHumanProgress(ux, options);
+  if (showProgress) {
+    ux.heading('Creando PR con gh');
+  }
   let preflight;
 
   try {
-    preflight = await (options.preflightFn || preflightGitHubPr)(repoRoot, {
-      remote: options.remote,
-      sshHostAlias: options.sshHostAlias,
-      identityFile: options.identityFile,
-      gitFlowGuidePath: options.gitFlowGuidePath,
-      ghCommand: options.ghCommand,
-      ghProbe: options.ghProbe,
-      ghAuthProbe: options.ghAuthProbe,
-      ghProbeArgs: options.ghProbeArgs,
-      ghAuthArgs: options.ghAuthArgs,
-      blockedBranches: options.blockedBranches,
+    preflight = await runProviderWithProgress({
+      ux,
+      enabled: showProgress,
+      message: 'Ejecutando preflight de GitHub...',
+      successMessage: 'Preflight de GitHub listo',
+      failureMessage: 'Falló preflight de GitHub',
+      run: () => (options.preflightFn || preflightGitHubPr)(repoRoot, {
+        remote: options.remote,
+        sshHostAlias: options.sshHostAlias,
+        identityFile: options.identityFile,
+        gitFlowGuidePath: options.gitFlowGuidePath,
+        ghCommand: options.ghCommand,
+        ghProbe: options.ghProbe,
+        ghAuthProbe: options.ghAuthProbe,
+        ghProbeArgs: options.ghProbeArgs,
+        ghAuthArgs: options.ghAuthArgs,
+        blockedBranches: options.blockedBranches,
+      }),
     });
   } catch (error) {
     throw annotateGitHubError(error, 'pr');
@@ -2613,6 +2625,9 @@ async function runPr(repoRoot, options = {}) {
       prBodyPath: options.prBodyPath,
       title: options.title,
     });
+    if (showProgress) {
+      ux.check('Cuerpo del PR preparado');
+    }
   } catch (error) {
     throw annotateGitHubError(error, 'pr');
   }
@@ -2657,8 +2672,15 @@ async function runPr(repoRoot, options = {}) {
 
   let result;
   try {
-    result = runGhPrCreate(plan, {
-      ghCreateRunner: options.ghCreateRunner,
+    result = await runProviderWithProgress({
+      ux,
+      enabled: showProgress,
+      message: 'Creando PR en GitHub...',
+      successMessage: 'PR creado',
+      failureMessage: 'Falló creación del PR',
+      run: () => runGhPrCreate(plan, {
+        ghCreateRunner: options.ghCreateRunner,
+      }),
     });
   } catch (error) {
     throw annotateGitHubError(error, 'pr');

@@ -29,6 +29,18 @@ const UX_FLAG_MATRIX = Object.freeze({
     review: true,
     note: 'PR body review and interactive PR inputs',
   }),
+  'ai execute-slice': Object.freeze({
+    withPlanner: false,
+    interactive: true,
+    review: false,
+    note: 'executor profile and ready-slice selection',
+  }),
+  'ai execute-plan': Object.freeze({
+    withPlanner: false,
+    interactive: true,
+    review: false,
+    note: 'execution strategy confirmation and future selectors',
+  }),
 });
 
 function formatError(message) {

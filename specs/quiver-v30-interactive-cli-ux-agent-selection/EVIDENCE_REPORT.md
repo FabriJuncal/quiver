@@ -118,3 +118,25 @@ Each implementation slice must append:
 
 - Some direct unit tests run with a TTY can display clack spinner artifacts in the test log, although captured no-TTY output remains clean. Slice-08 should include a final full-suite check and adjust test harness mode if needed.
 - Executor and PR command progress remains for slice-05.
+
+## slice-05 - Executor, execution-plan, and PR progress flows
+
+### Completed
+
+- Added executor runtime profile/model resolution and provider model enforcement to `ai execute-slice`.
+- Added interactive ready-slice selection for `ai execute-slice --interactive` when `--slice` is omitted.
+- Added interactive executor profile selection when multiple executor profiles are configured.
+- Added TTY progress for executor provider execution, validation commands, slice commits, execution-plan waves, GitHub preflight, and PR creation.
+- Added model visibility to execute-slice and execute-plan dry-runs.
+- Extended UX flag support to `ai execute-slice` and `ai execute-plan` for `--interactive`.
+- Preserved clean JSON/no-TTY behavior and existing PR/gh error propagation.
+
+### Validation
+
+- `node --test tests/lib/ai-executor.test.js tests/commands/ai-execute-slice.test.js tests/lib/ai-execution-plan.test.js tests/commands/ai-execute-plan.test.js tests/commands/ai-pr.test.js tests/commands/ux-flags.test.js` passed: 54 tests.
+- `git diff --check` passed.
+
+### Risks
+
+- `ai execute-plan --interactive` is now accepted for strategy UX consistency, but this slice does not yet add a full strategy selector. Future UX work can add it without changing the safety contract.
+- Direct TTY unit runs can still show spinner artifacts in logs; final suite validation should decide whether to force test I/O to no-TTY.
