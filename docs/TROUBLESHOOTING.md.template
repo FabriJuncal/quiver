@@ -5,6 +5,26 @@
 
 Use this guide when a first-run bootstrap or gate check fails. The recovery paths below follow the smoke-tested flows in this repository.
 
+## Quiver Does Not Appear In node_modules
+
+### Symptom
+
+- `npx --yes create-quiver@latest ...` works
+- `node_modules/create-quiver` does not exist
+- The project `package.json` does not list `create-quiver`
+
+### Recovery
+
+1. Treat this as expected when using `npx`; npm runs the CLI from its execution cache.
+2. Keep using `npx --yes create-quiver@latest` when you want the latest published Quiver without adding a project dependency.
+3. Install Quiver only when the team wants a pinned local workflow tool:
+
+```bash
+npm install --save-dev create-quiver
+```
+
+4. After a local install, use `npx create-quiver --help` or project scripts backed by the local `devDependency`.
+
 ## Path Normalization Failure
 
 ### Symptom

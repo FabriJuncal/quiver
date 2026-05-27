@@ -16,6 +16,7 @@
 
 <p align="center">
   <a href="#primeros-pasos">Primeros pasos</a> ·
+  <a href="./docs/getting-started/installation.md">Instalación</a> ·
   <a href="./docs/workflows/existing-project.md">Proyecto existente</a> ·
   <a href="./docs/workflows/full-ai-spec-to-pr.md">Flujo completo</a> ·
   <a href="./docs/reference/commands.md">Comandos</a> ·
@@ -123,6 +124,25 @@ La inicialización crea un contrato visible para humanos y agentes, más estado 
 - scripts `quiver:*` en `package.json`
 
 Las specs se crean después, cuando los criterios de aceptación y el plan técnico ya fueron aprobados.
+
+## Uso con npx vs instalación local
+
+El uso recomendado es ejecutar Quiver con `npx`:
+
+```bash
+npx --yes create-quiver@latest --help
+```
+
+Cuando usás `npx`, npm descarga y ejecuta el CLI desde su caché. Por eso Quiver puede funcionar aunque no aparezca dentro de `node_modules` del proyecto. Es esperado: `create-quiver` actúa como una herramienta de bootstrap y workflow, no como una dependencia runtime de tu app.
+
+Si tu equipo quiere fijar una versión dentro del proyecto, podés instalarlo como dependencia de desarrollo:
+
+```bash
+npm install --save-dev create-quiver
+npx create-quiver --help
+```
+
+La guía completa está en [Instalación y uso con npx](./docs/getting-started/installation.md).
 
 ## Elegí tu sistema operativo
 

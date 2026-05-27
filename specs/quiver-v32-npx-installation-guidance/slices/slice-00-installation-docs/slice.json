@@ -1,0 +1,75 @@
+{
+  "slice_id": "slice-00-installation-docs",
+  "ticket": "QUIVER-32-00",
+  "type": "documentation",
+  "title": "npx and node_modules installation guidance",
+  "objective": "Document why Quiver does not appear in project node_modules when executed with npx, and when local devDependency installation is appropriate.",
+  "description": "Adds public README guidance, a dedicated installation guide, troubleshooting coverage, generated docs template notes, and AI source-of-truth synchronization.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v32-npx-installation-guidance",
+    "branch_name": "docs/npx-node-modules-guidance"
+  },
+  "files": [
+    "README.md",
+    "README_FOR_AI.md",
+    "docs/getting-started/installation.md",
+    "docs/reference/commands.md",
+    "docs/TROUBLESHOOTING.md",
+    "docs/TROUBLESHOOTING.md.template",
+    "docs/COMMANDS.md.template"
+  ],
+  "expected_read_paths": [
+    "README_FOR_AI.md",
+    "README.md",
+    "docs/reference/commands.md",
+    "docs/TROUBLESHOOTING.md.template",
+    "docs/COMMANDS.md.template"
+  ],
+  "allowed_write_paths": [
+    "README.md",
+    "README_FOR_AI.md",
+    "docs/getting-started/installation.md",
+    "docs/reference/commands.md",
+    "docs/TROUBLESHOOTING.md",
+    "docs/TROUBLESHOOTING.md.template",
+    "docs/COMMANDS.md.template",
+    "specs/quiver-v32-npx-installation-guidance/**"
+  ],
+  "depends_on": [],
+  "parallel_safe": "yes",
+  "parallel_safe_reason": "This is the only documentation slice in the spec.",
+  "must": [
+    "Explain that npx executes Quiver from npm's execution cache.",
+    "Explain why node_modules is not populated by npx usage.",
+    "Explain when to install create-quiver as a devDependency.",
+    "Keep README_FOR_AI synchronized.",
+    "Avoid claiming runtime behavior changes."
+  ],
+  "not_included": [
+    "Product code changes.",
+    "Package publishing.",
+    "Global install guidance."
+  ],
+  "acceptance": [
+    "README includes concise npx vs local install guidance.",
+    "A dedicated installation guide explains node_modules expectations.",
+    "Troubleshooting covers the missing node_modules symptom.",
+    "Generated docs templates include the same contract.",
+    "README_FOR_AI contains the source-of-truth explanation."
+  ],
+  "tests": [
+    "git diff --check",
+    "node bin/create-quiver.js spec validate specs/quiver-v32-npx-installation-guidance"
+  ],
+  "validation_hints": [
+    "Keep the docs concise and avoid duplicating long workflows in the root README.",
+    "Do not recommend global installation."
+  ],
+  "estimated_hours": 1,
+  "status": "completed",
+  "blocked_reason": null,
+  "actual_hours": 1,
+  "completed_at": "2026-05-27"
+}
