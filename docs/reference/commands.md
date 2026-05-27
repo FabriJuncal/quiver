@@ -13,6 +13,7 @@ Usá `npx --yes create-quiver@latest --help` para ver la lista viva de comandos 
 | `npx --yes create-quiver@latest migrate` | Aplica la migración. |
 | `npx --yes create-quiver@latest analyze` | Genera mapa del proyecto y datos de escaneo. |
 | `npx --yes create-quiver@latest doctor` | Valida la salud de Quiver. |
+| `npx --yes create-quiver@latest doctor --json` | Emite el mismo diagnóstico de Doctor como JSON parseable para automatización. |
 | `npx --yes create-quiver@latest flow` | Muestra el próximo paso seguro. |
 
 ## Planificación con IA

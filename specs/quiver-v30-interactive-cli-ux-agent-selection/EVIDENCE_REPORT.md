@@ -140,3 +140,25 @@ Each implementation slice must append:
 
 - `ai execute-plan --interactive` is now accepted for strategy UX consistency, but this slice does not yet add a full strategy selector. Future UX work can add it without changing the safety contract.
 - Direct TTY unit runs can still show spinner artifacts in logs; final suite validation should decide whether to force test I/O to no-TTY.
+
+## slice-06 - Doctor visual and JSON contract
+
+### Completed
+
+- Added a shared Doctor command report with stable fields for `schema_version`, `status`, `exit_code`, `checks`, `suggested_fixes`, `warnings`, and `errors`.
+- Rendered human Doctor output with the required `Quiver Doctor`, `Checks`, and `Suggested fixes` hierarchy.
+- Added `doctor --json` output that is parseable, machine-clean, and backed by the same checks as human output.
+- Preserved deterministic exit-code behavior: warnings remain exit code 0 and blocking layout errors set exit code 1.
+- Kept `doctor --fix --dry-run` behavior and added clean JSON behavior for `doctor --fix --dry-run --json`.
+- Updated Doctor documentation in `docs/CLI_UX_GUIDE.md`, `docs/reference/commands.md`, and `README_FOR_AI.md`.
+
+### Validation
+
+- `node --test tests/commands/doctor.test.js tests/lib/doctor.test.js tests/lib/cli-ux.test.js` passed: 29 tests.
+- `npm run smoke:doctor-fixtures` passed: 13 fixture states.
+- `git diff --check` passed.
+
+### Risks
+
+- Local environment checks can still add host-dependent warnings, for example `gh auth` status. That behavior existed before this slice and remains visible through the shared check model.
+- Downstream JSON consumers should pin to `schema_version: 1` and avoid parsing human text.

@@ -20,6 +20,19 @@ function runCli(args, options = {}) {
   });
 }
 
+function runCliResult(args, options = {}) {
+  try {
+    const stdout = runCli(args, options);
+    return { status: 0, stdout, stderr: '' };
+  } catch (error) {
+    return {
+      status: typeof error.status === 'number' ? error.status : 1,
+      stdout: error.stdout ? String(error.stdout) : '',
+      stderr: error.stderr ? String(error.stderr) : '',
+    };
+  }
+}
+
 function writeFile(root, relativePath, content = '') {
   const filePath = path.join(root, relativePath);
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
@@ -37,12 +50,59 @@ test('doctor accepts the new default init layout before specs exist', () => {
     runCli(['init', '--name', 'No Spec Project', '--dir', target, '--skip-install']);
     const output = runCli(['doctor'], { cwd: target });
 
+    assert.match(output, /Quiver Doctor/);
+    assert.match(output, /Checks/);
+    assert.match(output, /Suggested fixes/);
     assert.match(output, /Quiver doctor passed/);
     assert.match(output, /Layout: new/);
     assert.match(output, /Specs: none yet/);
     assert.match(output, /No specs yet\. That is valid after the AI-first init flow\./);
     assert.match(output, /Create real specs and slices only after acceptance criteria are approved and the technical plan is reviewed and approved\./);
     assert.doesNotMatch(output, /Warning: missing local docs link:/);
+  } finally {
+    cleanup();
+  }
+});
+
+test('doctor json emits parseable diagnostics with human parity', () => {
+  const { dir, cleanup } = makeTmpDir();
+  const target = path.join(dir, 'target');
+  try {
+    runCli(['init', '--name', 'Json Doctor Project', '--dir', target, '--skip-install']);
+    writeFile(target, 'docs/BROKEN_LINK.md', '# Broken\n\n[Missing](./NOPE.md)\n');
+
+    const human = runCli(['doctor'], { cwd: target });
+    const json = JSON.parse(runCli(['doctor', '--json'], { cwd: target }));
+    const brokenLinkCheck = json.checks.find((check) => check.message.includes('docs/BROKEN_LINK.md -> ./NOPE.md'));
+
+    assert.equal(json.schema_version, 1);
+    assert.equal(json.command, 'doctor');
+    assert.ok(Array.isArray(json.checks));
+    assert.ok(Array.isArray(json.suggested_fixes));
+    assert.ok(brokenLinkCheck);
+    assert.match(human, new RegExp(brokenLinkCheck.message.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+    assert.doesNotThrow(() => JSON.stringify(json));
+  } finally {
+    cleanup();
+  }
+});
+
+test('doctor json exits deterministically for blocking layout errors', () => {
+  const { dir, cleanup } = makeTmpDir();
+  const target = path.join(dir, 'target');
+  try {
+    writeJson(target, '.quiver/state.json', {
+      initialized_version: '0.14.1',
+      last_initialized_at: '2026-05-27T00:00:00.000Z',
+    });
+
+    const result = runCliResult(['doctor', '--json'], { cwd: target });
+    const json = JSON.parse(result.stdout);
+
+    assert.equal(result.status, 1);
+    assert.equal(json.status, 'error');
+    assert.equal(json.exit_code, 1);
+    assert.ok(json.errors.some((error) => error.includes('missing file: README.md')));
   } finally {
     cleanup();
   }

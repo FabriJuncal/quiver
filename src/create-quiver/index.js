@@ -53,6 +53,7 @@ const { checkPrReadiness, checkScope, checkSliceReadiness } = require('./lib/rea
 const { cleanupSlice, refreshActiveSlicesBoard, startSlice } = require('./lib/lifecycle');
 const { buildSpecStatus, closeSpecWorktree, formatSpecCloseResult, formatSpecStartResult, formatSpecStatus, startSpecWorktree } = require('./lib/spec-worktrees');
 const { getContextPathExclusionReason } = require('./lib/ai/safety');
+const { createUx } = require('./lib/cli/ux');
 const { validateUxFlags } = require('./lib/cli/ux-flags');
 const { relativePosixPath, resolveTargetRoot } = require('./lib/paths');
 const {
@@ -2242,28 +2243,21 @@ function runMigrate(targetDir, options = {}) {
   }
 }
 
-function runDoctor(targetDir, options = {}) {
-  const projectRoot = resolveTargetRoot(process.cwd(), targetDir);
-
-  if (!fs.existsSync(projectRoot)) {
-    throw new Error(formatError(`target directory does not exist: ${projectRoot}`));
-  }
-
-  if (!hasQuiverInitializationEvidence(projectRoot)) {
-    throw new Error(formatError('doctor requires a project previously initialized by Quiver.\nRun init first: npx create-quiver --name "Project Name"'));
-  }
-
-  const fixPlan = buildDoctorFixPlan(projectRoot);
-  if (options.fix) {
-    if (options.dryRun) {
-      console.log(formatDoctorFixPlan(fixPlan, { dryRun: true }));
-      return;
+function uniqueLines(lines) {
+  const seen = new Set();
+  const unique = [];
+  for (const line of lines) {
+    const value = String(line || '').trim();
+    if (!value || seen.has(value)) {
+      continue;
     }
-
-    applyDoctorFixPlan(projectRoot, fixPlan);
-    console.log(formatDoctorFixPlan(fixPlan));
+    seen.add(value);
+    unique.push(value);
   }
+  return unique;
+}
 
+function buildDoctorCommandReport(projectRoot) {
   const doctorReport = collectDoctorReport(projectRoot);
   const specSlugs = doctorReport.specSlugs;
   const doctorExampleTarget = doctorReport.exampleTarget || {
@@ -2350,65 +2344,219 @@ function runDoctor(targetDir, options = {}) {
     ...nonExecutableScripts.map((file) => `missing executable bit: ${file}`),
     ...missingScripts.map((name) => `missing package.json script: ${name}`),
   ];
-  const softWarnings = doctorReport.warnings;
+  const checks = [];
 
-  if (migrationProblems.length > 0) {
-    throw new Error(formatError(`doctor failed:\n- ${migrationProblems.join('\n- ')}\n- Run migration first: npx create-quiver migrate`));
-  }
+  const addCheck = (id, status, message, details = {}) => {
+    checks.push({
+      id,
+      status,
+      message,
+      ...details,
+    });
+  };
 
-  console.log(`Quiver doctor passed for ${projectRoot}`);
-  console.log(`Layout: ${doctorReport.layout}`);
-  if (specSlugs.length > 0) {
-    console.log(`Specs: ${specSlugs.join(', ')}`);
-  } else {
-    console.log('Specs: none yet');
-  }
+  addCheck('project-root', 'ok', `Quiver doctor passed for ${projectRoot}`);
+  addCheck(
+    'layout',
+    doctorReport.layout === 'incomplete' ? 'error' : 'ok',
+    `Layout: ${doctorReport.layout}`,
+  );
+  addCheck('specs', 'ok', specSlugs.length > 0 ? `Specs: ${specSlugs.join(', ')}` : 'Specs: none yet');
+
   if (doctorReport.legacySignals.length > 0) {
-    console.log(`Legacy signals: ${doctorReport.legacySignals.join(', ')}`);
+    addCheck('legacy-signals', doctorReport.layout === 'legacy' || doctorReport.layout === 'hybrid' ? 'warning' : 'ok', `Legacy signals: ${doctorReport.legacySignals.join(', ')}`);
   }
-  console.log('Next steps:');
-  for (const recommendation of doctorReport.recommendations) {
-    console.log(`- ${recommendation}`);
+
+  addCheck(
+    'required-files',
+    missingFiles.length > 0 ? 'error' : 'ok',
+    missingFiles.length > 0 ? `Missing required files: ${missingFiles.join(', ')}` : 'Required files found',
+    { missing: missingFiles },
+  );
+
+  if (requiredExecutables.length > 0 || nonExecutableScripts.length > 0) {
+    addCheck(
+      'legacy-executables',
+      nonExecutableScripts.length > 0 ? 'error' : 'ok',
+      nonExecutableScripts.length > 0 ? `Missing executable bit: ${nonExecutableScripts.join(', ')}` : 'Legacy executable scripts are runnable',
+      { missing: nonExecutableScripts },
+    );
   }
-  for (const warning of stateWarnings) {
-    console.log(`- Warning: ${warning}`);
-  }
+
+  addCheck(
+    'workflow-scripts',
+    missingScripts.length > 0 ? 'error' : 'ok',
+    missingScripts.length > 0 ? `Missing package.json workflow scripts: ${missingScripts.join(', ')}` : 'Workflow scripts available',
+    { missing: missingScripts },
+  );
+
+  addCheck(
+    'state',
+    hasQuiverState ? 'ok' : 'warning',
+    hasQuiverState ? 'Quiver state metadata found' : 'Warning: missing Quiver state metadata: .quiver/state.json',
+  );
+
+  addCheck(
+    'project-scan',
+    hasScanArtifacts ? 'ok' : 'warning',
+    hasScanArtifacts ? 'Project analysis artifacts found' : 'Warning: project analysis artifacts not found; run analyze when you need the visible project map',
+  );
+
   for (const scriptName of missingNodeNativeScripts) {
-    console.log(`- Warning: missing Node-native script: ${scriptName}`);
+    addCheck(`node-script:${scriptName}`, 'warning', `Warning: missing Node-native script: ${scriptName}`);
   }
+
   for (const scriptName of missingAiScripts) {
-    console.log(`- Warning: missing AI orchestration script: ${scriptName}`);
+    addCheck(`ai-script:${scriptName}`, 'warning', `Warning: missing AI orchestration script: ${scriptName}`);
   }
+
   if (legacyOnlyScripts.length > 0) {
-    console.log(`- Warning: legacy Bash workflow scripts detected for ${legacyOnlyScripts.join(', ')}. Run npx create-quiver migrate to add quiver:* npm scripts.`);
+    addCheck(
+      'legacy-only-scripts',
+      'warning',
+      `Warning: legacy Bash workflow scripts detected for ${legacyOnlyScripts.join(', ')}. Run npx create-quiver migrate to add quiver:* npm scripts.`,
+    );
   }
+
   for (const script of unsupportedCreateQuiverScripts) {
-    console.log(`- Warning: package.json script ${script.scriptName} targets ${script.reason}: \`${script.command}\`. Update create-quiver or regenerate scripts with npx create-quiver migrate.`);
+    addCheck(
+      `unsupported-script:${script.scriptName}`,
+      'warning',
+      `Warning: package.json script ${script.scriptName} targets ${script.reason}: \`${script.command}\`. Update create-quiver or regenerate scripts with npx create-quiver migrate.`,
+      { script_name: script.scriptName, command: script.command, reason: script.reason },
+    );
   }
-  for (const warning of softWarnings) {
-    console.log(`- Warning: ${warning}`);
+
+  for (const warning of doctorReport.warnings) {
+    addCheck(`warning:${checks.length + 1}`, 'warning', `Warning: ${warning}`);
   }
-  if (!hasQuiverState) {
-    console.log('- Run migration first: npx create-quiver migrate');
-  } else if (!hasScanArtifacts) {
-    console.log('- Analyze the project first: npx create-quiver analyze');
-  } else {
-    console.log('- Ask your AI agent: Read AGENTS.md, then docs/AI_ONBOARDING_PROMPT.md and execute it.');
-  }
-  console.log('- Check the next ready slice: npx create-quiver next');
+
+  const suggestedFixes = [
+    ...doctorReport.recommendations,
+    !hasQuiverState
+      ? 'Run migration first: npx create-quiver migrate'
+      : !hasScanArtifacts
+        ? 'Analyze the project first: npx create-quiver analyze'
+        : 'Ask your AI agent: Read AGENTS.md, then docs/AI_ONBOARDING_PROMPT.md and execute it.',
+    'Check the next ready slice: npx create-quiver next',
+  ];
+
   if (specSlugs.length > 0) {
     const projectSlug = doctorExampleTarget.specSlug;
     const sliceId = doctorExampleTarget.sliceId || '<slice-id>';
     if (doctorExampleTarget.source === 'active-slice') {
-      console.log(`- Example target: ${projectSlug}/${sliceId} (${doctorExampleTarget.status})`);
+      suggestedFixes.push(`Example target: ${projectSlug}/${sliceId} (${doctorExampleTarget.status})`);
     } else if (doctorExampleTarget.source === 'generic-multiple-specs') {
-      console.log('- Example target: specs/<spec-slug>/slices/<slice-id>/slice.json (generic because no active slice is obvious)');
+      suggestedFixes.push('Example target: specs/<spec-slug>/slices/<slice-id>/slice.json (generic because no active slice is obvious)');
     }
-    console.log(`- Start a slice: npx create-quiver start-slice specs/${projectSlug}/slices/${sliceId}/slice.json`);
-    console.log(`- Validate a slice: npx create-quiver check-slice specs/${projectSlug}/slices/${sliceId}/slice.json`);
-    console.log(`- Validate the PR gate: npx create-quiver check-pr specs/${projectSlug}/slices/${sliceId}/slice.json`);
+    suggestedFixes.push(`Start a slice: npx create-quiver start-slice specs/${projectSlug}/slices/${sliceId}/slice.json`);
+    suggestedFixes.push(`Validate a slice: npx create-quiver check-slice specs/${projectSlug}/slices/${sliceId}/slice.json`);
+    suggestedFixes.push(`Validate the PR gate: npx create-quiver check-pr specs/${projectSlug}/slices/${sliceId}/slice.json`);
   } else {
-    console.log('- Create real specs and slices only after acceptance criteria are approved and the technical plan is reviewed and approved.');
+    suggestedFixes.push('Create real specs and slices only after acceptance criteria are approved and the technical plan is reviewed and approved.');
+  }
+
+  const errors = checks.filter((check) => check.status === 'error').map((check) => check.message);
+  const warnings = checks.filter((check) => check.status === 'warning').map((check) => check.message);
+  const status = errors.length > 0 ? 'error' : warnings.length > 0 ? 'warning' : 'ok';
+
+  return {
+    schema_version: 1,
+    command: 'doctor',
+    project_root: projectRoot,
+    status,
+    exit_code: errors.length > 0 ? 1 : 0,
+    layout: doctorReport.layout,
+    specs: specSlugs,
+    legacy_signals: doctorReport.legacySignals,
+    checks,
+    suggested_fixes: uniqueLines(suggestedFixes),
+    warnings,
+    errors: migrationProblems.length > 0 ? uniqueLines([...migrationProblems, ...errors]) : errors,
+  };
+}
+
+function formatDoctorHumanReport(report, options = {}) {
+  const lines = [];
+  const ux = createUx({
+    ...options,
+    spinner: false,
+    write: (text) => lines.push(String(text)),
+  });
+  const symbolForStatus = (status) => {
+    if (status === 'ok') return ux.theme.symbols.success;
+    if (status === 'error') return ux.theme.symbols.error;
+    return ux.theme.symbols.warning;
+  };
+  const colorForStatus = (status) => {
+    if (status === 'ok') return 'success';
+    if (status === 'error') return 'error';
+    return 'warning';
+  };
+
+  ux.section('Quiver Doctor');
+  ux.line('');
+  ux.line('Checks');
+  for (const check of report.checks) {
+    const line = `  ${symbolForStatus(check.status)} ${check.message}`;
+    ux.line(ux.mode.decoration ? ux.theme.status(colorForStatus(check.status), line) : line);
+  }
+
+  ux.line('');
+  ux.line('Suggested fixes');
+  for (const fix of report.suggested_fixes) {
+    const line = `  ${ux.theme.symbols.bullet} ${fix}`;
+    ux.line(ux.mode.decoration ? ux.theme.status('command', line) : line);
+  }
+
+  return lines.join('');
+}
+
+function runDoctor(targetDir, options = {}) {
+  const projectRoot = resolveTargetRoot(process.cwd(), targetDir);
+
+  if (!fs.existsSync(projectRoot)) {
+    throw new Error(formatError(`target directory does not exist: ${projectRoot}`));
+  }
+
+  if (!hasQuiverInitializationEvidence(projectRoot)) {
+    throw new Error(formatError('doctor requires a project previously initialized by Quiver.\nRun init first: npx create-quiver --name "Project Name"'));
+  }
+
+  const fixPlan = buildDoctorFixPlan(projectRoot);
+  if (options.fix) {
+    if (options.dryRun) {
+      if (options.json) {
+        console.log(JSON.stringify({
+          schema_version: 1,
+          command: 'doctor fix',
+          dry_run: true,
+          fixes: fixPlan,
+        }, null, 2));
+        return;
+      }
+      console.log(formatDoctorFixPlan(fixPlan, { dryRun: true }));
+      return;
+    }
+
+    applyDoctorFixPlan(projectRoot, fixPlan);
+    if (!options.json) {
+      console.log(formatDoctorFixPlan(fixPlan));
+    }
+  }
+
+  const commandReport = buildDoctorCommandReport(projectRoot);
+  if (options.json) {
+    console.log(JSON.stringify(commandReport, null, 2));
+  } else {
+    process.stdout.write(formatDoctorHumanReport(commandReport, {
+      noColor: options.noColor,
+      unicode: options.unicode,
+    }));
+  }
+
+  if (commandReport.exit_code !== 0) {
+    process.exitCode = commandReport.exit_code;
   }
 }
 
@@ -2823,6 +2971,9 @@ async function run(argv) {
     runDoctor(args.targetDir, {
       dryRun: args.dryRun,
       fix: args.doctorFix,
+      json: args.json,
+      noColor: args.noColor,
+      unicode: args.unicode,
     });
     return;
   }

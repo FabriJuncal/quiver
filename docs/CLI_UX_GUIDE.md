@@ -51,6 +51,7 @@ Reglas:
 | `ai pr` | no | si | si | Review edita `pr.md`; interactive confirma `gh pr create`. |
 | `ai execute-slice` | no | si | no | Interactive puede seleccionar un slice listo y un executor configurado. |
 | `ai execute-plan` | no | si | no | Interactive queda reservado para estrategia/seleccion; JSON sigue limpio. |
+| `doctor` | no | no | no | Renderiza `Quiver Doctor`, `Checks` y `Suggested fixes`; `--json` usa el mismo modelo de hallazgos. |
 | `flow`, `next`, `graph` | no | no | no | Lectura/inspeccion; no deben exponer flags decorativas. |
 | `ai inspect`, `ai export`, `ai specs list`, `ai slices list`, `ai trace report` | no | no | no | Superficies read-only o machine-readable. |
 
@@ -106,6 +107,30 @@ Usar prompts interactivos cuando hay una decision humana real:
 ```
 
 No usar prompts para informacion que ya se pueda expresar con flags.
+
+## Salida de Doctor
+
+`doctor` debe mostrar una jerarquia estable para humanos:
+
+```text
+◆ Quiver Doctor
+
+Checks
+  ✓ Layout: new
+  ✓ Specs: none yet
+  ! Warning: project analysis artifacts not found; run analyze when you need the visible project map
+
+Suggested fixes
+  • Analyze the project first: npx create-quiver analyze
+  • Check the next ready slice: npx create-quiver next
+```
+
+Reglas:
+
+- La salida humana debe incluir siempre `Quiver Doctor`, `Checks` y `Suggested fixes`.
+- `doctor --json` debe emitir solo JSON parseable, sin colores, prompts ni texto humano.
+- La salida humana y JSON deben salir del mismo modelo de checks, warnings, errors y suggested fixes.
+- Warnings no deben romper automatizacion; errores bloqueantes deben usar `exit_code: 1` y `process.exitCode = 1`.
 
 ## Revision con editor
 
