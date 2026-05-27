@@ -47,9 +47,34 @@ test('agent profiles persist provider and free-form model labels without secrets
     assert.equal(state.profiles.planner.id, 'expensive-planner');
     assert.equal(state.profiles.planner.displayName, 'gpt-5.5-xhigh');
     assert.equal(state.profiles.planner.context, 'planning');
+    assert.equal(state.profiles.planner.modelSource, 'custom');
+    assert.equal(state.profiles.planner.validation_status, 'not-tested');
     assert.equal(state.profile_sets.planners.length, 1);
     assert.equal(JSON.stringify(state).includes('api_key'), false);
     assert.equal(JSON.stringify(state).includes('token'), false);
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('agent profiles normalize known visual model aliases to technical ids', () => {
+  const repo = makeRepo();
+
+  try {
+    const result = setAgentProfile(repo.root, 'planner', {
+      provider: 'codex',
+      model: 'GPT 5.5',
+    });
+
+    assert.equal(result.profile.model, 'gpt-5.5');
+    assert.equal(result.profile.displayName, 'GPT 5.5');
+    assert.equal(result.profile.modelSource, 'catalog');
+    assert.equal(result.profile.modelAlias, 'GPT 5.5');
+    assert.equal(result.profile.validation_status, 'not-tested');
+
+    const state = readAgentProfiles(repo.root);
+    assert.equal(state.profiles.planner.model, 'gpt-5.5');
+    assert.equal(state.profiles.planner.displayName, 'GPT 5.5');
   } finally {
     repo.cleanup();
   }

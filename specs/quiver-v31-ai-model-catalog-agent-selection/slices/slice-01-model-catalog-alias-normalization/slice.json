@@ -65,8 +65,8 @@
     "Do not call provider CLIs in this slice."
   ],
   "estimated_hours": 6,
-  "status": "planned",
+  "status": "completed",
   "blocked_reason": null,
-  "actual_hours": null,
-  "completed_at": null
+  "actual_hours": 5,
+  "completed_at": "2026-05-27"
 }

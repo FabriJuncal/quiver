@@ -33,3 +33,23 @@ Each implementation slice must append:
 - human and JSON output evidence when applicable;
 - remaining risks;
 - evidence location.
+
+## slice-01 - Local model catalog and alias normalization
+
+### Completed
+
+- Added `src/create-quiver/lib/ai/model-catalog.js` as the local, versioned model catalog source of truth.
+- Added Codex, Claude, and Gemini known model entries with aliases, role recommendations, cost/quality/stability metadata, and custom model support.
+- Added tolerant alias normalization for case, spaces, dashes, and punctuation.
+- Updated agent profile creation to normalize known visual aliases into technical model ids while preserving human `displayName`.
+- Preserved free-form custom model support and added optional profile metadata: `modelSource`, `modelAlias`, `validation_status`, `validated_at`, and `validation_error`.
+
+### Validation
+
+- `node --test tests/lib/model-catalog.test.js tests/lib/agent-profiles.test.js` passed: 10 tests.
+- `git diff --check` passed.
+
+### Risks
+
+- Catalog entries are local and can become stale. Later docs must keep the wording "known by Quiver" and avoid implying account-level availability.
+- Live provider validation and command preflight are intentionally deferred to later slices.

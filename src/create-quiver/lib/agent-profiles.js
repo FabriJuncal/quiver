@@ -2,6 +2,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const { assertSupportedProvider, formatProviderList } = require('./ai/providers');
+const { normalizeModelSelection } = require('./ai/model-catalog');
 const { quiverInternalPaths } = require('./init-layout');
 
 const AGENT_PROFILE_ROLES = Object.freeze(['planner', 'executor', 'reviewer', 'doctor']);
@@ -87,6 +88,11 @@ function normalizeStoredProfile(profile, role, fallbackId = 'default') {
     label: normalizeOptionalText(profile?.label, 'label'),
     displayName: normalizeOptionalText(profile?.displayName || profile?.display_name, 'displayName'),
     context: normalizeOptionalText(profile?.context, 'context'),
+    modelSource: normalizeOptionalText(profile?.modelSource || profile?.model_source, 'modelSource'),
+    modelAlias: normalizeOptionalText(profile?.modelAlias || profile?.model_alias, 'modelAlias'),
+    validation_status: normalizeOptionalText(profile?.validation_status || profile?.validationStatus, 'validation_status'),
+    validated_at: normalizeOptionalText(profile?.validated_at || profile?.validatedAt, 'validated_at'),
+    validation_error: normalizeOptionalText(profile?.validation_error || profile?.validationError, 'validation_error'),
     default: profile?.default === true,
     updated_at: profile?.updated_at || '',
   };
@@ -181,25 +187,44 @@ function setAgentProfile(projectRoot, role, options = {}) {
 function buildAgentProfileState(projectRoot, role, options = {}) {
   const normalizedRole = normalizeAgentProfileRole(role);
   const provider = assertSupportedProvider(options.provider);
-  const model = normalizeOptionalText(options.model, 'model');
+  const rawModel = normalizeOptionalText(options.model, 'model');
   const label = normalizeOptionalText(options.label, 'label');
-  const displayName = normalizeOptionalText(options.displayName || options.display_name, 'displayName');
+  const rawDisplayName = normalizeOptionalText(options.displayName || options.display_name, 'displayName');
   const context = normalizeOptionalText(options.context, 'context');
   const state = readAgentProfiles(projectRoot);
   const currentProfiles = getAgentProfilesForRole(projectRoot, normalizedRole);
   const currentDefault = currentProfiles.find((profile) => profile.default) || currentProfiles[0] || {};
-  const id = normalizeProfileId(options.id || currentDefault.id || label || model || provider);
+  const modelSelection = rawModel
+    ? normalizeModelSelection(provider, rawModel, { displayName: rawDisplayName })
+    : null;
+  const id = normalizeProfileId(options.id || currentDefault.id || label || modelSelection?.model || rawModel || provider);
   const current = currentProfiles.find((profile) => profile.id === id) || {};
+  const model = modelSelection?.model || current.model || '';
+  const displayName = rawDisplayName
+    || modelSelection?.displayName
+    || current.displayName
+    || model
+    || label
+    || provider;
   const now = options.now instanceof Date ? options.now.toISOString() : new Date().toISOString();
   const shouldBeDefault = options.default === true || currentProfiles.length === 0 || (options.default !== false && current.default === true);
+  const modelSource = modelSelection?.modelSource || current.modelSource || (model ? 'custom' : '');
+  const modelAlias = modelSelection && modelSelection.input && modelSelection.input !== model
+    ? modelSelection.input
+    : (current.modelAlias || '');
   const profile = {
     id,
     role: normalizedRole,
     provider,
     model: model || current.model || '',
     label: label || current.label || '',
-    displayName: displayName || current.displayName || model || label || provider,
+    displayName,
     context: context || current.context || '',
+    modelSource,
+    modelAlias,
+    validation_status: current.validation_status || (model ? 'not-tested' : ''),
+    validated_at: current.validated_at || '',
+    validation_error: current.validation_error || '',
     default: shouldBeDefault,
     updated_at: now,
   };
