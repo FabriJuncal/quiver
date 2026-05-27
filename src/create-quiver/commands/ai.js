@@ -175,6 +175,71 @@ function resolveRuntimeAgentProfile(repoRoot, role, options = {}, fallbackProvid
   };
 }
 
+function createCommandUx(options = {}) {
+  if (options.ux) {
+    return options.ux;
+  }
+
+  return createUx({
+    env: options.env || process.env,
+    input: options.inputStream,
+    output: options.outputStream,
+    error: options.errorStream,
+    interactive: options.interactive,
+    json: options.json,
+    noColor: options.noColor,
+    prompts: options.prompts,
+    spinner: options.spinner,
+    stdinIsTTY: options.stdinIsTTY,
+    stdoutIsTTY: options.stdoutIsTTY,
+    stderrIsTTY: options.stderrIsTTY,
+    write: options.write,
+  });
+}
+
+function shouldShowHumanProgress(ux, options = {}) {
+  return options.progress !== false
+    && options.dryRun !== true
+    && options.printPrompt !== true
+    && ux?.mode?.decoration === true;
+}
+
+function plannerProgressTitle(action, runtimeProfile) {
+  return `${action} con ${runtimeProfile.displayName || runtimeProfile.model || runtimeProfile.provider}`;
+}
+
+function writeProgressChecks(ux, enabled, title, checks = []) {
+  if (!enabled) {
+    return;
+  }
+  ux.heading(title);
+  for (const check of checks) {
+    ux.check(check);
+  }
+}
+
+async function runProviderWithProgress({ ux, enabled, message = 'Ejecutando agente...', successMessage = 'Agente finalizado', failureMessage = 'Fallo ejecutando agente', run }) {
+  async function runAndFailOnProviderResult() {
+    const result = await run();
+    if (result && result.ok === false) {
+      const error = new Error(result.error?.message || 'provider run failed');
+      error.code = result.error?.code || 'AI_PROVIDER_RUN_FAILED';
+      error.providerResult = result;
+      throw error;
+    }
+    return result;
+  }
+
+  if (!enabled) {
+    return run();
+  }
+
+  return ux.withSpinner(message, runAndFailOnProviderResult, {
+    successMessage,
+    failureMessage,
+  });
+}
+
 function buildPlanContext({ role, context, phase, inputText, inputPath, repoRoot, revise = false }) {
   const phaseDetails = getPlannerPhaseDetails(phase);
   const pack = buildContextPackMetadata({
@@ -1186,7 +1251,11 @@ async function runOnboard(repoRoot, options = {}) {
       enforceModelSelection: false,
     });
   } catch (error) {
-    throw annotateProviderError(error, 'onboard');
+    if (error.providerResult) {
+      result = error.providerResult;
+    } else {
+      throw annotateProviderError(error, 'onboard');
+    }
   }
 
   if (options.dryRun) {
@@ -1218,20 +1287,33 @@ async function runOnboard(repoRoot, options = {}) {
     return report;
   }
 
+  const ux = createCommandUx(options);
+  const showProgress = shouldShowHumanProgress(ux, options);
+  writeProgressChecks(
+    ux,
+    showProgress,
+    plannerProgressTitle('Ejecutando onboarding', runtimeProfile),
+    ['Leyendo docs base', 'Detectando estructura', 'Preparando prompt'],
+  );
+
   let result;
   try {
-    result = await (options.runProviderFn || runProvider)(provider, {
-      prompt,
-      cwd: repoRoot,
-      timeoutMs,
-      dryRun: false,
-      probe: options.probe,
-      spawn: options.spawn,
-      tempRoot: options.tempRoot,
-      tempFileName: options.tempFileName,
-      tempFilePrefix: options.tempFilePrefix,
-      model: runtimeProfile.model,
-      enforceModelSelection: Boolean(runtimeProfile.model),
+    result = await runProviderWithProgress({
+      ux,
+      enabled: showProgress,
+      run: () => (options.runProviderFn || runProvider)(provider, {
+        prompt,
+        cwd: repoRoot,
+        timeoutMs,
+        dryRun: false,
+        probe: options.probe,
+        spawn: options.spawn,
+        tempRoot: options.tempRoot,
+        tempFileName: options.tempFileName,
+        tempFilePrefix: options.tempFilePrefix,
+        model: runtimeProfile.model,
+        enforceModelSelection: Boolean(runtimeProfile.model),
+      }),
     });
   } catch (error) {
     throw annotateProviderError(error, 'onboard');
@@ -1349,7 +1431,11 @@ async function runPrepareContextWithPlanner(repoRoot, options = {}) {
       enforceModelSelection: false,
     });
   } catch (error) {
-    throw annotateProviderError(error, 'prepare-context');
+    if (error.providerResult) {
+      result = error.providerResult;
+    } else {
+      throw annotateProviderError(error, 'prepare-context');
+    }
   }
 
   if (options.dryRun) {
@@ -1392,20 +1478,33 @@ async function runPrepareContextWithPlanner(repoRoot, options = {}) {
     return report;
   }
 
+  const ux = createCommandUx(options);
+  const showProgress = shouldShowHumanProgress(ux, options);
+  writeProgressChecks(
+    ux,
+    showProgress,
+    plannerProgressTitle('Ejecutando onboarding', runtimeProfile),
+    ['Leyendo docs base', 'Detectando estructura', 'Preparando prompt'],
+  );
+
   let result;
   try {
-    result = await (options.runProviderFn || runProvider)(provider, {
-      prompt,
-      cwd: repoRoot,
-      timeoutMs,
-      dryRun: false,
-      probe: options.probe,
-      spawn: options.spawn,
-      tempRoot: options.tempRoot,
-      tempFileName: options.tempFileName,
-      tempFilePrefix: options.tempFilePrefix,
-      model: runtimeProfile.model,
-      enforceModelSelection: Boolean(runtimeProfile.model),
+    result = await runProviderWithProgress({
+      ux,
+      enabled: showProgress,
+      run: () => (options.runProviderFn || runProvider)(provider, {
+        prompt,
+        cwd: repoRoot,
+        timeoutMs,
+        dryRun: false,
+        probe: options.probe,
+        spawn: options.spawn,
+        tempRoot: options.tempRoot,
+        tempFileName: options.tempFileName,
+        tempFilePrefix: options.tempFilePrefix,
+        model: runtimeProfile.model,
+        enforceModelSelection: Boolean(runtimeProfile.model),
+      }),
     });
   } catch (error) {
     throw annotateProviderError(error, 'prepare-context');
@@ -1586,7 +1685,11 @@ async function runPlan(repoRoot, options = {}) {
       enforceModelSelection: false,
     });
   } catch (error) {
-    throw annotateProviderError(error, 'plan', phase);
+    if (error.providerResult) {
+      result = error.providerResult;
+    } else {
+      throw annotateProviderError(error, 'plan', phase);
+    }
   }
 
   if (options.dryRun) {
@@ -1627,20 +1730,33 @@ async function runPlan(repoRoot, options = {}) {
     return report;
   }
 
+  const ux = createCommandUx(options);
+  const showProgress = shouldShowHumanProgress(ux, options);
+  writeProgressChecks(
+    ux,
+    showProgress,
+    plannerProgressTitle(`Ejecutando plan ${phase}`, runtimeProfile),
+    ['Leyendo entrada', 'Preparando contexto', 'Preparando prompt'],
+  );
+
   let result;
   try {
-    result = await (options.runProviderFn || runProvider)(provider, {
-      prompt,
-      cwd: repoRoot,
-      timeoutMs,
-      dryRun: false,
-      probe: options.probe,
-      spawn: options.spawn,
-      tempRoot: options.tempRoot,
-      tempFileName: options.tempFileName,
-      tempFilePrefix: options.tempFilePrefix,
-      model: runtimeProfile.model,
-      enforceModelSelection: Boolean(runtimeProfile.model),
+    result = await runProviderWithProgress({
+      ux,
+      enabled: showProgress,
+      run: () => (options.runProviderFn || runProvider)(provider, {
+        prompt,
+        cwd: repoRoot,
+        timeoutMs,
+        dryRun: false,
+        probe: options.probe,
+        spawn: options.spawn,
+        tempRoot: options.tempRoot,
+        tempFileName: options.tempFileName,
+        tempFilePrefix: options.tempFilePrefix,
+        model: runtimeProfile.model,
+        enforceModelSelection: Boolean(runtimeProfile.model),
+      }),
     });
   } catch (error) {
     throw annotateProviderError(error, 'plan', phase);
@@ -1736,7 +1852,11 @@ async function runReviewPlan(repoRoot, options = {}) {
       enforceModelSelection: false,
     });
   } catch (error) {
-    throw annotateProviderError(error, 'review-plan');
+    if (error.providerResult) {
+      result = error.providerResult;
+    } else {
+      throw annotateProviderError(error, 'review-plan');
+    }
   }
 
   if (options.dryRun) {
@@ -1788,20 +1908,33 @@ async function runReviewPlan(repoRoot, options = {}) {
     return report;
   }
 
+  const ux = createCommandUx(options);
+  const showProgress = shouldShowHumanProgress(ux, options);
+  writeProgressChecks(
+    ux,
+    showProgress,
+    plannerProgressTitle('Ejecutando revisión del plan', runtimeProfile),
+    ['Leyendo plan técnico', 'Preparando contexto', 'Preparando prompt'],
+  );
+
   let result;
   try {
-    result = await (options.runProviderFn || runProvider)(provider, {
-      prompt: built.prompt,
-      cwd: repoRoot,
-      timeoutMs,
-      dryRun: false,
-      probe: options.probe,
-      spawn: options.spawn,
-      tempRoot: options.tempRoot,
-      tempFileName: options.tempFileName,
-      tempFilePrefix: options.tempFilePrefix,
-      model: runtimeProfile.model,
-      enforceModelSelection: Boolean(runtimeProfile.model),
+    result = await runProviderWithProgress({
+      ux,
+      enabled: showProgress,
+      run: () => (options.runProviderFn || runProvider)(provider, {
+        prompt: built.prompt,
+        cwd: repoRoot,
+        timeoutMs,
+        dryRun: false,
+        probe: options.probe,
+        spawn: options.spawn,
+        tempRoot: options.tempRoot,
+        tempFileName: options.tempFileName,
+        tempFilePrefix: options.tempFilePrefix,
+        model: runtimeProfile.model,
+        enforceModelSelection: Boolean(runtimeProfile.model),
+      }),
     });
   } catch (error) {
     throw annotateProviderError(error, 'review-plan');
@@ -1884,7 +2017,11 @@ async function runRepairPlan(repoRoot, options = {}) {
       enforceModelSelection: false,
     });
   } catch (error) {
-    throw annotateProviderError(error, 'repair-plan');
+    if (error.providerResult) {
+      providerResult = error.providerResult;
+    } else {
+      throw annotateProviderError(error, 'repair-plan');
+    }
   }
 
   if (options.dryRun) {
@@ -1921,20 +2058,33 @@ async function runRepairPlan(repoRoot, options = {}) {
     return report;
   }
 
+  const ux = createCommandUx(options);
+  const showProgress = shouldShowHumanProgress(ux, options);
+  writeProgressChecks(
+    ux,
+    showProgress,
+    plannerProgressTitle('Ejecutando reparación del plan', runtimeProfile),
+    ['Leyendo plan aprobado', 'Preparando contexto', 'Preparando prompt'],
+  );
+
   let providerResult;
   try {
-    providerResult = await (options.runProviderFn || runProvider)(provider, {
-      prompt: built.prompt,
-      cwd: repoRoot,
-      timeoutMs,
-      dryRun: false,
-      probe: options.probe,
-      spawn: options.spawn,
-      tempRoot: options.tempRoot,
-      tempFileName: options.tempFileName,
-      tempFilePrefix: options.tempFilePrefix,
-      model: runtimeProfile.model,
-      enforceModelSelection: Boolean(runtimeProfile.model),
+    providerResult = await runProviderWithProgress({
+      ux,
+      enabled: showProgress,
+      run: () => (options.runProviderFn || runProvider)(provider, {
+        prompt: built.prompt,
+        cwd: repoRoot,
+        timeoutMs,
+        dryRun: false,
+        probe: options.probe,
+        spawn: options.spawn,
+        tempRoot: options.tempRoot,
+        tempFileName: options.tempFileName,
+        tempFilePrefix: options.tempFilePrefix,
+        model: runtimeProfile.model,
+        enforceModelSelection: Boolean(runtimeProfile.model),
+      }),
     });
   } catch (error) {
     throw annotateProviderError(error, 'repair-plan');

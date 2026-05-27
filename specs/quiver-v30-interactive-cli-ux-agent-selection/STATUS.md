@@ -2,7 +2,7 @@
 
 **Overall status:** Planned
 **Created:** 2026-05-26
-**Current slice:** slice-03 completed; slice-04 ready
+**Current slice:** slice-04 completed; slice-05 ready
 
 ## Summary
 
@@ -16,7 +16,7 @@ This spec is planned to harden Quiver's CLI UX after dogfooding showed that long
 | slice-01-cli-ux-runtime-progress-engine | Completed | Shared output/runtime/progress primitives added and tested. |
 | slice-02-agent-profile-selection-selectors | Completed | Multiple named role profiles and reusable selectors added. |
 | slice-03-provider-model-selection-contract | Completed | Provider model support, profile model propagation, dry-run visibility, and live blocking contract added. |
-| slice-04-planner-ia-progress-flows | Planned | Onboard, prepare-context, plan, review-plan progress. |
+| slice-04-planner-ia-progress-flows | Completed | Planner/reviewer live IA flows now show TTY progress with selected profile names and clean failure cleanup. |
 | slice-05-executor-pr-progress-flows | Planned | Execute-slice, execute-plan, and PR progress. |
 | slice-06-doctor-visual-json-contract | Planned | Human doctor output and stable JSON parity. |
 | slice-07-interactive-init-spec-create | Planned | Guided init and spec create selectors. |
@@ -28,4 +28,4 @@ This spec is planned to harden Quiver's CLI UX after dogfooding showed that long
 
 ## Next Step
 
-Continue with `slice-04-planner-ia-progress-flows`.
+Continue with `slice-05-executor-pr-progress-flows`.

@@ -97,3 +97,24 @@ Each implementation slice must append:
 
 - Provider model flags are implemented through the current adapter contract. Installed provider CLIs can still vary by version, so later release validation should dogfood dry-run and live commands with available local CLIs.
 - Executor provider/model propagation remains for slice-05.
+
+## slice-04 - Planner IA progress flows
+
+### Completed
+
+- Added a shared command UX bridge for planner-oriented IA commands.
+- Added visible TTY progress for `ai onboard`, `ai prepare-context --with-planner`, `ai plan`, `ai review-plan`, `ai repair-plan`, and `ai revise`.
+- Progress headings use the selected profile/model display name when available.
+- Provider execution now runs inside a spinner in human TTY mode and stops on both success and provider failure.
+- `--dry-run`, `--print-prompt`, CI, and non-TTY output remain free of progress noise.
+- Updated `docs/CLI_UX_GUIDE.md` and `README_FOR_AI.md` with the progress-output standard.
+
+### Validation
+
+- `node --test tests/commands/ai-prepare-context-planner.test.js tests/commands/ai-onboard.test.js tests/commands/ai-plan.test.js tests/commands/ai-review-plan.test.js tests/lib/cli-ux.test.js` passed: 65 tests.
+- `git diff --check` passed.
+
+### Risks
+
+- Some direct unit tests run with a TTY can display clack spinner artifacts in the test log, although captured no-TTY output remains clean. Slice-08 should include a final full-suite check and adjust test harness mode if needed.
+- Executor and PR command progress remains for slice-05.

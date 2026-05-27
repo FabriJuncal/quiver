@@ -78,8 +78,8 @@
     "Do not mark a stage successful before its corresponding action has completed."
   ],
   "estimated_hours": 12,
-  "status": "planned",
+  "status": "completed",
   "blocked_reason": null,
-  "actual_hours": null,
-  "completed_at": null
+  "actual_hours": 5,
+  "completed_at": "2026-05-27"
 }

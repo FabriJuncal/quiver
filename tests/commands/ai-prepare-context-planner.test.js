@@ -125,6 +125,114 @@ test('ai prepare-context --with-planner --print-prompt prints exact prompt witho
   }
 });
 
+test('planner prepare-context shows human TTY progress with selected profile name', async () => {
+  const repo = makeRepo({
+    'README.md': '# Demo\n',
+    'package.json': JSON.stringify({ name: 'planner-progress-demo' }, null, 2),
+  });
+  const events = [];
+
+  try {
+    await runPrepareContext(repo.root, {
+      withPlanner: true,
+      provider: 'codex',
+      providerExplicit: true,
+      stdoutIsTTY: true,
+      stdinIsTTY: true,
+      stderrIsTTY: true,
+      noColor: true,
+      env: { LANG: 'en_US.UTF-8' },
+      write: (text) => events.push(['write', text]),
+      prompts: {
+        spinner() {
+          return {
+            start(message) {
+              events.push(['start', message]);
+            },
+            stop(message, code) {
+              events.push(['stop', message, code]);
+            },
+          };
+        },
+      },
+      runProviderFn: async () => providerResult(validProposal(), { cwd: repo.root }),
+    });
+
+    assert.deepEqual(events, [
+      ['write', '◇ Ejecutando onboarding con codex\n'],
+      ['write', '✓ Leyendo docs base\n'],
+      ['write', '✓ Detectando estructura\n'],
+      ['write', '✓ Preparando prompt\n'],
+      ['start', 'Ejecutando agente...'],
+      ['stop', 'Agente finalizado', undefined],
+    ]);
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('planner prepare-context stops progress spinner on provider failure', async () => {
+  const repo = makeRepo({
+    'README.md': '# Demo\n',
+  });
+  const events = [];
+
+  try {
+    await assert.rejects(
+      runPrepareContext(repo.root, {
+        withPlanner: true,
+        provider: 'codex',
+        providerExplicit: true,
+        stdoutIsTTY: true,
+        stdinIsTTY: true,
+        stderrIsTTY: true,
+        noColor: true,
+        env: { LANG: 'en_US.UTF-8' },
+        write: (text) => events.push(['write', text]),
+        prompts: {
+          spinner() {
+            return {
+              start(message) {
+                events.push(['start', message]);
+              },
+              stop(message, code) {
+                events.push(['stop', message, code]);
+              },
+            };
+          },
+        },
+        runProviderFn: async () => ({
+          ok: false,
+          dryRun: false,
+          provider: 'codex',
+          command: 'codex',
+          args: ['exec'],
+          cwd: repo.root,
+          timeoutMs: 0,
+          promptTransport: { mode: 'stdin' },
+          exitCode: null,
+          stdout: '',
+          stderr: '',
+          error: { code: 'MISSING_PROVIDER_CLI', message: 'missing codex cli' },
+          preflight: null,
+        }),
+      }),
+      /ai prepare-context failed: missing codex cli/,
+    );
+
+    assert.deepEqual(events.slice(0, 6), [
+      ['write', '◇ Ejecutando onboarding con codex\n'],
+      ['write', '✓ Leyendo docs base\n'],
+      ['write', '✓ Detectando estructura\n'],
+      ['write', '✓ Preparando prompt\n'],
+      ['start', 'Ejecutando agente...'],
+      ['stop', 'Fallo ejecutando agente', 1],
+    ]);
+  } finally {
+    repo.cleanup();
+  }
+});
+
 test('planner prepare-context writes validated docs-only proposal and snapshots before writes', async () => {
   const repo = makeRepo({
     'README.md': '# Demo\n',
