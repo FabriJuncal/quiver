@@ -2,7 +2,7 @@
 
 **Overall status:** Planned
 **Created:** 2026-05-26
-**Current slice:** slice-06 completed; slice-07 ready
+**Current slice:** slice-07 completed; slice-08 ready
 
 ## Summary
 
@@ -19,7 +19,7 @@ This spec is planned to harden Quiver's CLI UX after dogfooding showed that long
 | slice-04-planner-ia-progress-flows | Completed | Planner/reviewer live IA flows now show TTY progress with selected profile names and clean failure cleanup. |
 | slice-05-executor-pr-progress-flows | Completed | Executor/execute-plan/PR progress, executor selector, ready-slice selector, and executor model propagation added. |
 | slice-06-doctor-visual-json-contract | Completed | Doctor now renders `Quiver Doctor`/`Checks`/`Suggested fixes` from a shared JSON-compatible diagnostics model. |
-| slice-07-interactive-init-spec-create | Planned | Guided init and spec create selectors. |
+| slice-07-interactive-init-spec-create | Completed | `init --interactive` and `spec create --interactive` now use guarded selectors, methodology `wdd-sdd`, and summaries before writes. |
 | slice-08-tests-docs-cross-platform-release | Planned | Tests, docs, smokes, package readiness. |
 
 ## Current Blockers
@@ -28,4 +28,4 @@ This spec is planned to harden Quiver's CLI UX after dogfooding showed that long
 
 ## Next Step
 
-Continue with `slice-07-interactive-init-spec-create`.
+Continue with `slice-08-tests-docs-cross-platform-release`.

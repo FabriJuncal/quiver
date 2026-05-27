@@ -133,9 +133,14 @@ test('spec create --interactive can decline writes', async () => {
 
   try {
     seedReviewedApprovedPlan(repo.root);
+    const selections = [];
     await assert.rejects(
       runCreateSpec(repo.root, {
         interactive: true,
+        promptSelect: async (message, options) => {
+          selections.push(message);
+          return options.find((option) => option.default)?.value || options[0].value;
+        },
         promptConfirm: async () => false,
         stdinIsTTY: true,
         stdoutIsTTY: true,
@@ -144,7 +149,42 @@ test('spec create --interactive can decline writes', async () => {
       }),
       /spec create interactive approval declined/,
     );
+    assert.deepEqual(selections, [
+      '¿Qué metodología aplica esta spec?',
+      '¿Qué plan aprobado querés usar?',
+      '¿Cómo querés revisar antes de escribir?',
+    ]);
     assert.equal(fs.existsSync(path.join(repo.root, 'specs', 'quiver-v23-created-spec')), false);
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('spec create --interactive writes after guided summary approval', async () => {
+  const repo = makeRepo();
+  const writes = [];
+
+  try {
+    seedReviewedApprovedPlan(repo.root);
+    const result = await runCreateSpec(repo.root, {
+      interactive: true,
+      promptSelect: async (message, options) => {
+        if (message.includes('metodología')) {
+          return 'wdd-sdd';
+        }
+        return options.find((option) => option.default)?.value || options[0].value;
+      },
+      promptConfirm: async () => true,
+      stdinIsTTY: true,
+      stdoutIsTTY: true,
+      stderrIsTTY: true,
+      write: (text) => writes.push(text),
+    });
+
+    assert.equal(result.specSlug, 'quiver-v23-created-spec');
+    assert.equal(fs.existsSync(path.join(repo.root, 'specs', 'quiver-v23-created-spec', 'SPEC.md')), true);
+    assert.ok(writes.some((line) => line.includes('Spec create')));
+    assert.ok(writes.some((line) => line.includes('Metodologia: WDD + SDD')));
   } finally {
     repo.cleanup();
   }

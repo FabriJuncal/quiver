@@ -5,6 +5,12 @@ const UX_FLAG_OPTIONS = Object.freeze({
 });
 
 const UX_FLAG_MATRIX = Object.freeze({
+  init: Object.freeze({
+    withPlanner: false,
+    interactive: true,
+    review: false,
+    note: 'guided project onboarding choices',
+  }),
   'ai prepare-context': Object.freeze({
     withPlanner: true,
     interactive: true,

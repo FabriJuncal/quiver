@@ -3,6 +3,7 @@ const path = require('node:path');
 
 const { checkHandoff } = require('../lib/handoff');
 const { openEditor } = require('../lib/cli/editor');
+const { selectOption } = require('../lib/cli/selectors');
 const { createUx } = require('../lib/cli/ux');
 const { parseJsonWithComments } = require('../lib/json');
 const { assertPathInsideRoot, validateProjectRelativePaths } = require('../lib/paths');
@@ -399,6 +400,104 @@ function createSpecReviewFile(preview, options = {}) {
   return reviewPath;
 }
 
+const SPEC_METHODOLOGY_OPTIONS = Object.freeze([
+  {
+    label: 'WDD + SDD',
+    value: 'wdd-sdd',
+    hint: 'Workflow Driven Development + Spec Driven Development',
+    default: true,
+  },
+]);
+
+async function resolveInteractiveSpecCreateOptions(repoRoot, preview, options = {}) {
+  if (options.interactive !== true) {
+    return options;
+  }
+
+  const ux = options.ux || createUx({
+    interactive: true,
+    promptConfirm: options.promptConfirm,
+    stdinIsTTY: options.stdinIsTTY,
+    stdoutIsTTY: options.stdoutIsTTY,
+    stderrIsTTY: options.stderrIsTTY,
+    write: options.write,
+  });
+
+  if (!ux.mode.usePrompts) {
+    throw new Error(formatError('spec create --interactive requires an interactive TTY. Use --input, --spec, --review, and --dry-run for non-interactive automation.'));
+  }
+
+  const selectorOptions = {
+    env: options.env,
+    input: options.inputStream,
+    interactive: true,
+    noColor: options.noColor,
+    output: options.output,
+    prompts: options.prompts,
+    promptSelect: options.promptSelect,
+    stderrIsTTY: options.stderrIsTTY,
+    stdinIsTTY: options.stdinIsTTY,
+    stdoutIsTTY: options.stdoutIsTTY,
+  };
+  const selectedMethodology = await selectOption('¿Qué metodología aplica esta spec?', SPEC_METHODOLOGY_OPTIONS, {
+    ...selectorOptions,
+    defaultValue: 'wdd-sdd',
+    flag: '--methodology',
+    name: 'methodology',
+    value: options.methodology || '',
+  });
+  const selectedInput = await selectOption('¿Qué plan aprobado querés usar?', [
+    {
+      label: preview.inputPath,
+      value: preview.inputPath,
+      hint: 'Plan técnico revisado y aprobado',
+      default: true,
+    },
+  ], {
+    ...selectorOptions,
+    defaultValue: preview.inputPath,
+    flag: '--input',
+    name: 'approved technical plan input',
+    value: options.input || '',
+  });
+  const selectedReview = await selectOption('¿Cómo querés revisar antes de escribir?', [
+    {
+      label: 'Crear despues de confirmar',
+      value: 'direct',
+      hint: 'Muestra resumen y pide aprobacion final',
+      default: options.review !== true,
+    },
+    {
+      label: 'Abrir preview de review',
+      value: 'review',
+      hint: 'Usa $VISUAL o $EDITOR antes de escribir',
+      default: options.review === true,
+    },
+  ], {
+    ...selectorOptions,
+    defaultValue: options.review === true ? 'review' : 'direct',
+    flag: '--review',
+    name: 'spec create review mode',
+  });
+
+  ux.summary([
+    { label: 'Spec', value: preview.manifest.slug },
+    { label: 'Metodologia', value: selectedMethodology.label },
+    { label: 'Input', value: selectedInput.value },
+    { label: 'Target', value: preview.relativeSpecDir },
+    { label: 'Archivos planificados', value: preview.preview.files.length },
+    { label: 'Revision', value: selectedReview.value === 'review' ? 'abrir preview' : 'confirmacion directa' },
+  ], { title: 'Spec create' });
+
+  return {
+    ...options,
+    input: selectedInput.value,
+    methodology: selectedMethodology.value,
+    review: selectedReview.value === 'review',
+    ux,
+  };
+}
+
 async function confirmSpecCreate(message, options = {}) {
   if (options.interactive !== true) {
     return;
@@ -444,9 +543,10 @@ async function reviewSpecCreatePreview(repoRoot, preview, options = {}) {
 
 async function runCreateSpec(repoRoot, options = {}) {
   const preview = buildSpecCreatePreview(repoRoot, options);
+  const resolvedOptions = await resolveInteractiveSpecCreateOptions(repoRoot, preview, options);
 
-  if (options.dryRun) {
-    process.stdout.write(formatSpecCreateDryRun({ ...preview, reviewRequested: options.review === true }));
+  if (resolvedOptions.dryRun) {
+    process.stdout.write(formatSpecCreateDryRun({ ...preview, reviewRequested: resolvedOptions.review === true }));
     return {
       task: 'spec-create',
       dryRun: true,
@@ -456,12 +556,12 @@ async function runCreateSpec(repoRoot, options = {}) {
     };
   }
 
-  const reviewPath = await reviewSpecCreatePreview(repoRoot, preview, options);
-  await confirmSpecCreate(`Create spec '${preview.manifest.slug}'?`, options);
+  const reviewPath = await reviewSpecCreatePreview(repoRoot, preview, resolvedOptions);
+  await confirmSpecCreate(`Create spec '${preview.manifest.slug}'?`, resolvedOptions);
 
   const result = generateSpecArtifacts(repoRoot, {
-    input: preview.inputPath,
-    specSlug: options.specSlug,
+    input: resolvedOptions.input || preview.inputPath,
+    specSlug: resolvedOptions.specSlug,
   });
   process.stdout.write(formatSpecCreateResult(result, repoRoot));
 

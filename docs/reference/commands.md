@@ -9,6 +9,7 @@ Usá `npx --yes create-quiver@latest --help` para ver la lista viva de comandos 
 | `npx --yes create-quiver@latest --version` | Muestra la versión del CLI. |
 | `npx --yes create-quiver@latest --help` | Muestra los comandos soportados. |
 | `npx --yes create-quiver@latest init --name "Proyecto"` | Inicializa Quiver en un proyecto. |
+| `npx --yes create-quiver@latest init --interactive` | Abre una guía interactiva para elegir modo de proyecto, metodología `wdd-sdd`, perfil inicial y próximos pasos de agentes. |
 | `npx --yes create-quiver@latest migrate --dry-run` | Previsualiza migración de un proyecto Quiver anterior. |
 | `npx --yes create-quiver@latest migrate` | Aplica la migración. |
 | `npx --yes create-quiver@latest analyze` | Genera mapa del proyecto y datos de escaneo. |
@@ -43,6 +44,7 @@ Usá `npx --yes create-quiver@latest --help` para ver la lista viva de comandos 
 | `npx --yes create-quiver@latest spec create --dry-run` | Previsualiza archivos de spec generados. |
 | `npx --yes create-quiver@latest spec create` | Genera spec, slices, briefs, plan de ejecución y cuerpo del PR. |
 | `npx --yes create-quiver@latest spec create --review --interactive` | Abre una revisión del paquete a generar y pide confirmación antes de escribir. |
+| `npx --yes create-quiver@latest spec create --interactive` | Guía la selección de metodología `wdd-sdd`, input aprobado y modo de revisión antes de escribir. |
 | `npx --yes create-quiver@latest spec validate specs/<spec> --strict` | Valida el paquete de spec. |
 | `npx --yes create-quiver@latest spec start specs/<spec>` | Crea o reutiliza el worktree de una spec. |
 | `npx --yes create-quiver@latest plan --spec <spec>` | Muestra el orden de ejecución de slices. |
@@ -71,6 +73,7 @@ Usá `npx --yes create-quiver@latest --help` para ver la lista viva de comandos 
 | `--with-planner` | Activa comportamiento asistido por planner solo en comandos que lo soportan. |
 | `--interactive` | Habilita prompts humanos de confirmación o elección. |
 | `--review` | Abre o prepara revisión humana antes de escrituras persistentes. |
+| `--methodology wdd-sdd` | Declara la metodología soportada por comandos interactivos o automatizados. |
 | `--no-color` | Desactiva colores ANSI en salida humana. |
 | `--provider codex\|claude\|gemini` | Selecciona CLI local de proveedor. |
 | `--commit` | Permite que Quiver commitee trabajo validado del slice. |

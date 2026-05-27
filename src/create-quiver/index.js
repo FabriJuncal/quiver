@@ -53,6 +53,7 @@ const { checkPrReadiness, checkScope, checkSliceReadiness } = require('./lib/rea
 const { cleanupSlice, refreshActiveSlicesBoard, startSlice } = require('./lib/lifecycle');
 const { buildSpecStatus, closeSpecWorktree, formatSpecCloseResult, formatSpecStartResult, formatSpecStatus, startSpecWorktree } = require('./lib/spec-worktrees');
 const { getContextPathExclusionReason } = require('./lib/ai/safety');
+const { selectOption } = require('./lib/cli/selectors');
 const { createUx } = require('./lib/cli/ux');
 const { validateUxFlags } = require('./lib/cli/ux-flags');
 const { relativePosixPath, resolveTargetRoot } = require('./lib/paths');
@@ -311,6 +312,7 @@ Options:
       --with-planner          Enable planner-assisted behavior on commands that explicitly support it
       --interactive           Enable prompts on commands that explicitly support interactive choices
       --review                Open or prepare human review before persistent writes where supported
+      --methodology <name>    Select methodology where supported (currently wdd-sdd)
       --no-color              Disable ANSI colors in human output
       --fix                   For doctor, apply safe non-destructive repairs
       --execute               For ai execute-plan, run the planned slices instead of printing commands
@@ -335,6 +337,7 @@ Options:
 
 Examples:
   npx create-quiver init --name "My Project"
+  npx create-quiver init --interactive
   npx create-quiver init --name "My Project" --dry-run
   npx create-quiver --name "My Project"
   npx create-quiver --name "My Project" --dir ./my-project
@@ -435,6 +438,7 @@ function parseArgs(argv) {
     format: 'tree',
     formatExplicit: false,
     showConflicts: false,
+    methodology: '',
     level: null,
     unicode: false,
     aiCommand: '',
@@ -2512,6 +2516,212 @@ function formatDoctorHumanReport(report, options = {}) {
   return lines.join('');
 }
 
+const METHODOLOGY_OPTIONS = Object.freeze([
+  {
+    label: 'WDD + SDD',
+    value: 'wdd-sdd',
+    hint: 'Workflow Driven Development + Spec Driven Development',
+    default: true,
+  },
+]);
+
+const INIT_MODE_OPTIONS = Object.freeze([
+  {
+    label: 'Proyecto existente',
+    value: 'existing',
+    hint: 'Agrega Quiver sin sobrescribir archivos existentes',
+    default: true,
+  },
+  {
+    label: 'Proyecto nuevo',
+    value: 'new',
+    hint: 'Crea el contrato base en una carpeta nueva o vacia',
+  },
+  {
+    label: 'Solo validar estructura',
+    value: 'validate',
+    hint: 'Ejecuta Doctor en lugar de escribir archivos',
+  },
+]);
+
+const INIT_PROFILE_OPTIONS = Object.freeze([
+  {
+    label: 'Default',
+    value: 'default',
+    hint: 'Contrato AI-first recomendado',
+    default: true,
+  },
+  {
+    label: 'Minimal',
+    value: 'minimal',
+    hint: 'Solo documentos esenciales',
+  },
+  {
+    label: 'Full compatibility',
+    value: 'full',
+    hint: 'Incluye compatibilidad historica y templates visibles',
+  },
+]);
+
+function hasDirectoryContent(dirPath) {
+  return fs.existsSync(dirPath)
+    && fs.statSync(dirPath).isDirectory()
+    && fs.readdirSync(dirPath).length > 0;
+}
+
+function assertSupportedMethodology(value) {
+  const normalized = String(value || '').trim();
+  if (!normalized) {
+    return 'wdd-sdd';
+  }
+  if (normalized !== 'wdd-sdd') {
+    throw new Error(formatError(`unsupported methodology '${normalized}'. Supported methodologies: wdd-sdd.`));
+  }
+  return normalized;
+}
+
+async function resolveInteractiveInitOptions(args, targetDir, projectName, options = {}) {
+  const explicitMethodology = assertSupportedMethodology(args.methodology);
+
+  if (args.interactive !== true) {
+    return {
+      action: 'init',
+      full: args.initFull,
+      includeTemplates: args.initIncludeTemplates,
+      legacyScripts: args.initLegacyScripts,
+      methodology: explicitMethodology,
+      minimal: args.initMinimal,
+      projectName,
+    };
+  }
+
+  const ux = createUx({
+    env: options.env,
+    input: options.input,
+    interactive: true,
+    noColor: args.noColor,
+    output: options.output,
+    promptConfirm: options.promptConfirm,
+    stderrIsTTY: options.stderrIsTTY,
+    stdinIsTTY: options.stdinIsTTY,
+    stdoutIsTTY: options.stdoutIsTTY,
+    write: options.write,
+  });
+
+  if (!ux.mode.usePrompts) {
+    throw new Error(formatError('init --interactive requires an interactive TTY. Use explicit flags such as --name, --minimal, --full, --legacy-scripts, --include-templates, or run doctor to validate structure.'));
+  }
+
+  const selectorOptions = {
+    env: options.env,
+    input: options.input,
+    interactive: true,
+    noColor: args.noColor,
+    output: options.output,
+    prompts: options.prompts,
+    promptSelect: options.promptSelect,
+    stderrIsTTY: options.stderrIsTTY,
+    stdinIsTTY: options.stdinIsTTY,
+    stdoutIsTTY: options.stdoutIsTTY,
+  };
+
+  ux.heading('Bienvenido a Quiver');
+  const selectedMode = await selectOption('¿Qué querés configurar?', INIT_MODE_OPTIONS, {
+    ...selectorOptions,
+    defaultValue: hasDirectoryContent(targetDir) ? 'existing' : 'new',
+    flag: 'init|doctor',
+    name: 'init mode',
+  });
+  const selectedMethodology = await selectOption('¿Qué metodología vas a usar?', METHODOLOGY_OPTIONS, {
+    ...selectorOptions,
+    defaultValue: explicitMethodology,
+    flag: '--methodology',
+    name: 'methodology',
+    value: args.methodology || '',
+  });
+
+  assertSupportedMethodology(selectedMethodology.value);
+
+  if (selectedMode.value === 'validate') {
+    ux.summary([
+      { label: 'Modo', value: 'Solo validar estructura' },
+      { label: 'Metodologia', value: selectedMethodology.label },
+      { label: 'Comando equivalente', value: 'npx create-quiver doctor' },
+    ], { title: 'Configuracion elegida' });
+    if (!args.force && !args.dryRun) {
+      const confirmed = await ux.promptConfirm('Ejecutar Doctor ahora?', { initialValue: true });
+      if (!confirmed) {
+        throw new Error(formatError('init interactive validation declined. No files were written.'));
+      }
+    }
+    return {
+      action: 'doctor',
+      methodology: selectedMethodology.value,
+      projectName,
+    };
+  }
+
+  const defaultProfile = args.initFull ? 'full' : args.initMinimal ? 'minimal' : 'default';
+  const selectedProfile = await selectOption('¿Qué contrato inicial querés crear?', INIT_PROFILE_OPTIONS, {
+    ...selectorOptions,
+    defaultValue: defaultProfile,
+    flag: '--minimal|--full',
+    name: 'init profile',
+  });
+  const agentGuidance = await selectOption('¿Querés ver el próximo paso para perfiles de agentes?', [
+    {
+      label: 'Mostrar comandos sugeridos',
+      value: 'show',
+      hint: 'No guarda credenciales ni ejecuta proveedores',
+      default: true,
+    },
+    {
+      label: 'Omitir por ahora',
+      value: 'skip',
+    },
+  ], {
+    ...selectorOptions,
+    defaultValue: 'show',
+    flag: 'ai agent set',
+    name: 'agent profile guidance',
+  });
+  const nextFlags = {
+    full: selectedProfile.value === 'full',
+    includeTemplates: args.initIncludeTemplates || selectedProfile.value === 'full',
+    legacyScripts: args.initLegacyScripts,
+    methodology: selectedMethodology.value,
+    minimal: selectedProfile.value === 'minimal',
+    projectName,
+  };
+
+  ux.summary([
+    { label: 'Proyecto', value: projectName },
+    { label: 'Modo', value: selectedMode.label },
+    { label: 'Metodologia', value: selectedMethodology.label },
+    { label: 'Perfil', value: selectedProfile.label },
+    { label: 'Perfiles de agentes', value: agentGuidance.value === 'show' ? 'mostrar proximo paso' : 'omitir' },
+  ], { title: 'Configuracion elegida' });
+
+  if (agentGuidance.value === 'show') {
+    ux.nextSteps([
+      'npx create-quiver ai agent set planner --provider codex --model "<modelo-planner>" --dry-run',
+      'npx create-quiver ai agent set executor --provider claude --model "<modelo-executor>" --dry-run',
+    ], { title: 'Despues de inicializar' });
+  }
+
+  if (!args.force && !args.dryRun) {
+    const confirmed = await ux.promptConfirm(`Inicializar Quiver en ${targetDir}?`, { initialValue: true });
+    if (!confirmed) {
+      throw new Error(formatError('init interactive approval declined. No files were written.'));
+    }
+  }
+
+  return {
+    action: 'init',
+    ...nextFlags,
+  };
+}
+
 function runDoctor(targetDir, options = {}) {
   const projectRoot = resolveTargetRoot(process.cwd(), targetDir);
 
@@ -3049,6 +3259,7 @@ async function run(argv) {
         dryRun: args.dryRun,
         input: args.aiInput || undefined,
         interactive: args.interactive,
+        methodology: args.methodology || undefined,
         review: args.review,
         specSlug: args.specSlug || undefined,
         withPlanner: args.withPlanner,
@@ -3099,14 +3310,25 @@ async function run(argv) {
   const packageRoot = path.resolve(__dirname, '../..');
   const targetDir = resolveTargetRoot(process.cwd(), args.targetDir);
   const projectName = args.projectName || path.basename(targetDir) || 'Quiver Project';
+  const initOptions = await resolveInteractiveInitOptions(args, targetDir, projectName);
+  if (initOptions.action === 'doctor') {
+    runDoctor(targetDir, {
+      dryRun: args.dryRun,
+      fix: false,
+      json: args.json,
+      noColor: args.noColor,
+      unicode: args.unicode,
+    });
+    return;
+  }
   const initLayout = buildInitLayout(targetDir, {
     compatibilityAlias: !args.explicitInit,
     dryRun: args.dryRun,
-    full: args.initFull,
-    includeTemplates: args.initIncludeTemplates,
-    legacyScripts: args.initLegacyScripts,
-    minimal: args.initMinimal,
-    projectName,
+    full: initOptions.full,
+    includeTemplates: initOptions.includeTemplates,
+    legacyScripts: initOptions.legacyScripts,
+    minimal: initOptions.minimal,
+    projectName: initOptions.projectName,
     skipInstall: args.skipInstall,
   });
 
@@ -3124,9 +3346,9 @@ async function run(argv) {
     if (initLayout.profile === 'full') {
       exportTemplatesToLegacyRoot(templateRoot, targetDir);
     }
-    runInitDocs(targetDir, projectName, {
-      includeTemplates: args.initIncludeTemplates,
-      legacyScripts: args.initLegacyScripts,
+    runInitDocs(targetDir, initOptions.projectName, {
+      includeTemplates: initOptions.includeTemplates,
+      legacyScripts: initOptions.legacyScripts,
       profile: initLayout.profile,
       templateRoot,
     });
@@ -3141,13 +3363,14 @@ async function run(argv) {
     }
 
     console.log(`Installed Quiver into ${targetDir}`);
-    printInitNextSteps(targetDir, projectName);
+    printInitNextSteps(targetDir, initOptions.projectName);
   } finally {
     fs.rmSync(tempRoot, { recursive: true, force: true });
   }
 }
 
 module.exports = {
+  resolveInteractiveInitOptions,
   runAnalyze,
   runDoctor,
   runFlow,

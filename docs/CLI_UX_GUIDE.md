@@ -36,6 +36,7 @@ Reglas:
 | `--with-planner` | Activa comportamiento asistido por planner cuando el comando lo soporta. | No debe ser decorativo. Si no cambia el comportamiento o contrato del comando, debe rechazarse. |
 | `--interactive` | Habilita prompts humanos de confirmacion o eleccion. | Nunca se activa por defecto. Debe tener alternativa no interactiva. |
 | `--review` | Abre o prepara revision humana antes de escrituras persistentes. | Debe usar `$VISUAL`, `$EDITOR` o dejar un artefacto revisable cuando no haya TTY. |
+| `--methodology <name>` | Selecciona metodologia cuando el comando necesita exponer esa decision. | Hoy solo se acepta `wdd-sdd`; no listar metodologias no soportadas. |
 | `--dry-run` | Previsualiza sin escribir ni ejecutar acciones irreversibles. | Debe ser seguro y no requerir credenciales salvo que el comando lo documente. |
 | `--print-prompt` | Imprime el prompt exacto sin ejecutar proveedor. | Debe evitar auth/provider execution. |
 | `--json` | Emite salida machine-readable. | Incompatible con `--interactive` y `--review`. |
@@ -45,6 +46,7 @@ Reglas:
 
 | Comando | `--with-planner` | `--interactive` | `--review` | Notas |
 |---|---:|---:|---:|---|
+| `init` | no | si | no | Interactive guia modo de proyecto, metodologia `wdd-sdd`, perfil inicial y proximo paso de perfiles de agentes. |
 | `ai prepare-context` | si | si | si | Modo deterministico por defecto; planner opcional con contrato docs-only. |
 | `ai plan` | si | si | si | El planner ya es implicito; `--with-planner` se acepta por consistencia. |
 | `spec create` | si | si | si | Consume un plan tecnico aprobado del planner; no vuelve a ejecutar proveedor. Review previsualiza el paquete antes de escribir. |
@@ -85,6 +87,24 @@ Reglas:
 - Si un adapter no puede aplicar el modelo seleccionado, la ejecucion real debe bloquearse con un proximo paso claro.
 - `--print-prompt` y `--dry-run` no deben exigir autenticacion del proveedor.
 - Si no hay modelo seleccionado, los comandos existentes deben conservar su comportamiento anterior.
+
+## Init y spec create interactivos
+
+`init --interactive` debe ser un wrapper opt-in sobre flags existentes:
+
+- modo de proyecto: proyecto existente, proyecto nuevo o solo validar estructura;
+- metodologia: solo `WDD + SDD`;
+- perfil inicial: default, minimal o full compatibility;
+- guia opcional de comandos `ai agent set` sin guardar credenciales ni ejecutar proveedores;
+- resumen antes de escribir.
+
+`spec create --interactive` debe:
+
+- seleccionar la metodologia real soportada: `WDD + SDD`;
+- mostrar el input aprobado que se usara para generar la spec;
+- permitir elegir confirmacion directa o `--review`;
+- mostrar resumen antes de escribir;
+- bloquearse en no-TTY/CI/JSON con mensaje accionable en lugar de abrir prompts.
 
 ## Loaders y prompts
 

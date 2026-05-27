@@ -5,6 +5,8 @@ const os = require('node:os');
 const path = require('node:path');
 const test = require('node:test');
 
+const { resolveInteractiveInitOptions } = require('../../src/create-quiver');
+
 const cliPath = path.resolve(__dirname, '../../bin/create-quiver.js');
 
 function makeTmpDir() {
@@ -96,6 +98,82 @@ test('init --dry-run reports requested profiles and optional assets', () => {
     assert.match(fullOutput, /docs-template/);
     assert.match(optionalOutput, /tools\/scripts\/start-slice\.sh/);
     assert.match(optionalOutput, /\.quiver\/templates\//);
+  } finally {
+    cleanup();
+  }
+});
+
+test('init --interactive resolves guided choices without writing by itself', async () => {
+  const { dir, cleanup } = makeTmpDir();
+  const target = path.join(dir, 'target');
+  const writes = [];
+  const selected = [];
+
+  try {
+    const result = await resolveInteractiveInitOptions({
+      dryRun: false,
+      force: true,
+      initFull: false,
+      initIncludeTemplates: false,
+      initLegacyScripts: false,
+      initMinimal: false,
+      interactive: true,
+      methodology: '',
+      noColor: true,
+    }, target, 'Interactive Project', {
+      promptSelect: async (message) => {
+        selected.push(message);
+        if (message.includes('configurar')) return 'existing';
+        if (message.includes('metodología')) return 'wdd-sdd';
+        if (message.includes('contrato')) return 'minimal';
+        return 'show';
+      },
+      stdinIsTTY: true,
+      stdoutIsTTY: true,
+      stderrIsTTY: true,
+      write: (text) => writes.push(text),
+    });
+
+    assert.equal(result.action, 'init');
+    assert.equal(result.methodology, 'wdd-sdd');
+    assert.equal(result.minimal, true);
+    assert.equal(result.full, false);
+    assert.deepEqual(selected, [
+      '¿Qué querés configurar?',
+      '¿Qué metodología vas a usar?',
+      '¿Qué contrato inicial querés crear?',
+      '¿Querés ver el próximo paso para perfiles de agentes?',
+    ]);
+    assert.ok(writes.some((line) => line.includes('Bienvenido a Quiver')));
+    assert.ok(writes.some((line) => line.includes('Metodologia: WDD + SDD')));
+    assert.ok(writes.some((line) => line.includes('ai agent set planner')));
+    assert.equal(fs.existsSync(target), false);
+  } finally {
+    cleanup();
+  }
+});
+
+test('init --interactive rejects non-TTY automation with explicit flag guidance', async () => {
+  const { dir, cleanup } = makeTmpDir();
+  try {
+    await assert.rejects(
+      resolveInteractiveInitOptions({
+        dryRun: false,
+        force: false,
+        initFull: false,
+        initIncludeTemplates: false,
+        initLegacyScripts: false,
+        initMinimal: false,
+        interactive: true,
+        methodology: '',
+        noColor: true,
+      }, path.join(dir, 'target'), 'No TTY Project', {
+        stdinIsTTY: false,
+        stdoutIsTTY: false,
+        stderrIsTTY: false,
+      }),
+      /init --interactive requires an interactive TTY/,
+    );
   } finally {
     cleanup();
   }

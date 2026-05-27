@@ -162,3 +162,26 @@ Each implementation slice must append:
 
 - Local environment checks can still add host-dependent warnings, for example `gh auth` status. That behavior existed before this slice and remains visible through the shared check model.
 - Downstream JSON consumers should pin to `schema_version: 1` and avoid parsing human text.
+
+## slice-07 - Interactive init and spec create flows
+
+### Completed
+
+- Added guarded `init --interactive` flow for project mode, methodology, init profile, and optional agent-profile guidance.
+- Added `--methodology wdd-sdd` validation and documented that no other methodology is currently supported.
+- Added `spec create --interactive` selectors for methodology, approved plan input, and direct-vs-review mode.
+- Added summaries before persistent writes for interactive init/spec-create flows.
+- Added explicit no-TTY failure for interactive init/spec-create so CI and scripts do not hang.
+- Extended UX flag support to `init --interactive`.
+- Updated help text, CLI UX guide, command reference, and `README_FOR_AI.md`.
+
+### Validation
+
+- `node --test tests/commands/init-profiles.test.js tests/commands/spec-create.test.js tests/commands/ux-flags.test.js tests/commands/cli-contract.test.js` passed: 39 tests.
+- `node bin/create-quiver.js --help` showed the updated interactive init example and methodology flag.
+- `git diff --check` passed.
+
+### Risks
+
+- The `init --interactive` validation-only path delegates to `doctor`, which still requires Quiver initialization evidence in the target project.
+- The spec-create approved-input selector currently exposes the resolved approved technical-plan input. Wider selection across historical approved inputs is intentionally deferred until the approval store defines that as a stable contract.

@@ -2,18 +2,23 @@
 
 ## Summary
 
-Pending execution.
+Implemented guided interactive flows for init and spec creation while keeping default automation unchanged.
 
 ## Validation Against Acceptance Criteria
 
-- [ ] `init --interactive` validated.
-- [ ] non-interactive init compatibility validated.
-- [ ] `spec create --interactive` validated.
-- [ ] no-TTY/CI/JSON fallback validated.
+- [x] `init --interactive` validated.
+- [x] non-interactive init compatibility validated.
+- [x] `spec create --interactive` validated.
+- [x] no-TTY/CI/JSON fallback validated.
 
 ## Relevant Changes
 
-Pending execution.
+- Added `init --interactive` guided choices for project mode, methodology, init profile, and optional agent-profile next steps.
+- Enforced the only supported methodology, `wdd-sdd`, through `--methodology` and interactive selectors.
+- Added summaries before persistent writes in interactive init/spec-create flows.
+- Added `spec create --interactive` selectors for methodology, approved technical-plan input, and direct-vs-review write mode.
+- Added no-TTY guardrails so interactive commands fail with explicit flag guidance instead of blocking automation.
+- Documented the interactive flow and methodology flag in CLI docs and source-of-truth guide.
 
 ## Pending
 
@@ -21,7 +26,8 @@ Pending execution.
 
 ## Remaining Risks
 
-Pending execution.
+- The project-mode selector currently maps "solo validar estructura" to Doctor. That is useful and non-destructive, but it still requires the target to have Quiver initialization evidence.
+- `spec create --interactive` presents the currently resolved approved technical plan input; additional historical input selection can be added later if multiple approved inputs become a supported contract.
 
 ## Future Recommendations
 
