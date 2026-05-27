@@ -7,7 +7,9 @@ const {
   assertSupportedProvider,
   buildProviderModelArgs,
   buildProviderInvocation,
+  extractProviderErrorCause,
   getProviderDefinition,
+  resolveProviderModelSelection,
   runProvider,
 } = require('../../src/create-quiver/lib/ai/providers');
 const { preflightProvider } = require('../../src/create-quiver/lib/ai/preflight');
@@ -57,6 +59,42 @@ test('buildProviderInvocation adds model args when provider supports model selec
     args: ['--model', 'gpt-5.5'],
     reason: 'model argument supported',
   });
+});
+
+test('buildProviderInvocation normalizes known display model aliases by default', () => {
+  const invocation = buildProviderInvocation('codex', {
+    prompt: 'hello',
+    model: 'GPT 5.5',
+    enforceModelSelection: true,
+  });
+
+  assert.deepEqual(invocation.args, ['exec', '--model', 'gpt-5.5']);
+  assert.equal(invocation.modelSelection.model, 'gpt-5.5');
+  assert.equal(invocation.modelSelection.input, 'GPT 5.5');
+  assert.match(invocation.modelSelection.reason, /model alias normalized/);
+});
+
+test('buildProviderInvocation can block profile display aliases before provider execution', () => {
+  assert.throws(
+    () => buildProviderInvocation('codex', {
+      prompt: 'hello',
+      model: 'GPT 5.5',
+      blockModelAlias: true,
+      enforceModelSelection: true,
+    }),
+    (error) => error instanceof ProviderRunnerError
+      && error.code === 'DISPLAY_MODEL_ALIAS'
+      && error.message.includes("Use 'gpt-5.5'")
+      && error.details.suggestedModel === 'gpt-5.5',
+  );
+});
+
+test('resolveProviderModelSelection preserves custom models', () => {
+  const selection = resolveProviderModelSelection('codex', 'gpt-custom');
+
+  assert.equal(selection.model, 'gpt-custom');
+  assert.equal(selection.modelSource, 'custom');
+  assert.equal(selection.aliasNormalized, false);
 });
 
 test('buildProviderModelArgs blocks unsupported enforced model selection', () => {
@@ -141,14 +179,30 @@ test('runProvider dry-run exposes selected provider model without auth preflight
   assert.equal(spawnCalled, false);
   assert.equal(result.ok, true);
   assert.equal(result.provider, 'claude');
-  assert.deepEqual(result.args, ['-p', '--model', 'opus-4.7']);
+  assert.deepEqual(result.args, ['-p', '--model', 'claude-opus-4-7']);
   assert.deepEqual(result.modelSelection, {
-    model: 'opus-4.7',
+    model: 'claude-opus-4-7',
     supported: true,
     enforced: true,
-    args: ['--model', 'opus-4.7'],
-    reason: 'model argument supported',
+    args: ['--model', 'claude-opus-4-7'],
+    reason: 'model alias normalized from opus-4.7',
+    input: 'opus-4.7',
+    displayName: 'Claude Opus 4.7',
+    modelSource: 'catalog',
   });
+});
+
+test('runProvider dry-run shows normalized technical model ids', async () => {
+  const result = await runProvider('codex', {
+    dryRun: true,
+    prompt: 'dry run prompt',
+    model: 'GPT 5.5',
+    enforceModelSelection: true,
+  });
+
+  assert.equal(result.ok, true);
+  assert.deepEqual(result.args, ['exec', '--model', 'gpt-5.5']);
+  assert.equal(result.modelSelection.model, 'gpt-5.5');
 });
 
 test('runProvider uses an argument array and writes the prompt through stdin', async () => {
@@ -303,4 +357,58 @@ test('runProvider returns structured metadata when preflight fails', async () =>
   assert.equal(result.exitCode, null);
   assert.equal(result.error.code, 'MISSING_PROVIDER_CLI');
   assert.equal(result.preflight, null);
+});
+
+test('runProvider prioritizes invalid model errors over secondary provider noise', async () => {
+  const result = await runProvider('codex', {
+    prompt: 'bad model',
+    model: 'gpt-missing',
+    spawn() {
+      const listeners = {};
+      const child = {
+        stdout: {
+          setEncoding() {},
+          on() {},
+        },
+        stderr: {
+          setEncoding() {},
+          on(event, handler) {
+            listeners[`stderr:${event}`] = handler;
+          },
+        },
+        stdin: {
+          end() {},
+        },
+        on(event, handler) {
+          listeners[event] = handler;
+          if (event === 'close') {
+            process.nextTick(() => {
+              listeners['stderr:data']("MCP warning: tool failed\nThe 'gpt-missing' model is not supported when using Codex with this account.\n");
+              handler(1, null);
+            });
+          }
+        },
+      };
+      return child;
+    },
+    probe() {
+      return { status: 0, stdout: 'codex 1.0.0', stderr: '' };
+    },
+  });
+
+  assert.equal(result.ok, false);
+  assert.equal(result.error.code, 'INVALID_PROVIDER_MODEL');
+  assert.match(result.error.message, /gpt-missing/);
+  assert.match(result.error.message, /rejected model/);
+});
+
+test('extractProviderErrorCause redacts secrets from surfaced errors', () => {
+  const cause = extractProviderErrorCause({
+    provider: 'codex',
+    stderr: "The 'sk-1234567890abcdef' model is not supported\n",
+  });
+
+  assert.equal(cause.code, 'INVALID_PROVIDER_MODEL');
+  assert.doesNotMatch(cause.message, /sk-1234567890abcdef/);
+  assert.match(cause.message, /\[REDACTED\]/);
 });

@@ -97,3 +97,25 @@ Each implementation slice must append:
 
 - Provider CLI checks are best-effort and do not prove selected model entitlement.
 - Repair write mode is intentionally unavailable until dry-run behavior is dogfooded.
+
+## slice-04 - Shared model preflight and provider error extraction
+
+### Completed
+
+- Added shared provider model alias resolution.
+- Added blocking policy for display aliases read from persisted profiles.
+- Added normalization for CLI `--model` display aliases in dry-run and invocation output.
+- Added provider error cause extraction for invalid model, auth, missing CLI, timeout, and generic failures.
+- Added provider failure serialization for non-zero exits where stderr contains the useful cause.
+- Applied model preflight options to planner, reviewer, repair-plan, execute-slice, and execute-plan runtime paths.
+- Added tests for `GPT 5.5` CLI override normalization, legacy profile blocking before provider execution, invalid model priority over MCP noise, and secret redaction.
+
+### Validation
+
+- `node --test tests/lib/ai-providers.test.js tests/commands/ai-prepare-context-planner.test.js tests/commands/ai-execute-slice.test.js` passed: 35 tests.
+- `node --test tests/lib/ai-providers.test.js tests/commands/ai-prepare-context-planner.test.js tests/commands/ai-plan.test.js tests/commands/ai-review-plan.test.js tests/commands/ai-execute-slice.test.js tests/commands/ai-execute-plan.test.js` passed: 78 tests.
+
+### Risks
+
+- Provider stderr patterns can change; future observed failures should become fixtures.
+- Custom models remain allowed and can only be proven through live provider validation.

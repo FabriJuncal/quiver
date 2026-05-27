@@ -181,6 +181,13 @@ function resolveRuntimeAgentProfile(repoRoot, role, options = {}, fallbackProvid
   };
 }
 
+function runtimeModelExecutionOptions(runtimeProfile, options = {}) {
+  return {
+    model: runtimeProfile.model,
+    blockModelAlias: Boolean(runtimeProfile.profile && !String(options.model || '').trim()),
+  };
+}
+
 function createCommandUx(options = {}) {
   if (options.ux) {
     return options.ux;
@@ -1253,7 +1260,7 @@ async function runOnboard(repoRoot, options = {}) {
       prompt,
       cwd: repoRoot,
       timeoutMs,
-      model: runtimeProfile.model,
+        ...runtimeModelExecutionOptions(runtimeProfile, options),
       enforceModelSelection: false,
     });
   } catch (error) {
@@ -1317,7 +1324,7 @@ async function runOnboard(repoRoot, options = {}) {
         tempRoot: options.tempRoot,
         tempFileName: options.tempFileName,
         tempFilePrefix: options.tempFilePrefix,
-        model: runtimeProfile.model,
+        ...runtimeModelExecutionOptions(runtimeProfile, options),
         enforceModelSelection: Boolean(runtimeProfile.model),
       }),
     });
@@ -1433,7 +1440,7 @@ async function runPrepareContextWithPlanner(repoRoot, options = {}) {
       prompt,
       cwd: repoRoot,
       timeoutMs,
-      model: runtimeProfile.model,
+        ...runtimeModelExecutionOptions(runtimeProfile, options),
       enforceModelSelection: false,
     });
   } catch (error) {
@@ -1508,7 +1515,7 @@ async function runPrepareContextWithPlanner(repoRoot, options = {}) {
         tempRoot: options.tempRoot,
         tempFileName: options.tempFileName,
         tempFilePrefix: options.tempFilePrefix,
-        model: runtimeProfile.model,
+        ...runtimeModelExecutionOptions(runtimeProfile, options),
         enforceModelSelection: Boolean(runtimeProfile.model),
       }),
     });
@@ -1687,7 +1694,7 @@ async function runPlan(repoRoot, options = {}) {
       prompt,
       cwd: repoRoot,
       timeoutMs,
-      model: runtimeProfile.model,
+        ...runtimeModelExecutionOptions(runtimeProfile, options),
       enforceModelSelection: false,
     });
   } catch (error) {
@@ -1760,7 +1767,7 @@ async function runPlan(repoRoot, options = {}) {
         tempRoot: options.tempRoot,
         tempFileName: options.tempFileName,
         tempFilePrefix: options.tempFilePrefix,
-        model: runtimeProfile.model,
+        ...runtimeModelExecutionOptions(runtimeProfile, options),
         enforceModelSelection: Boolean(runtimeProfile.model),
       }),
     });
@@ -1854,7 +1861,7 @@ async function runReviewPlan(repoRoot, options = {}) {
       prompt: built.prompt,
       cwd: repoRoot,
       timeoutMs,
-      model: runtimeProfile.model,
+        ...runtimeModelExecutionOptions(runtimeProfile, options),
       enforceModelSelection: false,
     });
   } catch (error) {
@@ -1938,7 +1945,7 @@ async function runReviewPlan(repoRoot, options = {}) {
         tempRoot: options.tempRoot,
         tempFileName: options.tempFileName,
         tempFilePrefix: options.tempFilePrefix,
-        model: runtimeProfile.model,
+        ...runtimeModelExecutionOptions(runtimeProfile, options),
         enforceModelSelection: Boolean(runtimeProfile.model),
       }),
     });
@@ -2019,7 +2026,7 @@ async function runRepairPlan(repoRoot, options = {}) {
       prompt: built.prompt,
       cwd: repoRoot,
       timeoutMs,
-      model: runtimeProfile.model,
+        ...runtimeModelExecutionOptions(runtimeProfile, options),
       enforceModelSelection: false,
     });
   } catch (error) {
@@ -2088,7 +2095,7 @@ async function runRepairPlan(repoRoot, options = {}) {
         tempRoot: options.tempRoot,
         tempFileName: options.tempFileName,
         tempFilePrefix: options.tempFilePrefix,
-        model: runtimeProfile.model,
+        ...runtimeModelExecutionOptions(runtimeProfile, options),
         enforceModelSelection: Boolean(runtimeProfile.model),
       }),
     });

@@ -85,6 +85,70 @@ test('ai execute-slice CLI dry-run shows opt-in commit mode', () => {
   }
 });
 
+test('ai execute-slice CLI dry-run normalizes CLI display model aliases', () => {
+  const project = createProject();
+  try {
+    const output = execFileSync('node', [
+      BIN_PATH,
+      'ai',
+      'execute-slice',
+      '--slice',
+      project.slicePath,
+      '--dry-run',
+      '--provider',
+      'codex',
+      '--model',
+      'GPT 5.5',
+    ], {
+      cwd: project.root,
+      encoding: 'utf8',
+    });
+
+    assert.ok(output.includes('Command: codex exec --model gpt-5.5'));
+    assert.ok(output.includes('Model: gpt-5.5'));
+    assert.ok(output.includes('model alias normalized from GPT 5.5'));
+  } finally {
+    project.cleanup();
+  }
+});
+
+test('ai execute-slice blocks legacy profile display aliases before provider execution', async () => {
+  const project = createProject();
+  let providerCalled = false;
+
+  try {
+    writeFile(path.join(project.root, '.quiver/agents/profiles.json'), JSON.stringify({
+      version: 2,
+      profiles: {},
+      profile_sets: {
+        executors: [
+          {
+            id: 'legacy',
+            role: 'executor',
+            provider: 'codex',
+            model: 'GPT 5.5',
+            default: true,
+          },
+        ],
+      },
+    }, null, 2));
+
+    await assert.rejects(
+      runExecuteSlice(project.root, {
+        slice: project.slicePath,
+        runProviderFn: async () => {
+          providerCalled = true;
+          return { ok: true };
+        },
+      }),
+      /ai execute-slice failed: Model 'GPT 5\.5' is a display alias[\s\S]*gpt-5\.5/,
+    );
+    assert.equal(providerCalled, false);
+  } finally {
+    project.cleanup();
+  }
+});
+
 test('ai prompt-slice CLI prints a minimal manual executor prompt', () => {
   const project = createProject();
   try {

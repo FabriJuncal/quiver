@@ -12,6 +12,7 @@ const { branchDelete, runGit, statusPorcelain, worktreeAdd, worktreePrune, workt
 const { withLock } = require('../locks');
 const { safeBranchName, worktreesRootForRepo } = require('../slice');
 const { buildGraph, computeLevels, detectFileConflicts, isFoundationSliceId, readAllSlices, topoSort, SliceGraphError } = require('../slice-graph');
+const { resolveProviderModelSelection } = require('./providers');
 const { runExecuteSlice } = require('./executor');
 
 const EXCLUDED_STATUSES = new Set(['completed', 'skipped', 'cancelled']);
@@ -641,13 +642,17 @@ async function runExecutePlan(repoRoot, options = {}) {
   const executionMode = normalizeExecutionMode(options.mode || options.executionMode);
   const runtimeProfile = resolveExecutorRuntimeProfile(repoRoot, options);
   const provider = runtimeProfile.provider;
+  const explicitModel = String(options.model || '').trim();
+  const resolvedModel = runtimeProfile.model
+    ? resolveProviderModelSelection(provider, runtimeProfile.model).model
+    : '';
   const resolvedOptions = {
     ...options,
     mode: executionMode,
-    model: runtimeProfile.model,
+    model: explicitModel ? resolvedModel : undefined,
     provider,
     profile: runtimeProfile,
-    resolvedModel: runtimeProfile.model,
+    resolvedModel,
     resolvedProvider: provider,
   };
 

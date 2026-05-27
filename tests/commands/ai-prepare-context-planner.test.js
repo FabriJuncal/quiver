@@ -102,6 +102,62 @@ test('ai prepare-context --with-planner --dry-run reports planner invocation wit
   }
 });
 
+test('ai prepare-context --with-planner --dry-run normalizes CLI display model aliases', () => {
+  const repo = makeRepo({
+    'README.md': '# Demo\n',
+    'package.json': JSON.stringify({ name: 'planner-demo' }, null, 2),
+  });
+
+  try {
+    const output = execPrepareContext(repo.root, ['--with-planner', '--dry-run', '--provider', 'codex', '--model', 'GPT 5.5']);
+
+    assert.match(output, /Command: codex exec --model gpt-5\.5/);
+    assert.match(output, /Model: gpt-5\.5/);
+    assert.match(output, /model alias normalized from GPT 5\.5/);
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('ai prepare-context blocks legacy profile display aliases before provider execution', async () => {
+  const repo = makeRepo({
+    'README.md': '# Demo\n',
+    'package.json': JSON.stringify({ name: 'planner-demo' }, null, 2),
+    '.quiver/agents/profiles.json': JSON.stringify({
+      version: 2,
+      profiles: {},
+      profile_sets: {
+        planners: [
+          {
+            id: 'legacy',
+            role: 'planner',
+            provider: 'codex',
+            model: 'GPT 5.5',
+            default: true,
+          },
+        ],
+      },
+    }, null, 2),
+  });
+  let providerCalled = false;
+
+  try {
+    await assert.rejects(
+      runPrepareContext(repo.root, {
+        withPlanner: true,
+        runProviderFn: async () => {
+          providerCalled = true;
+          return providerResult(validProposal(), { cwd: repo.root });
+        },
+      }),
+      /ai prepare-context failed: Model 'GPT 5\.5' is a display alias[\s\S]*gpt-5\.5/,
+    );
+    assert.equal(providerCalled, false);
+  } finally {
+    repo.cleanup();
+  }
+});
+
 test('ai prepare-context --with-planner --print-prompt prints exact prompt without provider auth or writes', () => {
   const repo = makeRepo({
     'README.md': '# Demo\n',
