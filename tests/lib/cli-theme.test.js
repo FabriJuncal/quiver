@@ -43,6 +43,7 @@ test('theme falls back to plain ASCII when unicode is unavailable', () => {
   const theme = resolveTheme({}, { LANG: 'C' }, { stdout: true });
   assert.equal(theme.symbols.success, 'OK');
   assert.equal(theme.symbols.error, 'ERR');
+  assert.equal(theme.symbols.section, '*');
 });
 
 test('theme keeps text readable when color is disabled', () => {

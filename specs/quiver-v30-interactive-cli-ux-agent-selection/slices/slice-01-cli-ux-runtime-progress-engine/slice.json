@@ -1,0 +1,69 @@
+{
+  "slice_id": "slice-01-cli-ux-runtime-progress-engine",
+  "ticket": "QUIVER-30-01",
+  "type": "feature",
+  "title": "CLI UX runtime and progress engine",
+  "objective": "Extend the shared CLI UX layer with production-safe headings, sections, checks, summaries, spinners, task groups, fallback output, and lifecycle cleanup.",
+  "description": "Creates the runtime foundation required by every later command-adoption slice so long-running IA commands show real progress without breaking automation.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v30-cli-ux-runtime-progress-engine",
+    "branch_name": "feature/QUIVER-30-01-v30-cli-ux-runtime-progress-engine"
+  },
+  "files": [
+    "src/create-quiver/lib/cli/**",
+    "tests/lib/cli-*.test.js",
+    "specs/quiver-v30-interactive-cli-ux-agent-selection/**"
+  ],
+  "expected_read_paths": [
+    "src/create-quiver/lib/cli/theme.js",
+    "src/create-quiver/lib/cli/ux.js",
+    "src/create-quiver/lib/ai/providers.js",
+    "docs/CLI_UX_GUIDE.md",
+    "tests/lib/**"
+  ],
+  "allowed_write_paths": [
+    "src/create-quiver/lib/cli/**",
+    "tests/lib/cli-*.test.js",
+    "docs/CLI_UX_GUIDE.md",
+    "specs/quiver-v30-interactive-cli-ux-agent-selection/**"
+  ],
+  "depends_on": [
+    "slice-00-spec-foundation"
+  ],
+  "parallel_safe": "no",
+  "parallel_safe_reason": "Shared runtime must land before command adoption and selector work.",
+  "must": [
+    "Add reusable helpers for heading, section, check, warning, error, summary, next steps, and task groups.",
+    "Add spinner lifecycle that always stops on success, failure, timeout, cancellation, and editor review handoff.",
+    "Add plain progress fallback for no-TTY human mode.",
+    "Keep JSON, CI, no-color, TERM=dumb, and ASCII modes clean.",
+    "Use centralized Quiver theme tokens only."
+  ],
+  "not_included": [
+    "Adding role selectors.",
+    "Changing provider model invocation.",
+    "Adopting the runtime in every command."
+  ],
+  "acceptance": [
+    "Human TTY mode can render the approved Quiver heading/check/spinner format.",
+    "No-TTY mode prints readable plain progress without spinner control characters.",
+    "JSON and CI modes do not include colors, prompts, spinners, or decorative symbols.",
+    "Spinner cleanup is covered for success and failure paths.",
+    "Quiver colors remain centralized."
+  ],
+  "tests": [
+    "node --test tests/lib/cli-theme.test.js tests/lib/cli-ux.test.js",
+    "git diff --check"
+  ],
+  "validation_hints": [
+    "Prefer injected streams and injected prompt/spinner implementations for tests.",
+    "Do not couple command code directly to @clack/prompts."
+  ],
+  "estimated_hours": 8,
+  "status": "completed",
+  "blocked_reason": null,
+  "actual_hours": 3,
+  "completed_at": "2026-05-26"
+}

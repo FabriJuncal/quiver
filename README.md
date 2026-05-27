@@ -149,9 +149,11 @@ Usá la guía que corresponda al estado de tu proyecto:
 | `npx --yes create-quiver@latest --help` | Muestra la lista pública de comandos. |
 | `npx --yes create-quiver@latest --version` | Muestra la versión del CLI. |
 | `npx --yes create-quiver@latest init --name "Proyecto"` | Inicializa Quiver en un proyecto. |
+| `npx --yes create-quiver@latest init --interactive` | Abre una guía humana para elegir modo, metodología `wdd-sdd`, perfil inicial y próximos pasos de agentes. |
 | `npx --yes create-quiver@latest migrate --dry-run` | Previsualiza la migración de un proyecto Quiver anterior. |
 | `npx --yes create-quiver@latest analyze` | Genera el mapa del proyecto usado por humanos y agentes. |
 | `npx --yes create-quiver@latest doctor` | Revisa si el contrato de Quiver está sano. |
+| `npx --yes create-quiver@latest doctor --json` | Devuelve el diagnóstico como JSON para automatizaciones. |
 | `npx --yes create-quiver@latest flow` | Indica el próximo paso seguro. |
 | `npx --yes create-quiver@latest ai prepare-context --dry-run` | Previsualiza contexto de onboarding para IA sin tocar código de producto. |
 | `npx --yes create-quiver@latest ai prepare-context --with-planner --dry-run` | Previsualiza una propuesta de contexto generada por el planner. |
@@ -159,6 +161,7 @@ Usá la guía que corresponda al estado de tu proyecto:
 | `npx --yes create-quiver@latest ai plan --phase technical-plan` | Genera un borrador de plan técnico. |
 | `npx --yes create-quiver@latest ai review-plan` | Revisa el plan técnico antes de aprobarlo. |
 | `npx --yes create-quiver@latest spec create` | Crea spec, slices, briefs, plan de ejecución y cuerpo del PR. |
+| `npx --yes create-quiver@latest spec create --interactive` | Guía la selección de metodología, input aprobado y revisión antes de escribir la spec. |
 | `npx --yes create-quiver@latest spec start specs/<spec>` | Crea o reutiliza el worktree de una spec. |
 | `npx --yes create-quiver@latest next --all-ready --spec <spec>` | Lista los slices listos para ejecutar. |
 | `npx --yes create-quiver@latest ai execute-slice --slice <slice.json> --commit` | Ejecuta un slice aprobado y lo commitea después de validar. |
@@ -176,6 +179,7 @@ Quiver usa un estándar único para que los comandos sean claros tanto para huma
 - `--with-planner` activa un modo asistido por planner solo en comandos que lo soportan.
 - `--review` abre o prepara una revisión humana antes de escrituras persistentes.
 - `--interactive` habilita confirmaciones explícitas cuando el comando puede cambiar estado.
+- `--methodology wdd-sdd` declara la metodología soportada por los flujos guiados.
 - `--json` mantiene salida legible por máquinas y no se combina con `--interactive` ni `--review`.
 - `--no-color` desactiva colores cuando el entorno no los necesita.
 

@@ -5,7 +5,9 @@ const {
   SUPPORTED_PROVIDERS,
   ProviderRunnerError,
   assertSupportedProvider,
+  buildProviderModelArgs,
   buildProviderInvocation,
+  getProviderDefinition,
   runProvider,
 } = require('../../src/create-quiver/lib/ai/providers');
 const { preflightProvider } = require('../../src/create-quiver/lib/ai/preflight');
@@ -36,6 +38,53 @@ test('buildProviderInvocation keeps command arguments separate from the prompt',
   assert.equal(invocation.cwd, '/tmp/work tree');
   assert.equal(invocation.timeoutMs, 1234);
   assert.equal(invocation.promptLength, Buffer.byteLength('hello world', 'utf8'));
+  assert.equal(invocation.modelSelection.model, '');
+});
+
+test('buildProviderInvocation adds model args when provider supports model selection', () => {
+  const invocation = buildProviderInvocation('codex', {
+    prompt: 'hello',
+    model: 'gpt-5.5',
+    enforceModelSelection: true,
+  });
+
+  assert.equal(invocation.provider, 'codex');
+  assert.deepEqual(invocation.args, ['exec', '--model', 'gpt-5.5']);
+  assert.deepEqual(invocation.modelSelection, {
+    model: 'gpt-5.5',
+    supported: true,
+    enforced: true,
+    args: ['--model', 'gpt-5.5'],
+    reason: 'model argument supported',
+  });
+});
+
+test('buildProviderModelArgs blocks unsupported enforced model selection', () => {
+  const provider = getProviderDefinition('gemini');
+  const originalSupports = provider.supportsModelSelection;
+  const originalBuilder = provider.modelArgBuilder;
+
+  provider.supportsModelSelection = false;
+  provider.modelArgBuilder = undefined;
+
+  try {
+    assert.throws(
+      () => buildProviderModelArgs('gemini', 'gemini-pro', { enforce: true }),
+      (error) => error instanceof ProviderRunnerError
+        && error.code === 'UNSUPPORTED_PROVIDER_MODEL_SELECTION'
+        && error.message.includes('gemini-pro')
+        && error.details.nextSteps.length > 0,
+    );
+
+    const relaxed = buildProviderModelArgs('gemini', 'gemini-pro', { enforce: false });
+    assert.equal(relaxed.model, 'gemini-pro');
+    assert.equal(relaxed.supported, false);
+    assert.equal(relaxed.enforced, false);
+    assert.deepEqual(relaxed.args, []);
+  } finally {
+    provider.supportsModelSelection = originalSupports;
+    provider.modelArgBuilder = originalBuilder;
+  }
 });
 
 test('preflightProvider reports a missing CLI with an install hint', () => {
@@ -71,8 +120,35 @@ test('runProvider dry-run returns a structured plan without invoking spawn', asy
   assert.equal(result.provider, 'gemini');
   assert.equal(result.command, 'gemini');
   assert.deepEqual(result.args, ['--prompt', '']);
+  assert.equal(result.modelSelection.model, '');
   assert.equal(result.exitCode, 0);
   assert.equal(result.stderr, '');
+});
+
+test('runProvider dry-run exposes selected provider model without auth preflight', async () => {
+  let spawnCalled = false;
+  const result = await runProvider('claude', {
+    dryRun: true,
+    prompt: 'dry run prompt',
+    model: 'opus-4.7',
+    enforceModelSelection: true,
+    spawn() {
+      spawnCalled = true;
+      throw new Error('should not run');
+    },
+  });
+
+  assert.equal(spawnCalled, false);
+  assert.equal(result.ok, true);
+  assert.equal(result.provider, 'claude');
+  assert.deepEqual(result.args, ['-p', '--model', 'opus-4.7']);
+  assert.deepEqual(result.modelSelection, {
+    model: 'opus-4.7',
+    supported: true,
+    enforced: true,
+    args: ['--model', 'opus-4.7'],
+    reason: 'model argument supported',
+  });
 });
 
 test('runProvider uses an argument array and writes the prompt through stdin', async () => {

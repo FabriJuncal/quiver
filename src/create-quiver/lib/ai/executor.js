@@ -4,11 +4,20 @@ const cp = require('node:child_process');
 
 const { buildContextPackMetadata, normalizeRole } = require('./context-packs');
 const { buildProviderInvocation, runProvider } = require('./providers');
-const { resolveProfileProvider } = require('../agent-profiles');
+const {
+  getAgentProfile,
+  getAgentProfileById,
+  getAgentProfilesForRole,
+  resolveAgentProfileDisplayName,
+  resolveProfileProvider,
+} = require('../agent-profiles');
+const { selectOption } = require('../cli/selectors');
+const { createUx } = require('../cli/ux');
 const { currentBranch, runGit } = require('../git');
 const { redactSecrets, truncateText } = require('../evidence');
 const { captureWorktreeSnapshot, validateScopeSnapshot } = require('../scope');
 const { resolveSliceContext } = require('../slice');
+const { buildGraph, readAllSlices, topoSort } = require('../slice-graph');
 const { validateProjectRelativePaths } = require('../paths');
 
 const DEFAULT_EXECUTE_PROVIDER = 'codex';
@@ -47,6 +56,208 @@ function normalizeTimeout(timeoutMs) {
   }
 
   return parsed;
+}
+
+function resolveExecutorRuntimeProfile(repoRoot, role, options = {}) {
+  const explicitProvider = options.providerExplicit === true || (options.provider && options.providerExplicit !== false);
+  const explicitModel = String(options.model || '').trim();
+
+  if (explicitProvider) {
+    const provider = String(options.provider || DEFAULT_EXECUTE_PROVIDER).trim().toLowerCase();
+    return {
+      provider,
+      model: explicitModel,
+      displayName: explicitModel || provider,
+      profile: null,
+    };
+  }
+
+  const profile = options.executorProfile
+    ? getAgentProfileById(repoRoot, role, options.executorProfile)
+    : getAgentProfile(repoRoot, role);
+  const provider = profile?.provider || resolveProfileProvider(repoRoot, role, DEFAULT_EXECUTE_PROVIDER);
+  const model = explicitModel || profile?.model || '';
+
+  return {
+    provider,
+    model,
+    displayName: profile ? resolveAgentProfileDisplayName(profile) : (model || provider),
+    profile,
+  };
+}
+
+function createCommandUx(options = {}) {
+  if (options.ux) {
+    return options.ux;
+  }
+
+  return createUx({
+    env: options.env || process.env,
+    interactive: options.interactive,
+    json: options.json,
+    noColor: options.noColor,
+    prompts: options.prompts,
+    spinner: options.spinner,
+    stdinIsTTY: options.stdinIsTTY,
+    stdoutIsTTY: options.stdoutIsTTY,
+    stderrIsTTY: options.stderrIsTTY,
+    write: options.write,
+  });
+}
+
+function selectorOptions(options = {}) {
+  return {
+    defaultValue: options.defaultValue,
+    env: options.env || process.env,
+    flag: options.flag,
+    interactive: options.interactive,
+    promptSelect: options.promptSelect,
+    prompts: options.prompts,
+    stdinIsTTY: options.stdinIsTTY,
+    stdoutIsTTY: options.stdoutIsTTY,
+    stderrIsTTY: options.stderrIsTTY,
+  };
+}
+
+async function resolveInteractiveExecutorProfile(repoRoot, role, options = {}) {
+  if (options.providerExplicit === true || options.provider || options.executorProfile || options.interactive !== true) {
+    return options.executorProfile || '';
+  }
+
+  const profiles = getAgentProfilesForRole(repoRoot, role);
+  if (profiles.length <= 1) {
+    return options.executorProfile || '';
+  }
+
+  const selected = await selectOption(
+    '¿Qué Executor querés usar?',
+    profiles.map((profile) => ({
+      label: resolveAgentProfileDisplayName(profile),
+      value: profile.id,
+      hint: `${profile.provider}${profile.model ? ` / ${profile.model}` : ''}`,
+    })),
+    selectorOptions({
+      ...options,
+      defaultValue: profiles.find((profile) => profile.default)?.id || profiles[0].id,
+      flag: '--executor',
+    }),
+  );
+
+  return selected.value;
+}
+
+function isCompletedStatus(status) {
+  return ['completed', 'done', 'skipped', 'cancelled'].includes(String(status || '').trim().toLowerCase());
+}
+
+function readySliceOptions(repoRoot) {
+  const allSlices = readAllSlices(repoRoot);
+  const graph = buildGraph(allSlices);
+  topoSort(graph);
+  const pending = graph.nodes.filter((node) => !isCompletedStatus(node.status));
+  const pendingRefs = new Set(pending.map((node) => node.ref));
+  const completedRefs = new Set(graph.nodes.filter((node) => isCompletedStatus(node.status)).map((node) => node.ref));
+  const pendingFoundationBySpec = new Set(pending
+    .filter((node) => node.sliceId === 'slice-00' || String(node.sliceId || '').startsWith('slice-00-'))
+    .map((node) => node.specSlug));
+  const incomingByRef = new Map();
+
+  for (const edge of graph.edges) {
+    if (!incomingByRef.has(edge.to)) {
+      incomingByRef.set(edge.to, []);
+    }
+    incomingByRef.get(edge.to).push(edge.from);
+  }
+
+  return pending
+    .filter((node) => {
+      if (pendingFoundationBySpec.has(node.specSlug) && !(node.sliceId === 'slice-00' || String(node.sliceId || '').startsWith('slice-00-'))) {
+        return false;
+      }
+      const incoming = incomingByRef.get(node.ref) || [];
+      return incoming.every((depRef) => completedRefs.has(depRef) || !pendingRefs.has(depRef));
+    })
+    .sort((left, right) => String(left.ref).localeCompare(String(right.ref)))
+    .map((node) => ({
+      label: `${node.ref} [${node.status || 'draft'}]`,
+      value: toRelativePath(repoRoot, node.slicePath),
+      hint: node.title || node.sliceId,
+    }));
+}
+
+async function resolveInteractiveSliceInput(repoRoot, options = {}) {
+  if (options.slice) {
+    return options.slice;
+  }
+
+  if (options.interactive !== true) {
+    throw new Error(formatError('missing required --slice path for ai execute-slice'));
+  }
+
+  const optionsForSlices = readySliceOptions(repoRoot);
+  if (optionsForSlices.length === 0) {
+    throw new Error(formatError('no ready slices found for interactive execution. Run `npx create-quiver ai execute-plan --dry-run` to inspect dependencies and blockers.'));
+  }
+
+  const selected = await selectOption(
+    '¿Qué slice querés ejecutar?',
+    optionsForSlices,
+    selectorOptions({
+      ...options,
+      defaultValue: optionsForSlices.length === 1 ? optionsForSlices[0].value : undefined,
+      flag: '--slice',
+    }),
+  );
+  return selected.value;
+}
+
+function shouldShowHumanProgress(ux, options = {}) {
+  return options.progress !== false
+    && options.dryRun !== true
+    && ux?.mode?.decoration === true;
+}
+
+function writeProgressChecks(ux, enabled, title, checks = []) {
+  if (!enabled) {
+    return;
+  }
+  ux.heading(title);
+  for (const check of checks) {
+    ux.check(check);
+  }
+}
+
+async function runWithProgress({ ux, enabled, message, successMessage, failureMessage, run }) {
+  if (!enabled) {
+    return run();
+  }
+
+  return ux.withSpinner(message, run, {
+    successMessage,
+    failureMessage,
+  });
+}
+
+async function runProviderWithProgress({ ux, enabled, run }) {
+  async function runAndFailOnProviderResult() {
+    const result = await run();
+    if (result && result.ok === false) {
+      const error = new Error(result.error?.message || 'provider run failed');
+      error.code = result.error?.code || 'AI_PROVIDER_RUN_FAILED';
+      error.providerResult = result;
+      throw error;
+    }
+    return result;
+  }
+
+  return runWithProgress({
+    ux,
+    enabled,
+    message: 'Ejecutando agente...',
+    successMessage: 'Agente finalizado',
+    failureMessage: 'Fallo ejecutando agente',
+    run: runAndFailOnProviderResult,
+  });
 }
 
 function toRelativePath(repoRoot, absolutePath) {
@@ -378,11 +589,17 @@ function formatExecuteSliceDryRunReport({ provider, role, contextPack, slice, br
     `Prompt transport: ${invocation.promptTransport.mode}`,
     `Prompt length: ${invocation.promptLength} bytes`,
     `Commit after validation: ${commitEnabled ? 'enabled' : 'disabled'}`,
+  ];
+  if (invocation.modelSelection && invocation.modelSelection.model) {
+    lines.push(`Model: ${invocation.modelSelection.model}`);
+    lines.push(`Model support: ${invocation.modelSelection.supported ? 'supported' : 'unsupported'} (${invocation.modelSelection.reason})`);
+  }
+  lines.push(
     'Allowed files:',
     ...formatList(allowedFiles),
     'Validation commands:',
     ...formatList(validationCommands),
-  ];
+  );
 
   return `${lines.join('\n')}\n`;
 }
@@ -711,19 +928,21 @@ function writeExecutionArtifacts(repoRoot, executorContext, details) {
 async function runExecuteSlice(repoRoot, options = {}) {
   const canonicalRepoRoot = canonicalizeRepoRoot(repoRoot);
   const role = normalizeRole(options.role || DEFAULT_EXECUTE_ROLE);
-  const provider = options.providerExplicit === true || (options.provider && options.providerExplicit !== false)
-    ? String(options.provider || DEFAULT_EXECUTE_PROVIDER).trim().toLowerCase()
-    : resolveProfileProvider(canonicalRepoRoot, role, DEFAULT_EXECUTE_PROVIDER);
+  const selectedSlice = await resolveInteractiveSliceInput(canonicalRepoRoot, options);
+  const selectedExecutorProfile = await resolveInteractiveExecutorProfile(canonicalRepoRoot, role, options);
+  const resolvedOptions = {
+    ...options,
+    executorProfile: selectedExecutorProfile || options.executorProfile,
+    slice: selectedSlice,
+  };
+  const runtimeProfile = resolveExecutorRuntimeProfile(canonicalRepoRoot, role, resolvedOptions);
+  const provider = runtimeProfile.provider;
   const context = options.context || DEFAULT_EXECUTE_CONTEXT;
   const timeoutMs = normalizeTimeout(options.timeout);
 
-  if (!options.slice) {
-    throw new Error(formatError('missing required --slice path for ai execute-slice'));
-  }
-
   const executorContext = buildExecuteSliceContext({
     repoRoot: canonicalRepoRoot,
-    slicePath: options.slice,
+    slicePath: resolvedOptions.slice,
     role,
     context,
   });
@@ -736,6 +955,8 @@ async function runExecuteSlice(repoRoot, options = {}) {
       prompt,
       cwd: canonicalRepoRoot,
       timeoutMs,
+      model: runtimeProfile.model,
+      enforceModelSelection: false,
     });
   } catch (error) {
     throw annotateProviderError(error, 'execute-slice');
@@ -753,6 +974,7 @@ async function runExecuteSlice(repoRoot, options = {}) {
       allowedFiles: executorContext.allowedFiles,
       validationCommands: executorContext.validationCommands,
       commitEnabled: options.commit === true,
+      profile: runtimeProfile,
     };
     process.stdout.write(formatExecuteSliceDryRunReport({
       provider,
@@ -782,21 +1004,40 @@ async function runExecuteSlice(repoRoot, options = {}) {
     throw appendRecovery(new Error(formatError(`ai execute-slice requires a clean worktree before running. Commit or stash first: ${beforeSnapshot.files.join(', ')}`)), executorContext.slice);
   }
 
+  const ux = createCommandUx(options);
+  const showProgress = shouldShowHumanProgress(ux, options);
+  writeProgressChecks(
+    ux,
+    showProgress,
+    `Ejecutando slice con ${runtimeProfile.displayName}`,
+    ['Leyendo slice', 'Validando worktree', 'Preparando prompt'],
+  );
+
   let result;
   try {
-    result = await (options.runProviderFn || runProvider)(provider, {
-      prompt,
-      cwd: canonicalRepoRoot,
-      timeoutMs,
-      dryRun: false,
-      probe: options.probe,
-      spawn: options.spawn,
-      tempRoot: options.tempRoot,
-      tempFileName: options.tempFileName,
-      tempFilePrefix: options.tempFilePrefix,
+    result = await runProviderWithProgress({
+      ux,
+      enabled: showProgress,
+      run: () => (options.runProviderFn || runProvider)(provider, {
+        prompt,
+        cwd: canonicalRepoRoot,
+        timeoutMs,
+        dryRun: false,
+        probe: options.probe,
+        spawn: options.spawn,
+        tempRoot: options.tempRoot,
+        tempFileName: options.tempFileName,
+        tempFilePrefix: options.tempFilePrefix,
+        model: runtimeProfile.model,
+        enforceModelSelection: Boolean(runtimeProfile.model),
+      }),
     });
   } catch (error) {
-    throw appendRecovery(annotateProviderError(error, 'execute-slice'), executorContext.slice);
+    if (error.providerResult) {
+      result = error.providerResult;
+    } else {
+      throw appendRecovery(annotateProviderError(error, 'execute-slice'), executorContext.slice);
+    }
   }
 
   if (result.stdout) {
@@ -840,11 +1081,18 @@ async function runExecuteSlice(repoRoot, options = {}) {
 
   let validationResults = [];
   try {
-    validationResults = runValidationCommands(
-      canonicalRepoRoot,
-      executorContext.validationCommands,
-      options.runValidationCommandFn,
-    );
+    validationResults = await runWithProgress({
+      ux,
+      enabled: showProgress && executorContext.validationCommands.length > 0,
+      message: 'Ejecutando validaciones...',
+      successMessage: 'Validaciones completadas',
+      failureMessage: 'Fallaron las validaciones',
+      run: () => runValidationCommands(
+        canonicalRepoRoot,
+        executorContext.validationCommands,
+        options.runValidationCommandFn,
+      ),
+    });
   } catch (error) {
     throw appendRecovery(error, executorContext.slice);
   }
@@ -872,8 +1120,15 @@ async function runExecuteSlice(repoRoot, options = {}) {
   let commitResult = null;
   if (options.commit === true) {
     try {
-      commitResult = commitSliceChanges(canonicalRepoRoot, executorContext.slice, finalScopeResult.changedFiles, {
-        message: options.commitMessage,
+      commitResult = await runWithProgress({
+        ux,
+        enabled: showProgress,
+        message: 'Creando commit del slice...',
+        successMessage: 'Commit del slice creado',
+        failureMessage: 'Fallo creando commit del slice',
+        run: () => commitSliceChanges(canonicalRepoRoot, executorContext.slice, finalScopeResult.changedFiles, {
+          message: options.commitMessage,
+        }),
       });
     } catch (error) {
       throw appendRecovery(error, executorContext.slice);
@@ -894,6 +1149,7 @@ async function runExecuteSlice(repoRoot, options = {}) {
     provider,
     role,
     contextPack: executorContext.context.packName,
+    profile: runtimeProfile,
     slice: executorContext.slice.sliceId,
     specSlug: executorContext.slice.specSlug,
     invocation,

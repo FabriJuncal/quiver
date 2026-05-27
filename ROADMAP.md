@@ -80,9 +80,14 @@
 - Published package `0.14.0`.
 - **v28** — Follow-up hardening from Pixel Quiver dogfooding: active-slice reconciliation, spec-aware `ai inspect` recovery, structured plan-review closure, safer technical-plan approval, stronger spec/worktree validation, agent-safe command examples, GitHub auth/alias guidance, and final release-readiness evidence live in `specs/quiver-v28-pixel-quiver-feedback-reconciliation/`.
 
-## v0.15 — Planner Context and CLI UX Standard (in progress)
+## v0.14.1 — Planner Context and CLI UX Standard (shipped 2026-05-26)
 
+- Published package `0.14.1`.
 - **v29** — Planner-assisted context preparation and CLI UX standard: shared output helpers, Quiver palette, guarded `--with-planner` / `--interactive` / `--review` flags, optional planner-generated `ai prepare-context`, review/interactive adoption for selected commands, docs, tests, and smoke readiness live in `specs/quiver-v29-planner-prepare-context-cli-ux/`.
+
+## v0.15 — Interactive CLI UX and Agent Selection (release-ready, pending package publication)
+
+- **v30** — Interactive CLI UX and agent selection: visible progress for long-running IA commands, selected Planner/Executor/Reviewer/Doctor display names, profile/spec/slice/methodology selectors, provider model-selection correctness, Doctor human/JSON parity, cross-platform automation safety, and release-readiness evidence live in `specs/quiver-v30-interactive-cli-ux-agent-selection/`.
 
 ## Post-Checkpoint Plan (do not execute before validating v14)
 
@@ -101,7 +106,8 @@
 - **v26 — 0.12.1 Smoke Hardening** (shipped in `0.12.1`): first-use hardening from clean npm smoke testing, covering CLI help/version output, generated doc links, AI approval/review guidance, local validation, slice brief validation, demo readiness, scoped plan/graph performance, and release smoke coverage live in `specs/quiver-v26-0121-smoke-hardening/`.
 - **v27 — Reliability and AI Workflow Hardening** (shipped in `0.13.0`): Pixel Quiver dogfooding follow-up covering resolver/export/spec-create/AI-artifact/worktree/validation/context/DX hardening lives in `specs/quiver-v27-reliability-ai-workflow-hardening/`.
 - **v28 — Pixel Quiver Feedback Reconciliation** (shipped in `0.14.0`): active-slice reconciliation, stale inspect recovery, structured review closure, validation/worktree hardening, agent-safe commands, GitHub auth guidance, and release-readiness evidence live in `specs/quiver-v28-pixel-quiver-feedback-reconciliation/`.
-- **v29 — Planner Context and CLI UX Standard** (in progress): planner-assisted `ai prepare-context`, CLI UX primitives, guarded UX flags, human review/interactive flows, and final docs/smoke readiness live in `specs/quiver-v29-planner-prepare-context-cli-ux/`.
+- **v29 — Planner Context and CLI UX Standard** (shipped in `0.14.1`): planner-assisted `ai prepare-context`, CLI UX primitives, guarded UX flags, human review/interactive flows, and final docs/smoke readiness live in `specs/quiver-v29-planner-prepare-context-cli-ux/`.
+- **v30 — Interactive CLI UX and Agent Selection** (release-ready, pending package publication): visible IA progress, Quiver-branded output, profile/spec/slice selectors, provider model-selection correctness, Doctor human/JSON parity, and cross-platform release readiness live in `specs/quiver-v30-interactive-cli-ux-agent-selection/`.
 
 The shipped v20/v21/v22/v23 work is no longer pending. The older context-diagnostics and slice-archaeology ideas remain deferred until real demand justifies them.
 

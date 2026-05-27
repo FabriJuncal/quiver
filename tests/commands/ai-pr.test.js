@@ -256,3 +256,59 @@ test('ai pr create runs gh pr create with pr.md after preflight', async () => {
     fs.rmSync(root, { recursive: true, force: true });
   }
 });
+
+test('ai pr create shows TTY progress for preflight and gh creation', async () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'quiver-ai-pr-progress-'));
+  writeFile(path.join(root, 'specs/demo/pr.md'), '## Title\nDemo PR\n\n## Summary\nBody\n');
+  const events = [];
+
+  try {
+    await runPr(root, {
+      create: true,
+      input: 'specs/demo/pr.md',
+      stdoutIsTTY: true,
+      stdinIsTTY: true,
+      stderrIsTTY: true,
+      noColor: true,
+      env: { LANG: 'en_US.UTF-8' },
+      write: (text) => events.push(['write', text]),
+      prompts: {
+        spinner() {
+          return {
+            start(message) {
+              events.push(['start', message]);
+            },
+            stop(message, code) {
+              events.push(['stop', message, code]);
+            },
+          };
+        },
+      },
+      preflightFn: async (repoRoot) => ({
+        ok: true,
+        repoRoot,
+        remote: 'origin',
+        branchName: 'feature/demo',
+        guidePath: `${repoRoot}/docs/GITFLOW_PR_GUIDE.md`,
+      }),
+      ghCreateRunner() {
+        return {
+          status: 0,
+          stdout: 'https://github.com/example/repo/pull/1\n',
+          stderr: '',
+        };
+      },
+    });
+
+    assert.deepEqual(events, [
+      ['write', '◇ Creando PR con gh\n'],
+      ['start', 'Ejecutando preflight de GitHub...'],
+      ['stop', 'Preflight de GitHub listo', undefined],
+      ['write', '✓ Cuerpo del PR preparado\n'],
+      ['start', 'Creando PR en GitHub...'],
+      ['stop', 'PR creado', undefined],
+    ]);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});

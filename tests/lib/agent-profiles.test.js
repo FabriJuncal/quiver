@@ -6,9 +6,12 @@ const test = require('node:test');
 
 const {
   agentProfilesPath,
+  getAgentProfileById,
+  getAgentProfilesForRole,
   getAgentProfile,
   listAgentProfiles,
   readAgentProfiles,
+  resolveAgentProfileDisplayName,
   resolveProfileProvider,
   setAgentProfile,
 } = require('../../src/create-quiver/lib/agent-profiles');
@@ -41,9 +44,46 @@ test('agent profiles persist provider and free-form model labels without secrets
     assert.equal(state.profiles.planner.provider, 'codex');
     assert.equal(state.profiles.planner.model, 'gpt-5.5-xhigh');
     assert.equal(state.profiles.planner.label, 'expensive-planner');
+    assert.equal(state.profiles.planner.id, 'expensive-planner');
+    assert.equal(state.profiles.planner.displayName, 'gpt-5.5-xhigh');
     assert.equal(state.profiles.planner.context, 'planning');
+    assert.equal(state.profile_sets.planners.length, 1);
     assert.equal(JSON.stringify(state).includes('api_key'), false);
     assert.equal(JSON.stringify(state).includes('token'), false);
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('agent profiles support multiple named profiles per role with a default', () => {
+  const repo = makeRepo();
+
+  try {
+    setAgentProfile(repo.root, 'planner', {
+      id: 'gpt-55',
+      provider: 'codex',
+      model: 'gpt-5.5',
+      displayName: 'GPT 5.5',
+      default: true,
+    });
+    setAgentProfile(repo.root, 'planner', {
+      id: 'opus-47',
+      provider: 'claude',
+      model: 'opus-4.7',
+      displayName: 'OPUS 4.7',
+      default: false,
+    });
+
+    const profiles = getAgentProfilesForRole(repo.root, 'planner');
+    assert.equal(profiles.length, 2);
+    assert.equal(getAgentProfile(repo.root, 'planner').id, 'gpt-55');
+    assert.equal(getAgentProfileById(repo.root, 'planner', 'opus-47').provider, 'claude');
+    assert.equal(resolveAgentProfileDisplayName(getAgentProfileById(repo.root, 'planner', 'gpt-55')), 'GPT 5.5');
+
+    const listed = listAgentProfiles(repo.root).find((item) => item.role === 'planner');
+    assert.equal(listed.configured, true);
+    assert.equal(listed.profiles.length, 2);
+    assert.equal(listed.profile.id, 'gpt-55');
   } finally {
     repo.cleanup();
   }

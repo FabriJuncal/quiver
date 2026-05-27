@@ -5,7 +5,7 @@ const { assertSupportedProvider, formatProviderList } = require('./ai/providers'
 const { quiverInternalPaths } = require('./init-layout');
 
 const AGENT_PROFILE_ROLES = Object.freeze(['planner', 'executor', 'reviewer', 'doctor']);
-const PROFILE_STATE_VERSION = 1;
+const PROFILE_STATE_VERSION = 2;
 
 function formatError(message) {
   return `create-quiver: ${message}`;
@@ -56,7 +56,44 @@ function emptyProfilesState() {
   return {
     version: PROFILE_STATE_VERSION,
     profiles: {},
+    profile_sets: {},
   };
+}
+
+function profileSetKey(role) {
+  return `${normalizeAgentProfileRole(role)}s`;
+}
+
+function normalizeProfileId(value, fallback = 'default') {
+  const source = String(value || fallback || 'default').trim().toLowerCase();
+  const normalized = source
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+  return normalized || 'default';
+}
+
+function resolveAgentProfileDisplayName(profile = {}) {
+  return profile.displayName || profile.model || profile.provider || profile.role || '';
+}
+
+function normalizeStoredProfile(profile, role, fallbackId = 'default') {
+  const normalizedRole = normalizeAgentProfileRole(role || profile?.role);
+  const provider = profile?.provider ? assertSupportedProvider(profile.provider) : '';
+  const normalized = {
+    id: normalizeProfileId(profile?.id || profile?.label, fallbackId),
+    role: normalizedRole,
+    provider,
+    model: normalizeOptionalText(profile?.model, 'model'),
+    label: normalizeOptionalText(profile?.label, 'label'),
+    displayName: normalizeOptionalText(profile?.displayName || profile?.display_name, 'displayName'),
+    context: normalizeOptionalText(profile?.context, 'context'),
+    default: profile?.default === true,
+    updated_at: profile?.updated_at || '',
+  };
+  if (!normalized.displayName) {
+    normalized.displayName = resolveAgentProfileDisplayName(normalized);
+  }
+  return normalized;
 }
 
 function readAgentProfiles(projectRoot) {
@@ -69,6 +106,8 @@ function readAgentProfiles(projectRoot) {
   return {
     version: state.version || PROFILE_STATE_VERSION,
     profiles: state.profiles && typeof state.profiles === 'object' ? state.profiles : {},
+    profile_sets: state.profile_sets && typeof state.profile_sets === 'object' ? state.profile_sets : {},
+    updated_at: state.updated_at || undefined,
   };
 }
 
@@ -81,17 +120,52 @@ function writeAgentProfiles(projectRoot, state) {
 
 function getAgentProfile(projectRoot, role) {
   const normalizedRole = normalizeAgentProfileRole(role);
+  const profiles = getAgentProfilesForRole(projectRoot, normalizedRole);
+  if (profiles.length === 0) return null;
+  return profiles.find((profile) => profile.default) || profiles[0];
+}
+
+function getAgentProfileById(projectRoot, role, profileId) {
+  const normalizedRole = normalizeAgentProfileRole(role);
+  const normalizedId = normalizeProfileId(profileId);
+  return getAgentProfilesForRole(projectRoot, normalizedRole)
+    .find((profile) => profile.id === normalizedId) || null;
+}
+
+function getAgentProfilesForRole(projectRoot, role) {
+  const normalizedRole = normalizeAgentProfileRole(role);
   const state = readAgentProfiles(projectRoot);
-  return state.profiles[normalizedRole] || null;
+  const setKey = profileSetKey(normalizedRole);
+  const fromSet = Array.isArray(state.profile_sets[setKey])
+    ? state.profile_sets[setKey].map((profile, index) => normalizeStoredProfile(profile, normalizedRole, index === 0 ? 'default' : `${normalizedRole}-${index + 1}`))
+    : [];
+  const legacy = state.profiles[normalizedRole]
+    ? normalizeStoredProfile({ ...state.profiles[normalizedRole], default: true }, normalizedRole, 'default')
+    : null;
+  const merged = new Map();
+
+  if (legacy) merged.set(legacy.id, legacy);
+  for (const profile of fromSet) {
+    merged.set(profile.id, profile);
+  }
+
+  const profiles = Array.from(merged.values()).filter((profile) => profile.provider);
+  if (profiles.length > 0 && !profiles.some((profile) => profile.default)) {
+    profiles[0].default = true;
+  }
+  return profiles;
 }
 
 function listAgentProfiles(projectRoot) {
-  const state = readAgentProfiles(projectRoot);
-  return AGENT_PROFILE_ROLES.map((role) => ({
-    role,
-    configured: Boolean(state.profiles[role]),
-    profile: state.profiles[role] || null,
-  }));
+  return AGENT_PROFILE_ROLES.map((role) => {
+    const profiles = getAgentProfilesForRole(projectRoot, role);
+    return {
+      role,
+      configured: profiles.length > 0,
+      profile: profiles.find((profile) => profile.default) || profiles[0] || null,
+      profiles,
+    };
+  });
 }
 
 function setAgentProfile(projectRoot, role, options = {}) {
@@ -109,23 +183,47 @@ function buildAgentProfileState(projectRoot, role, options = {}) {
   const provider = assertSupportedProvider(options.provider);
   const model = normalizeOptionalText(options.model, 'model');
   const label = normalizeOptionalText(options.label, 'label');
+  const displayName = normalizeOptionalText(options.displayName || options.display_name, 'displayName');
   const context = normalizeOptionalText(options.context, 'context');
   const state = readAgentProfiles(projectRoot);
-  const current = state.profiles[normalizedRole] || {};
+  const currentProfiles = getAgentProfilesForRole(projectRoot, normalizedRole);
+  const currentDefault = currentProfiles.find((profile) => profile.default) || currentProfiles[0] || {};
+  const id = normalizeProfileId(options.id || currentDefault.id || label || model || provider);
+  const current = currentProfiles.find((profile) => profile.id === id) || {};
   const now = options.now instanceof Date ? options.now.toISOString() : new Date().toISOString();
+  const shouldBeDefault = options.default === true || currentProfiles.length === 0 || (options.default !== false && current.default === true);
   const profile = {
+    id,
     role: normalizedRole,
     provider,
     model: model || current.model || '',
     label: label || current.label || '',
+    displayName: displayName || current.displayName || model || label || provider,
     context: context || current.context || '',
+    default: shouldBeDefault,
     updated_at: now,
   };
 
   state.version = PROFILE_STATE_VERSION;
+  const setKey = profileSetKey(normalizedRole);
+  const nextProfiles = currentProfiles
+    .filter((item) => item.id !== id)
+    .map((item) => ({
+      ...item,
+      default: shouldBeDefault ? false : item.default === true,
+    }))
+    .concat(profile);
+  if (!nextProfiles.some((item) => item.default)) {
+    nextProfiles[0].default = true;
+  }
+  state.profile_sets = {
+    ...state.profile_sets,
+    [setKey]: nextProfiles,
+  };
+  const defaultProfile = nextProfiles.find((item) => item.default) || profile;
   state.profiles = {
     ...state.profiles,
-    [normalizedRole]: profile,
+    [normalizedRole]: defaultProfile,
   };
   state.updated_at = now;
 
@@ -149,6 +247,9 @@ module.exports = {
   AGENT_PROFILE_ROLES,
   PROFILE_STATE_VERSION,
   agentProfilesPath,
+  getAgentProfileById,
+  getAgentProfilesForRole,
+  resolveAgentProfileDisplayName,
   formatProviderList,
   buildAgentProfileState,
   getAgentProfile,

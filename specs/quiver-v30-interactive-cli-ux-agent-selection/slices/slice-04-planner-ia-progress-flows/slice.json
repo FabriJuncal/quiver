@@ -1,0 +1,85 @@
+{
+  "slice_id": "slice-04-planner-ia-progress-flows",
+  "ticket": "QUIVER-30-04",
+  "type": "feature",
+  "title": "Planner IA progress flows",
+  "objective": "Apply the UX runtime, selectors, display names, and provider model contract to planner-oriented IA commands.",
+  "description": "Adds visible real-stage progress to ai onboard, ai prepare-context --with-planner, ai plan, and ai review-plan.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v30-planner-ia-progress-flows",
+    "branch_name": "feature/QUIVER-30-04-v30-planner-ia-progress-flows"
+  },
+  "files": [
+    "src/create-quiver/commands/ai.js",
+    "src/create-quiver/lib/ai/**",
+    "src/create-quiver/lib/cli/**",
+    "tests/commands/ai-onboard.test.js",
+    "tests/commands/ai-plan.test.js",
+    "tests/commands/ai-review-plan.test.js",
+    "specs/quiver-v30-interactive-cli-ux-agent-selection/**"
+  ],
+  "expected_read_paths": [
+    "src/create-quiver/commands/ai.js",
+    "src/create-quiver/lib/ai/context-packs.js",
+    "src/create-quiver/lib/ai/context-proposal.js",
+    "src/create-quiver/lib/ai/plan-review.js",
+    "src/create-quiver/lib/ai/providers.js"
+  ],
+  "allowed_write_paths": [
+    "src/create-quiver/commands/ai.js",
+    "src/create-quiver/lib/ai/**",
+    "src/create-quiver/lib/cli/**",
+    "tests/commands/ai-onboard.test.js",
+    "tests/commands/ai-plan.test.js",
+    "tests/commands/ai-review-plan.test.js",
+    "tests/commands/ai-prepare-context*.test.js",
+    "docs/CLI_UX_GUIDE.md",
+    "docs/reference/commands.md",
+    "README.md",
+    "README_FOR_AI.md",
+    "specs/quiver-v30-interactive-cli-ux-agent-selection/**"
+  ],
+  "depends_on": [
+    "slice-01-cli-ux-runtime-progress-engine",
+    "slice-02-agent-profile-selection-selectors",
+    "slice-03-provider-model-selection-contract"
+  ],
+  "parallel_safe": "after_dependencies",
+  "parallel_safe_reason": "Can run after core profile/provider contracts, but may conflict with slice-05 in commands/ai.js.",
+  "must": [
+    "Show selected Planner or Reviewer display name in headings.",
+    "Add real progress stages for ai onboard.",
+    "Add real progress stages for ai prepare-context --with-planner.",
+    "Add real progress stages for ai plan and ai review-plan.",
+    "Show spinner while provider is running.",
+    "Stop spinner and persist failure/cancel state on errors.",
+    "Keep --print-prompt copyable and free of spinners."
+  ],
+  "not_included": [
+    "Executor slice execution progress.",
+    "PR progress.",
+    "Doctor output."
+  ],
+  "acceptance": [
+    "ai prepare-context --with-planner no longer appears frozen in human TTY mode.",
+    "Headings use configured profile/model display names.",
+    "Dry-run and print-prompt remain safe and clear.",
+    "Provider failure stops spinner and reports actionable next steps.",
+    "JSON/CI/no-TTY outputs stay clean."
+  ],
+  "tests": [
+    "node --test tests/commands/ai-onboard.test.js tests/commands/ai-plan.test.js tests/commands/ai-review-plan.test.js",
+    "git diff --check"
+  ],
+  "validation_hints": [
+    "Use injected provider runners for slow/failing provider tests.",
+    "Do not mark a stage successful before its corresponding action has completed."
+  ],
+  "estimated_hours": 12,
+  "status": "completed",
+  "blocked_reason": null,
+  "actual_hours": 5,
+  "completed_at": "2026-05-27"
+}

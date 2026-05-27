@@ -5,6 +5,12 @@ const UX_FLAG_OPTIONS = Object.freeze({
 });
 
 const UX_FLAG_MATRIX = Object.freeze({
+  init: Object.freeze({
+    withPlanner: false,
+    interactive: true,
+    review: false,
+    note: 'guided project onboarding choices',
+  }),
   'ai prepare-context': Object.freeze({
     withPlanner: true,
     interactive: true,
@@ -28,6 +34,18 @@ const UX_FLAG_MATRIX = Object.freeze({
     interactive: true,
     review: true,
     note: 'PR body review and interactive PR inputs',
+  }),
+  'ai execute-slice': Object.freeze({
+    withPlanner: false,
+    interactive: true,
+    review: false,
+    note: 'executor profile and ready-slice selection',
+  }),
+  'ai execute-plan': Object.freeze({
+    withPlanner: false,
+    interactive: true,
+    review: false,
+    note: 'execution strategy confirmation and future selectors',
   }),
 });
 

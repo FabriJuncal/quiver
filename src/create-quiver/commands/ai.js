@@ -57,7 +57,10 @@ const {
   agentProfilesPath,
   buildAgentProfileState,
   getAgentProfile,
+  getAgentProfileById,
   listAgentProfiles,
+  normalizeAgentProfileRole,
+  resolveAgentProfileDisplayName,
   resolveProfileProvider,
   setAgentProfile,
 } = require('../lib/agent-profiles');
@@ -122,11 +125,119 @@ function normalizeTimeout(timeoutMs) {
   return parsed;
 }
 
-function resolveProviderForProfile(repoRoot, role, provider, providerExplicit, fallbackProvider) {
-  if (providerExplicit === true || (provider && providerExplicit !== false)) {
-    return String(provider || fallbackProvider).trim().toLowerCase();
+function profileOptionForRole(options, role) {
+  const normalized = normalizeAgentProfileRole(role);
+  if (normalized === 'planner') {
+    return options.plannerProfile || options.profileId || '';
   }
-  return resolveProfileProvider(repoRoot, role, fallbackProvider);
+  if (normalized === 'executor') {
+    return options.executorProfile || options.profileId || '';
+  }
+  if (normalized === 'reviewer') {
+    return options.reviewerProfile || options.profileId || '';
+  }
+  if (normalized === 'doctor') {
+    return options.doctorProfile || options.profileId || '';
+  }
+  return options.profileId || '';
+}
+
+function resolveRuntimeAgentProfile(repoRoot, role, options = {}, fallbackProvider = DEFAULT_PLAN_PROVIDER) {
+  const normalizedRole = normalizeAgentProfileRole(role);
+  const explicitProvider = options.providerExplicit === true || (options.provider && options.providerExplicit !== false);
+  const explicitModel = String(options.model || '').trim();
+
+  if (explicitProvider) {
+    const provider = String(options.provider || fallbackProvider).trim().toLowerCase();
+    return {
+      role: normalizedRole,
+      profile: null,
+      profileId: '',
+      displayName: provider,
+      provider,
+      model: explicitModel,
+    };
+  }
+
+  const profileId = profileOptionForRole(options, normalizedRole);
+  const profile = profileId
+    ? getAgentProfileById(repoRoot, normalizedRole, profileId)
+    : getAgentProfile(repoRoot, normalizedRole);
+  const provider = profile?.provider || resolveProfileProvider(repoRoot, normalizedRole, fallbackProvider);
+
+  return {
+    role: normalizedRole,
+    profile,
+    profileId: profile?.id || profileId || '',
+    displayName: profile ? resolveAgentProfileDisplayName(profile) : provider,
+    provider,
+    model: explicitModel || profile?.model || '',
+  };
+}
+
+function createCommandUx(options = {}) {
+  if (options.ux) {
+    return options.ux;
+  }
+
+  return createUx({
+    env: options.env || process.env,
+    input: options.inputStream,
+    output: options.outputStream,
+    error: options.errorStream,
+    interactive: options.interactive,
+    json: options.json,
+    noColor: options.noColor,
+    prompts: options.prompts,
+    spinner: options.spinner,
+    stdinIsTTY: options.stdinIsTTY,
+    stdoutIsTTY: options.stdoutIsTTY,
+    stderrIsTTY: options.stderrIsTTY,
+    write: options.write,
+  });
+}
+
+function shouldShowHumanProgress(ux, options = {}) {
+  return options.progress !== false
+    && options.dryRun !== true
+    && options.printPrompt !== true
+    && ux?.mode?.decoration === true;
+}
+
+function plannerProgressTitle(action, runtimeProfile) {
+  return `${action} con ${runtimeProfile.displayName || runtimeProfile.model || runtimeProfile.provider}`;
+}
+
+function writeProgressChecks(ux, enabled, title, checks = []) {
+  if (!enabled) {
+    return;
+  }
+  ux.heading(title);
+  for (const check of checks) {
+    ux.check(check);
+  }
+}
+
+async function runProviderWithProgress({ ux, enabled, message = 'Ejecutando agente...', successMessage = 'Agente finalizado', failureMessage = 'Fallo ejecutando agente', run }) {
+  async function runAndFailOnProviderResult() {
+    const result = await run();
+    if (result && result.ok === false) {
+      const error = new Error(result.error?.message || 'provider run failed');
+      error.code = result.error?.code || 'AI_PROVIDER_RUN_FAILED';
+      error.providerResult = result;
+      throw error;
+    }
+    return result;
+  }
+
+  if (!enabled) {
+    return run();
+  }
+
+  return ux.withSpinner(message, runAndFailOnProviderResult, {
+    successMessage,
+    failureMessage,
+  });
 }
 
 function buildPlanContext({ role, context, phase, inputText, inputPath, repoRoot, revise = false }) {
@@ -210,6 +321,10 @@ function formatDryRunReport({ task, provider, role, contextPack, phase, invocati
   lines.push(`Timeout: ${invocation.timeoutMs}ms`);
   lines.push(`Prompt transport: ${invocation.promptTransport.mode}`);
   lines.push(`Prompt length: ${invocation.promptLength} bytes`);
+  if (invocation.modelSelection && invocation.modelSelection.model) {
+    lines.push(`Model: ${invocation.modelSelection.model}`);
+    lines.push(`Model support: ${invocation.modelSelection.supported ? 'supported' : 'unsupported'} (${invocation.modelSelection.reason})`);
+  }
 
   if (onboardingPlan) {
     lines.push(`Prompt source: ${onboardingPlan.promptSource}`);
@@ -236,6 +351,10 @@ function formatPromptOnlyReport({ task, provider, role, contextPack, phase, invo
   lines.push(`Timeout: ${invocation.timeoutMs}ms`);
   lines.push(`Prompt transport: ${invocation.promptTransport.mode}`);
   lines.push(`Prompt length: ${invocation.promptLength} bytes`);
+  if (invocation.modelSelection && invocation.modelSelection.model) {
+    lines.push(`Model: ${invocation.modelSelection.model}`);
+    lines.push(`Model support: ${invocation.modelSelection.supported ? 'supported' : 'unsupported'} (${invocation.modelSelection.reason})`);
+  }
 
   if (onboardingPlan) {
     lines.push(`Prompt source: ${onboardingPlan.promptSource}`);
@@ -407,6 +526,12 @@ function formatPrepareContextPlannerDryRunReport({ provider, role, context, invo
     `Context pack: ${context}`,
     `Command: ${invocation.command} ${invocation.args.join(' ')}`.trim(),
     `Prompt bytes: ${invocation.promptLength}`,
+    invocation.modelSelection && invocation.modelSelection.model
+      ? `Model: ${invocation.modelSelection.model}`
+      : '',
+    invocation.modelSelection && invocation.modelSelection.model
+      ? `Model support: ${invocation.modelSelection.supported ? 'supported' : 'unsupported'} (${invocation.modelSelection.reason})`
+      : '',
     `Prompt source: ${promptInfo.promptSource}`,
     `Review requested: ${review ? 'yes' : 'no'}`,
     `Interactive requested: ${interactive ? 'yes' : 'no'}`,
@@ -424,7 +549,7 @@ function formatPrepareContextPlannerDryRunReport({ provider, role, context, invo
     '- npx create-quiver ai prepare-context --with-planner',
   ];
 
-  return `${lines.join('\n')}\n`;
+  return `${lines.filter(Boolean).join('\n')}\n`;
 }
 
 function serializeProposalForReview(proposal) {
@@ -1108,7 +1233,8 @@ function annotateGitHubError(error, scope) {
 
 async function runOnboard(repoRoot, options = {}) {
   const role = normalizeRole(options.role || DEFAULT_ONBOARD_ROLE);
-  const provider = resolveProviderForProfile(repoRoot, role, options.provider, options.providerExplicit, DEFAULT_ONBOARD_PROVIDER);
+  const runtimeProfile = resolveRuntimeAgentProfile(repoRoot, role, options, DEFAULT_ONBOARD_PROVIDER);
+  const provider = runtimeProfile.provider;
   const context = options.context || DEFAULT_ONBOARD_CONTEXT;
   const timeoutMs = normalizeTimeout(options.timeout);
   const inputText = readTextFile(options.input, repoRoot);
@@ -1121,9 +1247,15 @@ async function runOnboard(repoRoot, options = {}) {
       prompt,
       cwd: repoRoot,
       timeoutMs,
+      model: runtimeProfile.model,
+      enforceModelSelection: false,
     });
   } catch (error) {
-    throw annotateProviderError(error, 'onboard');
+    if (error.providerResult) {
+      result = error.providerResult;
+    } else {
+      throw annotateProviderError(error, 'onboard');
+    }
   }
 
   if (options.dryRun) {
@@ -1134,6 +1266,7 @@ async function runOnboard(repoRoot, options = {}) {
       contextPack: context,
       invocation,
       onboardingPlan: contextInfo.plan,
+      profile: runtimeProfile,
     };
     process.stdout.write(formatDryRunReport(report));
     return report;
@@ -1148,23 +1281,39 @@ async function runOnboard(repoRoot, options = {}) {
       invocation,
       onboardingPlan: contextInfo.plan,
       prompt,
+      profile: runtimeProfile,
     };
     process.stdout.write(formatPromptOnlyReport(report));
     return report;
   }
 
+  const ux = createCommandUx(options);
+  const showProgress = shouldShowHumanProgress(ux, options);
+  writeProgressChecks(
+    ux,
+    showProgress,
+    plannerProgressTitle('Ejecutando onboarding', runtimeProfile),
+    ['Leyendo docs base', 'Detectando estructura', 'Preparando prompt'],
+  );
+
   let result;
   try {
-    result = await (options.runProviderFn || runProvider)(provider, {
-      prompt,
-      cwd: repoRoot,
-      timeoutMs,
-      dryRun: false,
-      probe: options.probe,
-      spawn: options.spawn,
-      tempRoot: options.tempRoot,
-      tempFileName: options.tempFileName,
-      tempFilePrefix: options.tempFilePrefix,
+    result = await runProviderWithProgress({
+      ux,
+      enabled: showProgress,
+      run: () => (options.runProviderFn || runProvider)(provider, {
+        prompt,
+        cwd: repoRoot,
+        timeoutMs,
+        dryRun: false,
+        probe: options.probe,
+        spawn: options.spawn,
+        tempRoot: options.tempRoot,
+        tempFileName: options.tempFileName,
+        tempFilePrefix: options.tempFilePrefix,
+        model: runtimeProfile.model,
+        enforceModelSelection: Boolean(runtimeProfile.model),
+      }),
     });
   } catch (error) {
     throw annotateProviderError(error, 'onboard');
@@ -1185,6 +1334,7 @@ async function runOnboard(repoRoot, options = {}) {
     contextPack: context,
     invocation,
     onboardingPlan: contextInfo.plan,
+    profile: runtimeProfile,
     result,
   };
 }
@@ -1257,7 +1407,8 @@ async function runPrepareContext(repoRoot, options = {}) {
 
 async function runPrepareContextWithPlanner(repoRoot, options = {}) {
   const role = normalizeRole(options.role || DEFAULT_PLAN_ROLE);
-  const provider = resolveProviderForProfile(repoRoot, role, options.provider, options.providerExplicit, DEFAULT_PLAN_PROVIDER);
+  const runtimeProfile = resolveRuntimeAgentProfile(repoRoot, role, options, DEFAULT_PLAN_PROVIDER);
+  const provider = runtimeProfile.provider;
   const context = options.context || DEFAULT_PLAN_CONTEXT;
   const timeoutMs = normalizeTimeout(options.timeout);
   const draftPack = buildContextPreparationDrafts(repoRoot);
@@ -1276,9 +1427,15 @@ async function runPrepareContextWithPlanner(repoRoot, options = {}) {
       prompt,
       cwd: repoRoot,
       timeoutMs,
+      model: runtimeProfile.model,
+      enforceModelSelection: false,
     });
   } catch (error) {
-    throw annotateProviderError(error, 'prepare-context');
+    if (error.providerResult) {
+      result = error.providerResult;
+    } else {
+      throw annotateProviderError(error, 'prepare-context');
+    }
   }
 
   if (options.dryRun) {
@@ -1292,6 +1449,7 @@ async function runPrepareContextWithPlanner(repoRoot, options = {}) {
       invocation,
       candidateDocs: promptInfo.allowedPaths,
       plan: draftPack.plan,
+      profile: runtimeProfile,
     };
     process.stdout.write(formatPrepareContextPlannerDryRunReport({
       provider,
@@ -1314,23 +1472,39 @@ async function runPrepareContextWithPlanner(repoRoot, options = {}) {
       invocation,
       prompt,
       promptSource: promptInfo.promptSource,
+      profile: runtimeProfile,
     };
     process.stdout.write(formatPromptOnlyReport(report));
     return report;
   }
 
+  const ux = createCommandUx(options);
+  const showProgress = shouldShowHumanProgress(ux, options);
+  writeProgressChecks(
+    ux,
+    showProgress,
+    plannerProgressTitle('Ejecutando onboarding', runtimeProfile),
+    ['Leyendo docs base', 'Detectando estructura', 'Preparando prompt'],
+  );
+
   let result;
   try {
-    result = await (options.runProviderFn || runProvider)(provider, {
-      prompt,
-      cwd: repoRoot,
-      timeoutMs,
-      dryRun: false,
-      probe: options.probe,
-      spawn: options.spawn,
-      tempRoot: options.tempRoot,
-      tempFileName: options.tempFileName,
-      tempFilePrefix: options.tempFilePrefix,
+    result = await runProviderWithProgress({
+      ux,
+      enabled: showProgress,
+      run: () => (options.runProviderFn || runProvider)(provider, {
+        prompt,
+        cwd: repoRoot,
+        timeoutMs,
+        dryRun: false,
+        probe: options.probe,
+        spawn: options.spawn,
+        tempRoot: options.tempRoot,
+        tempFileName: options.tempFileName,
+        tempFilePrefix: options.tempFilePrefix,
+        model: runtimeProfile.model,
+        enforceModelSelection: Boolean(runtimeProfile.model),
+      }),
     });
   } catch (error) {
     throw annotateProviderError(error, 'prepare-context');
@@ -1404,7 +1578,8 @@ async function runPrepareContextWithPlanner(repoRoot, options = {}) {
 async function runPlan(repoRoot, options = {}) {
   const phase = normalizePlannerPhase(options.phase || DEFAULT_PLAN_PHASE);
   const role = normalizeRole(options.role || DEFAULT_PLAN_ROLE);
-  const provider = resolveProviderForProfile(repoRoot, role, options.provider, options.providerExplicit, DEFAULT_PLAN_PROVIDER);
+  const runtimeProfile = resolveRuntimeAgentProfile(repoRoot, role, options, DEFAULT_PLAN_PROVIDER);
+  const provider = runtimeProfile.provider;
   const context = options.context || DEFAULT_PLAN_CONTEXT;
   const timeoutMs = normalizeTimeout(options.timeout);
   let inputPath = options.input || '';
@@ -1506,9 +1681,15 @@ async function runPlan(repoRoot, options = {}) {
       prompt,
       cwd: repoRoot,
       timeoutMs,
+      model: runtimeProfile.model,
+      enforceModelSelection: false,
     });
   } catch (error) {
-    throw annotateProviderError(error, 'plan', phase);
+    if (error.providerResult) {
+      result = error.providerResult;
+    } else {
+      throw annotateProviderError(error, 'plan', phase);
+    }
   }
 
   if (options.dryRun) {
@@ -1519,6 +1700,7 @@ async function runPlan(repoRoot, options = {}) {
       contextPack: contextInfo.pack.packName,
       phase,
       invocation,
+      profile: runtimeProfile,
     };
     process.stdout.write(formatDryRunReport(report));
     if (options.withPlanner === true) {
@@ -1542,23 +1724,39 @@ async function runPlan(repoRoot, options = {}) {
       phase,
       invocation,
       prompt,
+      profile: runtimeProfile,
     };
     process.stdout.write(formatPromptOnlyReport(report));
     return report;
   }
 
+  const ux = createCommandUx(options);
+  const showProgress = shouldShowHumanProgress(ux, options);
+  writeProgressChecks(
+    ux,
+    showProgress,
+    plannerProgressTitle(`Ejecutando plan ${phase}`, runtimeProfile),
+    ['Leyendo entrada', 'Preparando contexto', 'Preparando prompt'],
+  );
+
   let result;
   try {
-    result = await (options.runProviderFn || runProvider)(provider, {
-      prompt,
-      cwd: repoRoot,
-      timeoutMs,
-      dryRun: false,
-      probe: options.probe,
-      spawn: options.spawn,
-      tempRoot: options.tempRoot,
-      tempFileName: options.tempFileName,
-      tempFilePrefix: options.tempFilePrefix,
+    result = await runProviderWithProgress({
+      ux,
+      enabled: showProgress,
+      run: () => (options.runProviderFn || runProvider)(provider, {
+        prompt,
+        cwd: repoRoot,
+        timeoutMs,
+        dryRun: false,
+        probe: options.probe,
+        spawn: options.spawn,
+        tempRoot: options.tempRoot,
+        tempFileName: options.tempFileName,
+        tempFilePrefix: options.tempFilePrefix,
+        model: runtimeProfile.model,
+        enforceModelSelection: Boolean(runtimeProfile.model),
+      }),
     });
   } catch (error) {
     throw annotateProviderError(error, 'plan', phase);
@@ -1625,7 +1823,8 @@ async function runPlan(repoRoot, options = {}) {
 
 async function runReviewPlan(repoRoot, options = {}) {
   const role = 'planner';
-  const provider = resolveProviderForProfile(repoRoot, 'reviewer', options.provider, options.providerExplicit, DEFAULT_PLAN_PROVIDER);
+  const runtimeProfile = resolveRuntimeAgentProfile(repoRoot, 'reviewer', options, DEFAULT_PLAN_PROVIDER);
+  const provider = runtimeProfile.provider;
   const context = options.context || DEFAULT_PLAN_CONTEXT;
   const timeoutMs = normalizeTimeout(options.timeout);
   const resolved = resolveTechnicalPlanReviewInput(repoRoot, options.input || undefined);
@@ -1649,9 +1848,15 @@ async function runReviewPlan(repoRoot, options = {}) {
       prompt: built.prompt,
       cwd: repoRoot,
       timeoutMs,
+      model: runtimeProfile.model,
+      enforceModelSelection: false,
     });
   } catch (error) {
-    throw annotateProviderError(error, 'review-plan');
+    if (error.providerResult) {
+      result = error.providerResult;
+    } else {
+      throw annotateProviderError(error, 'review-plan');
+    }
   }
 
   if (options.dryRun) {
@@ -1665,6 +1870,7 @@ async function runReviewPlan(repoRoot, options = {}) {
       inputPath,
       inputKind: resolved.kind,
       inputVersion: resolved.version,
+      profile: runtimeProfile,
     };
     process.stdout.write(formatDryRunReport({
       task: 'review-plan',
@@ -1696,23 +1902,39 @@ async function runReviewPlan(repoRoot, options = {}) {
       inputPath,
       inputKind: resolved.kind,
       inputVersion: resolved.version,
+      profile: runtimeProfile,
     };
     process.stdout.write(formatPromptOnlyReport(report));
     return report;
   }
 
+  const ux = createCommandUx(options);
+  const showProgress = shouldShowHumanProgress(ux, options);
+  writeProgressChecks(
+    ux,
+    showProgress,
+    plannerProgressTitle('Ejecutando revisión del plan', runtimeProfile),
+    ['Leyendo plan técnico', 'Preparando contexto', 'Preparando prompt'],
+  );
+
   let result;
   try {
-    result = await (options.runProviderFn || runProvider)(provider, {
-      prompt: built.prompt,
-      cwd: repoRoot,
-      timeoutMs,
-      dryRun: false,
-      probe: options.probe,
-      spawn: options.spawn,
-      tempRoot: options.tempRoot,
-      tempFileName: options.tempFileName,
-      tempFilePrefix: options.tempFilePrefix,
+    result = await runProviderWithProgress({
+      ux,
+      enabled: showProgress,
+      run: () => (options.runProviderFn || runProvider)(provider, {
+        prompt: built.prompt,
+        cwd: repoRoot,
+        timeoutMs,
+        dryRun: false,
+        probe: options.probe,
+        spawn: options.spawn,
+        tempRoot: options.tempRoot,
+        tempFileName: options.tempFileName,
+        tempFilePrefix: options.tempFilePrefix,
+        model: runtimeProfile.model,
+        enforceModelSelection: Boolean(runtimeProfile.model),
+      }),
     });
   } catch (error) {
     throw annotateProviderError(error, 'review-plan');
@@ -1770,7 +1992,8 @@ async function runReviewPlan(repoRoot, options = {}) {
 
 async function runRepairPlan(repoRoot, options = {}) {
   const role = normalizeRole(options.role || DEFAULT_PLAN_ROLE);
-  const provider = resolveProviderForProfile(repoRoot, role, options.provider, options.providerExplicit, DEFAULT_PLAN_PROVIDER);
+  const runtimeProfile = resolveRuntimeAgentProfile(repoRoot, role, options, DEFAULT_PLAN_PROVIDER);
+  const provider = runtimeProfile.provider;
   const context = options.context || DEFAULT_PLAN_CONTEXT;
   const timeoutMs = normalizeTimeout(options.timeout);
   const source = resolveApprovedTechnicalPlanForRepair(repoRoot, options.input || '');
@@ -1790,9 +2013,15 @@ async function runRepairPlan(repoRoot, options = {}) {
       prompt: built.prompt,
       cwd: repoRoot,
       timeoutMs,
+      model: runtimeProfile.model,
+      enforceModelSelection: false,
     });
   } catch (error) {
-    throw annotateProviderError(error, 'repair-plan');
+    if (error.providerResult) {
+      providerResult = error.providerResult;
+    } else {
+      throw annotateProviderError(error, 'repair-plan');
+    }
   }
 
   if (options.dryRun) {
@@ -1803,6 +2032,7 @@ async function runRepairPlan(repoRoot, options = {}) {
       contextPack: built.pack.packName,
       phase: 'technical-plan',
       invocation,
+      profile: runtimeProfile,
     };
     process.stdout.write(formatDryRunReport(report));
     process.stdout.write(`Source approved artifact: ${source.path}\n`);
@@ -1822,23 +2052,39 @@ async function runRepairPlan(repoRoot, options = {}) {
       inputPath: source.path,
       inputKind: 'approved',
       inputVersion: source.approval.meta?.approved?.version || null,
+      profile: runtimeProfile,
     };
     process.stdout.write(formatPromptOnlyReport(report));
     return report;
   }
 
+  const ux = createCommandUx(options);
+  const showProgress = shouldShowHumanProgress(ux, options);
+  writeProgressChecks(
+    ux,
+    showProgress,
+    plannerProgressTitle('Ejecutando reparación del plan', runtimeProfile),
+    ['Leyendo plan aprobado', 'Preparando contexto', 'Preparando prompt'],
+  );
+
   let providerResult;
   try {
-    providerResult = await (options.runProviderFn || runProvider)(provider, {
-      prompt: built.prompt,
-      cwd: repoRoot,
-      timeoutMs,
-      dryRun: false,
-      probe: options.probe,
-      spawn: options.spawn,
-      tempRoot: options.tempRoot,
-      tempFileName: options.tempFileName,
-      tempFilePrefix: options.tempFilePrefix,
+    providerResult = await runProviderWithProgress({
+      ux,
+      enabled: showProgress,
+      run: () => (options.runProviderFn || runProvider)(provider, {
+        prompt: built.prompt,
+        cwd: repoRoot,
+        timeoutMs,
+        dryRun: false,
+        probe: options.probe,
+        spawn: options.spawn,
+        tempRoot: options.tempRoot,
+        tempFileName: options.tempFileName,
+        tempFilePrefix: options.tempFilePrefix,
+        model: runtimeProfile.model,
+        enforceModelSelection: Boolean(runtimeProfile.model),
+      }),
     });
   } catch (error) {
     throw annotateProviderError(error, 'repair-plan');
@@ -2174,10 +2420,13 @@ function runLifecycleRun(repoRoot, options = {}) {
 
 function formatAgentProfile(profile) {
   const lines = [
+    `ID: ${profile.id || 'default'}`,
     `Role: ${profile.role}`,
     `Provider: ${profile.provider}`,
     `Model: ${profile.model || '(not set)'}`,
     `Label: ${profile.label || '(not set)'}`,
+    `Display name: ${resolveAgentProfileDisplayName(profile) || '(not set)'}`,
+    `Default: ${profile.default === true ? 'yes' : 'no'}`,
     `Context: ${profile.context || '(not set)'}`,
     `Updated: ${profile.updated_at}`,
   ];
@@ -2193,7 +2442,9 @@ function formatAgentProfileList(profiles) {
     }
     const model = item.profile.model ? ` model=${item.profile.model}` : '';
     const label = item.profile.label ? ` label=${item.profile.label}` : '';
-    lines.push(`- ${item.role}: provider=${item.profile.provider}${model}${label}`);
+    const displayName = resolveAgentProfileDisplayName(item.profile);
+    const alternatives = item.profiles.length > 1 ? ` options=${item.profiles.length}` : '';
+    lines.push(`- ${item.role}: provider=${item.profile.provider}${model}${label} displayName=${displayName}${alternatives}`);
   }
   return `${lines.join('\n')}\n`;
 }
@@ -2226,6 +2477,9 @@ function runAgent(repoRoot, options = {}) {
     if (options.dryRun) {
       const preview = buildAgentProfileState(repoRoot, options.role, {
         context: options.context,
+        default: options.defaultProfile,
+        displayName: options.displayName,
+        id: options.id,
         label: options.label,
         model: options.model,
         provider: options.provider,
@@ -2241,6 +2495,9 @@ function runAgent(repoRoot, options = {}) {
     }
     const result = setAgentProfile(repoRoot, options.role, {
       context: options.context,
+      default: options.defaultProfile,
+      displayName: options.displayName,
+      id: options.id,
       label: options.label,
       model: options.model,
       provider: options.provider,
@@ -2260,10 +2517,14 @@ function runAgent(repoRoot, options = {}) {
     if (!options.role) {
       throw new Error(formatError('missing agent role. Use: npx create-quiver ai agent show <planner|executor|reviewer|doctor>'));
     }
-    const profile = getAgentProfile(repoRoot, options.role);
+    const profile = options.id
+      ? getAgentProfileById(repoRoot, options.role, options.id)
+      : getAgentProfile(repoRoot, options.role);
     if (!profile) {
       throw new Error(formatActionableError({
-        failure: `agent profile '${options.role}' is not configured.`,
+        failure: options.id
+          ? `agent profile '${options.role}/${options.id}' is not configured.`
+          : `agent profile '${options.role}' is not configured.`,
         impact: 'Quiver will fall back to default provider behavior and may use the wrong model/cost profile.',
         fix: `Configure the ${options.role} profile with a supported provider and optional model label.`,
         nextCommand: `npx create-quiver ai agent set ${options.role} --provider <provider> --model <label>`,
@@ -2324,20 +2585,32 @@ async function runGitHubTask(repoRoot, options = {}, mode = 'pr') {
 async function runPr(repoRoot, options = {}) {
   const dryRun = options.dryRun === true;
   const create = options.create === true;
+  const ux = createCommandUx(options);
+  const showProgress = create && !dryRun && shouldShowHumanProgress(ux, options);
+  if (showProgress) {
+    ux.heading('Creando PR con gh');
+  }
   let preflight;
 
   try {
-    preflight = await (options.preflightFn || preflightGitHubPr)(repoRoot, {
-      remote: options.remote,
-      sshHostAlias: options.sshHostAlias,
-      identityFile: options.identityFile,
-      gitFlowGuidePath: options.gitFlowGuidePath,
-      ghCommand: options.ghCommand,
-      ghProbe: options.ghProbe,
-      ghAuthProbe: options.ghAuthProbe,
-      ghProbeArgs: options.ghProbeArgs,
-      ghAuthArgs: options.ghAuthArgs,
-      blockedBranches: options.blockedBranches,
+    preflight = await runProviderWithProgress({
+      ux,
+      enabled: showProgress,
+      message: 'Ejecutando preflight de GitHub...',
+      successMessage: 'Preflight de GitHub listo',
+      failureMessage: 'Falló preflight de GitHub',
+      run: () => (options.preflightFn || preflightGitHubPr)(repoRoot, {
+        remote: options.remote,
+        sshHostAlias: options.sshHostAlias,
+        identityFile: options.identityFile,
+        gitFlowGuidePath: options.gitFlowGuidePath,
+        ghCommand: options.ghCommand,
+        ghProbe: options.ghProbe,
+        ghAuthProbe: options.ghAuthProbe,
+        ghProbeArgs: options.ghProbeArgs,
+        ghAuthArgs: options.ghAuthArgs,
+        blockedBranches: options.blockedBranches,
+      }),
     });
   } catch (error) {
     throw annotateGitHubError(error, 'pr');
@@ -2352,6 +2625,9 @@ async function runPr(repoRoot, options = {}) {
       prBodyPath: options.prBodyPath,
       title: options.title,
     });
+    if (showProgress) {
+      ux.check('Cuerpo del PR preparado');
+    }
   } catch (error) {
     throw annotateGitHubError(error, 'pr');
   }
@@ -2396,8 +2672,15 @@ async function runPr(repoRoot, options = {}) {
 
   let result;
   try {
-    result = runGhPrCreate(plan, {
-      ghCreateRunner: options.ghCreateRunner,
+    result = await runProviderWithProgress({
+      ux,
+      enabled: showProgress,
+      message: 'Creando PR en GitHub...',
+      successMessage: 'PR creado',
+      failureMessage: 'Falló creación del PR',
+      run: () => runGhPrCreate(plan, {
+        ghCreateRunner: options.ghCreateRunner,
+      }),
     });
   } catch (error) {
     throw annotateGitHubError(error, 'pr');

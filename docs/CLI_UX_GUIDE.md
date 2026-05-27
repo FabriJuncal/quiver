@@ -36,6 +36,7 @@ Reglas:
 | `--with-planner` | Activa comportamiento asistido por planner cuando el comando lo soporta. | No debe ser decorativo. Si no cambia el comportamiento o contrato del comando, debe rechazarse. |
 | `--interactive` | Habilita prompts humanos de confirmacion o eleccion. | Nunca se activa por defecto. Debe tener alternativa no interactiva. |
 | `--review` | Abre o prepara revision humana antes de escrituras persistentes. | Debe usar `$VISUAL`, `$EDITOR` o dejar un artefacto revisable cuando no haya TTY. |
+| `--methodology <name>` | Selecciona metodologia cuando el comando necesita exponer esa decision. | Hoy solo se acepta `wdd-sdd`; no listar metodologias no soportadas. |
 | `--dry-run` | Previsualiza sin escribir ni ejecutar acciones irreversibles. | Debe ser seguro y no requerir credenciales salvo que el comando lo documente. |
 | `--print-prompt` | Imprime el prompt exacto sin ejecutar proveedor. | Debe evitar auth/provider execution. |
 | `--json` | Emite salida machine-readable. | Incompatible con `--interactive` y `--review`. |
@@ -45,10 +46,14 @@ Reglas:
 
 | Comando | `--with-planner` | `--interactive` | `--review` | Notas |
 |---|---:|---:|---:|---|
+| `init` | no | si | no | Interactive guia modo de proyecto, metodologia `wdd-sdd`, perfil inicial y proximo paso de perfiles de agentes. |
 | `ai prepare-context` | si | si | si | Modo deterministico por defecto; planner opcional con contrato docs-only. |
 | `ai plan` | si | si | si | El planner ya es implicito; `--with-planner` se acepta por consistencia. |
 | `spec create` | si | si | si | Consume un plan tecnico aprobado del planner; no vuelve a ejecutar proveedor. Review previsualiza el paquete antes de escribir. |
 | `ai pr` | no | si | si | Review edita `pr.md`; interactive confirma `gh pr create`. |
+| `ai execute-slice` | no | si | no | Interactive puede seleccionar un slice listo y un executor configurado. |
+| `ai execute-plan` | no | si | no | Interactive queda reservado para estrategia/seleccion; JSON sigue limpio. |
+| `doctor` | no | no | no | Renderiza `Quiver Doctor`, `Checks` y `Suggested fixes`; `--json` usa el mismo modelo de hallazgos. |
 | `flow`, `next`, `graph` | no | no | no | Lectura/inspeccion; no deben exponer flags decorativas. |
 | `ai inspect`, `ai export`, `ai specs list`, `ai slices list`, `ai trace report` | no | no | no | Superficies read-only o machine-readable. |
 
@@ -71,15 +76,46 @@ npx create-quiver ai prepare-context --with-planner --review --interactive
 
 El planner debe devolver una propuesta validable. Quiver solo acepta cambios en documentación/contexto permitida y rechaza rutas de producto, dependencias, build, runtime, lockfiles, salidas generadas, rutas absolutas y traversal.
 
+## Seleccion de agentes, proveedores y modelos
+
+Los perfiles de agente son configuracion de DX, no almacenamiento de credenciales. Deben guardar solo rol, proveedor, etiqueta de modelo, contexto, nombre visible y perfil por defecto.
+
+Reglas:
+
+- Si un comando usa un perfil con modelo, el dry-run debe mostrar proveedor, modelo, comando y si el adapter puede aplicar ese modelo.
+- En ejecucion real, Quiver debe pasar el modelo al CLI del proveedor cuando el adapter lo soporta.
+- Si un adapter no puede aplicar el modelo seleccionado, la ejecucion real debe bloquearse con un proximo paso claro.
+- `--print-prompt` y `--dry-run` no deben exigir autenticacion del proveedor.
+- Si no hay modelo seleccionado, los comandos existentes deben conservar su comportamiento anterior.
+
+## Init y spec create interactivos
+
+`init --interactive` debe ser un wrapper opt-in sobre flags existentes:
+
+- modo de proyecto: proyecto existente, proyecto nuevo o solo validar estructura;
+- metodologia: solo `WDD + SDD`;
+- perfil inicial: default, minimal o full compatibility;
+- guia opcional de comandos `ai agent set` sin guardar credenciales ni ejecutar proveedores;
+- resumen antes de escribir.
+
+`spec create --interactive` debe:
+
+- seleccionar la metodologia real soportada: `WDD + SDD`;
+- mostrar el input aprobado que se usara para generar la spec;
+- permitir elegir confirmacion directa o `--review`;
+- mostrar resumen antes de escribir;
+- bloquearse en no-TTY/CI/JSON con mensaje accionable en lugar de abrir prompts.
+
 ## Loaders y prompts
 
 Usar loaders solo cuando aportan claridad:
 
 ```text
-Analizando estructura del proyecto...
-Leyendo contexto base...
-Preparando prompt para planner...
-Ejecutando agente...
+◇ Ejecutando onboarding con GPT 5.5
+✓ Leyendo docs base
+✓ Detectando estructura
+✓ Preparando prompt
+⠋ Ejecutando agente...
 ```
 
 Usar prompts interactivos cuando hay una decision humana real:
@@ -91,6 +127,30 @@ Usar prompts interactivos cuando hay una decision humana real:
 ```
 
 No usar prompts para informacion que ya se pueda expresar con flags.
+
+## Salida de Doctor
+
+`doctor` debe mostrar una jerarquia estable para humanos:
+
+```text
+◆ Quiver Doctor
+
+Checks
+  ✓ Layout: new
+  ✓ Specs: none yet
+  ! Warning: project analysis artifacts not found; run analyze when you need the visible project map
+
+Suggested fixes
+  • Analyze the project first: npx create-quiver analyze
+  • Check the next ready slice: npx create-quiver next
+```
+
+Reglas:
+
+- La salida humana debe incluir siempre `Quiver Doctor`, `Checks` y `Suggested fixes`.
+- `doctor --json` debe emitir solo JSON parseable, sin colores, prompts ni texto humano.
+- La salida humana y JSON deben salir del mismo modelo de checks, warnings, errors y suggested fixes.
+- Warnings no deben romper automatizacion; errores bloqueantes deben usar `exit_code: 1` y `process.exitCode = 1`.
 
 ## Revision con editor
 

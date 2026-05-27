@@ -1,0 +1,95 @@
+{
+  "slice_id": "slice-08-tests-docs-cross-platform-release",
+  "ticket": "QUIVER-30-08",
+  "type": "release",
+  "title": "Tests, docs, cross-platform smokes, and release readiness",
+  "objective": "Close the v30 spec with comprehensive tests, documentation, cross-platform guidance, package readiness, and final evidence.",
+  "description": "Validates the complete UX/selector/model/progress contract across human and machine modes before publishing a package.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v30-tests-docs-cross-platform-release",
+    "branch_name": "feature/QUIVER-30-08-v30-tests-docs-cross-platform-release"
+  },
+  "files": [
+    "README.md",
+    "README_FOR_AI.md",
+    "ROADMAP.md",
+    "CHANGELOG.md",
+    "docs/**",
+    "tests/**",
+    "scripts/ci/**",
+    "package.json",
+    "package-lock.json",
+    "specs/quiver-v30-interactive-cli-ux-agent-selection/**"
+  ],
+  "expected_read_paths": [
+    "SPEC.md",
+    "README_FOR_AI.md",
+    "docs/CLI_UX_GUIDE.md",
+    "docs/reference/commands.md",
+    "scripts/release-quiver.sh",
+    "scripts/package-quiver.sh",
+    "tests/**"
+  ],
+  "allowed_write_paths": [
+    "README.md",
+    "README_FOR_AI.md",
+    "ROADMAP.md",
+    "CHANGELOG.md",
+    "docs/**",
+    "tests/**",
+    "scripts/ci/**",
+    "package.json",
+    "package-lock.json",
+    "specs/quiver-v30-interactive-cli-ux-agent-selection/**"
+  ],
+  "depends_on": [
+    "slice-04-planner-ia-progress-flows",
+    "slice-05-executor-pr-progress-flows",
+    "slice-06-doctor-visual-json-contract",
+    "slice-07-interactive-init-spec-create"
+  ],
+  "parallel_safe": "no",
+  "parallel_safe_reason": "Final validation and docs depend on every previous slice.",
+  "must": [
+    "Add or update docs for the UX standard, agent selectors, model support, doctor output, and command examples.",
+    "Verify human output tests and machine output tests cover the accepted criteria.",
+    "Add cross-platform guidance for macOS, Linux, Windows PowerShell, Git Bash, and WSL where commands include paths or SSH examples.",
+    "Run full tests and smoke suites.",
+    "Run package safety and npm pack dry-run.",
+    "Update EVIDENCE_REPORT.md, STATUS.md, and pr.md with final evidence."
+  ],
+  "not_included": [
+    "Publishing npm without explicit release step.",
+    "Adding new product scope beyond approved slices.",
+    "Skipping failed tests to reach release."
+  ],
+  "acceptance": [
+    "Full test suite passes.",
+    "Smoke suites pass.",
+    "Package smoke and npm pack dry-run pass.",
+    "Docs clearly explain human vs machine output and selectors.",
+    "README and README_FOR_AI stay synchronized with implemented behavior.",
+    "Final evidence is recorded."
+  ],
+  "tests": [
+    "node --test tests/**/*.test.js",
+    "npm run smoke:create-quiver",
+    "npm run smoke:doctor-fixtures",
+    "npm run smoke:guided-workflow",
+    "npm run package:quiver",
+    "npm pack --dry-run",
+    "git diff --check",
+    "node bin/create-quiver.js spec validate specs/quiver-v30-interactive-cli-ux-agent-selection"
+  ],
+  "validation_hints": [
+    "Validate `npx create-quiver@file:<tarball>` behavior if package smoke supports it.",
+    "Document any manual live-provider smoke separately from automated tests."
+  ],
+  "estimated_hours": 8,
+  "status": "completed",
+  "blocked_reason": null,
+  "actual_hours": 5,
+  "completed_at": "2026-05-27"
+}

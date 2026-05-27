@@ -53,6 +53,8 @@ const { checkPrReadiness, checkScope, checkSliceReadiness } = require('./lib/rea
 const { cleanupSlice, refreshActiveSlicesBoard, startSlice } = require('./lib/lifecycle');
 const { buildSpecStatus, closeSpecWorktree, formatSpecCloseResult, formatSpecStartResult, formatSpecStatus, startSpecWorktree } = require('./lib/spec-worktrees');
 const { getContextPathExclusionReason } = require('./lib/ai/safety');
+const { selectOption } = require('./lib/cli/selectors');
+const { createUx } = require('./lib/cli/ux');
 const { validateUxFlags } = require('./lib/cli/ux-flags');
 const { relativePosixPath, resolveTargetRoot } = require('./lib/paths');
 const {
@@ -310,6 +312,7 @@ Options:
       --with-planner          Enable planner-assisted behavior on commands that explicitly support it
       --interactive           Enable prompts on commands that explicitly support interactive choices
       --review                Open or prepare human review before persistent writes where supported
+      --methodology <name>    Select methodology where supported (currently wdd-sdd)
       --no-color              Disable ANSI colors in human output
       --fix                   For doctor, apply safe non-destructive repairs
       --execute               For ai execute-plan, run the planned slices instead of printing commands
@@ -334,6 +337,7 @@ Options:
 
 Examples:
   npx create-quiver init --name "My Project"
+  npx create-quiver init --interactive
   npx create-quiver init --name "My Project" --dry-run
   npx create-quiver --name "My Project"
   npx create-quiver --name "My Project" --dir ./my-project
@@ -434,6 +438,7 @@ function parseArgs(argv) {
     format: 'tree',
     formatExplicit: false,
     showConflicts: false,
+    methodology: '',
     level: null,
     unicode: false,
     aiCommand: '',
@@ -746,6 +751,74 @@ function parseArgs(argv) {
         throw new Error(formatError('missing value for --model'));
       }
       result.aiModel = value;
+      continue;
+    }
+
+    if (arg === '--id') {
+      const value = args[++index];
+      if (!value) {
+        throw new Error(formatError('missing value for --id'));
+      }
+      result.aiProfileId = value;
+      continue;
+    }
+
+    if (arg === '--display-name') {
+      const value = args[++index];
+      if (!value) {
+        throw new Error(formatError('missing value for --display-name'));
+      }
+      result.aiDisplayName = value;
+      continue;
+    }
+
+    if (arg === '--default') {
+      result.aiDefaultProfile = true;
+      continue;
+    }
+
+    if (arg === '--planner') {
+      const value = args[++index];
+      if (!value) {
+        throw new Error(formatError('missing value for --planner'));
+      }
+      result.aiPlannerProfile = value;
+      continue;
+    }
+
+    if (arg === '--executor') {
+      const value = args[++index];
+      if (!value) {
+        throw new Error(formatError('missing value for --executor'));
+      }
+      result.aiExecutorProfile = value;
+      continue;
+    }
+
+    if (arg === '--reviewer') {
+      const value = args[++index];
+      if (!value) {
+        throw new Error(formatError('missing value for --reviewer'));
+      }
+      result.aiReviewerProfile = value;
+      continue;
+    }
+
+    if (arg === '--doctor') {
+      const value = args[++index];
+      if (!value) {
+        throw new Error(formatError('missing value for --doctor'));
+      }
+      result.aiDoctorProfile = value;
+      continue;
+    }
+
+    if (arg === '--methodology') {
+      const value = args[++index];
+      if (!value) {
+        throw new Error(formatError('missing value for --methodology'));
+      }
+      result.methodology = value;
       continue;
     }
 
@@ -2174,28 +2247,21 @@ function runMigrate(targetDir, options = {}) {
   }
 }
 
-function runDoctor(targetDir, options = {}) {
-  const projectRoot = resolveTargetRoot(process.cwd(), targetDir);
-
-  if (!fs.existsSync(projectRoot)) {
-    throw new Error(formatError(`target directory does not exist: ${projectRoot}`));
-  }
-
-  if (!hasQuiverInitializationEvidence(projectRoot)) {
-    throw new Error(formatError('doctor requires a project previously initialized by Quiver.\nRun init first: npx create-quiver --name "Project Name"'));
-  }
-
-  const fixPlan = buildDoctorFixPlan(projectRoot);
-  if (options.fix) {
-    if (options.dryRun) {
-      console.log(formatDoctorFixPlan(fixPlan, { dryRun: true }));
-      return;
+function uniqueLines(lines) {
+  const seen = new Set();
+  const unique = [];
+  for (const line of lines) {
+    const value = String(line || '').trim();
+    if (!value || seen.has(value)) {
+      continue;
     }
-
-    applyDoctorFixPlan(projectRoot, fixPlan);
-    console.log(formatDoctorFixPlan(fixPlan));
+    seen.add(value);
+    unique.push(value);
   }
+  return unique;
+}
 
+function buildDoctorCommandReport(projectRoot) {
   const doctorReport = collectDoctorReport(projectRoot);
   const specSlugs = doctorReport.specSlugs;
   const doctorExampleTarget = doctorReport.exampleTarget || {
@@ -2282,65 +2348,425 @@ function runDoctor(targetDir, options = {}) {
     ...nonExecutableScripts.map((file) => `missing executable bit: ${file}`),
     ...missingScripts.map((name) => `missing package.json script: ${name}`),
   ];
-  const softWarnings = doctorReport.warnings;
+  const checks = [];
 
-  if (migrationProblems.length > 0) {
-    throw new Error(formatError(`doctor failed:\n- ${migrationProblems.join('\n- ')}\n- Run migration first: npx create-quiver migrate`));
-  }
+  const addCheck = (id, status, message, details = {}) => {
+    checks.push({
+      id,
+      status,
+      message,
+      ...details,
+    });
+  };
 
-  console.log(`Quiver doctor passed for ${projectRoot}`);
-  console.log(`Layout: ${doctorReport.layout}`);
-  if (specSlugs.length > 0) {
-    console.log(`Specs: ${specSlugs.join(', ')}`);
-  } else {
-    console.log('Specs: none yet');
-  }
+  addCheck('project-root', 'ok', `Quiver doctor passed for ${projectRoot}`);
+  addCheck(
+    'layout',
+    doctorReport.layout === 'incomplete' ? 'error' : 'ok',
+    `Layout: ${doctorReport.layout}`,
+  );
+  addCheck('specs', 'ok', specSlugs.length > 0 ? `Specs: ${specSlugs.join(', ')}` : 'Specs: none yet');
+
   if (doctorReport.legacySignals.length > 0) {
-    console.log(`Legacy signals: ${doctorReport.legacySignals.join(', ')}`);
+    addCheck('legacy-signals', doctorReport.layout === 'legacy' || doctorReport.layout === 'hybrid' ? 'warning' : 'ok', `Legacy signals: ${doctorReport.legacySignals.join(', ')}`);
   }
-  console.log('Next steps:');
-  for (const recommendation of doctorReport.recommendations) {
-    console.log(`- ${recommendation}`);
+
+  addCheck(
+    'required-files',
+    missingFiles.length > 0 ? 'error' : 'ok',
+    missingFiles.length > 0 ? `Missing required files: ${missingFiles.join(', ')}` : 'Required files found',
+    { missing: missingFiles },
+  );
+
+  if (requiredExecutables.length > 0 || nonExecutableScripts.length > 0) {
+    addCheck(
+      'legacy-executables',
+      nonExecutableScripts.length > 0 ? 'error' : 'ok',
+      nonExecutableScripts.length > 0 ? `Missing executable bit: ${nonExecutableScripts.join(', ')}` : 'Legacy executable scripts are runnable',
+      { missing: nonExecutableScripts },
+    );
   }
-  for (const warning of stateWarnings) {
-    console.log(`- Warning: ${warning}`);
-  }
+
+  addCheck(
+    'workflow-scripts',
+    missingScripts.length > 0 ? 'error' : 'ok',
+    missingScripts.length > 0 ? `Missing package.json workflow scripts: ${missingScripts.join(', ')}` : 'Workflow scripts available',
+    { missing: missingScripts },
+  );
+
+  addCheck(
+    'state',
+    hasQuiverState ? 'ok' : 'warning',
+    hasQuiverState ? 'Quiver state metadata found' : 'Warning: missing Quiver state metadata: .quiver/state.json',
+  );
+
+  addCheck(
+    'project-scan',
+    hasScanArtifacts ? 'ok' : 'warning',
+    hasScanArtifacts ? 'Project analysis artifacts found' : 'Warning: project analysis artifacts not found; run analyze when you need the visible project map',
+  );
+
   for (const scriptName of missingNodeNativeScripts) {
-    console.log(`- Warning: missing Node-native script: ${scriptName}`);
+    addCheck(`node-script:${scriptName}`, 'warning', `Warning: missing Node-native script: ${scriptName}`);
   }
+
   for (const scriptName of missingAiScripts) {
-    console.log(`- Warning: missing AI orchestration script: ${scriptName}`);
+    addCheck(`ai-script:${scriptName}`, 'warning', `Warning: missing AI orchestration script: ${scriptName}`);
   }
+
   if (legacyOnlyScripts.length > 0) {
-    console.log(`- Warning: legacy Bash workflow scripts detected for ${legacyOnlyScripts.join(', ')}. Run npx create-quiver migrate to add quiver:* npm scripts.`);
+    addCheck(
+      'legacy-only-scripts',
+      'warning',
+      `Warning: legacy Bash workflow scripts detected for ${legacyOnlyScripts.join(', ')}. Run npx create-quiver migrate to add quiver:* npm scripts.`,
+    );
   }
+
   for (const script of unsupportedCreateQuiverScripts) {
-    console.log(`- Warning: package.json script ${script.scriptName} targets ${script.reason}: \`${script.command}\`. Update create-quiver or regenerate scripts with npx create-quiver migrate.`);
+    addCheck(
+      `unsupported-script:${script.scriptName}`,
+      'warning',
+      `Warning: package.json script ${script.scriptName} targets ${script.reason}: \`${script.command}\`. Update create-quiver or regenerate scripts with npx create-quiver migrate.`,
+      { script_name: script.scriptName, command: script.command, reason: script.reason },
+    );
   }
-  for (const warning of softWarnings) {
-    console.log(`- Warning: ${warning}`);
+
+  for (const warning of doctorReport.warnings) {
+    addCheck(`warning:${checks.length + 1}`, 'warning', `Warning: ${warning}`);
   }
-  if (!hasQuiverState) {
-    console.log('- Run migration first: npx create-quiver migrate');
-  } else if (!hasScanArtifacts) {
-    console.log('- Analyze the project first: npx create-quiver analyze');
-  } else {
-    console.log('- Ask your AI agent: Read AGENTS.md, then docs/AI_ONBOARDING_PROMPT.md and execute it.');
-  }
-  console.log('- Check the next ready slice: npx create-quiver next');
+
+  const suggestedFixes = [
+    ...doctorReport.recommendations,
+    !hasQuiverState
+      ? 'Run migration first: npx create-quiver migrate'
+      : !hasScanArtifacts
+        ? 'Analyze the project first: npx create-quiver analyze'
+        : 'Ask your AI agent: Read AGENTS.md, then docs/AI_ONBOARDING_PROMPT.md and execute it.',
+    'Check the next ready slice: npx create-quiver next',
+  ];
+
   if (specSlugs.length > 0) {
     const projectSlug = doctorExampleTarget.specSlug;
     const sliceId = doctorExampleTarget.sliceId || '<slice-id>';
     if (doctorExampleTarget.source === 'active-slice') {
-      console.log(`- Example target: ${projectSlug}/${sliceId} (${doctorExampleTarget.status})`);
+      suggestedFixes.push(`Example target: ${projectSlug}/${sliceId} (${doctorExampleTarget.status})`);
     } else if (doctorExampleTarget.source === 'generic-multiple-specs') {
-      console.log('- Example target: specs/<spec-slug>/slices/<slice-id>/slice.json (generic because no active slice is obvious)');
+      suggestedFixes.push('Example target: specs/<spec-slug>/slices/<slice-id>/slice.json (generic because no active slice is obvious)');
     }
-    console.log(`- Start a slice: npx create-quiver start-slice specs/${projectSlug}/slices/${sliceId}/slice.json`);
-    console.log(`- Validate a slice: npx create-quiver check-slice specs/${projectSlug}/slices/${sliceId}/slice.json`);
-    console.log(`- Validate the PR gate: npx create-quiver check-pr specs/${projectSlug}/slices/${sliceId}/slice.json`);
+    suggestedFixes.push(`Start a slice: npx create-quiver start-slice specs/${projectSlug}/slices/${sliceId}/slice.json`);
+    suggestedFixes.push(`Validate a slice: npx create-quiver check-slice specs/${projectSlug}/slices/${sliceId}/slice.json`);
+    suggestedFixes.push(`Validate the PR gate: npx create-quiver check-pr specs/${projectSlug}/slices/${sliceId}/slice.json`);
   } else {
-    console.log('- Create real specs and slices only after acceptance criteria are approved and the technical plan is reviewed and approved.');
+    suggestedFixes.push('Create real specs and slices only after acceptance criteria are approved and the technical plan is reviewed and approved.');
+  }
+
+  const errors = checks.filter((check) => check.status === 'error').map((check) => check.message);
+  const warnings = checks.filter((check) => check.status === 'warning').map((check) => check.message);
+  const status = errors.length > 0 ? 'error' : warnings.length > 0 ? 'warning' : 'ok';
+
+  return {
+    schema_version: 1,
+    command: 'doctor',
+    project_root: projectRoot,
+    status,
+    exit_code: errors.length > 0 ? 1 : 0,
+    layout: doctorReport.layout,
+    specs: specSlugs,
+    legacy_signals: doctorReport.legacySignals,
+    checks,
+    suggested_fixes: uniqueLines(suggestedFixes),
+    warnings,
+    errors: migrationProblems.length > 0 ? uniqueLines([...migrationProblems, ...errors]) : errors,
+  };
+}
+
+function formatDoctorHumanReport(report, options = {}) {
+  const lines = [];
+  const ux = createUx({
+    ...options,
+    spinner: false,
+    write: (text) => lines.push(String(text)),
+  });
+  const symbolForStatus = (status) => {
+    if (status === 'ok') return ux.theme.symbols.success;
+    if (status === 'error') return ux.theme.symbols.error;
+    return ux.theme.symbols.warning;
+  };
+  const colorForStatus = (status) => {
+    if (status === 'ok') return 'success';
+    if (status === 'error') return 'error';
+    return 'warning';
+  };
+
+  ux.section('Quiver Doctor');
+  ux.line('');
+  ux.line('Checks');
+  for (const check of report.checks) {
+    const line = `  ${symbolForStatus(check.status)} ${check.message}`;
+    ux.line(ux.mode.decoration ? ux.theme.status(colorForStatus(check.status), line) : line);
+  }
+
+  ux.line('');
+  ux.line('Suggested fixes');
+  for (const fix of report.suggested_fixes) {
+    const line = `  ${ux.theme.symbols.bullet} ${fix}`;
+    ux.line(ux.mode.decoration ? ux.theme.status('command', line) : line);
+  }
+
+  return lines.join('');
+}
+
+const METHODOLOGY_OPTIONS = Object.freeze([
+  {
+    label: 'WDD + SDD',
+    value: 'wdd-sdd',
+    hint: 'Workflow Driven Development + Spec Driven Development',
+    default: true,
+  },
+]);
+
+const INIT_MODE_OPTIONS = Object.freeze([
+  {
+    label: 'Proyecto existente',
+    value: 'existing',
+    hint: 'Agrega Quiver sin sobrescribir archivos existentes',
+    default: true,
+  },
+  {
+    label: 'Proyecto nuevo',
+    value: 'new',
+    hint: 'Crea el contrato base en una carpeta nueva o vacia',
+  },
+  {
+    label: 'Solo validar estructura',
+    value: 'validate',
+    hint: 'Ejecuta Doctor en lugar de escribir archivos',
+  },
+]);
+
+const INIT_PROFILE_OPTIONS = Object.freeze([
+  {
+    label: 'Default',
+    value: 'default',
+    hint: 'Contrato AI-first recomendado',
+    default: true,
+  },
+  {
+    label: 'Minimal',
+    value: 'minimal',
+    hint: 'Solo documentos esenciales',
+  },
+  {
+    label: 'Full compatibility',
+    value: 'full',
+    hint: 'Incluye compatibilidad historica y templates visibles',
+  },
+]);
+
+function hasDirectoryContent(dirPath) {
+  return fs.existsSync(dirPath)
+    && fs.statSync(dirPath).isDirectory()
+    && fs.readdirSync(dirPath).length > 0;
+}
+
+function assertSupportedMethodology(value) {
+  const normalized = String(value || '').trim();
+  if (!normalized) {
+    return 'wdd-sdd';
+  }
+  if (normalized !== 'wdd-sdd') {
+    throw new Error(formatError(`unsupported methodology '${normalized}'. Supported methodologies: wdd-sdd.`));
+  }
+  return normalized;
+}
+
+async function resolveInteractiveInitOptions(args, targetDir, projectName, options = {}) {
+  const explicitMethodology = assertSupportedMethodology(args.methodology);
+
+  if (args.interactive !== true) {
+    return {
+      action: 'init',
+      full: args.initFull,
+      includeTemplates: args.initIncludeTemplates,
+      legacyScripts: args.initLegacyScripts,
+      methodology: explicitMethodology,
+      minimal: args.initMinimal,
+      projectName,
+    };
+  }
+
+  const ux = createUx({
+    env: options.env,
+    input: options.input,
+    interactive: true,
+    noColor: args.noColor,
+    output: options.output,
+    promptConfirm: options.promptConfirm,
+    stderrIsTTY: options.stderrIsTTY,
+    stdinIsTTY: options.stdinIsTTY,
+    stdoutIsTTY: options.stdoutIsTTY,
+    write: options.write,
+  });
+
+  if (!ux.mode.usePrompts) {
+    throw new Error(formatError('init --interactive requires an interactive TTY. Use explicit flags such as --name, --minimal, --full, --legacy-scripts, --include-templates, or run doctor to validate structure.'));
+  }
+
+  const selectorOptions = {
+    env: options.env,
+    input: options.input,
+    interactive: true,
+    noColor: args.noColor,
+    output: options.output,
+    prompts: options.prompts,
+    promptSelect: options.promptSelect,
+    stderrIsTTY: options.stderrIsTTY,
+    stdinIsTTY: options.stdinIsTTY,
+    stdoutIsTTY: options.stdoutIsTTY,
+  };
+
+  ux.heading('Bienvenido a Quiver');
+  const selectedMode = await selectOption('¿Qué querés configurar?', INIT_MODE_OPTIONS, {
+    ...selectorOptions,
+    defaultValue: hasDirectoryContent(targetDir) ? 'existing' : 'new',
+    flag: 'init|doctor',
+    name: 'init mode',
+  });
+  const selectedMethodology = await selectOption('¿Qué metodología vas a usar?', METHODOLOGY_OPTIONS, {
+    ...selectorOptions,
+    defaultValue: explicitMethodology,
+    flag: '--methodology',
+    name: 'methodology',
+    value: args.methodology || '',
+  });
+
+  assertSupportedMethodology(selectedMethodology.value);
+
+  if (selectedMode.value === 'validate') {
+    ux.summary([
+      { label: 'Modo', value: 'Solo validar estructura' },
+      { label: 'Metodologia', value: selectedMethodology.label },
+      { label: 'Comando equivalente', value: 'npx create-quiver doctor' },
+    ], { title: 'Configuracion elegida' });
+    if (!args.force && !args.dryRun) {
+      const confirmed = await ux.promptConfirm('Ejecutar Doctor ahora?', { initialValue: true });
+      if (!confirmed) {
+        throw new Error(formatError('init interactive validation declined. No files were written.'));
+      }
+    }
+    return {
+      action: 'doctor',
+      methodology: selectedMethodology.value,
+      projectName,
+    };
+  }
+
+  const defaultProfile = args.initFull ? 'full' : args.initMinimal ? 'minimal' : 'default';
+  const selectedProfile = await selectOption('¿Qué contrato inicial querés crear?', INIT_PROFILE_OPTIONS, {
+    ...selectorOptions,
+    defaultValue: defaultProfile,
+    flag: '--minimal|--full',
+    name: 'init profile',
+  });
+  const agentGuidance = await selectOption('¿Querés ver el próximo paso para perfiles de agentes?', [
+    {
+      label: 'Mostrar comandos sugeridos',
+      value: 'show',
+      hint: 'No guarda credenciales ni ejecuta proveedores',
+      default: true,
+    },
+    {
+      label: 'Omitir por ahora',
+      value: 'skip',
+    },
+  ], {
+    ...selectorOptions,
+    defaultValue: 'show',
+    flag: 'ai agent set',
+    name: 'agent profile guidance',
+  });
+  const nextFlags = {
+    full: selectedProfile.value === 'full',
+    includeTemplates: args.initIncludeTemplates || selectedProfile.value === 'full',
+    legacyScripts: args.initLegacyScripts,
+    methodology: selectedMethodology.value,
+    minimal: selectedProfile.value === 'minimal',
+    projectName,
+  };
+
+  ux.summary([
+    { label: 'Proyecto', value: projectName },
+    { label: 'Modo', value: selectedMode.label },
+    { label: 'Metodologia', value: selectedMethodology.label },
+    { label: 'Perfil', value: selectedProfile.label },
+    { label: 'Perfiles de agentes', value: agentGuidance.value === 'show' ? 'mostrar proximo paso' : 'omitir' },
+  ], { title: 'Configuracion elegida' });
+
+  if (agentGuidance.value === 'show') {
+    ux.nextSteps([
+      'npx create-quiver ai agent set planner --provider codex --model "<modelo-planner>" --dry-run',
+      'npx create-quiver ai agent set executor --provider claude --model "<modelo-executor>" --dry-run',
+    ], { title: 'Despues de inicializar' });
+  }
+
+  if (!args.force && !args.dryRun) {
+    const confirmed = await ux.promptConfirm(`Inicializar Quiver en ${targetDir}?`, { initialValue: true });
+    if (!confirmed) {
+      throw new Error(formatError('init interactive approval declined. No files were written.'));
+    }
+  }
+
+  return {
+    action: 'init',
+    ...nextFlags,
+  };
+}
+
+function runDoctor(targetDir, options = {}) {
+  const projectRoot = resolveTargetRoot(process.cwd(), targetDir);
+
+  if (!fs.existsSync(projectRoot)) {
+    throw new Error(formatError(`target directory does not exist: ${projectRoot}`));
+  }
+
+  if (!hasQuiverInitializationEvidence(projectRoot)) {
+    throw new Error(formatError('doctor requires a project previously initialized by Quiver.\nRun init first: npx create-quiver --name "Project Name"'));
+  }
+
+  const fixPlan = buildDoctorFixPlan(projectRoot);
+  if (options.fix) {
+    if (options.dryRun) {
+      if (options.json) {
+        console.log(JSON.stringify({
+          schema_version: 1,
+          command: 'doctor fix',
+          dry_run: true,
+          fixes: fixPlan,
+        }, null, 2));
+        return;
+      }
+      console.log(formatDoctorFixPlan(fixPlan, { dryRun: true }));
+      return;
+    }
+
+    applyDoctorFixPlan(projectRoot, fixPlan);
+    if (!options.json) {
+      console.log(formatDoctorFixPlan(fixPlan));
+    }
+  }
+
+  const commandReport = buildDoctorCommandReport(projectRoot);
+  if (options.json) {
+    console.log(JSON.stringify(commandReport, null, 2));
+  } else {
+    process.stdout.write(formatDoctorHumanReport(commandReport, {
+      noColor: options.noColor,
+      unicode: options.unicode,
+    }));
+  }
+
+  if (commandReport.exit_code !== 0) {
+    process.exitCode = commandReport.exit_code;
   }
 }
 
@@ -2487,6 +2913,9 @@ async function run(argv) {
       runAiAgent(process.cwd(), {
         command: args.aiAgentCommand,
         context: args.aiContext || undefined,
+        defaultProfile: args.aiDefaultProfile,
+        displayName: args.aiDisplayName || undefined,
+        id: args.aiProfileId || undefined,
         label: args.aiLabel || undefined,
         model: args.aiModel || undefined,
         provider: args.aiProviderExplicit ? args.aiProvider : undefined,
@@ -2504,6 +2933,8 @@ async function run(argv) {
         printPrompt: args.aiPrintPrompt,
         provider: args.aiProvider,
         providerExplicit: args.aiProviderExplicit,
+        model: args.aiModel || undefined,
+        plannerProfile: args.aiPlannerProfile || undefined,
         role: args.aiRole,
         timeout: args.aiTimeout,
       });
@@ -2518,6 +2949,8 @@ async function run(argv) {
         printPrompt: args.aiPrintPrompt,
         provider: args.aiProvider,
         providerExplicit: args.aiProviderExplicit,
+        model: args.aiModel || undefined,
+        plannerProfile: args.aiPlannerProfile || undefined,
         review: args.review,
         role: args.aiRole,
         runId: args.aiRunId || undefined,
@@ -2536,6 +2969,8 @@ async function run(argv) {
         printPrompt: args.aiPrintPrompt,
         provider: args.aiProvider,
         providerExplicit: args.aiProviderExplicit,
+        model: args.aiModel || undefined,
+        plannerProfile: args.aiPlannerProfile || undefined,
         interactive: args.interactive,
         review: args.review,
         role: args.aiRole,
@@ -2555,6 +2990,8 @@ async function run(argv) {
         printPrompt: args.aiPrintPrompt,
         provider: args.aiProvider,
         providerExplicit: args.aiProviderExplicit,
+        model: args.aiModel || undefined,
+        reviewerProfile: args.aiReviewerProfile || undefined,
         timeout: args.aiTimeout,
       });
       return;
@@ -2568,6 +3005,8 @@ async function run(argv) {
         printPrompt: args.aiPrintPrompt,
         provider: args.aiProvider,
         providerExplicit: args.aiProviderExplicit,
+        model: args.aiModel || undefined,
+        plannerProfile: args.aiPlannerProfile || undefined,
         role: args.aiRole,
         runId: args.aiRunId || undefined,
         timeout: args.aiTimeout,
@@ -2584,6 +3023,8 @@ async function run(argv) {
         printPrompt: args.aiPrintPrompt,
         provider: args.aiProvider,
         providerExplicit: args.aiProviderExplicit,
+        model: args.aiModel || undefined,
+        plannerProfile: args.aiPlannerProfile || undefined,
         role: args.aiRole,
         runId: args.aiRunId || undefined,
         timeout: args.aiTimeout,
@@ -2613,6 +3054,9 @@ async function run(argv) {
         commit: args.aiCommit,
         context: args.aiContext || undefined,
         dryRun: args.dryRun,
+        executorProfile: args.aiExecutorProfile || undefined,
+        interactive: args.interactive,
+        model: args.aiModel || undefined,
         provider: args.aiProvider,
         providerExplicit: args.aiProviderExplicit,
         role: args.aiRole,
@@ -2636,7 +3080,10 @@ async function run(argv) {
         context: args.aiContext || undefined,
         dryRun: args.dryRun,
         execute: args.aiExecute,
+        executorProfile: args.aiExecutorProfile || undefined,
+        interactive: args.interactive,
         json: args.json,
+        model: args.aiModel || undefined,
         mode: args.aiExecutionMode,
         provider: args.aiProvider,
         providerExplicit: args.aiProviderExplicit,
@@ -2734,6 +3181,9 @@ async function run(argv) {
     runDoctor(args.targetDir, {
       dryRun: args.dryRun,
       fix: args.doctorFix,
+      json: args.json,
+      noColor: args.noColor,
+      unicode: args.unicode,
     });
     return;
   }
@@ -2809,6 +3259,7 @@ async function run(argv) {
         dryRun: args.dryRun,
         input: args.aiInput || undefined,
         interactive: args.interactive,
+        methodology: args.methodology || undefined,
         review: args.review,
         specSlug: args.specSlug || undefined,
         withPlanner: args.withPlanner,
@@ -2859,14 +3310,25 @@ async function run(argv) {
   const packageRoot = path.resolve(__dirname, '../..');
   const targetDir = resolveTargetRoot(process.cwd(), args.targetDir);
   const projectName = args.projectName || path.basename(targetDir) || 'Quiver Project';
+  const initOptions = await resolveInteractiveInitOptions(args, targetDir, projectName);
+  if (initOptions.action === 'doctor') {
+    runDoctor(targetDir, {
+      dryRun: args.dryRun,
+      fix: false,
+      json: args.json,
+      noColor: args.noColor,
+      unicode: args.unicode,
+    });
+    return;
+  }
   const initLayout = buildInitLayout(targetDir, {
     compatibilityAlias: !args.explicitInit,
     dryRun: args.dryRun,
-    full: args.initFull,
-    includeTemplates: args.initIncludeTemplates,
-    legacyScripts: args.initLegacyScripts,
-    minimal: args.initMinimal,
-    projectName,
+    full: initOptions.full,
+    includeTemplates: initOptions.includeTemplates,
+    legacyScripts: initOptions.legacyScripts,
+    minimal: initOptions.minimal,
+    projectName: initOptions.projectName,
     skipInstall: args.skipInstall,
   });
 
@@ -2884,9 +3346,9 @@ async function run(argv) {
     if (initLayout.profile === 'full') {
       exportTemplatesToLegacyRoot(templateRoot, targetDir);
     }
-    runInitDocs(targetDir, projectName, {
-      includeTemplates: args.initIncludeTemplates,
-      legacyScripts: args.initLegacyScripts,
+    runInitDocs(targetDir, initOptions.projectName, {
+      includeTemplates: initOptions.includeTemplates,
+      legacyScripts: initOptions.legacyScripts,
       profile: initLayout.profile,
       templateRoot,
     });
@@ -2901,13 +3363,14 @@ async function run(argv) {
     }
 
     console.log(`Installed Quiver into ${targetDir}`);
-    printInitNextSteps(targetDir, projectName);
+    printInitNextSteps(targetDir, initOptions.projectName);
   } finally {
     fs.rmSync(tempRoot, { recursive: true, force: true });
   }
 }
 
 module.exports = {
+  resolveInteractiveInitOptions,
   runAnalyze,
   runDoctor,
   runFlow,
