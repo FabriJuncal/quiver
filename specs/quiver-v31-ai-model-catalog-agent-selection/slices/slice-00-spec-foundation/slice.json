@@ -1,0 +1,62 @@
+{
+  "slice_id": "slice-00-spec-foundation",
+  "ticket": "QUIVER-31-00",
+  "type": "documentation",
+  "title": "Spec foundation and source-of-truth sync",
+  "objective": "Publish the approved v31 spec package and synchronize source-of-truth docs before implementation.",
+  "description": "Creates the spec, execution plan, PR body, evidence report, slice definitions, and handoffs for AI model catalog and guided agent setup.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v31-ai-model-catalog-agent-selection",
+    "branch_name": "feature/QUIVER-31-v31-ai-model-catalog-agent-selection"
+  },
+  "files": [
+    "README_FOR_AI.md",
+    "ROADMAP.md",
+    "specs/quiver-v31-ai-model-catalog-agent-selection/**"
+  ],
+  "expected_read_paths": [
+    "README_FOR_AI.md",
+    "ROADMAP.md",
+    "specs/quiver-v31-ai-model-catalog-agent-selection/SPEC.md"
+  ],
+  "allowed_write_paths": [
+    "README_FOR_AI.md",
+    "ROADMAP.md",
+    "specs/quiver-v31-ai-model-catalog-agent-selection/**"
+  ],
+  "depends_on": [],
+  "parallel_safe": "no",
+  "parallel_safe_reason": "The documentary foundation must land before every implementation slice.",
+  "must": [
+    "Commit the approved v31 spec package.",
+    "Ensure every slice has slice.json, EXECUTION_BRIEF.md, and CLOSURE_BRIEF.md.",
+    "Mark v31 as planned in source-of-truth docs without claiming implementation or npm publication.",
+    "Run spec validation and diff checks."
+  ],
+  "not_included": [
+    "Implementing product code.",
+    "Publishing npm.",
+    "Changing package version."
+  ],
+  "acceptance": [
+    "The v31 spec package exists and validates.",
+    "Source-of-truth docs mention v31 as planned.",
+    "No product code is modified.",
+    "Evidence report records documentation validation."
+  ],
+  "tests": [
+    "git diff --check",
+    "node bin/create-quiver.js spec validate specs/quiver-v31-ai-model-catalog-agent-selection"
+  ],
+  "validation_hints": [
+    "Confirm README_FOR_AI.md does not say v31 is implemented.",
+    "Confirm ROADMAP.md does not say v31 is shipped."
+  ],
+  "estimated_hours": 2,
+  "status": "completed",
+  "blocked_reason": null,
+  "actual_hours": 2,
+  "completed_at": "2026-05-27"
+}

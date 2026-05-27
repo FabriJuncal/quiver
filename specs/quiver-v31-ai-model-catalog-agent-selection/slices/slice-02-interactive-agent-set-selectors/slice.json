@@ -1,0 +1,78 @@
+{
+  "slice_id": "slice-02-interactive-agent-set-selectors",
+  "ticket": "QUIVER-31-02",
+  "type": "feature",
+  "title": "Interactive agent set provider and model selectors",
+  "objective": "Make `ai agent set <role>` guide users through provider and model selection in TTY mode.",
+  "description": "Adds a guided setup flow that shows providers, CLI install status, known models ordered by role, custom model input, summaries, cancellation, and no-TTY safeguards.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v31-interactive-agent-set-selectors",
+    "branch_name": "feature/QUIVER-31-02-v31-interactive-agent-set-selectors"
+  },
+  "files": [
+    "src/create-quiver/commands/ai.js",
+    "src/create-quiver/lib/cli/selectors.js",
+    "src/create-quiver/lib/agent-profiles.js",
+    "tests/commands/ai-agent.test.js",
+    "tests/lib/cli-selectors.test.js"
+  ],
+  "expected_read_paths": [
+    "SPEC.md",
+    "src/create-quiver/lib/ai/model-catalog.js",
+    "src/create-quiver/lib/cli/selectors.js",
+    "src/create-quiver/lib/agent-profiles.js",
+    "tests/commands/ai-agent.test.js"
+  ],
+  "allowed_write_paths": [
+    "src/create-quiver/commands/ai.js",
+    "src/create-quiver/lib/cli/selectors.js",
+    "src/create-quiver/lib/agent-profiles.js",
+    "tests/commands/ai-agent.test.js",
+    "tests/lib/cli-selectors.test.js",
+    "specs/quiver-v31-ai-model-catalog-agent-selection/**"
+  ],
+  "depends_on": [
+    "slice-01-model-catalog-alias-normalization"
+  ],
+  "parallel_safe": "yes",
+  "parallel_safe_reason": "Can run in parallel with ai models list if command-file conflicts are coordinated.",
+  "must": [
+    "Open interactive setup automatically only in TTY when required flags are missing.",
+    "Fail clearly in no-TTY/CI when required flags are missing.",
+    "Show existing profiles before changes.",
+    "Support update current, create new, change default, and cancel.",
+    "Show provider CLI install status.",
+    "Order model choices by the requested role.",
+    "Support custom model id and display name.",
+    "Show a write summary before saving.",
+    "Do not write on cancellation."
+  ],
+  "not_included": [
+    "Agent doctor and repair.",
+    "Live validation execution unless a small reusable hook is needed and remains disabled by default.",
+    "Remote model catalog."
+  ],
+  "acceptance": [
+    "`ai agent set planner` in TTY shows provider/model selectors.",
+    "No-TTY command without flags fails without hanging.",
+    "Known model selection writes technical `model` and human `displayName`.",
+    "Custom selection writes a technical id and a default display name if none is provided.",
+    "Cancellation writes no profile changes.",
+    "Duplicate display names are distinguishable in selectors."
+  ],
+  "tests": [
+    "node --test tests/commands/ai-agent.test.js tests/lib/cli-selectors.test.js",
+    "git diff --check"
+  ],
+  "validation_hints": [
+    "Test prompt logic through injectable selector helpers.",
+    "Do not require a real interactive terminal in unit tests."
+  ],
+  "estimated_hours": 8,
+  "status": "planned",
+  "blocked_reason": null,
+  "actual_hours": null,
+  "completed_at": null
+}
