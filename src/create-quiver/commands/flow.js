@@ -321,10 +321,10 @@ function detectFlowState(projectRoot) {
       stage: 'agent-profiles-needed',
       label: 'agent profiles need setup',
       blockers: [`Missing ${agents.missingCore.join(' and ')} agent profile${agents.missingCore.length > 1 ? 's' : ''}.`],
-      nextCommand: `npx create-quiver ai agent set ${role} --provider codex --model "<model-label>"`,
+      nextCommand: `npx create-quiver ai agent set ${role} --provider codex --model gpt-5.5`,
       suggestedCommands: [
         'npx create-quiver ai agent list',
-        `npx create-quiver ai agent set ${role} --provider codex --model "<model-label>"`,
+        `npx create-quiver ai agent set ${role} --provider codex --model gpt-5.5`,
       ],
       facts,
     });

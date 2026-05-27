@@ -77,7 +77,14 @@ This is a CLI framework change. Run command-level tests and smoke commands from 
 
 ## Evidence
 
-- To be filled by implementation slices.
+- `node --test tests/**/*.test.js` passed: 482 tests.
+- `npm run smoke:create-quiver` passed.
+- `npm run smoke:doctor-fixtures` passed: 13 fixture states.
+- `npm run smoke:guided-workflow` passed.
+- `npm run package:quiver` passed.
+- `npm pack --dry-run` passed.
+- `git diff --check` passed.
+- `node bin/create-quiver.js spec validate specs/quiver-v31-ai-model-catalog-agent-selection` passed.
 
 ## Rollback
 

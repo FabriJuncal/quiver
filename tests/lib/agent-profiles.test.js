@@ -35,7 +35,7 @@ function writeProfiles(repoRoot, state) {
   return filePath;
 }
 
-test('agent profiles persist provider and free-form model labels without secrets', () => {
+test('agent profiles persist provider and technical model ids without secrets', () => {
   const repo = makeRepo();
 
   try {

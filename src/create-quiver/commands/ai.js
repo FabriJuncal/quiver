@@ -2902,8 +2902,8 @@ async function runAgent(repoRoot, options = {}) {
           ? `agent profile '${options.role}/${options.id}' is not configured.`
           : `agent profile '${options.role}' is not configured.`,
         impact: 'Quiver will fall back to default provider behavior and may use the wrong model/cost profile.',
-        fix: `Configure the ${options.role} profile with a supported provider and optional model label.`,
-        nextCommand: `npx create-quiver ai agent set ${options.role} --provider <provider> --model <label>`,
+        fix: `Configure the ${options.role} profile with a supported provider and technical model id.`,
+        nextCommand: `npx create-quiver ai agent set ${options.role} --provider <provider> --model <model-id>`,
       }));
     }
     process.stdout.write(formatAgentProfile(profile));

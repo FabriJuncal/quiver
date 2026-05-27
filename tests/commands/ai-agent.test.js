@@ -153,7 +153,7 @@ test('ai agent show reports missing profile with actionable guidance', () => {
       (error) => error.stderr.includes("agent profile 'executor' is not configured")
         && error.stderr.includes('Impact:')
         && error.stderr.includes('Fix:')
-        && error.stderr.includes('Next command: npx create-quiver ai agent set executor --provider <provider> --model <label>'),
+        && error.stderr.includes('Next command: npx create-quiver ai agent set executor --provider <provider> --model <model-id>'),
     );
   } finally {
     repo.cleanup();

@@ -887,8 +887,11 @@ mkdir -p "$installer_root"
 npm_config_cache="$temp_root/npm-cache" npm install --prefix "$installer_root" "$tarball_path" --ignore-scripts --no-audit --no-fund >/dev/null
 
 packaged_help_output="$(node "$installer_root/node_modules/create-quiver/bin/create-quiver.js" --help)"
-if [[ "$packaged_help_output" != *"ai agent set|list|show"* ]] || [[ "$packaged_help_output" != *"use set --dry-run to preview"* ]]; then
-  echo "Packaged help output did not expose ai agent dry-run guidance" >&2
+if [[ "$packaged_help_output" != *"ai agent set|list|show|doctor|repair"* ]] \
+  || [[ "$packaged_help_output" != *"ai models list"* ]] \
+  || [[ "$packaged_help_output" != *"--model <model-id>"* ]] \
+  || [[ "$packaged_help_output" != *"ai agent set planner --provider codex --model gpt-5.5 --dry-run"* ]]; then
+  echo "Packaged help output did not expose current ai agent/model guidance" >&2
   exit 1
 fi
 

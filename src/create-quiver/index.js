@@ -324,7 +324,7 @@ Options:
       --allow-dirty           For ai execute-slice, allow pre-existing dirty files and ignore them for scope diff
       --mode <name>           Execution mode for ai execute-plan (auto, manual, delegated)
       --provider <name>       Provider CLI to preflight for prepare or AI commands
-      --model <label>         Free-form model label for AI agent profiles
+      --model <model-id>      Technical model id for AI agent profiles or provider-backed AI commands
       --version <n>           Draft version to approve for AI planner phases
       --run <id>              AI lifecycle run id
       --ssh-host-alias <name> SSH host alias to validate for prepare or AI commands
@@ -2710,8 +2710,8 @@ async function resolveInteractiveInitOptions(args, targetDir, projectName, optio
 
   if (agentGuidance.value === 'show') {
     ux.nextSteps([
-      'npx create-quiver ai agent set planner --provider codex --model "<modelo-planner>" --dry-run',
-      'npx create-quiver ai agent set executor --provider claude --model "<modelo-executor>" --dry-run',
+      'npx create-quiver ai agent set planner --provider codex --model gpt-5.5 --dry-run',
+      'npx create-quiver ai agent set executor --provider claude --model claude-sonnet-4-6 --dry-run',
     ], { title: 'Despues de inicializar' });
   }
 

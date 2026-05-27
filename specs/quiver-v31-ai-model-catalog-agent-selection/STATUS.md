@@ -1,12 +1,12 @@
 # Status - Quiver v31 AI Model Catalog and Agent Selection
 
-**Overall status:** In progress
+**Overall status:** Release-ready, pending PR/package publication
 **Created:** 2026-05-27
-**Current slice:** slice-06 completed; slice-07 ready
+**Current slice:** slice-07 completed
 
 ## Summary
 
-This spec improves AI agent setup by adding a local model catalog, provider/model selectors, alias normalization, profile diagnostics, repair dry-runs, shared model preflight, clearer provider errors, command documentation, and generated-template guidance.
+This spec improves AI agent setup by adding a local model catalog, provider/model selectors, alias normalization, profile diagnostics, repair dry-runs, shared model preflight, clearer provider errors, command documentation, generated-template guidance, and release-readiness evidence.
 
 ## Slice Status
 
@@ -19,7 +19,7 @@ This spec improves AI agent setup by adding a local model catalog, provider/mode
 | slice-04-shared-preflight-provider-errors | Completed | Shared alias preflight, CLI override normalization, and provider error extraction added. |
 | slice-05-ai-models-list | Completed | `ai models list` human/JSON output, provider filter, and help contract added. |
 | slice-06-docs-templates-alignment | Completed | README, command reference, CLI UX guide, AI templates, roadmap, and AI source of truth aligned with the model/profile contract. |
-| slice-07-tests-smokes-release-readiness | Planned | Full validation and release evidence. |
+| slice-07-tests-smokes-release-readiness | Completed | Full suite, smokes, package safety, npm pack dry-run, spec validation, and final evidence completed. |
 
 ## Current Blockers
 
@@ -27,4 +27,4 @@ This spec improves AI agent setup by adding a local model catalog, provider/mode
 
 ## Next Step
 
-Continue with `slice-07-tests-smokes-release-readiness`.
+Open the PR or publish only after explicit human approval.

@@ -157,5 +157,29 @@ Each implementation slice must append:
 
 ### Risks
 
-- `node bin/create-quiver.js --help` still describes `--model` as a "Free-form model label". That conflicts with the new technical-id contract and must be corrected in final release readiness before publishing.
+- The final release-readiness slice must verify the CLI help contract after docs alignment.
 - The local model catalog can become stale until Quiver has a remote/update mechanism.
+
+## slice-07 - Tests, smokes, package dry-run, and release readiness
+
+### Completed
+
+- Corrected remaining CLI help/flow guidance so `--model` is documented as a technical model id, not a free-form label.
+- Updated contract tests and `smoke:create-quiver` packaged-help assertions for `ai agent doctor`, `ai agent repair --dry-run`, `ai models list`, and `--model <model-id>`.
+- Updated release docs: `CHANGELOG.md`, `README_FOR_AI.md`, `ROADMAP.md`, `STATUS.md`, `pr.md`, and this evidence report.
+
+### Validation
+
+- `node --test tests/commands/cli-contract.test.js tests/commands/flow.test.js tests/commands/ai-agent.test.js tests/lib/agent-profiles.test.js` passed: 44 tests.
+- `node --test tests/**/*.test.js` passed: 482 tests.
+- `npm run smoke:doctor-fixtures` passed: 13 fixture states.
+- `npm run smoke:create-quiver` passed after updating packaged-help expectations.
+- `npm run smoke:guided-workflow` passed.
+- `npm run package:quiver` passed with package smoke.
+- `npm pack --dry-run` passed and generated dry-run tarball details for `create-quiver@0.15.0`.
+
+### Risks
+
+- npm publication was not performed and still requires explicit human approval.
+- Live provider model entitlement was not tested because it depends on provider CLI/account access and may consume tokens.
+- The local model catalog remains manually maintained until Quiver has a remote/update mechanism.
