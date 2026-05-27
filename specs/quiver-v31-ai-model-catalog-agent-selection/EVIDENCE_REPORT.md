@@ -53,3 +53,25 @@ Each implementation slice must append:
 
 - Catalog entries are local and can become stale. Later docs must keep the wording "known by Quiver" and avoid implying account-level availability.
 - Live provider validation and command preflight are intentionally deferred to later slices.
+
+## slice-02 - Interactive agent set provider and model selectors
+
+### Completed
+
+- Added interactive provider/model resolution for `ai agent set <role>`.
+- Added no-TTY/CI safeguards requiring explicit `--provider` and `--model`.
+- Added existing profile actions: update current, create new, change default, and cancel before writes.
+- Added provider CLI status hints in provider choices.
+- Added role-ordered model choices from the local catalog.
+- Added custom model id and display-name capture.
+- Added a write summary before saving profiles selected through prompts.
+- Made `ai agent` dispatch async-safe.
+
+### Validation
+
+- `node --test tests/commands/ai-agent.test.js tests/lib/cli-selectors.test.js tests/lib/model-catalog.test.js tests/lib/agent-profiles.test.js` passed: 30 tests.
+
+### Risks
+
+- Provider status is best-effort CLI detection and does not guarantee account-level model availability.
+- Interactive rendering is validated through injectable prompt helpers; real terminal behavior should be covered by smoke testing in the final slice.

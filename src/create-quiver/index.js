@@ -2910,12 +2910,13 @@ async function run(argv) {
     }
 
     if (args.aiCommand === 'agent') {
-      runAiAgent(process.cwd(), {
+      await runAiAgent(process.cwd(), {
         command: args.aiAgentCommand,
         context: args.aiContext || undefined,
         defaultProfile: args.aiDefaultProfile,
         displayName: args.aiDisplayName || undefined,
         id: args.aiProfileId || undefined,
+        interactive: args.interactive,
         label: args.aiLabel || undefined,
         model: args.aiModel || undefined,
         provider: args.aiProviderExplicit ? args.aiProvider : undefined,

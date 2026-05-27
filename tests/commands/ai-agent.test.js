@@ -6,6 +6,7 @@ const { execFileSync } = require('node:child_process');
 const test = require('node:test');
 
 const BIN_PATH = path.resolve(__dirname, '../../bin/create-quiver.js');
+const { resolveInteractiveAgentSetOptions } = require('../../src/create-quiver/commands/ai');
 
 function makeRepo() {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'quiver-ai-agent-'));
@@ -169,8 +170,109 @@ test('ai onboard can select a named planner profile for provider and model', () 
     const output = runCli(repo.root, ['ai', 'onboard', '--dry-run', '--planner', 'opus-47']);
 
     assert.match(output, /Provider: claude/);
-    assert.match(output, /Model: opus-4\.7/);
-    assert.match(output, /Command: claude -p --model opus-4\.7/);
+    assert.match(output, /Model: claude-opus-4-7/);
+    assert.match(output, /Command: claude -p --model claude-opus-4-7/);
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('ai agent set requires provider and model when prompts are unavailable', () => {
+  const repo = makeRepo();
+
+  try {
+    assert.throws(
+      () => runCli(repo.root, ['ai', 'agent', 'set', 'planner', '--provider', 'codex']),
+      (error) => error.stderr.includes('requires --provider and --model when prompts are not available')
+        && error.stderr.includes('Next command: npx create-quiver ai agent set planner --provider codex --model gpt-5.5'),
+    );
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('ai agent interactive set resolves provider and catalog model selections', async () => {
+  const repo = makeRepo();
+
+  try {
+    const resolved = await resolveInteractiveAgentSetOptions(repo.root, {
+      role: 'planner',
+      interactive: true,
+      stdinIsTTY: true,
+      stdoutIsTTY: true,
+      preflightProvider: () => ({ ok: true }),
+      promptSelect: async (message) => {
+        if (message.includes('provider')) return 'codex';
+        if (message.includes('modelo')) return 'gpt-5.5';
+        throw new Error(`unexpected prompt: ${message}`);
+      },
+    });
+
+    assert.equal(resolved.provider, 'codex');
+    assert.equal(resolved.model, 'gpt-5.5');
+    assert.equal(resolved.displayName, 'GPT 5.5');
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('ai agent interactive set can create an additional named profile', async () => {
+  const repo = makeRepo();
+
+  try {
+    runCli(repo.root, ['ai', 'agent', 'set', 'planner', '--provider', 'codex', '--model', 'gpt-5.5', '--default']);
+
+    const resolved = await resolveInteractiveAgentSetOptions(repo.root, {
+      role: 'planner',
+      interactive: true,
+      stdinIsTTY: true,
+      stdoutIsTTY: true,
+      preflightProvider: () => ({ ok: true }),
+      write: () => {},
+      promptSelect: async (message) => {
+        if (message.includes('Ya existe')) return 'create-new';
+        if (message.includes('provider')) return 'claude';
+        if (message.includes('modelo')) return 'claude-opus-4-7';
+        throw new Error(`unexpected prompt: ${message}`);
+      },
+      promptText: async () => 'opus-47',
+    });
+
+    assert.equal(resolved.id, 'opus-47');
+    assert.equal(resolved.provider, 'claude');
+    assert.equal(resolved.model, 'claude-opus-4-7');
+    assert.equal(resolved.displayName, 'Claude Opus 4.7');
+    assert.equal(resolved.defaultProfile, false);
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('ai agent interactive set supports custom model id and display name', async () => {
+  const repo = makeRepo();
+  let textPromptCount = 0;
+
+  try {
+    const resolved = await resolveInteractiveAgentSetOptions(repo.root, {
+      role: 'executor',
+      interactive: true,
+      stdinIsTTY: true,
+      stdoutIsTTY: true,
+      preflightProvider: () => ({ ok: true }),
+      promptSelect: async (message) => {
+        if (message.includes('provider')) return 'codex';
+        if (message.includes('modelo')) return 'custom';
+        throw new Error(`unexpected prompt: ${message}`);
+      },
+      promptText: async () => {
+        textPromptCount += 1;
+        return textPromptCount === 1 ? 'gpt-custom-executor' : 'Custom Executor';
+      },
+    });
+
+    assert.equal(resolved.provider, 'codex');
+    assert.equal(resolved.model, 'gpt-custom-executor');
+    assert.equal(resolved.displayName, 'Custom Executor');
   } finally {
     repo.cleanup();
   }
