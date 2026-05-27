@@ -53,6 +53,10 @@ Reglas:
 | `ai pr` | no | si | si | Review edita `pr.md`; interactive confirma `gh pr create`. |
 | `ai execute-slice` | no | si | no | Interactive puede seleccionar un slice listo y un executor configurado. |
 | `ai execute-plan` | no | si | no | Interactive queda reservado para estrategia/seleccion; JSON sigue limpio. |
+| `ai agent set` | no | si | no | En TTY puede guiar proveedor/modelo; en CI/no-TTY requiere `--provider` y `--model`. |
+| `ai agent doctor` | no | no | no | Diagnostica perfiles sin escribir; `--json` usa el mismo modelo de hallazgos. |
+| `ai agent repair` | no | no | no | Por ahora solo `--dry-run`; muestra before/after sin escribir. |
+| `ai models list` | no | no | no | Lista el catalogo local conocido por Quiver; no valida acceso de cuenta. |
 | `doctor` | no | no | no | Renderiza `Quiver Doctor`, `Checks` y `Suggested fixes`; `--json` usa el mismo modelo de hallazgos. |
 | `flow`, `next`, `graph` | no | no | no | Lectura/inspeccion; no deben exponer flags decorativas. |
 | `ai inspect`, `ai export`, `ai specs list`, `ai slices list`, `ai trace report` | no | no | no | Superficies read-only o machine-readable. |
@@ -78,10 +82,21 @@ El planner debe devolver una propuesta validable. Quiver solo acepta cambios en 
 
 ## Seleccion de agentes, proveedores y modelos
 
-Los perfiles de agente son configuracion de DX, no almacenamiento de credenciales. Deben guardar solo rol, proveedor, etiqueta de modelo, contexto, nombre visible y perfil por defecto.
+Los perfiles de agente son configuracion de DX, no almacenamiento de credenciales. Deben guardar solo rol, proveedor, identificador tecnico de modelo, nombre visible, contexto, profile id y perfil por defecto.
+
+Contrato de datos:
+
+- `model` es el identificador tecnico que Quiver pasa al CLI del proveedor, por ejemplo `gpt-5.5`.
+- `displayName` es el nombre humano que Quiver muestra en selectores, loaders y reportes, por ejemplo `GPT 5.5`.
+- `ai models list` muestra modelos conocidos por Quiver. Eso no significa que el proveedor o la cuenta del usuario tengan acceso real a todos ellos.
+- Un modelo custom esta permitido, pero debe quedar marcado como custom/no validado hasta que una ejecucion real lo pruebe.
 
 Reglas:
 
+- En TTY, `ai agent set <role>` puede abrir selectores de proveedor y modelo cuando faltan flags.
+- En no-TTY/CI, `ai agent set <role>` debe exigir `--provider` y `--model`; no debe quedarse esperando input.
+- `ai agent doctor` debe identificar perfiles heredados con alias visuales guardados en `model`.
+- `ai agent repair --dry-run` debe mostrar cambios before/after y no escribir archivos.
 - Si un comando usa un perfil con modelo, el dry-run debe mostrar proveedor, modelo, comando y si el adapter puede aplicar ese modelo.
 - En ejecucion real, Quiver debe pasar el modelo al CLI del proveedor cuando el adapter lo soporta.
 - Si un adapter no puede aplicar el modelo seleccionado, la ejecucion real debe bloquearse con un proximo paso claro.

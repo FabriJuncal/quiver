@@ -157,6 +157,10 @@ Usá la guía que corresponda al estado de tu proyecto:
 | `npx --yes create-quiver@latest flow` | Indica el próximo paso seguro. |
 | `npx --yes create-quiver@latest ai prepare-context --dry-run` | Previsualiza contexto de onboarding para IA sin tocar código de producto. |
 | `npx --yes create-quiver@latest ai prepare-context --with-planner --dry-run` | Previsualiza una propuesta de contexto generada por el planner. |
+| `npx --yes create-quiver@latest ai models list` | Lista proveedores y modelos conocidos por Quiver para configurar agentes. |
+| `npx --yes create-quiver@latest ai agent set planner --provider codex --model gpt-5.5 --dry-run` | Previsualiza un perfil de planner sin guardar credenciales ni escribir archivos. |
+| `npx --yes create-quiver@latest ai agent doctor` | Diagnostica perfiles de agentes existentes. |
+| `npx --yes create-quiver@latest ai agent repair --dry-run` | Previsualiza reparaciones seguras para perfiles heredados o mal configurados. |
 | `npx --yes create-quiver@latest ai plan --phase acceptance` | Genera un borrador de criterios de aceptación. |
 | `npx --yes create-quiver@latest ai plan --phase technical-plan` | Genera un borrador de plan técnico. |
 | `npx --yes create-quiver@latest ai review-plan` | Revisa el plan técnico antes de aprobarlo. |
@@ -217,6 +221,13 @@ Quiver puede trabajar con CLIs locales de proveedores como:
 - `gemini`
 
 Las credenciales las manejan esos CLIs. Quiver no guarda API keys en los perfiles de agentes.
+
+Los perfiles de agentes separan dos datos:
+
+- `model`: identificador técnico que Quiver pasa al CLI del proveedor, por ejemplo `gpt-5.5`.
+- `displayName`: nombre humano que Quiver muestra en selectores y reportes, por ejemplo `GPT 5.5`.
+
+`ai models list` muestra modelos conocidos por Quiver. Eso no garantiza que el proveedor o tu cuenta tengan acceso a todos esos modelos. Para revisar configuraciones existentes, usá `ai agent doctor`; para perfiles viejos con alias visuales guardados como modelo técnico, empezá con `ai agent repair --dry-run`.
 
 ## Requisitos
 

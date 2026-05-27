@@ -137,3 +137,25 @@ Each implementation slice must append:
 ### Risks
 
 - The model catalog is local and can become stale until Quiver has a remote/update mechanism.
+
+## slice-06 - Documentation and generated template alignment
+
+### Completed
+
+- Updated `README.md` with concise public-facing model catalog, agent setup, doctor, and repair commands.
+- Updated `docs/reference/commands.md` with interactive and script-safe agent setup, `ai models list`, `ai agent doctor`, and `ai agent repair --dry-run`.
+- Updated `docs/CLI_UX_GUIDE.md` with the profile data contract: `model` is the provider technical id and `displayName` is the human label.
+- Updated generated project templates: `docs/COMMANDS.md.template`, `docs/AI_ONBOARDING_PROMPT.md.template`, and `docs/AI_CONTEXT.md.template`.
+- Updated `README_FOR_AI.md`, `ROADMAP.md`, `STATUS.md`, and the slice closure to reflect completed docs/templates alignment without claiming package publication.
+
+### Validation
+
+- `node bin/create-quiver.js --help` passed and exposed `ai models list`, `ai agent doctor`, and `ai agent repair --dry-run`.
+- `node bin/create-quiver.js ai models list --provider codex` passed and printed "Models are known by Quiver; provider account access is not guaranteed."
+- `node bin/create-quiver.js spec validate specs/quiver-v31-ai-model-catalog-agent-selection` passed with a warning before this evidence section was appended.
+- `git diff --check` passed.
+
+### Risks
+
+- `node bin/create-quiver.js --help` still describes `--model` as a "Free-form model label". That conflicts with the new technical-id contract and must be corrected in final release readiness before publishing.
+- The local model catalog can become stale until Quiver has a remote/update mechanism.

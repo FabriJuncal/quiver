@@ -2,11 +2,11 @@
 
 **Overall status:** In progress
 **Created:** 2026-05-27
-**Current slice:** slice-05 completed; slice-06 ready
+**Current slice:** slice-06 completed; slice-07 ready
 
 ## Summary
 
-This spec is planned to improve AI agent setup by adding a local model catalog, provider/model selectors, alias normalization, profile diagnostics, repair dry-runs, shared model preflight, and clearer provider errors.
+This spec improves AI agent setup by adding a local model catalog, provider/model selectors, alias normalization, profile diagnostics, repair dry-runs, shared model preflight, clearer provider errors, command documentation, and generated-template guidance.
 
 ## Slice Status
 
@@ -18,7 +18,7 @@ This spec is planned to improve AI agent setup by adding a local model catalog, 
 | slice-03-agent-doctor-repair | Completed | Profile diagnostics, JSON output, error exit codes, and dry-run alias repair added. |
 | slice-04-shared-preflight-provider-errors | Completed | Shared alias preflight, CLI override normalization, and provider error extraction added. |
 | slice-05-ai-models-list | Completed | `ai models list` human/JSON output, provider filter, and help contract added. |
-| slice-06-docs-templates-alignment | Planned | Repo docs and generated templates. |
+| slice-06-docs-templates-alignment | Completed | README, command reference, CLI UX guide, AI templates, roadmap, and AI source of truth aligned with the model/profile contract. |
 | slice-07-tests-smokes-release-readiness | Planned | Full validation and release evidence. |
 
 ## Current Blockers
@@ -27,4 +27,4 @@ This spec is planned to improve AI agent setup by adding a local model catalog, 
 
 ## Next Step
 
-Continue with `slice-06-docs-templates-alignment`.
+Continue with `slice-07-tests-smokes-release-readiness`.

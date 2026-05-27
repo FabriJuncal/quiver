@@ -26,7 +26,15 @@ Usá `npx --yes create-quiver@latest --help` para ver la lista viva de comandos 
 | `npx --yes create-quiver@latest ai prepare-context --with-planner --dry-run` | Previsualiza una propuesta docs-only generada por el planner sin escribir archivos. |
 | `npx --yes create-quiver@latest ai prepare-context --with-planner --print-prompt` | Imprime el prompt exacto para ejecutar el planner en otro entorno. |
 | `npx --yes create-quiver@latest ai prepare-context --with-planner --review --interactive` | Ejecuta planner, abre revisión humana y pide confirmación antes de escribir docs permitidos. |
-| `npx --yes create-quiver@latest ai agent set <role> --provider <provider> --model "<label>"` | Guarda un perfil de agente sin secretos. |
+| `npx --yes create-quiver@latest ai models list` | Lista proveedores y modelos conocidos por Quiver sin afirmar disponibilidad en la cuenta. |
+| `npx --yes create-quiver@latest ai models list --provider codex` | Filtra el catálogo local por proveedor. |
+| `npx --yes create-quiver@latest ai models list --json` | Emite el catálogo local en JSON parseable. |
+| `npx --yes create-quiver@latest ai agent set <role>` | En TTY, guía la selección de proveedor, modelo conocido por Quiver o modelo custom. |
+| `npx --yes create-quiver@latest ai agent set <role> --provider <provider> --model <model-id>` | Guarda un perfil de agente sin secretos en modo script/no-TTY. |
+| `npx --yes create-quiver@latest ai agent set planner --provider codex --model gpt-5.5 --dry-run` | Previsualiza la escritura del perfil sin modificar `.quiver/agents/profiles.json`. |
+| `npx --yes create-quiver@latest ai agent doctor` | Diagnostica perfiles de agentes, alias visuales, proveedores faltantes y modelos custom no validados. |
+| `npx --yes create-quiver@latest ai agent doctor --json` | Emite el diagnóstico de perfiles como JSON parseable. |
+| `npx --yes create-quiver@latest ai agent repair --dry-run` | Previsualiza reparaciones seguras de perfiles, como normalizar `model: "GPT 5.5"` a `model: "gpt-5.5"` y `displayName: "GPT 5.5"`. |
 | `npx --yes create-quiver@latest ai run create --input <file>` | Inicia una ejecución persistente de IA. |
 | `npx --yes create-quiver@latest ai status` | Muestra el estado de la ejecución actual. |
 | `npx --yes create-quiver@latest ai plan --phase acceptance --input <file>` | Genera criterios de aceptación. |
@@ -76,6 +84,7 @@ Usá `npx --yes create-quiver@latest --help` para ver la lista viva de comandos 
 | `--methodology wdd-sdd` | Declara la metodología soportada por comandos interactivos o automatizados. |
 | `--no-color` | Desactiva colores ANSI en salida humana. |
 | `--provider codex\|claude\|gemini` | Selecciona CLI local de proveedor. |
+| `--model <model-id>` | Selecciona el identificador técnico del modelo para `ai agent set` o ejecución de proveedor. Quiver normaliza alias conocidos, pero no garantiza acceso en la cuenta del proveedor. |
 | `--commit` | Permite que Quiver commitee trabajo validado del slice. |
 | `--mode manual` | Imprime prompts para asignación manual de ejecutores. |
 | `--mode delegated` | Usa ejecución delegada con worktrees temporales cuando es seguro. |
