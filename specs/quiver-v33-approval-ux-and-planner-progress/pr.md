@@ -34,11 +34,13 @@ Quiver v33: Approval UX and planner progress
 - `src/create-quiver/commands/flow.js`
 - `src/create-quiver/commands/spec.js`
 - `src/create-quiver/index.js`
+- `src/create-quiver/lib/git.js`
 - `src/create-quiver/lib/approvals.js`
 - `src/create-quiver/lib/ai/approval-candidates.js`
 - `src/create-quiver/lib/ai/plan-review.js`
 - `src/create-quiver/lib/paths.js`
 - `src/create-quiver/lib/ai/run-state.js`
+- `tests/lib/git.test.js`
 - `tests/lib/paths.test.js`
 - `tests/**`
 - `specs/quiver-v33-approval-ux-and-planner-progress/**`
@@ -71,7 +73,7 @@ Quiver v33: Approval UX and planner progress
 - `node --test tests/commands/ai-plan.test.js tests/commands/ai-prepare-context-planner.test.js`
 - `node --test tests/commands/flow.test.js tests/commands/spec-create.test.js`
 - `node --test tests/commands/ai-agent.test.js tests/lib/cli-selectors.test.js tests/lib/cli-ux.test.js`
-- `node --test tests/lib/paths.test.js`
+- `node --test tests/lib/git.test.js tests/lib/paths.test.js`
 - `node --test tests/**/*.test.js`
 - `npm run smoke:create-quiver`
 - `npm run smoke:doctor-fixtures`
@@ -85,7 +87,7 @@ Quiver v33: Approval UX and planner progress
 
 - `git diff --check` passed.
 - `node bin/create-quiver.js spec validate specs/quiver-v33-approval-ux-and-planner-progress` passed.
-- `node --test tests/lib/paths.test.js` passed.
+- `node --test tests/lib/git.test.js tests/lib/paths.test.js` passed.
 - `node --test tests/**/*.test.js` passed: 496/496.
 - `npm run smoke:create-quiver` passed.
 - `npm run smoke:doctor-fixtures` passed.

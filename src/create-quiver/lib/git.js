@@ -19,6 +19,14 @@ function tryGit(args, cwd, options = {}) {
   }
 }
 
+function withWindowsLongPaths(args, options = {}) {
+  const platform = options.platform || process.platform;
+  if (platform !== 'win32') {
+    return args;
+  }
+  return ['-c', 'core.longpaths=true', ...args];
+}
+
 function hasRef(repoRoot, ref) {
   try {
     runGit(['show-ref', '--verify', '--quiet', ref], repoRoot);
@@ -45,11 +53,11 @@ function fetchRemote(repoRoot, remote = 'origin', args = ['--prune']) {
 }
 
 function worktreePrune(repoRoot) {
-  tryGit(['worktree', 'prune'], repoRoot);
+  tryGit(withWindowsLongPaths(['worktree', 'prune']), repoRoot);
 }
 
 function worktreeList(repoRoot) {
-  const text = tryGit(['worktree', 'list', '--porcelain'], repoRoot);
+  const text = tryGit(withWindowsLongPaths(['worktree', 'list', '--porcelain']), repoRoot);
   const entries = [];
   const chunks = text.trim().split('\n\n').filter(Boolean);
 
@@ -79,7 +87,7 @@ function worktreeAdd(repoRoot, worktreePath, ref, options = {}) {
     args.push('--force');
   }
   args.push(worktreePath, ref);
-  return runGit(args, repoRoot);
+  return runGit(withWindowsLongPaths(args, options), repoRoot);
 }
 
 function worktreeRemove(repoRoot, worktreePath, force = false) {
@@ -88,7 +96,7 @@ function worktreeRemove(repoRoot, worktreePath, force = false) {
     args.push('--force');
   }
   args.push(worktreePath);
-  return runGit(args, repoRoot);
+  return runGit(withWindowsLongPaths(args), repoRoot);
 }
 
 function branchDelete(repoRoot, branchName, force = false) {
@@ -207,6 +215,7 @@ module.exports = {
   runGit,
   statusPorcelain,
   tryGit,
+  withWindowsLongPaths,
   worktreeAdd,
   worktreeList,
   worktreePrune,
