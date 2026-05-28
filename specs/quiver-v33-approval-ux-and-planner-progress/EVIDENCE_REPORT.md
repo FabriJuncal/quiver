@@ -78,6 +78,7 @@ This report records implementation and validation evidence for all v33 slices.
 
 - `git diff --check` passed.
 - `node bin/create-quiver.js spec validate specs/quiver-v33-approval-ux-and-planner-progress` passed.
+- `node --test tests/lib/paths.test.js` passed: 10 tests.
 - `node --test tests/**/*.test.js` passed: 496 tests, 496 pass.
 - `npm run smoke:create-quiver` passed: `create-quiver smoke test passed`.
 - `npm run smoke:doctor-fixtures` passed: 13 states.

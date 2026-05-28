@@ -84,9 +84,42 @@ function realpathOrResolve(filePath, pathLib = path) {
   }
 }
 
-function isPathInsideRoot(root, target, pathLib = path) {
-  const rootPath = realpathOrResolve(root, pathLib);
-  const targetPath = realpathOrResolve(target, pathLib);
+function realpathCandidates(filePath, pathLib = path) {
+  const normalized = normalizeGitBashDrivePath(filePath, pathLib);
+  const candidates = [];
+
+  const add = (candidate) => {
+    if (!candidate) {
+      return;
+    }
+    const resolved = pathLib.resolve(normalizeGitBashDrivePath(candidate, pathLib));
+    if (!candidates.includes(resolved)) {
+      candidates.push(resolved);
+    }
+  };
+
+  try {
+    add(fs.realpathSync(normalized));
+  } catch {
+    // Fall back below for paths that do not exist yet.
+  }
+
+  if (typeof fs.realpathSync.native === 'function') {
+    try {
+      add(fs.realpathSync.native(normalized));
+    } catch {
+      // Fall back below for paths that do not exist yet.
+    }
+  }
+
+  if (candidates.length === 0) {
+    add(normalized);
+  }
+
+  return candidates;
+}
+
+function isCandidateInsideRoot(rootPath, targetPath, pathLib = path) {
   const windowsPath = pathLib === path.win32 || process.platform === 'win32';
   const comparableRoot = windowsPath ? rootPath.toLowerCase() : rootPath;
   const comparableTarget = windowsPath ? targetPath.toLowerCase() : targetPath;
@@ -97,6 +130,15 @@ function isPathInsideRoot(root, target, pathLib = path) {
 
   const relative = pathLib.relative(comparableRoot, comparableTarget);
   return Boolean(relative && !relative.startsWith('..') && !pathLib.isAbsolute(relative));
+}
+
+function isPathInsideRoot(root, target, pathLib = path) {
+  const rootCandidates = realpathCandidates(root, pathLib);
+  const targetCandidates = realpathCandidates(target, pathLib);
+
+  return rootCandidates.some((rootPath) => targetCandidates.some((targetPath) => (
+    isCandidateInsideRoot(rootPath, targetPath, pathLib)
+  )));
 }
 
 function assertPathInsideRoot(root, target, label = 'path', pathLib = path) {
