@@ -1,0 +1,73 @@
+{
+  "slice_id": "slice-02-dashboard-compact-renderer",
+  "ticket": "QUIVER-35-02",
+  "type": "feature",
+  "title": "Dashboard compact renderer",
+  "objective": "Make the default dashboard human output compact, summary-first, and actionable without changing the underlying JSON report.",
+  "description": "Replaces the long default human dashboard with a line-budgeted compact view that prioritizes state, blockers, warnings, next safe command, progress, and counts.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v35-dashboard-compact-renderer",
+    "branch_name": "feature/QUIVER-35-02-v35-dashboard-compact-renderer"
+  },
+  "files": [
+    "src/create-quiver/lib/dashboard.js",
+    "tests/lib/dashboard.test.js",
+    "tests/commands/dashboard.test.js"
+  ],
+  "expected_read_paths": [
+    "src/create-quiver/lib/dashboard.js",
+    "src/create-quiver/lib/cli/theme.js",
+    "tests/lib/dashboard.test.js",
+    "tests/commands/dashboard.test.js",
+    "specs/quiver-v35-compact-dashboard-version-ux/SPEC.md"
+  ],
+  "allowed_write_paths": [
+    "src/create-quiver/lib/dashboard.js",
+    "tests/lib/dashboard.test.js",
+    "tests/commands/dashboard.test.js",
+    "specs/quiver-v35-compact-dashboard-version-ux/**"
+  ],
+  "depends_on": [
+    "slice-01-dashboard-cli-contract"
+  ],
+  "parallel_safe": "conditional",
+  "parallel_safe_reason": "Can run in parallel with the version command after the dashboard CLI contract is stable, but not with dashboard details/sections.",
+  "must": [
+    "Render the default dashboard in <= 28 non-empty lines after ANSI is stripped for a large fixture.",
+    "Prioritize state, blockers, warnings, next safe command, progress, and summary counts.",
+    "Avoid repeated empty sections in no-spec/no-slice projects.",
+    "Truncate long descriptive text with ... for horizontal readability.",
+    "Keep critical next safe command visible.",
+    "Show actionable truncation hints for hidden list items."
+  ],
+  "not_included": [
+    "Full details renderer.",
+    "Section-specific renderer.",
+    "Version command.",
+    "JSON schema changes."
+  ],
+  "acceptance": [
+    "Default dashboard output is summary-first.",
+    "Large fixture default output is <= 28 non-empty ANSI-stripped lines.",
+    "No-spec project output remains useful and actionable.",
+    "Hidden repeated items include a + N more hint and a command to inspect details.",
+    "dashboard --json remains unchanged by the compact human renderer."
+  ],
+  "tests": [
+    "node --test tests/lib/dashboard.test.js",
+    "node --test tests/commands/dashboard.test.js",
+    "git diff --check"
+  ],
+  "validation_hints": [
+    "Add helper tests that strip ANSI before measuring line count.",
+    "Use fixture data with many specs, slices, warnings, agents, approvals, and runs."
+  ],
+  "estimated_hours": 5,
+  "status": "completed",
+  "started_at": "2026-05-28T17:00:00Z",
+  "completed_at": "2026-05-28T17:36:57Z",
+  "actual_hours": 2,
+  "blocked_reason": null
+}

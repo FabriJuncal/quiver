@@ -47,6 +47,12 @@ const UX_FLAG_MATRIX = Object.freeze({
     review: false,
     note: 'execution strategy confirmation and future selectors',
   }),
+  dashboard: Object.freeze({
+    withPlanner: false,
+    interactive: false,
+    review: false,
+    note: 'read-only consolidated project status',
+  }),
 });
 
 function formatError(message) {

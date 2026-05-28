@@ -1,0 +1,85 @@
+{
+  "slice_id": "slice-05-tests-smokes-release-readiness",
+  "ticket": "QUIVER-34-05",
+  "type": "validation",
+  "title": "Tests, smokes, and release readiness",
+  "objective": "Close v34 with full validation, evidence, status updates, and PR readiness.",
+  "description": "Runs focused and full validation, updates evidence, closes slice metadata, validates the spec package, and prepares the PR body without claiming npm publication.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v34-dashboard-release-readiness",
+    "branch_name": "feature/QUIVER-34-05-dashboard-release-readiness"
+  },
+  "files": [
+    "tests/**",
+    "specs/quiver-v34-cli-dashboard-status/**"
+  ],
+  "expected_read_paths": [
+    "SPEC.md",
+    "STATUS.md",
+    "EVIDENCE_REPORT.md",
+    "pr.md",
+    "tests/**",
+    "package.json",
+    "scripts/ci/**"
+  ],
+  "allowed_write_paths": [
+    "tests/**",
+    "specs/quiver-v34-cli-dashboard-status/**"
+  ],
+  "depends_on": [
+    "slice-03-dashboard-edge-cases-and-guardrails",
+    "slice-04-docs-templates-and-scripts"
+  ],
+  "parallel_safe": "no",
+  "parallel_safe_reason": "Final validation and evidence must run after all implementation and docs slices.",
+  "must": [
+    "Run focused dashboard tests.",
+    "Run CLI contract and UX flag tests.",
+    "Run generated docs/script tests.",
+    "Run full test suite.",
+    "Run smoke commands.",
+    "Run package smoke.",
+    "Run spec validation.",
+    "Update EVIDENCE_REPORT.md with real results.",
+    "Update STATUS.md and slice CLOSURE_BRIEF.md files.",
+    "Prepare final pr.md evidence."
+  ],
+  "not_included": [
+    "Publishing npm.",
+    "Adding new dashboard scope after validation begins.",
+    "Changing accepted command semantics without revisiting prior slices."
+  ],
+  "acceptance": [
+    "Focused tests pass.",
+    "Full tests pass or any failure is documented with blocker status.",
+    "Smokes pass or blockers are recorded.",
+    "Spec validation passes.",
+    "Evidence report records commands and outcomes.",
+    "Final status reflects readiness accurately."
+  ],
+  "tests": [
+    "node --test tests/lib/dashboard.test.js",
+    "node --test tests/commands/dashboard.test.js",
+    "node --test tests/commands/cli-contract.test.js tests/commands/ux-flags.test.js",
+    "node --test tests/lib/ai-export-state.test.js tests/commands/ai-export.test.js",
+    "node --test tests/lib/init-docs.test.js tests/lib/init-layout.test.js",
+    "node --test tests/**/*.test.js",
+    "npm run smoke:create-quiver",
+    "npm run smoke:doctor-fixtures",
+    "npm run smoke:guided-workflow",
+    "npm run package:quiver",
+    "git diff --check",
+    "node bin/create-quiver.js spec validate specs/quiver-v34-cli-dashboard-status"
+  ],
+  "validation_hints": [
+    "Record evidence without claiming package publication.",
+    "If a full-suite failure is unrelated, document it explicitly instead of hiding it."
+  ],
+  "estimated_hours": 5,
+  "status": "completed",
+  "blocked_reason": null,
+  "actual_hours": 4,
+  "completed_at": "2026-05-28"
+}

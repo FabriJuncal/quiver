@@ -885,33 +885,70 @@ tarball_path="$(pack_installer)"
 
 mkdir -p "$installer_root"
 npm_config_cache="$temp_root/npm-cache" npm install --prefix "$installer_root" "$tarball_path" --ignore-scripts --no-audit --no-fund >/dev/null
+installed_cli="$installer_root/node_modules/create-quiver/bin/create-quiver.js"
 
-packaged_help_output="$(node "$installer_root/node_modules/create-quiver/bin/create-quiver.js" --help)"
+packaged_help_output="$(node "$installed_cli" --help)"
 if [[ "$packaged_help_output" != *"ai agent set|list|show|doctor|repair"* ]] \
   || [[ "$packaged_help_output" != *"ai models list"* ]] \
+  || [[ "$packaged_help_output" != *"--details"* ]] \
+  || [[ "$packaged_help_output" != *"--section <name>"* ]] \
+  || [[ "$packaged_help_output" != *"--limit <n>"* ]] \
+  || [[ "$packaged_help_output" != *"version [--json]"* ]] \
   || [[ "$packaged_help_output" != *"--model <model-id>"* ]] \
   || [[ "$packaged_help_output" != *"ai agent set planner --provider codex --model gpt-5.5 --dry-run"* ]]; then
-  echo "Packaged help output did not expose current ai agent/model guidance" >&2
+  echo "Packaged help output did not expose current command guidance" >&2
   exit 1
 fi
 
-node "$installer_root/node_modules/create-quiver/bin/create-quiver.js" --name "Packaged Project" --dir "$release_target" --full --skip-install >/dev/null
+packaged_semver="$(node "$installed_cli" --version)"
+if [[ "$packaged_semver" != "$cli_version" ]]; then
+  echo "Packaged --version returned '$packaged_semver', expected '$cli_version'" >&2
+  exit 1
+fi
+
+packaged_version_output="$(node "$installed_cli" version --no-color)"
+if [[ "$packaged_version_output" != *"Quiver CLI: $cli_version"* ]] \
+  || [[ "$packaged_version_output" != *"Package manager:"* ]] \
+  || [[ "$packaged_version_output" != *"Project:"* ]]; then
+  echo "Packaged version output did not include required human metadata" >&2
+  exit 1
+fi
+
+packaged_version_json="$(node "$installed_cli" version --json)"
+VERSION_JSON="$packaged_version_json" CLI_VERSION="$cli_version" node -e 'const data = JSON.parse(process.env.VERSION_JSON); if (data.version_schema_version !== 1) throw new Error("bad version schema"); if (data.cli.version !== process.env.CLI_VERSION) throw new Error("bad cli version"); if (!data.runtime.node || !data.package_manager.name) throw new Error("missing runtime/package manager");'
+
+packaged_alias_version="$(npm_config_cache="$temp_root/npm-cache" npm exec --prefix "$installer_root" -- quiver version --no-color)"
+if [[ "$packaged_alias_version" != *"Quiver CLI: $cli_version"* ]]; then
+  echo "Installed quiver alias did not run the version command" >&2
+  exit 1
+fi
+
+node "$installed_cli" --name "Packaged Project" --dir "$release_target" --full --skip-install >/dev/null
 (
   cd "$release_target"
-  node "$installer_root/node_modules/create-quiver/bin/create-quiver.js" analyze >/dev/null
+  node "$installed_cli" analyze >/dev/null
 )
-packaged_flow_output="$(cd "$release_target" && node "$installer_root/node_modules/create-quiver/bin/create-quiver.js" flow)"
+packaged_flow_output="$(cd "$release_target" && node "$installed_cli" flow)"
 if [[ "$packaged_flow_output" != *"Package manager: npm"* ]] || [[ "$packaged_flow_output" != *"Generated project script: npm run quiver:flow"* ]]; then
   echo "Packaged flow output did not include package-manager-aware script guidance" >&2
   exit 1
 fi
-packaged_agent_dry_run="$(cd "$release_target" && node "$installer_root/node_modules/create-quiver/bin/create-quiver.js" ai agent set planner --provider codex --model smoke-planner --dry-run)"
+packaged_dashboard_output="$(cd "$release_target" && node "$installed_cli" dashboard)"
+if [[ "$packaged_dashboard_output" != *"Quiver Dashboard"* ]] \
+  || [[ "$packaged_dashboard_output" != *"Next safe command:"* ]] \
+  || [[ "$packaged_dashboard_output" != *"Inspect: npx create-quiver dashboard --details"* ]]; then
+  echo "Packaged dashboard output did not include compact inspection guidance" >&2
+  exit 1
+fi
+packaged_dashboard_json="$(cd "$release_target" && node "$installed_cli" dashboard --json)"
+DASHBOARD_JSON="$packaged_dashboard_json" node -e 'const data = JSON.parse(process.env.DASHBOARD_JSON); if (data.dashboard_schema_version !== 1) throw new Error("bad dashboard schema"); if (!data.summary || !data.next_steps) throw new Error("missing dashboard summary/next_steps");'
+packaged_agent_dry_run="$(cd "$release_target" && node "$installed_cli" ai agent set planner --provider codex --model smoke-planner --dry-run)"
 if [[ "$packaged_agent_dry_run" != *"AI agent profile dry-run"* ]] || [[ "$packaged_agent_dry_run" != *"Writes: none"* ]]; then
   echo "Packaged ai agent set --dry-run did not preview the profile write" >&2
   exit 1
 fi
 assert_missing "$release_target/.quiver/agents/profiles.json"
-release_doctor_output="$(cd "$release_target" && node "$installer_root/node_modules/create-quiver/bin/create-quiver.js" doctor)"
+release_doctor_output="$(cd "$release_target" && node "$installed_cli" doctor)"
 
 if [[ "$release_doctor_output" != *"Read AGENTS.md, then docs/AI_ONBOARDING_PROMPT.md and execute it."* ]]; then
   echo "Packaged doctor output did not point to AGENTS.md before the onboarding prompt after analyze" >&2
@@ -944,6 +981,7 @@ assert_front_matter "$release_target/docs/ai/DEEP.md"
 assert_front_matter "$release_target/docs/ai/LESSONS.md"
 assert_front_matter "$release_target/docs/ai/PRINCIPLES.md"
 assert_contains "$release_target/docs/COMMANDS.md" "| Command | Purpose | OS | Since | Example |"
+assert_contains "$release_target/docs/COMMANDS.md" "\`quiver:version\`"
 assert_contains "$release_target/docs/COMMANDS.md" "\`quiver:plan\`"
 assert_contains "$release_target/docs/COMMANDS.md" "\`quiver:graph\`"
 assert_contains "$release_target/docs/COMMANDS.md" "\`quiver:next\`"
@@ -964,7 +1002,7 @@ if [[ "$standard_lines" -gt 300 ]]; then
   exit 1
 fi
 assert_package_scripts "$release_target/package.json" "packaged project" \
-  quiver:analyze quiver:flow quiver:prepare quiver:plan quiver:graph quiver:next quiver:doctor quiver:ai:agent quiver:ai:onboard quiver:ai:plan quiver:ai:review-plan quiver:ai:approve quiver:ai:prompt-slice quiver:ai:execute-slice quiver:ai:execute-plan quiver:ai:pr quiver:ai:doctor quiver:spec:create quiver:spec:start quiver:spec:status quiver:spec:close quiver:migrate quiver:start-slice quiver:check-slice quiver:check-pr quiver:check-handoff check-handoff quiver:cleanup-slice quiver:check-scope quiver:refresh-active-slices
+  quiver:version quiver:analyze quiver:flow quiver:dashboard quiver:prepare quiver:plan quiver:graph quiver:next quiver:doctor quiver:ai:agent quiver:ai:onboard quiver:ai:plan quiver:ai:review-plan quiver:ai:approve quiver:ai:prompt-slice quiver:ai:execute-slice quiver:ai:execute-plan quiver:ai:pr quiver:ai:doctor quiver:spec:create quiver:spec:start quiver:spec:status quiver:spec:close quiver:migrate quiver:start-slice quiver:check-slice quiver:check-pr quiver:check-handoff check-handoff quiver:cleanup-slice quiver:check-scope quiver:refresh-active-slices
 
 printf 'keep me\n' >> "$release_target/docs/SEARCH.md"
 rm "$release_target/docs/AI_ONBOARDING_PROMPT.md"

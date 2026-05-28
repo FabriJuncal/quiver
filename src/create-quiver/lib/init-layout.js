@@ -181,8 +181,10 @@ function resolveInitVisibleDirectories(profile, projectSlug) {
 function resolveInitPackageScripts(profile, options = {}) {
   const baseScripts = {
     'quiver:migrate': 'npx create-quiver migrate',
+    'quiver:version': 'npx create-quiver version',
     'quiver:analyze': 'npx create-quiver analyze',
     'quiver:flow': 'npx create-quiver flow',
+    'quiver:dashboard': 'npx create-quiver dashboard',
     'quiver:prepare': 'npx create-quiver prepare',
     'quiver:plan': 'npx create-quiver plan',
     'quiver:graph': 'npx create-quiver graph',

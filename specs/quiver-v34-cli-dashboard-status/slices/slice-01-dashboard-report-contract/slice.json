@@ -1,0 +1,78 @@
+{
+  "slice_id": "slice-01-dashboard-report-contract",
+  "ticket": "QUIVER-34-01",
+  "type": "feature",
+  "title": "Dashboard report contract",
+  "objective": "Create a compact read-only dashboard report contract from existing Quiver lifecycle state.",
+  "description": "Adds the dashboard data model that separates global progress from visible progress, exposes next-ready work, and summarizes state without duplicating lifecycle export or leaking evidence/log content.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v34-dashboard-report-contract",
+    "branch_name": "feature/QUIVER-34-01-v34-dashboard-report-contract"
+  },
+  "files": [
+    "src/create-quiver/lib/dashboard.js",
+    "src/create-quiver/lib/ai/export-state.js",
+    "tests/lib/dashboard.test.js",
+    "tests/lib/ai-export-state.test.js"
+  ],
+  "expected_read_paths": [
+    "src/create-quiver/lib/ai/export-state.js",
+    "src/create-quiver/lib/project-state-resolver.js",
+    "src/create-quiver/commands/plan.js",
+    "src/create-quiver/commands/next.js",
+    "tests/commands/ai-export.test.js",
+    "tests/lib/ai-export-state.test.js",
+    "specs/quiver-v34-cli-dashboard-status/SPEC.md"
+  ],
+  "allowed_write_paths": [
+    "src/create-quiver/lib/dashboard.js",
+    "src/create-quiver/lib/ai/export-state.js",
+    "tests/lib/dashboard.test.js",
+    "tests/lib/ai-export-state.test.js",
+    "specs/quiver-v34-cli-dashboard-status/**"
+  ],
+  "depends_on": [
+    "slice-00-dashboard-foundation"
+  ],
+  "parallel_safe": "no",
+  "parallel_safe_reason": "The report contract is the dependency for command rendering and edge-case hardening.",
+  "must": [
+    "Use existing lifecycle/export state as the source of truth.",
+    "Define dashboard_schema_version 1.",
+    "Return a compact report, not the full ai export payload.",
+    "Calculate global_progress from all slices.",
+    "Calculate visible_progress from filters such as --spec and --include-completed.",
+    "Summarize evidence and runs without raw log or evidence content.",
+    "Expose next_ready when graph state allows it.",
+    "Preserve existing ai export behavior unless a backwards-compatible helper extraction is needed."
+  ],
+  "not_included": [
+    "Top-level CLI routing.",
+    "Human formatting.",
+    "Generated docs or package scripts.",
+    "Interactive behavior."
+  ],
+  "acceptance": [
+    "Dashboard report includes dashboard_schema_version, summary, global_progress, visible_progress, next_ready, specs, slices, agents, approvals, active_slice, blockers, warnings, and next_steps.",
+    "Completed slices are counted in global_progress even when hidden from visible slices.",
+    "Visible progress changes with --include-completed and --spec filters.",
+    "Evidence/log content is not included in the compact report.",
+    "Report construction does not shell out to the CLI."
+  ],
+  "tests": [
+    "node --test tests/lib/dashboard.test.js",
+    "node --test tests/lib/ai-export-state.test.js tests/commands/ai-export.test.js",
+    "git diff --check"
+  ],
+  "validation_hints": [
+    "Prefer pure functions for report construction.",
+    "Keep the report easy to snapshot and stable for future consumers."
+  ],
+  "estimated_hours": 5,
+  "status": "completed",
+  "blocked_reason": null,
+  "actual_hours": 5,
+  "completed_at": "2026-05-28"
+}

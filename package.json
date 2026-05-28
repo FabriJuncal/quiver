@@ -1,6 +1,6 @@
 {
   "name": "create-quiver",
-  "version": "0.14.1",
+  "version": "0.15.2",
   "private": false,
   "description": "Quiver CLI for scaffolding projects from the packaged template",
   "license": "MIT",
@@ -14,8 +14,10 @@
     "start:slice": "bash tools/scripts/start-slice.sh",
     "cleanup:slice": "bash tools/scripts/cleanup-slice.sh",
     "migrate": "bash tools/scripts/migrate-project.sh",
+    "quiver:version": "npx create-quiver version",
     "quiver:analyze": "npx create-quiver analyze",
     "quiver:flow": "npx create-quiver flow",
+    "quiver:dashboard": "npx create-quiver dashboard",
     "quiver:prepare": "npx create-quiver prepare",
     "quiver:plan": "node bin/create-quiver.js plan",
     "quiver:graph": "node bin/create-quiver.js graph",

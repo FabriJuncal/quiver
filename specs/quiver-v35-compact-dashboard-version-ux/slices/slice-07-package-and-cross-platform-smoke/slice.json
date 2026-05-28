@@ -1,0 +1,79 @@
+{
+  "slice_id": "slice-07-package-and-cross-platform-smoke",
+  "ticket": "QUIVER-35-07",
+  "type": "validation",
+  "title": "Package and cross-platform smoke",
+  "objective": "Validate the feature through an installed tarball and both CLI binary names across automation-safe modes.",
+  "description": "Extends package/cross-platform smoke coverage so production-like installation catches bin alias, package contents, version, dashboard, JSON, no-color, and CI/no-TTY behavior.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v35-package-cross-platform-smoke",
+    "branch_name": "feature/QUIVER-35-07-v35-package-cross-platform-smoke"
+  },
+  "files": [
+    "scripts/ci/smoke-create-quiver.sh",
+    "scripts/ci/smoke-cross-platform.js",
+    "scripts/package-quiver.sh",
+    ".npmignore",
+    "specs/quiver-v35-compact-dashboard-version-ux/**"
+  ],
+  "expected_read_paths": [
+    "scripts/ci/smoke-create-quiver.sh",
+    "scripts/ci/smoke-cross-platform.js",
+    "scripts/package-quiver.sh",
+    ".npmignore",
+    "package.json",
+    "specs/quiver-v35-compact-dashboard-version-ux/SPEC.md"
+  ],
+  "allowed_write_paths": [
+    "scripts/ci/smoke-create-quiver.sh",
+    "scripts/ci/smoke-cross-platform.js",
+    "scripts/package-quiver.sh",
+    ".npmignore",
+    "specs/quiver-v35-compact-dashboard-version-ux/**"
+  ],
+  "depends_on": [
+    "slice-05-docs-help-generated-guidance",
+    "slice-06-tests-smokes-release-readiness"
+  ],
+  "parallel_safe": "never",
+  "parallel_safe_reason": "This is the final production-like smoke layer and depends on implementation, docs, tests, and package contents being stable.",
+  "must": [
+    "Install the local tarball into a temporary project or installer root.",
+    "Execute the installed create-quiver binary.",
+    "Execute the installed quiver alias.",
+    "Validate version, version --json, dashboard, and dashboard --json from the installed package.",
+    "Validate --no-color, CI, and no-TTY behavior where practical.",
+    "Validate package contents if docs/INDEX.md or .npmignore changed.",
+    "Record exact evidence in EVIDENCE_REPORT.md."
+  ],
+  "not_included": [
+    "npm publication.",
+    "New product behavior."
+  ],
+  "acceptance": [
+    "Installed create-quiver version works.",
+    "Installed quiver version works.",
+    "Installed create-quiver --version remains semver-only.",
+    "Installed dashboard and dashboard --json work in a temp project.",
+    "Package contents are intentional and pass package safety.",
+    "Cross-platform smoke documents any platform-specific limitation."
+  ],
+  "tests": [
+    "npm run package:quiver",
+    "npm run smoke:create-quiver",
+    "node scripts/ci/smoke-cross-platform.js",
+    "git diff --check"
+  ],
+  "validation_hints": [
+    "Prefer installed tarball execution over repo-local node bin execution for this slice.",
+    "Use npm exec or a temp install to exercise package bin aliases."
+  ],
+  "estimated_hours": 4,
+  "status": "completed",
+  "started_at": "2026-05-28T17:00:00Z",
+  "completed_at": "2026-05-28T17:36:57Z",
+  "actual_hours": 1,
+  "blocked_reason": null
+}

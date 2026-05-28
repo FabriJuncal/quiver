@@ -139,6 +139,7 @@ test('default generated package scripts target supported CLI commands', () => {
     'check-scope',
     'check-slice',
     'cleanup-slice',
+    'dashboard',
     'doctor',
     'evidence',
     'flow',
@@ -150,6 +151,7 @@ test('default generated package scripts target supported CLI commands', () => {
     'refresh-active-slices',
     'spec',
     'start-slice',
+    'version',
   ]);
   const supportedAiCommands = new Set([
     'agent',

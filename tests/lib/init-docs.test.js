@@ -198,6 +198,8 @@ test('initializeProjectDocs writes legacy scripts and exports templates only whe
     assert.equal(fs.existsSync(path.join(projectRoot, 'docs-template')), false);
 
     const pkg = JSON.parse(fs.readFileSync(path.join(projectRoot, 'package.json'), 'utf8'));
+    assert.equal(pkg.scripts['quiver:version'], 'npx create-quiver version');
+    assert.equal(pkg.scripts['quiver:dashboard'], 'npx create-quiver dashboard');
     assert.equal(typeof pkg.scripts['start:slice'], 'string');
     assert.equal(typeof pkg.scripts.migrate, 'string');
     assert.equal(typeof pkg.scripts['quiver:ai:onboard'], 'string');

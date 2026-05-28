@@ -13,13 +13,19 @@ This document is the canonical command reference for the orchestration roadmap.
 | `npx create-quiver init --interactive` | Guides project mode, methodology `wdd-sdd`, init profile, and agent-profile next steps without running providers | macOS, Linux, Windows | next | `npx create-quiver init --interactive` |
 | `npx create-quiver --name "<project>"` | Compatibility alias for the recommended init flow | macOS, Linux, Windows | current | `npx create-quiver --name "{{PROJECT_NAME}}"` |
 | `npx create-quiver --version` | Prints the installed CLI version | macOS, Linux, Windows | current | `npx create-quiver --version` |
+| `npx create-quiver version` | Prints the Quiver-branded version report with CLI, runtime, package manager, and detected project metadata | macOS, Linux, Windows | next | `npx create-quiver version --no-color` |
+| `quiver:version` | Runs the Quiver-branded version report through the generated npm script | macOS, Linux, Windows | next | `npm run quiver:version -- --json` |
 | `npx create-quiver --help` | Lists all public commands with descriptions, key options, and recommended examples | macOS, Linux, Windows | current | `npx create-quiver --help` |
 | `npx create-quiver help` | Readable alias for the complete CLI help | macOS, Linux, Windows | current | `npx create-quiver help` |
 | `quiver --help` | Shows the same help when Quiver is installed locally as a project dependency | macOS, Linux, Windows | current | `quiver --help` |
 | `npx create-quiver flow` | Shows the read-only guided flow entrypoint, context source/freshness, package-manager-aware script guidance, and next safe command | macOS, Linux, Windows | v0.11 | `npx create-quiver flow` |
+| `npx create-quiver dashboard` | Shows a compact read-only summary of project, spec, slice, run, approval, and agent status | macOS, Linux, Windows | next | `npx create-quiver dashboard --spec <spec>` |
+| `npx create-quiver dashboard --details` | Shows the full human dashboard report for audit/debug sessions | macOS, Linux, Windows | next | `npx create-quiver dashboard --details` |
+| `npx create-quiver dashboard --section <name>` | Shows one human dashboard section such as `specs`, `slices`, `blockers`, `warnings`, `agents`, `approvals`, `runs`, `active-slice`, or `next-steps` | macOS, Linux, Windows | next | `npx create-quiver dashboard --section slices --limit 10` |
 | `npx create-quiver analyze --dry-run` | Previews scan, project-map, and AI context writes without creating files | macOS, Linux, Windows | v0.13 | `npx create-quiver analyze --dry-run` |
 | `quiver:analyze` | Writes raw analyzer data to `.quiver/scans/PROJECT_SCAN.json`, the visible project map to `docs/PROJECT_MAP.md`, and refreshed AI context | macOS, Linux, Windows | v0.8 | `npm run quiver:analyze` |
 | `quiver:flow` | Runs the guided flow entrypoint through the generated npm script | macOS, Linux, Windows | v0.11 | `npm run quiver:flow` |
+| `quiver:dashboard` | Runs the consolidated read-only dashboard through the generated npm script | macOS, Linux, Windows | next | `npm run quiver:dashboard -- --json` |
 | `quiver:prepare` | Runs guided setup diagnostics and context preparation | macOS, Linux, Windows | v0.10 | `npm run quiver:prepare -- --dry-run --provider codex` |
 | `quiver:doctor` | Validates the Quiver contract and reports layout or migration guidance | macOS, Linux, Windows | v0.8 | `npm run quiver:doctor` |
 | `quiver:doctor -- --json` | Emits the Doctor checks and suggested fixes as stable machine-readable JSON | macOS, Linux, Windows | next | `npm run quiver:doctor -- --json` |
@@ -95,12 +101,15 @@ This document is the canonical command reference for the orchestration roadmap.
 | `--output <file>` | `evidence run` | Write the evidence Markdown file to an explicit path instead of `.quiver/evidence/` |
 | `--max-output <n>` | `evidence run` | Limit captured stdout and stderr characters per section |
 | `--dir <target>` | `demo create spec-viewer` | Select the demo target directory; default is `./quiver-spec-viewer` |
-| `--json` | `plan`, `graph`, `next` | Emit machine-readable JSON |
+| `--json` | `dashboard`, `version`, `plan`, `graph`, `next` | Emit machine-readable JSON |
+| `--details` | `dashboard` | Show the full human dashboard report instead of the compact default; incompatible with `--json` and `--section` |
+| `--section <name>` | `dashboard` | Show one human dashboard section; incompatible with `--json` and `--details` |
+| `--limit <n>` | `dashboard` | Limit compact dashboard lists between 1 and 100; incompatible with `--json` |
 | `--all-ready` | `next` | List all ready slices instead of just the next one |
 | `--only-ready` | `plan` | Show only slices with no pending dependencies |
-| `--include-completed` | `plan`, `graph`, `next` | Include completed slices for audit/demo history without changing default pending-only behavior |
+| `--include-completed` | `dashboard`, `plan`, `graph`, `next` | Include completed slices for audit/demo history without changing default pending-only behavior |
 | `--local` | `check-slice` | Run structural validation without remote/base checks; use normal mode before PR readiness |
-| `--spec <slug>` | `plan`, `graph`, `spec create` | Restrict output to one spec or override the generated spec slug |
+| `--spec <slug>` | `dashboard`, `plan`, `graph`, `spec create` | Restrict output to one spec or override the generated spec slug |
 | `--format <tree\|mermaid\|dot\|json\|markdown>` | `graph`, `ai export` | Select graph or lifecycle export output format |
 | `--provider <codex\|claude\|gemini>` | `ai onboard`, `ai plan`, `ai revise`, `ai review-plan`, `ai execute-slice`, `ai execute-plan` | Select the local AI CLI adapter |
 | `--model <model-id>` | `ai agent set`, provider-backed AI commands | Store or pass the technical model id. Quiver normalizes known display aliases, but the catalog is known by Quiver and does not guarantee account availability |
@@ -146,6 +155,8 @@ This document is the canonical command reference for the orchestration roadmap.
 - `init --interactive` and `spec create --interactive` are human-only wrappers. They fail in no-TTY/CI/JSON and always keep `WDD + SDD` as the only methodology option.
 - Quiver human output uses the palette `#86C8F2`, `#6BADEB`, `#7F9EE8`, `#9B82E6`, and `#D56AB0`; respect `--no-color`, `NO_COLOR`, CI, and no-TTY environments.
 - `quiver:flow` reports the detected package manager and the matching generated project script, for example `npm run quiver:flow`, `pnpm run quiver:flow`, `yarn run quiver:flow`, or `bun run quiver:flow`.
+- `quiver:version` prints the Quiver-branded version report; `--json` emits schema version 1 for automation and the top-level `--version` / `-V` semver flags stay unchanged.
+- `quiver:dashboard` reports compact read-only project, spec, slice, run, approval, and agent status by default; use `--details` for the full human report, `--section <name>` for focused inspection, and `--json` for schema version 1 automation.
 - `npx create-quiver ai models list` shows the local catalog of provider/model ids known by Quiver. It does not prove account-level access in Codex, Claude, or Gemini.
 - Agent profiles separate `model` and `displayName`: `model` is the technical id passed to the provider CLI, while `displayName` is the human label used in selectors and reports.
 - `quiver:ai:agent -- set ... --dry-run` previews provider/model profile changes without writing `.quiver/agents/profiles.json`.

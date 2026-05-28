@@ -1,0 +1,85 @@
+{
+  "slice_id": "slice-06-tests-smokes-release-readiness",
+  "ticket": "QUIVER-35-06",
+  "type": "validation",
+  "title": "Tests, smokes, and release readiness",
+  "objective": "Close focused test coverage and release-readiness evidence for dashboard and version UX.",
+  "description": "Adds and runs focused tests, full node test suite, diff checks, spec validation, package smoke, and evidence updates.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v35-tests-release-readiness",
+    "branch_name": "feature/QUIVER-35-06-v35-tests-release-readiness"
+  },
+  "files": [
+    "tests/commands/dashboard.test.js",
+    "tests/commands/cli-contract.test.js",
+    "tests/lib/dashboard.test.js",
+    "tests/lib/version.test.js",
+    "tests/lib/cli-theme.test.js",
+    "specs/quiver-v35-compact-dashboard-version-ux/**"
+  ],
+  "expected_read_paths": [
+    "tests/commands/dashboard.test.js",
+    "tests/commands/cli-contract.test.js",
+    "tests/lib/dashboard.test.js",
+    "tests/lib/cli-theme.test.js",
+    "scripts/package-quiver.sh",
+    "scripts/ci/smoke-create-quiver.sh",
+    "specs/quiver-v35-compact-dashboard-version-ux/SPEC.md"
+  ],
+  "allowed_write_paths": [
+    "tests/commands/dashboard.test.js",
+    "tests/commands/cli-contract.test.js",
+    "tests/lib/dashboard.test.js",
+    "tests/lib/version.test.js",
+    "tests/lib/cli-theme.test.js",
+    "specs/quiver-v35-compact-dashboard-version-ux/**"
+  ],
+  "depends_on": [
+    "slice-02-dashboard-compact-renderer",
+    "slice-03-dashboard-details-sections",
+    "slice-04-version-command",
+    "slice-05-docs-help-generated-guidance"
+  ],
+  "parallel_safe": "never",
+  "parallel_safe_reason": "This slice closes evidence and validates the integrated behavior after implementation and docs are stable.",
+  "must": [
+    "Cover compact dashboard, details, sections, limit validation, and rejected combinations.",
+    "Cover dashboard JSON cleanliness and JSON-safe errors.",
+    "Cover version human output, version --json, no-color, CI, no-TTY, and semver-only --version.",
+    "Run node --test.",
+    "Run git diff --check.",
+    "Run spec validate for this spec.",
+    "Run npm run package:quiver and relevant smoke suites.",
+    "Update evidence and closure briefs with real commands and outcomes."
+  ],
+  "not_included": [
+    "Package-installed binary alias smoke beyond what is assigned to slice-07.",
+    "npm publication."
+  ],
+  "acceptance": [
+    "Focused dashboard and version tests pass.",
+    "Full node --test passes or a blocker is documented.",
+    "Spec validation passes.",
+    "Package smoke passes.",
+    "Evidence report and closure briefs contain real validation results."
+  ],
+  "tests": [
+    "node --test",
+    "git diff --check",
+    "npx create-quiver spec validate specs/quiver-v35-compact-dashboard-version-ux",
+    "npm run package:quiver",
+    "npm run smoke:create-quiver"
+  ],
+  "validation_hints": [
+    "Record exact commands and results in EVIDENCE_REPORT.md.",
+    "Do not mark slices completed without evidence."
+  ],
+  "estimated_hours": 4,
+  "status": "completed",
+  "started_at": "2026-05-28T17:00:00Z",
+  "completed_at": "2026-05-28T17:36:57Z",
+  "actual_hours": 1,
+  "blocked_reason": null
+}

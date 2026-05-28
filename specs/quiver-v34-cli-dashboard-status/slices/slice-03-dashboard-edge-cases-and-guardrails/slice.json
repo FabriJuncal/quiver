@@ -1,0 +1,77 @@
+{
+  "slice_id": "slice-03-dashboard-edge-cases-and-guardrails",
+  "ticket": "QUIVER-34-03",
+  "type": "fix",
+  "title": "Dashboard edge cases and guardrails",
+  "objective": "Harden the dashboard against partial fixes and misleading output in unusual project states.",
+  "description": "Adds guardrails for missing specs, invalid graph state, no-spec projects, legacy/incomplete layouts, blockers, no-color/CI/no-TTY, and sensitive evidence summaries.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v34-dashboard-edge-cases",
+    "branch_name": "feature/QUIVER-34-03-dashboard-edge-cases"
+  },
+  "files": [
+    "src/create-quiver/lib/dashboard.js",
+    "src/create-quiver/commands/dashboard.js",
+    "tests/lib/dashboard.test.js",
+    "tests/commands/dashboard.test.js"
+  ],
+  "expected_read_paths": [
+    "src/create-quiver/lib/dashboard.js",
+    "src/create-quiver/commands/dashboard.js",
+    "src/create-quiver/lib/ai/export-state.js",
+    "src/create-quiver/lib/slice-graph.js",
+    "tests/commands/ai-export.test.js",
+    "tests/commands/dashboard.test.js",
+    "specs/quiver-v34-cli-dashboard-status/SPEC.md"
+  ],
+  "allowed_write_paths": [
+    "src/create-quiver/lib/dashboard.js",
+    "src/create-quiver/commands/dashboard.js",
+    "tests/lib/dashboard.test.js",
+    "tests/commands/dashboard.test.js",
+    "specs/quiver-v34-cli-dashboard-status/**"
+  ],
+  "depends_on": [
+    "slice-01-dashboard-report-contract",
+    "slice-02-dashboard-command-rendering"
+  ],
+  "parallel_safe": "no",
+  "parallel_safe_reason": "This slice hardens behavior across the report and command layers.",
+  "must": [
+    "Fail actionably for explicit missing --spec values.",
+    "Render useful state for no specs and no slices.",
+    "Render useful state for legacy, incomplete, and not-initialized layouts where the existing state resolver can report them.",
+    "Degrade safely when the slice graph has cycles or missing dependencies.",
+    "Avoid printing raw evidence, logs, command output, secrets, or tokens.",
+    "Keep JSON output parseable for success and failure paths.",
+    "Cover no-color, CI, and no-TTY behavior."
+  ],
+  "not_included": [
+    "Changing slice graph semantics.",
+    "Adding destructive actions.",
+    "Adding web or TUI surfaces."
+  ],
+  "acceptance": [
+    "Missing --spec produces an actionable error.",
+    "Invalid graph state produces a dashboard warning rather than a crash.",
+    "No-spec projects produce next-step guidance.",
+    "Legacy/incomplete layouts show migration guidance.",
+    "Evidence summaries expose counts/refs only.",
+    "No-color output remains readable."
+  ],
+  "tests": [
+    "node --test tests/lib/dashboard.test.js tests/commands/dashboard.test.js",
+    "git diff --check"
+  ],
+  "validation_hints": [
+    "Create focused fixture repos for edge states.",
+    "Avoid broad refactors of slice graph internals."
+  ],
+  "estimated_hours": 5,
+  "status": "completed",
+  "blocked_reason": null,
+  "actual_hours": 4,
+  "completed_at": "2026-05-28"
+}

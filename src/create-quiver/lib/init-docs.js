@@ -398,7 +398,9 @@ npm run quiver:ai:execute-plan -- --dry-run --commit --mode delegated
 The generated project includes \`quiver:*\` npm scripts that call the Node CLI:
 
 \`\`\`bash
+npm run quiver:version
 npm run quiver:analyze
+npm run quiver:dashboard
 npm run quiver:prepare -- --dry-run
 npm run quiver:plan
 npm run quiver:graph
@@ -504,7 +506,9 @@ Remove \`--dry-run\` only after the phase output is approved and the local provi
 The generated project includes \`quiver:*\` npm scripts that call the Node CLI and are the preferred repeatable workflow:
 
 \`\`\`bash
+npm run quiver:version
 npm run quiver:analyze
+npm run quiver:dashboard
 npm run quiver:prepare -- --dry-run
 npm run quiver:plan
 npm run quiver:graph
@@ -538,6 +542,8 @@ npm run quiver:refresh-active-slices
 \`\`\`
 
 The \`quiver:graph\` script prints the tree view by default; use \`npx create-quiver graph --format mermaid\` for PR-ready Markdown and \`--format dot\` when you want Graphviz source.
+The \`quiver:version\` script shows the Quiver-branded version report; add \`--json\` for automation while top-level \`--version\` stays semver-only.
+The \`quiver:dashboard\` script shows compact read-only project, spec, slice, run, approval, and agent status by default; use \`--details\` for the full report, \`--section <name>\` for focused inspection, and \`--json\` for automation.
 The \`quiver:next\` script points to the next ready slice and can auto-start it behind a confirmation prompt.
 The \`quiver:ai:*\` scripts standardize planner/executor AI flows. Use dry-run first: onboarding and planning dry-runs do not require provider auth, \`quiver:ai:execute-plan -- --dry-run --commit --mode manual\` prints manual prompts, \`--mode delegated\` prints safe waves, \`quiver:ai:inspect\` shows lifecycle state, \`quiver:ai:export -- --format json|markdown\` emits dashboard/agent-friendly state, and \`quiver:ai:pr -- --dry-run\` validates \`gh\`, GitFlow docs, branch/worktree state, SSH inputs, and \`pr.md\` without creating a PR. Add \`--create\` only after reviewing the plan.
 Use \`quiver:spec:create\`, \`quiver:spec:start\`, \`quiver:spec:status\`, and \`quiver:spec:close\` for one spec generation and worktree per spec.

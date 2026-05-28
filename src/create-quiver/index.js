@@ -35,6 +35,7 @@ const {
   runSpecsList: runAiSpecsList,
   runTraceReport: runAiTraceReport,
 } = require('./commands/ai');
+const { runDashboard } = require('./commands/dashboard');
 const { runDemo } = require('./commands/demo');
 const { runPrepare } = require('./commands/prepare');
 const { runEvidence } = require('./commands/evidence');
@@ -43,6 +44,7 @@ const { runGraph } = require('./commands/graph');
 const { runNext } = require('./commands/next');
 const { runPlan } = require('./commands/plan');
 const { runCreateSpec, runValidateSpec } = require('./commands/spec');
+const { collectVersionReport, formatHumanVersionReport } = require('./lib/version');
 const { buildInitLayout, formatInitLayoutPlan } = require('./lib/init-layout');
 const {
   formatInstallSelfCommand,
@@ -82,7 +84,9 @@ function formatError(message) {
 
 const SUPPORTED_COMMAND_MODES = new Set([
   'init',
+  'version',
   'flow',
+  'dashboard',
   'plan',
   'graph',
   'next',
@@ -152,6 +156,8 @@ const COMMAND_HELP_GROUPS = [
       ['analyze', 'Scan the project and write docs/PROJECT_MAP.md plus .quiver scan data.'],
       ['doctor', 'Validate the Quiver layout, generated docs, environment, and next safe steps.'],
       ['flow', 'Show the read-only guided workflow stage, blockers, and next safe command.'],
+      ['dashboard', 'Show compact read-only project, spec, slice, run, approval, and agent status.'],
+      ['version', 'Show a Quiver-branded version report; use --json for metadata.'],
       ['prepare', 'Run setup diagnostics for providers, GitHub, SSH, and project readiness.'],
       ['migrate', 'Upgrade an already initialized Quiver project to the current contract.'],
     ],
@@ -251,6 +257,8 @@ function printUsage() {
   npx create-quiver init [options]
   npx create-quiver analyze [options]
   npx create-quiver flow [options]
+  npx create-quiver dashboard [options]
+  npx create-quiver version [--json]
   npx create-quiver plan [options]
   npx create-quiver ai <task> [options]
   npx create-quiver ai run create --input <requirements.md>
@@ -294,12 +302,15 @@ ${formatCommandHelpGroups()}
 Options:
   -n, --name <project-name>   Project name to generate
   -d, --dir <target-dir>      Target directory to scaffold into or inspect
-      --spec <slug>           Restrict plan output to one spec
+      --spec <slug>           Restrict plan, graph, next, or dashboard output to one spec
       --format <name>         Graph or AI export output format (tree, mermaid, dot, json, markdown)
       --show-conflicts        Show shared file paths in graph output
       --level <n>             Restrict graph output to one level
       --json                  Emit machine-readable JSON
-      --include-completed     Include completed slices in plan, graph, or next history output
+      --include-completed     Include completed slices in dashboard, plan, graph, or next history output
+      --details               Show the full human dashboard report
+      --section <name>        Show one human dashboard section
+      --limit <n>             Limit dashboard human lists (1-100)
       --only-ready            Show only slices with no pending dependencies
       --all-ready             List every ready slice returned by next
       --auto-start            Prompt for confirmation and run start-slice on next
@@ -345,6 +356,11 @@ Examples:
   npx create-quiver --name "My Project"
   npx create-quiver --name "My Project" --dir ./my-project
   cd ./my-project && npx create-quiver flow
+  cd ./my-project && npx create-quiver dashboard
+  cd ./my-project && npx create-quiver dashboard --section slices --limit 10
+  cd ./my-project && npx create-quiver dashboard --json
+  cd ./my-project && npx create-quiver version
+  cd ./my-project && npx create-quiver version --json
   cd ./my-project && npx create-quiver analyze
   cd ./my-project && npx create-quiver plan --json
   cd ./my-project && npx create-quiver ai onboard --dry-run
@@ -437,6 +453,10 @@ function parseArgs(argv) {
     interactive: false,
     review: false,
     includeCompleted: false,
+    dashboardDetails: false,
+    dashboardSection: '',
+    dashboardLimit: null,
+    dashboardOptionErrors: [],
     onlyReady: false,
     allReady: false,
     autoStart: false,
@@ -697,6 +717,33 @@ function parseArgs(argv) {
 
     if (arg === '--include-completed') {
       result.includeCompleted = true;
+      continue;
+    }
+
+    if (arg === '--details') {
+      result.dashboardDetails = true;
+      continue;
+    }
+
+    if (arg === '--section') {
+      const value = args[index + 1];
+      if (!value || String(value).startsWith('--')) {
+        result.dashboardOptionErrors.push('missing value for --section');
+        continue;
+      }
+      result.dashboardSection = value;
+      index += 1;
+      continue;
+    }
+
+    if (arg === '--limit') {
+      const value = args[index + 1];
+      if (!value || String(value).startsWith('--')) {
+        result.dashboardOptionErrors.push('missing value for --limit');
+        continue;
+      }
+      result.dashboardLimit = value;
+      index += 1;
       continue;
     }
 
@@ -1049,6 +1096,14 @@ function parseArgs(argv) {
     if (positional.length > 0) {
       throw new Error(formatError('flow does not accept positional arguments'));
     }
+  } else if (result.mode === 'version') {
+    if (positional.length > 0) {
+      throw new Error(formatError('version does not accept positional arguments'));
+    }
+  } else if (result.mode === 'dashboard') {
+    if (positional.length > 0) {
+      throw new Error(formatError('dashboard does not accept positional arguments; use --spec <slug>'));
+    }
   } else if (result.mode === 'ai') {
     if (!result.aiCommand && positional.length > 0) {
       result.aiCommand = positional.shift();
@@ -1140,6 +1195,14 @@ function parseArgs(argv) {
 
   if (positional.length > 0) {
     throw new Error(formatError('too many positional arguments'));
+  }
+
+  const requestedDashboardFlags = [];
+  if (result.dashboardDetails) requestedDashboardFlags.push('--details');
+  if (result.dashboardSection || result.dashboardOptionErrors.some((error) => error.includes('--section'))) requestedDashboardFlags.push('--section');
+  if (result.dashboardLimit !== null || result.dashboardOptionErrors.some((error) => error.includes('--limit'))) requestedDashboardFlags.push('--limit');
+  if (result.mode !== 'dashboard' && requestedDashboardFlags.length > 0) {
+    throw new Error(formatError(`${requestedDashboardFlags.join(', ')} ${requestedDashboardFlags.length === 1 ? 'is' : 'are'} only supported by dashboard. Use: npx create-quiver dashboard ${requestedDashboardFlags[0]}${requestedDashboardFlags[0] === '--section' ? ' <name>' : requestedDashboardFlags[0] === '--limit' ? ' <n>' : ''}`));
   }
 
   return result;
@@ -2827,6 +2890,37 @@ async function run(argv) {
     return;
   }
 
+  if (args.mode === 'dashboard') {
+    runDashboard(process.cwd(), {
+      details: args.dashboardDetails,
+      includeCompleted: args.includeCompleted,
+      json: args.json,
+      limit: args.dashboardLimit,
+      noColor: args.noColor,
+      optionErrors: args.dashboardOptionErrors,
+      section: args.dashboardSection,
+      specSlug: args.specSlug,
+    });
+    return;
+  }
+
+  if (args.mode === 'version') {
+    const report = collectVersionReport(process.cwd(), {
+      cliVersion: CLI_VERSION,
+      env: process.env,
+    });
+    if (args.json) {
+      process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
+    } else {
+      process.stdout.write(formatHumanVersionReport(report, {
+        env: process.env,
+        noColor: args.noColor,
+        stdoutIsTTY: Boolean(process.stdout.isTTY),
+      }));
+    }
+    return;
+  }
+
   if (args.mode === 'plan') {
     runPlan(process.cwd(), {
       includeCompleted: args.includeCompleted,
@@ -3396,6 +3490,7 @@ async function run(argv) {
 module.exports = {
   resolveInteractiveInitOptions,
   runAnalyze,
+  runDashboard,
   runDoctor,
   runFlow,
   runMigrate,

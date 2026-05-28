@@ -59,7 +59,7 @@ Reglas:
 | `ai agent repair` | no | no | no | Por ahora solo `--dry-run`; muestra before/after sin escribir. |
 | `ai models list` | no | no | no | Lista el catalogo local conocido por Quiver; no valida acceso de cuenta. |
 | `doctor` | no | no | no | Renderiza `Quiver Doctor`, `Checks` y `Suggested fixes`; `--json` usa el mismo modelo de hallazgos. |
-| `flow`, `next`, `graph` | no | no | no | Lectura/inspeccion; no deben exponer flags decorativas. |
+| `flow`, `dashboard`, `next`, `graph`, `version` | no | no | no | Lectura/inspeccion; `dashboard` puede acotarse con `--details`, `--section` y `--limit`, pero no acepta flags decorativas. |
 | `ai inspect`, `ai export`, `ai specs list`, `ai slices list`, `ai trace report` | no | no | no | Superficies read-only o machine-readable. |
 
 ## Flujo recomendado para contexto de IA
