@@ -101,6 +101,26 @@ async function captureProcessOutput(fn) {
   }
 }
 
+function createProgressRecorder() {
+  const events = [];
+  return {
+    events,
+    write: (text) => events.push(['write', text]),
+    prompts: {
+      spinner() {
+        return {
+          start(message) {
+            events.push(['start', message]);
+          },
+          stop(message, code) {
+            events.push(['stop', message, code]);
+          },
+        };
+      },
+    },
+  };
+}
+
 test('ai plan CLI dry-run defaults to acceptance phase and planning context', () => {
   const repo = makeRepo({
     'requirements.md': '# requirements\n- Ship a gated planner flow.',
@@ -779,6 +799,143 @@ test('ai revise requires an existing draft', async () => {
   }
 });
 
+test('ai revise rejects missing input values for acceptance and technical-plan before provider execution', async () => {
+  const repo = makeRepo({
+    'requirements.md': '# requirements\n- Iterate criteria.',
+    'technical-plan.md': '# Technical plan\n- Iterate plan.',
+  });
+
+  try {
+    savePlannerDraft(repo.root, 'acceptance', 'requirements.md', 'acceptance draft v1\n');
+    savePlannerDraft(repo.root, 'technical-plan', 'technical-plan.md', structuredTechnicalPlanText('missing-revise-input'));
+
+    assert.throws(
+      () => execAiSubcommand(repo.root, ['revise', '--phase', 'acceptance', '--input']),
+      (error) => error.stderr.includes('missing feedback input file for ai revise --phase acceptance')
+        && error.stderr.includes('ai revise --phase acceptance --input <feedback.md> --dry-run'),
+    );
+    assert.throws(
+      () => execAiSubcommand(repo.root, ['revise', '--phase', 'technical-plan', '--input']),
+      (error) => error.stderr.includes('missing feedback input file for ai revise --phase technical-plan')
+        && error.stderr.includes('ai revise --phase technical-plan --input <feedback.md> --dry-run'),
+    );
+    await assert.rejects(
+      runRevise(repo.root, {
+        phase: 'acceptance',
+        runProviderFn: async () => {
+          throw new Error('provider should not run');
+        },
+      }),
+      /missing feedback input file for ai revise phase 'acceptance'/,
+    );
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('ai revise rejects nonexistent feedback files and accidental extra arguments', () => {
+  const repo = makeRepo({
+    'requirements.md': '# requirements\n- Iterate criteria.',
+    'technical-plan.md': structuredTechnicalPlanText('guarded-revise-plan'),
+    'feedback.md': '# feedback\n- Adjust plan.\n',
+  });
+
+  try {
+    savePlannerDraft(repo.root, 'acceptance', 'requirements.md', 'acceptance draft v1\n');
+    savePlannerDraft(repo.root, 'technical-plan', 'technical-plan.md', structuredTechnicalPlanText('guarded-revise-plan'));
+
+    assert.throws(
+      () => execAiSubcommand(repo.root, ['revise', '--phase', 'technical-plan', '--input', 'missing-feedback.md']),
+      (error) => error.stderr.includes('missing input file: missing-feedback.md'),
+    );
+    assert.throws(
+      () => execAiSubcommand(repo.root, ['revise', '--phase', 'technical-plan', '--input', 'feedback.md', 's']),
+      (error) => error.stderr.includes('ai does not accept extra positional arguments'),
+    );
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('ai plan shows human TTY progress during live provider execution', async () => {
+  const repo = makeRepo({
+    'requirements.md': '# requirements\n- Show planner progress.',
+  });
+  const progress = createProgressRecorder();
+
+  try {
+    await runPlan(repo.root, {
+      input: 'requirements.md',
+      phase: 'acceptance',
+      provider: 'codex',
+      providerExplicit: true,
+      stdoutIsTTY: true,
+      stdinIsTTY: true,
+      stderrIsTTY: true,
+      noColor: true,
+      env: { LANG: 'en_US.UTF-8' },
+      write: progress.write,
+      prompts: progress.prompts,
+      runProviderFn: async () => ({
+        ok: true,
+        dryRun: false,
+        provider: 'codex',
+        command: 'codex',
+        args: ['exec'],
+        cwd: repo.root,
+        timeoutMs: 0,
+        promptTransport: { mode: 'stdin' },
+        exitCode: 0,
+        stdout: 'acceptance draft\n',
+        stderr: '',
+        error: null,
+        preflight: { ok: true },
+      }),
+    });
+
+    assert.deepEqual(progress.events, [
+      ['write', '◇ Ejecutando plan acceptance con codex\n'],
+      ['write', '✓ Leyendo entrada\n'],
+      ['write', '✓ Preparando contexto\n'],
+      ['write', '✓ Preparando prompt\n'],
+      ['start', 'Ejecutando agente...'],
+      ['stop', 'Agente finalizado', undefined],
+    ]);
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('ai plan dry-run does not show provider progress', async () => {
+  const repo = makeRepo({
+    'requirements.md': '# requirements\n- Keep dry-run clean.',
+  });
+  const progress = createProgressRecorder();
+
+  try {
+    const { stdout } = await captureProcessOutput(() => runPlan(repo.root, {
+      input: 'requirements.md',
+      phase: 'acceptance',
+      dryRun: true,
+      provider: 'codex',
+      providerExplicit: true,
+      stdoutIsTTY: true,
+      stdinIsTTY: true,
+      stderrIsTTY: true,
+      noColor: true,
+      env: { LANG: 'en_US.UTF-8' },
+      write: progress.write,
+      prompts: progress.prompts,
+    }));
+
+    assert.match(stdout, /AI plan dry-run/);
+    assert.equal(stdout.includes('Ejecutando agente'), false);
+    assert.deepEqual(progress.events, []);
+  } finally {
+    repo.cleanup();
+  }
+});
+
 test('ai approve writes an approved acceptance artifact with metadata', async () => {
   const repo = makeRepo({
     'acceptance.md': '# Acceptance\n- Approved criteria.',
@@ -938,6 +1095,56 @@ test('ai repair-plan creates a derived structured draft and preserves the legacy
     assert.equal(state.meta.approved.version, 1);
     assert.equal(state.meta.draft.version, 2);
     assert.equal(state.meta.draft.source_file, '.quiver/approvals/technical-plan/approved.md');
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('ai repair-plan shows human TTY progress during live provider execution', async () => {
+  const repo = makeRepo({
+    'legacy-plan.md': '# Technical plan\n\nApproved before structured slices were required.\n',
+  });
+  const progress = createProgressRecorder();
+
+  try {
+    savePlannerDraft(repo.root, 'technical-plan', 'legacy-plan.md', fs.readFileSync(path.join(repo.root, 'legacy-plan.md'), 'utf8'));
+    approvePlannerPhase(repo.root, 'technical-plan', '', '', { version: 1 });
+
+    await runRepairPlan(repo.root, {
+      provider: 'codex',
+      providerExplicit: true,
+      stdoutIsTTY: true,
+      stdinIsTTY: true,
+      stderrIsTTY: true,
+      noColor: true,
+      env: { LANG: 'en_US.UTF-8' },
+      write: progress.write,
+      prompts: progress.prompts,
+      runProviderFn: async () => ({
+        ok: true,
+        dryRun: false,
+        provider: 'codex',
+        command: 'codex',
+        args: ['exec'],
+        cwd: repo.root,
+        timeoutMs: 0,
+        promptTransport: { mode: 'stdin' },
+        exitCode: 0,
+        stdout: structuredTechnicalPlanText('repair-progress-plan'),
+        stderr: '',
+        error: null,
+        preflight: { ok: true },
+      }),
+    });
+
+    assert.deepEqual(progress.events, [
+      ['write', '◇ Ejecutando reparación del plan con codex\n'],
+      ['write', '✓ Leyendo plan aprobado\n'],
+      ['write', '✓ Preparando contexto\n'],
+      ['write', '✓ Preparando prompt\n'],
+      ['start', 'Ejecutando agente...'],
+      ['stop', 'Agente finalizado', undefined],
+    ]);
   } finally {
     repo.cleanup();
   }

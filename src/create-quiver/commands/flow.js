@@ -2,6 +2,7 @@ const fs = require('fs');
 const path = require('path');
 
 const { readPhaseApproval } = require('../lib/approvals');
+const { approvalCandidateCommand, buildApprovalCandidateReport, formatCandidateSummary } = require('../lib/ai/approval-candidates');
 const { readPlanReview } = require('../lib/ai/plan-review');
 const { listAgentProfiles } = require('../lib/agent-profiles');
 const { readProjectScanStatus } = require('../lib/project-scan');
@@ -84,6 +85,25 @@ function safeReadPlanReview(projectRoot) {
   } catch (error) {
     return {
       status: 'invalid',
+      error: error.message,
+    };
+  }
+}
+
+function safeBuildApprovalCandidateReport(projectRoot, phase) {
+  try {
+    return buildApprovalCandidateReport(projectRoot, phase);
+  } catch (error) {
+    return {
+      phase,
+      approval_status: 'invalid',
+      latest_version: null,
+      current: null,
+      recommended: null,
+      candidates: [],
+      history: [],
+      approved: null,
+      next_command: 'npx create-quiver ai approvals',
       error: error.message,
     };
   }
@@ -250,11 +270,23 @@ function detectFlowState(projectRoot) {
     acceptance: safeReadApproval(projectRoot, 'acceptance'),
     technicalPlan: safeReadApproval(projectRoot, 'technical-plan'),
   };
+  const approvalCandidates = {
+    acceptance: safeBuildApprovalCandidateReport(projectRoot, 'acceptance'),
+    technicalPlan: safeBuildApprovalCandidateReport(projectRoot, 'technical-plan'),
+  };
   const planReview = safeReadPlanReview(projectRoot);
   const agents = summarizeAgentProfiles(projectRoot);
   const packageManager = detectPackageManager(projectRoot);
   const specSlugs = listSpecSlugs(projectRoot);
   const facts = buildFacts({ initialized, docs, approvals, planReview, agents, packageManager, specSlugs, state });
+  const acceptanceApprovalCommand = approvalCandidateCommand(
+    approvalCandidates.acceptance,
+    'npx create-quiver ai approve --phase acceptance --version <n>',
+  );
+  const technicalPlanApprovalCommand = approvalCandidateCommand(
+    approvalCandidates.technicalPlan,
+    'npx create-quiver ai approve --phase technical-plan --version <n>',
+  );
 
   if (!initialized) {
     return baseReport({
@@ -334,12 +366,12 @@ function detectFlowState(projectRoot) {
     return baseReport({
       stage: 'criteria-draft',
       label: 'acceptance criteria need approval',
-      blockers: ['Acceptance criteria draft exists but is not approved.'],
-      nextCommand: 'npx create-quiver ai approve --phase acceptance --version <n>',
+      blockers: ['Acceptance criteria draft exists but is not approved.', formatCandidateSummary(approvalCandidates.acceptance.current)].filter(Boolean),
+      nextCommand: acceptanceApprovalCommand,
       suggestedCommands: [
         'npx create-quiver ai approvals',
         'npx create-quiver ai revise --phase acceptance --input feedback.md --dry-run',
-        'npx create-quiver ai approve --phase acceptance --version <n>',
+        acceptanceApprovalCommand,
       ],
       facts,
     });
@@ -349,12 +381,12 @@ function detectFlowState(projectRoot) {
     return baseReport({
       stage: 'criteria-stale',
       label: 'acceptance criteria approval is stale',
-      blockers: ['Acceptance criteria changed after approval.'],
-      nextCommand: 'npx create-quiver ai approve --phase acceptance --version <n>',
+      blockers: ['Acceptance criteria changed after approval.', formatCandidateSummary(approvalCandidates.acceptance.current)].filter(Boolean),
+      nextCommand: acceptanceApprovalCommand,
       suggestedCommands: [
         'npx create-quiver ai approvals',
         'npx create-quiver ai revise --phase acceptance --input feedback.md --dry-run',
-        'npx create-quiver ai approve --phase acceptance --version <n>',
+        acceptanceApprovalCommand,
       ],
       facts,
     });
@@ -390,14 +422,29 @@ function detectFlowState(projectRoot) {
       });
     }
 
+    if (!approvalCandidates.technicalPlan.current?.approvable) {
+      return baseReport({
+        stage: 'technical-plan-review-blocked',
+        label: 'technical plan review requires revision',
+        blockers: ['Technical plan review blocks approval.', formatCandidateSummary(approvalCandidates.technicalPlan.current)].filter(Boolean),
+        nextCommand: approvalCandidates.technicalPlan.current?.next_command || 'npx create-quiver ai revise --phase technical-plan --input <feedback.md> --dry-run',
+        suggestedCommands: [
+          'npx create-quiver ai approvals',
+          approvalCandidates.technicalPlan.current?.next_command || 'npx create-quiver ai revise --phase technical-plan --input <feedback.md> --dry-run',
+          'npx create-quiver ai review-plan --dry-run',
+        ],
+        facts,
+      });
+    }
+
     return baseReport({
       stage: 'technical-plan-draft',
       label: 'technical plan needs approval',
-      blockers: ['Technical plan draft was reviewed but is not approved.'],
-      nextCommand: 'npx create-quiver ai approve --phase technical-plan --version <n>',
+      blockers: ['Technical plan draft was reviewed but is not approved.', formatCandidateSummary(approvalCandidates.technicalPlan.current)].filter(Boolean),
+      nextCommand: technicalPlanApprovalCommand,
       suggestedCommands: [
         'npx create-quiver ai approvals',
-        'npx create-quiver ai approve --phase technical-plan --version <n>',
+        technicalPlanApprovalCommand,
       ],
       facts,
     });
@@ -419,14 +466,29 @@ function detectFlowState(projectRoot) {
       });
     }
 
+    if (!approvalCandidates.technicalPlan.current?.approvable) {
+      return baseReport({
+        stage: 'technical-plan-review-blocked',
+        label: 'technical plan review requires revision',
+        blockers: ['Technical plan changed after approval and latest review blocks approval.', formatCandidateSummary(approvalCandidates.technicalPlan.current)].filter(Boolean),
+        nextCommand: approvalCandidates.technicalPlan.current?.next_command || 'npx create-quiver ai revise --phase technical-plan --input <feedback.md> --dry-run',
+        suggestedCommands: [
+          'npx create-quiver ai approvals',
+          approvalCandidates.technicalPlan.current?.next_command || 'npx create-quiver ai revise --phase technical-plan --input <feedback.md> --dry-run',
+          'npx create-quiver ai review-plan --dry-run',
+        ],
+        facts,
+      });
+    }
+
     return baseReport({
       stage: 'technical-plan-stale',
       label: 'technical plan approval is stale',
-      blockers: ['Technical plan changed after approval and the latest draft was reviewed.'],
-      nextCommand: 'npx create-quiver ai approve --phase technical-plan --version <n>',
+      blockers: ['Technical plan changed after approval and the latest draft was reviewed.', formatCandidateSummary(approvalCandidates.technicalPlan.current)].filter(Boolean),
+      nextCommand: technicalPlanApprovalCommand,
       suggestedCommands: [
         'npx create-quiver ai approvals',
-        'npx create-quiver ai approve --phase technical-plan --version <n>',
+        technicalPlanApprovalCommand,
       ],
       facts,
     });

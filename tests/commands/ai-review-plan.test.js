@@ -5,9 +5,9 @@ const path = require('node:path');
 const { execFileSync } = require('node:child_process');
 const test = require('node:test');
 
-const { runReviewPlan } = require('../../src/create-quiver/commands/ai');
+const { runApprove, runReviewPlan } = require('../../src/create-quiver/commands/ai');
 const { approvePlannerPhase, savePlannerDraft } = require('../../src/create-quiver/lib/approvals');
-const { readPlanReview, summarizePlanReview } = require('../../src/create-quiver/lib/ai/plan-review');
+const { buildTechnicalPlanApprovalCandidates, readPlanReview, summarizePlanReview } = require('../../src/create-quiver/lib/ai/plan-review');
 
 const BIN_PATH = path.resolve(__dirname, '../../bin/create-quiver.js');
 
@@ -54,6 +54,26 @@ function structuredTechnicalPlanText(slug = 'reviewed-plan') {
       ],
     },
   }, null, 2)}\n`;
+}
+
+function createProgressRecorder() {
+  const events = [];
+  return {
+    events,
+    write: (text) => events.push(['write', text]),
+    prompts: {
+      spinner() {
+        return {
+          start(message) {
+            events.push(['start', message]);
+          },
+          stop(message, code) {
+            events.push(['stop', message, code]);
+          },
+        };
+      },
+    },
+  };
 }
 
 test('ai review-plan dry-run uses the latest technical-plan draft', () => {
@@ -174,6 +194,125 @@ test('ai review-plan persists review state and becomes valid after approving the
     assert.match(approvalsOutput, /Phase: plan-review/);
     assert.match(approvalsOutput, /Status: reviewed/);
     assert.match(approvalsOutput, /Approval recommendation: approve-with-risk/);
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('ai review-plan shows human TTY progress during live provider execution', async () => {
+  const repo = makeRepo({
+    'technical-plan.md': structuredTechnicalPlanText('review-progress-plan'),
+  });
+  const progress = createProgressRecorder();
+
+  try {
+    savePlannerDraft(repo.root, 'technical-plan', 'technical-plan.md', structuredTechnicalPlanText('review-progress-plan'));
+
+    await runReviewPlan(repo.root, {
+      provider: 'codex',
+      providerExplicit: true,
+      stdoutIsTTY: true,
+      stdinIsTTY: true,
+      stderrIsTTY: true,
+      noColor: true,
+      env: { LANG: 'en_US.UTF-8' },
+      write: progress.write,
+      prompts: progress.prompts,
+      runProviderFn: async () => ({
+        ok: true,
+        dryRun: false,
+        provider: 'codex',
+        command: 'codex',
+        args: ['exec'],
+        cwd: repo.root,
+        timeoutMs: 0,
+        promptTransport: { mode: 'stdin' },
+        exitCode: 0,
+        stdout: 'review output\n',
+        stderr: '',
+        error: null,
+        preflight: { ok: true },
+      }),
+    });
+
+    assert.deepEqual(progress.events, [
+      ['write', '◇ Ejecutando revisión del plan con codex\n'],
+      ['write', '✓ Leyendo plan técnico\n'],
+      ['write', '✓ Preparando contexto\n'],
+      ['write', '✓ Preparando prompt\n'],
+      ['start', 'Ejecutando agente...'],
+      ['stop', 'Agente finalizado', undefined],
+    ]);
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('ai approve selects acceptance draft interactively when version is omitted', async () => {
+  const repo = makeRepo({
+    'requirements.md': '# Requirements\n- Approve latest.\n',
+  });
+
+  try {
+    savePlannerDraft(repo.root, 'acceptance', 'requirements.md', 'acceptance v1\n');
+    savePlannerDraft(repo.root, 'acceptance', 'requirements.md', 'acceptance v2\n');
+
+    const result = await runApprove(repo.root, {
+      phase: 'acceptance',
+      stdinIsTTY: true,
+      stdoutIsTTY: true,
+      stderrIsTTY: true,
+      promptSelect: async (message, options) => {
+        assert.match(message, /acceptance draft/);
+        assert.equal(options.length, 2);
+        assert.equal(options.find((option) => option.value === '2').default, true);
+        return '2';
+      },
+    });
+
+    assert.equal(result.version, 2);
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('ai approve without version remains explicit in no-TTY mode', () => {
+  const repo = makeRepo({
+    'requirements.md': '# Requirements\n- Approve latest.\n',
+  });
+
+  try {
+    savePlannerDraft(repo.root, 'acceptance', 'requirements.md', 'acceptance v1\n');
+
+    assert.throws(
+      () => execAi(repo.root, ['approve', '--phase', 'acceptance']),
+      (error) => error.stderr.includes('requires --version <n> when prompts are not available')
+        && error.stderr.includes('Next command: npx create-quiver ai approve --phase acceptance --version 1'),
+    );
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('ai approve interactive selection refuses non-current acceptance drafts', async () => {
+  const repo = makeRepo({
+    'requirements.md': '# Requirements\n- Approve latest.\n',
+  });
+
+  try {
+    savePlannerDraft(repo.root, 'acceptance', 'requirements.md', 'acceptance v1\n');
+    savePlannerDraft(repo.root, 'acceptance', 'requirements.md', 'acceptance v2\n');
+
+    await assert.rejects(
+      runApprove(repo.root, {
+        phase: 'acceptance',
+        stdinIsTTY: true,
+        stdoutIsTTY: true,
+        stderrIsTTY: true,
+        promptSelect: async () => '1',
+      }),
+      /not approvable/,
+    );
   } finally {
     repo.cleanup();
   }
@@ -322,6 +461,93 @@ test('ai review-plan approve-with-risk recommendation still allows explicit appr
   }
 });
 
+test('technical-plan approval candidates expose review recommendation and approvability', async () => {
+  const repo = makeRepo({
+    'technical-plan.md': structuredTechnicalPlanText('candidate-risk-plan'),
+  });
+
+  try {
+    savePlannerDraft(repo.root, 'technical-plan', 'technical-plan.md', structuredTechnicalPlanText('candidate-risk-plan'));
+    await runReviewPlan(repo.root, {
+      runProviderFn: async (provider) => ({
+        ok: true,
+        dryRun: false,
+        provider,
+        command: 'codex',
+        args: ['exec'],
+        cwd: repo.root,
+        timeoutMs: 0,
+        promptTransport: { mode: 'stdin' },
+        exitCode: 0,
+        stdout: '```json\n{"review":{"blocking":false,"approvalRecommendation":"approve-with-risk","requiredFixes":[],"optionalHardening":["Add one extra smoke test"],"risks":["Minor docs drift"]}}\n```\n',
+        stderr: '',
+        error: null,
+        preflight: { ok: true },
+      }),
+    });
+
+    const candidates = buildTechnicalPlanApprovalCandidates(repo.root);
+
+    assert.equal(candidates.review.status, 'unapproved');
+    assert.equal(candidates.review.recommendation, 'approve-with-risk');
+    assert.equal(candidates.review.blocking, false);
+    assert.equal(candidates.review.optional_hardening_count, 1);
+    assert.equal(candidates.review.risks_count, 1);
+    assert.equal(candidates.recommended.version, 1);
+    assert.equal(candidates.recommended.approvable, true);
+    assert.match(candidates.recommended.reason, /approve-with-risk/);
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('ai approve selects technical-plan draft interactively with review context', async () => {
+  const repo = makeRepo({
+    'technical-plan.md': structuredTechnicalPlanText('interactive-risk-plan'),
+  });
+
+  try {
+    savePlannerDraft(repo.root, 'technical-plan', 'technical-plan.md', structuredTechnicalPlanText('interactive-risk-plan'));
+    await runReviewPlan(repo.root, {
+      runProviderFn: async (provider) => ({
+        ok: true,
+        dryRun: false,
+        provider,
+        command: 'codex',
+        args: ['exec'],
+        cwd: repo.root,
+        timeoutMs: 0,
+        promptTransport: { mode: 'stdin' },
+        exitCode: 0,
+        stdout: '```json\n{"review":{"blocking":false,"approvalRecommendation":"approve-with-risk","requiredFixes":[],"optionalHardening":["Add one extra smoke test"],"risks":["Minor docs drift"]}}\n```\n',
+        stderr: '',
+        error: null,
+        preflight: { ok: true },
+      }),
+    });
+
+    const result = await runApprove(repo.root, {
+      phase: 'technical-plan',
+      stdinIsTTY: true,
+      stdoutIsTTY: true,
+      stderrIsTTY: true,
+      promptSelect: async (message, options) => {
+        assert.match(message, /technical-plan draft/);
+        assert.equal(options.length, 1);
+        assert.match(options[0].hint, /review=approve-with-risk/);
+        assert.match(options[0].hint, /optional=1/);
+        assert.match(options[0].hint, /risks=1/);
+        return '1';
+      },
+    });
+
+    assert.equal(result.version, 1);
+    assert.equal(readPlanReview(repo.root).status, 'reviewed');
+  } finally {
+    repo.cleanup();
+  }
+});
+
 test('ai review-plan revise recommendation blocks technical-plan approval', async () => {
   const repo = makeRepo({
     'technical-plan.md': structuredTechnicalPlanText('revise-plan'),
@@ -352,6 +578,22 @@ test('ai review-plan revise recommendation blocks technical-plan approval', asyn
     assert.equal(review.meta.review_result.approval_recommendation, 'revise');
     assert.equal(review.meta.review_result.blocking, true);
     assert.deepEqual(review.meta.review_result.required_fixes, ['Define rollback validation']);
+    const candidates = buildTechnicalPlanApprovalCandidates(repo.root);
+    assert.equal(candidates.review.recommendation, 'revise');
+    assert.equal(candidates.review.blocking, true);
+    assert.equal(candidates.recommended, null);
+    assert.equal(candidates.current.approvable, false);
+    assert.match(candidates.current.reason, /blocks approval/);
+    await assert.rejects(
+      runApprove(repo.root, {
+        phase: 'technical-plan',
+        stdinIsTTY: true,
+        stdoutIsTTY: true,
+        stderrIsTTY: true,
+        promptSelect: async () => '1',
+      }),
+      /not approvable/,
+    );
     assert.throws(
       () => execAi(repo.root, ['approve', '--phase', 'technical-plan', '--version', '1']),
       (error) => error.stderr.includes('blocked by plan review')

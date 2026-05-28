@@ -1,0 +1,75 @@
+{
+  "slice_id": "slice-03-technical-plan-review-decision-data",
+  "ticket": "QUIVER-33-03",
+  "type": "feature",
+  "title": "Technical-plan review decision data",
+  "objective": "Make technical-plan approval decisions visibly reflect plan-review state and recommendation.",
+  "description": "Ensures approval selection and command output distinguish missing, stale, unapproved, approve, approve-with-risk, and revise review states without weakening existing gates.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v33-technical-plan-review-decision-data",
+    "branch_name": "feature/QUIVER-33-03-v33-technical-plan-review-decision-data"
+  },
+  "files": [
+    "src/create-quiver/lib/ai/plan-review.js",
+    "src/create-quiver/lib/approvals.js",
+    "src/create-quiver/commands/ai.js",
+    "tests/commands/ai-review-plan.test.js",
+    "tests/lib/approvals.test.js"
+  ],
+  "expected_read_paths": [
+    "src/create-quiver/lib/ai/plan-review.js",
+    "src/create-quiver/lib/approvals.js",
+    "src/create-quiver/commands/ai.js",
+    "tests/commands/ai-review-plan.test.js",
+    "SPEC.md"
+  ],
+  "allowed_write_paths": [
+    "src/create-quiver/lib/ai/plan-review.js",
+    "src/create-quiver/lib/approvals.js",
+    "src/create-quiver/commands/ai.js",
+    "tests/commands/ai-review-plan.test.js",
+    "tests/lib/approvals.test.js",
+    "specs/quiver-v33-approval-ux-and-planner-progress/**"
+  ],
+  "depends_on": [
+    "slice-01-approval-candidates-model",
+    "slice-02-approve-interactive-selection"
+  ],
+  "parallel_safe": "yes",
+  "parallel_safe_reason": "Can proceed after approval selection if command-file conflicts are coordinated.",
+  "must": [
+    "Represent plan-review statuses missing, stale, unapproved, reviewed approve, reviewed approve-with-risk, and reviewed revise.",
+    "Block approval when recommendation is revise.",
+    "Allow approve-with-risk with visible risk context.",
+    "Show required fixes count and next command when blocked.",
+    "Preserve existing explicit technical-plan approval validation."
+  ],
+  "not_included": [
+    "Changing how reviewers generate review metadata.",
+    "Changing structured review schema unless required for display.",
+    "Relaxing stale review checks."
+  ],
+  "acceptance": [
+    "Technical-plan selector shows missing review as not ready.",
+    "Stale review blocks or redirects to review-plan.",
+    "Unapproved review guides to approve with the reviewed version when valid.",
+    "Approve-with-risk exposes optional hardening and risks.",
+    "Revise recommendation blocks approval.",
+    "Explicit version approval still enforces the same blocking rules."
+  ],
+  "tests": [
+    "node --test tests/commands/ai-review-plan.test.js tests/lib/approvals.test.js",
+    "git diff --check"
+  ],
+  "validation_hints": [
+    "Reuse existing `reviewBlocksApproval` semantics.",
+    "Add tests around every plan-review status."
+  ],
+  "estimated_hours": 6,
+  "status": "completed",
+  "blocked_reason": null,
+  "actual_hours": 6,
+  "completed_at": "2026-05-28"
+}
