@@ -7,6 +7,7 @@ const { selectOption } = require('../lib/cli/selectors');
 const { createUx } = require('../lib/cli/ux');
 const { parseJsonWithComments } = require('../lib/json');
 const { assertPathInsideRoot, validateProjectRelativePaths } = require('../lib/paths');
+const { buildApprovalCandidateReport, formatReviewSummary } = require('../lib/ai/approval-candidates');
 const { resolveReviewedTechnicalPlanInput } = require('../lib/ai/plan-review');
 const {
   buildSpecGenerationManifest,
@@ -439,6 +440,11 @@ async function resolveInteractiveSpecCreateOptions(repoRoot, preview, options = 
     stdinIsTTY: options.stdinIsTTY,
     stdoutIsTTY: options.stdoutIsTTY,
   };
+  const technicalPlanCandidates = buildApprovalCandidateReport(repoRoot, 'technical-plan');
+  const approvedVersion = technicalPlanCandidates.approved?.version
+    ? `v${technicalPlanCandidates.approved.version}`
+    : 'approved';
+  const reviewSummary = formatReviewSummary(technicalPlanCandidates.review);
   const selectedMethodology = await selectOption('¿Qué metodología aplica esta spec?', SPEC_METHODOLOGY_OPTIONS, {
     ...selectorOptions,
     defaultValue: 'wdd-sdd',
@@ -450,7 +456,7 @@ async function resolveInteractiveSpecCreateOptions(repoRoot, preview, options = 
     {
       label: preview.inputPath,
       value: preview.inputPath,
-      hint: 'Plan técnico revisado y aprobado',
+      hint: ['Plan técnico revisado y aprobado', approvedVersion, reviewSummary].filter(Boolean).join(', '),
       default: true,
     },
   ], {
@@ -484,6 +490,7 @@ async function resolveInteractiveSpecCreateOptions(repoRoot, preview, options = 
     { label: 'Spec', value: preview.manifest.slug },
     { label: 'Metodologia', value: selectedMethodology.label },
     { label: 'Input', value: selectedInput.value },
+    { label: 'Plan tecnico', value: ['aprobado', approvedVersion, reviewSummary].filter(Boolean).join(', ') },
     { label: 'Target', value: preview.relativeSpecDir },
     { label: 'Archivos planificados', value: preview.preview.files.length },
     { label: 'Revision', value: selectedReview.value === 'review' ? 'abrir preview' : 'confirmacion directa' },

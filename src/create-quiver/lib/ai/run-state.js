@@ -2,6 +2,7 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 
+const { buildApprovalCandidateReport } = require('./approval-candidates');
 const { quiverInternalPaths } = require('../init-layout');
 
 const AI_RUN_PHASES = Object.freeze([
@@ -104,8 +105,24 @@ function phaseRank(phase) {
   return AI_RUN_PHASES.indexOf(phase);
 }
 
-function nextCommandForPhase(phase) {
+function nextCommandForPhase(phase, projectRoot = '') {
   assertKnownPhase(phase);
+  if (projectRoot && phase === 'acceptance-draft') {
+    try {
+      const report = buildApprovalCandidateReport(projectRoot, 'acceptance');
+      return report.recommended?.next_command || report.current?.next_command || PHASE_NEXT_COMMAND[phase];
+    } catch {
+      return PHASE_NEXT_COMMAND[phase];
+    }
+  }
+  if (projectRoot && phase === 'technical-plan-reviewed') {
+    try {
+      const report = buildApprovalCandidateReport(projectRoot, 'technical-plan');
+      return report.recommended?.next_command || report.current?.next_command || PHASE_NEXT_COMMAND[phase];
+    } catch {
+      return PHASE_NEXT_COMMAND[phase];
+    }
+  }
   return PHASE_NEXT_COMMAND[phase];
 }
 
@@ -374,12 +391,12 @@ function formatAiRunStatus(projectRoot, run) {
   if (otherOpenRuns.length > 0) {
     lines.push('Other open runs:');
     for (const item of otherOpenRuns) {
-      lines.push(`- ${item.run_id}: ${item.phase} (${item.status}) -> ${nextCommandForPhase(item.phase)}`);
+      lines.push(`- ${item.run_id}: ${item.phase} (${item.status}) -> ${nextCommandForPhase(item.phase, projectRoot)}`);
     }
   }
 
   lines.push(
-    `Next safe command: ${nextCommandForPhase(run.phase)}`,
+    `Next safe command: ${nextCommandForPhase(run.phase, projectRoot)}`,
     '',
   );
 
@@ -400,7 +417,7 @@ function formatAiRunResume(projectRoot, run) {
     'AI run resume',
     `Run: ${run.run_id}`,
     `Current phase: ${run.phase}`,
-    `Next safe command: ${nextCommandForPhase(run.phase)}`,
+    `Next safe command: ${nextCommandForPhase(run.phase, projectRoot)}`,
     `State: ${toRelativePosix(projectRoot, runStatePath(projectRoot, run.run_id))}`,
     '',
   ].join('\n');

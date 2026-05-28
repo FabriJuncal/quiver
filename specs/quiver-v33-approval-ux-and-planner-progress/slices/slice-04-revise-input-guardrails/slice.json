@@ -1,0 +1,73 @@
+{
+  "slice_id": "slice-04-revise-input-guardrails",
+  "ticket": "QUIVER-33-04",
+  "type": "fix",
+  "title": "Revise input guardrails",
+  "objective": "Handle missing, incomplete, nonexistent, and accidental extra `ai revise --input` usage before provider execution.",
+  "description": "Hardens `ai revise` for both acceptance and technical-plan phases so incomplete inputs fail actionably or guide the user in TTY without silently ignoring mistakes.",
+  "git": {
+    "branch_type": "fix",
+    "base_branch": "main",
+    "branch_slug": "v33-revise-input-guardrails",
+    "branch_name": "fix/QUIVER-33-04-v33-revise-input-guardrails"
+  },
+  "files": [
+    "src/create-quiver/index.js",
+    "src/create-quiver/commands/ai.js",
+    "tests/commands/ai-plan.test.js",
+    "tests/commands/cli-contract.test.js"
+  ],
+  "expected_read_paths": [
+    "src/create-quiver/index.js",
+    "src/create-quiver/commands/ai.js",
+    "tests/commands/ai-plan.test.js",
+    "tests/commands/cli-contract.test.js",
+    "SPEC.md"
+  ],
+  "allowed_write_paths": [
+    "src/create-quiver/index.js",
+    "src/create-quiver/commands/ai.js",
+    "tests/commands/ai-plan.test.js",
+    "tests/commands/cli-contract.test.js",
+    "specs/quiver-v33-approval-ux-and-planner-progress/**"
+  ],
+  "depends_on": [
+    "slice-01-approval-candidates-model"
+  ],
+  "parallel_safe": "yes",
+  "parallel_safe_reason": "Can run after slice-01, but coordinate command-file conflicts with slice-02 and slice-05.",
+  "must": [
+    "Detect `ai revise --phase acceptance --input` without a value.",
+    "Detect `ai revise --phase technical-plan --input` without a value.",
+    "Fail before provider execution for missing or nonexistent files.",
+    "Handle accidental trailing args such as `s` with a clear error or documented parse behavior.",
+    "In no-TTY/CI, show an explicit corrected command.",
+    "In TTY, show focused guidance or selector only if useful artifacts exist."
+  ],
+  "not_included": [
+    "Generating feedback files automatically.",
+    "Running providers when input is invalid.",
+    "Changing revise prompt semantics."
+  ],
+  "acceptance": [
+    "`ai revise --phase acceptance --input` fails before provider execution with a useful next command.",
+    "`ai revise --phase technical-plan --input` fails before provider execution with a useful next command.",
+    "Nonexistent feedback input fails before provider execution.",
+    "Accidental extra args are not silently accepted.",
+    "No-TTY/CI does not prompt.",
+    "Existing valid revise commands still work."
+  ],
+  "tests": [
+    "node --test tests/commands/ai-plan.test.js tests/commands/cli-contract.test.js",
+    "git diff --check"
+  ],
+  "validation_hints": [
+    "Cover parser-level missing value behavior and command-level missing file behavior separately.",
+    "Avoid provider mocks for invalid input paths because provider execution should not start."
+  ],
+  "estimated_hours": 6,
+  "status": "completed",
+  "blocked_reason": null,
+  "actual_hours": 6,
+  "completed_at": "2026-05-28"
+}

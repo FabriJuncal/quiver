@@ -85,6 +85,10 @@ const {
   savePlannerDraft,
   summarizePlannerApproval,
 } = require('../lib/approvals');
+const {
+  buildApprovalCandidateReport,
+  formatApprovalDecisionLines,
+} = require('../lib/ai/approval-candidates');
 const { assertPlannerPhaseReady, getPlannerPhaseDetails, normalizePlannerPhase, PlannerPhaseError } = require('../lib/ai/phase-gates');
 const { collectActiveSliceState, resolveProjectState } = require('../lib/project-state-resolver');
 
@@ -1224,7 +1228,11 @@ function formatApprovalStatusReport(repoRoot) {
   for (const phase of PLANNER_APPROVAL_PHASES) {
     const summary = summarizePlannerApproval(repoRoot, phase).trimEnd();
     const relation = classifyGlobalApprovalRelation(readPhaseApproval(repoRoot, phase), runApprovalRows);
-    sections.push(`${summary}\nRun relation: ${relation}`);
+    const candidates = buildApprovalCandidateReport(repoRoot, phase);
+    const decisionLines = formatApprovalDecisionLines(candidates)
+      .map((line) => `- ${line}`)
+      .join('\n');
+    sections.push(`${summary}\nRun relation: ${relation}${decisionLines ? `\nApproval candidates:\n${decisionLines}` : ''}`);
   }
   sections.push(summarizePlanReview(repoRoot).trimEnd());
   return `${sections.join('\n\n')}\n`;
@@ -1657,7 +1665,7 @@ async function runPlan(repoRoot, options = {}) {
 
   if (options.revise === true) {
     if (!inputPath) {
-      throw new Error(formatError(`missing feedback input file for ai revise phase '${phase}'`));
+      throw new Error(formatError(`missing feedback input file for ai revise phase '${phase}'. Use: npx create-quiver ai revise --phase ${phase} --input <feedback.md> --dry-run`));
     }
     const feedbackText = readTextFile(inputPath, repoRoot);
     const revisionInput = buildRevisionInput({
@@ -2190,19 +2198,111 @@ async function runRevise(repoRoot, options = {}) {
   });
 }
 
+function formatApprovalCandidateHint(candidate) {
+  const parts = [];
+  if (candidate.current) {
+    parts.push('current');
+  }
+  if (candidate.created_at) {
+    parts.push(candidate.created_at);
+  }
+  if (candidate.review?.recommendation) {
+    parts.push(`review=${candidate.review.recommendation}`);
+  }
+  if (candidate.review?.required_fixes_count) {
+    parts.push(`required fixes=${candidate.review.required_fixes_count}`);
+  }
+  if (candidate.review?.optional_hardening_count) {
+    parts.push(`optional=${candidate.review.optional_hardening_count}`);
+  }
+  if (candidate.review?.risks_count) {
+    parts.push(`risks=${candidate.review.risks_count}`);
+  }
+  parts.push(candidate.reason);
+  return parts.filter(Boolean).join(', ');
+}
+
+function approvalSelectionOptions(report) {
+  return report.candidates.map((candidate) => ({
+    label: `${candidate.label}${candidate.recommended ? ' (recommended)' : candidate.current ? ' (current)' : ' (history)'}`,
+    value: String(candidate.version || ''),
+    hint: formatApprovalCandidateHint(candidate),
+    default: candidate.recommended === true,
+    raw: candidate,
+  }));
+}
+
+async function resolveApprovalVersion(repoRoot, phase, options = {}) {
+  if (options.version) {
+    return options.version;
+  }
+
+  const canPrompt = isInteractiveAgentPromptAvailable(options);
+  const shouldPrompt = options.interactive === true || canPrompt;
+  const report = buildApprovalCandidateReport(repoRoot, phase);
+
+  if (!shouldPrompt || !canPrompt) {
+    const recommended = report.recommended?.version || report.latest_version || '<n>';
+    throw new Error(formatActionableError({
+      failure: `ai approve --phase ${phase} requires --version <n> when prompts are not available.`,
+      impact: 'Quiver cannot safely guess which saved planner draft the human approved.',
+      fix: 'Review drafts with `npx create-quiver ai approvals`, then pass the version explicitly.',
+      nextCommand: `npx create-quiver ai approve --phase ${phase} --version ${recommended}`,
+    }));
+  }
+
+  if (report.candidates.length === 0) {
+    throw new Error(formatActionableError({
+      failure: `ai approve --phase ${phase} has no saved drafts to approve.`,
+      impact: 'There is no planner artifact that can pass the approval gate.',
+      fix: `Generate a ${phase} draft first.`,
+      nextCommand: `npx create-quiver ai plan --phase ${phase}${phase === 'acceptance' ? ' --input <requirements.md>' : ''} --dry-run`,
+    }));
+  }
+
+  const selected = await selectOption(`¿Qué ${phase} draft querés aprobar?`, approvalSelectionOptions(report), {
+    env: options.env,
+    error: options.error,
+    input: options.input,
+    interactive: true,
+    noColor: options.noColor,
+    output: options.output,
+    prompts: options.prompts,
+    promptSelect: options.promptSelect,
+    stdinIsTTY: options.stdinIsTTY,
+    stdoutIsTTY: options.stdoutIsTTY,
+    stderrIsTTY: options.stderrIsTTY,
+    defaultValue: report.recommended?.version ? String(report.recommended.version) : undefined,
+    flag: '--version',
+    name: `${phase} approval version`,
+  });
+
+  const candidate = selected.raw;
+  if (!candidate?.approvable) {
+    throw new Error(formatActionableError({
+      failure: `${phase} draft ${selected.label} is not approvable.`,
+      impact: candidate?.review?.blocking
+        ? 'The current review gate blocks technical-plan approval.'
+        : 'Quiver only approves the current eligible draft version.',
+      fix: candidate?.reason || 'Inspect planner approvals before approving.',
+      nextCommand: candidate?.next_command || `npx create-quiver ai approvals`,
+    }));
+  }
+
+  return selected.value;
+}
+
 async function runApprove(repoRoot, options = {}) {
   const phase = normalizePlannerPhase(options.phase || DEFAULT_PLAN_PHASE);
   if (phase === 'spec') {
     throw new Error(formatError(`ai approve does not support phase '${phase}'`));
   }
 
-  if (!options.version) {
-    throw new Error(formatError(`ai approve --phase ${phase} requires --version <n>. Review drafts with \`npx create-quiver ai approvals\`.`));
-  }
-
   if (options.input) {
     throw new Error(formatError(`ai approve --phase ${phase} approves saved draft versions only. Use \`npx create-quiver ai revise --phase ${phase} --input ${options.input}\` to create a new draft first.`));
   }
+
+  const version = await resolveApprovalVersion(repoRoot, phase, options);
 
   if (phase === 'technical-plan') {
     const review = readPlanReview(repoRoot);
@@ -2214,24 +2314,24 @@ async function runApprove(repoRoot, options = {}) {
       const requiredFixes = Array.isArray(result.required_fixes) ? result.required_fixes.length : 0;
       throw new Error(formatError(`ai approve --phase technical-plan is blocked by plan review; approval recommendation is ${result.approval_recommendation}. Required fixes: ${requiredFixes}. Next command: ${result.next_command}`));
     }
-    assertTechnicalPlanDraftHasSpecContract(repoRoot, options.version);
+    assertTechnicalPlanDraftHasSpecContract(repoRoot, version);
   }
 
   const inputText = '';
 
   if (options.dryRun) {
-    process.stdout.write(formatApprovalDryRunResult({ phase, input: options.input, version: options.version }));
+    process.stdout.write(formatApprovalDryRunResult({ phase, input: options.input, version }));
     return {
       task: 'approve',
       phase,
       input: options.input,
-      version: options.version || null,
+      version: version || null,
       dryRun: true,
     };
   }
 
   const result = approvePlannerPhase(repoRoot, phase, options.input || '', inputText, {
-    version: options.version || undefined,
+    version: version || undefined,
   });
   const lifecycleRun = ensureAiRun(repoRoot, {
     command: `ai approve --phase ${phase}`,
@@ -2241,7 +2341,7 @@ async function runApprove(repoRoot, options = {}) {
   recordAiRunApproval(repoRoot, lifecycleRun.run_id, {
     artifact: path.relative(repoRoot, result.filePath).split(path.sep).join('/'),
     phase,
-    source_file: options.input || `draft version ${options.version}`,
+    source_file: options.input || `draft version ${version}`,
     version: result.version || null,
   });
   updateAiRunPhase(repoRoot, lifecycleRun.run_id, phase === 'acceptance' ? 'acceptance-approved' : 'technical-plan-approved', {
@@ -2250,7 +2350,7 @@ async function runApprove(repoRoot, options = {}) {
   });
   process.stdout.write(formatApprovalResult({
     ...result,
-    sourceFile: options.input || `draft version ${options.version}`,
+    sourceFile: options.input || `draft version ${version}`,
   }, repoRoot));
 
   return {

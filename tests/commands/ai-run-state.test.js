@@ -14,6 +14,7 @@ const {
   approvePlannerPhase,
   savePlannerDraft,
 } = require('../../src/create-quiver/lib/approvals');
+const { savePlanReview } = require('../../src/create-quiver/lib/ai/plan-review');
 
 const BIN_PATH = path.resolve(__dirname, '../../bin/create-quiver.js');
 
@@ -35,6 +36,24 @@ function execAi(repoRoot, args = []) {
   });
 }
 
+function structuredTechnicalPlanText(slug = 'run-state-spec') {
+  return `${JSON.stringify({
+    spec: {
+      slug,
+      title: 'Run state spec',
+      objective: 'Keep lifecycle guidance aligned.',
+      slices: [
+        {
+          slice_id: 'slice-01-run-state',
+          title: 'Run state slice',
+          objective: 'Validate run-state guidance.',
+          files: ['src/index.js'],
+        },
+      ],
+    },
+  }, null, 2)}\n`;
+}
+
 test('ai run create creates persistent run state and ai status can inspect it', () => {
   const repo = makeRepo();
 
@@ -53,6 +72,44 @@ test('ai run create creates persistent run state and ai status can inspect it', 
     const resume = execAi(repo.root, ['resume']);
     assert.match(resume, /AI run resume/);
     assert.match(resume, /Current phase: created/);
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('ai status and resume use current approval candidate versions', () => {
+  const repo = makeRepo();
+
+  try {
+    createAiRun(repo.root, {
+      input: 'requirements.md',
+      runId: 'run-approval-guidance',
+    });
+    savePlannerDraft(repo.root, 'acceptance', 'requirements.md', '# Acceptance v1\n');
+    savePlannerDraft(repo.root, 'acceptance', 'requirements.md', '# Acceptance v2\n');
+    updateAiRunPhase(repo.root, 'run-approval-guidance', 'acceptance-draft', {
+      command: 'test acceptance draft',
+    });
+
+    const acceptanceStatus = execAi(repo.root, ['status']);
+    const acceptanceResume = execAi(repo.root, ['resume']);
+
+    assert.match(acceptanceStatus, /Next safe command: npx create-quiver ai approve --phase acceptance --version 2/);
+    assert.match(acceptanceResume, /Next safe command: npx create-quiver ai approve --phase acceptance --version 2/);
+
+    savePlannerDraft(repo.root, 'technical-plan', 'technical-plan.md', structuredTechnicalPlanText('run-status-plan'));
+    savePlanReview(repo.root, {
+      contents: '```json\n{"review":{"blocking":false,"approvalRecommendation":"approve","requiredFixes":[],"optionalHardening":[],"risks":[]}}\n```\n',
+      inputPath: '.quiver/approvals/technical-plan/drafts/001.md',
+      inputKind: 'draft',
+      inputVersion: 1,
+    });
+    updateAiRunPhase(repo.root, 'run-approval-guidance', 'technical-plan-reviewed', {
+      command: 'test technical-plan reviewed',
+    });
+
+    const technicalStatus = execAi(repo.root, ['status']);
+    assert.match(technicalStatus, /Next safe command: npx create-quiver ai approve --phase technical-plan --version 1/);
   } finally {
     repo.cleanup();
   }

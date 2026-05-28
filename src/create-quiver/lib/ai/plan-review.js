@@ -1,7 +1,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 
-const { readPhaseApproval, resolveApprovedPlannerInput } = require('../approvals');
+const { buildPlannerApprovalCandidates, readPhaseApproval, resolveApprovedPlannerInput } = require('../approvals');
 const { quiverInternalPaths } = require('../init-layout');
 
 const PLAN_REVIEW_PROMPT_SOURCE = 'packaged production-readiness plan review template';
@@ -184,6 +184,81 @@ function reviewBlocksApproval(review) {
     return false;
   }
   return result.blocking === true || result.approval_recommendation === 'revise';
+}
+
+function normalizeReviewDecision(review) {
+  const result = review?.meta?.review_result || null;
+  const requiredFixes = normalizeList(result?.required_fixes);
+  const optionalHardening = normalizeList(result?.optional_hardening);
+  const risks = normalizeList(result?.risks);
+  const blocking = reviewBlocksApproval(review);
+  const recommendation = result?.approval_recommendation || (review.status === 'missing' || review.status === 'stale' ? 'review-required' : 'approve-with-risk');
+  const nextCommand = result?.next_command || (review.status === 'unapproved' || review.status === 'reviewed'
+    ? 'npx create-quiver ai approve --phase technical-plan --version <n>'
+    : 'npx create-quiver ai review-plan --dry-run');
+
+  return {
+    status: review.status,
+    recommendation,
+    blocking: blocking || review.status === 'missing' || review.status === 'stale',
+    required_fixes: requiredFixes,
+    optional_hardening: optionalHardening,
+    risks,
+    required_fixes_count: requiredFixes.length,
+    optional_hardening_count: optionalHardening.length,
+    risks_count: risks.length,
+    source_file: review.meta?.source_file || '',
+    source_kind: review.meta?.source_kind || null,
+    source_version: review.meta?.source_version || null,
+    reviewed_at: review.meta?.reviewed_at || '',
+    next_command: nextCommand,
+  };
+}
+
+function buildTechnicalPlanApprovalCandidates(projectRoot) {
+  const base = buildPlannerApprovalCandidates(projectRoot, 'technical-plan');
+  const review = readPlanReview(projectRoot);
+  const reviewDecision = normalizeReviewDecision(review);
+  const reviewReady = (review.status === 'unapproved' || review.status === 'reviewed') && reviewDecision.blocking !== true;
+  const candidates = base.candidates.map((candidate) => {
+    const matchesReviewVersion = !reviewDecision.source_version
+      || !candidate.version
+      || Number(reviewDecision.source_version) === Number(candidate.version);
+    const approvable = candidate.approvable === true && reviewReady && matchesReviewVersion;
+    const reason = approvable
+      ? `latest draft has plan-review recommendation ${reviewDecision.recommendation}`
+      : review.status === 'missing'
+        ? 'technical-plan requires production review before approval'
+        : review.status === 'stale'
+          ? 'technical-plan review is stale'
+          : reviewDecision.blocking
+            ? `plan-review blocks approval with recommendation ${reviewDecision.recommendation}`
+            : matchesReviewVersion
+              ? candidate.reason
+              : `plan-review targets v${reviewDecision.source_version}; candidate is v${candidate.version}`;
+
+    return {
+      ...candidate,
+      approvable,
+      recommended: candidate.current === true && approvable,
+      blocked: !approvable,
+      status: approvable ? 'approvable' : candidate.current ? 'blocked' : 'history',
+      reason,
+      recommended_action: approvable ? 'approve' : reviewDecision.blocking || review.status === 'missing' || review.status === 'stale' ? 'review-or-revise' : 'inspect',
+      next_command: approvable ? candidate.next_command : reviewDecision.next_command,
+      review: reviewDecision,
+    };
+  });
+
+  return {
+    ...base,
+    candidates,
+    current: candidates.find((candidate) => candidate.current) || null,
+    recommended: candidates.find((candidate) => candidate.recommended) || null,
+    history: candidates.filter((candidate) => !candidate.current),
+    review: reviewDecision,
+    next_command: candidates.find((candidate) => candidate.recommended)?.next_command || reviewDecision.next_command,
+  };
 }
 
 function latestTechnicalPlanDraft(approval) {
@@ -435,6 +510,7 @@ module.exports = {
   PLAN_REVIEW_RECOMMENDATIONS,
   assertPlanReviewed,
   buildPlanReviewPrompt,
+  buildTechnicalPlanApprovalCandidates,
   derivePlanReviewResult,
   planReviewMetaPath,
   planReviewPath,

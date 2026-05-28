@@ -525,6 +525,14 @@ function parseArgs(argv) {
 
   const positional = [];
 
+  function missingInputValueMessage() {
+    const aiCommandHint = result.mode === 'ai' ? positional[0] : '';
+    if (aiCommandHint === 'revise') {
+      return `missing feedback input file for ai revise --phase ${result.aiPhase}. Use: npx create-quiver ai revise --phase ${result.aiPhase} --input <feedback.md> --dry-run`;
+    }
+    return 'missing value for --input';
+  }
+
   for (let index = 0; index < args.length; index += 1) {
     const arg = args[index];
 
@@ -875,8 +883,8 @@ function parseArgs(argv) {
 
     if (arg === '--input') {
       const value = args[++index];
-      if (!value) {
-        throw new Error(formatError('missing value for --input'));
+      if (!value || String(value).startsWith('--')) {
+        throw new Error(formatError(missingInputValueMessage()));
       }
       result.aiInput = value;
       continue;
