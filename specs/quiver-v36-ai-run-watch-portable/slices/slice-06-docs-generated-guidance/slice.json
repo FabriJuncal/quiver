@@ -1,0 +1,77 @@
+{
+  "slice_id": "slice-06-docs-generated-guidance",
+  "ticket": "QUIVER-36-06",
+  "type": "documentation",
+  "title": "Docs and generated guidance",
+  "objective": "Document the portable watcher in canonical docs, command references, and generated guidance.",
+  "description": "Adds user-facing and generated documentation for run ids, watch commands, JSONL mode, artifacts, portability, and safety expectations.",
+  "git": {
+    "branch_type": "docs",
+    "base_branch": "main",
+    "branch_slug": "v36-docs-generated-guidance",
+    "branch_name": "docs/QUIVER-36-06-v36-docs-generated-guidance"
+  },
+  "files": [
+    "docs/CLI_UX_GUIDE.md",
+    "README_FOR_AI.md",
+    "docs/reference/commands.md",
+    "docs/COMMANDS.md.template",
+    "src/create-quiver/lib/init-docs.js",
+    "tests/commands/cli-contract.test.js",
+    "tests/lib/init-docs.test.js"
+  ],
+  "expected_read_paths": [
+    "docs/CLI_UX_GUIDE.md",
+    "README_FOR_AI.md",
+    "docs/reference/commands.md",
+    "docs/COMMANDS.md.template",
+    "src/create-quiver/lib/init-docs.js",
+    "specs/quiver-v36-ai-run-watch-portable/SPEC.md"
+  ],
+  "allowed_write_paths": [
+    "docs/CLI_UX_GUIDE.md",
+    "README_FOR_AI.md",
+    "docs/reference/commands.md",
+    "docs/COMMANDS.md.template",
+    "src/create-quiver/lib/init-docs.js",
+    "tests/commands/cli-contract.test.js",
+    "tests/lib/init-docs.test.js",
+    "specs/quiver-v36-ai-run-watch-portable/**"
+  ],
+  "depends_on": [
+    "slice-04-ai-run-watch-command",
+    "slice-05-main-progress-user-guidance"
+  ],
+  "parallel_safe": "conditional",
+  "parallel_safe_reason": "Can proceed after command behavior is stable; generated docs and canonical docs should be updated in one pass.",
+  "must": [
+    "Document run id semantics.",
+    "Document --run and --latest usage.",
+    "Document JSONL-only behavior for --json.",
+    "Document stale, legacy, completed, failed, canceled, and missing-run behavior.",
+    "Document that Quiver does not embed provider TUIs or require terminal multiplexers.",
+    "Update generated guidance/templates with matching command examples."
+  ],
+  "not_included": [
+    "Runtime behavior changes.",
+    "Spec redesign."
+  ],
+  "acceptance": [
+    "Docs match the implemented public CLI behavior.",
+    "Generated guidance includes the same essential watcher commands.",
+    "No docs claim platform-specific terminal automation as core behavior.",
+    "Documentation debt around missing docs/INDEX.md is surfaced if still applicable."
+  ],
+  "tests": [
+    "node --test tests/commands/cli-contract.test.js tests/lib/init-docs.test.js",
+    "npx create-quiver spec validate specs/quiver-v36-ai-run-watch-portable --strict",
+    "git diff --check"
+  ],
+  "validation_hints": [
+    "Generate a fresh sandbox project and inspect AI guidance files.",
+    "Check that documented commands are accepted by CLI parsing tests."
+  ],
+  "estimated_hours": 3,
+  "status": "planned",
+  "blocked_reason": null
+}

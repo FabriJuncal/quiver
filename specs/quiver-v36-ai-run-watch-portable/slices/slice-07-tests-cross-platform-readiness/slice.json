@@ -1,0 +1,87 @@
+{
+  "slice_id": "slice-07-tests-cross-platform-readiness",
+  "ticket": "QUIVER-36-07",
+  "type": "validation",
+  "title": "Tests and cross-platform readiness",
+  "objective": "Prove the portable watcher is covered by automated tests, package smoke, and cross-platform smoke validation.",
+  "description": "Adds final coverage for persistence, watcher behavior, security, automation modes, package execution, and platform portability.",
+  "git": {
+    "branch_type": "test",
+    "base_branch": "main",
+    "branch_slug": "v36-tests-cross-platform-readiness",
+    "branch_name": "test/QUIVER-36-07-v36-tests-cross-platform-readiness"
+  },
+  "files": [
+    "tests/commands/ai-run-watch.test.js",
+    "tests/commands/ai-plan.test.js",
+    "tests/lib/ai-run-state.test.js",
+    "tests/lib/ai-run-events.test.js",
+    "tests/lib/ai-provider-streaming.test.js",
+    "scripts/ci/smoke-create-quiver.sh",
+    "scripts/ci/smoke-cross-platform.js",
+    "specs/quiver-v36-ai-run-watch-portable/EVIDENCE_REPORT.md"
+  ],
+  "expected_read_paths": [
+    "tests/commands/ai-run-watch.test.js",
+    "tests/commands/ai-plan.test.js",
+    "tests/lib/ai-run-state.test.js",
+    "tests/lib/ai-run-events.test.js",
+    "scripts/ci/smoke-create-quiver.sh",
+    "scripts/ci/smoke-cross-platform.js",
+    "specs/quiver-v36-ai-run-watch-portable/SPEC.md"
+  ],
+  "allowed_write_paths": [
+    "tests/commands/ai-run-watch.test.js",
+    "tests/commands/ai-plan.test.js",
+    "tests/lib/ai-run-state.test.js",
+    "tests/lib/ai-run-events.test.js",
+    "tests/lib/ai-provider-streaming.test.js",
+    "scripts/ci/smoke-create-quiver.sh",
+    "scripts/ci/smoke-cross-platform.js",
+    "specs/quiver-v36-ai-run-watch-portable/**"
+  ],
+  "depends_on": [
+    "slice-02-event-writer-redacted-logs",
+    "slice-03-provider-streaming-integration",
+    "slice-04-ai-run-watch-command",
+    "slice-05-main-progress-user-guidance",
+    "slice-06-docs-generated-guidance"
+  ],
+  "parallel_safe": "never",
+  "parallel_safe_reason": "Final readiness must run after runtime and docs behavior stabilizes.",
+  "must": [
+    "Cover path traversal and malformed run ids.",
+    "Cover missing, latest, completed, failed, canceled, stale, and legacy runs.",
+    "Cover partial JSONL lines.",
+    "Cover split secrets, ANSI/control sanitization, and log truncation.",
+    "Cover no-TTY, CI, JSON, dry-run, and print-prompt behavior.",
+    "Cover paths with spaces.",
+    "Cover simulated provider streaming for stdout, stderr, cancellation, and failure.",
+    "Run package smoke and cross-platform smoke."
+  ],
+  "not_included": [
+    "Real provider credential tests.",
+    "Publishing to npm."
+  ],
+  "acceptance": [
+    "Required validation commands complete or documented blockers are recorded.",
+    "No required smoke depends on a terminal multiplexer.",
+    "Evidence report lists final commands and outcomes.",
+    "All P0 safety criteria from the SPEC have automated coverage."
+  ],
+  "tests": [
+    "node --test tests/**/*.test.js",
+    "git diff --check",
+    "npx create-quiver spec validate specs/quiver-v36-ai-run-watch-portable --strict",
+    "npm run package:quiver",
+    "npm run smoke:create-quiver",
+    "node scripts/ci/smoke-cross-platform.js"
+  ],
+  "validation_hints": [
+    "Use simulated providers instead of external AI CLIs.",
+    "Run package smoke from a path containing spaces."
+  ],
+  "estimated_hours": 6,
+  "status": "planned",
+  "blocked_reason": null
+}

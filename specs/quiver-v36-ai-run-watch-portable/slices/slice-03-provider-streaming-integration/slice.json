@@ -1,0 +1,71 @@
+{
+  "slice_id": "slice-03-provider-streaming-integration",
+  "ticket": "QUIVER-36-03",
+  "type": "feature",
+  "title": "Provider streaming integration",
+  "objective": "Persist live provider stdout, stderr, stages, heartbeat, prompt, and result artifacts for planner-oriented AI commands.",
+  "description": "Wires the event writer into live provider execution without changing clean automation modes.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v36-provider-streaming-integration",
+    "branch_name": "feature/QUIVER-36-03-v36-provider-streaming-integration"
+  },
+  "files": [
+    "src/create-quiver/lib/ai/providers.js",
+    "src/create-quiver/commands/ai.js",
+    "src/create-quiver/lib/ai/run-events.js",
+    "tests/lib/provider-streaming.test.js",
+    "tests/commands/ai-plan.test.js"
+  ],
+  "expected_read_paths": [
+    "src/create-quiver/lib/ai/providers.js",
+    "src/create-quiver/commands/ai.js",
+    "src/create-quiver/lib/ai/run-events.js",
+    "src/create-quiver/lib/ai/run-state.js",
+    "specs/quiver-v36-ai-run-watch-portable/SPEC.md"
+  ],
+  "allowed_write_paths": [
+    "src/create-quiver/lib/ai/providers.js",
+    "src/create-quiver/commands/ai.js",
+    "src/create-quiver/lib/ai/run-events.js",
+    "tests/lib/provider-streaming.test.js",
+    "tests/commands/ai-plan.test.js",
+    "specs/quiver-v36-ai-run-watch-portable/**"
+  ],
+  "depends_on": [
+    "slice-02-event-writer-redacted-logs"
+  ],
+  "parallel_safe": "no",
+  "parallel_safe_reason": "Provider integration is central and affects several AI commands.",
+  "must": [
+    "Use child_process.spawn without shell.",
+    "Stream stdout/stderr to events and logs.",
+    "Write redacted prompt.md and result.md when applicable.",
+    "Emit heartbeat or updated_at events.",
+    "Preserve dry-run, print-prompt, JSON, CI, and no-TTY contracts.",
+    "Keep provider/model validation unchanged."
+  ],
+  "not_included": [
+    "Watcher command rendering.",
+    "Documentation updates."
+  ],
+  "acceptance": [
+    "Live planner-oriented commands create run artifacts.",
+    "Simulated stdout/stderr appears in redacted logs and events.",
+    "No provider output contaminates JSON mode.",
+    "Dry-run and print-prompt do not execute providers.",
+    "Provider errors are recorded and surfaced actionably."
+  ],
+  "tests": [
+    "node --test tests/lib/provider-streaming.test.js tests/commands/ai-plan.test.js",
+    "git diff --check"
+  ],
+  "validation_hints": [
+    "Use injected spawn/provider runners for deterministic tests.",
+    "Test both success and failure exits."
+  ],
+  "estimated_hours": 7,
+  "status": "planned",
+  "blocked_reason": null
+}
