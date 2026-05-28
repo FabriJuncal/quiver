@@ -175,6 +175,7 @@ Usá la guía que corresponda al estado de tu proyecto:
 | `npx --yes create-quiver@latest doctor` | Revisa si el contrato de Quiver está sano. |
 | `npx --yes create-quiver@latest doctor --json` | Devuelve el diagnóstico como JSON para automatizaciones. |
 | `npx --yes create-quiver@latest flow` | Indica el próximo paso seguro. |
+| `npx --yes create-quiver@latest dashboard` | Muestra estado consolidado de specs, slices, runs, approvals y agentes sin escribir archivos. |
 | `npx --yes create-quiver@latest ai prepare-context --dry-run` | Previsualiza contexto de onboarding para IA sin tocar código de producto. |
 | `npx --yes create-quiver@latest ai prepare-context --with-planner --dry-run` | Previsualiza una propuesta de contexto generada por el planner. |
 | `npx --yes create-quiver@latest ai models list` | Lista proveedores y modelos conocidos por Quiver para configurar agentes. |

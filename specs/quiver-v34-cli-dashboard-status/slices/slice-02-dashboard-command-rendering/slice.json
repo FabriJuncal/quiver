@@ -1,0 +1,82 @@
+{
+  "slice_id": "slice-02-dashboard-command-rendering",
+  "ticket": "QUIVER-34-02",
+  "type": "feature",
+  "title": "Dashboard command and rendering",
+  "objective": "Expose the dashboard report through a top-level CLI command with human and JSON output.",
+  "description": "Adds `npx create-quiver dashboard`, compact JSON output, human rendering, CLI help, examples, and UX flag guardrail coverage.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v34-dashboard-command-rendering",
+    "branch_name": "feature/QUIVER-34-02-dashboard-command-rendering"
+  },
+  "files": [
+    "src/create-quiver/commands/dashboard.js",
+    "src/create-quiver/index.js",
+    "src/create-quiver/lib/dashboard.js",
+    "tests/commands/dashboard.test.js",
+    "tests/commands/cli-contract.test.js",
+    "tests/commands/ux-flags.test.js"
+  ],
+  "expected_read_paths": [
+    "src/create-quiver/index.js",
+    "src/create-quiver/lib/cli/ux.js",
+    "src/create-quiver/lib/cli/theme.js",
+    "src/create-quiver/lib/cli/ux-flags.js",
+    "src/create-quiver/lib/dashboard.js",
+    "tests/commands/cli-contract.test.js",
+    "tests/commands/ux-flags.test.js",
+    "specs/quiver-v34-cli-dashboard-status/SPEC.md"
+  ],
+  "allowed_write_paths": [
+    "src/create-quiver/commands/dashboard.js",
+    "src/create-quiver/index.js",
+    "src/create-quiver/lib/dashboard.js",
+    "tests/commands/dashboard.test.js",
+    "tests/commands/cli-contract.test.js",
+    "tests/commands/ux-flags.test.js",
+    "specs/quiver-v34-cli-dashboard-status/**"
+  ],
+  "depends_on": [
+    "slice-01-dashboard-report-contract"
+  ],
+  "parallel_safe": "no",
+  "parallel_safe_reason": "The public command consumes the report contract and touches the central CLI router.",
+  "must": [
+    "Add top-level `dashboard` routing.",
+    "Support `--json`, `--spec <slug>`, `--include-completed`, and `--no-color`.",
+    "Emit parseable JSON with no human prose in JSON mode.",
+    "Render human output with clear sections and next safe commands.",
+    "Respect no-color and CI/no-TTY output constraints.",
+    "Reject unsupported UX flags through existing guardrails.",
+    "Document the command in help and examples."
+  ],
+  "not_included": [
+    "Interactive navigation.",
+    "Ink or fullscreen TUI.",
+    "Starting slices from the dashboard.",
+    "Docs/templates updates outside help text."
+  ],
+  "acceptance": [
+    "`node bin/create-quiver.js dashboard` prints a human dashboard.",
+    "`node bin/create-quiver.js dashboard --json` emits parseable compact JSON.",
+    "The command is included in `--help` and grouped command descriptions.",
+    "Unsupported UX flags fail early.",
+    "No prompt or spinner is used."
+  ],
+  "tests": [
+    "node --test tests/commands/dashboard.test.js",
+    "node --test tests/commands/cli-contract.test.js tests/commands/ux-flags.test.js",
+    "git diff --check"
+  ],
+  "validation_hints": [
+    "Keep command implementation thin over the dashboard report contract.",
+    "JSON stdout must be clean."
+  ],
+  "estimated_hours": 5,
+  "status": "completed",
+  "blocked_reason": null,
+  "actual_hours": 4,
+  "completed_at": "2026-05-28"
+}

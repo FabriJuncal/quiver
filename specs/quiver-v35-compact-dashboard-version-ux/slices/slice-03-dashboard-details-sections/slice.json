@@ -1,0 +1,72 @@
+{
+  "slice_id": "slice-03-dashboard-details-sections",
+  "ticket": "QUIVER-35-03",
+  "type": "feature",
+  "title": "Dashboard details and sections",
+  "objective": "Add explicit human inspection modes for complete dashboard details and single-section views.",
+  "description": "Implements --details and --section rendering after the compact default and CLI validation contract are stable.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v35-dashboard-details-sections",
+    "branch_name": "feature/QUIVER-35-03-v35-dashboard-details-sections"
+  },
+  "files": [
+    "src/create-quiver/lib/dashboard.js",
+    "tests/lib/dashboard.test.js",
+    "tests/commands/dashboard.test.js"
+  ],
+  "expected_read_paths": [
+    "src/create-quiver/lib/dashboard.js",
+    "tests/lib/dashboard.test.js",
+    "tests/commands/dashboard.test.js",
+    "specs/quiver-v35-compact-dashboard-version-ux/SPEC.md"
+  ],
+  "allowed_write_paths": [
+    "src/create-quiver/lib/dashboard.js",
+    "tests/lib/dashboard.test.js",
+    "tests/commands/dashboard.test.js",
+    "specs/quiver-v35-compact-dashboard-version-ux/**"
+  ],
+  "depends_on": [
+    "slice-01-dashboard-cli-contract",
+    "slice-02-dashboard-compact-renderer"
+  ],
+  "parallel_safe": "no",
+  "parallel_safe_reason": "Section output must share compact renderer primitives and the finalized dashboard flag contract.",
+  "must": [
+    "Implement dashboard --details as the full human report.",
+    "Implement dashboard --section for overview, specs, slices, blockers, warnings, agents, approvals, runs, active-slice, and next-steps.",
+    "Apply --limit to repeated lists.",
+    "Keep section output readable in TTY, no-TTY, CI, and no-color modes.",
+    "Avoid collecting dashboard state a second time for section rendering."
+  ],
+  "not_included": [
+    "Changing dashboard JSON schema.",
+    "Version command.",
+    "Docs updates beyond implementation-adjacent tests."
+  ],
+  "acceptance": [
+    "dashboard --details renders the complete human report.",
+    "dashboard --section slices renders only the slices section and its relevant context.",
+    "Every supported section has focused coverage.",
+    "Unsupported sections fail with valid values listed.",
+    "--limit applies consistently to section and compact repeated lists.",
+    "No section rendering path leaks evidence/log content."
+  ],
+  "tests": [
+    "node --test tests/lib/dashboard.test.js",
+    "node --test tests/commands/dashboard.test.js",
+    "git diff --check"
+  ],
+  "validation_hints": [
+    "Keep one section registry so help, validation, and rendering cannot drift.",
+    "Test active-slice and next-steps because they are not simple list sections."
+  ],
+  "estimated_hours": 5,
+  "status": "completed",
+  "started_at": "2026-05-28T17:00:00Z",
+  "completed_at": "2026-05-28T17:36:57Z",
+  "actual_hours": 2,
+  "blocked_reason": null
+}

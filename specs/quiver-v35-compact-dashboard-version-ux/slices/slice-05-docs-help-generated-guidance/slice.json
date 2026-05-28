@@ -1,0 +1,90 @@
+{
+  "slice_id": "slice-05-docs-help-generated-guidance",
+  "ticket": "QUIVER-35-05",
+  "type": "documentation",
+  "title": "Docs, help, and generated guidance",
+  "objective": "Document the finalized dashboard and version UX contracts across public help, references, generated guidance, and package-content decisions.",
+  "description": "Updates command docs and AI guidance only after dashboard and version behavior stabilizes.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v35-docs-help-guidance",
+    "branch_name": "feature/QUIVER-35-05-v35-docs-help-guidance"
+  },
+  "files": [
+    "src/create-quiver/index.js",
+    "docs/reference/commands.md",
+    "docs/CLI_UX_GUIDE.md",
+    "README_FOR_AI.md",
+    "src/create-quiver/lib/init-docs.js",
+    "docs/INDEX.md",
+    ".npmignore",
+    "tests/commands/cli-contract.test.js",
+    "tests/lib/init-docs.test.js"
+  ],
+  "expected_read_paths": [
+    "src/create-quiver/index.js",
+    "docs/reference/commands.md",
+    "docs/CLI_UX_GUIDE.md",
+    "README_FOR_AI.md",
+    "docs/INDEX.md.template",
+    ".npmignore",
+    "scripts/package-quiver.sh",
+    "specs/quiver-v35-compact-dashboard-version-ux/SPEC.md"
+  ],
+  "allowed_write_paths": [
+    "src/create-quiver/index.js",
+    "docs/reference/commands.md",
+    "docs/CLI_UX_GUIDE.md",
+    "README_FOR_AI.md",
+    "src/create-quiver/lib/init-docs.js",
+    "docs/INDEX.md",
+    ".npmignore",
+    "tests/commands/cli-contract.test.js",
+    "tests/lib/init-docs.test.js",
+    "specs/quiver-v35-compact-dashboard-version-ux/**"
+  ],
+  "depends_on": [
+    "slice-02-dashboard-compact-renderer",
+    "slice-03-dashboard-details-sections",
+    "slice-04-version-command"
+  ],
+  "parallel_safe": "no",
+  "parallel_safe_reason": "Docs must reflect stabilized behavior from dashboard and version command slices.",
+  "must": [
+    "Update top-level help and examples for dashboard flags and version command.",
+    "Update docs/reference/commands.md.",
+    "Update docs/CLI_UX_GUIDE.md if output rules or supported commands changed.",
+    "Update README_FOR_AI.md if public workflow guidance changed.",
+    "Update generated docs/templates when generated projects should mention the new behavior.",
+    "Decide whether to add root docs/INDEX.md in this repo and validate package-publication impact.",
+    "Update .npmignore or package safety expectations if adding docs/INDEX.md changes tarball contents."
+  ],
+  "not_included": [
+    "Product behavior changes beyond help text.",
+    "Focused test closeout.",
+    "Package-installed smoke execution."
+  ],
+  "acceptance": [
+    "Help output documents version and dashboard flags.",
+    "Command reference documents compact default, details, sections, limit, version, and version --json.",
+    "CLI UX guide documents color/no-color and read-only behavior where relevant.",
+    "Generated guidance remains aligned with npx-first Quiver usage.",
+    "docs/INDEX.md package decision is explicit and validated."
+  ],
+  "tests": [
+    "node --test tests/commands/cli-contract.test.js",
+    "node --test tests/lib/init-docs.test.js",
+    "git diff --check"
+  ],
+  "validation_hints": [
+    "Avoid duplicating long procedural docs across README and reference docs.",
+    "If adding docs/INDEX.md, inspect npm pack contents before finalizing."
+  ],
+  "estimated_hours": 4,
+  "status": "completed",
+  "started_at": "2026-05-28T17:00:00Z",
+  "completed_at": "2026-05-28T17:36:57Z",
+  "actual_hours": 1,
+  "blocked_reason": null
+}

@@ -7,6 +7,7 @@ const cp = require('child_process');
 const { relativePosixPath } = require('../../src/create-quiver/lib/paths');
 
 const repoRoot = cp.execFileSync('git', ['rev-parse', '--show-toplevel'], { encoding: 'utf8' }).trim();
+const packageJson = JSON.parse(fs.readFileSync(path.join(repoRoot, 'package.json'), 'utf8'));
 const cli = path.join(repoRoot, 'bin', 'create-quiver.js');
 const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'quiver-cross-smoke-'));
 const fixtureRoot = path.join(repoRoot, 'tests', 'fixtures', 'workflow-gates');
@@ -210,7 +211,9 @@ function initProject(targetRoot, projectName) {
 function assertNodeNativeScripts(packageJsonPath, label) {
   assertPackageScripts(packageJsonPath, label, [
     'quiver:migrate',
+    'quiver:version',
     'quiver:analyze',
+    'quiver:dashboard',
     'quiver:plan',
     'quiver:graph',
     'quiver:next',
@@ -272,7 +275,9 @@ function runSmoke() {
   assertFile(path.join(newProject, '.quiver', 'state.json'));
   assertNodeNativeScripts(path.join(newProject, 'package.json'), 'new project');
   assertPackageScripts(path.join(newProject, 'package.json'), 'new project', [
+    'quiver:version',
     'quiver:plan',
+    'quiver:dashboard',
     'quiver:graph',
     'quiver:next',
     'quiver:doctor',
@@ -296,6 +301,12 @@ function runSmoke() {
   assert(!doctorBefore.includes('Run migration first'), 'doctor before analyze should not require migration');
 
   runNodeCli(newProject, ['analyze']);
+  const newVersion = runNodeCli(newProject, ['version', '--no-color']);
+  const newVersionJson = JSON.parse(runNodeCli(newProject, ['version', '--json']));
+  assertContains(newVersion, `Quiver CLI: ${packageJson.version}`, 'version output');
+  assert(newVersionJson.version_schema_version === 1, 'version JSON schema mismatch');
+  assert(newVersionJson.cli.version === packageJson.version, 'version JSON cli version mismatch');
+  assert(newVersionJson.project.quiver_initialized === true, 'version JSON project initialization mismatch');
   const doctorAfter = runNodeCli(newProject, ['doctor']);
   assertContains(doctorAfter, 'Read AGENTS.md, then docs/AI_ONBOARDING_PROMPT.md and execute it.', 'doctor after analyze');
   assertContains(doctorAfter, 'npx create-quiver next', 'doctor after analyze');
@@ -317,6 +328,7 @@ function runSmoke() {
   assertContains(fs.readFileSync(path.join(newProject, 'docs', 'WORKFLOW.md'), 'utf8'), 'docs/PROJECT_MAP.md', 'WORKFLOW.md');
   assertContains(fs.readFileSync(path.join(newProject, 'docs', 'AI_ONBOARDING_PROMPT.md'), 'utf8'), 'docs/PROJECT_MAP.md', 'AI_ONBOARDING_PROMPT.md');
   assertContains(fs.readFileSync(path.join(newProject, 'docs', 'COMMANDS.md'), 'utf8'), '| Command | Purpose | OS | Since | Example |', 'COMMANDS.md');
+  assertContains(fs.readFileSync(path.join(newProject, 'docs', 'COMMANDS.md'), 'utf8'), '`quiver:version`', 'COMMANDS.md');
   assertContains(fs.readFileSync(path.join(newProject, 'docs', 'COMMANDS.md'), 'utf8'), '`quiver:plan`', 'COMMANDS.md');
   assertContains(fs.readFileSync(path.join(newProject, 'docs', 'COMMANDS.md'), 'utf8'), '`quiver:graph`', 'COMMANDS.md');
   assertContains(fs.readFileSync(path.join(newProject, 'docs', 'COMMANDS.md'), 'utf8'), '`quiver:ai:onboard`', 'COMMANDS.md');
@@ -395,6 +407,15 @@ function runSmoke() {
   assert(nextJson.next.start_slice_command === 'npx create-quiver start-slice "specs/smoke-project/slices/slice-01-ready/slice.json"', 'next JSON start command mismatch');
   assert(Array.isArray(nextJson.all_ready), 'next JSON missing all_ready array');
   assert(nextJson.all_ready.some((item) => item.ref === 'smoke-project/slice-01-ready'), 'next JSON missing ready slice ref');
+  const dashboardOutput = runNodeCli(newProject, ['dashboard']);
+  const dashboardSection = runNodeCli(newProject, ['dashboard', '--section', 'slices', '--limit', '1']);
+  const dashboardJson = JSON.parse(runNodeCli(newProject, ['dashboard', '--json']));
+  assertContains(dashboardOutput, 'Quiver Dashboard', 'dashboard output');
+  assertContains(dashboardOutput, 'Next safe command:', 'dashboard output');
+  assertContains(dashboardOutput, 'Inspect: npx create-quiver dashboard --details', 'dashboard output');
+  assertContains(dashboardSection, 'Slices', 'dashboard section output');
+  assert(dashboardJson.dashboard_schema_version === 1, 'dashboard JSON schema mismatch');
+  assert(dashboardJson.summary.slices >= 1, 'dashboard JSON missing slices');
   assertContains(fs.readFileSync(path.join(newProject, 'docs', 'SUPPORT_MATRIX.md'), 'utf8'), 'Cross-Platform Authoring Rules', 'SUPPORT_MATRIX.md');
   assertContains(fs.readFileSync(path.join(newProject, 'docs', 'SUPPORT_MATRIX.md'), 'utf8'), 'No shell invocations for logic', 'SUPPORT_MATRIX.md');
   assertContains(fs.readFileSync(path.join(newProject, 'docs', 'ai', 'QUICK.md'), 'utf8'), 'docs/PROJECT_MAP.md', 'QUICK.md');
@@ -447,7 +468,9 @@ function runSmoke() {
   const legacyPackage = path.join(legacyProject, 'package.json');
   const legacyPkg = readJson(legacyPackage);
   delete legacyPkg.scripts['quiver:migrate'];
+  delete legacyPkg.scripts['quiver:version'];
   delete legacyPkg.scripts['quiver:analyze'];
+  delete legacyPkg.scripts['quiver:dashboard'];
   delete legacyPkg.scripts['quiver:doctor'];
   delete legacyPkg.scripts['quiver:ai:onboard'];
   delete legacyPkg.scripts['quiver:ai:plan'];
@@ -477,7 +500,9 @@ function runSmoke() {
   runNodeCli(legacyProject, ['migrate', '--skip-install']);
   assertPackageScripts(legacyPackage, 'legacy project after migrate', [
     'quiver:migrate',
+    'quiver:version',
     'quiver:analyze',
+    'quiver:dashboard',
     'quiver:plan',
     'quiver:graph',
     'quiver:next',
@@ -505,6 +530,7 @@ function runSmoke() {
   assertFile(path.join(legacyProject, 'docs', 'ai', 'PRINCIPLES.md'));
   assertFile(path.join(legacyProject, 'docs', 'COMMANDS.md'));
   assertContains(fs.readFileSync(path.join(legacyProject, 'docs', 'COMMANDS.md'), 'utf8'), '| Command | Purpose | OS | Since | Example |', 'legacy COMMANDS.md');
+  assertContains(fs.readFileSync(path.join(legacyProject, 'docs', 'COMMANDS.md'), 'utf8'), '`quiver:version`', 'legacy COMMANDS.md');
   assertContains(fs.readFileSync(path.join(legacyProject, 'docs', 'COMMANDS.md'), 'utf8'), '`quiver:plan`', 'legacy COMMANDS.md');
   assertContains(fs.readFileSync(path.join(legacyProject, 'docs', 'COMMANDS.md'), 'utf8'), '`quiver:graph`', 'legacy COMMANDS.md');
   assertContains(fs.readFileSync(path.join(legacyProject, 'docs', 'COMMANDS.md'), 'utf8'), 'Mermaid', 'legacy COMMANDS.md');
@@ -586,17 +612,43 @@ function runSmoke() {
     cwd: repoRoot,
     env: { ...process.env, npm_config_cache: path.join(tempRoot, 'npm-cache-install') },
   });
+  const installedCli = path.join(installerRoot, 'node_modules', 'create-quiver', 'bin', 'create-quiver.js');
+  const packagedHelp = run('node', [installedCli, '--help'], { cwd: repoRoot });
+  const packagedVersion = run('node', [installedCli, 'version', '--no-color'], { cwd: repoRoot });
+  const packagedVersionJson = JSON.parse(run('node', [installedCli, 'version', '--json'], { cwd: repoRoot }));
+  const packagedAliasVersion = runNpm(['exec', '--prefix', installerRoot, '--', 'quiver', 'version', '--no-color'], {
+    cwd: repoRoot,
+    env: { ...process.env, npm_config_cache: path.join(tempRoot, 'npm-cache-exec') },
+  });
+  assert(run('node', [installedCli, '--version'], { cwd: repoRoot }) === packageJson.version, 'packaged --version mismatch');
+  assertContains(packagedHelp, '--details', 'packaged help');
+  assertContains(packagedHelp, '--section <name>', 'packaged help');
+  assertContains(packagedHelp, '--limit <n>', 'packaged help');
+  assertContains(packagedHelp, 'version [--json]', 'packaged help');
+  assertContains(packagedVersion, `Quiver CLI: ${packageJson.version}`, 'packaged version output');
+  assert(packagedVersionJson.version_schema_version === 1, 'packaged version JSON schema mismatch');
+  assert(packagedVersionJson.cli.version === packageJson.version, 'packaged version JSON cli version mismatch');
+  assertContains(packagedAliasVersion, `Quiver CLI: ${packageJson.version}`, 'packaged quiver alias version');
 
-  run('node', [path.join(installerRoot, 'node_modules', 'create-quiver', 'bin', 'create-quiver.js'), '--name', 'Packaged Project', '--dir', releaseProject, '--full', '--skip-install'], {
+  run('node', [installedCli, '--name', 'Packaged Project', '--dir', releaseProject, '--full', '--skip-install'], {
     cwd: repoRoot,
   });
-  run('node', [path.join(installerRoot, 'node_modules', 'create-quiver', 'bin', 'create-quiver.js'), 'analyze'], {
+  run('node', [installedCli, 'analyze'], {
     cwd: releaseProject,
   });
-  const releaseDoctor = run('node', [path.join(installerRoot, 'node_modules', 'create-quiver', 'bin', 'create-quiver.js'), 'doctor'], {
+  const releaseDoctor = run('node', [installedCli, 'doctor'], {
     cwd: releaseProject,
   });
+  const releaseDashboard = run('node', [installedCli, 'dashboard'], {
+    cwd: releaseProject,
+  });
+  const releaseDashboardJson = JSON.parse(run('node', [installedCli, 'dashboard', '--json'], {
+    cwd: releaseProject,
+  }));
   assertContains(releaseDoctor, 'Read AGENTS.md, then docs/AI_ONBOARDING_PROMPT.md and execute it.', 'packaged doctor');
+  assertContains(releaseDashboard, 'Quiver Dashboard', 'packaged dashboard');
+  assertContains(releaseDashboard, 'Next safe command:', 'packaged dashboard');
+  assert(releaseDashboardJson.dashboard_schema_version === 1, 'packaged dashboard JSON schema mismatch');
   assertFile(path.join(releaseProject, '.quiver', 'scans', 'PROJECT_SCAN.json'));
   assertFile(path.join(releaseProject, 'AGENTS.md'));
   assertFile(path.join(releaseProject, 'docs', 'PROJECT_MAP.md'));
@@ -626,6 +678,7 @@ function runSmoke() {
   assertFrontMatter(path.join(releaseProject, 'docs', 'ai', 'LESSONS.md'));
   assertFrontMatter(path.join(releaseProject, 'docs', 'ai', 'PRINCIPLES.md'));
   assertContains(fs.readFileSync(path.join(releaseProject, 'docs', 'COMMANDS.md'), 'utf8'), '| Command | Purpose | OS | Since | Example |', 'packaged COMMANDS.md');
+  assertContains(fs.readFileSync(path.join(releaseProject, 'docs', 'COMMANDS.md'), 'utf8'), '`quiver:version`', 'packaged COMMANDS.md');
   assertContains(fs.readFileSync(path.join(releaseProject, 'docs', 'COMMANDS.md'), 'utf8'), '`quiver:plan`', 'packaged COMMANDS.md');
   assertContains(fs.readFileSync(path.join(releaseProject, 'docs', 'COMMANDS.md'), 'utf8'), '`quiver:graph`', 'packaged COMMANDS.md');
   assertContains(fs.readFileSync(path.join(releaseProject, 'docs', 'COMMANDS.md'), 'utf8'), 'Mermaid', 'packaged COMMANDS.md');

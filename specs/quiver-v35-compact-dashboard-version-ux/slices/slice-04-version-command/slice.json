@@ -1,0 +1,82 @@
+{
+  "slice_id": "slice-04-version-command",
+  "ticket": "QUIVER-35-04",
+  "type": "feature",
+  "title": "Version command and banner",
+  "objective": "Add a human-friendly Quiver version command with a branded ASCII banner and automation-safe JSON output.",
+  "description": "Introduces npx create-quiver version and version --json while preserving top-level --version and -V semver-only behavior.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v35-version-command",
+    "branch_name": "feature/QUIVER-35-04-v35-version-command"
+  },
+  "files": [
+    "src/create-quiver/index.js",
+    "src/create-quiver/lib/cli/theme.js",
+    "src/create-quiver/lib/version.js",
+    "tests/commands/cli-contract.test.js",
+    "tests/lib/cli-theme.test.js",
+    "tests/lib/version.test.js"
+  ],
+  "expected_read_paths": [
+    "src/create-quiver/index.js",
+    "src/create-quiver/lib/cli/theme.js",
+    "tests/commands/cli-contract.test.js",
+    "tests/lib/cli-theme.test.js",
+    "package.json",
+    "specs/quiver-v35-compact-dashboard-version-ux/SPEC.md"
+  ],
+  "allowed_write_paths": [
+    "src/create-quiver/index.js",
+    "src/create-quiver/lib/version.js",
+    "src/create-quiver/lib/cli/theme.js",
+    "tests/commands/cli-contract.test.js",
+    "tests/lib/cli-theme.test.js",
+    "tests/lib/version.test.js",
+    "specs/quiver-v35-compact-dashboard-version-ux/**"
+  ],
+  "depends_on": [
+    "slice-01-dashboard-cli-contract"
+  ],
+  "parallel_safe": "conditional",
+  "parallel_safe_reason": "Can run after slice-01 in parallel with compact dashboard work if router/help changes are coordinated.",
+  "must": [
+    "Add npx create-quiver version as a human command.",
+    "Add npx create-quiver version --json with version_schema_version 1.",
+    "Preserve npx create-quiver --version and -V as semver-only output.",
+    "Support the quiver binary alias.",
+    "Render a Quiver ASCII banner using approved palette when color is enabled.",
+    "Disable color for --no-color, NO_COLOR, FORCE_COLOR=0, CI, no-TTY, and dumb terminals.",
+    "Keep banner width <= 80 columns.",
+    "Avoid external process execution."
+  ],
+  "not_included": [
+    "Dashboard rendering changes.",
+    "Package smoke updates.",
+    "Docs beyond help text needed for command discovery."
+  ],
+  "acceptance": [
+    "create-quiver version renders a readable human report.",
+    "create-quiver version --json emits parseable JSON with version_schema_version 1.",
+    "Human version output works outside initialized Quiver projects.",
+    "No ANSI appears in --json, --no-color, CI, or no-TTY modes.",
+    "create-quiver --version and -V still output only package semver.",
+    "quiver version behaves like create-quiver version."
+  ],
+  "tests": [
+    "node --test tests/commands/cli-contract.test.js",
+    "node --test tests/lib/cli-theme.test.js tests/lib/version.test.js",
+    "git diff --check"
+  ],
+  "validation_hints": [
+    "Use dependency injection for env/tty where possible so tests can simulate CI and no-TTY.",
+    "Do not shell out to npm or git for metadata."
+  ],
+  "estimated_hours": 5,
+  "status": "completed",
+  "started_at": "2026-05-28T17:00:00Z",
+  "completed_at": "2026-05-28T17:36:57Z",
+  "actual_hours": 2,
+  "blocked_reason": null
+}

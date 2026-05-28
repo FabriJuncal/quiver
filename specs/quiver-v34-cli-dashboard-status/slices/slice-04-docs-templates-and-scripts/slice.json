@@ -1,0 +1,88 @@
+{
+  "slice_id": "slice-04-docs-templates-and-scripts",
+  "ticket": "QUIVER-34-04",
+  "type": "docs",
+  "title": "Docs, templates, and scripts",
+  "objective": "Document the dashboard command and add generated project script support.",
+  "description": "Updates public documentation, AI guidance, generated docs/templates, and package scripts after the dashboard command contract is stable.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v34-dashboard-docs-scripts",
+    "branch_name": "feature/QUIVER-34-04-dashboard-docs-scripts"
+  },
+  "files": [
+    "README.md",
+    "README_FOR_AI.md",
+    "docs/CLI_UX_GUIDE.md",
+    "docs/reference/commands.md",
+    "docs/COMMANDS.md.template",
+    "docs/WORKFLOW.md.template",
+    "package.json",
+    "src/create-quiver/lib/init-docs.js",
+    "tests/lib/init-docs.test.js",
+    "tests/lib/init-layout.test.js"
+  ],
+  "expected_read_paths": [
+    "README.md",
+    "README_FOR_AI.md",
+    "docs/CLI_UX_GUIDE.md",
+    "docs/reference/commands.md",
+    "src/create-quiver/lib/init-docs.js",
+    "tests/lib/init-docs.test.js",
+    "tests/lib/init-layout.test.js",
+    "specs/quiver-v34-cli-dashboard-status/SPEC.md"
+  ],
+  "allowed_write_paths": [
+    "README.md",
+    "README_FOR_AI.md",
+    "docs/CLI_UX_GUIDE.md",
+    "docs/reference/commands.md",
+    "docs/COMMANDS.md.template",
+    "docs/WORKFLOW.md.template",
+    "package.json",
+    "src/create-quiver/lib/init-docs.js",
+    "tests/lib/init-docs.test.js",
+    "tests/lib/init-layout.test.js",
+    "specs/quiver-v34-cli-dashboard-status/**"
+  ],
+  "depends_on": [
+    "slice-02-dashboard-command-rendering",
+    "slice-03-dashboard-edge-cases-and-guardrails"
+  ],
+  "parallel_safe": "no",
+  "parallel_safe_reason": "Docs and generated scripts should land after command behavior is stable.",
+  "must": [
+    "Document `npx create-quiver dashboard` and key flags.",
+    "Document that dashboard is read-only and not a TUI/fullscreen surface.",
+    "Document `dashboard --json` compact schema at a high level.",
+    "Add generated `quiver:dashboard` script where generated quiver scripts are listed.",
+    "Keep README concise and avoid duplicating full procedural docs.",
+    "Update tests for generated docs/scripts."
+  ],
+  "not_included": [
+    "Changing command behavior.",
+    "Adding Ink/TUI docs.",
+    "Claiming npm publication."
+  ],
+  "acceptance": [
+    "Public docs mention dashboard usage and flags.",
+    "Generated scripts include quiver:dashboard.",
+    "Generated docs/templates stay aligned.",
+    "Docs do not imply dashboard writes or runs providers."
+  ],
+  "tests": [
+    "node --test tests/lib/init-docs.test.js tests/lib/init-layout.test.js",
+    "node --test tests/commands/cli-contract.test.js",
+    "git diff --check"
+  ],
+  "validation_hints": [
+    "Keep command examples package-manager-aware where generated scripts are discussed.",
+    "Do not over-document internals in README."
+  ],
+  "estimated_hours": 4,
+  "status": "completed",
+  "blocked_reason": null,
+  "actual_hours": 3,
+  "completed_at": "2026-05-28"
+}

@@ -1,0 +1,64 @@
+{
+  "slice_id": "slice-00-foundation-and-doc-router",
+  "ticket": "QUIVER-35-00",
+  "type": "documentation",
+  "title": "Foundation and doc router decision",
+  "objective": "Create the approved v35 spec package and record the docs/INDEX.md router decision without changing product code.",
+  "description": "Publishes the spec, execution plan, status, PR body, evidence skeleton, and per-slice handoffs for compact dashboard and version UX work.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v35-foundation-doc-router",
+    "branch_name": "feature/QUIVER-35-00-v35-foundation-doc-router"
+  },
+  "files": [
+    "specs/quiver-v35-compact-dashboard-version-ux/**"
+  ],
+  "expected_read_paths": [
+    "README_FOR_AI.md",
+    "docs/CLI_UX_GUIDE.md",
+    "docs/reference/commands.md",
+    "docs/INDEX.md.template",
+    "specs/quiver-v34-cli-dashboard-status/SPEC.md",
+    "specs/quiver-v34-cli-dashboard-status/EXECUTION_PLAN.md"
+  ],
+  "allowed_write_paths": [
+    "specs/quiver-v35-compact-dashboard-version-ux/**"
+  ],
+  "depends_on": [],
+  "parallel_safe": "never",
+  "parallel_safe_reason": "This slice establishes the spec package and execution order for all later slices.",
+  "must": [
+    "Create SPEC.md, STATUS.md, EXECUTION_PLAN.md, EVIDENCE_REPORT.md, and pr.md.",
+    "Create every slice directory with slice.json, EXECUTION_BRIEF.md, and CLOSURE_BRIEF.md.",
+    "Record that docs/INDEX.md is missing in this checkout while docs/INDEX.md.template exists.",
+    "Do not implement product code."
+  ],
+  "not_included": [
+    "Dashboard parser changes.",
+    "Version command implementation.",
+    "Docs/INDEX.md creation outside the spec package.",
+    "Tests or smokes."
+  ],
+  "acceptance": [
+    "Spec package exists under specs/quiver-v35-compact-dashboard-version-ux.",
+    "Each slice has slice.json, EXECUTION_BRIEF.md, and CLOSURE_BRIEF.md.",
+    "STATUS.md marks slice-00 completed and slice-01 ready.",
+    "No product code is modified by this slice.",
+    "Spec validation is attempted and any blocker is documented."
+  ],
+  "tests": [
+    "node -e \"const fs=require('fs'); for (const f of process.argv.slice(1)) JSON.parse(fs.readFileSync(f,'utf8'))\" specs/quiver-v35-compact-dashboard-version-ux/slices/*/slice.json",
+    "npx create-quiver spec validate specs/quiver-v35-compact-dashboard-version-ux",
+    "git diff --check"
+  ],
+  "validation_hints": [
+    "Use the repo's existing specs/quiver-vNN-* format rather than the generic docs/specs skill format.",
+    "Keep handoff content concise enough for executor agents."
+  ],
+  "estimated_hours": 2,
+  "status": "completed",
+  "blocked_reason": null,
+  "actual_hours": 2,
+  "completed_at": "2026-05-28"
+}

@@ -83,8 +83,28 @@ function safeBuildGraph(slices, allowGraphErrors) {
 function resolveProjectState(projectRoot, options = {}) {
   const specSlug = options.specSlug ? String(options.specSlug).trim() : '';
   const rawSlices = readResolverSlices(projectRoot, specSlug);
-  const graph = safeBuildGraph(rawSlices, options.allowGraphErrors === true);
-  const orderedSlices = graph.ok ? topoSort(graph).map(normalizeSliceRecord) : graph.nodes.slice().sort((left, right) => compareRefs(left.ref, right.ref));
+  let graph = safeBuildGraph(rawSlices, options.allowGraphErrors === true);
+  let orderedSlices;
+
+  try {
+    orderedSlices = graph.ok ? topoSort(graph).map(normalizeSliceRecord) : graph.nodes.slice().sort((left, right) => compareRefs(left.ref, right.ref));
+  } catch (error) {
+    if (!options.allowGraphErrors || !(error instanceof SliceGraphError)) {
+      throw error;
+    }
+
+    graph = {
+      ok: false,
+      nodes: inferDependencies(rawSlices).map(normalizeSliceRecord),
+      edges: [],
+      cycles: Array.isArray(graph.cycles) ? graph.cycles : [],
+      error: {
+        code: error.code,
+        message: error.message,
+      },
+    };
+    orderedSlices = graph.nodes.slice().sort((left, right) => compareRefs(left.ref, right.ref));
+  }
 
   return {
     graph,

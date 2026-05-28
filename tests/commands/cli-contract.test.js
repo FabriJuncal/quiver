@@ -23,6 +23,19 @@ test('top-level -V prints the installed package version', () => {
   assert.equal(runCli(['-V']).trim(), packageJson.version);
 });
 
+test('version command prints human and JSON metadata without changing semver flags', () => {
+  const human = runCli(['version', '--no-color']);
+  const json = JSON.parse(runCli(['version', '--json']));
+
+  assert.match(human, /Quiver CLI:/);
+  assert.match(human, /Node:/);
+  assert.match(human, /Package manager:/);
+  assert.doesNotMatch(human, /\u001b\[/);
+  assert.equal(json.version_schema_version, 1);
+  assert.equal(json.cli.version, packageJson.version);
+  assert.equal(json.runtime.node, process.version);
+});
+
 test('local quiver alias points to the same CLI entrypoint', () => {
   assert.equal(packageJson.bin.quiver, packageJson.bin['create-quiver']);
   assert.equal(packageJson.bin.quiver, 'bin/create-quiver.js');
@@ -40,6 +53,8 @@ test('top-level help command prints grouped command descriptions', () => {
   assert.match(output, /ai agent set\|list\|show\|doctor\|repair\s+Manage, diagnose, and dry-run repair planner, executor, reviewer, and doctor provider profiles without secrets\./);
   assert.match(output, /ai models list\s+List provider\/model ids known by Quiver without claiming account availability\./);
   assert.match(output, /check-slice\s+Validate slice structure/);
+  assert.match(output, /dashboard\s+Show compact read-only project, spec, slice, run, approval, and agent status\./);
+  assert.match(output, /version\s+Show a Quiver-branded version report/);
   assert.match(output, /demo create spec-viewer\s+Create or preview the optional static Quiver Spec Viewer demo scaffold/);
 });
 
@@ -47,9 +62,11 @@ test('help output documents important public commands', () => {
   const output = runCli(['--help']);
   const expectedCommands = [
     'init',
+    'version',
     'analyze',
     'doctor',
     'flow',
+    'dashboard',
     'prepare',
     'migrate',
     'plan',
@@ -103,6 +120,9 @@ test('help output documents important public commands', () => {
     assert.match(output, new RegExp(`${command.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s+\\S`));
   }
   assert.match(output, /--dry-run\s+Preview .*ai agent set/);
+  assert.match(output, /--details\s+Show the full human dashboard report/);
+  assert.match(output, /--section <name>\s+Show one human dashboard section/);
+  assert.match(output, /--limit <n>\s+Limit dashboard human lists/);
   assert.match(output, /--model <model-id>\s+Technical model id for AI agent profiles or provider-backed AI commands/);
   assert.match(output, /ai agent set planner --provider codex --model gpt-5\.5 --dry-run/);
   assert.match(output, new RegExp(`npx --yes create-quiver@${packageJson.version.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')} ai prompt-slice`));

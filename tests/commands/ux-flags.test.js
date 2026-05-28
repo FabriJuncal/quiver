@@ -38,6 +38,12 @@ test('UX flag matrix documents supported commands', () => {
     review: false,
     note: 'no UX flag support',
   });
+  assert.deepEqual(getUxFlagSupport('dashboard'), {
+    withPlanner: false,
+    interactive: false,
+    review: false,
+    note: 'read-only consolidated project status',
+  });
 });
 
 test('resolveUxCommandKey handles top-level, ai, and spec commands', () => {

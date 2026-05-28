@@ -26,6 +26,8 @@ Más detalle: [Instalación y uso con npx](../getting-started/installation.md).
 | Comando | Para qué sirve |
 |---|---|
 | `npx --yes create-quiver@latest --version` | Muestra la versión del CLI. |
+| `npx --yes create-quiver@latest version` | Muestra un reporte de versión con banner Quiver, runtime, package manager y proyecto detectado. |
+| `npx --yes create-quiver@latest version --json` | Emite el reporte de versión como JSON parseable para automatización. |
 | `npx --yes create-quiver@latest --help` | Muestra los comandos soportados. |
 | `npx --yes create-quiver@latest init --name "Proyecto"` | Inicializa Quiver en un proyecto. |
 | `npx --yes create-quiver@latest init --interactive` | Abre una guía interactiva para elegir modo de proyecto, metodología `wdd-sdd`, perfil inicial y próximos pasos de agentes. |
@@ -35,6 +37,10 @@ Más detalle: [Instalación y uso con npx](../getting-started/installation.md).
 | `npx --yes create-quiver@latest doctor` | Valida la salud de Quiver. |
 | `npx --yes create-quiver@latest doctor --json` | Emite el mismo diagnóstico de Doctor como JSON parseable para automatización. |
 | `npx --yes create-quiver@latest flow` | Muestra el próximo paso seguro. |
+| `npx --yes create-quiver@latest dashboard` | Muestra un resumen compacto read-only del proyecto, specs, slices, runs, approvals y agentes. |
+| `npx --yes create-quiver@latest dashboard --details` | Muestra el reporte humano completo cuando se necesita auditoría sin perder el resumen por defecto. |
+| `npx --yes create-quiver@latest dashboard --section <name>` | Muestra una sección humana puntual como `specs`, `slices`, `blockers`, `warnings`, `agents`, `approvals`, `runs`, `active-slice` o `next-steps`. |
+| `npx --yes create-quiver@latest dashboard --limit <n>` | Ajusta el límite de listas del dashboard compacto entre 1 y 100. |
 
 ## Planificación con IA
 
@@ -80,6 +86,8 @@ Más detalle: [Instalación y uso con npx](../getting-started/installation.md).
 | `npx --yes create-quiver@latest spec validate specs/<spec> --strict` | Valida el paquete de spec. |
 | `npx --yes create-quiver@latest spec start specs/<spec>` | Crea o reutiliza el worktree de una spec. |
 | `npx --yes create-quiver@latest plan --spec <spec>` | Muestra el orden de ejecución de slices. |
+| `npx --yes create-quiver@latest dashboard --spec <spec>` | Muestra estado consolidado read-only para una spec sin ocultar el progreso global. |
+| `npx --yes create-quiver@latest dashboard --section slices --spec <spec>` | Inspecciona solo slices de la spec seleccionada. |
 | `npx --yes create-quiver@latest graph --spec <spec>` | Muestra dependencias entre slices. |
 | `npx --yes create-quiver@latest next --all-ready --spec <spec>` | Lista slices listos para ejecutar. |
 | `npx --yes create-quiver@latest ai prompt-slice --slice <slice.json> --dry-run` | Imprime un prompt mínimo para el ejecutor. |
@@ -107,6 +115,10 @@ Más detalle: [Instalación y uso con npx](../getting-started/installation.md).
 | `--review` | Abre o prepara revisión humana antes de escrituras persistentes. |
 | `--methodology wdd-sdd` | Declara la metodología soportada por comandos interactivos o automatizados. |
 | `--no-color` | Desactiva colores ANSI en salida humana. |
+| `--json` | Emite salida machine-readable en comandos que lo soportan, incluyendo `dashboard` y `version`. |
+| `--details` | Expande el dashboard humano completo; no combina con `--json` ni `--section`. |
+| `--section <name>` | Muestra una sección humana del dashboard; no combina con `--json` ni `--details`. |
+| `--limit <n>` | Limita listas del dashboard compacto entre 1 y 100; no combina con `--json`. |
 | `--provider codex\|claude\|gemini` | Selecciona CLI local de proveedor. |
 | `--model <model-id>` | Selecciona el identificador técnico del modelo para `ai agent set` o ejecución de proveedor. Quiver normaliza alias conocidos, pero no garantiza acceso en la cuenta del proveedor. |
 | `--commit` | Permite que Quiver commitee trabajo validado del slice. |
@@ -124,7 +136,7 @@ Más detalle: [Instalación y uso con npx](../getting-started/installation.md).
 | `spec create` | sí | sí | sí |
 | `ai pr` | no | sí | sí |
 | `ai approve` | no | no | no |
-| `flow`, `next`, `graph` | no | no | no |
+| `flow`, `dashboard`, `next`, `graph`, `version` | no | no | no |
 | `ai inspect`, `ai export`, `ai specs list`, `ai slices list`, `ai trace report` | no | no | no |
 
 `--json` no se puede combinar con `--interactive` ni `--review`, porque la salida debe mantenerse legible por máquinas. El estándar completo vive en [docs/CLI_UX_GUIDE.md](../CLI_UX_GUIDE.md).
