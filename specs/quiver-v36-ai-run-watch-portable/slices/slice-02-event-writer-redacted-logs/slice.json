@@ -1,0 +1,66 @@
+{
+  "slice_id": "slice-02-event-writer-redacted-logs",
+  "ticket": "QUIVER-36-02",
+  "type": "feature",
+  "title": "Event writer and redacted logs",
+  "objective": "Implement safe append-only event and log persistence for AI runs.",
+  "description": "Adds the writer layer for events.jsonl, provider logs, redaction, sanitization, truncation, and sequence numbers.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v36-event-writer-redacted-logs",
+    "branch_name": "feature/QUIVER-36-02-v36-event-writer-redacted-logs"
+  },
+  "files": [
+    "src/create-quiver/lib/ai/run-events.js",
+    "src/create-quiver/lib/evidence.js",
+    "tests/lib/ai-run-events.test.js"
+  ],
+  "expected_read_paths": [
+    "src/create-quiver/lib/evidence.js",
+    "src/create-quiver/lib/ai/run-state.js",
+    "tests/lib/ai-run-events.test.js",
+    "specs/quiver-v36-ai-run-watch-portable/SPEC.md"
+  ],
+  "allowed_write_paths": [
+    "src/create-quiver/lib/ai/run-events.js",
+    "src/create-quiver/lib/evidence.js",
+    "tests/lib/ai-run-events.test.js",
+    "specs/quiver-v36-ai-run-watch-portable/**"
+  ],
+  "depends_on": [
+    "slice-01-run-schema-path-safety"
+  ],
+  "parallel_safe": "no",
+  "parallel_safe_reason": "Provider streaming and watch rely on this writer contract.",
+  "must": [
+    "Write append-only events.jsonl.",
+    "Guarantee monotonic seq per run.",
+    "Redact secrets before writing logs/events.",
+    "Handle secrets split across chunks.",
+    "Sanitize ANSI and unsafe control characters.",
+    "Enforce log caps and emit log_truncated."
+  ],
+  "not_included": [
+    "Provider streaming integration.",
+    "Watch command UI."
+  ],
+  "acceptance": [
+    "Events are valid JSONL with schema_version, run_id, seq, timestamp, and type.",
+    "Concurrent reads do not crash while appending.",
+    "Partial trailing JSONL line is tolerated by readers.",
+    "Split secrets do not persist in clear text.",
+    "Log truncation is observable through an event."
+  ],
+  "tests": [
+    "node --test tests/lib/ai-run-events.test.js",
+    "git diff --check"
+  ],
+  "validation_hints": [
+    "Use fixtures with chunk boundaries inside tokens/passwords.",
+    "Use ANSI clear-screen and cursor movement examples."
+  ],
+  "estimated_hours": 6,
+  "status": "planned",
+  "blocked_reason": null
+}

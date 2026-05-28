@@ -1,0 +1,73 @@
+{
+  "slice_id": "slice-04-ai-run-watch-command",
+  "ticket": "QUIVER-36-04",
+  "type": "feature",
+  "title": "AI run watch command",
+  "objective": "Add a portable watcher command that replays and follows run events in human and JSONL modes.",
+  "description": "Implements the public watcher surface for run ids, latest selection, legacy runs, stale runs, and terminal statuses.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v36-ai-run-watch-command",
+    "branch_name": "feature/QUIVER-36-04-v36-ai-run-watch-command"
+  },
+  "files": [
+    "src/create-quiver/commands/ai.js",
+    "src/create-quiver/lib/ai/run-watch.js",
+    "src/create-quiver/index.js",
+    "tests/commands/ai-run-watch.test.js",
+    "tests/lib/ai-run-watch.test.js"
+  ],
+  "expected_read_paths": [
+    "src/create-quiver/commands/ai.js",
+    "src/create-quiver/index.js",
+    "src/create-quiver/lib/ai/run-state.js",
+    "src/create-quiver/lib/ai/run-events.js",
+    "specs/quiver-v36-ai-run-watch-portable/SPEC.md"
+  ],
+  "allowed_write_paths": [
+    "src/create-quiver/commands/ai.js",
+    "src/create-quiver/lib/ai/run-watch.js",
+    "src/create-quiver/index.js",
+    "tests/commands/ai-run-watch.test.js",
+    "tests/lib/ai-run-watch.test.js",
+    "specs/quiver-v36-ai-run-watch-portable/**"
+  ],
+  "depends_on": [
+    "slice-01-run-schema-path-safety",
+    "slice-02-event-writer-redacted-logs"
+  ],
+  "parallel_safe": "conditional",
+  "parallel_safe_reason": "Can proceed after the event contract is stable if it does not modify provider execution.",
+  "must": [
+    "Support --run <run-id>.",
+    "Support --latest.",
+    "Reject --run with --latest.",
+    "Support --json JSONL output.",
+    "Replay existing events and follow active runs.",
+    "Handle missing, legacy, stale, completed, failed, and canceled runs.",
+    "Ensure Ctrl+C stops only the watcher."
+  ],
+  "not_included": [
+    "Provider streaming integration.",
+    "Main command progress guidance."
+  ],
+  "acceptance": [
+    "Human watch output is useful for active and completed runs.",
+    "JSON watch output is pure JSONL.",
+    "--latest selection is deterministic.",
+    "Malformed run ids are rejected before file access.",
+    "Legacy runs do not crash the command."
+  ],
+  "tests": [
+    "node --test tests/commands/ai-run-watch.test.js tests/lib/ai-run-watch.test.js",
+    "git diff --check"
+  ],
+  "validation_hints": [
+    "Test partial trailing JSONL lines.",
+    "Test multiple active runs for latest tie-breaking."
+  ],
+  "estimated_hours": 7,
+  "status": "planned",
+  "blocked_reason": null
+}

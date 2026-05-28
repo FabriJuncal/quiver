@@ -1,0 +1,61 @@
+{
+  "slice_id": "slice-00-foundation-and-handoffs",
+  "ticket": "QUIVER-36-00",
+  "type": "documentation",
+  "title": "Foundation and handoffs",
+  "objective": "Create the approved SDD package for the portable AI run watcher without implementing runtime code.",
+  "description": "Defines the spec, execution plan, evidence skeleton, PR body, and per-slice execution/closure handoffs.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v36-ai-run-watch-foundation",
+    "branch_name": "feature/QUIVER-36-00-v36-ai-run-watch-foundation"
+  },
+  "files": [
+    "specs/quiver-v36-ai-run-watch-portable/**"
+  ],
+  "expected_read_paths": [
+    "docs/INDEX.md.template",
+    "docs/CLI_UX_GUIDE.md",
+    "README_FOR_AI.md",
+    "specs/quiver-v35-compact-dashboard-version-ux/SPEC.md"
+  ],
+  "allowed_write_paths": [
+    "specs/quiver-v36-ai-run-watch-portable/**"
+  ],
+  "depends_on": [],
+  "parallel_safe": "no",
+  "parallel_safe_reason": "This foundation defines all later slice contracts.",
+  "must": [
+    "Create the v36 spec package.",
+    "Create execution and closure briefs for every slice.",
+    "Create JSON handoff files for every slice.",
+    "Do not implement runtime code."
+  ],
+  "not_included": [
+    "Run schema implementation.",
+    "Provider streaming implementation.",
+    "Watcher command implementation."
+  ],
+  "acceptance": [
+    "Spec package exists under specs/quiver-v36-ai-run-watch-portable.",
+    "Each slice has EXECUTION_BRIEF.md, CLOSURE_BRIEF.md, and slice.json.",
+    "slice-00 is completed and slice-01 is ready.",
+    "No runtime code is changed."
+  ],
+  "tests": [
+    "node -e \"const fs=require('fs'); for (const f of process.argv.slice(1)) JSON.parse(fs.readFileSync(f,'utf8')); console.log('slice json ok')\" specs/quiver-v36-ai-run-watch-portable/slices/*/slice.json",
+    "npx create-quiver spec validate specs/quiver-v36-ai-run-watch-portable --strict",
+    "git diff --check"
+  ],
+  "validation_hints": [
+    "Confirm every slice JSON parses.",
+    "Confirm no runtime implementation files changed."
+  ],
+  "estimated_hours": 1,
+  "status": "completed",
+  "started_at": "2026-05-28T00:00:00Z",
+  "completed_at": "2026-05-28T00:00:00Z",
+  "actual_hours": 1,
+  "blocked_reason": null
+}

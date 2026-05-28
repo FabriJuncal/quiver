@@ -1,0 +1,71 @@
+{
+  "slice_id": "slice-05-main-progress-user-guidance",
+  "ticket": "QUIVER-36-05",
+  "type": "feature",
+  "title": "Main progress and user guidance",
+  "objective": "Show run id and watch command in the main human UX while preserving automation-safe output modes.",
+  "description": "Updates planner-oriented live AI commands to surface the generated run id, keep stable progress, and guide users to the portable watcher.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v36-main-progress-user-guidance",
+    "branch_name": "feature/QUIVER-36-05-v36-main-progress-user-guidance"
+  },
+  "files": [
+    "src/create-quiver/commands/ai.js",
+    "src/create-quiver/lib/cli/ux.js",
+    "tests/commands/ai-plan.test.js",
+    "tests/commands/ai-revise.test.js",
+    "tests/commands/ai-run-watch.test.js"
+  ],
+  "expected_read_paths": [
+    "src/create-quiver/commands/ai.js",
+    "src/create-quiver/lib/ai/run-state.js",
+    "src/create-quiver/lib/ai/run-events.js",
+    "src/create-quiver/lib/cli/ux.js",
+    "specs/quiver-v36-ai-run-watch-portable/SPEC.md"
+  ],
+  "allowed_write_paths": [
+    "src/create-quiver/commands/ai.js",
+    "src/create-quiver/lib/cli/ux.js",
+    "tests/commands/ai-plan.test.js",
+    "tests/commands/ai-revise.test.js",
+    "tests/commands/ai-run-watch.test.js",
+    "specs/quiver-v36-ai-run-watch-portable/**"
+  ],
+  "depends_on": [
+    "slice-03-provider-streaming-integration",
+    "slice-04-ai-run-watch-command"
+  ],
+  "parallel_safe": "never",
+  "parallel_safe_reason": "Depends on the completed provider streaming and watcher contracts to avoid partial user guidance.",
+  "must": [
+    "Show the generated run id in human TTY output.",
+    "Show the exact watch command for the current run.",
+    "Keep raw provider output out of the main terminal by default.",
+    "Preserve CI, no-TTY, --json, --print-prompt, and --dry-run behavior.",
+    "Update run status on provider failure or main-command cancellation."
+  ],
+  "not_included": [
+    "Watcher implementation.",
+    "Provider event persistence.",
+    "Documentation updates."
+  ],
+  "acceptance": [
+    "Users can copy the displayed watch command and observe the same run.",
+    "Machine-readable output contains no human headings, spinners, or colors.",
+    "Dry-run and print-prompt do not create unexpected live run artifacts.",
+    "Failure and cancellation guidance is actionable and redacted."
+  ],
+  "tests": [
+    "node --test tests/commands/ai-plan.test.js tests/commands/ai-revise.test.js tests/commands/ai-run-watch.test.js",
+    "git diff --check"
+  ],
+  "validation_hints": [
+    "Test TTY and no-TTY paths separately.",
+    "Test provider failure and SIGINT after run creation."
+  ],
+  "estimated_hours": 4,
+  "status": "planned",
+  "blocked_reason": null
+}
