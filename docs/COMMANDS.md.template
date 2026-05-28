@@ -154,7 +154,8 @@ This document is the canonical command reference for the orchestration roadmap.
 - `quiver:ai:agent -- repair --dry-run` previews safe normalizations such as `model: "GPT 5.5"` to `model: "gpt-5.5"` plus `displayName: "GPT 5.5"`; it does not write files.
 - `quiver:ai:inspect`, `quiver:ai:specs`, `quiver:ai:slices`, and `quiver:ai:trace` are read-only inspection surfaces for humans and agents.
 - `quiver:ai:export -- --format json` is the dashboard/agent-friendly state contract; `--format markdown` is the PR/docs-friendly version.
-- Planner drafts are versioned under `.quiver/approvals/<phase>/drafts/`; use `quiver:ai:review-plan -- --dry-run` before approving a technical-plan draft, then `quiver:ai:approve -- --phase technical-plan --version 1` to approve the reviewed version. Plan reviews store structured recommendations: `approve`, `approve-with-risk`, or `revise`.
+- Planner drafts are versioned under `.quiver/approvals/<phase>/drafts/`; in TTY, `quiver:ai:approve -- --phase <phase>` lists drafts and recommends the current/latest eligible version, while CI/no-TTY must pass `--version <n>`. Use `quiver:ai:review-plan -- --dry-run` before approving a technical-plan draft. Plan reviews store structured recommendations: `approve`, `approve-with-risk`, or `revise`.
+- `quiver:ai:approvals`, `quiver:flow`, `quiver:ai:status`, `quiver:ai:resume`, and `quiver:spec:create -- --interactive` use the same approval-candidate data so next-step guidance stays consistent.
 - `quiver:ai:prompt-slice -- --dry-run` prints a paste-ready manual executor prompt and does not call a provider.
 - For commands pasted into another AI agent, prefer a non-interactive pinned form such as `npx --yes create-quiver@<version> ai prompt-slice --slice specs/<spec>/slices/<slice>/slice.json --dry-run`.
 - `quiver:evidence -- run -- <command>` preserves the wrapped command exit code. Redaction is best effort; avoid commands that intentionally print secrets.

@@ -1,0 +1,97 @@
+{
+  "slice_id": "slice-07-docs-tests-release-readiness",
+  "ticket": "QUIVER-33-07",
+  "type": "docs",
+  "title": "Docs, tests, and release readiness",
+  "objective": "Close documentation, regression coverage, smoke validation, and release readiness for v33.",
+  "description": "Updates public and AI-facing docs after implementation, runs full tests and smokes, records evidence, and prepares the PR for review.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v33-docs-tests-release-readiness",
+    "branch_name": "feature/QUIVER-33-07-v33-docs-tests-release-readiness"
+  },
+  "files": [
+    "README_FOR_AI.md",
+    "docs/CLI_UX_GUIDE.md",
+    "docs/reference/commands.md",
+    "docs/COMMANDS.md.template",
+    "docs/AI_ONBOARDING_PROMPT.md.template",
+    "CHANGELOG.md",
+    "ROADMAP.md",
+    "specs/quiver-v33-approval-ux-and-planner-progress/**"
+  ],
+  "expected_read_paths": [
+    "README_FOR_AI.md",
+    "README.md",
+    "docs/CLI_UX_GUIDE.md",
+    "docs/reference/commands.md",
+    "docs/COMMANDS.md.template",
+    "docs/AI_ONBOARDING_PROMPT.md.template",
+    "CHANGELOG.md",
+    "ROADMAP.md",
+    "SPEC.md",
+    "EVIDENCE_REPORT.md"
+  ],
+  "allowed_write_paths": [
+    "README_FOR_AI.md",
+    "README.md",
+    "docs/CLI_UX_GUIDE.md",
+    "docs/reference/commands.md",
+    "docs/COMMANDS.md.template",
+    "docs/AI_ONBOARDING_PROMPT.md.template",
+    "CHANGELOG.md",
+    "ROADMAP.md",
+    "specs/quiver-v33-approval-ux-and-planner-progress/**"
+  ],
+  "depends_on": [
+    "slice-02-approve-interactive-selection",
+    "slice-03-technical-plan-review-decision-data",
+    "slice-04-revise-input-guardrails",
+    "slice-05-provider-progress-alignment",
+    "slice-06-workflow-surface-integration"
+  ],
+  "parallel_safe": "no",
+  "parallel_safe_reason": "Final docs, tests, smoke evidence, and release readiness must close after all implementation slices.",
+  "must": [
+    "Update CLI UX and command reference docs for approval selectors, revise guardrails, and progress behavior.",
+    "Update README_FOR_AI source-of-truth notes.",
+    "Update generated templates if command guidance changes.",
+    "Run focused tests and full test suite.",
+    "Run smoke commands and package readiness checks where feasible.",
+    "Update STATUS.md, EVIDENCE_REPORT.md, CLOSURE_BRIEF.md files, and pr.md with final evidence.",
+    "Avoid claiming package publication until it actually happens."
+  ],
+  "not_included": [
+    "New product behavior beyond closing docs/tests.",
+    "Actual npm publication.",
+    "Post-merge cleanup."
+  ],
+  "acceptance": [
+    "Docs describe TTY approval selection and no-TTY explicit version behavior.",
+    "Docs describe planner progress behavior without implying prompts are mandatory.",
+    "Generated templates remain aligned.",
+    "Focused tests for every changed command pass.",
+    "Full test suite passes or documented blockers are explicit.",
+    "Smoke/package readiness evidence is recorded.",
+    "Spec status and PR body are updated."
+  ],
+  "tests": [
+    "node --test tests/**/*.test.js",
+    "npm run smoke:create-quiver",
+    "npm run smoke:doctor-fixtures",
+    "npm run smoke:guided-workflow",
+    "npm run package:quiver",
+    "git diff --check",
+    "node bin/create-quiver.js spec validate specs/quiver-v33-approval-ux-and-planner-progress"
+  ],
+  "validation_hints": [
+    "If package smoke is too slow or blocked, record the exact blocker and run the maximal focused test subset.",
+    "Do not claim npm release or latest package availability."
+  ],
+  "estimated_hours": 6,
+  "status": "completed",
+  "blocked_reason": null,
+  "actual_hours": 6,
+  "completed_at": "2026-05-28"
+}

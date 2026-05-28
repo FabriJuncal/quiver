@@ -1,0 +1,65 @@
+{
+  "slice_id": "slice-00-approval-ux-foundation",
+  "ticket": "QUIVER-33-00",
+  "type": "docs",
+  "title": "Approval UX foundation",
+  "objective": "Create the v33 spec package for approval UX, planner progress, and shared decision guidance.",
+  "description": "Publishes the approved spec, execution plan, PR body, status, evidence report, slice definitions, and handoffs without changing product code.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v33-approval-ux-foundation",
+    "branch_name": "feature/QUIVER-33-00-v33-approval-ux-foundation"
+  },
+  "files": [
+    "specs/quiver-v33-approval-ux-and-planner-progress/**"
+  ],
+  "expected_read_paths": [
+    "README_FOR_AI.md",
+    "docs/CLI_UX_GUIDE.md",
+    "docs/reference/commands.md",
+    "docs/workflows/full-ai-spec-to-pr.md",
+    "specs/quiver-v29-planner-prepare-context-cli-ux/**",
+    "specs/quiver-v30-interactive-cli-ux-agent-selection/**",
+    "specs/quiver-v31-ai-model-catalog-agent-selection/**"
+  ],
+  "allowed_write_paths": [
+    "specs/quiver-v33-approval-ux-and-planner-progress/**"
+  ],
+  "depends_on": [],
+  "parallel_safe": "no",
+  "parallel_safe_reason": "slice-00 is the foundation barrier for the spec.",
+  "must": [
+    "Create SPEC.md, STATUS.md, EVIDENCE_REPORT.md, EXECUTION_PLAN.md, and pr.md.",
+    "Create slice.json, EXECUTION_BRIEF.md, and CLOSURE_BRIEF.md for every slice.",
+    "Capture approved acceptance criteria and production review fixes.",
+    "Avoid product code changes."
+  ],
+  "not_included": [
+    "Implementing approval selectors.",
+    "Changing command behavior.",
+    "Updating public docs outside this spec package.",
+    "Publishing a package."
+  ],
+  "acceptance": [
+    "Spec folder exists under specs/quiver-v33-approval-ux-and-planner-progress.",
+    "Every slice has slice.json, EXECUTION_BRIEF.md, and CLOSURE_BRIEF.md.",
+    "Every slice.json parses successfully.",
+    "Spec validation passes.",
+    "No product code is modified."
+  ],
+  "tests": [
+    "git diff --check",
+    "find specs/quiver-v33-approval-ux-and-planner-progress -name \"slice.json\" -print -exec node -e \"JSON.parse(require('fs').readFileSync(process.argv[1], 'utf8'))\" {} \\;",
+    "node bin/create-quiver.js spec validate specs/quiver-v33-approval-ux-and-planner-progress"
+  ],
+  "validation_hints": [
+    "Keep this slice documentation-only.",
+    "Do not claim implementation or package publication."
+  ],
+  "estimated_hours": 2,
+  "status": "completed",
+  "blocked_reason": null,
+  "actual_hours": 2,
+  "completed_at": "2026-05-28"
+}

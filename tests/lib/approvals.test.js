@@ -9,6 +9,7 @@ const {
   approvalApprovedPath,
   approvalDraftVersionPath,
   approvalDraftPath,
+  buildPlannerApprovalCandidates,
   readPhaseApproval,
   resolveApprovedPlannerInput,
   savePlannerDraft,
@@ -91,6 +92,34 @@ test('planner approvals keep multiple drafts and only approve the current versio
     assert.match(summarizePlannerApproval(repo.root, 'acceptance'), /- v1: \.quiver\/approvals\/acceptance\/drafts\/001\.md/);
     assert.match(summarizePlannerApproval(repo.root, 'acceptance'), /- v2: \.quiver\/approvals\/acceptance\/drafts\/002\.md/);
     assert.match(summarizePlannerApproval(repo.root, 'acceptance'), /Approved v2/);
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('planner approval candidates expose current draft, history, and safe previews', () => {
+  const repo = makeRepo();
+
+  try {
+    writeFile(path.join(repo.root, 'requirements.md'), '# Requirements\n');
+
+    savePlannerDraft(repo.root, 'acceptance', 'requirements.md', 'draft v1\n');
+    savePlannerDraft(repo.root, 'acceptance', 'requirements.md', 'draft v2 token=secret-value\n');
+
+    const result = buildPlannerApprovalCandidates(repo.root, 'acceptance');
+
+    assert.equal(result.phase, 'acceptance');
+    assert.equal(result.approval_status, 'draft');
+    assert.equal(result.latest_version, 2);
+    assert.equal(result.candidates.length, 2);
+    assert.equal(result.current.version, 2);
+    assert.equal(result.recommended.version, 2);
+    assert.equal(result.candidates[0].recommended, false);
+    assert.equal(result.candidates[0].status, 'history');
+    assert.equal(result.candidates[1].approvable, true);
+    assert.match(result.candidates[1].next_command, /ai approve --phase acceptance --version 2/);
+    assert.equal(result.candidates[1].preview.includes('secret-value'), false);
+    assert.match(result.candidates[1].preview, /token=\[REDACTED\]/);
   } finally {
     repo.cleanup();
   }

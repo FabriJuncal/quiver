@@ -1,0 +1,74 @@
+{
+  "slice_id": "slice-01-approval-candidates-model",
+  "ticket": "QUIVER-33-01",
+  "type": "feature",
+  "title": "Shared approval candidates model",
+  "objective": "Create a single approval-candidate model for acceptance, technical-plan, and plan-review decision data.",
+  "description": "Adds reusable read-only candidate construction so approval commands and workflow surfaces share the same current draft, version, review state, recommendation, and next-command guidance.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v33-approval-candidates-model",
+    "branch_name": "feature/QUIVER-33-01-v33-approval-candidates-model"
+  },
+  "files": [
+    "src/create-quiver/lib/approvals.js",
+    "src/create-quiver/lib/ai/plan-review.js",
+    "tests/lib/approvals.test.js",
+    "tests/commands/ai-review-plan.test.js"
+  ],
+  "expected_read_paths": [
+    "src/create-quiver/lib/approvals.js",
+    "src/create-quiver/lib/ai/plan-review.js",
+    "src/create-quiver/commands/ai.js",
+    "tests/lib/approvals.test.js",
+    "tests/commands/ai-review-plan.test.js",
+    "SPEC.md"
+  ],
+  "allowed_write_paths": [
+    "src/create-quiver/lib/approvals.js",
+    "src/create-quiver/lib/ai/plan-review.js",
+    "tests/lib/approvals.test.js",
+    "tests/commands/ai-review-plan.test.js",
+    "specs/quiver-v33-approval-ux-and-planner-progress/**"
+  ],
+  "depends_on": [
+    "slice-00-approval-ux-foundation"
+  ],
+  "parallel_safe": "no",
+  "parallel_safe_reason": "This model is a dependency for later command and workflow surfaces.",
+  "must": [
+    "Expose candidate data without changing existing persisted approval metadata unless required.",
+    "Include phase, version, path, created_at, source_file, latest/current flags, status, recommendation, blocking state, recommended action, and next command.",
+    "Represent older drafts as history but mark them non-current and not recommended.",
+    "Expose technical-plan plan-review state using the existing plan-review semantics.",
+    "Use redacted/truncated summary helpers for any preview text.",
+    "Keep JSON/no-TTY consumers clean."
+  ],
+  "not_included": [
+    "Interactive prompts.",
+    "Changing approval execution behavior.",
+    "Changing plan-review blocking rules."
+  ],
+  "acceptance": [
+    "Acceptance candidates include the latest draft and draft history.",
+    "Technical-plan candidates include plan-review state and recommendation.",
+    "Older drafts are visible as history but not marked approvable.",
+    "A revise recommendation is represented as blocking.",
+    "Approve-with-risk is represented as approvable with risks.",
+    "Candidate summaries do not print unbounded draft contents."
+  ],
+  "tests": [
+    "node --test tests/lib/approvals.test.js tests/commands/ai-review-plan.test.js",
+    "git diff --check"
+  ],
+  "validation_hints": [
+    "Prefer pure functions that can be reused by commands without I/O side effects.",
+    "Do not call providers in this slice."
+  ],
+  "estimated_hours": 6,
+  "status": "completed",
+  "blocked_reason": null,
+  "actual_hours": 6,
+  "completed_at": "2026-05-28"
+}

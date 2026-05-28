@@ -1,0 +1,91 @@
+{
+  "slice_id": "slice-05-provider-progress-alignment",
+  "ticket": "QUIVER-33-05",
+  "type": "feature",
+  "title": "Provider progress alignment",
+  "objective": "Align progress messages and loaders for provider-backed planner and reviewer commands.",
+  "description": "Ensures `ai plan`, `ai revise`, `ai review-plan`, and `ai repair-plan` use the same production-safe progress contract as `ai prepare-context --with-planner`, while auditing existing long-running flows.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v33-provider-progress-alignment",
+    "branch_name": "feature/QUIVER-33-05-v33-provider-progress-alignment"
+  },
+  "files": [
+    "src/create-quiver/commands/ai.js",
+    "src/create-quiver/lib/ai/executor.js",
+    "src/create-quiver/lib/ai/execution-plan.js",
+    "src/create-quiver/lib/cli/ux.js",
+    "tests/commands/ai-plan.test.js",
+    "tests/commands/ai-review-plan.test.js",
+    "tests/commands/ai-prepare-context-planner.test.js",
+    "tests/commands/ai-execute-slice.test.js",
+    "tests/commands/ai-execute-plan.test.js",
+    "tests/commands/ai-pr.test.js",
+    "tests/lib/cli-ux.test.js"
+  ],
+  "expected_read_paths": [
+    "src/create-quiver/commands/ai.js",
+    "src/create-quiver/lib/ai/executor.js",
+    "src/create-quiver/lib/ai/execution-plan.js",
+    "src/create-quiver/lib/cli/ux.js",
+    "tests/commands/ai-prepare-context-planner.test.js",
+    "tests/lib/cli-ux.test.js",
+    "SPEC.md"
+  ],
+  "allowed_write_paths": [
+    "src/create-quiver/commands/ai.js",
+    "src/create-quiver/lib/ai/executor.js",
+    "src/create-quiver/lib/ai/execution-plan.js",
+    "src/create-quiver/lib/cli/ux.js",
+    "tests/commands/ai-plan.test.js",
+    "tests/commands/ai-review-plan.test.js",
+    "tests/commands/ai-prepare-context-planner.test.js",
+    "tests/commands/ai-execute-slice.test.js",
+    "tests/commands/ai-execute-plan.test.js",
+    "tests/commands/ai-pr.test.js",
+    "tests/lib/cli-ux.test.js",
+    "specs/quiver-v33-approval-ux-and-planner-progress/**"
+  ],
+  "depends_on": [
+    "slice-01-approval-candidates-model"
+  ],
+  "parallel_safe": "yes",
+  "parallel_safe_reason": "Can run after slice-01, but command-file conflicts with approval slices should be coordinated.",
+  "must": [
+    "Show human progress for `ai plan --phase acceptance` live provider execution.",
+    "Show human progress for `ai plan --phase technical-plan` live provider execution.",
+    "Show human progress for `ai revise` live provider execution through the shared plan path.",
+    "Show human progress for `ai review-plan` live provider execution.",
+    "Show human progress for `ai repair-plan` live provider execution.",
+    "Do not show loaders for dry-run or print-prompt.",
+    "Do not contaminate JSON, no-color, CI, or no-TTY output.",
+    "Audit existing long-running flows and add regression tests only where behavior should remain unchanged."
+  ],
+  "not_included": [
+    "Changing provider prompts.",
+    "Changing provider adapters.",
+    "Adding new UX dependencies."
+  ],
+  "acceptance": [
+    "Planner commands show real staged progress in human mode.",
+    "Reviewer and repair-plan commands show real staged progress in human mode.",
+    "Dry-run and print-prompt remain provider-free and loader-free.",
+    "Provider failure stops spinner and surfaces actionable context.",
+    "Existing prepare-context, onboard, execute-slice, execute-plan, and pr progress behavior is covered by regression tests or explicitly documented as already compliant."
+  ],
+  "tests": [
+    "node --test tests/commands/ai-plan.test.js tests/commands/ai-review-plan.test.js tests/commands/ai-prepare-context-planner.test.js tests/lib/cli-ux.test.js",
+    "node --test tests/commands/ai-execute-slice.test.js tests/commands/ai-execute-plan.test.js tests/commands/ai-pr.test.js",
+    "git diff --check"
+  ],
+  "validation_hints": [
+    "Use injected spinner helpers in tests.",
+    "Avoid fake progress checks that claim completed work before it happens."
+  ],
+  "estimated_hours": 8,
+  "status": "completed",
+  "blocked_reason": null,
+  "actual_hours": 8,
+  "completed_at": "2026-05-28"
+}

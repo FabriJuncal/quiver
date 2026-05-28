@@ -1,6 +1,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 
+const { redactSecrets, truncateText } = require('./evidence');
 const { quiverInternalPaths } = require('./init-layout');
 
 const PLANNER_APPROVAL_PHASES = Object.freeze(['acceptance', 'technical-plan']);
@@ -183,6 +184,107 @@ function renderApprovalStatus(report) {
   }
 
   return `approved ${report.phase}`;
+}
+
+function safePreview(text, maxLength = 180) {
+  const firstLines = String(text || '')
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .slice(0, 3)
+    .join(' ');
+  const truncated = truncateText(redactSecrets(firstLines), maxLength);
+  return {
+    text: truncated.text.replace(/\s+/g, ' ').trim(),
+    truncated: truncated.truncated,
+  };
+}
+
+function readCandidatePreview(projectRoot, draft) {
+  const draftPath = draft?.path || '';
+  if (!draftPath) {
+    return safePreview('');
+  }
+  const resolved = path.resolve(projectRoot, draftPath);
+  if (!fs.existsSync(resolved)) {
+    return {
+      text: '(missing draft artifact)',
+      truncated: false,
+    };
+  }
+  return safePreview(fs.readFileSync(resolved, 'utf8'));
+}
+
+function buildApprovalCandidate(projectRoot, phase, draft, latestVersion, report) {
+  const version = Number(draft.version || 0) || null;
+  const isLatest = Boolean(version && latestVersion && version === latestVersion);
+  const artifactExists = Boolean(draft.path && fs.existsSync(path.resolve(projectRoot, draft.path)));
+  const preview = readCandidatePreview(projectRoot, draft);
+  const approvable = isLatest && artifactExists && (report.status === 'draft' || report.status === 'stale' || report.status === 'approved');
+  const nextCommand = version
+    ? `npx create-quiver ai approve --phase ${phase} --version ${version}`
+    : `npx create-quiver ai approve --phase ${phase} --version <n>`;
+
+  return {
+    phase,
+    version,
+    label: version ? `v${version}` : 'unknown version',
+    path: draft.path || '',
+    source_file: draft.source_file || '',
+    created_at: draft.created_at || '',
+    raw_artifact_path: draft.raw_artifact_path || null,
+    output_source: draft.output_source || null,
+    input_compaction: draft.input_compaction || null,
+    current: isLatest,
+    latest: isLatest,
+    recommended: approvable,
+    approvable,
+    blocked: !approvable,
+    status: approvable ? 'approvable' : isLatest ? 'blocked' : 'history',
+    reason: approvable
+      ? 'latest draft is eligible for approval'
+      : isLatest
+        ? 'latest draft artifact is missing or not eligible'
+        : `not current; latest draft version is ${latestVersion || 'unknown'}`,
+    preview: preview.text,
+    preview_truncated: preview.truncated,
+    next_command: nextCommand,
+    recommended_action: approvable ? 'approve' : 'inspect',
+    review: null,
+  };
+}
+
+function buildPlannerApprovalCandidates(projectRoot, phase) {
+  const normalizedPhase = normalizePhase(phase);
+  if (!PLANNER_APPROVAL_PHASES.includes(normalizedPhase)) {
+    throw new Error(formatError(`approval candidates are only supported for planner phases: ${PLANNER_APPROVAL_PHASES.join(', ')}`));
+  }
+
+  const report = readPhaseApproval(projectRoot, normalizedPhase);
+  const drafts = normalizeDrafts(report.meta);
+  const latestVersion = latestDraftVersion(report.meta);
+  const candidates = drafts.map((draft) => buildApprovalCandidate(projectRoot, normalizedPhase, draft, latestVersion, report));
+  const current = candidates.find((candidate) => candidate.current) || null;
+  const recommended = candidates.find((candidate) => candidate.recommended) || null;
+
+  return {
+    phase: normalizedPhase,
+    approval_status: report.status,
+    latest_version: latestVersion,
+    current,
+    recommended,
+    candidates,
+    history: candidates.filter((candidate) => !candidate.current),
+    approved: report.approved
+      ? {
+          path: report.approved.path,
+          version: Number(report.meta?.approved?.version || 0) || null,
+          source_file: report.meta?.approved?.source_file || '',
+          approved_at: report.meta?.approved?.approved_at || '',
+        }
+      : null,
+    next_command: recommended?.next_command || `npx create-quiver ai plan --phase ${normalizedPhase}${normalizedPhase === 'acceptance' ? ' --input <requirements.md>' : ''} --dry-run`,
+  };
 }
 
 function writeApprovalArtifacts(projectRoot, phase, kind, sourceFile, contents, options = {}) {
@@ -372,6 +474,7 @@ module.exports = {
   approvePlannerPhase,
   findDraftVersion,
   latestDraftVersion,
+  buildPlannerApprovalCandidates,
   normalizePhase,
   readPhaseApproval,
   renderApprovalStatus,

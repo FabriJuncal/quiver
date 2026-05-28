@@ -1,0 +1,79 @@
+{
+  "slice_id": "slice-02-approve-interactive-selection",
+  "ticket": "QUIVER-33-02",
+  "type": "feature",
+  "title": "Interactive approval selection",
+  "objective": "Let `ai approve --phase acceptance|technical-plan` guide TTY users when `--version` is omitted while preserving explicit non-interactive behavior.",
+  "description": "Adds a selector patterned after `ai agent set`, recommends the current latest draft, blocks unsafe approvals, and keeps CI/no-TTY requiring `--version <n>`.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v33-approve-interactive-selection",
+    "branch_name": "feature/QUIVER-33-02-v33-approve-interactive-selection"
+  },
+  "files": [
+    "src/create-quiver/commands/ai.js",
+    "src/create-quiver/lib/cli/selectors.js",
+    "src/create-quiver/lib/approvals.js",
+    "tests/commands/ai-review-plan.test.js",
+    "tests/commands/ai-plan.test.js",
+    "tests/lib/cli-selectors.test.js"
+  ],
+  "expected_read_paths": [
+    "src/create-quiver/commands/ai.js",
+    "src/create-quiver/lib/approvals.js",
+    "src/create-quiver/lib/cli/selectors.js",
+    "tests/commands/ai-review-plan.test.js",
+    "tests/commands/ai-plan.test.js",
+    "SPEC.md"
+  ],
+  "allowed_write_paths": [
+    "src/create-quiver/commands/ai.js",
+    "src/create-quiver/lib/cli/selectors.js",
+    "src/create-quiver/lib/approvals.js",
+    "tests/commands/ai-review-plan.test.js",
+    "tests/commands/ai-plan.test.js",
+    "tests/lib/cli-selectors.test.js",
+    "specs/quiver-v33-approval-ux-and-planner-progress/**"
+  ],
+  "depends_on": [
+    "slice-01-approval-candidates-model"
+  ],
+  "parallel_safe": "no",
+  "parallel_safe_reason": "This slice changes approval command behavior and should land before downstream consumers rely on it.",
+  "must": [
+    "Open a selector only when `--version` is omitted and prompts are available.",
+    "Require explicit `--version <n>` in CI/no-TTY.",
+    "Keep explicit `--version <n>` behavior backward compatible.",
+    "Recommend the current/latest approvable draft.",
+    "Show concise useful decision information for each candidate.",
+    "Allow cancellation without writes.",
+    "Do not approve older or blocked drafts silently."
+  ],
+  "not_included": [
+    "Changing plan-review result derivation.",
+    "Changing spec generation.",
+    "Adding editor review to approve."
+  ],
+  "acceptance": [
+    "`ai approve --phase acceptance` in TTY without `--version` shows a selector.",
+    "`ai approve --phase technical-plan` in TTY without `--version` shows a selector with review context.",
+    "No-TTY/CI without `--version` fails actionably.",
+    "`--version 1` still approves through the existing path when valid.",
+    "Canceling the selector writes no approval.",
+    "Older draft versions cannot be approved through the selector."
+  ],
+  "tests": [
+    "node --test tests/commands/ai-plan.test.js tests/commands/ai-review-plan.test.js tests/lib/cli-selectors.test.js",
+    "git diff --check"
+  ],
+  "validation_hints": [
+    "Use injected selector helpers in tests; do not require a real terminal.",
+    "Test no-TTY and CI explicitly."
+  ],
+  "estimated_hours": 8,
+  "status": "completed",
+  "blocked_reason": null,
+  "actual_hours": 8,
+  "completed_at": "2026-05-28"
+}

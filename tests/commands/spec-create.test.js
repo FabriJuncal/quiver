@@ -185,6 +185,7 @@ test('spec create --interactive writes after guided summary approval', async () 
     assert.equal(fs.existsSync(path.join(repo.root, 'specs', 'quiver-v23-created-spec', 'SPEC.md')), true);
     assert.ok(writes.some((line) => line.includes('Spec create')));
     assert.ok(writes.some((line) => line.includes('Metodologia: WDD + SDD')));
+    assert.ok(writes.some((line) => line.includes('Plan tecnico: aprobado, v1, review=approve-with-risk')));
   } finally {
     repo.cleanup();
   }

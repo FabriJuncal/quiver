@@ -205,7 +205,8 @@ test('flow command reports criteria draft approval guidance', () => {
     const output = runFlow(repo.root);
 
     assert.match(output, /Stage: acceptance criteria need approval/);
-    assert.match(output, /Next safe command: npx create-quiver ai approve --phase acceptance --version <n>/);
+    assert.match(output, /Next safe command: npx create-quiver ai approve --phase acceptance --version 1/);
+    assert.match(output, /v1, current, approvable/);
   } finally {
     repo.cleanup();
   }
@@ -251,7 +252,35 @@ test('flow command asks for technical-plan approval after production review', ()
     const output = runFlow(repo.root);
 
     assert.match(output, /Stage: technical plan needs approval/);
-    assert.match(output, /Next safe command: npx create-quiver ai approve --phase technical-plan --version <n>/);
+    assert.match(output, /Next safe command: npx create-quiver ai approve --phase technical-plan --version 1/);
+    assert.match(output, /review=approve-with-risk/);
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('flow command points to revise when plan review blocks technical-plan approval', () => {
+  const repo = makeRepo();
+
+  try {
+    seedInitializedContext(repo.root);
+    writeFile(repo.root, 'acceptance.md', '# Approved acceptance\n');
+    writeFile(repo.root, 'technical-plan.md', structuredTechnicalPlanText('flow-revise-plan'));
+    savePlannerDraft(repo.root, 'acceptance', 'acceptance.md', '# Approved acceptance\n');
+    approvePlannerPhase(repo.root, 'acceptance', '', '', { version: 1 });
+    savePlannerDraft(repo.root, 'technical-plan', 'technical-plan.md', structuredTechnicalPlanText('flow-revise-plan'));
+    savePlanReview(repo.root, {
+      contents: '```json\n{"review":{"blocking":true,"approvalRecommendation":"revise","requiredFixes":["Add rollback"],"optionalHardening":[],"risks":[]}}\n```\n',
+      inputPath: '.quiver/approvals/technical-plan/drafts/001.md',
+      inputKind: 'draft',
+      inputVersion: 1,
+    });
+
+    const output = runFlow(repo.root);
+
+    assert.match(output, /Stage: technical plan review requires revision/);
+    assert.match(output, /Next safe command: npx create-quiver ai revise --phase technical-plan --input <feedback\.md> --dry-run/);
+    assert.doesNotMatch(output, /npx create-quiver ai approve --phase technical-plan --version 1/);
   } finally {
     repo.cleanup();
   }

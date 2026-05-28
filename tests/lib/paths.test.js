@@ -1,9 +1,11 @@
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
 const path = require('node:path');
 const test = require('node:test');
 
 const {
   getProjectRelativePathIssue,
+  isPathInsideRoot,
   normalizeGitBashDrivePath,
   relativePosixPath,
   specRelativePathFromPath,
@@ -27,6 +29,46 @@ test('relativePosixPath handles extended Windows path prefixes', () => {
   const slice = String.raw`D:\a\quiver\quiver\specs\demo\slices\slice.json`;
 
   assert.equal(relativePosixPath(root, slice, path.win32), 'specs/demo/slices/slice.json');
+});
+
+test('isPathInsideRoot accepts equivalent Windows realpath aliases', () => {
+  const originalRealpath = fs.realpathSync;
+  const originalNativeRealpath = fs.realpathSync.native;
+  fs.realpathSync = (filePath) => path.win32.resolve(String(filePath));
+  fs.realpathSync.native = (filePath) => path.win32.resolve(String(filePath).replace('RUNNER~1', 'runneradmin'));
+
+  try {
+    const root = String.raw`C:\Users\runneradmin\AppData\Local\Temp\quiver-smoke\repo`;
+    const slice = String.raw`C:\Users\RUNNER~1\AppData\Local\Temp\quiver-smoke\repo\specs\demo\slices\slice.json`;
+
+    assert.equal(isPathInsideRoot(root, slice, path.win32), true);
+  } finally {
+    fs.realpathSync = originalRealpath;
+    fs.realpathSync.native = originalNativeRealpath;
+  }
+});
+
+test('isPathInsideRoot rejects targets that realpath outside the root', () => {
+  const originalRealpath = fs.realpathSync;
+  const originalNativeRealpath = fs.realpathSync.native;
+  fs.realpathSync = (filePath) => {
+    const value = path.win32.resolve(String(filePath));
+    if (value.endsWith(String.raw`repo\specs\demo\slices\slice.json`)) {
+      return String.raw`C:\outside\slice.json`;
+    }
+    return value;
+  };
+  fs.realpathSync.native = fs.realpathSync;
+
+  try {
+    const root = String.raw`C:\repo`;
+    const slice = String.raw`C:\repo\specs\demo\slices\slice.json`;
+
+    assert.equal(isPathInsideRoot(root, slice, path.win32), false);
+  } finally {
+    fs.realpathSync = originalRealpath;
+    fs.realpathSync.native = originalNativeRealpath;
+  }
 });
 
 test('normalizeGitBashDrivePath leaves non-Windows path libs untouched', () => {

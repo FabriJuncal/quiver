@@ -58,11 +58,16 @@ Más detalle: [Instalación y uso con npx](../getting-started/installation.md).
 | `npx --yes create-quiver@latest ai status` | Muestra el estado de la ejecución actual. |
 | `npx --yes create-quiver@latest ai plan --phase acceptance --input <file>` | Genera criterios de aceptación. |
 | `npx --yes create-quiver@latest ai plan --phase acceptance --review --interactive --input <file>` | Permite revisar y confirmar el borrador del planner antes de guardarlo. |
-| `npx --yes create-quiver@latest ai revise --phase acceptance --input <file>` | Crea una nueva versión de criterios. |
-| `npx --yes create-quiver@latest ai approve --phase acceptance --version <n>` | Aprueba criterios. |
+| `npx --yes create-quiver@latest ai revise --phase acceptance --input <feedback.md>` | Crea una nueva versión de criterios desde feedback; `--input` sin valor o archivos inexistentes fallan antes del proveedor. |
+| `npx --yes create-quiver@latest ai approve --phase acceptance` | En TTY lista drafts y recomienda el current/latest; en CI/no-TTY exige `--version <n>`. |
+| `npx --yes create-quiver@latest ai approve --phase acceptance --version <n>` | Aprueba criterios en modo explícito/script-safe. |
 | `npx --yes create-quiver@latest ai plan --phase technical-plan` | Genera plan técnico. |
-| `npx --yes create-quiver@latest ai review-plan` | Revisa el plan técnico. |
-| `npx --yes create-quiver@latest ai approve --phase technical-plan --version <n>` | Aprueba el plan técnico revisado. |
+| `npx --yes create-quiver@latest ai revise --phase technical-plan --input <feedback.md>` | Crea una nueva versión del plan técnico desde feedback. |
+| `npx --yes create-quiver@latest ai review-plan` | Revisa el plan técnico y guarda recomendación `approve`, `approve-with-risk` o `revise`. |
+| `npx --yes create-quiver@latest ai repair-plan` | Repara un plan técnico aprobado legacy que no cumple el contrato `spec.slices[]`, creando un nuevo draft. |
+| `npx --yes create-quiver@latest ai approve --phase technical-plan` | En TTY lista drafts con datos de review; `revise` bloquea aprobación y `approve-with-risk` muestra riesgos. |
+| `npx --yes create-quiver@latest ai approve --phase technical-plan --version <n>` | Aprueba el plan técnico revisado en modo explícito/script-safe. |
+| `npx --yes create-quiver@latest ai approvals` | Muestra approvals run-scoped/globales, candidatos actuales, versión recomendada y próximo comando. |
 
 ## Specs y slices
 
@@ -118,6 +123,7 @@ Más detalle: [Instalación y uso con npx](../getting-started/installation.md).
 | `ai plan` | sí | sí | sí |
 | `spec create` | sí | sí | sí |
 | `ai pr` | no | sí | sí |
+| `ai approve` | no | no | no |
 | `flow`, `next`, `graph` | no | no | no |
 | `ai inspect`, `ai export`, `ai specs list`, `ai slices list`, `ai trace report` | no | no | no |
 

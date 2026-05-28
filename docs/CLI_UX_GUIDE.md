@@ -54,6 +54,7 @@ Reglas:
 | `ai execute-slice` | no | si | no | Interactive puede seleccionar un slice listo y un executor configurado. |
 | `ai execute-plan` | no | si | no | Interactive queda reservado para estrategia/seleccion; JSON sigue limpio. |
 | `ai agent set` | no | si | no | En TTY puede guiar proveedor/modelo; en CI/no-TTY requiere `--provider` y `--model`. |
+| `ai approve` | no | no | no | Si falta `--version` y hay TTY, abre selector de drafts; en CI/no-TTY exige `--version <n>`. |
 | `ai agent doctor` | no | no | no | Diagnostica perfiles sin escribir; `--json` usa el mismo modelo de hallazgos. |
 | `ai agent repair` | no | no | no | Por ahora solo `--dry-run`; muestra before/after sin escribir. |
 | `ai models list` | no | no | no | Lista el catalogo local conocido por Quiver; no valida acceso de cuenta. |
@@ -116,10 +117,21 @@ Reglas:
 `spec create --interactive` debe:
 
 - seleccionar la metodologia real soportada: `WDD + SDD`;
-- mostrar el input aprobado que se usara para generar la spec;
+- mostrar el input aprobado que se usara para generar la spec, la version aprobada y el resumen de review;
 - permitir elegir confirmacion directa o `--review`;
 - mostrar resumen antes de escribir;
 - bloquearse en no-TTY/CI/JSON con mensaje accionable en lugar de abrir prompts.
+
+## Aprobaciones planner
+
+`ai approve` conserva el modo script con `--version <n>`, pero en una terminal humana puede guiar la eleccion cuando falta `--version`:
+
+- `ai approve --phase acceptance` lista drafts versionados y recomienda el current/latest elegible.
+- `ai approve --phase technical-plan` agrega estado de `plan-review`, recomendacion, fixes requeridos, hardening opcional y riesgos.
+- CI/no-TTY nunca espera input; falla temprano con el comando explicito `--version <n>`.
+- Las versiones historicas pueden mostrarse como contexto, pero solo el draft current/latest es aprobable.
+- Los snippets o previews de candidatos deben estar truncados y redactados.
+- `ai approvals`, `flow`, `ai status`, `ai resume` y `spec create --interactive` deben usar el mismo modelo de candidatos para no contradecir el proximo paso.
 
 ## Loaders y prompts
 
@@ -142,6 +154,8 @@ Usar prompts interactivos cuando hay una decision humana real:
 ```
 
 No usar prompts para informacion que ya se pueda expresar con flags.
+
+Los comandos provider-backed `ai plan`, `ai revise`, `ai review-plan` y `ai repair-plan` deben seguir el mismo patron de progreso en TTY: checks de preparacion reales y spinner solo durante ejecucion del proveedor. `--dry-run`, `--print-prompt`, CI, no-TTY y JSON no deben mostrar loaders falsos.
 
 ## Salida de Doctor
 

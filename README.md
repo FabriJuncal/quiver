@@ -182,8 +182,10 @@ Usá la guía que corresponda al estado de tu proyecto:
 | `npx --yes create-quiver@latest ai agent doctor` | Diagnostica perfiles de agentes existentes. |
 | `npx --yes create-quiver@latest ai agent repair --dry-run` | Previsualiza reparaciones seguras para perfiles heredados o mal configurados. |
 | `npx --yes create-quiver@latest ai plan --phase acceptance` | Genera un borrador de criterios de aceptación. |
+| `npx --yes create-quiver@latest ai approve --phase acceptance` | En TTY lista drafts y recomienda la versión current/latest aprobable. |
 | `npx --yes create-quiver@latest ai plan --phase technical-plan` | Genera un borrador de plan técnico. |
 | `npx --yes create-quiver@latest ai review-plan` | Revisa el plan técnico antes de aprobarlo. |
+| `npx --yes create-quiver@latest ai approve --phase technical-plan` | En TTY muestra drafts con datos de review; en CI usá `--version <n>`. |
 | `npx --yes create-quiver@latest spec create` | Crea spec, slices, briefs, plan de ejecución y cuerpo del PR. |
 | `npx --yes create-quiver@latest spec create --interactive` | Guía la selección de metodología, input aprobado y revisión antes de escribir la spec. |
 | `npx --yes create-quiver@latest spec start specs/<spec>` | Crea o reutiliza el worktree de una spec. |
