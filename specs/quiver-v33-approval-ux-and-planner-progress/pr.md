@@ -23,6 +23,7 @@ Quiver v33: Approval UX and planner progress
 
 ## Files
 
+- `.github/workflows/ci.yml`
 - `README.md`
 - `README_FOR_AI.md`
 - `docs/CLI_UX_GUIDE.md`
@@ -73,6 +74,7 @@ Quiver v33: Approval UX and planner progress
 - `npm run smoke:doctor-fixtures`
 - `npm run smoke:guided-workflow`
 - `npm run package:quiver`
+- `node scripts/ci/smoke-cross-platform.js`
 - `git diff --check`
 - `node bin/create-quiver.js spec validate specs/quiver-v33-approval-ux-and-planner-progress`
 
@@ -85,6 +87,7 @@ Quiver v33: Approval UX and planner progress
 - `npm run smoke:doctor-fixtures` passed.
 - `npm run smoke:guided-workflow` passed.
 - `npm run package:quiver` passed.
+- `node scripts/ci/smoke-cross-platform.js` passed after adding `npm ci` to the GitHub Actions smoke matrix.
 - Detailed slice evidence is in `specs/quiver-v33-approval-ux-and-planner-progress/EVIDENCE_REPORT.md`.
 
 ## Rollback
@@ -96,4 +99,5 @@ Revert slice commits in reverse order. Preserve explicit `--version` approval be
 - Approval gates are critical workflow safety controls; selector UX must not approve stale or blocked drafts.
 - Candidate summaries must remain redacted and truncated.
 - Provider progress must not contaminate machine-readable output.
+- GitHub Actions cross-platform smoke requires dependencies installed before invoking the source CLI.
 - This PR does not publish npm.

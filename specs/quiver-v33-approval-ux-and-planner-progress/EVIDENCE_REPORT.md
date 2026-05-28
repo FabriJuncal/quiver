@@ -83,6 +83,7 @@ This report records implementation and validation evidence for all v33 slices.
 - `npm run smoke:doctor-fixtures` passed: 13 states.
 - `npm run smoke:guided-workflow` passed.
 - `npm run package:quiver` passed: `Package smoke passed: create-quiver-0.15.1.tgz`.
+- `node scripts/ci/smoke-cross-platform.js` passed after adding `npm ci` to the GitHub Actions cross-platform smoke job.
 
 ### Remaining Risks
 
