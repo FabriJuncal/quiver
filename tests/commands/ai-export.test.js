@@ -68,6 +68,14 @@ function execAi(repoRoot, args = []) {
   });
 }
 
+function execCli(repoRoot, args = []) {
+  return execFileSync(process.execPath, [BIN_PATH, ...args], {
+    cwd: repoRoot,
+    encoding: 'utf8',
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
+}
+
 test('ai inspect, export, specs, slices, and trace expose lifecycle state', () => {
   const repo = makeRepo();
 
@@ -110,6 +118,40 @@ test('ai inspect, export, specs, slices, and trace expose lifecycle state', () =
     const trace = execAi(repo.root, ['trace', 'report']);
     assert.match(trace, /Quiver trace report/);
     assert.match(trace, /Migration/);
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('ai inspection commands render Spanish human output without localizing JSON', () => {
+  const repo = makeRepo();
+
+  try {
+    const inspect = execCli(repo.root, ['--lang', 'es', 'ai', 'inspect']);
+    assert.match(inspect, /Inspeccion del ciclo de vida de Quiver/);
+    assert.match(inspect, /Proximos comandos seguros/);
+    assert.match(inspect, /npx create-quiver ai export --format json/);
+
+    const specs = execCli(repo.root, ['--lang', 'es', 'ai', 'specs', 'list']);
+    assert.match(specs, /Lista de specs de Quiver/);
+    assert.match(specs, /demo: planificado/);
+
+    const slices = execCli(repo.root, ['--lang', 'es', 'ai', 'slices', 'list']);
+    assert.match(slices, /Lista de slices de Quiver/);
+    assert.match(slices, /demo\/slice-01-dashboard: planificado/);
+
+    const trace = execCli(repo.root, ['--lang', 'es', 'ai', 'trace', 'report']);
+    assert.match(trace, /Reporte de trazas de Quiver/);
+    assert.match(trace, /Migracion/);
+
+    const markdown = execCli(repo.root, ['--lang', 'es', 'ai', 'export', '--format', 'markdown']);
+    assert.match(markdown, /# Exportacion del ciclo de vida de Quiver/);
+    assert.match(markdown, /\| Spec \| Estado \| Progreso \| Slices \| Ruta \|/);
+    assert.match(markdown, /demo\/slice-01-dashboard/);
+
+    const json = JSON.parse(execCli(repo.root, ['--lang', 'es', 'ai', 'export', '--format', 'json']));
+    assert.equal(json.source_metadata.command, 'ai export');
+    assert.equal(json.slices[0].canonical_status, 'planned');
   } finally {
     repo.cleanup();
   }

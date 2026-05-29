@@ -3,6 +3,7 @@ const os = require('node:os');
 const path = require('node:path');
 
 const { buildApprovalCandidateReport } = require('./approval-candidates');
+const { formatStatus, translatorForHuman } = require('../i18n/read-only-format');
 const { quiverInternalPaths } = require('../init-layout');
 
 const AI_RUN_PHASES = Object.freeze([
@@ -364,12 +365,13 @@ function releaseAiRunLock(projectRoot, runId, options = {}) {
   return filePath;
 }
 
-function formatAiRunStatus(projectRoot, run) {
+function formatAiRunStatus(projectRoot, run, options = {}) {
+  const translator = translatorForHuman(options);
   if (!run) {
     return [
-      'AI run status',
-      'Status: no active run',
-      'Next safe command: npx create-quiver ai run create --input <requirements.md>',
+      translator.t('ai.run.status.title'),
+      `${translator.t('ai.run.status')}: ${translator.t('ai.run.status.no_active')}`,
+      `${translator.t('ai.label.next_safe_command')}: npx create-quiver ai run create --input <requirements.md>`,
       '',
     ].join('\n');
   }
@@ -377,48 +379,49 @@ function formatAiRunStatus(projectRoot, run) {
   const openRuns = listAiRuns(projectRoot).filter((item) => item.status !== 'closed');
   const otherOpenRuns = openRuns.filter((item) => item.run_id !== run.run_id);
   const lines = [
-    'AI run status',
-    `Run: ${run.run_id}`,
-    `Status: ${run.status}`,
-    `Phase: ${run.phase}`,
-    `Spec: ${run.spec_slug || '(not generated)'}`,
-    `Requirement: ${run.requirement?.path || '(missing)'}`,
-    `State: ${toRelativePosix(projectRoot, runStatePath(projectRoot, run.run_id))}`,
-    `Approvals: ${run.approvals_path}`,
-    `Open runs: ${openRuns.length}`,
+    translator.t('ai.run.status.title'),
+    `${translator.t('ai.run.run')}: ${run.run_id}`,
+    `${translator.t('ai.run.status')}: ${formatStatus(run.status, translator)}`,
+    `${translator.t('ai.run.phase')}: ${run.phase}`,
+    `${translator.t('ai.run.spec')}: ${run.spec_slug || translator.t('ai.run.spec.not_generated')}`,
+    `${translator.t('ai.run.requirement')}: ${run.requirement?.path || translator.t('ai.run.missing')}`,
+    `${translator.t('ai.run.state')}: ${toRelativePosix(projectRoot, runStatePath(projectRoot, run.run_id))}`,
+    `${translator.t('ai.run.approvals')}: ${run.approvals_path}`,
+    `${translator.t('ai.run.open_runs')}: ${openRuns.length}`,
   ];
 
   if (otherOpenRuns.length > 0) {
-    lines.push('Other open runs:');
+    lines.push(`${translator.t('ai.run.other_open_runs')}:`);
     for (const item of otherOpenRuns) {
-      lines.push(`- ${item.run_id}: ${item.phase} (${item.status}) -> ${nextCommandForPhase(item.phase, projectRoot)}`);
+      lines.push(`- ${item.run_id}: ${item.phase} (${formatStatus(item.status, translator)}) -> ${nextCommandForPhase(item.phase, projectRoot)}`);
     }
   }
 
   lines.push(
-    `Next safe command: ${nextCommandForPhase(run.phase, projectRoot)}`,
+    `${translator.t('ai.label.next_safe_command')}: ${nextCommandForPhase(run.phase, projectRoot)}`,
     '',
   );
 
   return lines.join('\n');
 }
 
-function formatAiRunResume(projectRoot, run) {
+function formatAiRunResume(projectRoot, run, options = {}) {
+  const translator = translatorForHuman(options);
   if (!run) {
     return [
-      'AI run resume',
-      'No active run found.',
-      'Next safe command: npx create-quiver ai run create --input <requirements.md>',
+      translator.t('ai.run.resume.title'),
+      translator.t('ai.run.resume.no_active'),
+      `${translator.t('ai.label.next_safe_command')}: npx create-quiver ai run create --input <requirements.md>`,
       '',
     ].join('\n');
   }
 
   return [
-    'AI run resume',
-    `Run: ${run.run_id}`,
-    `Current phase: ${run.phase}`,
-    `Next safe command: ${nextCommandForPhase(run.phase, projectRoot)}`,
-    `State: ${toRelativePosix(projectRoot, runStatePath(projectRoot, run.run_id))}`,
+    translator.t('ai.run.resume.title'),
+    `${translator.t('ai.run.run')}: ${run.run_id}`,
+    `${translator.t('ai.run.current_phase')}: ${run.phase}`,
+    `${translator.t('ai.label.next_safe_command')}: ${nextCommandForPhase(run.phase, projectRoot)}`,
+    `${translator.t('ai.run.state')}: ${toRelativePosix(projectRoot, runStatePath(projectRoot, run.run_id))}`,
     '',
   ].join('\n');
 }

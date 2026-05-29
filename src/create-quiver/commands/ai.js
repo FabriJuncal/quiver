@@ -90,6 +90,7 @@ const {
   formatApprovalDecisionLines,
 } = require('../lib/ai/approval-candidates');
 const { assertPlannerPhaseReady, getPlannerPhaseDetails, normalizePlannerPhase, PlannerPhaseError } = require('../lib/ai/phase-gates');
+const { formatStatus, translatorForHuman } = require('../lib/i18n/read-only-format');
 const { collectActiveSliceState, resolveProjectState } = require('../lib/project-state-resolver');
 
 const DEFAULT_ONBOARD_PROVIDER = 'codex';
@@ -1188,16 +1189,17 @@ function classifyGlobalApprovalRelation(report, runApprovalRows) {
   return 'orphaned';
 }
 
-function formatRunScopedApprovals(repoRoot, runApprovalRows) {
+function formatRunScopedApprovals(repoRoot, runApprovalRows, options = {}) {
+  const translator = translatorForHuman(options);
   const runs = listAiRuns(repoRoot);
   const activeRun = resolveAiRun(repoRoot, '');
   const lines = [
-    'Run-scoped approvals',
-    `Active run: ${activeRun ? activeRun.run_id : '(none)'}`,
+    translator.t('ai.approvals.run_scoped'),
+    `${translator.t('ai.approvals.active_run')}: ${activeRun ? activeRun.run_id : translator.t('ai.approvals.none_value')}`,
   ];
 
   if (runs.length === 0) {
-    lines.push('- no AI runs found');
+    lines.push(`- ${translator.t('ai.approvals.no_ai_runs')}`);
     return `${lines.join('\n')}\n`;
   }
 
@@ -1208,9 +1210,9 @@ function formatRunScopedApprovals(repoRoot, runApprovalRows) {
         ? 'historical'
         : 'other-open';
     const approvals = runApprovalRows.filter((row) => row.run.run_id === run.run_id);
-    lines.push(`Run: ${run.run_id} (${relation}, phase: ${run.phase}, status: ${run.status})`);
+    lines.push(`${translator.t('ai.run.run')}: ${run.run_id} (${translator.t(`ai.approvals.relation.${relation}`)}, ${translator.t('ai.run.phase').toLowerCase()}: ${run.phase}, ${translator.t('ai.run.status').toLowerCase()}: ${formatStatus(run.status, translator)})`);
     if (approvals.length === 0) {
-      lines.push('- no run-scoped approvals');
+      lines.push(`- ${translator.t('ai.approvals.no_run_scoped')}`);
       continue;
     }
     for (const row of approvals) {
@@ -1223,18 +1225,76 @@ function formatRunScopedApprovals(repoRoot, runApprovalRows) {
 }
 
 function formatApprovalStatusReport(repoRoot) {
+  return formatApprovalStatusReportWithOptions(repoRoot);
+}
+
+function localizeApprovalSummary(text, translator) {
+  if (translator.language === 'en') {
+    return text;
+  }
+
+  return String(text || '')
+    .split('\n')
+    .map((line) => {
+      let match = line.match(/^Phase: (.+)$/);
+      if (match) return `${translator.t('ai.run.phase')}: ${match[1]}`;
+      match = line.match(/^Status: (.+)$/);
+      if (match) return `${translator.t('ai.run.status')}: ${formatStatus(match[1], translator)}`;
+      match = line.match(/^Draft( v\d+)?: (.+)$/);
+      if (match) return `${translator.t('ai.approvals.draft')}${match[1] || ''}: ${match[2]}`;
+      if (line === 'Draft history:') return `${translator.t('ai.approvals.draft_history')}:`;
+      match = line.match(/^Approved( v\d+)?: (.+)$/);
+      if (match) return `${translator.t('ai.approvals.approved')}${match[1] || ''}: ${match[2]}`;
+      match = line.match(/^Source file: (.+)$/);
+      if (match) return `${translator.t('ai.approvals.source_file')}: ${match[1]}`;
+      match = line.match(/^Review: (.+)$/);
+      if (match) return `${translator.t('ai.approvals.review')}: ${match[1]}`;
+      match = line.match(/^Approval recommendation: (.+)$/);
+      if (match) return `${translator.t('ai.approvals.approval_recommendation')}: ${match[1]}`;
+      match = line.match(/^Blocking: (yes|no)$/);
+      if (match) return `${translator.t('ai.approvals.blocking')}: ${translator.t(match[1] === 'yes' ? 'common.yes' : 'common.no')}`;
+      match = line.match(/^Required fixes: (.+)$/);
+      if (match) return `${translator.t('ai.approvals.required_fixes')}: ${match[1]}`;
+      match = line.match(/^Optional hardening: (.+)$/);
+      if (match) return `${translator.t('ai.approvals.optional_hardening')}: ${match[1]}`;
+      match = line.match(/^Next command: (.+)$/);
+      if (match) return `${translator.t('ai.approvals.next_command')}: ${match[1]}`;
+      return line;
+    })
+    .join('\n');
+}
+
+function localizeApprovalDecisionLine(line, translator) {
+  if (translator.language === 'en') {
+    return line;
+  }
+  return String(line || '')
+    .replace(/^Candidates:/, translator.t('ai.approvals.candidates') + ':')
+    .replace(/^Latest draft:/, translator.t('ai.approvals.latest_draft') + ':')
+    .replace(/^Current candidate:/, translator.t('ai.approvals.current_candidate') + ':')
+    .replace(/^Recommended approval:/, translator.t('ai.approvals.recommended_approval') + ':')
+    .replace(/^Recommended next command:/, translator.t('ai.approvals.recommended_next_command') + ':')
+    .replace(/^Review status:/, translator.t('ai.approvals.review_status') + ':');
+}
+
+function formatApprovalStatusReportWithOptions(repoRoot, options = {}) {
+  const translator = translatorForHuman(options);
   const runApprovalRows = collectRunApprovalRows(repoRoot);
-  const sections = ['AI approvals status', formatRunScopedApprovals(repoRoot, runApprovalRows).trimEnd(), 'Global planner approvals'];
+  const sections = [
+    translator.t('ai.approvals.title'),
+    formatRunScopedApprovals(repoRoot, runApprovalRows, options).trimEnd(),
+    translator.t('ai.approvals.global_planner'),
+  ];
   for (const phase of PLANNER_APPROVAL_PHASES) {
-    const summary = summarizePlannerApproval(repoRoot, phase).trimEnd();
+    const summary = localizeApprovalSummary(summarizePlannerApproval(repoRoot, phase).trimEnd(), translator);
     const relation = classifyGlobalApprovalRelation(readPhaseApproval(repoRoot, phase), runApprovalRows);
     const candidates = buildApprovalCandidateReport(repoRoot, phase);
     const decisionLines = formatApprovalDecisionLines(candidates)
-      .map((line) => `- ${line}`)
+      .map((line) => `- ${localizeApprovalDecisionLine(line, translator)}`)
       .join('\n');
-    sections.push(`${summary}\nRun relation: ${relation}${decisionLines ? `\nApproval candidates:\n${decisionLines}` : ''}`);
+    sections.push(`${summary}\n${translator.t('ai.approvals.run_relation')}: ${translator.t(`ai.approvals.relation.${relation}`)}${decisionLines ? `\n${translator.t('ai.approvals.approval_candidates')}:\n${decisionLines}` : ''}`);
   }
-  sections.push(summarizePlanReview(repoRoot).trimEnd());
+  sections.push(localizeApprovalSummary(summarizePlanReview(repoRoot).trimEnd(), translator));
   return `${sections.join('\n\n')}\n`;
 }
 
@@ -2363,8 +2423,8 @@ async function runApprove(repoRoot, options = {}) {
   };
 }
 
-async function runApprovalStatus(repoRoot) {
-  const report = formatApprovalStatusReport(repoRoot);
+async function runApprovalStatus(repoRoot, options = {}) {
+  const report = formatApprovalStatusReportWithOptions(repoRoot, options);
   process.stdout.write(report);
   return {
     task: 'approval-status',
@@ -2374,7 +2434,7 @@ async function runApprovalStatus(repoRoot) {
 
 function runLifecycleStatus(repoRoot, options = {}) {
   const run = resolveAiRun(repoRoot, options.runId || '');
-  const report = formatAiRunStatus(repoRoot, run);
+  const report = formatAiRunStatus(repoRoot, run, options);
   process.stdout.write(report);
   return {
     task: 'status',
@@ -2385,7 +2445,7 @@ function runLifecycleStatus(repoRoot, options = {}) {
 
 function runLifecycleResume(repoRoot, options = {}) {
   const run = resolveAiRun(repoRoot, options.runId || '');
-  const report = formatAiRunResume(repoRoot, run);
+  const report = formatAiRunResume(repoRoot, run, options);
   process.stdout.write(report);
   return {
     task: 'resume',
@@ -2398,7 +2458,7 @@ function runInspect(repoRoot, options = {}) {
   const report = collectLifecycleExport(repoRoot, {
     includeCompleted: options.includeCompleted === true,
   });
-  process.stdout.write(formatLifecycleInspect(report));
+  process.stdout.write(formatLifecycleInspect(report, options));
   return {
     task: 'inspect',
     report,
@@ -2421,7 +2481,7 @@ function runExport(repoRoot, options = {}) {
   }
 
   if (format === 'markdown' || format === 'md') {
-    process.stdout.write(formatLifecycleExportMarkdown(report));
+    process.stdout.write(formatLifecycleExportMarkdown(report, options));
     return {
       task: 'export',
       format: 'markdown',
@@ -2439,7 +2499,7 @@ function runSpecsList(repoRoot, options = {}) {
   if (options.json === true) {
     process.stdout.write(`${JSON.stringify({ specs: report.specs }, null, 2)}\n`);
   } else {
-    process.stdout.write(formatSpecsList(report));
+    process.stdout.write(formatSpecsList(report, options));
   }
   return {
     task: 'specs',
@@ -2454,7 +2514,7 @@ function runSlicesList(repoRoot, options = {}) {
   if (options.json === true) {
     process.stdout.write(`${JSON.stringify({ slices: report.slices }, null, 2)}\n`);
   } else {
-    process.stdout.write(formatSlicesList(report));
+    process.stdout.write(formatSlicesList(report, options));
   }
   return {
     task: 'slices',
@@ -2466,7 +2526,7 @@ function runTraceReport(repoRoot, options = {}) {
   const report = collectLifecycleExport(repoRoot, {
     includeCompleted: options.includeCompleted === true,
   });
-  process.stdout.write(formatTraceReport(report));
+  process.stdout.write(formatTraceReport(report, options));
   return {
     task: 'trace',
     report,
