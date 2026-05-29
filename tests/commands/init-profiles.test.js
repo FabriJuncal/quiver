@@ -5,7 +5,7 @@ const os = require('node:os');
 const path = require('node:path');
 const test = require('node:test');
 
-const { resolveInteractiveInitOptions } = require('../../src/create-quiver');
+const { persistInitLanguage, resolveInteractiveInitOptions } = require('../../src/create-quiver');
 
 const cliPath = path.resolve(__dirname, '../../bin/create-quiver.js');
 
@@ -121,10 +121,12 @@ test('init --interactive resolves guided choices without writing by itself', asy
       methodology: '',
       noColor: true,
     }, target, 'Interactive Project', {
+      language: 'es',
       promptSelect: async (message) => {
         selected.push(message);
         if (message.includes('configurar')) return 'existing';
-        if (message.includes('metodología')) return 'wdd-sdd';
+        if (message.includes('metodologia')) return 'wdd-sdd';
+        if (message.includes('idioma')) return 'es';
         if (message.includes('contrato')) return 'minimal';
         return 'show';
       },
@@ -139,15 +141,105 @@ test('init --interactive resolves guided choices without writing by itself', asy
     assert.equal(result.minimal, true);
     assert.equal(result.full, false);
     assert.deepEqual(selected, [
-      '¿Qué querés configurar?',
-      '¿Qué metodología vas a usar?',
-      '¿Qué contrato inicial querés crear?',
-      '¿Querés ver el próximo paso para perfiles de agentes?',
+      'Que queres configurar?',
+      'Que metodologia vas a usar?',
+      'Que idioma del CLI debe usar este proyecto?',
+      'Que contrato inicial queres crear?',
+      'Queres ver el proximo paso para perfiles de agentes?',
     ]);
     assert.ok(writes.some((line) => line.includes('Bienvenido a Quiver')));
     assert.ok(writes.some((line) => line.includes('Metodologia: WDD + SDD')));
+    assert.ok(writes.some((line) => line.includes('Idioma: es')));
     assert.ok(writes.some((line) => line.includes('ai agent set planner')));
     assert.equal(fs.existsSync(target), false);
+  } finally {
+    cleanup();
+  }
+});
+
+test('init --interactive keeps or changes existing project language without dropping config keys', async () => {
+  const { dir, cleanup } = makeTmpDir();
+  const target = path.join(dir, 'target');
+  const configPath = path.join(target, '.quiver', 'config.json');
+  const selected = [];
+
+  try {
+    fs.mkdirSync(path.dirname(configPath), { recursive: true });
+    fs.writeFileSync(configPath, `${JSON.stringify({ layout_version: 1, language: 'es', custom: true }, null, 2)}\n`);
+
+    const result = await resolveInteractiveInitOptions({
+      dryRun: false,
+      force: true,
+      initFull: false,
+      initIncludeTemplates: false,
+      initLegacyScripts: false,
+      initMinimal: false,
+      interactive: true,
+      methodology: '',
+      noColor: true,
+    }, target, 'Existing Language Project', {
+      language: 'en',
+      promptSelect: async (message) => {
+        selected.push(message);
+        if (message.includes('What do you want')) return 'existing';
+        if (message.includes('Which methodology')) return 'wdd-sdd';
+        if (message.includes('Which CLI language')) return 'en';
+        if (message.includes('Which initial contract')) return 'default';
+        return 'skip';
+      },
+      stdinIsTTY: true,
+      stdoutIsTTY: true,
+      stderrIsTTY: true,
+      write: () => {},
+    });
+
+    assert.equal(result.language, 'en');
+    persistInitLanguage(target, result);
+
+    const saved = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+    assert.deepEqual(saved, {
+      layout_version: 1,
+      language: 'en',
+      custom: true,
+    });
+    assert.ok(selected.includes('Which CLI language should this project use?'));
+  } finally {
+    cleanup();
+  }
+});
+
+test('init --interactive dry-run resolves intended language without writing config', async () => {
+  const { dir, cleanup } = makeTmpDir();
+  const target = path.join(dir, 'target');
+
+  try {
+    const result = await resolveInteractiveInitOptions({
+      dryRun: true,
+      force: false,
+      initFull: false,
+      initIncludeTemplates: false,
+      initLegacyScripts: false,
+      initMinimal: false,
+      interactive: true,
+      methodology: '',
+      noColor: true,
+    }, target, 'Dry Language Project', {
+      language: 'en',
+      promptSelect: async (message) => {
+        if (message.includes('What do you want')) return 'new';
+        if (message.includes('Which methodology')) return 'wdd-sdd';
+        if (message.includes('Which CLI language')) return 'es';
+        if (message.includes('Which initial contract')) return 'minimal';
+        return 'skip';
+      },
+      stdinIsTTY: true,
+      stdoutIsTTY: true,
+      stderrIsTTY: true,
+      write: () => {},
+    });
+
+    assert.equal(result.language, 'es');
+    assert.equal(fs.existsSync(path.join(target, '.quiver', 'config.json')), false);
   } finally {
     cleanup();
   }

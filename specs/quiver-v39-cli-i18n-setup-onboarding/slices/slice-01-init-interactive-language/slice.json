@@ -12,20 +12,25 @@
     "branch_name": "feature/QUIVER-39-01-v39-init-interactive-language"
   },
   "files": [
-    "src/create-quiver/commands/init.js",
-    "tests/commands/init-profiles.test.js"
+    "src/create-quiver/index.js",
+    "src/create-quiver/lib/init-layout.js",
+    "tests/commands/init-profiles.test.js",
+    "tests/lib/init-layout.test.js"
   ],
   "expected_read_paths": [
-    "src/create-quiver/commands/init.js",
+    "src/create-quiver/index.js",
+    "src/create-quiver/lib/init-layout.js",
     "src/create-quiver/lib/i18n/**",
     "docs/reference/commands.md",
     "specs/quiver-v39-cli-i18n-setup-onboarding/SPEC.md"
   ],
   "allowed_write_paths": [
-    "src/create-quiver/commands/init.js",
+    "src/create-quiver/index.js",
+    "src/create-quiver/lib/init-layout.js",
     "src/create-quiver/lib/i18n/**",
     "tests/commands/init-profiles.test.js",
     "tests/commands/config-language.test.js",
+    "tests/lib/init-layout.test.js",
     "docs/reference/commands.md",
     "specs/quiver-v39-cli-i18n-setup-onboarding/**"
   ],
@@ -57,6 +62,7 @@
     "Use selector test utilities rather than manual TTY assumptions."
   ],
   "estimated_hours": 6,
-  "status": "planned",
-  "blocked_reason": "Requires completion of specs/quiver-v37-cli-i18n-foundation."
+  "status": "completed",
+  "blocked_reason": null,
+  "completed_at": "2026-05-29T00:00:00.000Z"
 }

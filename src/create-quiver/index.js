@@ -60,7 +60,14 @@ const { getContextPathExclusionReason } = require('./lib/ai/safety');
 const { selectOption } = require('./lib/cli/selectors');
 const { createUx } = require('./lib/cli/ux');
 const { validateUxFlags } = require('./lib/cli/ux-flags');
-const { DEFAULT_LANGUAGE, extractCliLanguageFlag, resolveLanguage } = require('./lib/i18n/language');
+const {
+  DEFAULT_LANGUAGE,
+  extractCliLanguageFlag,
+  normalizeLanguage,
+  readProjectLanguageConfig,
+  resolveLanguage,
+  writeProjectLanguageConfig,
+} = require('./lib/i18n/language');
 const { createTranslator, getCatalog, translate } = require('./lib/i18n/catalog');
 const { formatWarningPrefix } = require('./lib/i18n/read-only-format');
 const { relativePosixPath, resolveTargetRoot } = require('./lib/paths');
@@ -2772,6 +2779,74 @@ const INIT_PROFILE_OPTIONS = Object.freeze([
   },
 ]);
 
+function initModeOptions(translator) {
+  return [
+    {
+      label: translator.t('init.mode.existing.label'),
+      value: 'existing',
+      hint: translator.t('init.mode.existing.hint'),
+      default: true,
+    },
+    {
+      label: translator.t('init.mode.new.label'),
+      value: 'new',
+      hint: translator.t('init.mode.new.hint'),
+    },
+    {
+      label: translator.t('init.mode.validate.label'),
+      value: 'validate',
+      hint: translator.t('init.mode.validate.hint'),
+    },
+  ];
+}
+
+function methodologyOptions(translator) {
+  return [
+    {
+      label: translator.t('init.methodology.wdd_sdd.label'),
+      value: 'wdd-sdd',
+      hint: translator.t('init.methodology.wdd_sdd.hint'),
+      default: true,
+    },
+  ];
+}
+
+function initProfileOptions(translator) {
+  return [
+    {
+      label: 'Default',
+      value: 'default',
+      hint: translator.t('init.profile.default.hint'),
+      default: true,
+    },
+    {
+      label: 'Minimal',
+      value: 'minimal',
+      hint: translator.t('init.profile.minimal.hint'),
+    },
+    {
+      label: 'Full compatibility',
+      value: 'full',
+      hint: translator.t('init.profile.full.hint'),
+    },
+  ];
+}
+
+function initLanguageOptions() {
+  return [
+    {
+      label: 'English',
+      value: 'en',
+      hint: 'en',
+    },
+    {
+      label: 'Español',
+      value: 'es',
+      hint: 'es',
+    },
+  ];
+}
+
 function hasDirectoryContent(dirPath) {
   return fs.existsSync(dirPath)
     && fs.statSync(dirPath).isDirectory()
@@ -2789,8 +2864,16 @@ function assertSupportedMethodology(value) {
   return normalized;
 }
 
+function resolveExistingProjectLanguage(targetDir) {
+  const config = readProjectLanguageConfig(targetDir);
+  return normalizeLanguage(config.language);
+}
+
 async function resolveInteractiveInitOptions(args, targetDir, projectName, options = {}) {
   const explicitMethodology = assertSupportedMethodology(args.methodology);
+  const language = normalizeLanguage(options.language || args.language) || DEFAULT_LANGUAGE;
+  const translator = createTranslator(language);
+  const existingProjectLanguage = resolveExistingProjectLanguage(targetDir);
 
   if (args.interactive !== true) {
     return {
@@ -2801,6 +2884,7 @@ async function resolveInteractiveInitOptions(args, targetDir, projectName, optio
       methodology: explicitMethodology,
       minimal: args.initMinimal,
       projectName,
+      language: '',
     };
   }
 
@@ -2834,58 +2918,66 @@ async function resolveInteractiveInitOptions(args, targetDir, projectName, optio
     stdoutIsTTY: options.stdoutIsTTY,
   };
 
-  ux.heading('Bienvenido a Quiver');
-  const selectedMode = await selectOption('¿Qué querés configurar?', INIT_MODE_OPTIONS, {
+  ux.heading(translator.t('init.heading'));
+  const selectedMode = await selectOption(translator.t('init.prompt.mode'), initModeOptions(translator), {
     ...selectorOptions,
     defaultValue: hasDirectoryContent(targetDir) ? 'existing' : 'new',
     flag: 'init|doctor',
     name: 'init mode',
   });
-  const selectedMethodology = await selectOption('¿Qué metodología vas a usar?', METHODOLOGY_OPTIONS, {
+  const selectedMethodology = await selectOption(translator.t('init.prompt.methodology'), methodologyOptions(translator), {
     ...selectorOptions,
     defaultValue: explicitMethodology,
     flag: '--methodology',
     name: 'methodology',
     value: args.methodology || '',
   });
+  const selectedLanguage = await selectOption(translator.t('init.prompt.language'), initLanguageOptions(), {
+    ...selectorOptions,
+    defaultValue: existingProjectLanguage || language,
+    flag: '--lang|config language set',
+    name: 'project language',
+  });
 
   assertSupportedMethodology(selectedMethodology.value);
 
   if (selectedMode.value === 'validate') {
     ux.summary([
-      { label: 'Modo', value: 'Solo validar estructura' },
-      { label: 'Metodologia', value: selectedMethodology.label },
-      { label: 'Comando equivalente', value: 'npx create-quiver doctor' },
-    ], { title: 'Configuracion elegida' });
+      { label: translator.t('init.summary.mode'), value: selectedMode.label },
+      { label: translator.t('init.summary.methodology'), value: selectedMethodology.label },
+      { label: translator.t('init.summary.language'), value: selectedLanguage.value },
+      { label: translator.t('init.summary.equivalent_command'), value: 'npx create-quiver doctor' },
+    ], { title: translator.t('init.summary.title') });
     if (!args.force && !args.dryRun) {
-      const confirmed = await ux.promptConfirm('Ejecutar Doctor ahora?', { initialValue: true });
+      const confirmed = await ux.promptConfirm(translator.t('init.confirm.doctor'), { initialValue: true });
       if (!confirmed) {
         throw new Error(formatError('init interactive validation declined. No files were written.'));
       }
     }
     return {
       action: 'doctor',
+      language: selectedLanguage.value,
       methodology: selectedMethodology.value,
       projectName,
     };
   }
 
   const defaultProfile = args.initFull ? 'full' : args.initMinimal ? 'minimal' : 'default';
-  const selectedProfile = await selectOption('¿Qué contrato inicial querés crear?', INIT_PROFILE_OPTIONS, {
+  const selectedProfile = await selectOption(translator.t('init.prompt.profile'), initProfileOptions(translator), {
     ...selectorOptions,
     defaultValue: defaultProfile,
     flag: '--minimal|--full',
     name: 'init profile',
   });
-  const agentGuidance = await selectOption('¿Querés ver el próximo paso para perfiles de agentes?', [
+  const agentGuidance = await selectOption(translator.t('init.prompt.agent_guidance'), [
     {
-      label: 'Mostrar comandos sugeridos',
+      label: translator.t('init.agent_guidance.show.label'),
       value: 'show',
-      hint: 'No guarda credenciales ni ejecuta proveedores',
+      hint: translator.t('init.agent_guidance.show.hint'),
       default: true,
     },
     {
-      label: 'Omitir por ahora',
+      label: translator.t('init.agent_guidance.skip.label'),
       value: 'skip',
     },
   ], {
@@ -2898,28 +2990,30 @@ async function resolveInteractiveInitOptions(args, targetDir, projectName, optio
     full: selectedProfile.value === 'full',
     includeTemplates: args.initIncludeTemplates || selectedProfile.value === 'full',
     legacyScripts: args.initLegacyScripts,
+    language: selectedLanguage.value,
     methodology: selectedMethodology.value,
     minimal: selectedProfile.value === 'minimal',
     projectName,
   };
 
   ux.summary([
-    { label: 'Proyecto', value: projectName },
-    { label: 'Modo', value: selectedMode.label },
-    { label: 'Metodologia', value: selectedMethodology.label },
-    { label: 'Perfil', value: selectedProfile.label },
-    { label: 'Perfiles de agentes', value: agentGuidance.value === 'show' ? 'mostrar proximo paso' : 'omitir' },
-  ], { title: 'Configuracion elegida' });
+    { label: translator.t('init.summary.project'), value: projectName },
+    { label: translator.t('init.summary.mode'), value: selectedMode.label },
+    { label: translator.t('init.summary.methodology'), value: selectedMethodology.label },
+    { label: translator.t('init.summary.language'), value: selectedLanguage.value },
+    { label: translator.t('init.summary.profile'), value: selectedProfile.label },
+    { label: translator.t('init.summary.agent_profiles'), value: agentGuidance.value === 'show' ? translator.t('init.agent_guidance.show.summary') : translator.t('init.agent_guidance.skip.summary') },
+  ], { title: translator.t('init.summary.title') });
 
   if (agentGuidance.value === 'show') {
     ux.nextSteps([
       'npx create-quiver ai agent set planner --provider codex --model gpt-5.5 --dry-run',
       'npx create-quiver ai agent set executor --provider claude --model claude-sonnet-4-6 --dry-run',
-    ], { title: 'Despues de inicializar' });
+    ], { title: translator.t('init.next_steps.after_init') });
   }
 
   if (!args.force && !args.dryRun) {
-    const confirmed = await ux.promptConfirm(`Inicializar Quiver en ${targetDir}?`, { initialValue: true });
+    const confirmed = await ux.promptConfirm(translator.t('init.confirm.initialize', { path: targetDir }), { initialValue: true });
     if (!confirmed) {
       throw new Error(formatError('init interactive approval declined. No files were written.'));
     }
@@ -2928,6 +3022,17 @@ async function resolveInteractiveInitOptions(args, targetDir, projectName, optio
   return {
     action: 'init',
     ...nextFlags,
+  };
+}
+
+function persistInitLanguage(targetDir, initOptions = {}) {
+  if (!initOptions.language) {
+    return null;
+  }
+  writeProjectLanguageConfig(targetDir, initOptions.language);
+  return {
+    language: initOptions.language,
+    path: path.join(targetDir, '.quiver', 'config.json'),
   };
 }
 
@@ -2980,13 +3085,14 @@ function runDoctor(targetDir, options = {}) {
   }
 }
 
-function printInitNextSteps(targetDir, projectName) {
+function printInitNextSteps(targetDir, projectName, options = {}) {
+  const translator = createTranslator(options.language);
   console.log('');
-  console.log('Next steps:');
-  console.log(`- Review AGENTS.md, then ${path.join(targetDir, 'docs', 'AI_ONBOARDING_PROMPT.md')}`);
-  console.log(`- Review ${path.join(targetDir, 'docs', 'WORKFLOW.md')}`);
-  console.log('- Analyze the project with npx create-quiver analyze');
-  console.log('- Create real specs and slices after acceptance criteria are approved and the technical plan is reviewed and approved.');
+  console.log(translator.t('init.next_steps.title'));
+  console.log(`- ${translator.t('init.next_steps.review_agents', { path: path.join(targetDir, 'docs', 'AI_ONBOARDING_PROMPT.md') })}`);
+  console.log(`- ${translator.t('init.next_steps.review_workflow', { path: path.join(targetDir, 'docs', 'WORKFLOW.md') })}`);
+  console.log(`- ${translator.t('init.next_steps.analyze')}`);
+  console.log(`- ${translator.t('init.next_steps.create_specs')}`);
 }
 
 async function run(argv) {
@@ -3641,6 +3747,7 @@ async function run(argv) {
     dryRun: args.dryRun,
     full: initOptions.full,
     includeTemplates: initOptions.includeTemplates,
+    language: initOptions.language,
     legacyScripts: initOptions.legacyScripts,
     minimal: initOptions.minimal,
     projectName: initOptions.projectName,
@@ -3667,6 +3774,7 @@ async function run(argv) {
       profile: initLayout.profile,
       templateRoot,
     });
+    const languageWrite = persistInitLanguage(targetDir, initOptions);
 
     if (!args.skipInstall) {
       const installResult = installSelfAsDevDep(targetDir, CLI_VERSION);
@@ -3677,14 +3785,19 @@ async function run(argv) {
       }
     }
 
-    console.log(`Installed Quiver into ${targetDir}`);
-    printInitNextSteps(targetDir, initOptions.projectName);
+    const translator = createTranslator(args.language);
+    console.log(translator.t('init.installed', { path: targetDir }));
+    if (languageWrite) {
+      console.log(translator.t('init.language.saved', { language: languageWrite.language }));
+    }
+    printInitNextSteps(targetDir, initOptions.projectName, { language: args.language });
   } finally {
     fs.rmSync(tempRoot, { recursive: true, force: true });
   }
 }
 
 module.exports = {
+  persistInitLanguage,
   resolveInteractiveInitOptions,
   runAnalyze,
   runDashboard,

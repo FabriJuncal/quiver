@@ -34,7 +34,7 @@ Más detalle: [Instalación y uso con npx](../getting-started/installation.md).
 | `npx --yes create-quiver@latest config language set es` | Guarda `es` como idioma del proyecto en `.quiver/config.json`. |
 | `npx --yes create-quiver@latest config language set en --global` | Guarda `en` como idioma global en `~/.quiver/config.json`. |
 | `npx --yes create-quiver@latest init --name "Proyecto"` | Inicializa Quiver en un proyecto. |
-| `npx --yes create-quiver@latest init --interactive` | Abre una guía interactiva para elegir modo de proyecto, metodología `wdd-sdd`, perfil inicial y próximos pasos de agentes. |
+| `npx --yes create-quiver@latest init --interactive` | Abre una guía interactiva para elegir idioma del proyecto, modo de proyecto, metodología `wdd-sdd`, perfil inicial y próximos pasos de agentes. |
 | `npx --yes create-quiver@latest migrate --dry-run` | Previsualiza migración de un proyecto Quiver anterior. |
 | `npx --yes create-quiver@latest migrate` | Aplica la migración. |
 | `npx --yes create-quiver@latest analyze` | Genera mapa del proyecto y datos de escaneo. |
