@@ -44,6 +44,21 @@ Validation:
 - PASS `node --test tests/lib/i18n-catalog.test.js`
 - PASS `git diff --check`
 
+## slice-04-ai-execution-pr
+
+- Routed `ai execute-plan` and `ai pr` through the shared language option.
+- Localized execute-plan dry-runs, progress summaries, PR reports, and PR progress wrappers.
+- Reused existing execute-slice i18n coverage and added Spanish regression coverage for execute-plan and PR dry-runs.
+- Preserved git/gh command strings, branch names, PR titles, body paths, validation commands, JSON output, and SSH alias handling.
+
+Validation:
+
+- PASS `node --test tests/commands/ai-execute-slice.test.js`
+- PASS `node --test tests/commands/ai-execute-plan.test.js`
+- PASS `node --test tests/commands/ai-pr.test.js`
+- PASS `node --test tests/lib/i18n-catalog.test.js`
+- PASS `git diff --check`
+
 ## Pending Evidence
 
 - `node --test tests/**/*.test.js`

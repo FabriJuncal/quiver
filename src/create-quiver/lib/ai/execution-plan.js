@@ -9,6 +9,7 @@ const {
 } = require('../agent-profiles');
 const { createUx } = require('../cli/ux');
 const { branchDelete, runGit, statusPorcelain, worktreeAdd, worktreePrune, worktreeRemove } = require('../git');
+const { createTranslator } = require('../i18n/catalog');
 const { withLock } = require('../locks');
 const { safeBranchName, worktreesRootForRepo } = require('../slice');
 const { buildGraph, computeLevels, detectFileConflicts, isFoundationSliceId, readAllSlices, topoSort, SliceGraphError } = require('../slice-graph');
@@ -387,19 +388,20 @@ function formatHumanExecutionPlan(report) {
 }
 
 function formatExecutePlanDryRun(report, options = {}) {
+  const translator = createTranslator(options.language);
   const provider = options.resolvedProvider || options.provider || 'codex';
   const model = options.resolvedModel || options.model || '';
   const commitEnabled = options.commit === true;
   const executionMode = normalizeExecutionMode(options.mode || options.executionMode);
   const lines = [
-    'AI execute-plan dry-run',
-    `Execution mode: ${executionMode}`,
-    `Provider: ${provider}`,
-    model ? `Model: ${model}` : '',
-    `Commit after each slice: ${commitEnabled ? 'enabled' : 'disabled'}`,
-    `Total slices: ${report.summary.total_slices}`,
+    translator.t('execute_plan.title.dry_run'),
+    translator.t('execute_plan.execution_mode', { mode: executionMode }),
+    translator.t('execute_plan.provider', { provider }),
+    model ? translator.t('execute_plan.model', { model }) : '',
+    translator.t('execute_plan.commit_after_each_slice', { value: commitEnabled ? translator.t('execute_plan.enabled') : translator.t('execute_plan.disabled') }),
+    translator.t('execute_plan.total_slices', { count: report.summary.total_slices }),
     '',
-    'Waves',
+    translator.t('execute_plan.waves'),
   ];
 
   const commandForSlice = (slice) => {
@@ -423,18 +425,18 @@ function formatExecutePlanDryRun(report, options = {}) {
   ].join(' ');
 
   for (const level of report.ready_levels) {
-    lines.push(`Wave ${level.index}: ${level.parallel_ready ? 'parallel-ready' : 'sequential'}`);
-    lines.push(`Workspace strategy: ${level.worktree_strategy.mode}`);
+    lines.push(translator.t('execute_plan.wave', { index: level.index, mode: level.parallel_ready ? 'parallel-ready' : 'sequential' }));
+    lines.push(translator.t('execute_plan.workspace_strategy', { strategy: level.worktree_strategy.mode }));
     if (level.fallback_reason) {
-      lines.push(`Fallback: ${level.fallback_reason}`);
+      lines.push(translator.t('execute_plan.fallback', { reason: level.fallback_reason }));
     }
     for (const group of level.execution_groups) {
-      lines.push(`Group: ${group.mode}`);
+      lines.push(translator.t('execute_plan.group', { mode: group.mode }));
       for (const ref of group.slice_refs) {
         const slice = level.slices.find((item) => item.ref === ref);
-        lines.push(`- Prompt: ${promptCommandForSlice(slice)}`);
+        lines.push(`- ${translator.t('execute_plan.prompt')}: ${promptCommandForSlice(slice)}`);
         if (executionMode !== 'manual') {
-          lines.push(`  Execute: ${commandForSlice(slice)}`);
+          lines.push(`  ${translator.t('execute_plan.execute')}: ${commandForSlice(slice)}`);
         }
       }
     }
@@ -677,10 +679,11 @@ async function runExecutePlan(repoRoot, options = {}) {
   const results = [];
   const ux = createCommandUx(options);
   const showProgress = shouldShowHumanProgress(ux, options);
+  const translator = createTranslator(options.language);
   if (showProgress) {
-    ux.heading(`Ejecutando plan de slices con ${runtimeProfile.displayName}`);
-    ux.check(`Plan cargado: ${report.summary.total_slices} slice${report.summary.total_slices === 1 ? '' : 's'}`);
-    ux.check(`Modo: ${executionMode}`);
+    ux.heading(translator.t('execute_plan.progress.title', { profile: runtimeProfile.displayName }));
+    ux.check(translator.t('execute_plan.progress.plan_loaded', { count: report.summary.total_slices }));
+    ux.check(translator.t('execute_plan.progress.mode', { mode: executionMode }));
   }
 
   for (const level of report.ready_levels) {
@@ -689,9 +692,9 @@ async function runExecutePlan(repoRoot, options = {}) {
         const groupResults = await runWithProgress({
           ux,
           enabled: showProgress,
-          message: `Ejecutando wave ${level.index}: ${group.slice_refs.join(', ')}`,
-          successMessage: `Wave ${level.index} completada`,
-          failureMessage: `Falló wave ${level.index}`,
+          message: translator.t('execute_plan.progress.running_wave', { index: level.index, refs: group.slice_refs.join(', ') }),
+          successMessage: translator.t('execute_plan.progress.wave_completed', { index: level.index }),
+          failureMessage: translator.t('execute_plan.progress.wave_failed', { index: level.index }),
           run: () => (executionMode === 'delegated' && group.mode === 'parallel' && group.slice_refs.length > 1
             ? runParallelGroupInWorktrees(repoRoot, level, group, resolvedOptions)
             : runSequentialGroup(repoRoot, level, group, resolvedOptions)),
@@ -707,7 +710,7 @@ async function runExecutePlan(repoRoot, options = {}) {
     }
   }
 
-  process.stdout.write(`AI execute-plan completed\nSlices executed: ${results.length}\n`);
+  process.stdout.write(`${translator.t('execute_plan.title.completed')}\n${translator.t('execute_plan.slices_executed', { count: results.length })}\n`);
   return { task: 'execute-plan', dryRun: false, report, results };
 }
 

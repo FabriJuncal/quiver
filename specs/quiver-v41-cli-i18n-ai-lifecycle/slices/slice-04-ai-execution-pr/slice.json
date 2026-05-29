@@ -12,9 +12,15 @@
     "branch_name": "feature/QUIVER-41-04-v41-ai-execution-pr"
   },
   "files": [
+    "src/create-quiver/index.js",
     "src/create-quiver/commands/ai.js",
+    "src/create-quiver/lib/ai/execution-plan.js",
+    "src/create-quiver/lib/ai/github.js",
+    "src/create-quiver/lib/i18n/messages/en.js",
+    "src/create-quiver/lib/i18n/messages/es.js",
     "tests/commands/ai-execute-slice.test.js",
-    "tests/commands/ai-execute-plan.test.js"
+    "tests/commands/ai-execute-plan.test.js",
+    "tests/commands/ai-pr.test.js"
   ],
   "expected_read_paths": [
     "src/create-quiver/commands/ai.js",
@@ -23,7 +29,10 @@
     "docs/reference/commands.md"
   ],
   "allowed_write_paths": [
+    "src/create-quiver/index.js",
     "src/create-quiver/commands/ai.js",
+    "src/create-quiver/lib/ai/execution-plan.js",
+    "src/create-quiver/lib/ai/github.js",
     "src/create-quiver/lib/i18n/**",
     "tests/commands/ai-execute-slice.test.js",
     "tests/commands/ai-execute-plan.test.js",
@@ -50,13 +59,14 @@
     "GitHub/gh command semantics are unchanged."
   ],
   "tests": [
-    "node --test tests/commands/ai-execute-slice.test.js tests/commands/ai-execute-plan.test.js",
+    "node --test tests/commands/ai-execute-slice.test.js tests/commands/ai-execute-plan.test.js tests/commands/ai-pr.test.js tests/lib/i18n-catalog.test.js",
     "git diff --check"
   ],
   "validation_hints": [
     "If no ai-pr test exists, add focused dry-run tests rather than relying on live gh."
   ],
   "estimated_hours": 8,
-  "status": "planned",
-  "blocked_reason": "Requires completion of slice-03-ai-planner-approval-review."
+  "status": "completed",
+  "blocked_reason": "",
+  "completed_at": "2026-05-29T17:52:55Z"
 }

@@ -4,6 +4,7 @@ const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 
 const { currentBranch, hasRemote, isCleanWorktree } = require('../git');
+const { createTranslator } = require('../i18n/catalog');
 const { parseJsonWithComments } = require('../json');
 const { formatActionableError } = require('../actionable-error');
 
@@ -592,33 +593,34 @@ function preflightGitHubPr(repoRoot, options = {}) {
 }
 
 function formatPreflightReport(report, options = {}) {
+  const translator = createTranslator(options.language);
   const mode = options.mode || 'pr';
   const dryRun = options.dryRun === true;
   const lines = [
-    `GitHub ${mode} ${dryRun ? 'dry-run' : 'preflight'}`,
-    `Remote: ${report.remote}`,
-    `Branch: ${report.branchName}`,
-    `GitFlow guide: ${path.relative(report.repoRoot, report.guidePath).split(path.sep).join('/')}`,
+    translator.t('ai.github.preflight.title', { mode, state: dryRun ? 'dry-run' : 'preflight' }),
+    translator.t('ai.github.remote', { remote: report.remote }),
+    translator.t('ai.github.branch', { branch: report.branchName }),
+    translator.t('ai.github.gitflow_guide', { path: path.relative(report.repoRoot, report.guidePath).split(path.sep).join('/') }),
   ];
 
   if (report.sshHostAlias) {
-    lines.push(`SSH host alias: ${report.sshHostAlias}`);
+    lines.push(translator.t('ai.github.ssh_host_alias', { alias: report.sshHostAlias }));
   }
 
   if (report.identityFile) {
-    lines.push(`Identity file: ${report.identityFile}`);
+    lines.push(translator.t('ai.github.identity_file', { path: report.identityFile }));
   }
 
   if (hasShellSensitivePath(report.repoRoot, report.guidePath, report.identityFile)) {
     lines.push(formatShellPathGuidance('--identity-file', report.identityFile || '<path with spaces>'));
   }
 
-  lines.push('Checks: gh, gh auth status, git remote, worktree branch, GitFlow guide, SSH identity file');
+  lines.push(translator.t('ai.github.checks'));
 
   if (dryRun) {
-    lines.push('No PR will be created in dry-run mode.');
+    lines.push(translator.t('ai.github.no_pr_dry_run'));
   } else {
-    lines.push('PR creation is not performed in this slice.');
+    lines.push(translator.t('ai.github.pr_not_performed'));
   }
 
   return `${lines.join('\n')}\n`;
@@ -630,36 +632,37 @@ function quoteCommandArg(arg) {
 }
 
 function formatPrCreateReport({ preflight, plan, result }, options = {}) {
+  const translator = createTranslator(options.language);
   const dryRun = options.dryRun === true;
   const create = options.create === true;
   const lines = [
-    `GitHub pr ${dryRun ? 'dry-run' : create ? 'created' : 'preflight'}`,
-    `Remote: ${preflight.remote}`,
-    `Branch: ${preflight.branchName}`,
-    `Base: ${plan.baseBranch}`,
-    `PR body: ${plan.prBodyRelativePath}`,
-    `Title: ${plan.title}`,
-    `Command: ${plan.ghCommand} ${plan.args.map(quoteCommandArg).join(' ')}`,
+    translator.t('ai.github.pr.title', { state: dryRun ? 'dry-run' : create ? 'created' : 'preflight' }),
+    translator.t('ai.github.remote', { remote: preflight.remote }),
+    translator.t('ai.github.branch', { branch: preflight.branchName }),
+    translator.t('ai.github.base', { base: plan.baseBranch }),
+    translator.t('ai.github.pr_body', { path: plan.prBodyRelativePath }),
+    translator.t('ai.github.title', { title: plan.title }),
+    translator.t('ai.github.command', { command: `${plan.ghCommand} ${plan.args.map(quoteCommandArg).join(' ')}` }),
   ];
 
   if (preflight.sshHostAlias) {
-    lines.push(`SSH host alias: ${preflight.sshHostAlias}`);
+    lines.push(translator.t('ai.github.ssh_host_alias', { alias: preflight.sshHostAlias }));
   }
 
   if (preflight.identityFile) {
-    lines.push(`Identity file: ${preflight.identityFile}`);
+    lines.push(translator.t('ai.github.identity_file', { path: preflight.identityFile }));
   }
 
   if (hasShellSensitivePath(preflight.repoRoot, preflight.identityFile, plan.prBodyPath, ...plan.args)) {
-    lines.push('Shell-safe command examples:');
+    lines.push(`${translator.t('ai.github.shell_safe_examples')}:`);
     lines.push(`- macOS/Linux/Git Bash/WSL: ${formatCommandForShell(plan.ghCommand, plan.args, quotePosixArg)}`);
     lines.push(`- Windows PowerShell: ${formatCommandForShell(plan.ghCommand, plan.args, quotePowerShellArg)}`);
   }
 
   if (dryRun) {
-    lines.push('No PR will be created in dry-run mode.');
+    lines.push(translator.t('ai.github.no_pr_dry_run'));
   } else if (!create) {
-    lines.push('No PR was created. Re-run with --create after reviewing the plan.');
+    lines.push(translator.t('ai.github.no_pr_created'));
   } else if (result && result.stdout) {
     lines.push(result.stdout.trimEnd());
   }

@@ -3255,7 +3255,7 @@ async function runGitHubTask(repoRoot, options = {}, mode = 'pr') {
     throw annotateGitHubError(error, mode);
   }
 
-  process.stdout.write(formatPreflightReport(report, { mode, dryRun }));
+  process.stdout.write(formatPreflightReport(report, { mode, dryRun, language: options.language }));
 
   return {
     task: mode,
@@ -3267,10 +3267,11 @@ async function runGitHubTask(repoRoot, options = {}, mode = 'pr') {
 async function runPr(repoRoot, options = {}) {
   const dryRun = options.dryRun === true;
   const create = options.create === true;
+  const translator = createTranslator(options.language);
   const ux = createCommandUx(options);
   const showProgress = create && !dryRun && shouldShowHumanProgress(ux, options);
   if (showProgress) {
-    ux.heading('Creando PR con gh');
+    ux.heading(translator.t('ai.github.progress.heading'));
   }
   let preflight;
 
@@ -3278,9 +3279,9 @@ async function runPr(repoRoot, options = {}) {
     preflight = await runProviderWithProgress({
       ux,
       enabled: showProgress,
-      message: 'Ejecutando preflight de GitHub...',
-      successMessage: 'Preflight de GitHub listo',
-      failureMessage: 'Falló preflight de GitHub',
+      message: translator.t('ai.github.progress.preflight.running'),
+      successMessage: translator.t('ai.github.progress.preflight.done'),
+      failureMessage: translator.t('ai.github.progress.preflight.failed'),
       run: () => (options.preflightFn || preflightGitHubPr)(repoRoot, {
         remote: options.remote,
         sshHostAlias: options.sshHostAlias,
@@ -3308,7 +3309,7 @@ async function runPr(repoRoot, options = {}) {
       title: options.title,
     });
     if (showProgress) {
-      ux.check('Cuerpo del PR preparado');
+      ux.check(translator.t('ai.github.progress.body_ready'));
     }
   } catch (error) {
     throw annotateGitHubError(error, 'pr');
@@ -3340,7 +3341,7 @@ async function runPr(repoRoot, options = {}) {
   }
 
   if (dryRun || !create) {
-    process.stdout.write(formatPrCreateReport({ preflight, plan }, { dryRun, create }));
+    process.stdout.write(formatPrCreateReport({ preflight, plan }, { dryRun, create, language: options.language }));
     return {
       task: 'pr',
       dryRun,
@@ -3357,9 +3358,9 @@ async function runPr(repoRoot, options = {}) {
     result = await runProviderWithProgress({
       ux,
       enabled: showProgress,
-      message: 'Creando PR en GitHub...',
-      successMessage: 'PR creado',
-      failureMessage: 'Falló creación del PR',
+      message: translator.t('ai.github.progress.create.running'),
+      successMessage: translator.t('ai.github.progress.create.done'),
+      failureMessage: translator.t('ai.github.progress.create.failed'),
       run: () => runGhPrCreate(plan, {
         ghCreateRunner: options.ghCreateRunner,
       }),
@@ -3368,7 +3369,7 @@ async function runPr(repoRoot, options = {}) {
     throw annotateGitHubError(error, 'pr');
   }
 
-  process.stdout.write(formatPrCreateReport({ preflight, plan, result }, { dryRun: false, create: true }));
+  process.stdout.write(formatPrCreateReport({ preflight, plan, result }, { dryRun: false, create: true, language: options.language }));
   return {
     task: 'pr',
     dryRun: false,

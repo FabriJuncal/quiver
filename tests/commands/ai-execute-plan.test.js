@@ -122,6 +122,25 @@ test('ai execute-plan CLI dry-run supports manual mode', () => {
   }
 });
 
+test('ai execute-plan CLI dry-run renders Spanish wrappers while preserving commands', () => {
+  const project = makeProject();
+  try {
+    const output = execFileSync('node', [BIN_PATH, '--lang', 'es', 'ai', 'execute-plan', '--dry-run', '--commit'], {
+      cwd: project.root,
+      encoding: 'utf8',
+    });
+
+    assert.ok(output.includes('Dry-run de AI execute-plan'));
+    assert.ok(output.includes('Modo de ejecucion: auto'));
+    assert.ok(output.includes('Commit despues de cada slice: activado'));
+    assert.ok(output.includes('Wave 0: parallel-ready'));
+    assert.ok(output.includes('Prompt: npx create-quiver ai prompt-slice --slice "specs/demo/slices/slice-01-alpha/slice.json" --dry-run'));
+    assert.ok(output.includes('Ejecutar: npx create-quiver ai execute-slice --slice "specs/demo/slices/slice-01-alpha/slice.json" --provider codex --commit'));
+  } finally {
+    project.cleanup();
+  }
+});
+
 test('ai execute-plan CLI JSON exposes downstream wave and scope metadata', () => {
   const project = makeProject();
   try {

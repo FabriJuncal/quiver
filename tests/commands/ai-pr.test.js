@@ -152,6 +152,36 @@ test('ai pr CLI dry-run wires through the new router and avoids opening a PR', (
   }
 });
 
+test('ai pr CLI dry-run renders Spanish wrappers while preserving gh command', () => {
+  const repo = createRepo({
+    [DEFAULT_GITFLOW_GUIDE_PATH]: '# GitFlow guide\n',
+    'specs/demo/pr.md': '## Title\nDemo PR\n\n## Summary\nBody\n',
+    'ssh/github-work': 'identity-file\n',
+  });
+  const binDir = fs.mkdtempSync(path.join(os.tmpdir(), 'quiver-ai-gh-'));
+
+  try {
+    createFakeGh(binDir);
+    const output = execFileSync('node', [BIN_PATH, '--lang', 'es', 'ai', 'pr', '--dry-run', '--ssh-host-alias', 'github-work', '--identity-file', 'ssh/github-work'], {
+      cwd: repo.root,
+      encoding: 'utf8',
+      env: {
+        ...process.env,
+        PATH: `${binDir}${path.delimiter}${process.env.PATH}`,
+      },
+    });
+
+    assert.ok(output.includes('GitHub pr dry-run'));
+    assert.ok(output.includes('Comando: gh pr create'));
+    assert.ok(output.includes('Alias SSH: github-work'));
+    assert.ok(output.includes('No se creara ningun PR en modo dry-run.'));
+    assert.ok(output.includes('--body-file'));
+  } finally {
+    fs.rmSync(binDir, { recursive: true, force: true });
+    repo.cleanup();
+  }
+});
+
 test('ai pr --review lets a human edit pr.md before the PR plan is built', async () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'quiver-ai-pr-review-'));
   writeFile(path.join(root, 'specs/demo/pr.md'), '## Title\nOriginal PR\n\n## Summary\nBody\n');
@@ -301,12 +331,12 @@ test('ai pr create shows TTY progress for preflight and gh creation', async () =
     });
 
     assert.deepEqual(events, [
-      ['write', '◇ Creando PR con gh\n'],
-      ['start', 'Ejecutando preflight de GitHub...'],
-      ['stop', 'Preflight de GitHub listo', undefined],
-      ['write', '✓ Cuerpo del PR preparado\n'],
-      ['start', 'Creando PR en GitHub...'],
-      ['stop', 'PR creado', undefined],
+      ['write', '◇ Creating PR with gh\n'],
+      ['start', 'Running GitHub preflight...'],
+      ['stop', 'GitHub preflight ready', undefined],
+      ['write', '✓ PR body prepared\n'],
+      ['start', 'Creating PR in GitHub...'],
+      ['stop', 'PR created', undefined],
     ]);
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
