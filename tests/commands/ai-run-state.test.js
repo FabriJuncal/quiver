@@ -184,6 +184,43 @@ test('ai run close archives a selected run without deleting evidence', () => {
   }
 });
 
+test('ai run create and close render Spanish human wrappers while preserving ids', () => {
+  const repo = makeRepo();
+
+  try {
+    const created = execCli(repo.root, ['--lang', 'es', 'ai', 'run', 'create', '--input', 'requirements.md', '--run', 'run-es']);
+    assert.match(created, /Estado del run de IA/);
+    assert.match(created, /Run: run-es/);
+    assert.match(created, /Estado: activo/);
+    assert.match(created, /Fase: created/);
+
+    const closed = execCli(repo.root, ['--lang', 'es', 'ai', 'run', 'close', '--run', 'run-es']);
+    assert.match(closed, /Run de IA cerrado/);
+    assert.match(closed, /Run: run-es/);
+    assert.match(closed, /Estado: cerrado/);
+    assert.match(closed, /Fase: closed/);
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('ai run command errors render Spanish without translating commands', () => {
+  const repo = makeRepo();
+
+  try {
+    assert.throws(
+      () => execCli(repo.root, ['--lang', 'es', 'ai', 'run', 'create']),
+      /ai run create requiere --input <requirements\.md>/,
+    );
+    assert.throws(
+      () => execCli(repo.root, ['--lang', 'es', 'ai', 'run', 'watch', '--run', 'run-cli']),
+      /subcomando ai run no soportado: watch\. Tareas soportadas: create, close/,
+    );
+  } finally {
+    repo.cleanup();
+  }
+});
+
 test('ai approvals separates run-scoped approvals from global planner approvals', () => {
   const repo = makeRepo();
 

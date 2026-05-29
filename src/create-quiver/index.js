@@ -3244,6 +3244,7 @@ async function run(argv) {
       runAiLifecycleRun(process.cwd(), {
         command: args.aiRunCommand,
         input: args.aiInput || undefined,
+        language: args.language,
         runId: args.aiRunId || undefined,
         specSlug: args.specSlug || undefined,
       });

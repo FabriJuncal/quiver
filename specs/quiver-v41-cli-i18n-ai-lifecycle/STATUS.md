@@ -1,9 +1,9 @@
 # Status - Quiver v41 CLI i18n AI Lifecycle
 
-**Overall status:** Planned
+**Overall status:** In progress
 **Created:** 2026-05-28
 **Completed:** Not completed
-**Current slice:** slice-01-ai-run-status-resume
+**Current slice:** slice-02-ai-agent-models
 
 ## Summary
 
@@ -14,7 +14,7 @@ This spec localizes AI lifecycle command output after the v37 foundation is comp
 | Slice | Status | Notes |
 |---|---|---|
 | slice-00-ai-i18n-foundation | Completed | Spec package and handoffs created. |
-| slice-01-ai-run-status-resume | Planned | Blocked until v37 foundation is complete. |
+| slice-01-ai-run-status-resume | Completed | Localized current run/status/resume wrappers; full watcher runtime remains in v36. |
 | slice-02-ai-agent-models | Planned | Depends on shared AI localization patterns. |
 | slice-03-ai-planner-approval-review | Planned | Covers provider-backed planner wrappers and approvals. |
 | slice-04-ai-execution-pr | Planned | Covers execution and PR command wrappers. |
@@ -22,4 +22,4 @@ This spec localizes AI lifecycle command output after the v37 foundation is comp
 
 ## Current Blockers
 
-- Requires completion of `specs/quiver-v37-cli-i18n-foundation`.
+- No blocker for v41 slice-02. `ai run watch` runtime remains a separate planned dependency in `specs/quiver-v36-ai-run-watch-portable`.

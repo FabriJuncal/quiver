@@ -2575,22 +2575,23 @@ function runActiveSlice(repoRoot, options = {}) {
 }
 
 function runLifecycleRun(repoRoot, options = {}) {
+  const translator = createTranslator(options.language);
   const command = String(options.command || '').trim().toLowerCase();
   if (command !== 'create' && command !== 'close') {
-    throw new Error(formatError(`unsupported ai run subcommand: ${command}. Supported tasks: create, close`));
+    throw new Error(formatError(translator.t('ai.run.error.unsupported_subcommand', { command })));
   }
   if (command === 'create' && !options.input) {
-    throw new Error(formatError('ai run create requires --input <requirements.md>'));
+    throw new Error(formatError(translator.t('ai.run.error.create_requires_input')));
   }
   if (command === 'close') {
     const current = resolveAiRun(repoRoot, options.runId || '');
     if (!current) {
-      throw new Error(formatError('ai run close requires an active run or --run <id>'));
+      throw new Error(formatError(translator.t('ai.run.error.close_requires_run')));
     }
     const run = updateAiRunPhase(repoRoot, current.run_id, 'closed', {
       command: 'ai run close',
     });
-    const report = `AI run closed\n${formatAiRunStatus(repoRoot, run)}`;
+    const report = `${translator.t('ai.run.closed.title')}\n${formatAiRunStatus(repoRoot, run, options)}`;
     process.stdout.write(report);
     return {
       task: 'run',
@@ -2605,7 +2606,7 @@ function runLifecycleRun(repoRoot, options = {}) {
     runId: options.runId,
     specSlug: options.specSlug,
   });
-  const report = formatAiRunStatus(repoRoot, run);
+  const report = formatAiRunStatus(repoRoot, run, options);
   process.stdout.write(report);
   return {
     task: 'run',
