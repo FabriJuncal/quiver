@@ -133,3 +133,31 @@ test('check-handoff rejects incomplete per-slice execution briefs with an action
     project.cleanup();
   }
 });
+
+test('check-handoff renders Spanish missing-section guidance when requested', () => {
+  const project = makeProject({
+    'specs/spec-a/slices/slice-01-alpha/EXECUTION_BRIEF.md': [
+      '# EXECUTION BRIEF - slice-01-alpha',
+      '',
+      '## Context',
+      'Context.',
+      '',
+    ].join('\n'),
+  });
+
+  try {
+    assert.throws(
+      () => checkHandoff('specs/spec-a/slices/slice-01-alpha/EXECUTION_BRIEF.md', project.root, { language: 'es' }),
+      (error) => {
+        const message = String(error.message || error);
+        return message.includes('execution brief no tiene las secciones requeridas')
+          && message.includes('objective')
+          && message.includes('Headings/alias aceptados:')
+          && message.includes('## Objective')
+          && message.includes('Template minimo:');
+      },
+    );
+  } finally {
+    project.cleanup();
+  }
+});

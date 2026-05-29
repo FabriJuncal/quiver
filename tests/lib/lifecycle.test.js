@@ -19,6 +19,18 @@ function writeText(filePath, text) {
   fs.writeFileSync(filePath, text);
 }
 
+function captureConsole(fn) {
+  const originalLog = console.log;
+  const lines = [];
+  console.log = (...args) => lines.push(args.join(' '));
+  try {
+    fn();
+  } finally {
+    console.log = originalLog;
+  }
+  return lines.join('\n');
+}
+
 function makeRepo(branchName) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'quiver-spec-worktree-'));
   cp.execFileSync('git', ['init', '-q'], { cwd: root });
@@ -186,6 +198,27 @@ test('startSlice refuses to create nested worktrees from an existing worktree', 
       (error) => String(error.message || error).includes('refusing to create a slice worktree from inside a linked worktree')
         && String(error.message || error).includes('prevents nested .worktrees paths'),
     );
+  } finally {
+    process.chdir(previous);
+    repo.cleanup();
+  }
+});
+
+test('startSlice renders English lifecycle output when requested', () => {
+  const repo = makeRepo('main');
+  const previous = process.cwd();
+  try {
+    process.chdir(repo.root);
+    const output = captureConsole(() => startSlice('specs/quiver-v22-guided-ai-workflow/slices/slice-05-spec-worktree-lifecycle/slice.json', {
+      allowDraft: true,
+      language: 'en',
+    }));
+
+    assert.match(output, /WARN: intentional bootstrap for a draft slice/);
+    assert.match(output, /Wrote docs\/ai\/ACTIVE_SLICE\.md/);
+    assert.match(output, /Slice ready to work/);
+    assert.match(output, /Branch: feature\/QUIVER-22-05-spec-worktree-lifecycle/);
+    assert.match(output, /Context: .*WORKTREE_CONTEXT\.md/);
   } finally {
     process.chdir(previous);
     repo.cleanup();

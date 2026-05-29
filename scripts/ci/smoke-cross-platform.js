@@ -558,7 +558,7 @@ function runSmoke() {
   cloneRepo(startRepo);
   seedWorkflowFixtures(startRepo, false);
   run('git', ['branch', 'develop', 'HEAD'], { cwd: startRepo });
-  const startEnv = { ...process.env, SLICE_WORKTREES_DIR: path.join(tempRoot, 'worktrees-start') };
+  const startEnv = { ...process.env, QUIVER_LANG: 'es', SLICE_WORKTREES_DIR: path.join(tempRoot, 'worktrees-start') };
   const activeSlicePath = path.join(startRepo, 'docs', 'ai', 'ACTIVE_SLICE.md');
   const worktreePath = path.join(tempRoot, 'worktrees-start', 'feature-QUIVER-02-workflow-gate-fixtures');
 
@@ -601,9 +601,9 @@ function runSmoke() {
   run('git', ['reset', '--hard'], { cwd: prRepo });
   run('git', ['clean', '-fd'], { cwd: prRepo });
   prepareCompletedSlice(prRepo);
-  const prOutput = runNodeCli(prRepo, ['check-pr', slicePath]);
+  const prOutput = runNodeCli(prRepo, ['check-pr', slicePath], { env: { ...process.env, QUIVER_LANG: 'es' } });
   assertContains(prOutput, 'PASS: Gate PR listo', 'check-pr output');
-  const scopeOutput = runNodeCli(prRepo, ['check-scope', slicePath]);
+  const scopeOutput = runNodeCli(prRepo, ['check-scope', slicePath], { env: { ...process.env, QUIVER_LANG: 'es' } });
   assertContains(scopeOutput, 'PASS: Todos los archivos tocados', 'check-scope output');
 
   const tarball = packInstaller();

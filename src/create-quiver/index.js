@@ -3479,6 +3479,7 @@ async function run(argv) {
         dryRun: args.dryRun,
         executorProfile: args.aiExecutorProfile || undefined,
         interactive: args.interactive,
+        language: args.language,
         model: args.aiModel || undefined,
         provider: args.aiProvider,
         providerExplicit: args.aiProviderExplicit,
@@ -3491,6 +3492,7 @@ async function run(argv) {
 
     if (args.aiCommand === 'prompt-slice' || args.aiCommand === 'executor-prompt') {
       runAiPromptSlice(process.cwd(), {
+        language: args.language,
         slice: args.aiSlice || undefined,
       });
       return;
@@ -3618,7 +3620,10 @@ async function run(argv) {
   }
 
   if (args.mode === 'start-slice') {
-    startSlice(args.targetDir, { allowDraft: args.allowDraft });
+    startSlice(args.targetDir, {
+      allowDraft: args.allowDraft,
+      language: args.language,
+    });
     return;
   }
 
@@ -3626,6 +3631,7 @@ async function run(argv) {
     checkSliceReadiness(args.targetDir, {
       baseBranch: args.baseBranchExplicit ? args.aiBaseBranch : '',
       gate: args.gate,
+      language: args.language,
       local: args.checkSliceLocal,
       remote: args.aiRemote,
       strictOverlap: args.strictOverlap,
@@ -3634,7 +3640,7 @@ async function run(argv) {
   }
 
   if (args.mode === 'check-pr') {
-    checkPrReadiness(args.targetDir);
+    checkPrReadiness(args.targetDir, { language: args.language });
     return;
   }
 
@@ -3644,16 +3650,21 @@ async function run(argv) {
     if (!handoffInput || handoffInput === '.') {
       throw new Error(formatError('missing handoff or brief path. Use: npx create-quiver check-handoff specs/<spec-slug>/HANDOFF.md or specs/<spec-slug>/slices/<slice-id>/EXECUTION_BRIEF.md'));
     }
-    const resolved = checkHandoff(handoffInput, repoRoot);
-    console.log(`PASS: ${resolved.label} validated at ${resolved.relativePath}`);
+    const translator = createTranslator(args.language);
+    const resolved = checkHandoff(handoffInput, repoRoot, { language: args.language });
+    console.log(translator.t('handoff.validated', {
+      path: resolved.relativePath,
+      subject: translator.t(`handoff.label.${resolved.kind}`),
+    }));
     return;
   }
 
   if (args.mode === 'new-handoff') {
     const repoRoot = process.cwd();
     const handoffSlug = args.targetDir;
+    const translator = createTranslator(args.language);
     const resolved = scaffoldHandoff(handoffSlug, repoRoot);
-    console.log(`PASS: Handoff scaffolded at ${resolved.relativePath}`);
+    console.log(translator.t('handoff.scaffolded', { path: resolved.relativePath }));
     return;
   }
 
@@ -3670,6 +3681,7 @@ async function run(argv) {
   if (args.mode === 'check-scope') {
     checkScope(args.targetDir, {
       baseBranch: args.baseBranchExplicit ? args.aiBaseBranch : '',
+      language: args.language,
       remote: args.aiRemote,
       strict: args.strict,
     });
@@ -3688,6 +3700,7 @@ async function run(argv) {
         dryRun: args.dryRun,
         input: args.aiInput || undefined,
         interactive: args.interactive,
+        language: args.language,
         methodology: args.methodology || undefined,
         review: args.review,
         specSlug: args.specSlug || undefined,
@@ -3704,18 +3717,19 @@ async function run(argv) {
       const report = startSpecWorktree(process.cwd(), args.targetDir, {
         dryRun: args.dryRun,
       });
-      process.stdout.write(formatSpecStartResult(report));
+      process.stdout.write(formatSpecStartResult(report, { language: args.language }));
       return;
     }
 
     if (args.specCommand === 'status') {
       const report = buildSpecStatus(process.cwd(), args.targetDir);
-      process.stdout.write(formatSpecStatus(report));
+      process.stdout.write(formatSpecStatus(report, { language: args.language }));
       return;
     }
 
     if (args.specCommand === 'validate') {
       runValidateSpec(process.cwd(), args.targetDir, {
+        language: args.language,
         strict: args.strict,
       });
       return;
@@ -3729,7 +3743,7 @@ async function run(argv) {
         force: args.force,
         remote: args.aiRemote,
       });
-      process.stdout.write(formatSpecCloseResult(report));
+      process.stdout.write(formatSpecCloseResult(report, { language: args.language }));
       return;
     }
 

@@ -13,6 +13,9 @@
   },
   "files": [
     "tests/**/*.test.js",
+    "scripts/ci/smoke-create-quiver.sh",
+    "scripts/ci/smoke-cross-platform.js",
+    "scripts/ci/smoke-tiered-pack.sh",
     "specs/quiver-v40-cli-i18n-spec-slice-workflows/EVIDENCE_REPORT.md"
   ],
   "expected_read_paths": [
@@ -22,6 +25,9 @@
   ],
   "allowed_write_paths": [
     "tests/**",
+    "scripts/ci/smoke-create-quiver.sh",
+    "scripts/ci/smoke-cross-platform.js",
+    "scripts/ci/smoke-tiered-pack.sh",
     "specs/quiver-v40-cli-i18n-spec-slice-workflows/**"
   ],
   "depends_on": [
@@ -49,12 +55,15 @@
     "npx create-quiver spec validate specs/quiver-v40-cli-i18n-spec-slice-workflows --strict",
     "npm run package:quiver",
     "npm run smoke:create-quiver",
+    "node scripts/ci/smoke-cross-platform.js",
+    "bash scripts/ci/smoke-tiered-pack.sh",
     "git diff --check"
   ],
   "validation_hints": [
     "Run at least one spec validate failure fixture in both languages."
   ],
   "estimated_hours": 4,
-  "status": "planned",
-  "blocked_reason": "Requires completion of slice-02-spec-validate-close and slice-03-slice-lifecycle-handoffs."
+  "status": "completed",
+  "blocked_reason": "",
+  "completed_at": "2026-05-29T16:34:38Z"
 }

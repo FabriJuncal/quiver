@@ -166,12 +166,12 @@ make_git_repo
 export SLICE_WORKTREES_DIR="$worktrees_root"
 
 slice_path="$git_repo/specs/$project_slug/slices/slice-template/slice.json"
-start_output="$(cd "$git_repo" && node "$cli" start-slice --allow-draft "$slice_path")"
+start_output="$(cd "$git_repo" && QUIVER_LANG=es node "$cli" start-slice --allow-draft "$slice_path")"
 assert_text_contains "$start_output" "Slice listo para trabajar."
 assert_file "$git_repo/docs/ai/ACTIVE_SLICE.md"
 assert_front_matter "$git_repo/docs/ai/ACTIVE_SLICE.md"
 
-cleanup_output="$(cd "$git_repo" && node "$cli" cleanup-slice --discard "$slice_path")"
+cleanup_output="$(cd "$git_repo" && QUIVER_LANG=es node "$cli" cleanup-slice --discard "$slice_path")"
 assert_text_contains "$cleanup_output" "PASS: Cleanup finalizado"
 assert_text_contains "$cleanup_output" "PASS: ACTIVE_SLICE.md eliminado"
 if [[ -f "$git_repo/docs/ai/ACTIVE_SLICE.md" ]]; then

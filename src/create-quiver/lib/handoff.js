@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const { createTranslator } = require('./i18n/catalog');
 
 const REQUIRED_HEADINGS = [
   '## Background',
@@ -141,23 +142,31 @@ function formatMinimalTemplate(kind) {
   return lines.join('\n').trimEnd();
 }
 
-function formatMissingSectionsError(resolved, missingSections) {
+function formatMissingSectionsError(resolved, missingSections, options = {}) {
+  const translator = createTranslator(options.language);
   return [
-    `create-quiver: ${resolved.label.toLowerCase()} is missing required sections: ${missingSections.join(', ')}`,
+    `create-quiver: ${translator.t('handoff.error.missing_sections', {
+      sections: missingSections.join(', '),
+      subject: translator.t(`handoff.subject.${resolved.kind}`),
+    })}`,
     '',
-    'Accepted headings/aliases:',
+    translator.t('handoff.accepted_headings'),
     formatAliasGuidance(resolved.kind),
     '',
-    'Minimal template:',
+    translator.t('handoff.minimal_template'),
     formatMinimalTemplate(resolved.kind),
   ].join('\n');
 }
 
-function checkHandoff(handoffInput, repoRoot = process.cwd()) {
+function checkHandoff(handoffInput, repoRoot = process.cwd(), options = {}) {
   const resolved = resolveHandoffPath(repoRoot, handoffInput);
+  const translator = createTranslator(options.language);
 
   if (!fs.existsSync(resolved.absolutePath)) {
-    throw new Error(`create-quiver: missing ${resolved.label.toLowerCase()} file: ${resolved.relativePath}`);
+    throw new Error(`create-quiver: ${translator.t('handoff.error.missing_file', {
+      path: resolved.relativePath,
+      subject: translator.t(`handoff.subject.${resolved.kind}`),
+    })}`);
   }
 
   const text = fs.readFileSync(resolved.absolutePath, 'utf8');
@@ -165,7 +174,7 @@ function checkHandoff(handoffInput, repoRoot = process.cwd()) {
     ? validateHandoffSections(text)
     : validateBriefSections(text, resolved.kind);
   if (missingSections.length > 0) {
-    throw new Error(formatMissingSectionsError(resolved, missingSections));
+    throw new Error(formatMissingSectionsError(resolved, missingSections, options));
   }
 
   return resolved;

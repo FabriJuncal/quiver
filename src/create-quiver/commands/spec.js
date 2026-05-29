@@ -5,6 +5,7 @@ const { checkHandoff } = require('../lib/handoff');
 const { openEditor } = require('../lib/cli/editor');
 const { selectOption } = require('../lib/cli/selectors');
 const { createUx } = require('../lib/cli/ux');
+const { createTranslator } = require('../lib/i18n/catalog');
 const { parseJsonWithComments } = require('../lib/json');
 const { assertPathInsideRoot, validateProjectRelativePaths } = require('../lib/paths');
 const { buildApprovalCandidateReport, formatReviewSummary } = require('../lib/ai/approval-candidates');
@@ -270,42 +271,43 @@ function buildSpecValidationReport(repoRoot, specInput, options = {}) {
   };
 }
 
-function formatSpecValidationReport(report) {
+function formatSpecValidationReport(report, options = {}) {
+  const translator = createTranslator(options.language);
   const lines = [
-    'Quiver spec validation',
-    `Spec: ${report.specDir}`,
-    `Slices: ${report.slices}`,
-    `Strict: ${report.strict ? 'yes' : 'no'}`,
+    translator.t('spec_validate.title'),
+    translator.t('spec_validate.spec', { path: report.specDir }),
+    translator.t('spec_validate.slices', { count: report.slices }),
+    translator.t('spec_validate.strict', { value: report.strict ? translator.t('common.yes') : translator.t('common.no') }),
   ];
 
   if (report.checked.length > 0) {
-    lines.push('Checked files:');
+    lines.push(translator.t('spec_validate.checked_files'));
     for (const file of report.checked) {
       lines.push(`- ${file}`);
     }
   }
 
   if (report.warnings.length > 0) {
-    lines.push('Warnings:');
+    lines.push(translator.t('spec_validate.warnings'));
     for (const warning of report.warnings) {
       lines.push(`- ${warning}`);
     }
   }
 
   if (report.errors.length > 0) {
-    lines.push('Errors:');
+    lines.push(translator.t('spec_validate.errors'));
     for (const error of report.errors) {
       lines.push(`- ${error}`);
     }
   }
 
-  lines.push(report.ok ? 'PASS: spec validation passed.' : 'FAIL: spec validation failed.');
+  lines.push(report.ok ? translator.t('spec_validate.result.pass') : translator.t('spec_validate.result.fail'));
   return `${lines.join('\n')}\n`;
 }
 
 function runValidateSpec(repoRoot, specInput, options = {}) {
   const report = buildSpecValidationReport(repoRoot, specInput, options);
-  process.stdout.write(formatSpecValidationReport(report));
+  process.stdout.write(formatSpecValidationReport(report, options));
 
   if (!report.ok) {
     const error = new Error(formatError(`spec validate failed for ${report.specDir}`));
@@ -342,9 +344,10 @@ function buildSpecCreatePreview(repoRoot, options = {}) {
   };
 }
 
-function formatNextCommands(specDir) {
+function formatNextCommands(specDir, options = {}) {
+  const translator = createTranslator(options.language);
   return [
-    'Next safe commands:',
+    translator.t('spec_create.next_safe_commands'),
     `- npx create-quiver spec start ${specDir}`,
     `- npx create-quiver spec status ${specDir}`,
     '- npx create-quiver next',
@@ -352,14 +355,15 @@ function formatNextCommands(specDir) {
   ];
 }
 
-function formatSpecCreateDryRun(preview) {
+function formatSpecCreateDryRun(preview, options = {}) {
+  const translator = createTranslator(options.language);
   const lines = [
-    'Quiver spec create dry-run',
-    `Spec slug: ${preview.manifest.slug}`,
-    `Title: ${preview.manifest.title}`,
-    `Input file: ${preview.inputPath}`,
-    `Target: ${preview.relativeSpecDir}`,
-    `Planned files: ${preview.preview.files.length}`,
+    translator.t('spec_create.title.dry_run'),
+    translator.t('spec_create.label.slug', { slug: preview.manifest.slug }),
+    translator.t('spec_create.label.title', { title: preview.manifest.title }),
+    translator.t('spec_create.label.input_file', { path: preview.inputPath }),
+    translator.t('spec_create.label.target', { path: preview.relativeSpecDir }),
+    translator.t('spec_create.label.planned_files', { count: preview.preview.files.length }),
   ];
 
   for (const file of preview.preview.files) {
@@ -367,28 +371,29 @@ function formatSpecCreateDryRun(preview) {
   }
 
   if (preview.reviewRequested) {
-    lines.push('Review requested: yes (dry-run preview only; no editor opened and no files written).');
+    lines.push(translator.t('spec_create.review_requested.dry_run'));
   }
 
-  lines.push(...formatNextCommands(preview.relativeSpecDir));
-  lines.push('No files will be written in dry-run mode.');
+  lines.push(...formatNextCommands(preview.relativeSpecDir, options));
+  lines.push(translator.t('spec_create.no_files_written_dry_run'));
   return `${lines.join('\n')}\n`;
 }
 
-function formatSpecCreateResult(result, repoRoot) {
+function formatSpecCreateResult(result, repoRoot, options = {}) {
+  const translator = createTranslator(options.language);
   const relativeSpecDir = toRelativePosix(repoRoot, result.specDir);
   const lines = [
-    'Quiver spec created',
-    `Spec slug: ${result.manifest.slug}`,
-    `Target: ${relativeSpecDir}`,
-    `Files written: ${result.files.length}`,
+    translator.t('spec_create.title.created'),
+    translator.t('spec_create.label.slug', { slug: result.manifest.slug }),
+    translator.t('spec_create.label.target', { path: relativeSpecDir }),
+    translator.t('spec_create.label.files_written', { count: result.files.length }),
   ];
 
   for (const filePath of result.files) {
     lines.push(`- ${toRelativePosix(repoRoot, filePath)}`);
   }
 
-  lines.push(...formatNextCommands(relativeSpecDir));
+  lines.push(...formatNextCommands(relativeSpecDir, options));
   return `${lines.join('\n')}\n`;
 }
 
@@ -397,24 +402,27 @@ function createSpecReviewFile(preview, options = {}) {
   const reviewDir = options.reviewDir || fs.mkdtempSync(path.join(os.tmpdir(), 'quiver-spec-create-review-'));
   const reviewPath = path.join(reviewDir, 'spec-create-preview.md');
   fs.mkdirSync(reviewDir, { recursive: true });
-  fs.writeFileSync(reviewPath, formatSpecCreateDryRun({ ...preview, reviewRequested: false }));
+  fs.writeFileSync(reviewPath, formatSpecCreateDryRun({ ...preview, reviewRequested: false }, options));
   return reviewPath;
 }
 
-const SPEC_METHODOLOGY_OPTIONS = Object.freeze([
-  {
-    label: 'WDD + SDD',
-    value: 'wdd-sdd',
-    hint: 'Workflow Driven Development + Spec Driven Development',
-    default: true,
-  },
-]);
+function specMethodologyOptions(translator) {
+  return [
+    {
+      label: 'WDD + SDD',
+      value: 'wdd-sdd',
+      hint: translator.t('spec_create.methodology.wdd_sdd.hint'),
+      default: true,
+    },
+  ];
+}
 
 async function resolveInteractiveSpecCreateOptions(repoRoot, preview, options = {}) {
   if (options.interactive !== true) {
     return options;
   }
 
+  const translator = createTranslator(options.language);
   const ux = options.ux || createUx({
     interactive: true,
     promptConfirm: options.promptConfirm,
@@ -443,20 +451,20 @@ async function resolveInteractiveSpecCreateOptions(repoRoot, preview, options = 
   const technicalPlanCandidates = buildApprovalCandidateReport(repoRoot, 'technical-plan');
   const approvedVersion = technicalPlanCandidates.approved?.version
     ? `v${technicalPlanCandidates.approved.version}`
-    : 'approved';
+    : translator.t('status.approved');
   const reviewSummary = formatReviewSummary(technicalPlanCandidates.review);
-  const selectedMethodology = await selectOption('¿Qué metodología aplica esta spec?', SPEC_METHODOLOGY_OPTIONS, {
+  const selectedMethodology = await selectOption(translator.t('spec_create.prompt.methodology'), specMethodologyOptions(translator), {
     ...selectorOptions,
     defaultValue: 'wdd-sdd',
     flag: '--methodology',
     name: 'methodology',
     value: options.methodology || '',
   });
-  const selectedInput = await selectOption('¿Qué plan aprobado querés usar?', [
+  const selectedInput = await selectOption(translator.t('spec_create.prompt.input'), [
     {
       label: preview.inputPath,
       value: preview.inputPath,
-      hint: ['Plan técnico revisado y aprobado', approvedVersion, reviewSummary].filter(Boolean).join(', '),
+      hint: [translator.t('spec_create.input.approved_plan_hint'), approvedVersion, reviewSummary].filter(Boolean).join(', '),
       default: true,
     },
   ], {
@@ -466,17 +474,17 @@ async function resolveInteractiveSpecCreateOptions(repoRoot, preview, options = 
     name: 'approved technical plan input',
     value: options.input || '',
   });
-  const selectedReview = await selectOption('¿Cómo querés revisar antes de escribir?', [
+  const selectedReview = await selectOption(translator.t('spec_create.prompt.review'), [
     {
-      label: 'Crear despues de confirmar',
+      label: translator.t('spec_create.review.direct.label'),
       value: 'direct',
-      hint: 'Muestra resumen y pide aprobacion final',
+      hint: translator.t('spec_create.review.direct.hint'),
       default: options.review !== true,
     },
     {
-      label: 'Abrir preview de review',
+      label: translator.t('spec_create.review.editor.label'),
       value: 'review',
-      hint: 'Usa $VISUAL o $EDITOR antes de escribir',
+      hint: translator.t('spec_create.review.editor.hint'),
       default: options.review === true,
     },
   ], {
@@ -487,14 +495,14 @@ async function resolveInteractiveSpecCreateOptions(repoRoot, preview, options = 
   });
 
   ux.summary([
-    { label: 'Spec', value: preview.manifest.slug },
-    { label: 'Metodologia', value: selectedMethodology.label },
-    { label: 'Input', value: selectedInput.value },
-    { label: 'Plan tecnico', value: ['aprobado', approvedVersion, reviewSummary].filter(Boolean).join(', ') },
-    { label: 'Target', value: preview.relativeSpecDir },
-    { label: 'Archivos planificados', value: preview.preview.files.length },
-    { label: 'Revision', value: selectedReview.value === 'review' ? 'abrir preview' : 'confirmacion directa' },
-  ], { title: 'Spec create' });
+    { label: translator.t('spec_create.summary.spec'), value: preview.manifest.slug },
+    { label: translator.t('spec_create.summary.methodology'), value: selectedMethodology.label },
+    { label: translator.t('spec_create.summary.input'), value: selectedInput.value },
+    { label: translator.t('spec_create.summary.technical_plan'), value: [translator.t('status.approved'), approvedVersion, reviewSummary].filter(Boolean).join(', ') },
+    { label: translator.t('spec_create.summary.target'), value: preview.relativeSpecDir },
+    { label: translator.t('spec_create.summary.planned_files'), value: preview.preview.files.length },
+    { label: translator.t('spec_create.summary.review'), value: selectedReview.value === 'review' ? translator.t('spec_create.summary.review_editor') : translator.t('spec_create.summary.review_direct') },
+  ], { title: translator.t('spec_create.summary.title') });
 
   return {
     ...options,
@@ -551,9 +559,10 @@ async function reviewSpecCreatePreview(repoRoot, preview, options = {}) {
 async function runCreateSpec(repoRoot, options = {}) {
   const preview = buildSpecCreatePreview(repoRoot, options);
   const resolvedOptions = await resolveInteractiveSpecCreateOptions(repoRoot, preview, options);
+  const languageOptions = { language: resolvedOptions.language };
 
   if (resolvedOptions.dryRun) {
-    process.stdout.write(formatSpecCreateDryRun({ ...preview, reviewRequested: resolvedOptions.review === true }));
+    process.stdout.write(formatSpecCreateDryRun({ ...preview, reviewRequested: resolvedOptions.review === true }, languageOptions));
     return {
       task: 'spec-create',
       dryRun: true,
@@ -564,13 +573,13 @@ async function runCreateSpec(repoRoot, options = {}) {
   }
 
   const reviewPath = await reviewSpecCreatePreview(repoRoot, preview, resolvedOptions);
-  await confirmSpecCreate(`Create spec '${preview.manifest.slug}'?`, resolvedOptions);
+  await confirmSpecCreate(createTranslator(resolvedOptions.language).t('spec_create.confirm_create', { slug: preview.manifest.slug }), resolvedOptions);
 
   const result = generateSpecArtifacts(repoRoot, {
     input: resolvedOptions.input || preview.inputPath,
     specSlug: resolvedOptions.specSlug,
   });
-  process.stdout.write(formatSpecCreateResult(result, repoRoot));
+  process.stdout.write(formatSpecCreateResult(result, repoRoot, languageOptions));
 
   return {
     task: 'spec-create',

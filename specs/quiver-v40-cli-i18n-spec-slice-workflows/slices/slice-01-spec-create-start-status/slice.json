@@ -13,16 +13,19 @@
   },
   "files": [
     "src/create-quiver/commands/spec.js",
+    "src/create-quiver/lib/spec-worktrees.js",
     "tests/commands/spec-create.test.js",
     "tests/commands/spec-worktree.test.js"
   ],
   "expected_read_paths": [
     "src/create-quiver/commands/spec.js",
+    "src/create-quiver/lib/spec-worktrees.js",
     "src/create-quiver/lib/ai/spec-generator.js",
     "src/create-quiver/lib/i18n/**"
   ],
   "allowed_write_paths": [
     "src/create-quiver/commands/spec.js",
+    "src/create-quiver/lib/spec-worktrees.js",
     "src/create-quiver/lib/i18n/**",
     "tests/commands/spec-create.test.js",
     "tests/commands/spec-worktree.test.js",
@@ -54,6 +57,7 @@
     "Assert generated slice.json values are unchanged across languages."
   ],
   "estimated_hours": 7,
-  "status": "planned",
-  "blocked_reason": "Requires completion of specs/quiver-v37-cli-i18n-foundation."
+  "status": "completed",
+  "blocked_reason": "",
+  "completed_at": "2026-05-29T16:16:39Z"
 }

@@ -13,6 +13,7 @@ const {
 } = require('../agent-profiles');
 const { selectOption } = require('../cli/selectors');
 const { createUx } = require('../cli/ux');
+const { createTranslator } = require('../i18n/catalog');
 const { currentBranch, runGit } = require('../git');
 const { redactSecrets, truncateText } = require('../evidence');
 const { captureWorktreeSnapshot, validateScopeSnapshot } = require('../scope');
@@ -582,58 +583,63 @@ function buildExecuteSliceContext({ repoRoot, slicePath, role, context }) {
   };
 }
 
-function formatExecuteSliceDryRunReport({ provider, role, contextPack, slice, briefPath, invocation, validationCommands, allowedFiles, commitEnabled }) {
+function formatExecuteSliceDryRunReport({ provider, role, contextPack, slice, briefPath, invocation, validationCommands, allowedFiles, commitEnabled }, options = {}) {
+  const translator = createTranslator(options.language);
   const lines = [
-    'AI execute-slice dry-run',
-    `Provider: ${provider}`,
-    `Role: ${role}`,
-    `Context pack: ${contextPack}`,
-    `Slice: ${slice.sliceId}`,
-    `Spec: ${slice.specSlug}`,
-    `Execution brief: ${briefPath}`,
-    `Command: ${invocation.command} ${invocation.args.join(' ')}`,
-    `Timeout: ${invocation.timeoutMs}ms`,
-    `Prompt transport: ${invocation.promptTransport.mode}`,
-    `Prompt length: ${invocation.promptLength} bytes`,
-    `Commit after validation: ${commitEnabled ? 'enabled' : 'disabled'}`,
+    translator.t('execute_slice.title.dry_run'),
+    translator.t('execute_slice.provider', { provider }),
+    translator.t('execute_slice.role', { role }),
+    translator.t('execute_slice.context_pack', { context: contextPack }),
+    translator.t('execute_slice.slice', { slice: slice.sliceId }),
+    translator.t('execute_slice.spec', { spec: slice.specSlug }),
+    translator.t('execute_slice.execution_brief', { path: briefPath }),
+    translator.t('execute_slice.command', { command: `${invocation.command} ${invocation.args.join(' ')}` }),
+    translator.t('execute_slice.timeout', { timeout: invocation.timeoutMs }),
+    translator.t('execute_slice.prompt_transport', { mode: invocation.promptTransport.mode }),
+    translator.t('execute_slice.prompt_length', { bytes: invocation.promptLength }),
+    translator.t('execute_slice.commit_after_validation', { value: commitEnabled ? translator.t('execute_slice.enabled') : translator.t('execute_slice.disabled') }),
   ];
   if (invocation.modelSelection && invocation.modelSelection.model) {
-    lines.push(`Model: ${invocation.modelSelection.model}`);
-    lines.push(`Model support: ${invocation.modelSelection.supported ? 'supported' : 'unsupported'} (${invocation.modelSelection.reason})`);
+    lines.push(translator.t('execute_slice.model', { model: invocation.modelSelection.model }));
+    lines.push(translator.t('execute_slice.model_support', {
+      reason: invocation.modelSelection.reason,
+      status: invocation.modelSelection.supported ? translator.t('execute_slice.supported') : translator.t('execute_slice.unsupported'),
+    }));
   }
   lines.push(
-    'Allowed files:',
+    translator.t('execute_slice.allowed_files'),
     ...formatList(allowedFiles),
-    'Validation commands:',
+    translator.t('execute_slice.validation_commands'),
     ...formatList(validationCommands),
   );
 
   return `${lines.join('\n')}\n`;
 }
 
-function formatExecuteSliceResult({ slice, changedFiles, scopeResult, validationResults, commitResult, commitEnabled }) {
+function formatExecuteSliceResult({ slice, changedFiles, scopeResult, validationResults, commitResult, commitEnabled }, options = {}) {
+  const translator = createTranslator(options.language);
   const lines = [
-    'AI execute-slice completed',
-    `Slice: ${slice.sliceId}`,
-    `Spec: ${slice.specSlug}`,
-    `Changed files: ${changedFiles.length}`,
+    translator.t('execute_slice.title.completed'),
+    translator.t('execute_slice.slice', { slice: slice.sliceId }),
+    translator.t('execute_slice.spec', { spec: slice.specSlug }),
+    translator.t('execute_slice.changed_files', { count: changedFiles.length }),
   ];
 
   for (const file of changedFiles) {
     lines.push(`- ${file}`);
   }
 
-  lines.push(`Scope validation: ${scopeResult.ok ? 'passed' : 'failed'}`);
+  lines.push(translator.t('execute_slice.scope_validation', { value: scopeResult.ok ? translator.t('execute_slice.passed') : translator.t('execute_slice.failed') }));
   if (!Array.isArray(validationResults) || validationResults.length === 0) {
-    lines.push('Validation commands: skipped (none declared)');
+    lines.push(translator.t('execute_slice.validation_skipped'));
   } else {
-    lines.push(`Validation commands: passed (${validationResults.length})`);
+    lines.push(translator.t('execute_slice.validation_passed', { count: validationResults.length }));
   }
   if (commitResult) {
-    lines.push(`Commit: created ${commitResult.hash}`);
-    lines.push(`Commit message: ${commitResult.message}`);
+    lines.push(translator.t('execute_slice.commit_created', { hash: commitResult.hash }));
+    lines.push(translator.t('execute_slice.commit_message', { message: commitResult.message }));
   } else {
-    lines.push(`Commit: ${commitEnabled ? 'not created' : 'skipped'}`);
+    lines.push(translator.t('execute_slice.commit_status', { value: commitEnabled ? translator.t('execute_slice.not_created') : translator.t('execute_slice.skipped') }));
   }
 
   return `${lines.join('\n')}\n`;
@@ -993,7 +999,7 @@ async function runExecuteSlice(repoRoot, options = {}) {
       validationCommands: executorContext.validationCommands,
       allowedFiles: executorContext.allowedFiles,
       commitEnabled: options.commit === true,
-    }));
+    }, { language: options.language }));
     return report;
   }
 
@@ -1149,7 +1155,7 @@ async function runExecuteSlice(repoRoot, options = {}) {
     validationResults,
     commitResult,
     commitEnabled: options.commit === true,
-  }));
+  }, { language: options.language }));
 
   return {
     task: 'execute-slice',

@@ -60,6 +60,7 @@ function execCli(repoRoot, args) {
   return execFileSync(process.execPath, [BIN_PATH, ...args], {
     cwd: repoRoot,
     encoding: 'utf8',
+    env: { ...process.env, QUIVER_LANG: 'en' },
   });
 }
 
@@ -139,6 +140,26 @@ test('spec close dry-run keeps merged clean worktree in place', () => {
   }
 });
 
+test('spec close dry-run renders Spanish labels while preserving command details', () => {
+  const repo = makeRepo();
+  try {
+    const worktreePath = startSpec(repo.root);
+    commitInWorktree(worktreePath);
+    git(repo.root, ['merge', '--no-ff', 'feature/example-spec', '-m', 'merge spec']);
+
+    const output = execCli(repo.root, ['--lang', 'es', 'spec', 'close', 'specs/example-spec', '--dry-run']);
+
+    assert.ok(output.includes('Dry-run de spec close'));
+    assert.ok(output.includes('Spec: specs/example-spec'));
+    assert.ok(output.includes('Branch: feature/example-spec'));
+    assert.ok(output.includes('Descartar: no'));
+    assert.ok(output.includes('Eliminaria worktree:'));
+    assert.equal(fs.existsSync(worktreePath), true);
+  } finally {
+    repo.cleanup();
+  }
+});
+
 test('spec close removes a merged clean spec worktree', () => {
   const repo = makeRepo();
   try {
@@ -150,6 +171,24 @@ test('spec close removes a merged clean spec worktree', () => {
 
     assert.ok(output.includes('Spec worktree closed'));
     assert.ok(output.includes('Removed worktree: yes'));
+    assert.equal(fs.existsSync(worktreePath), false);
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('spec close renders Spanish completion labels', () => {
+  const repo = makeRepo();
+  try {
+    const worktreePath = startSpec(repo.root);
+    commitInWorktree(worktreePath);
+    git(repo.root, ['merge', '--no-ff', 'feature/example-spec', '-m', 'merge spec']);
+
+    const output = execCli(repo.root, ['--lang', 'es', 'spec', 'close', 'specs/example-spec']);
+
+    assert.ok(output.includes('Worktree de spec cerrado'));
+    assert.ok(output.includes('Worktree eliminado: si'));
+    assert.ok(output.includes('Checkout principal actualizado: no'));
     assert.equal(fs.existsSync(worktreePath), false);
   } finally {
     repo.cleanup();

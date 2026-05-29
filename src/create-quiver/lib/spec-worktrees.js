@@ -20,6 +20,7 @@ const {
 } = require('./git');
 const { parseJsonWithComments } = require('./json');
 const { acquireLock, releaseLock, withLockSync } = require('./locks');
+const { createTranslator } = require('./i18n/catalog');
 const { safeBranchName, worktreesRootForRepo } = require('./slice');
 
 function formatError(message) {
@@ -239,23 +240,24 @@ function buildSpecStatus(repoRoot, specInput) {
   };
 }
 
-function formatSpecStatus(status) {
+function formatSpecStatus(status, options = {}) {
+  const translator = createTranslator(options.language);
   const lines = [
-    'Spec worktree status',
-    `Spec: ${status.relativeSpecDir}`,
-    `Branch: ${status.branchName}`,
-    `Worktree: ${status.existingWorktree || status.worktreePath}`,
-    `Worktree missing/stale: ${status.worktreeMissing ? 'yes' : 'no'}`,
-    `Worktree registered: ${status.existingWorktree ? 'yes' : 'no'}`,
-    status.worktreeExpectedPathUnregistered ? 'Worktree note: expected path exists but is not registered in git worktree list.' : '',
-    `Worktree dirty: ${status.worktreeDirty ? 'yes' : 'no'}`,
+    translator.t('spec_status.title'),
+    translator.t('spec_status.spec', { path: status.relativeSpecDir }),
+    translator.t('spec_status.branch', { branch: status.branchName }),
+    translator.t('spec_status.worktree', { path: status.existingWorktree || status.worktreePath }),
+    translator.t('spec_status.worktree_missing_stale', { value: status.worktreeMissing ? translator.t('common.yes') : translator.t('common.no') }),
+    translator.t('spec_status.worktree_registered', { value: status.existingWorktree ? translator.t('common.yes') : translator.t('common.no') }),
+    status.worktreeExpectedPathUnregistered ? translator.t('spec_status.worktree_note_unregistered') : '',
+    translator.t('spec_status.worktree_dirty', { value: status.worktreeDirty ? translator.t('common.yes') : translator.t('common.no') }),
     `slice-00: ${status.slice00 ? status.slice00.status : 'missing'}`,
-    `Later slices blocked: ${status.laterSlicesBlocked ? 'yes' : 'no'}`,
-    'Pending slices:',
+    translator.t('spec_status.later_slices_blocked', { value: status.laterSlicesBlocked ? translator.t('common.yes') : translator.t('common.no') }),
+    translator.t('spec_status.pending_slices'),
   ];
 
   if (status.pendingSlices.length === 0) {
-    lines.push('- none');
+    lines.push(`- ${translator.t('common.none')}`);
   } else {
     for (const slice of status.pendingSlices) {
       lines.push(`- ${slice.id}: ${slice.status}`);
@@ -346,15 +348,16 @@ function startSpecWorktree(repoRoot, specInput, options = {}) {
   }, run);
 }
 
-function formatSpecStartResult(result) {
+function formatSpecStartResult(result, options = {}) {
+  const translator = createTranslator(options.language);
   return `${[
-    result.dryRun ? 'Spec worktree start dry-run' : 'Spec worktree ready',
-    `Branch: ${result.branchName}`,
-    `Base: ${result.baseRef}`,
-    `Worktree: ${result.worktreePath}`,
-    `Reused: ${result.reused ? 'yes' : 'no'}`,
+    result.dryRun ? translator.t('spec_start.title.dry_run') : translator.t('spec_start.title.ready'),
+    translator.t('spec_start.branch', { branch: result.branchName }),
+    translator.t('spec_start.base', { base: result.baseRef }),
+    translator.t('spec_start.worktree', { path: result.worktreePath }),
+    translator.t('spec_start.reused', { value: result.reused ? translator.t('common.yes') : translator.t('common.no') }),
     `slice-00: ${result.slice00 ? result.slice00.status : 'missing'}`,
-    result.dryRun && !result.reused ? `Would create worktree: ${result.worktreePath}` : '',
+    result.dryRun && !result.reused ? translator.t('spec_start.would_create_worktree', { path: result.worktreePath }) : '',
   ].filter(Boolean).join('\n')}\n`;
 }
 
@@ -443,24 +446,25 @@ function closeSpecWorktree(repoRoot, specInput, options = {}) {
   }
 }
 
-function formatSpecCloseResult(result) {
+function formatSpecCloseResult(result, options = {}) {
+  const translator = createTranslator(options.language);
   const lines = [
-    result.dryRun ? 'Spec close dry-run' : 'Spec worktree closed',
-    `Spec: ${result.relativeSpecDir}`,
-    `Branch: ${result.branchName}`,
-    `Base: ${result.baseRef}`,
-    `Worktree: ${result.worktreePath}`,
-    `Discard: ${result.discarded ? 'yes' : 'no'}`,
+    result.dryRun ? translator.t('spec_close.title.dry_run') : translator.t('spec_close.title.closed'),
+    translator.t('spec_close.spec', { path: result.relativeSpecDir }),
+    translator.t('spec_close.branch', { branch: result.branchName }),
+    translator.t('spec_close.base', { base: result.baseRef }),
+    translator.t('spec_close.worktree', { path: result.worktreePath }),
+    translator.t('spec_close.discard', { value: result.discarded ? translator.t('common.yes') : translator.t('common.no') }),
   ];
 
   if (result.dryRun) {
-    lines.push(`Would remove worktree: ${result.worktreePath}`);
+    lines.push(translator.t('spec_close.would_remove_worktree', { path: result.worktreePath }));
     if (!result.discarded && result.remote) {
-      lines.push(`Would pull: git pull --ff-only ${result.remote} ${result.baseBranch}`);
+      lines.push(translator.t('spec_close.would_pull', { command: `git pull --ff-only ${result.remote} ${result.baseBranch}` }));
     }
   } else {
-    lines.push(`Removed worktree: ${result.removed ? 'yes' : 'no'}`);
-    lines.push(`Pulled main checkout: ${result.pulled ? 'yes' : 'no'}`);
+    lines.push(translator.t('spec_close.removed_worktree', { value: result.removed ? translator.t('common.yes') : translator.t('common.no') }));
+    lines.push(translator.t('spec_close.pulled_main_checkout', { value: result.pulled ? translator.t('common.yes') : translator.t('common.no') }));
   }
 
   return `${lines.join('\n')}\n`;

@@ -2,6 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const { branchDelete, catFileExists, currentBranch, fetchBranch, fetchRemote, hasLocalBranch, hasRemoteBranch, isGitWorktree, isLinkedWorktree, lsRemoteHeads, mergeBaseIsAncestor, revListCount, runGit, statusPorcelain, worktreeAdd, worktreeList, worktreePrune, worktreeRemove } = require('./git');
 const { parseJsonWithComments } = require('./json');
+const { createTranslator } = require('./i18n/catalog');
 const { writeFrontMatter } = require('./init-docs');
 const { withLockSync } = require('./locks');
 const { relativePosixPath, resolveTargetRoot } = require('./paths');
@@ -10,6 +11,10 @@ const { activeSlicePath, renderActiveSlice, resolveSliceContext, safeBranchName,
 
 function ensureDir(dirPath) {
   fs.mkdirSync(dirPath, { recursive: true });
+}
+
+function lifecycleTranslator(options = {}) {
+  return createTranslator(options.language || 'es');
 }
 
 function estimateTokenCost(text) {
@@ -326,6 +331,7 @@ function formatNestedSliceWorktree(branchName, existingWorktreePath = '') {
 }
 
 function startSlice(sliceInput, options = {}) {
+  const translator = lifecycleTranslator(options);
   const allowDraft = options.allowDraft === true || process.env.ALLOW_DRAFT_SLICE === '1';
   const repoRoot = runGit(['rev-parse', '--show-toplevel'], process.cwd());
   const slice = resolveSliceContext(repoRoot, sliceInput);
@@ -338,19 +344,19 @@ function startSlice(sliceInput, options = {}) {
   validateSliceMetaForStart(slice);
 
   if (slice.status === 'blocked') {
-    throw new Error('create-quiver: el slice esta bloqueado (status=blocked). Resolve el bloqueante antes de iniciar.');
+    throw new Error(`create-quiver: ${translator.t('lifecycle.start.error.blocked')}`);
   }
   if (slice.status === 'cancelled') {
-    throw new Error('create-quiver: el slice esta cancelado (status=cancelled).');
+    throw new Error(`create-quiver: ${translator.t('lifecycle.start.error.cancelled')}`);
   }
   if (slice.status === 'completed') {
-    console.log('WARN: el slice ya figura como completed. Si realmente corresponde reejecutarlo, cambia el status a in_progress.');
+    console.log(translator.t('lifecycle.start.warn.completed'));
   }
   if (slice.status === 'draft' && !allowDraft) {
-    throw new Error("create-quiver: el slice esta en estado 'draft'. Marca el slice como 'ready' o usa --allow-draft para un bootstrap intencional.");
+    throw new Error(`create-quiver: ${translator.t('lifecycle.start.error.draft')}`);
   }
   if (slice.status === 'draft') {
-    console.log('WARN: bootstrap intencional para un slice en draft.');
+    console.log(translator.t('lifecycle.start.warn.draft'));
   }
 
   return withLockSync(repoRoot, `slice-worktree-${slice.branchName}`, {
@@ -375,19 +381,19 @@ function startSlice(sliceInput, options = {}) {
     writeWorktreeContext(existingWorktreePath, slice, slice.branchName);
     const activeSlice = writeActiveSlice(repoRoot, slice);
     if (activeSlice.replaced) {
-      console.log('WARN: Reemplazando docs/ai/ACTIVE_SLICE.md existente.');
+      console.log(translator.t('lifecycle.active_slice.replaced'));
     } else {
-      console.log('Wrote docs/ai/ACTIVE_SLICE.md');
+      console.log(translator.t('lifecycle.active_slice.wrote'));
     }
     refreshActiveSlicesBoard(repoRoot);
-    console.log('La rama ya tiene un worktree asociado.');
-    console.log(`Alias: ${toAlias(slice.ticket)}`);
-    console.log(`Spec: ${slice.specSlug}`);
-    console.log(`Slice: ${slice.sliceId}`);
-    console.log(`Ticket: ${slice.ticket}`);
-    console.log(`Rama: ${slice.branchName}`);
-    console.log(`Base: ${slice.baseBranch}`);
-    console.log(`Worktree: ${existingWorktreePath}`);
+    console.log(translator.t('lifecycle.start.existing_worktree'));
+    console.log(translator.t('lifecycle.label.alias', { value: toAlias(slice.ticket) }));
+    console.log(translator.t('lifecycle.label.spec', { value: slice.specSlug }));
+    console.log(translator.t('lifecycle.label.slice', { value: slice.sliceId }));
+    console.log(translator.t('lifecycle.label.ticket', { value: slice.ticket }));
+    console.log(translator.t('lifecycle.label.branch', { value: slice.branchName }));
+    console.log(translator.t('lifecycle.label.base', { value: slice.baseBranch }));
+    console.log(translator.t('lifecycle.label.worktree', { value: existingWorktreePath }));
     return { worktreePath: existingWorktreePath, reused: true };
   }
 
@@ -425,23 +431,23 @@ function startSlice(sliceInput, options = {}) {
   writeWorktreeContext(worktreePath, slice, slice.branchName);
   const activeSlice = writeActiveSlice(repoRoot, slice);
   if (activeSlice.replaced) {
-    console.log('WARN: Reemplazando docs/ai/ACTIVE_SLICE.md existente.');
+    console.log(translator.t('lifecycle.active_slice.replaced'));
   } else {
-    console.log('Wrote docs/ai/ACTIVE_SLICE.md');
+    console.log(translator.t('lifecycle.active_slice.wrote'));
   }
   refreshActiveSlicesBoard(repoRoot);
 
-  console.log('Slice listo para trabajar.');
-  console.log(`Alias: ${toAlias(slice.ticket)}`);
-  console.log(`Spec: ${slice.specSlug}`);
-  console.log(`Slice: ${slice.sliceId}`);
-  console.log(`Ticket: ${slice.ticket}`);
-  console.log(`Tipo de rama: ${slice.branchType}`);
-  console.log(`Base: ${slice.baseBranch}`);
-  console.log(`Slug: ${slice.branchSlug}`);
-  console.log(`Rama: ${slice.branchName}`);
-  console.log(`Worktree: ${worktreePath}`);
-  console.log(`Contexto: ${worktreePath}/WORKTREE_CONTEXT.md`);
+  console.log(translator.t('lifecycle.start.ready'));
+  console.log(translator.t('lifecycle.label.alias', { value: toAlias(slice.ticket) }));
+  console.log(translator.t('lifecycle.label.spec', { value: slice.specSlug }));
+  console.log(translator.t('lifecycle.label.slice', { value: slice.sliceId }));
+  console.log(translator.t('lifecycle.label.ticket', { value: slice.ticket }));
+  console.log(translator.t('lifecycle.label.branch_type', { value: slice.branchType }));
+  console.log(translator.t('lifecycle.label.base', { value: slice.baseBranch }));
+  console.log(translator.t('lifecycle.label.slug', { value: slice.branchSlug }));
+  console.log(translator.t('lifecycle.label.branch', { value: slice.branchName }));
+  console.log(translator.t('lifecycle.label.worktree', { value: worktreePath }));
+  console.log(translator.t('lifecycle.label.context', { value: `${worktreePath}/WORKTREE_CONTEXT.md` }));
   return { worktreePath, reused: false };
   });
 }
