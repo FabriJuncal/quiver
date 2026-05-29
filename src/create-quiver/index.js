@@ -3322,6 +3322,7 @@ async function run(argv) {
     if (args.aiCommand === 'models') {
       runAiModelsList({
         json: args.json,
+        language: args.language,
         provider: args.aiProviderExplicit ? args.aiProvider : undefined,
       });
       return;
@@ -3336,6 +3337,7 @@ async function run(argv) {
         id: args.aiProfileId || undefined,
         interactive: args.interactive,
         json: args.json,
+        language: args.language,
         label: args.aiLabel || undefined,
         model: args.aiModel || undefined,
         provider: args.aiProviderExplicit ? args.aiProvider : undefined,

@@ -18,6 +18,19 @@ Validation:
 - PASS `node --test tests/lib/i18n-catalog.test.js`
 - PASS `git diff --check`
 
+## slice-02-ai-agent-models
+
+- Routed `ai agent` and `ai models` through the shared language option.
+- Localized agent profile reports, dry-runs, doctor/repair headings, selector prompts, actionable wrapper labels, and model catalog human output.
+- Preserved provider ids, model ids, profile JSON, model catalog JSON, and command snippets.
+
+Validation:
+
+- PASS `node --test tests/commands/ai-agent.test.js`
+- PASS `node --test tests/commands/ai-models.test.js`
+- PASS `node --test tests/lib/i18n-catalog.test.js`
+- PASS `git diff --check`
+
 ## Pending Evidence
 
 - `node --test tests/**/*.test.js`

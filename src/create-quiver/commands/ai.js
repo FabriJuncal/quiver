@@ -108,6 +108,23 @@ function formatError(message) {
   return `create-quiver: ${message}`;
 }
 
+function formatLocalizedActionableError({ failure, impact, fix, nextCommand } = {}, options = {}) {
+  const translator = createTranslator(options.language);
+  const lines = [`create-quiver: ${String(failure || 'operation failed').trim()}`];
+
+  if (impact) {
+    lines.push(`${translator.t('ai.actionable.impact')}: ${String(impact).trim()}`);
+  }
+  if (fix) {
+    lines.push(`${translator.t('ai.actionable.fix')}: ${String(fix).trim()}`);
+  }
+  if (nextCommand) {
+    lines.push(`${translator.t('ai.actionable.next_command')}: ${String(nextCommand).trim()}`);
+  }
+
+  return lines.join('\n');
+}
+
 function readTextFile(filePath, repoRoot) {
   if (!filePath) {
     return '';
@@ -2623,7 +2640,7 @@ function isInteractiveAgentPromptAvailable(options = {}) {
   return stdinIsTTY && stdoutIsTTY && ci !== '1' && ci !== 'true';
 }
 
-function providerInstallHint(repoRoot, providerId, options = {}) {
+function providerInstallStatus(repoRoot, providerId, options = {}) {
   const probe = options.preflightProvider || preflightProvider;
   try {
     probe(providerId, {
@@ -2634,19 +2651,23 @@ function providerInstallHint(repoRoot, providerId, options = {}) {
     return 'installed';
   } catch (error) {
     if (error && error.code === 'MISSING_PROVIDER_CLI') {
-      return 'not installed';
+      return 'not_installed';
     }
-    return 'not verified';
+    return 'not_verified';
   }
 }
 
 function buildAgentProviderChoices(repoRoot, options = {}) {
+  const translator = createTranslator(options.language);
   return listCatalogProviders().map((provider) => {
-    const status = providerInstallHint(repoRoot, provider.id, options);
+    const status = providerInstallStatus(repoRoot, provider.id, options);
     return {
       label: provider.displayName,
       value: provider.id,
-      hint: `${provider.modelCount} models, ${status}`,
+      hint: translator.t('ai.agent.choice.provider_hint', {
+        count: provider.modelCount,
+        status: translator.t(`ai.agent.install_status.${status}`),
+      }),
       raw: {
         ...provider,
         installStatus: status,
@@ -2655,12 +2676,15 @@ function buildAgentProviderChoices(repoRoot, options = {}) {
   });
 }
 
-function buildAgentModelChoices(provider, role) {
+function buildAgentModelChoices(provider, role, options = {}) {
+  const translator = createTranslator(options.language);
   return getKnownModelsForProvider(provider, { role }).map((model) => {
-    const recommended = model.recommendedFor.includes(role) ? 'recommended' : 'available';
+    const recommended = model.recommendedFor.includes(role)
+      ? translator.t('ai.agent.choice.model_recommended')
+      : translator.t('ai.agent.choice.model_available');
     const tier = [model.costTier, model.qualityTier, model.stability].filter(Boolean).join('/');
     return {
-      label: model.displayName,
+      label: model.id === 'custom' ? translator.t('ai.agent.choice.model_custom') : model.displayName,
       value: model.id,
       hint: [recommended, tier].filter(Boolean).join(', '),
       default: model.recommendedFor.includes(role),
@@ -2670,6 +2694,7 @@ function buildAgentModelChoices(provider, role) {
 }
 
 async function resolveInteractiveAgentSetOptions(repoRoot, options = {}) {
+  const translator = createTranslator(options.language);
   const role = normalizeAgentProfileRole(options.role);
   const hasProvider = Boolean(String(options.provider || '').trim());
   const hasModel = Boolean(String(options.model || '').trim());
@@ -2683,12 +2708,12 @@ async function resolveInteractiveAgentSetOptions(repoRoot, options = {}) {
   const canPrompt = isInteractiveAgentPromptAvailable(options);
   const shouldPrompt = options.interactive === true || canPrompt;
   if (!shouldPrompt || !canPrompt) {
-    throw new Error(formatActionableError({
-      failure: `ai agent set ${role} requires --provider and --model when prompts are not available.`,
-      impact: 'Quiver cannot safely guess the provider or technical model id for an agent profile.',
-      fix: 'Pass both flags explicitly, or rerun from an interactive terminal with --interactive.',
+    throw new Error(formatLocalizedActionableError({
+      failure: translator.t('ai.agent.error.no_prompt.failure', { role }),
+      impact: translator.t('ai.agent.error.no_prompt.impact'),
+      fix: translator.t('ai.agent.error.no_prompt.fix'),
       nextCommand: `npx create-quiver ai agent set ${role} --provider codex --model gpt-5.5`,
-    }));
+    }, options));
   }
 
   const promptOptions = {
@@ -2713,16 +2738,16 @@ async function resolveInteractiveAgentSetOptions(repoRoot, options = {}) {
     const ux = createCommandUx(promptOptions);
     ux.summary(existingProfiles.map((profile) => ({
       label: profile.id,
-      value: `${profile.provider} ${profile.model || '(no model)'}${profile.default ? ' default' : ''}`,
+      value: `${profile.provider} ${profile.model || translator.t('ai.agent.value.no_model')}${profile.default ? ` ${translator.t('ai.agent.value.default')}` : ''}`,
     })), {
-      title: `Existing ${role} profiles`,
+      title: translator.t('ai.agent.prompt.existing_title', { role }),
     });
 
-    const action = await selectOption(`Ya existe al menos un perfil ${role}. ¿Qué querés hacer?`, [
-      { label: 'Actualizar perfil actual', value: 'update-current', hint: 'Reutiliza el perfil default', default: true },
-      { label: 'Crear perfil nuevo', value: 'create-new', hint: 'Permite guardar otro modelo o provider' },
-      { label: 'Cambiar default', value: 'change-default', hint: 'Marca un perfil existente como default' },
-      { label: 'Cancelar', value: 'cancel', hint: 'No escribe archivos' },
+    const action = await selectOption(translator.t('ai.agent.prompt.existing_action', { role }), [
+      { label: translator.t('ai.agent.prompt.action.update_current.label'), value: 'update-current', hint: translator.t('ai.agent.prompt.action.update_current.hint'), default: true },
+      { label: translator.t('ai.agent.prompt.action.create_new.label'), value: 'create-new', hint: translator.t('ai.agent.prompt.action.create_new.hint') },
+      { label: translator.t('ai.agent.prompt.action.change_default.label'), value: 'change-default', hint: translator.t('ai.agent.prompt.action.change_default.hint') },
+      { label: translator.t('ai.agent.prompt.action.cancel.label'), value: 'cancel', hint: translator.t('ai.agent.prompt.action.cancel.hint') },
     ], {
       ...promptOptions,
       name: 'agent profile action',
@@ -2730,14 +2755,14 @@ async function resolveInteractiveAgentSetOptions(repoRoot, options = {}) {
     });
 
     if (action.value === 'cancel') {
-      throw new Error(formatError('ai agent set canceled. No files were written.'));
+      throw new Error(formatError(translator.t('ai.agent.error.canceled')));
     }
 
     if (action.value === 'change-default') {
-      const profile = await selectOption(`Elegí el perfil ${role} default`, existingProfiles.map((item) => ({
+      const profile = await selectOption(translator.t('ai.agent.prompt.default_profile', { role }), existingProfiles.map((item) => ({
         label: resolveAgentProfileDisplayName(item),
         value: item.id,
-        hint: `${item.provider} ${item.model || '(no model)'}`,
+        hint: `${item.provider} ${item.model || translator.t('ai.agent.value.no_model')}`,
         default: item.default === true,
         raw: item,
       })), {
@@ -2768,7 +2793,7 @@ async function resolveInteractiveAgentSetOptions(repoRoot, options = {}) {
     }
 
     if (action.value === 'create-new') {
-      const id = await promptText(`ID para el nuevo perfil ${role}`, {
+      const id = await promptText(translator.t('ai.agent.prompt.new_id', { role }), {
         ...promptOptions,
         name: 'agent profile id',
         flag: '--id',
@@ -2780,7 +2805,7 @@ async function resolveInteractiveAgentSetOptions(repoRoot, options = {}) {
   }
 
   if (!next.provider) {
-    const selectedProvider = await selectOption(`Elegí un provider para ${role}`, buildAgentProviderChoices(repoRoot, options), {
+    const selectedProvider = await selectOption(translator.t('ai.agent.prompt.provider', { role }), buildAgentProviderChoices(repoRoot, options), {
       ...promptOptions,
       name: 'agent provider',
       flag: '--provider',
@@ -2789,19 +2814,19 @@ async function resolveInteractiveAgentSetOptions(repoRoot, options = {}) {
   }
 
   if (!next.model) {
-    const selectedModel = await selectOption(`Elegí un modelo para ${role}`, buildAgentModelChoices(next.provider, role), {
+    const selectedModel = await selectOption(translator.t('ai.agent.prompt.model', { role }), buildAgentModelChoices(next.provider, role, options), {
       ...promptOptions,
       name: 'agent model',
       flag: '--model',
     });
     if (selectedModel.value === 'custom') {
-      const model = await promptText(`Modelo custom para ${next.provider}`, {
+      const model = await promptText(translator.t('ai.agent.prompt.custom_model', { provider: next.provider }), {
         ...promptOptions,
         name: 'agent model',
         flag: '--model',
         placeholder: `${next.provider}-model-id`,
       });
-      const displayName = await promptText('Nombre visible del modelo custom', {
+      const displayName = await promptText(translator.t('ai.agent.prompt.custom_model_display'), {
         ...promptOptions,
         name: 'agent model display name',
         flag: '--display-name',
@@ -2822,48 +2847,53 @@ async function resolveInteractiveAgentSetOptions(repoRoot, options = {}) {
   };
 }
 
-function formatAgentProfile(profile) {
+function formatAgentProfile(profile, options = {}) {
+  const translator = createTranslator(options.language);
   const lines = [
-    `ID: ${profile.id || 'default'}`,
-    `Role: ${profile.role}`,
-    `Provider: ${profile.provider}`,
-    `Model: ${profile.model || '(not set)'}`,
-    `Label: ${profile.label || '(not set)'}`,
-    `Display name: ${resolveAgentProfileDisplayName(profile) || '(not set)'}`,
-    `Default: ${profile.default === true ? 'yes' : 'no'}`,
-    `Context: ${profile.context || '(not set)'}`,
-    `Updated: ${profile.updated_at}`,
+    `${translator.t('ai.agent.field.id')}: ${profile.id || translator.t('ai.agent.value.default')}`,
+    `${translator.t('ai.agent.field.role')}: ${profile.role}`,
+    `${translator.t('ai.agent.field.provider')}: ${profile.provider}`,
+    `${translator.t('ai.agent.field.model')}: ${profile.model || translator.t('ai.agent.value.not_set')}`,
+    `${translator.t('ai.agent.field.label')}: ${profile.label || translator.t('ai.agent.value.not_set')}`,
+    `${translator.t('ai.agent.field.display_name')}: ${resolveAgentProfileDisplayName(profile) || translator.t('ai.agent.value.not_set')}`,
+    `${translator.t('ai.agent.field.default')}: ${profile.default === true ? translator.t('ai.agent.value.yes') : translator.t('ai.agent.value.no')}`,
+    `${translator.t('ai.agent.field.context')}: ${profile.context || translator.t('ai.agent.value.not_set')}`,
+    `${translator.t('ai.agent.field.updated')}: ${profile.updated_at}`,
   ];
   return `${lines.join('\n')}\n`;
 }
 
-function formatAgentProfileList(profiles) {
-  const lines = ['AI agent profiles'];
+function formatAgentProfileList(profiles, options = {}) {
+  const translator = createTranslator(options.language);
+  const lines = [translator.t('ai.agent.list.title')];
   for (const item of profiles) {
     if (!item.configured) {
-      lines.push(`- ${item.role}: not configured`);
+      lines.push(`- ${item.role}: ${translator.t('ai.agent.list.not_configured')}`);
       continue;
     }
     const model = item.profile.model ? ` model=${item.profile.model}` : '';
     const label = item.profile.label ? ` label=${item.profile.label}` : '';
     const displayName = resolveAgentProfileDisplayName(item.profile);
-    const alternatives = item.profiles.length > 1 ? ` options=${item.profiles.length}` : '';
-    lines.push(`- ${item.role}: provider=${item.profile.provider}${model}${label} displayName=${displayName}${alternatives}`);
+    const alternatives = item.profiles.length > 1 ? ` ${translator.t('ai.agent.list.options')}=${item.profiles.length}` : '';
+    lines.push(`- ${item.role}: provider=${item.profile.provider}${model}${label} ${translator.t('ai.agent.list.display_name')}=${displayName}${alternatives}`);
   }
   return `${lines.join('\n')}\n`;
 }
 
-function formatAgentProfileDryRun(repoRoot, result) {
+function formatAgentProfileDryRun(repoRoot, result, options = {}) {
+  const translator = createTranslator(options.language);
   const relativePath = path.relative(repoRoot, result.filePath).split(path.sep).join('/');
-  const verb = result.action === 'update' ? 'update' : 'create';
+  const verb = result.action === 'update'
+    ? translator.t('ai.agent.dry_run.verb_update')
+    : translator.t('ai.agent.dry_run.verb_create');
   return [
-    'AI agent profile dry-run',
-    '- Writes: none',
-    `- Would ${verb}: ${relativePath}`,
+    translator.t('ai.agent.dry_run.title'),
+    `- ${translator.t('ai.agent.dry_run.writes')}: ${translator.t('ai.agent.value.none')}`,
+    `- ${translator.t('ai.agent.dry_run.would', { verb, path: relativePath })}`,
     '',
-    formatAgentProfile(result.profile).trimEnd(),
+    formatAgentProfile(result.profile, options).trimEnd(),
     '',
-    'No secrets or provider credentials are stored in agent profiles.',
+    translator.t('ai.agent.dry_run.no_secrets'),
     '',
   ].join('\n');
 }
@@ -2874,58 +2904,60 @@ function agentDoctorSymbol(status) {
   return 'OK';
 }
 
-function formatAgentDoctorReport(report) {
+function formatAgentDoctorReport(report, options = {}) {
+  const translator = createTranslator(options.language);
   const lines = [
-    'Quiver Agent Doctor',
+    translator.t('ai.agent.doctor.title'),
     '',
-    'Checks',
+    translator.t('ai.agent.doctor.checks'),
   ];
 
   if (report.checks.length === 0) {
-    lines.push('  ! No agent profiles configured');
+    lines.push(`  ! ${translator.t('ai.agent.doctor.no_profiles')}`);
   }
 
   for (const check of report.checks) {
     const target = `${check.role}/${check.id}`;
-    const model = check.model || '(no model)';
-    const provider = check.provider || '(no provider)';
-    const defaultText = check.default ? ' default' : '';
+    const model = check.model || translator.t('ai.agent.value.no_model');
+    const provider = check.provider || translator.t('ai.agent.value.no_provider');
+    const defaultText = check.default ? ` ${translator.t('ai.agent.value.default')}` : '';
     lines.push(`  ${agentDoctorSymbol(check.status)} ${target}: provider=${provider} model=${model}${defaultText}`);
     for (const finding of check.findings.filter((item) => item.severity !== 'info')) {
       lines.push(`    - ${finding.severity}: ${finding.message}`);
     }
   }
 
-  lines.push('', 'Suggested fixes');
+  lines.push('', translator.t('ai.agent.doctor.suggested_fixes'));
   if (report.suggestedFixes.length === 0) {
-    lines.push('  OK No fixes suggested.');
+    lines.push(`  OK ${translator.t('ai.agent.doctor.no_fixes')}`);
   } else {
     for (const fix of report.suggestedFixes) {
       lines.push(`  - ${fix}`);
     }
   }
   lines.push('');
-  lines.push(`Summary: profiles=${report.summary.profiles} errors=${report.summary.errors} warnings=${report.summary.warnings} info=${report.summary.info}`);
+  lines.push(`${translator.t('ai.agent.doctor.summary')}: profiles=${report.summary.profiles} errors=${report.summary.errors} warnings=${report.summary.warnings} info=${report.summary.info}`);
   lines.push('');
   return `${lines.join('\n')}\n`;
 }
 
-function formatAgentRepairPlan(plan) {
+function formatAgentRepairPlan(plan, options = {}) {
+  const translator = createTranslator(options.language);
   const lines = [
-    'AI agent profile repair dry-run',
-    '- Writes: none',
+    translator.t('ai.agent.repair.title'),
+    `- ${translator.t('ai.agent.dry_run.writes')}: ${translator.t('ai.agent.value.none')}`,
     '',
-    'Proposed changes',
+    translator.t('ai.agent.repair.proposed_changes'),
   ];
 
   if (plan.changes.length === 0) {
-    lines.push('  OK No safe repairs found.');
+    lines.push(`  OK ${translator.t('ai.agent.repair.no_repairs')}`);
   }
 
   for (const change of plan.changes) {
     lines.push(`  - ${change.role}/${change.profileId}: ${change.reason}`);
-    lines.push(`    Before: model=${change.before.model || '(not set)'} displayName=${change.before.displayName || '(not set)'}`);
-    lines.push(`    After: model=${change.after.model || '(not set)'} displayName=${change.after.displayName || '(not set)'}`);
+    lines.push(`    ${translator.t('ai.agent.repair.before')}: model=${change.before.model || translator.t('ai.agent.value.not_set')} displayName=${change.before.displayName || translator.t('ai.agent.value.not_set')}`);
+    lines.push(`    ${translator.t('ai.agent.repair.after')}: model=${change.after.model || translator.t('ai.agent.value.not_set')} displayName=${change.after.displayName || translator.t('ai.agent.value.not_set')}`);
   }
 
   lines.push('');
@@ -2933,13 +2965,17 @@ function formatAgentRepairPlan(plan) {
 }
 
 function buildModelsListReport(options = {}) {
+  const translator = createTranslator(options.language);
   const providerFilter = String(options.provider || '').trim().toLowerCase();
   const providers = providerFilter
     ? [listCatalogProviders().find((provider) => provider.id === providerFilter)].filter(Boolean)
     : listCatalogProviders();
 
   if (providerFilter && providers.length === 0) {
-    throw new Error(formatError(`unsupported provider filter '${options.provider}'. Supported providers: ${listCatalogProviders().map((provider) => provider.id).join(', ')}.`));
+    throw new Error(formatError(translator.t('ai.models.error.unsupported_provider_filter', {
+      provider: options.provider,
+      providers: listCatalogProviders().map((provider) => provider.id).join(', '),
+    })));
   }
 
   return {
@@ -2962,21 +2998,22 @@ function buildModelsListReport(options = {}) {
   };
 }
 
-function formatModelsListReport(report) {
+function formatModelsListReport(report, options = {}) {
+  const translator = createTranslator(options.language);
   const lines = [
-    'AI models known by Quiver',
-    `Catalog version: ${report.catalogVersion}`,
-    `Last updated: ${report.lastUpdated}`,
-    'Note: Models are known by Quiver; provider account access is not guaranteed.',
+    translator.t('ai.models.title'),
+    `${translator.t('ai.models.catalog_version')}: ${report.catalogVersion}`,
+    `${translator.t('ai.models.last_updated')}: ${report.lastUpdated}`,
+    `${translator.t('ai.models.note')}`,
     '',
   ];
 
   for (const provider of report.providers) {
     lines.push(`${provider.displayName} (${provider.id})`);
     for (const model of provider.models) {
-      const roles = model.recommendedFor.length > 0 ? model.recommendedFor.join(', ') : 'custom/manual';
+      const roles = model.recommendedFor.length > 0 ? model.recommendedFor.join(', ') : translator.t('ai.models.roles.custom_manual');
       lines.push(`  - ${model.id} (${model.displayName})`);
-      lines.push(`    roles: ${roles}`);
+      lines.push(`    ${translator.t('ai.models.roles')}: ${roles}`);
       lines.push(`    cost=${model.costTier} quality=${model.qualityTier} stability=${model.stability}`);
     }
     lines.push('');
@@ -2987,12 +3024,13 @@ function formatModelsListReport(report) {
 
 function runModelsList(options = {}) {
   const report = buildModelsListReport({
+    language: options.language,
     provider: options.provider,
   });
   if (options.json) {
     process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
   } else {
-    process.stdout.write(formatModelsListReport(report));
+    process.stdout.write(formatModelsListReport(report, options));
   }
   return {
     task: 'models',
@@ -3002,11 +3040,12 @@ function runModelsList(options = {}) {
 }
 
 async function runAgent(repoRoot, options = {}) {
+  const translator = createTranslator(options.language);
   const command = String(options.command || '').trim().toLowerCase();
 
   if (command === 'set') {
     if (!options.role) {
-      throw new Error(formatError('missing agent role. Use: npx create-quiver ai agent set <planner|executor|reviewer|doctor> --provider <provider> --model <model>'));
+      throw new Error(formatError(translator.t('ai.agent.error.missing_set_role')));
     }
     const profileOptions = await resolveInteractiveAgentSetOptions(repoRoot, options);
     if (options.dryRun) {
@@ -3019,7 +3058,7 @@ async function runAgent(repoRoot, options = {}) {
         model: profileOptions.model,
         provider: profileOptions.provider,
       });
-      process.stdout.write(formatAgentProfileDryRun(repoRoot, preview));
+      process.stdout.write(formatAgentProfileDryRun(repoRoot, preview, options));
       return {
         task: 'agent',
         command,
@@ -3040,13 +3079,13 @@ async function runAgent(repoRoot, options = {}) {
       });
       const ux = createCommandUx(profileOptions);
       ux.summary([
-        { label: 'Role', value: preview.profile.role },
-        { label: 'Provider', value: preview.profile.provider },
-        { label: 'Model', value: preview.profile.model || '(not set)' },
-        { label: 'Display name', value: resolveAgentProfileDisplayName(preview.profile) || '(not set)' },
-        { label: 'Default', value: preview.profile.default === true ? 'yes' : 'no' },
+        { label: translator.t('ai.agent.field.role'), value: preview.profile.role },
+        { label: translator.t('ai.agent.field.provider'), value: preview.profile.provider },
+        { label: translator.t('ai.agent.field.model'), value: preview.profile.model || translator.t('ai.agent.value.not_set') },
+        { label: translator.t('ai.agent.field.display_name'), value: resolveAgentProfileDisplayName(preview.profile) || translator.t('ai.agent.value.not_set') },
+        { label: translator.t('ai.agent.field.default'), value: preview.profile.default === true ? translator.t('ai.agent.value.yes') : translator.t('ai.agent.value.no') },
       ], {
-        title: 'Profile to save',
+        title: translator.t('ai.agent.profile_to_save.title'),
       });
     }
     const result = setAgentProfile(repoRoot, profileOptions.role, {
@@ -3058,9 +3097,9 @@ async function runAgent(repoRoot, options = {}) {
       model: profileOptions.model,
       provider: profileOptions.provider,
     });
-    process.stdout.write('AI agent profile saved\n');
-    process.stdout.write(formatAgentProfile(result.profile));
-    process.stdout.write(`State: ${path.relative(repoRoot, result.filePath).split(path.sep).join('/')}\n`);
+    process.stdout.write(`${translator.t('ai.agent.saved.title')}\n`);
+    process.stdout.write(formatAgentProfile(result.profile, options));
+    process.stdout.write(`${translator.t('ai.agent.field.state')}: ${path.relative(repoRoot, result.filePath).split(path.sep).join('/')}\n`);
     return {
       task: 'agent',
       command,
@@ -3071,22 +3110,22 @@ async function runAgent(repoRoot, options = {}) {
 
   if (command === 'show') {
     if (!options.role) {
-      throw new Error(formatError('missing agent role. Use: npx create-quiver ai agent show <planner|executor|reviewer|doctor>'));
+      throw new Error(formatError(translator.t('ai.agent.error.missing_show_role')));
     }
     const profile = options.id
       ? getAgentProfileById(repoRoot, options.role, options.id)
       : getAgentProfile(repoRoot, options.role);
     if (!profile) {
-      throw new Error(formatActionableError({
+      throw new Error(formatLocalizedActionableError({
         failure: options.id
-          ? `agent profile '${options.role}/${options.id}' is not configured.`
-          : `agent profile '${options.role}' is not configured.`,
-        impact: 'Quiver will fall back to default provider behavior and may use the wrong model/cost profile.',
-        fix: `Configure the ${options.role} profile with a supported provider and technical model id.`,
+          ? translator.t('ai.agent.error.missing_profile_id.failure', { role: options.role, id: options.id })
+          : translator.t('ai.agent.error.missing_profile.failure', { role: options.role }),
+        impact: translator.t('ai.agent.error.missing_profile.impact'),
+        fix: translator.t('ai.agent.error.missing_profile.fix', { role: options.role }),
         nextCommand: `npx create-quiver ai agent set ${options.role} --provider <provider> --model <model-id>`,
-      }));
+      }, options));
     }
-    process.stdout.write(formatAgentProfile(profile));
+    process.stdout.write(formatAgentProfile(profile, options));
     return {
       task: 'agent',
       command,
@@ -3096,8 +3135,8 @@ async function runAgent(repoRoot, options = {}) {
 
   if (command === 'list' || command === 'ls' || command === '') {
     const profiles = listAgentProfiles(repoRoot);
-    process.stdout.write(formatAgentProfileList(profiles));
-    process.stdout.write(`State: ${path.relative(repoRoot, agentProfilesPath(repoRoot)).split(path.sep).join('/')}\n`);
+    process.stdout.write(formatAgentProfileList(profiles, options));
+    process.stdout.write(`${translator.t('ai.agent.field.state')}: ${path.relative(repoRoot, agentProfilesPath(repoRoot)).split(path.sep).join('/')}\n`);
     return {
       task: 'agent',
       command: 'list',
@@ -3110,7 +3149,7 @@ async function runAgent(repoRoot, options = {}) {
     if (options.json) {
       process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
     } else {
-      process.stdout.write(formatAgentDoctorReport(report));
+      process.stdout.write(formatAgentDoctorReport(report, options));
     }
     if (report.summary.errors > 0) {
       process.exitCode = 1;
@@ -3124,7 +3163,7 @@ async function runAgent(repoRoot, options = {}) {
 
   if (command === 'repair') {
     if (options.dryRun !== true) {
-      throw new Error(formatError('ai agent repair only supports --dry-run for now. No files were written.'));
+      throw new Error(formatError(translator.t('ai.agent.error.repair_requires_dry_run')));
     }
     const plan = buildAgentProfileRepairPlan(repoRoot, {
       includeState: options.json === true,
@@ -3132,7 +3171,7 @@ async function runAgent(repoRoot, options = {}) {
     if (options.json) {
       process.stdout.write(`${JSON.stringify(plan, null, 2)}\n`);
     } else {
-      process.stdout.write(formatAgentRepairPlan(plan));
+      process.stdout.write(formatAgentRepairPlan(plan, options));
     }
     return {
       task: 'agent',
@@ -3142,7 +3181,7 @@ async function runAgent(repoRoot, options = {}) {
     };
   }
 
-  throw new Error(formatError(`unsupported ai agent subcommand: ${command}. Supported tasks: set, list, show, doctor, repair`));
+  throw new Error(formatError(translator.t('ai.agent.error.unsupported_subcommand', { command })));
 }
 
 async function runGitHubTask(repoRoot, options = {}, mode = 'pr') {
