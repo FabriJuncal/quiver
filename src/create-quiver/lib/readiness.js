@@ -2,6 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const { catFileExists, currentBranch, hasLocalBranch, hasRemoteBranch, mergeBaseIsAncestor, revListCount, runGit, statusPorcelain, worktreeList } = require('./git');
 const { parseJsonWithComments } = require('./json');
+const { createTranslator } = require('./i18n/catalog');
 const { buildGraph, normalizeDeclaredDependencies, readAllSlices, SliceGraphError, topoSort } = require('./slice-graph');
 const { resolveSliceContext, toAlias, validateSliceMetaForStart } = require('./slice');
 const { validateProjectRelativePaths } = require('./paths');
@@ -10,6 +11,10 @@ function ensureExists(filePath, message) {
   if (!fs.existsSync(filePath)) {
     throw new Error(message);
   }
+}
+
+function readinessTranslator(options = {}) {
+  return createTranslator(options.language || 'es');
 }
 
 function walkSlices(rootDir, acc, repoRoot) {
@@ -96,33 +101,33 @@ function collectOverlapWarnings(repoRoot, currentBranchName, currentFiles, baseR
   return warnings;
 }
 
-function validateLocalSliceArtifacts(repoRoot, slice) {
+function validateLocalSliceArtifacts(repoRoot, slice, translator) {
   const sliceDir = path.dirname(slice.sliceAbs);
   for (const file of ['EXECUTION_BRIEF.md', 'CLOSURE_BRIEF.md']) {
     ensureExists(path.join(sliceDir, file), `create-quiver: falta '${path.posix.join(path.dirname(slice.sliceRel), file)}'.`);
   }
-  console.log('PASS: El slice local tiene EXECUTION_BRIEF.md y CLOSURE_BRIEF.md.');
+  console.log(translator.t('readiness.local.briefs.pass'));
 
   if (!Array.isArray(slice.json.files) || slice.json.files.length === 0) {
-    throw new Error('create-quiver: slice.json debe declarar al menos un archivo en files para validacion local.');
+    throw new Error(`create-quiver: ${translator.t('readiness.local.files.error.empty')}`);
   }
 
   const invalidFiles = slice.json.files.filter((file) => typeof file !== 'string' || file.trim().length === 0);
   if (invalidFiles.length > 0) {
-    throw new Error('create-quiver: slice.json.files contiene entradas invalidas.');
+    throw new Error(`create-quiver: ${translator.t('readiness.local.files.error.invalid')}`);
   }
-  console.log('PASS: slice.json declara archivos de alcance.');
+  console.log(translator.t('readiness.local.files.pass'));
 
   validateSliceMetaForStart(slice);
-  console.log('PASS: slice.json declara metadata git compatible con start-slice.');
+  console.log(translator.t('readiness.local.git.pass'));
 
   validateProjectRelativePaths(slice.files, 'slice.json files/allowed_write_paths');
   validateProjectRelativePaths(slice.expectedReadPaths, 'slice.json expected_read_paths');
-  console.log('PASS: slice.json declara rutas relativas seguras dentro del proyecto.');
+  console.log(translator.t('readiness.local.paths.pass'));
 }
 
-function baseRecoveryMessage(remote, baseBranch) {
-  return `No se encontro la base '${baseBranch}' como rama local ni como '${remote}/${baseBranch}'. Para validacion estructural usa --local; para validacion contra otra base usa --base <branch>; o configura/fetchea el remoto '${remote}'.`;
+function baseRecoveryMessage(remote, baseBranch, translator) {
+  return translator.t('readiness.base.recovery', { base: baseBranch, remote, remoteRef: `${remote}/${baseBranch}` });
 }
 
 function resolveReadinessRoot(localMode) {
@@ -137,6 +142,7 @@ function resolveReadinessRoot(localMode) {
 }
 
 function validateSliceDocumentedOnBase(repoRoot, slice, options = {}) {
+  const translator = readinessTranslator(options);
   const gate = options.gate || 'execution';
   const remote = options.remote || 'origin';
   const baseBranch = options.baseBranch || slice.baseBranch || 'develop';
@@ -145,19 +151,19 @@ function validateSliceDocumentedOnBase(repoRoot, slice, options = {}) {
   const hasLocalBase = hasLocalBranch(repoRoot, baseBranch);
 
   if (hasRemoteBase && catFileExists(repoRoot, `${remoteRef}:${slice.sliceRel}`)) {
-    console.log(`PASS: El slice ya existe en ${remoteRef} (PR base documental mergeado).`);
+    console.log(translator.t('readiness.documented.remote.pass', { ref: remoteRef }));
     return remoteRef;
   }
 
   if (hasLocalBase && catFileExists(repoRoot, `${baseBranch}:${slice.sliceRel}`)) {
-    console.log(`PASS: El slice ya existe en ${baseBranch} local (modo sin remote).`);
+    console.log(translator.t('readiness.documented.local.pass', { branch: baseBranch }));
     return baseBranch;
   }
 
   if (!hasRemoteBase && !hasLocalBase) {
-    const guidance = baseRecoveryMessage(remote, baseBranch);
+    const guidance = baseRecoveryMessage(remote, baseBranch, translator);
     if (gate === 'validation') {
-      console.log(`WARN: ${guidance}`);
+      console.log(translator.t('readiness.warn', { message: guidance }));
       return null;
     }
 
@@ -166,11 +172,11 @@ function validateSliceDocumentedOnBase(repoRoot, slice, options = {}) {
 
   const expectedBase = hasRemoteBase ? remoteRef : baseBranch;
   if (gate === 'validation') {
-    console.log(`WARN: El slice no existe todavia en ${expectedBase}. El PR base documental sigue pendiente de merge. Podes abrir el PR del slice igual si el humano mergea en orden.`);
+    console.log(translator.t('readiness.documented.missing_validation.warn', { ref: expectedBase }));
     return expectedBase;
   }
 
-  throw new Error(`create-quiver: el slice no existe en ${expectedBase}. Mergea primero el PR base documental o usa --local para validar solo estructura local.`);
+  throw new Error(`create-quiver: ${translator.t('readiness.documented.missing.error', { ref: expectedBase })}`);
 }
 
 function validateDeclaredDependencyContract(repoRoot, slice) {
@@ -227,12 +233,13 @@ function validateDeclaredDependencyContract(repoRoot, slice) {
   }
 }
 
-function localCheckSummary() {
-  console.log('INFO: Modo local: checks ejecutados: spec docs, briefs, metadata git, scope declarado, rutas seguras, dependencias y gate.');
-  console.log('INFO: Modo local: checks omitidos: existencia en base remota/local y overlap contra worktrees activos.');
+function localCheckSummary(translator) {
+  console.log(translator.t('readiness.local.summary.executed'));
+  console.log(translator.t('readiness.local.summary.skipped'));
 }
 
 function checkSliceReadiness(sliceInput, options = {}) {
+  const translator = readinessTranslator(options);
   const gate = options.gate || 'execution';
   const localMode = options.local === true;
   const strictOverlap = options.strictOverlap === true;
@@ -244,17 +251,18 @@ function checkSliceReadiness(sliceInput, options = {}) {
   for (const specFile of ['SPEC.md', 'STATUS.md', 'EVIDENCE_REPORT.md']) {
     ensureExists(path.join(repoRoot, slice.specDirRel, specFile), `create-quiver: falta '${slice.specDirRel}/${specFile}'.`);
   }
-  console.log('PASS: El spec local tiene SPEC.md, STATUS.md y EVIDENCE_REPORT.md.');
+  console.log(translator.t('readiness.spec_docs.pass'));
 
   let baseRef = null;
   if (localMode) {
-    validateLocalSliceArtifacts(repoRoot, slice);
-    console.log(`INFO: Modo local: se omite validacion de existencia del slice en ${remote}/${baseBranch} o ${baseBranch}.`);
-    console.log('INFO: Modo local: se omite validacion de overlap contra worktrees activos basada en rama remota/base.');
+    validateLocalSliceArtifacts(repoRoot, slice, translator);
+    console.log(translator.t('readiness.local.skip_base', { base: baseBranch, remoteRef: `${remote}/${baseBranch}` }));
+    console.log(translator.t('readiness.local.skip_overlap'));
   } else {
     baseRef = validateSliceDocumentedOnBase(repoRoot, slice, {
       baseBranch,
       gate,
+      language: options.language,
       remote,
     });
   }
@@ -262,130 +270,132 @@ function checkSliceReadiness(sliceInput, options = {}) {
   if (!localMode) {
     const overlapWarnings = collectOverlapWarnings(repoRoot, currentBranch(repoRoot), slice.files, baseRef || `${remote}/${baseBranch}`);
     if (overlapWarnings.length === 0) {
-      console.log('PASS: No se detecto overlap con worktrees activos.');
+      console.log(translator.t('readiness.overlap.none.pass'));
     } else {
       for (const warning of overlapWarnings) {
         const [overlapBranch, overlapFiles] = warning.split('|');
         if (strictOverlap) {
-          throw new Error(`create-quiver: Overlap con worktree activo '${overlapBranch}': ${overlapFiles}`);
+          throw new Error(`create-quiver: ${translator.t('readiness.overlap.warning', { branch: overlapBranch, files: overlapFiles })}`);
         }
-        console.log(`WARN: Overlap con worktree activo '${overlapBranch}': ${overlapFiles}`);
+        console.log(translator.t('readiness.overlap.warn', { branch: overlapBranch, files: overlapFiles }));
       }
     }
   }
 
   validateDeclaredDependencyContract(repoRoot, slice);
   if (localMode) {
-    localCheckSummary();
+    localCheckSummary(translator);
   }
 
   switch (gate) {
     case 'ready':
       if (slice.status !== 'ready') {
-        throw new Error(`create-quiver: Gate ready: slice.json debe estar en status=ready. Estado actual: ${slice.status}. Completa la especificacion en el Track 1 antes de pasar a ejecucion.`);
+        throw new Error(`create-quiver: ${translator.t('readiness.gate.ready.error_status', { status: slice.status })}`);
       }
-      console.log('PASS: Gate ready: el slice esta marcado como ready para ejecucion.');
+      console.log(translator.t('readiness.gate.ready.pass'));
       break;
     case 'execution':
       if (slice.status === 'blocked') {
-        throw new Error('create-quiver: El slice esta bloqueado (status=blocked). Resolve el bloqueante antes de ejecutar.');
+        throw new Error(`create-quiver: ${translator.t('readiness.gate.execution.error.blocked')}`);
       }
       if (slice.status === 'cancelled') {
-        throw new Error('create-quiver: El slice esta cancelado (status=cancelled).');
+        throw new Error(`create-quiver: ${translator.t('readiness.gate.execution.error.cancelled')}`);
       }
       if (slice.status === 'completed') {
-        console.log('WARN: El slice ya figura como completed. Revisa si realmente corresponde reejecutarlo.');
+        console.log(translator.t('readiness.gate.execution.warn.completed'));
       }
       if (slice.status === 'draft') {
-        console.log("WARN: El slice esta en estado 'draft'. Considera marcarlo como 'ready' antes de ejecutar.");
+        console.log(translator.t('readiness.gate.execution.warn.draft'));
       }
-      console.log('PASS: Gate execution: metadata y precondiciones minimas OK.');
+      console.log(translator.t('readiness.gate.execution.pass'));
       break;
     case 'validation':
       if (slice.status !== 'completed') {
-        throw new Error('create-quiver: Para gate validation, slice.json debe estar en status=completed.');
+        throw new Error(`create-quiver: ${translator.t('readiness.gate.validation.error_status')}`);
       }
       if (!slice.json.completed_at) {
-        throw new Error('create-quiver: Para gate validation, slice.json debe tener completed_at.');
+        throw new Error(`create-quiver: ${translator.t('readiness.gate.validation.error_completed_at')}`);
       }
       if (!slice.json.started_at) {
-        throw new Error('create-quiver: Para gate validation, slice.json debe tener started_at.');
+        throw new Error(`create-quiver: ${translator.t('readiness.gate.validation.error_started_at')}`);
       }
       if (!slice.json.actual_hours || Number(slice.json.actual_hours) <= 0) {
-        throw new Error('create-quiver: Para gate validation, slice.json debe tener actual_hours > 0.');
+        throw new Error(`create-quiver: ${translator.t('readiness.gate.validation.error_actual_hours')}`);
       }
-      console.log('PASS: Gate validation: slice marcado como completado y con trazabilidad minima.');
+      console.log(translator.t('readiness.gate.validation.pass'));
       break;
   }
 }
 
-function checkPrReadiness(sliceInput) {
+function checkPrReadiness(sliceInput, options = {}) {
+  const translator = readinessTranslator(options);
   const repoRoot = runGit(['rev-parse', '--show-toplevel'], process.cwd());
   const scriptDir = path.dirname(__filename);
   const slice = resolveSliceContext(repoRoot, sliceInput);
   const current = currentBranch(repoRoot);
   const prPath = path.join(path.dirname(slice.sliceAbs), 'pr.md');
 
-  checkSliceReadiness(slice.sliceRel, { gate: 'validation' });
-  checkScope(slice.sliceRel, { strict: true });
+  checkSliceReadiness(slice.sliceRel, { gate: 'validation', language: options.language });
+  checkScope(slice.sliceRel, { language: options.language, strict: true });
 
   if (!slice.branchName) {
-    throw new Error('create-quiver: Falta git.branch_name en el slice.');
+    throw new Error(`create-quiver: ${translator.t('readiness.pr.error.missing_branch')}`);
   }
   if (!fs.existsSync(prPath)) {
-    throw new Error('create-quiver: Falta pr.md junto al slice.');
+    throw new Error(`create-quiver: ${translator.t('readiness.pr.error.missing_pr')}`);
   }
   if (current !== slice.branchName) {
-    throw new Error(`create-quiver: Debes ejecutar este check desde la rama del slice. Actual: ${current} Esperada: ${slice.branchName}`);
+    throw new Error(`create-quiver: ${translator.t('readiness.pr.error.wrong_branch', { actual: current, expected: slice.branchName })}`);
   }
-  console.log('PASS: La rama actual coincide con la rama declarada por el slice.');
+  console.log(translator.t('readiness.pr.branch.pass'));
   if (statusPorcelain(repoRoot) !== '') {
-    throw new Error('create-quiver: El worktree no esta limpio. Cerra la implementacion antes de abrir el PR.');
+    throw new Error(`create-quiver: ${translator.t('readiness.pr.error.dirty')}`);
   }
-  console.log('PASS: El worktree esta limpio.');
+  console.log(translator.t('readiness.pr.clean.pass'));
 
   const aheadCount = revListCount(repoRoot, 'origin/develop..HEAD');
   if (aheadCount <= 0) {
     if (mergeBaseIsAncestor(repoRoot, 'HEAD', 'origin/develop')) {
-      throw new Error('create-quiver: La rama ya fue absorbida por origin/develop. Este gate aplica antes del merge.');
+      throw new Error(`create-quiver: ${translator.t('readiness.pr.error.absorbed')}`);
     }
-    throw new Error('create-quiver: La rama no tiene commits propios respecto de origin/develop.');
+    throw new Error(`create-quiver: ${translator.t('readiness.pr.error.no_commits')}`);
   }
-  console.log('PASS: La rama tiene commits propios contra origin/develop.');
+  console.log(translator.t('readiness.pr.commits.pass'));
 
   const prText = fs.readFileSync(prPath, 'utf8');
   for (const heading of ['## Title', '## Summary', '## Scope', '## Files', '## How to Test (DETAILED - REQUIRED)', '## Evidence', '## Rollback', '## Risks / Notes']) {
     if (!prText.includes(heading)) {
-      throw new Error(`create-quiver: Falta la seccion obligatoria '${heading}' en pr.md.`);
+      throw new Error(`create-quiver: ${translator.t('readiness.pr.error.missing_section', { heading })}`);
     }
   }
-  console.log('PASS: pr.md contiene las secciones obligatorias.');
+  console.log(translator.t('readiness.pr.sections.pass'));
 
   for (const subheading of ['### Required Environment', '### Worktree Access', '### Run the Project', '### Use Cases', '### Technical Verification']) {
     if (!prText.includes(subheading)) {
-      throw new Error(`create-quiver: Falta la subseccion '${subheading}' dentro de How to Test.`);
+      throw new Error(`create-quiver: ${translator.t('readiness.pr.error.missing_subsection', { subheading })}`);
     }
   }
-  console.log('PASS: How to Test incluye entorno, acceso al worktree, arranque, casos de uso y verificación técnica.');
+  console.log(translator.t('readiness.pr.how_to_test.pass'));
 
   if (!/#### Case [0-9]+:/.test(prText)) {
-    throw new Error('create-quiver: How to Test debe tener al menos un caso de uso documentado (#### Case 1: ...).');
+    throw new Error(`create-quiver: ${translator.t('readiness.pr.error.no_case')}`);
   }
-  console.log('PASS: Al menos un caso de uso documentado.');
+  console.log(translator.t('readiness.pr.case.pass'));
 
   if (!/git revert /.test(prText)) {
-    throw new Error('create-quiver: Rollback debe incluir al menos un comando git revert.');
+    throw new Error(`create-quiver: ${translator.t('readiness.pr.error.rollback')}`);
   }
-  console.log('PASS: Rollback incluye comando git revert.');
+  console.log(translator.t('readiness.pr.rollback.pass'));
 
   if (/^\s*-\s*`manual review`$/mi.test(prText) || /^\s*-\s*`visual check`$/mi.test(prText) || /^\s*-\s*`screen test`$/mi.test(prText) || /^\s*-\s*`visual validation`$/mi.test(prText)) {
     throw new Error('create-quiver: How to Test cannot rely only on generic phrases.');
   }
 
-  console.log(`PASS: Gate PR listo para '${slice.sliceId}'.`);
+  console.log(translator.t('readiness.pr.ready.pass', { slice: slice.sliceId }));
 }
 
 function checkScope(sliceInput, options = {}) {
+  const translator = readinessTranslator(options);
   const strict = options.strict === true;
   const remote = options.remote || 'origin';
   const repoRoot = runGit(['rev-parse', '--show-toplevel'], process.cwd());
@@ -420,14 +430,14 @@ function checkScope(sliceInput, options = {}) {
   let touchedRaw = '';
   if (baseRef) {
     touchedRaw = runGit(['diff', '--name-only', `${baseRef}...HEAD`], repoRoot);
-    console.log(`INFO: check-scope base: ${baseRef} (${baseSource}).`);
+    console.log(translator.t('readiness.scope.base.info', { ref: baseRef, source: baseSource }));
   } else {
-    console.log(`WARN: No se encontro base para check-scope. Probadas: ${candidateBaseBranches.join(', ')}. Usa --base <branch> o configura git.base_branch en slice.json.`);
+    console.log(translator.t('readiness.scope.base.warn', { branches: candidateBaseBranches.join(', ') }));
     return;
   }
 
   if (!touchedRaw) {
-    console.log(`WARN: No se encontraron archivos modificados respecto de ${baseRef}.`);
+    console.log(translator.t('readiness.scope.empty.warn', { ref: baseRef }));
     return;
   }
 
@@ -451,7 +461,7 @@ function checkScope(sliceInput, options = {}) {
   });
 
   if (outOfScope.length === 0) {
-    console.log('PASS: Todos los archivos tocados estan dentro del scope declarado en slice.json.');
+    console.log(translator.t('readiness.scope.pass'));
     return;
   }
 
@@ -459,16 +469,16 @@ function checkScope(sliceInput, options = {}) {
   for (const file of outOfScope) {
     violationCount += 1;
     if (strict) {
-      throw new Error(`create-quiver: Archivo fuera del scope: ${file}`);
+      throw new Error(`create-quiver: ${translator.t('readiness.scope.error.file', { file })}`);
     }
-    console.log(`WARN: Archivo fuera del scope: ${file}`);
+    console.log(translator.t('readiness.scope.warn.file', { file }));
   }
 
   if (violationCount > 0) {
     if (strict) {
-      throw new Error(`${violationCount} archivo(s) fuera del scope declarado. Actualiza slice.json.files o revierte los cambios fuera de alcance.`);
+      throw new Error(translator.t('readiness.scope.error.count', { count: violationCount }));
     }
-    console.log(`WARN: ${violationCount} archivo(s) fuera del scope declarado. Considera actualizar slice.json.files o revertir los cambios no previstos.`);
+    console.log(translator.t('readiness.scope.warn.count', { count: violationCount }));
   }
 }
 

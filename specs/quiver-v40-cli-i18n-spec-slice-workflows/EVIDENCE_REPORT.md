@@ -23,6 +23,15 @@
   - `node --test tests/commands/spec-validate.test.js tests/commands/spec-close.test.js tests/lib/i18n-catalog.test.js` - passed.
   - `git diff --check` - passed.
 
+## slice-03-slice-lifecycle-handoffs
+
+- Localized `start-slice`, readiness gates, `check-pr` wrappers, handoff validation errors, `check-scope` wrappers, and `ai execute-slice --dry-run` output through the shared `en`/`es` catalog.
+- Kept `ai prompt-slice` payload output unchanged to preserve the exact executor prompt contract.
+- Preserved accepted handoff heading aliases, paths, slice ids, branch names, and command snippets.
+- Validation:
+  - `node --test tests/commands/ai-execute-slice.test.js tests/lib/check-slice.test.js tests/lib/handoff.test.js tests/lib/lifecycle.test.js tests/lib/scope.test.js tests/lib/i18n-catalog.test.js` - passed.
+  - `git diff --check` - passed.
+
 ## Pending Evidence
 
 - `node --test tests/**/*.test.js`

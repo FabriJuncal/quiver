@@ -169,6 +169,31 @@ test('check-slice --local validates structure without requiring remote or base b
   }
 });
 
+test('check-slice --local renders English output when requested', () => {
+  const repo = makeRepo({
+    'specs/spec-a/SPEC.md': '# spec-a\n',
+    'specs/spec-a/STATUS.md': '# status\n',
+    'specs/spec-a/EVIDENCE_REPORT.md': '# evidence\n',
+    'specs/spec-a/slices/slice-01-alpha/EXECUTION_BRIEF.md': '# Execute\n',
+    'specs/spec-a/slices/slice-01-alpha/CLOSURE_BRIEF.md': '# Close\n',
+    'specs/spec-a/slices/slice-01-alpha/slice.json': readySlice('spec-a/slice-01-alpha'),
+  });
+
+  try {
+    const output = withRepoCwd(repo.root, () => captureConsole(() => checkSliceReadiness('specs/spec-a/slices/slice-01-alpha/slice.json', {
+      language: 'en',
+      local: true,
+    })));
+
+    assert.match(output, /PASS: Local spec has SPEC\.md, STATUS\.md, and EVIDENCE_REPORT\.md/);
+    assert.match(output, /PASS: Local slice has EXECUTION_BRIEF\.md and CLOSURE_BRIEF\.md/);
+    assert.match(output, /INFO: Local mode: skipping slice existence validation/);
+    assert.match(output, /PASS: Gate execution: metadata and minimum preconditions OK/);
+  } finally {
+    repo.cleanup();
+  }
+});
+
 test('check-slice --local rejects missing execution git metadata', () => {
   const project = makeProject({
     'specs/spec-a/SPEC.md': '# spec-a\n',

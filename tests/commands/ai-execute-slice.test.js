@@ -9,6 +9,14 @@ const { runExecuteSlice } = require('../../src/create-quiver/commands/ai');
 
 const BIN_PATH = path.resolve(__dirname, '../../bin/create-quiver.js');
 
+function execCli(root, args) {
+  return execFileSync('node', [BIN_PATH, ...args], {
+    cwd: root,
+    encoding: 'utf8',
+    env: { ...process.env, QUIVER_LANG: 'en' },
+  });
+}
+
 function writeFile(filePath, contents) {
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
   fs.writeFileSync(filePath, contents);
@@ -54,10 +62,7 @@ function createProject() {
 test('ai execute-slice CLI dry-run prints executor context and does not call provider', () => {
   const project = createProject();
   try {
-    const output = execFileSync('node', [BIN_PATH, 'ai', 'execute-slice', '--slice', project.slicePath, '--dry-run'], {
-      cwd: project.root,
-      encoding: 'utf8',
-    });
+    const output = execCli(project.root, ['ai', 'execute-slice', '--slice', project.slicePath, '--dry-run']);
 
     assert.ok(output.includes('AI execute-slice dry-run'));
     assert.ok(output.includes('Role: executor'));
@@ -73,10 +78,7 @@ test('ai execute-slice CLI dry-run prints executor context and does not call pro
 test('ai execute-slice CLI dry-run shows opt-in commit mode', () => {
   const project = createProject();
   try {
-    const output = execFileSync('node', [BIN_PATH, 'ai', 'execute-slice', '--slice', project.slicePath, '--dry-run', '--commit'], {
-      cwd: project.root,
-      encoding: 'utf8',
-    });
+    const output = execCli(project.root, ['ai', 'execute-slice', '--slice', project.slicePath, '--dry-run', '--commit']);
 
     assert.ok(output.includes('AI execute-slice dry-run'));
     assert.ok(output.includes('Commit after validation: enabled'));
@@ -88,8 +90,7 @@ test('ai execute-slice CLI dry-run shows opt-in commit mode', () => {
 test('ai execute-slice CLI dry-run normalizes CLI display model aliases', () => {
   const project = createProject();
   try {
-    const output = execFileSync('node', [
-      BIN_PATH,
+    const output = execCli(project.root, [
       'ai',
       'execute-slice',
       '--slice',
@@ -99,10 +100,7 @@ test('ai execute-slice CLI dry-run normalizes CLI display model aliases', () => 
       'codex',
       '--model',
       'GPT 5.5',
-    ], {
-      cwd: project.root,
-      encoding: 'utf8',
-    });
+    ]);
 
     assert.ok(output.includes('Command: codex exec --model gpt-5.5'));
     assert.ok(output.includes('Model: gpt-5.5'));
@@ -152,10 +150,7 @@ test('ai execute-slice blocks legacy profile display aliases before provider exe
 test('ai prompt-slice CLI prints a minimal manual executor prompt', () => {
   const project = createProject();
   try {
-    const output = execFileSync('node', [BIN_PATH, 'ai', 'prompt-slice', '--slice', project.slicePath, '--dry-run'], {
-      cwd: project.root,
-      encoding: 'utf8',
-    });
+    const output = execCli(project.root, ['ai', 'prompt-slice', '--slice', project.slicePath, '--dry-run']);
 
     assert.ok(output.includes('Act as a WDD + SDD executor agent.'));
     assert.ok(output.includes('Slice: slice-01-demo'));
@@ -165,6 +160,26 @@ test('ai prompt-slice CLI prints a minimal manual executor prompt', () => {
     assert.ok(output.includes('## Cambios realizados'));
     assert.ok(output.includes('Closure brief content:'));
     assert.ok(!output.includes('FULL SPEC BODY SENTINEL'));
+  } finally {
+    project.cleanup();
+  }
+});
+
+test('ai execute-slice dry-run renders Spanish wrapper without translating paths', () => {
+  const project = createProject();
+  try {
+    const output = execFileSync('node', [BIN_PATH, '--lang', 'es', 'ai', 'execute-slice', '--slice', project.slicePath, '--dry-run'], {
+      cwd: project.root,
+      encoding: 'utf8',
+      env: { ...process.env, QUIVER_LANG: 'en' },
+    });
+
+    assert.ok(output.includes('Dry-run de AI execute-slice'));
+    assert.ok(output.includes('Rol: executor'));
+    assert.ok(output.includes('Pack de contexto: slice'));
+    assert.ok(output.includes('Slice: slice-01-demo'));
+    assert.ok(output.includes('Commit despues de validar: desactivado'));
+    assert.ok(output.includes('src/app.js'));
   } finally {
     project.cleanup();
   }
