@@ -1,7 +1,7 @@
 # Quiver v43 - CLI i18n Audit and Release Readiness
 
 **Date:** 2026-05-28
-**Status:** Planned
+**Status:** In progress
 **Source:** Final audit stage of the approved CLI i18n program.
 
 ## Problem
@@ -43,7 +43,7 @@ Validate that Quiver has complete Spanish and English support across the documen
 |---|---|---|---|
 | slice-00 | Audit foundation | completed | none |
 | slice-01 | Command language mode matrix | completed | v37-v42 complete |
-| slice-02 | Public string audit | planned | slice-01 |
+| slice-02 | Public string audit | completed | slice-01 |
 | slice-03 | Cross-platform smokes | planned | slice-02 |
 | slice-04 | Package release readiness | planned | slice-03 |
 

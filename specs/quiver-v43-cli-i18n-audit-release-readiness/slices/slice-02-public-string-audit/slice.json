@@ -53,6 +53,7 @@
     "Use rg to inspect process.stdout, console.log, throw new Error, formatError, and prompt labels."
   ],
   "estimated_hours": 8,
-  "status": "planned",
-  "blocked_reason": "Requires completion of slice-01-command-language-mode-matrix."
+  "status": "completed",
+  "blocked_reason": "",
+  "completed_at": "2026-05-29T19:47:29Z"
 }

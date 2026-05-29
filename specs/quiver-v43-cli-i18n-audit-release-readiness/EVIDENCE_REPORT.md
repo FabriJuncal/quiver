@@ -125,6 +125,34 @@ Validation:
 - PASS `node --test tests/**/*.test.js`
 - PASS `git diff --check`
 
+## slice-02-public-string-audit
+
+- Audited public output call sites with `rg -n "console\\.(log|error|warn)|process\\.(stdout|stderr)\\.write|throw new Error|formatError\\(|prompt(Label|Text|Confirm)|label:|message:" src/create-quiver`.
+- Localized `ai execute-slice` interactive selector labels and progress messages through the i18n catalog.
+- Localized `cleanup-slice` dry-run, success, baseline, stale branch, dirty tree, missing worktree, and unmerged branch messages through the i18n catalog.
+- Passed configured language from the CLI entrypoint into `cleanup-slice`.
+- Added regression tests for English `ai execute-slice` interactive output, Spanish `ai execute-slice` interactive progress, and English `cleanup-slice` dry-run output.
+
+Stable literal exceptions:
+
+| Literal class | Reason |
+|---|---|
+| Commands, flags, branch names, paths, provider ids, model ids | Stable technical tokens; translating them would break copy/paste workflows or machine contracts. |
+| JSON/JSONL field names and enum values | Machine-readable contract; covered by JSON tests and excluded from human translation. |
+| Provider prompts under `src/create-quiver/lib/ai/prompts.js` | Explicitly out of scope for this audit slice; these are model instructions, not user-facing CLI strings. |
+| Generated local worktree docs such as `WORKTREE_CONTEXT.md` and `docs/ai/ACTIVE_SLICES.md` | Operational artifacts with existing Spanish convention; not command status output. |
+| Test fixtures, fixture package metadata, and synthetic command output | Non-public test data used to verify behavior. |
+
+Validation:
+
+- PASS `node --test tests/lib/lifecycle.test.js tests/lib/i18n-catalog.test.js tests/lib/ai-executor.test.js tests/commands/ai-execute-slice.test.js`
+- PASS `node --test tests/**/*.test.js`
+- PASS `git diff --check`
+- PASS `node bin/create-quiver.js spec validate specs/quiver-v43-cli-i18n-audit-release-readiness --strict`
+- PASS `node bin/create-quiver.js check-slice specs/quiver-v43-cli-i18n-audit-release-readiness/slices/slice-02-public-string-audit/slice.json --local`
+- PASS focused source audit for removed executor Spanish literals; only catalog entries remain.
+- PASS focused source audit for removed lifecycle cleanup Spanish literals; only catalog entries remain.
+
 ## Pending Evidence
 
 - `npx create-quiver spec validate specs/quiver-v43-cli-i18n-audit-release-readiness --strict`

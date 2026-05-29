@@ -3,7 +3,7 @@
 **Overall status:** In progress
 **Created:** 2026-05-28
 **Completed:** Not completed
-**Current slice:** slice-02-public-string-audit
+**Current slice:** slice-03-cross-platform-smokes
 
 ## Summary
 
@@ -15,7 +15,7 @@ This spec is the final audit and release-readiness stage for the full CLI i18n p
 |---|---|---|
 | slice-00-audit-foundation | Completed | Spec package and handoffs created. |
 | slice-01-command-language-mode-matrix | Completed | Created command x language x mode matrix for every documented command. |
-| slice-02-public-string-audit | Planned | Depends on the full matrix. |
+| slice-02-public-string-audit | Completed | Localized remaining critical public command strings found in the audit. |
 | slice-03-cross-platform-smokes | Planned | Depends on string audit fixes. |
 | slice-04-package-release-readiness | Planned | Final release-readiness gate. |
 
