@@ -3688,6 +3688,7 @@ async function run(argv) {
         dryRun: args.dryRun,
         input: args.aiInput || undefined,
         interactive: args.interactive,
+        language: args.language,
         methodology: args.methodology || undefined,
         review: args.review,
         specSlug: args.specSlug || undefined,
@@ -3704,13 +3705,13 @@ async function run(argv) {
       const report = startSpecWorktree(process.cwd(), args.targetDir, {
         dryRun: args.dryRun,
       });
-      process.stdout.write(formatSpecStartResult(report));
+      process.stdout.write(formatSpecStartResult(report, { language: args.language }));
       return;
     }
 
     if (args.specCommand === 'status') {
       const report = buildSpecStatus(process.cwd(), args.targetDir);
-      process.stdout.write(formatSpecStatus(report));
+      process.stdout.write(formatSpecStatus(report, { language: args.language }));
       return;
     }
 

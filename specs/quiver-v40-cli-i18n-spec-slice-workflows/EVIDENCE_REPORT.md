@@ -5,10 +5,18 @@
 - Created this spec package and slice handoffs.
 - Runtime implementation intentionally not started.
 
+## slice-01-spec-create-start-status
+
+- Localized `spec create`, `spec start`, and `spec status` human output through the shared `en`/`es` catalog.
+- Preserved generated spec artifacts, slice ids, statuses, paths, branch names, and suggested commands.
+- Validation:
+  - `node --test tests/commands/spec-create.test.js tests/commands/spec-worktree.test.js tests/lib/i18n-catalog.test.js` - passed.
+  - `git diff --check` - passed.
+  - `node bin/create-quiver.js spec validate specs/quiver-v40-cli-i18n-spec-slice-workflows --strict` - passed.
+  - `node bin/create-quiver.js check-slice specs/quiver-v40-cli-i18n-spec-slice-workflows/slices/slice-01-spec-create-start-status/slice.json --local` - passed.
+
 ## Pending Evidence
 
 - `node --test tests/**/*.test.js`
-- `git diff --check`
-- `npx create-quiver spec validate specs/quiver-v40-cli-i18n-spec-slice-workflows --strict`
 - `npm run package:quiver`
 - `npm run smoke:create-quiver`

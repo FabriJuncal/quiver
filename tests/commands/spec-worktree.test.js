@@ -72,6 +72,7 @@ function execCli(repoRoot, args) {
   return execFileSync(process.execPath, [BIN_PATH, ...args], {
     cwd: repoRoot,
     encoding: 'utf8',
+    env: { ...process.env, QUIVER_LANG: 'en' },
   });
 }
 
@@ -90,6 +91,28 @@ test('spec status shows slice-00 status and pending slices', () => {
     assert.ok(output.includes('Branch: feature/example-spec'));
     assert.ok(output.includes('slice-00: completed'));
     assert.ok(output.includes('Later slices blocked: no'));
+    assert.ok(output.includes('- slice-01-feature: draft'));
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('spec status renders Spanish labels while preserving ids and statuses', () => {
+  const repo = makeRepo({
+    'specs/example-spec/SPEC.md': '# Example\n',
+    'specs/example-spec/slices/slice-00-spec-foundation/slice.json': sliceJson('slice-00-spec-foundation', 'completed'),
+    'specs/example-spec/slices/slice-01-feature/slice.json': sliceJson('slice-01-feature', 'draft'),
+  });
+
+  try {
+    const output = execCli(repo.root, ['--lang', 'es', 'spec', 'status', 'specs/example-spec']);
+
+    assert.ok(output.includes('Estado del worktree de spec'));
+    assert.ok(output.includes('Spec: specs/example-spec'));
+    assert.ok(output.includes('Branch: feature/example-spec'));
+    assert.ok(output.includes('slice-00: completed'));
+    assert.ok(output.includes('Slices posteriores bloqueados: no'));
+    assert.ok(output.includes('Slices pendientes:'));
     assert.ok(output.includes('- slice-01-feature: draft'));
   } finally {
     repo.cleanup();
@@ -150,6 +173,26 @@ test('spec start creates and then reuses a dedicated worktree from main', () => 
 
     const reused = execCli(repo.root, ['spec', 'start', 'specs/example-spec']);
     assert.ok(reused.includes('Reused: yes'));
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('spec start dry-run renders Spanish labels while preserving branch and paths', () => {
+  const repo = makeRepo({
+    'specs/example-spec/SPEC.md': '# Example\n',
+    'specs/example-spec/slices/slice-00-spec-foundation/slice.json': sliceJson('slice-00-spec-foundation', 'completed'),
+  });
+
+  try {
+    const output = execCli(repo.root, ['--lang', 'es', 'spec', 'start', 'specs/example-spec', '--dry-run']);
+
+    assert.ok(output.includes('Dry-run de inicio de worktree de spec'));
+    assert.ok(output.includes('Branch: feature/example-spec'));
+    assert.ok(output.includes('Base: main'));
+    assert.ok(output.includes('Reutilizado: no'));
+    assert.ok(output.includes('slice-00: completed'));
+    assert.ok(output.includes('Crearia worktree:'));
   } finally {
     repo.cleanup();
   }

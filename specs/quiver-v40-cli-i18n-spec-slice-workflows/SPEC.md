@@ -40,7 +40,7 @@ Localize spec/slice workflow command output in `en` and `es` while preserving ge
 | Slice | Title | Status | Dependencies |
 |---|---|---|---|
 | slice-00 | Spec/slice foundation | completed | none |
-| slice-01 | Spec create, start, and status surfaces | planned | v37 complete |
+| slice-01 | Spec create, start, and status surfaces | completed | v37 complete |
 | slice-02 | Spec validate and close | planned | slice-01 |
 | slice-03 | Slice lifecycle and handoffs | planned | slice-01 |
 | slice-04 | Spec/slice tests and smokes | planned | slice-02, slice-03 |
