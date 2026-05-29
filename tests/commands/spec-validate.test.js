@@ -26,6 +26,7 @@ function execCli(root, args) {
   return execFileSync(process.execPath, [BIN_PATH, ...args], {
     cwd: root,
     encoding: 'utf8',
+    env: { ...process.env, QUIVER_LANG: 'en' },
     stdio: ['ignore', 'pipe', 'pipe'],
   });
 }
@@ -96,6 +97,24 @@ test('spec validate checks a complete spec package', () => {
   }
 });
 
+test('spec validate renders Spanish report labels without translating paths', () => {
+  const project = makeProject();
+  try {
+    seedValidSpec(project.root);
+
+    const output = execCli(project.root, ['--lang', 'es', 'spec', 'validate', 'specs/demo']);
+
+    assert.match(output, /Validacion de spec de Quiver/);
+    assert.match(output, /Spec: specs\/demo/);
+    assert.match(output, /Slices: 1/);
+    assert.match(output, /Estricto: no/);
+    assert.match(output, /Archivos verificados:/);
+    assert.match(output, /PASS: validacion de spec aprobada/);
+  } finally {
+    project.cleanup();
+  }
+});
+
 test('spec validate fails on unsafe paths and incomplete briefs', () => {
   const project = makeProject();
   try {
@@ -155,6 +174,30 @@ test('spec validate strict mode promotes status and evidence warnings', () => {
         const output = `${error.stdout || ''}${error.stderr || ''}`;
         assert.match(output, /strict warning: STATUS\.md does not reference slice-01-alpha/);
         assert.match(output, /strict warning: EVIDENCE_REPORT\.md does not reference completed slice slice-01-alpha/);
+        return true;
+      },
+    );
+  } finally {
+    project.cleanup();
+  }
+});
+
+test('spec validate strict mode renders Spanish failure wrapper while preserving warning text', () => {
+  const project = makeProject();
+  try {
+    seedValidSpec(project.root);
+    writeFile(path.join(project.root, 'specs/demo/STATUS.md'), '# Status\n');
+    writeFile(path.join(project.root, 'specs/demo/EVIDENCE_REPORT.md'), '# Evidence\n');
+
+    assert.throws(
+      () => execCli(project.root, ['--lang', 'es', 'spec', 'validate', 'specs/demo', '--strict']),
+      (error) => {
+        const output = `${error.stdout || ''}${error.stderr || ''}`;
+        assert.match(output, /Validacion de spec de Quiver/);
+        assert.match(output, /Estricto: si/);
+        assert.match(output, /Errores:/);
+        assert.match(output, /strict warning: STATUS\.md does not reference slice-01-alpha/);
+        assert.match(output, /FALLO: fallo la validacion de spec/);
         return true;
       },
     );

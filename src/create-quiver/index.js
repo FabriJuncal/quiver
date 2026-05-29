@@ -3717,6 +3717,7 @@ async function run(argv) {
 
     if (args.specCommand === 'validate') {
       runValidateSpec(process.cwd(), args.targetDir, {
+        language: args.language,
         strict: args.strict,
       });
       return;
@@ -3730,7 +3731,7 @@ async function run(argv) {
         force: args.force,
         remote: args.aiRemote,
       });
-      process.stdout.write(formatSpecCloseResult(report));
+      process.stdout.write(formatSpecCloseResult(report, { language: args.language }));
       return;
     }
 

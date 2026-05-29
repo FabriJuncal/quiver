@@ -271,42 +271,43 @@ function buildSpecValidationReport(repoRoot, specInput, options = {}) {
   };
 }
 
-function formatSpecValidationReport(report) {
+function formatSpecValidationReport(report, options = {}) {
+  const translator = createTranslator(options.language);
   const lines = [
-    'Quiver spec validation',
-    `Spec: ${report.specDir}`,
-    `Slices: ${report.slices}`,
-    `Strict: ${report.strict ? 'yes' : 'no'}`,
+    translator.t('spec_validate.title'),
+    translator.t('spec_validate.spec', { path: report.specDir }),
+    translator.t('spec_validate.slices', { count: report.slices }),
+    translator.t('spec_validate.strict', { value: report.strict ? translator.t('common.yes') : translator.t('common.no') }),
   ];
 
   if (report.checked.length > 0) {
-    lines.push('Checked files:');
+    lines.push(translator.t('spec_validate.checked_files'));
     for (const file of report.checked) {
       lines.push(`- ${file}`);
     }
   }
 
   if (report.warnings.length > 0) {
-    lines.push('Warnings:');
+    lines.push(translator.t('spec_validate.warnings'));
     for (const warning of report.warnings) {
       lines.push(`- ${warning}`);
     }
   }
 
   if (report.errors.length > 0) {
-    lines.push('Errors:');
+    lines.push(translator.t('spec_validate.errors'));
     for (const error of report.errors) {
       lines.push(`- ${error}`);
     }
   }
 
-  lines.push(report.ok ? 'PASS: spec validation passed.' : 'FAIL: spec validation failed.');
+  lines.push(report.ok ? translator.t('spec_validate.result.pass') : translator.t('spec_validate.result.fail'));
   return `${lines.join('\n')}\n`;
 }
 
 function runValidateSpec(repoRoot, specInput, options = {}) {
   const report = buildSpecValidationReport(repoRoot, specInput, options);
-  process.stdout.write(formatSpecValidationReport(report));
+  process.stdout.write(formatSpecValidationReport(report, options));
 
   if (!report.ok) {
     const error = new Error(formatError(`spec validate failed for ${report.specDir}`));

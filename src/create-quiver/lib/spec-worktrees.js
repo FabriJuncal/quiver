@@ -446,24 +446,25 @@ function closeSpecWorktree(repoRoot, specInput, options = {}) {
   }
 }
 
-function formatSpecCloseResult(result) {
+function formatSpecCloseResult(result, options = {}) {
+  const translator = createTranslator(options.language);
   const lines = [
-    result.dryRun ? 'Spec close dry-run' : 'Spec worktree closed',
-    `Spec: ${result.relativeSpecDir}`,
-    `Branch: ${result.branchName}`,
-    `Base: ${result.baseRef}`,
-    `Worktree: ${result.worktreePath}`,
-    `Discard: ${result.discarded ? 'yes' : 'no'}`,
+    result.dryRun ? translator.t('spec_close.title.dry_run') : translator.t('spec_close.title.closed'),
+    translator.t('spec_close.spec', { path: result.relativeSpecDir }),
+    translator.t('spec_close.branch', { branch: result.branchName }),
+    translator.t('spec_close.base', { base: result.baseRef }),
+    translator.t('spec_close.worktree', { path: result.worktreePath }),
+    translator.t('spec_close.discard', { value: result.discarded ? translator.t('common.yes') : translator.t('common.no') }),
   ];
 
   if (result.dryRun) {
-    lines.push(`Would remove worktree: ${result.worktreePath}`);
+    lines.push(translator.t('spec_close.would_remove_worktree', { path: result.worktreePath }));
     if (!result.discarded && result.remote) {
-      lines.push(`Would pull: git pull --ff-only ${result.remote} ${result.baseBranch}`);
+      lines.push(translator.t('spec_close.would_pull', { command: `git pull --ff-only ${result.remote} ${result.baseBranch}` }));
     }
   } else {
-    lines.push(`Removed worktree: ${result.removed ? 'yes' : 'no'}`);
-    lines.push(`Pulled main checkout: ${result.pulled ? 'yes' : 'no'}`);
+    lines.push(translator.t('spec_close.removed_worktree', { value: result.removed ? translator.t('common.yes') : translator.t('common.no') }));
+    lines.push(translator.t('spec_close.pulled_main_checkout', { value: result.pulled ? translator.t('common.yes') : translator.t('common.no') }));
   }
 
   return `${lines.join('\n')}\n`;

@@ -13,16 +13,19 @@
   },
   "files": [
     "src/create-quiver/commands/spec.js",
+    "src/create-quiver/lib/spec-worktrees.js",
     "tests/commands/spec-validate.test.js",
     "tests/commands/spec-close.test.js"
   ],
   "expected_read_paths": [
     "src/create-quiver/commands/spec.js",
+    "src/create-quiver/lib/spec-worktrees.js",
     "src/create-quiver/lib/handoff.js",
     "src/create-quiver/lib/i18n/**"
   ],
   "allowed_write_paths": [
     "src/create-quiver/commands/spec.js",
+    "src/create-quiver/lib/spec-worktrees.js",
     "src/create-quiver/lib/i18n/**",
     "tests/commands/spec-validate.test.js",
     "tests/commands/spec-close.test.js",
@@ -54,6 +57,7 @@
     "Keep exact path strings in assertion fixtures."
   ],
   "estimated_hours": 6,
-  "status": "planned",
-  "blocked_reason": "Requires completion of slice-01-spec-create-start-status."
+  "status": "completed",
+  "blocked_reason": "",
+  "completed_at": "2026-05-29T16:20:09Z"
 }
