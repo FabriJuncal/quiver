@@ -5,6 +5,7 @@ const { readPhaseApproval } = require('../lib/approvals');
 const { approvalCandidateCommand, buildApprovalCandidateReport, formatCandidateSummary } = require('../lib/ai/approval-candidates');
 const { readPlanReview } = require('../lib/ai/plan-review');
 const { listAgentProfiles } = require('../lib/agent-profiles');
+const { translatorForHuman } = require('../lib/i18n/read-only-format');
 const { readProjectScanStatus } = require('../lib/project-scan');
 const { buildGraph, naturalNumberFromSliceId, readAllSlices } = require('../lib/slice-graph');
 const { hasQuiverInitializationEvidence, readState } = require('../lib/state');
@@ -617,38 +618,129 @@ function detectFlowState(projectRoot) {
   });
 }
 
-function formatFlowReport(report) {
+function formatFlowBlocker(blocker, translator) {
+  const text = String(blocker || '');
+  if (text === 'Quiver has not been initialized in this project.') {
+    return translator.t('flow.blocker.not_initialized');
+  }
+  if (text === 'Acceptance criteria draft exists but is not approved.') {
+    return translator.t('flow.blocker.acceptance_draft');
+  }
+  if (text === 'Acceptance criteria changed after approval.') {
+    return translator.t('flow.blocker.acceptance_stale');
+  }
+  if (text === 'Technical plan draft exists but has not been reviewed for production readiness.') {
+    return translator.t('flow.blocker.technical_plan_review_needed');
+  }
+  if (text === 'Technical plan review blocks approval.') {
+    return translator.t('flow.blocker.technical_plan_review_blocked');
+  }
+  if (text === 'Technical plan draft was reviewed but is not approved.') {
+    return translator.t('flow.blocker.technical_plan_draft');
+  }
+  if (text === 'Technical plan changed after approval and needs a fresh production review.') {
+    return translator.t('flow.blocker.technical_plan_changed_review_needed');
+  }
+  if (text === 'Technical plan changed after approval and latest review blocks approval.') {
+    return translator.t('flow.blocker.technical_plan_changed_review_blocked');
+  }
+  if (text === 'Technical plan changed after approval and the latest draft was reviewed.') {
+    return translator.t('flow.blocker.technical_plan_changed_reviewed');
+  }
+  if (text === 'Later slices are blocked until slice-00 is completed and committed.') {
+    return translator.t('flow.blocker.slice_00_required');
+  }
+  if (text === 'No ready slice was found. Review dependencies and statuses.') {
+    return translator.t('flow.blocker.no_ready_slice');
+  }
+  const missingDoc = text.match(/^Missing (docs\/[^.]+\.md)\.$/);
+  if (missingDoc) {
+    return translator.t('flow.blocker.missing_doc', { file: missingDoc[1] });
+  }
+  const missingProfiles = text.match(/^Missing (.+) agent profile(s?)\.$/);
+  if (missingProfiles) {
+    return translator.t('flow.blocker.missing_agent_profiles', { roles: missingProfiles[1] });
+  }
+  const planReviewStatus = text.match(/^Plan review status is (.+)\.$/);
+  if (planReviewStatus) {
+    return translator.t('flow.blocker.plan_review_status', { status: planReviewStatus[1] });
+  }
+  const couldNotReadSlices = text.match(/^Could not read slices: (.+)$/);
+  if (couldNotReadSlices) {
+    return translator.t('flow.blocker.could_not_read_slices', { error: couldNotReadSlices[1] });
+  }
+  if (text === 'No slice.json files found for the detected specs.') {
+    return translator.t('flow.blocker.no_slice_json');
+  }
+  const graphNotReady = text.match(/^Slice graph is not ready: (.+)$/);
+  if (graphNotReady) {
+    return translator.t('flow.blocker.slice_graph_not_ready', { error: graphNotReady[1] });
+  }
+  return text;
+}
+
+function formatFlowContextSource(contextSource, translator) {
+  const source = contextSource || {};
+  if (source.status === 'fresh') {
+    return translator.t('flow.context_source.fresh', {
+      path: source.artifactPath,
+      updatedAt: source.scanUpdatedAt,
+    });
+  }
+  if (source.status === 'legacy') {
+    return translator.t('flow.context_source.legacy', {
+      path: source.artifactPath,
+      updatedAt: source.scanUpdatedAt,
+    });
+  }
+  if (source.status === 'stale') {
+    return translator.t('flow.context_source.stale', { path: source.artifactPath });
+  }
+  if (source.status === 'partial' && source.artifactPath && !source.projectMapPath) {
+    return translator.t('flow.context_source.partial_scan_only', { path: source.artifactPath });
+  }
+  if (source.status === 'partial' && !source.artifactPath && source.projectMapPath) {
+    return translator.t('flow.context_source.partial_map_only');
+  }
+  if (source.status === 'invalid') {
+    return translator.t('flow.context_source.invalid', { error: source.error });
+  }
+  return translator.t('flow.context_source.missing');
+}
+
+function formatFlowReport(report, options = {}) {
+  const translator = translatorForHuman(options);
   const lines = [
-    'Quiver guided flow',
+    translator.t('flow.title'),
     '',
-    'Command path:',
-    '- Bootstrap and remote use: npx create-quiver <command>',
-    '- Short alias after local install: quiver <command>',
-    `- Generated project script: ${report.facts.flowScriptCommand}`,
+    `${translator.t('flow.command_path')}:`,
+    `- ${translator.t('flow.bootstrap_remote')}: npx create-quiver <command>`,
+    `- ${translator.t('flow.short_alias')}: quiver <command>`,
+    `- ${translator.t('flow.generated_script')}: ${report.facts.flowScriptCommand}`,
     '',
-    `Package manager: ${report.facts.packageManager}`,
-    `Stage: ${report.label}`,
-    `Next safe command: ${report.nextCommand}`,
-    `Context source: ${report.facts.contextSource.summary}`,
+    `${translator.t('flow.package_manager')}: ${report.facts.packageManager}`,
+    `${translator.t('flow.stage')}: ${translator.t(`flow.stage.${report.stage}`)}`,
+    `${translator.t('flow.next_safe_command')}: ${report.nextCommand}`,
+    `${translator.t('flow.context_source')}: ${formatFlowContextSource(report.facts.contextSource, translator)}`,
   ];
 
   if (report.blockers.length > 0) {
-    lines.push('', 'Blockers:');
+    lines.push('', `${translator.t('flow.blockers')}:`);
     for (const blocker of report.blockers) {
-      lines.push(`- ${blocker}`);
+      lines.push(`- ${formatFlowBlocker(blocker, translator)}`);
     }
   }
 
-  lines.push('', 'Suggested sequence:');
+  lines.push('', `${translator.t('flow.suggested_sequence')}:`);
   for (const command of report.suggestedCommands) {
     lines.push(`- ${command}`);
   }
 
   if (report.facts.specSlugs.length > 0) {
-    lines.push('', `Specs found: ${report.facts.specSlugs.join(', ')}`);
+    lines.push('', `${translator.t('flow.specs_found')}: ${report.facts.specSlugs.join(', ')}`);
   }
 
-  lines.push('', 'Safety: this command is read-only and does not call AI providers.');
+  lines.push('', translator.t('flow.safety_read_only'));
 
   return `${lines.join('\n')}\n`;
 }
@@ -661,7 +753,7 @@ async function runFlow(repoRoot, options = {}) {
     return report;
   }
 
-  process.stdout.write(formatFlowReport(report));
+  process.stdout.write(formatFlowReport(report, options));
   return report;
 }
 

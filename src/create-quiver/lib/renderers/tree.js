@@ -1,3 +1,5 @@
+const { formatStatus, translatorForHuman } = require('../i18n/read-only-format');
+
 function isUnicodeEnabled(options = {}) {
   if (options.unicode === true) {
     return true;
@@ -53,10 +55,10 @@ function countParallelLots(level, conflicts) {
 }
 
 function formatLevelHeader(levelIndex, level, conflicts, options = {}) {
-  const unicode = isUnicodeEnabled(options);
-  const label = unicode ? `Level ${levelIndex}` : `Level ${levelIndex}`;
+  const translator = translatorForHuman(options);
+  const label = translator.t('graph.level', { level: levelIndex });
   const lotCount = countParallelLots(level, conflicts);
-  return `${label} (${level.length} slices, ${lotCount} lots)`;
+  return `${label} (${translator.t('graph.slices_count', { count: level.length })}, ${translator.t('graph.lots_count', { count: lotCount })})`;
 }
 
 function formatConflictSuffix(conflict, options = {}) {
@@ -73,6 +75,7 @@ function formatConflictSuffix(conflict, options = {}) {
 
 function renderTreeGraph(report, options = {}) {
   const unicode = isUnicodeEnabled(options);
+  const translator = translatorForHuman(options);
   const branch = unicode ? '├─' : '+--';
   const lastBranch = unicode ? '└─' : '\\--';
   const pipe = unicode ? '│ ' : '| ';
@@ -80,10 +83,10 @@ function renderTreeGraph(report, options = {}) {
   const lines = [];
 
   if (!Array.isArray(report.levels) || report.levels.length === 0) {
-    return 'No pending slices found.\n';
+    return `${translator.t('graph.empty.pending')}\n`;
   }
 
-  lines.push('Quiver graph');
+  lines.push(translator.t('graph.title'));
 
   report.levels.forEach((level, levelIndex) => {
     const levelConflicts = Array.isArray(report.conflicts)
@@ -98,7 +101,7 @@ function renderTreeGraph(report, options = {}) {
       const sharedPaths = conflict && options.showConflicts ? ` ${formatConflictSuffix(conflict, options)}` : '';
       const title = slice.title ? ` ${slice.title}` : '';
       const hours = typeof slice.hours === 'number' ? ` (${slice.hours}h)` : '';
-      const status = slice.status ? ` [${slice.status}]` : '';
+      const status = slice.status ? ` [${formatStatus(slice.status, translator)}]` : '';
       lines.push(`${connector} ${marker} ${slice.ref}${title}${hours}${status}${sharedPaths}`.replace(/\s+/g, ' ').trimEnd());
     });
 

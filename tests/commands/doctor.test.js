@@ -64,6 +64,30 @@ test('doctor accepts the new default init layout before specs exist', () => {
   }
 });
 
+test('doctor localizes human output while preserving command snippets', () => {
+  const { dir, cleanup } = makeTmpDir();
+  const target = path.join(dir, 'target');
+  try {
+    runCli(['init', '--name', 'Proyecto Sin Specs', '--dir', target, '--skip-install']);
+    writeFile(target, 'docs/BROKEN_LINK.md', '# Broken\n\n[Missing](./NOPE.md)\n');
+    const output = runCli(['--lang', 'es', 'doctor'], { cwd: target });
+
+    assert.match(output, /Doctor de Quiver/);
+    assert.match(output, /Chequeos/);
+    assert.match(output, /Arreglos sugeridos/);
+    assert.match(output, /Doctor de Quiver aprobado para/);
+    assert.match(output, /Layout: new/);
+    assert.match(output, /Specs: ninguna todavia/);
+    assert.match(output, /Todavia no hay specs\. Es valido despues del flujo init AI-first\./);
+    assert.match(output, /Advertencia: missing local docs link: docs\/BROKEN_LINK\.md -> \.\/NOPE\.md/);
+    assert.match(output, /npx create-quiver analyze/);
+    assert.doesNotMatch(output, /Suggested fixes/);
+    assert.doesNotMatch(output, /Warning: missing local docs link/);
+  } finally {
+    cleanup();
+  }
+});
+
 test('doctor json emits parseable diagnostics with human parity', () => {
   const { dir, cleanup } = makeTmpDir();
   const target = path.join(dir, 'target');

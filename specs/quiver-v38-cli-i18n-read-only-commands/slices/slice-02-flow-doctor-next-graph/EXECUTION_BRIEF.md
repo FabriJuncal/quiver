@@ -17,6 +17,6 @@ Localize `flow`, `doctor`, `next`, `graph`, and `plan` human output.
 
 ## Completion Checklist
 
-- [ ] Command output migrated.
-- [ ] Normal, empty, warning, and blocker states tested.
-- [ ] JSON regression tests preserved.
+- [x] Command output migrated.
+- [x] Normal, empty, warning, and blocker states tested.
+- [x] JSON regression tests preserved.

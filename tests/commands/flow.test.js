@@ -123,6 +123,24 @@ test('flow command is read-only and guides uninitialized projects to init', () =
   }
 });
 
+test('flow command localizes uninitialized guidance while preserving commands', () => {
+  const repo = makeRepo({
+    'README.md': '# Existing project\n',
+  });
+
+  try {
+    const output = runFlow(repo.root, ['--lang', 'es']);
+
+    assert.match(output, /Flujo guiado de Quiver/);
+    assert.match(output, /Etapa: sin inicializar/);
+    assert.match(output, /Proximo comando seguro: npx create-quiver init --name "Project Name"/);
+    assert.match(output, /Quiver no fue inicializado en este proyecto\./);
+    assert.match(output, /Seguridad: este comando es read-only y no llama providers de IA\./);
+  } finally {
+    repo.cleanup();
+  }
+});
+
 test('flow command reports analysis guidance when initialized context docs are missing', () => {
   const repo = makeRepo({
     '.quiver/state.json': JSON.stringify({

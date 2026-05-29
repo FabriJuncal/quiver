@@ -1,4 +1,5 @@
 const { relativePosixPath } = require('../lib/paths');
+const { formatStatus, translatorForHuman } = require('../lib/i18n/read-only-format');
 const { filterSlicesForExecution, resolveProjectState } = require('../lib/project-state-resolver');
 const { topoSort } = require('../lib/slice-graph');
 
@@ -147,13 +148,21 @@ function collectPlan(repoRoot, options = {}) {
 }
 
 function formatHumanPlan(report, options = {}) {
+  const translator = translatorForHuman(options);
   const unicode = Boolean(options.unicode) || /UTF-8/i.test(process.env.LANG || '');
-  const title = options.onlyReady ? 'Ready slices' : (report.include_completed ? 'Quiver plan (including completed)' : 'Quiver plan');
+  const title = options.onlyReady
+    ? translator.t('plan.title.ready')
+    : (report.include_completed ? translator.t('plan.title.including_completed') : translator.t('plan.title'));
   const pathSeparator = unicode ? ' → ' : ' -> ';
-  const lines = [title, `Total hours: ${report.total_hours}`, `Critical path: ${report.critical_path.length > 0 ? report.critical_path.join(pathSeparator) : '-'}`, ''];
+  const lines = [
+    title,
+    `${translator.t('plan.total_hours')}: ${report.total_hours}`,
+    `${translator.t('plan.critical_path')}: ${report.critical_path.length > 0 ? report.critical_path.join(pathSeparator) : '-'}`,
+    '',
+  ];
 
   if (report.plan.length === 0) {
-    lines.push(report.include_completed ? 'No slices found for the selected filters.' : 'No pending slices found.');
+    lines.push(report.include_completed ? translator.t('plan.empty.filtered') : translator.t('plan.empty.pending'));
     return `${lines.join('\n')}\n`;
   }
 
@@ -163,15 +172,23 @@ function formatHumanPlan(report, options = {}) {
     item.ref,
     item.title,
     `${item.hours}`,
-    item.status,
+    formatStatus(item.status, translator),
   ]);
 
+  const headers = [
+    translator.t('plan.header.index'),
+    translator.t('plan.header.ticket'),
+    translator.t('plan.header.spec_slice'),
+    translator.t('plan.header.title'),
+    translator.t('plan.header.hours'),
+    translator.t('plan.header.status'),
+  ];
   const widths = rows[0].map((_, colIndex) => Math.max(
     rows.reduce((max, row) => Math.max(max, row[colIndex].length), 0),
-    ['[N]', 'TICKET', 'SPEC/SLICE', 'TITLE', 'HOURS', 'STATUS'][colIndex].length,
+    headers[colIndex].length,
   ));
 
-  lines.push(['[N]', 'TICKET', 'SPEC/SLICE', 'TITLE', 'HOURS', 'STATUS'].map((label, index) => label.padEnd(widths[index])).join('  '));
+  lines.push(headers.map((label, index) => label.padEnd(widths[index])).join('  '));
   lines.push(widths.map((width) => '-'.repeat(width)).join('  '));
 
   for (const row of rows) {

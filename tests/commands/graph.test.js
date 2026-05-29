@@ -139,6 +139,20 @@ test('graph CLI renders an ASCII tree by default', () => {
   }
 });
 
+test('graph CLI localizes tree output without changing refs', () => {
+  const repo = graphFixture();
+  try {
+    const output = execGraph(repo.root, ['--lang', 'es'], { LANG: 'C', LC_ALL: 'C', LC_CTYPE: 'C' });
+    assert.ok(output.includes('Grafo de Quiver'));
+    assert.ok(output.includes('Nivel 0 (2 slices, 1 lote)'));
+    assert.ok(output.includes('spec-a/slice-01-alpha'));
+    assert.ok(output.includes('[draft]'));
+    assert.ok(output.includes('+--'));
+  } finally {
+    repo.cleanup();
+  }
+});
+
 test('graph CLI can show conflicts and filter a single level', () => {
   const repo = graphFixture();
   try {

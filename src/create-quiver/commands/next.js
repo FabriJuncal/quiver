@@ -1,6 +1,7 @@
 const path = require('path');
 const readline = require('readline');
 const { collectPlan } = require('./plan');
+const { formatStatus, translatorForHuman } = require('../lib/i18n/read-only-format');
 const { startSlice } = require('../lib/lifecycle');
 
 function toStartSliceCommand(slicePath) {
@@ -34,15 +35,16 @@ function collectNext(repoRoot, options = {}) {
 }
 
 function formatHumanNext(report, options = {}) {
-  const lines = [options.allReady ? 'Ready slices' : 'Next ready slice'];
+  const translator = translatorForHuman(options);
+  const lines = [options.allReady ? translator.t('next.title.ready') : translator.t('next.title.next')];
 
   if (!report.next) {
-    lines.push('No ready slices found.');
+    lines.push(translator.t('next.empty.ready'));
     if (report.include_completed && report.history.length > 0) {
       lines.push('');
-      lines.push('Historical slices included by --include-completed:');
+      lines.push(`${translator.t('next.history_title')}:`);
       for (const item of report.history) {
-        lines.push(`- ${item.ref} (${item.status})`);
+        lines.push(`- ${item.ref} (${formatStatus(item.status, translator)})`);
       }
     }
     return `${lines.join('\n')}\n`;
@@ -55,25 +57,25 @@ function formatHumanNext(report, options = {}) {
     if (options.allReady) {
       lines.push('');
       lines.push(`[${index + 1}] ${item.ref}`);
-      lines.push(`Title: ${item.title}`);
-      lines.push(`Status: ${item.status}`);
-      lines.push(`Start: ${command}`);
+      lines.push(`${translator.t('next.label.title')}: ${item.title}`);
+      lines.push(`${translator.t('next.label.status')}: ${formatStatus(item.status, translator)}`);
+      lines.push(`${translator.t('next.label.start')}: ${command}`);
     } else {
-      lines.push(`Slice: ${item.ref}`);
-      lines.push(`Title: ${item.title}`);
-      lines.push(`Status: ${item.status}`);
-      lines.push(`Start: ${command}`);
+      lines.push(`${translator.t('next.label.slice')}: ${item.ref}`);
+      lines.push(`${translator.t('next.label.title')}: ${item.title}`);
+      lines.push(`${translator.t('next.label.status')}: ${formatStatus(item.status, translator)}`);
+      lines.push(`${translator.t('next.label.start')}: ${command}`);
       if (report.all_ready.length > 1) {
-        lines.push(`Also ready: ${report.all_ready.slice(1).map((candidate) => candidate.ref).join(', ')}`);
+        lines.push(`${translator.t('next.label.also_ready')}: ${report.all_ready.slice(1).map((candidate) => candidate.ref).join(', ')}`);
       }
     }
   }
 
   if (report.include_completed && report.history.length > 0) {
     lines.push('');
-    lines.push('Historical slices included by --include-completed:');
+    lines.push(`${translator.t('next.history_title')}:`);
     for (const item of report.history) {
-      lines.push(`- ${item.ref} (${item.status})`);
+      lines.push(`- ${item.ref} (${formatStatus(item.status, translator)})`);
     }
   }
 
@@ -104,6 +106,7 @@ function promptConfirm(message, io = {}) {
 
 async function runNext(repoRoot, options = {}) {
   const report = collectNext(repoRoot, options);
+  const translator = translatorForHuman(options);
   const isTTY = options.isTTY || {
     stdin: Boolean(process.stdin.isTTY),
     stdout: Boolean(process.stdout.isTTY),
@@ -115,17 +118,17 @@ async function runNext(repoRoot, options = {}) {
     }
 
     if (!report.next) {
-      process.stdout.write('No ready slices found.\n');
+      process.stdout.write(`${translator.t('next.empty.ready')}\n`);
       return report;
     }
 
-    const confirmed = await (options.promptConfirm || promptConfirm)(`Start slice ${report.next.ref}?`);
+    const confirmed = await (options.promptConfirm || promptConfirm)(translator.t('next.prompt.start', { ref: report.next.ref }));
     if (confirmed) {
       const slicePath = path.resolve(repoRoot, report.next.slice_path);
       await Promise.resolve((options.startSliceFn || startSlice)(slicePath, { allowDraft: true }));
-      process.stdout.write(`Started: ${report.next.ref}\n`);
+      process.stdout.write(`${translator.t('next.started', { ref: report.next.ref })}\n`);
     } else {
-      process.stdout.write('Aborted.\n');
+      process.stdout.write(`${translator.t('next.aborted')}\n`);
     }
     return report;
   }
