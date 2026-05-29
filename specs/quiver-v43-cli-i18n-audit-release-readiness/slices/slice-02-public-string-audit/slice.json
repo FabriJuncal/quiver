@@ -1,0 +1,58 @@
+{
+  "slice_id": "slice-02-public-string-audit",
+  "ticket": "QUIVER-43-02",
+  "type": "validation",
+  "title": "Public string audit",
+  "objective": "Find and resolve remaining hardcoded public human CLI strings outside the i18n catalog.",
+  "description": "Audits source and tests for public strings that bypass language selection.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v43-public-string-audit",
+    "branch_name": "feature/QUIVER-43-02-v43-public-string-audit"
+  },
+  "files": [
+    "src/create-quiver/**",
+    "tests/**",
+    "specs/quiver-v43-cli-i18n-audit-release-readiness/EVIDENCE_REPORT.md"
+  ],
+  "expected_read_paths": [
+    "src/create-quiver/**",
+    "tests/**",
+    "docs/reference/commands.md",
+    "specs/quiver-v43-cli-i18n-audit-release-readiness/EVIDENCE_REPORT.md"
+  ],
+  "allowed_write_paths": [
+    "src/create-quiver/**",
+    "tests/**",
+    "specs/quiver-v43-cli-i18n-audit-release-readiness/**"
+  ],
+  "depends_on": [
+    "slice-01-command-language-mode-matrix"
+  ],
+  "parallel_safe": "no",
+  "parallel_safe_reason": "Uses the matrix to target remaining gaps and may touch many command files.",
+  "must": [
+    "Audit hardcoded public human strings.",
+    "Fix catalog bypasses or document stable literals.",
+    "Add tests for fixed gaps."
+  ],
+  "not_included": [
+    "Translating provider prompts or schema values."
+  ],
+  "acceptance": [
+    "No critical public CLI string bypasses i18n unintentionally.",
+    "Stable literals are documented.",
+    "Tests pass."
+  ],
+  "tests": [
+    "node --test tests/**/*.test.js",
+    "git diff --check"
+  ],
+  "validation_hints": [
+    "Use rg to inspect process.stdout, console.log, throw new Error, formatError, and prompt labels."
+  ],
+  "estimated_hours": 8,
+  "status": "planned",
+  "blocked_reason": "Requires completion of slice-01-command-language-mode-matrix."
+}

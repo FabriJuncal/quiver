@@ -1,0 +1,65 @@
+{
+  "slice_id": "slice-04-package-release-readiness",
+  "ticket": "QUIVER-43-04",
+  "type": "validation",
+  "title": "Package release readiness",
+  "objective": "Complete final package and release-readiness validation for full en/es CLI support.",
+  "description": "Closes the i18n program with tests, packaging checks, release notes, and evidence.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v43-package-release-readiness",
+    "branch_name": "feature/QUIVER-43-04-v43-package-release-readiness"
+  },
+  "files": [
+    "specs/quiver-v43-cli-i18n-audit-release-readiness/EVIDENCE_REPORT.md",
+    "docs/reference/commands.md"
+  ],
+  "expected_read_paths": [
+    "package.json",
+    "docs/reference/commands.md",
+    "docs/CLI_UX_GUIDE.md",
+    "specs/quiver-v43-cli-i18n-audit-release-readiness/EVIDENCE_REPORT.md"
+  ],
+  "allowed_write_paths": [
+    "docs/reference/commands.md",
+    "docs/CLI_UX_GUIDE.md",
+    "specs/quiver-v43-cli-i18n-audit-release-readiness/**"
+  ],
+  "depends_on": [
+    "slice-03-cross-platform-smokes"
+  ],
+  "parallel_safe": "no",
+  "parallel_safe_reason": "This is the final release-readiness gate for the program.",
+  "must": [
+    "Run full tests.",
+    "Run package and smoke checks.",
+    "Run npm pack dry-run.",
+    "Document release readiness.",
+    "Confirm no critical gaps remain."
+  ],
+  "not_included": [
+    "Publishing to npm unless explicitly requested."
+  ],
+  "acceptance": [
+    "Full tests pass.",
+    "Package smoke passes.",
+    "npm pack dry-run passes.",
+    "Evidence report has complete coverage.",
+    "No critical i18n gaps remain."
+  ],
+  "tests": [
+    "node --test tests/**/*.test.js",
+    "npx create-quiver spec validate specs/quiver-v43-cli-i18n-audit-release-readiness --strict",
+    "npm run package:quiver",
+    "npm run smoke:create-quiver",
+    "npm pack --dry-run --json",
+    "git diff --check"
+  ],
+  "validation_hints": [
+    "Do not publish from this slice unless the user explicitly approves publication."
+  ],
+  "estimated_hours": 5,
+  "status": "planned",
+  "blocked_reason": "Requires completion of slice-03-cross-platform-smokes."
+}

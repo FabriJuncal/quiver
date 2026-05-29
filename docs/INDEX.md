@@ -1,6 +1,6 @@
 # Quiver Documentation Index
 
-**Last updated:** 2026-05-28
+**Last updated:** 2026-05-29
 
 Use this file as the first documentation map before planning, implementing, reviewing, or opening PRs in this repository. Prefer the smallest set of linked documents that fits the task.
 
@@ -39,6 +39,13 @@ Canonical specs live outside `docs/` in [`../specs/`](../specs/).
 
 Recent specs:
 
+- [`../specs/quiver-v43-cli-i18n-audit-release-readiness/SPEC.md`](../specs/quiver-v43-cli-i18n-audit-release-readiness/SPEC.md)
+- [`../specs/quiver-v42-cli-i18n-generated-docs/SPEC.md`](../specs/quiver-v42-cli-i18n-generated-docs/SPEC.md)
+- [`../specs/quiver-v41-cli-i18n-ai-lifecycle/SPEC.md`](../specs/quiver-v41-cli-i18n-ai-lifecycle/SPEC.md)
+- [`../specs/quiver-v40-cli-i18n-spec-slice-workflows/SPEC.md`](../specs/quiver-v40-cli-i18n-spec-slice-workflows/SPEC.md)
+- [`../specs/quiver-v39-cli-i18n-setup-onboarding/SPEC.md`](../specs/quiver-v39-cli-i18n-setup-onboarding/SPEC.md)
+- [`../specs/quiver-v38-cli-i18n-read-only-commands/SPEC.md`](../specs/quiver-v38-cli-i18n-read-only-commands/SPEC.md)
+- [`../specs/quiver-v37-cli-i18n-foundation/SPEC.md`](../specs/quiver-v37-cli-i18n-foundation/SPEC.md)
 - [`../specs/quiver-v36-ai-run-watch-portable/SPEC.md`](../specs/quiver-v36-ai-run-watch-portable/SPEC.md)
 - [`../specs/quiver-v35-compact-dashboard-version-ux/SPEC.md`](../specs/quiver-v35-compact-dashboard-version-ux/SPEC.md)
 - [`../specs/quiver-v34-cli-dashboard-status/SPEC.md`](../specs/quiver-v34-cli-dashboard-status/SPEC.md)

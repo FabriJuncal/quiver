@@ -1,0 +1,62 @@
+{
+  "slice_id": "slice-03-slice-lifecycle-handoffs",
+  "ticket": "QUIVER-40-03",
+  "type": "feature",
+  "title": "Slice lifecycle and handoffs",
+  "objective": "Localize slice lifecycle and handoff validation output while preserving structured prompts and gates.",
+  "description": "Covers slice execution scaffolding, workflow checks, and handoff validation messages.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v40-slice-lifecycle-handoffs",
+    "branch_name": "feature/QUIVER-40-03-v40-slice-lifecycle-handoffs"
+  },
+  "files": [
+    "src/create-quiver/lib/handoff.js",
+    "src/create-quiver/lib/lifecycle.js",
+    "src/create-quiver/commands/ai.js"
+  ],
+  "expected_read_paths": [
+    "src/create-quiver/lib/handoff.js",
+    "src/create-quiver/lib/lifecycle.js",
+    "src/create-quiver/commands/ai.js",
+    "src/create-quiver/lib/i18n/**"
+  ],
+  "allowed_write_paths": [
+    "src/create-quiver/lib/handoff.js",
+    "src/create-quiver/lib/lifecycle.js",
+    "src/create-quiver/commands/ai.js",
+    "src/create-quiver/lib/i18n/**",
+    "tests/**",
+    "specs/quiver-v40-cli-i18n-spec-slice-workflows/**"
+  ],
+  "depends_on": [
+    "slice-01-spec-create-start-status"
+  ],
+  "parallel_safe": "conditional",
+  "parallel_safe_reason": "Can overlap with slice-02 only if handoff validation ownership is agreed.",
+  "must": [
+    "Localize slice lifecycle human output.",
+    "Localize handoff validation messages.",
+    "Keep accepted heading aliases stable.",
+    "Keep prompt payloads exact."
+  ],
+  "not_included": [
+    "Changing lifecycle gate semantics."
+  ],
+  "acceptance": [
+    "Lifecycle outputs render in en and es.",
+    "Handoff validation errors render in en and es.",
+    "Prompt payloads remain stable."
+  ],
+  "tests": [
+    "node --test tests/commands/ai-execute-slice.test.js",
+    "git diff --check"
+  ],
+  "validation_hints": [
+    "If no dedicated test exists for a gate, add focused tests near the owning command."
+  ],
+  "estimated_hours": 7,
+  "status": "planned",
+  "blocked_reason": "Requires completion of slice-01-spec-create-start-status."
+}

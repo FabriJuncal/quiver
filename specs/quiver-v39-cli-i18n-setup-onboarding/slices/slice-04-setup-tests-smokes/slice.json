@@ -1,0 +1,60 @@
+{
+  "slice_id": "slice-04-setup-tests-smokes",
+  "ticket": "QUIVER-39-04",
+  "type": "validation",
+  "title": "Setup tests and smokes",
+  "objective": "Validate setup/onboarding localization and record release evidence.",
+  "description": "Runs full tests and smokes after v39 command migration.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v39-setup-tests-smokes",
+    "branch_name": "feature/QUIVER-39-04-v39-setup-tests-smokes"
+  },
+  "files": [
+    "tests/**/*.test.js",
+    "specs/quiver-v39-cli-i18n-setup-onboarding/EVIDENCE_REPORT.md"
+  ],
+  "expected_read_paths": [
+    "specs/quiver-v39-cli-i18n-setup-onboarding/SPEC.md",
+    "docs/CLI_UX_GUIDE.md",
+    "docs/reference/commands.md"
+  ],
+  "allowed_write_paths": [
+    "tests/**",
+    "specs/quiver-v39-cli-i18n-setup-onboarding/**"
+  ],
+  "depends_on": [
+    "slice-02-analyze-migrate-prepare",
+    "slice-03-demo-evidence-onboarding"
+  ],
+  "parallel_safe": "no",
+  "parallel_safe_reason": "This is the closing validation slice for v39.",
+  "must": [
+    "Run full validation.",
+    "Confirm configured language works without flags.",
+    "Record evidence."
+  ],
+  "not_included": [
+    "Generated docs localization."
+  ],
+  "acceptance": [
+    "Full tests pass.",
+    "Package smoke passes.",
+    "Spec validation passes.",
+    "Evidence report is updated."
+  ],
+  "tests": [
+    "node --test tests/**/*.test.js",
+    "npx create-quiver spec validate specs/quiver-v39-cli-i18n-setup-onboarding --strict",
+    "npm run package:quiver",
+    "npm run smoke:create-quiver",
+    "git diff --check"
+  ],
+  "validation_hints": [
+    "Run at least one smoke in a temp project with .quiver/config.json language set."
+  ],
+  "estimated_hours": 4,
+  "status": "planned",
+  "blocked_reason": "Requires completion of slice-02-analyze-migrate-prepare and slice-03-demo-evidence-onboarding."
+}

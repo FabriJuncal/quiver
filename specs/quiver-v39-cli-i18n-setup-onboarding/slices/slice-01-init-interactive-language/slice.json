@@ -1,0 +1,62 @@
+{
+  "slice_id": "slice-01-init-interactive-language",
+  "ticket": "QUIVER-39-01",
+  "type": "feature",
+  "title": "Init interactive language",
+  "objective": "Let users choose Spanish or English during interactive init and persist the project language.",
+  "description": "Adds the primary language onboarding path.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v39-init-interactive-language",
+    "branch_name": "feature/QUIVER-39-01-v39-init-interactive-language"
+  },
+  "files": [
+    "src/create-quiver/commands/init.js",
+    "tests/commands/init-profiles.test.js"
+  ],
+  "expected_read_paths": [
+    "src/create-quiver/commands/init.js",
+    "src/create-quiver/lib/i18n/**",
+    "docs/reference/commands.md",
+    "specs/quiver-v39-cli-i18n-setup-onboarding/SPEC.md"
+  ],
+  "allowed_write_paths": [
+    "src/create-quiver/commands/init.js",
+    "src/create-quiver/lib/i18n/**",
+    "tests/commands/init-profiles.test.js",
+    "tests/commands/config-language.test.js",
+    "docs/reference/commands.md",
+    "specs/quiver-v39-cli-i18n-setup-onboarding/**"
+  ],
+  "depends_on": [
+    "slice-00-setup-foundation"
+  ],
+  "parallel_safe": "no",
+  "parallel_safe_reason": "Defines setup behavior consumed by the rest of v39.",
+  "must": [
+    "Prompt for language only in valid interactive TTY mode.",
+    "Persist selected language to .quiver/config.json.",
+    "Preserve existing config keys.",
+    "Keep dry-run write-free."
+  ],
+  "not_included": [
+    "Generated docs localization."
+  ],
+  "acceptance": [
+    "Interactive init can configure es or en.",
+    "Subsequent commands resolve project language without --lang.",
+    "No-TTY init does not block.",
+    "Dry-run does not write config."
+  ],
+  "tests": [
+    "node --test tests/commands/init-profiles.test.js tests/commands/config-language.test.js",
+    "git diff --check"
+  ],
+  "validation_hints": [
+    "Use selector test utilities rather than manual TTY assumptions."
+  ],
+  "estimated_hours": 6,
+  "status": "planned",
+  "blocked_reason": "Requires completion of specs/quiver-v37-cli-i18n-foundation."
+}

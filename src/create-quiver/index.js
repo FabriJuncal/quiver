@@ -35,6 +35,7 @@ const {
   runSpecsList: runAiSpecsList,
   runTraceReport: runAiTraceReport,
 } = require('./commands/ai');
+const { runConfig } = require('./commands/config');
 const { runDashboard } = require('./commands/dashboard');
 const { runDemo } = require('./commands/demo');
 const { runPrepare } = require('./commands/prepare');
@@ -59,6 +60,8 @@ const { getContextPathExclusionReason } = require('./lib/ai/safety');
 const { selectOption } = require('./lib/cli/selectors');
 const { createUx } = require('./lib/cli/ux');
 const { validateUxFlags } = require('./lib/cli/ux-flags');
+const { DEFAULT_LANGUAGE, extractCliLanguageFlag, resolveLanguage } = require('./lib/i18n/language');
+const { createTranslator, getCatalog, translate } = require('./lib/i18n/catalog');
 const { relativePosixPath, resolveTargetRoot } = require('./lib/paths');
 const {
   CURRENT_SCAN_RELATIVE_PATH,
@@ -78,8 +81,60 @@ const {
 const cliPackageJson = JSON.parse(fs.readFileSync(path.resolve(__dirname, '../..', 'package.json'), 'utf8'));
 const CLI_VERSION = cliPackageJson.version || '0.0.0';
 
+let currentErrorLanguage = DEFAULT_LANGUAGE;
+
+function setCurrentErrorLanguage(language) {
+  currentErrorLanguage = language || DEFAULT_LANGUAGE;
+}
+
+function localizeParserMessage(message, language = currentErrorLanguage) {
+  const raw = String(message || '');
+  const missingValue = raw.match(/^missing value for (--[a-z0-9-]+)$/i);
+  if (missingValue) {
+    return translate(language, 'error.flag.missing_value', { flag: missingValue[1] });
+  }
+
+  const invalidValue = raw.match(/^invalid value for (--[a-z0-9-]+)$/i);
+  if (invalidValue) {
+    return translate(language, 'error.flag.invalid_value', { flag: invalidValue[1] });
+  }
+
+  const unknownFlag = raw.match(/^unknown flag: (.+)$/);
+  if (unknownFlag) {
+    return translate(language, 'error.flag.unknown', { flag: unknownFlag[1] });
+  }
+
+  return raw;
+}
+
 function formatError(message) {
-  return `create-quiver: ${message}`;
+  return `create-quiver: ${localizeParserMessage(message)}`;
+}
+
+function helpCatalog(language = DEFAULT_LANGUAGE) {
+  const catalog = getCatalog(language);
+  return catalog.messages['cli.help'] || getCatalog(DEFAULT_LANGUAGE).messages['cli.help'] || {};
+}
+
+function helpText(help, section, key, fallback) {
+  return help?.[section]?.[key] || fallback;
+}
+
+function optionDescription(help, fallback) {
+  return helpText(help, 'optionDescriptions', fallback, fallback);
+}
+
+function formatLanguageWarningForCli(warning, language = DEFAULT_LANGUAGE) {
+  if (!warning || warning.code !== 'UNSUPPORTED_LANGUAGE') {
+    return '';
+  }
+
+  return formatError(translate(language, 'warning.language.unsupported_source', {
+    fallback: warning.fallbackLanguage,
+    language: warning.requestedLanguage,
+    source: warning.source,
+    supported: warning.supportedLanguages.join(', '),
+  }));
 }
 
 const SUPPORTED_COMMAND_MODES = new Set([
@@ -101,6 +156,7 @@ const SUPPORTED_COMMAND_MODES = new Set([
   'new-handoff',
   'cleanup-slice',
   'check-scope',
+  'config',
   'refresh-active-slices',
   'spec',
   'evidence',
@@ -138,13 +194,16 @@ const SUPPORTED_AI_COMMANDS = new Set([
 
 const SUPPORTED_SPEC_COMMANDS = new Set(['close', 'create', 'start', 'status', 'validate']);
 const SUPPORTED_DEMO_COMMANDS = new Set(['create']);
+const SUPPORTED_CONFIG_SECTIONS = new Set(['language']);
+const SUPPORTED_CONFIG_LANGUAGE_COMMANDS = new Set(['show', 'set']);
 
 function unsupportedCommandMessage(commandName) {
+  const translator = createTranslator(currentErrorLanguage);
   return [
-    `unsupported command: ${commandName}`,
-    'Run: npx create-quiver --help',
-    `If you meant to initialize a project, use: npx create-quiver init --name "${commandName}"`,
-    'If this command exists in newer docs, update create-quiver and rerun the command.',
+    translator.t('error.command.unsupported', { commandName }),
+    translator.t('error.command.help'),
+    translator.t('error.command.init_hint', { commandName }),
+    translator.t('error.command.update_hint'),
   ].join('\n');
 }
 
@@ -158,6 +217,7 @@ const COMMAND_HELP_GROUPS = [
       ['flow', 'Show the read-only guided workflow stage, blockers, and next safe command.'],
       ['dashboard', 'Show compact read-only project, spec, slice, run, approval, and agent status.'],
       ['version', 'Show a Quiver-branded version report; use --json for metadata.'],
+      ['config language show|set', 'Inspect or update the effective Quiver language without editing JSON by hand.'],
       ['prepare', 'Run setup diagnostics for providers, GitHub, SSH, and project readiness.'],
       ['migrate', 'Upgrade an already initialized Quiver project to the current contract.'],
     ],
@@ -240,25 +300,29 @@ const COMMAND_HELP_GROUPS = [
   },
 ];
 
-function formatCommandHelpGroups() {
-  const lines = ['Commands:'];
+function formatCommandHelpGroups(language = DEFAULT_LANGUAGE) {
+  const help = helpCatalog(language);
+  const lines = [helpText(help, 'headings', 'commands', 'Commands:')];
   for (const group of COMMAND_HELP_GROUPS) {
-    lines.push('', `${group.title}:`);
+    lines.push('', `${helpText(help, 'groupTitles', group.title, group.title)}:`);
     for (const [command, description] of group.commands) {
-      lines.push(`  ${command.padEnd(24)} ${description}`);
+      lines.push(`  ${command.padEnd(24)} ${helpText(help, 'commandDescriptions', command, description)}`);
     }
   }
   return lines.join('\n');
 }
 
-function printUsage() {
-  console.log(`Usage:
+function printUsage(language = DEFAULT_LANGUAGE) {
+  const help = helpCatalog(language);
+  console.log(`${helpText(help, 'headings', 'usage', 'Usage:')}
   npx create-quiver [options]
   npx create-quiver init [options]
   npx create-quiver analyze [options]
   npx create-quiver flow [options]
   npx create-quiver dashboard [options]
   npx create-quiver version [--json]
+  npx create-quiver config language show [--json]
+  npx create-quiver config language set <en|es> [--global]
   npx create-quiver plan [options]
   npx create-quiver ai <task> [options]
   npx create-quiver ai run create --input <requirements.md>
@@ -297,59 +361,61 @@ function printUsage() {
   npx create-quiver evidence run [options] -- <command>
   npx create-quiver demo create spec-viewer [options]
 
-${formatCommandHelpGroups()}
+${formatCommandHelpGroups(language)}
 
-Options:
-  -n, --name <project-name>   Project name to generate
-  -d, --dir <target-dir>      Target directory to scaffold into or inspect
-      --spec <slug>           Restrict plan, graph, next, or dashboard output to one spec
-      --format <name>         Graph or AI export output format (tree, mermaid, dot, json, markdown)
-      --show-conflicts        Show shared file paths in graph output
-      --level <n>             Restrict graph output to one level
-      --json                  Emit machine-readable JSON
-      --include-completed     Include completed slices in dashboard, plan, graph, or next history output
-      --details               Show the full human dashboard report
-      --section <name>        Show one human dashboard section
-      --limit <n>             Limit dashboard human lists (1-100)
-      --only-ready            Show only slices with no pending dependencies
-      --all-ready             List every ready slice returned by next
-      --auto-start            Prompt for confirmation and run start-slice on next
-      --local                 For check-slice, run structural validation without remote/base checks
-      --strict                Treat supported validation warnings as failures
-      --unicode               Prefer Unicode output when supported
-      --minimal               Plan or run the minimal init profile
-      --full                  Plan or run the full compatibility init profile
-      --legacy-scripts        Include legacy Bash wrappers in init profile
-      --include-templates     Export packaged templates in init profile
-      --dry-run               Preview init, analyze, migrate, prepare, spec create/start/close, demo, ai agent set, or AI work without executing writes/providers
-      --print-prompt          Print the exact AI prompt and exit without executing provider CLIs
-      --with-planner          Enable planner-assisted behavior on commands that explicitly support it
-      --interactive           Enable prompts on commands that explicitly support interactive choices
-      --review                Open or prepare human review before persistent writes where supported
-      --methodology <name>    Select methodology where supported (currently wdd-sdd)
-      --no-color              Disable ANSI colors in human output
-      --fix                   For doctor, apply safe non-destructive repairs
-      --execute               For ai execute-plan, run the planned slices instead of printing commands
-      --create                For ai pr, create the PR after preflight instead of printing the plan only
-      --commit                For ai execute-slice, commit validated slice changes after provider, scope, and tests pass
-      --allow-dirty           For ai execute-slice, allow pre-existing dirty files and ignore them for scope diff
-      --mode <name>           Execution mode for ai execute-plan (auto, manual, delegated)
-      --provider <name>       Provider CLI to preflight for prepare or AI commands
-      --model <model-id>      Technical model id for AI agent profiles or provider-backed AI commands
-      --version <n>           Draft version to approve for AI planner phases
-      --run <id>              AI lifecycle run id
-      --ssh-host-alias <name> SSH host alias to validate for prepare or AI commands
-      --identity-file <path>  SSH identity file to validate for prepare or AI commands
-      --remote <name>         Git remote name for check-slice or AI PR checks
-      --base <branch>         Base branch for check-slice, check-scope, ai pr, or spec close (default: main)
-      --output <file>         Output file for evidence run
-      --max-output <n>        Maximum stdout/stderr chars per evidence section
-      --title <text>          Override PR title for ai pr create
-  -y, --yes                   Skip prompts and use the provided inputs
-  -V, --version               Show the installed create-quiver version
-  -h, --help                  Show this help message
+${helpText(help, 'headings', 'options', 'Options:')}
+  -n, --name <project-name>   ${optionDescription(help, 'Project name to generate')}
+  -d, --dir <target-dir>      ${optionDescription(help, 'Target directory to scaffold into or inspect')}
+      --spec <slug>           ${optionDescription(help, 'Restrict plan, graph, next, or dashboard output to one spec')}
+      --format <name>         ${optionDescription(help, 'Graph or AI export output format (tree, mermaid, dot, json, markdown)')}
+      --show-conflicts        ${optionDescription(help, 'Show shared file paths in graph output')}
+      --level <n>             ${optionDescription(help, 'Restrict graph output to one level')}
+      --json                  ${optionDescription(help, 'Emit machine-readable JSON')}
+      --lang <en|es>          ${optionDescription(help, 'Override CLI human output language')}
+      --global                ${optionDescription(help, 'For config language set, write the global user config')}
+      --include-completed     ${optionDescription(help, 'Include completed slices in dashboard, plan, graph, or next history output')}
+      --details               ${optionDescription(help, 'Show the full human dashboard report')}
+      --section <name>        ${optionDescription(help, 'Show one human dashboard section')}
+      --limit <n>             ${optionDescription(help, 'Limit dashboard human lists (1-100)')}
+      --only-ready            ${optionDescription(help, 'Show only slices with no pending dependencies')}
+      --all-ready             ${optionDescription(help, 'List every ready slice returned by next')}
+      --auto-start            ${optionDescription(help, 'Prompt for confirmation and run start-slice on next')}
+      --local                 ${optionDescription(help, 'For check-slice, run structural validation without remote/base checks')}
+      --strict                ${optionDescription(help, 'Treat supported validation warnings as failures')}
+      --unicode               ${optionDescription(help, 'Prefer Unicode output when supported')}
+      --minimal               ${optionDescription(help, 'Plan or run the minimal init profile')}
+      --full                  ${optionDescription(help, 'Plan or run the full compatibility init profile')}
+      --legacy-scripts        ${optionDescription(help, 'Include legacy Bash wrappers in init profile')}
+      --include-templates     ${optionDescription(help, 'Export packaged templates in init profile')}
+      --dry-run               ${optionDescription(help, 'Preview init, analyze, migrate, prepare, spec create/start/close, demo, ai agent set, or AI work without executing writes/providers')}
+      --print-prompt          ${optionDescription(help, 'Print the exact AI prompt and exit without executing provider CLIs')}
+      --with-planner          ${optionDescription(help, 'Enable planner-assisted behavior on commands that explicitly support it')}
+      --interactive           ${optionDescription(help, 'Enable prompts on commands that explicitly support interactive choices')}
+      --review                ${optionDescription(help, 'Open or prepare human review before persistent writes where supported')}
+      --methodology <name>    ${optionDescription(help, 'Select methodology where supported (currently wdd-sdd)')}
+      --no-color              ${optionDescription(help, 'Disable ANSI colors in human output')}
+      --fix                   ${optionDescription(help, 'For doctor, apply safe non-destructive repairs')}
+      --execute               ${optionDescription(help, 'For ai execute-plan, run the planned slices instead of printing commands')}
+      --create                ${optionDescription(help, 'For ai pr, create the PR after preflight instead of printing the plan only')}
+      --commit                ${optionDescription(help, 'For ai execute-slice, commit validated slice changes after provider, scope, and tests pass')}
+      --allow-dirty           ${optionDescription(help, 'For ai execute-slice, allow pre-existing dirty files and ignore them for scope diff')}
+      --mode <name>           ${optionDescription(help, 'Execution mode for ai execute-plan (auto, manual, delegated)')}
+      --provider <name>       ${optionDescription(help, 'Provider CLI to preflight for prepare or AI commands')}
+      --model <model-id>      ${optionDescription(help, 'Technical model id for AI agent profiles or provider-backed AI commands')}
+      --version <n>           ${optionDescription(help, 'Draft version to approve for AI planner phases')}
+      --run <id>              ${optionDescription(help, 'AI lifecycle run id')}
+      --ssh-host-alias <name> ${optionDescription(help, 'SSH host alias to validate for prepare or AI commands')}
+      --identity-file <path>  ${optionDescription(help, 'SSH identity file to validate for prepare or AI commands')}
+      --remote <name>         ${optionDescription(help, 'Git remote name for check-slice or AI PR checks')}
+      --base <branch>         ${optionDescription(help, 'Base branch for check-slice, check-scope, ai pr, or spec close (default: main)')}
+      --output <file>         ${optionDescription(help, 'Output file for evidence run')}
+      --max-output <n>        ${optionDescription(help, 'Maximum stdout/stderr chars per evidence section')}
+      --title <text>          ${optionDescription(help, 'Override PR title for ai pr create')}
+  -y, --yes                   ${optionDescription(help, 'Skip prompts and use the provided inputs')}
+  -V, --version               ${optionDescription(help, 'Show the installed create-quiver version')}
+  -h, --help                  ${optionDescription(help, 'Show this help message')}
 
-Examples:
+${helpText(help, 'headings', 'examples', 'Examples:')}
   npx create-quiver init --name "My Project"
   npx create-quiver init --interactive
   npx create-quiver init --name "My Project" --dry-run
@@ -361,6 +427,9 @@ Examples:
   cd ./my-project && npx create-quiver dashboard --json
   cd ./my-project && npx create-quiver version
   cd ./my-project && npx create-quiver version --json
+  cd ./my-project && npx create-quiver config language show
+  cd ./my-project && npx create-quiver config language set es
+  npx create-quiver config language set en --global
   cd ./my-project && npx create-quiver analyze
   cd ./my-project && npx create-quiver plan --json
   cd ./my-project && npx create-quiver ai onboard --dry-run
@@ -428,7 +497,7 @@ Examples:
 `);
 }
 
-function parseArgs(argv) {
+function parseArgs(argv, options = {}) {
   const result = {
     help: false,
     force: false,
@@ -448,8 +517,14 @@ function parseArgs(argv) {
     strict: false,
     strictOverlap: false,
     json: false,
+    language: options.language || '',
+    languageResolution: null,
     noColor: false,
     withPlanner: false,
+    configGlobal: false,
+    configSection: '',
+    configCommand: '',
+    configValue: '',
     interactive: false,
     review: false,
     includeCompleted: false,
@@ -697,6 +772,11 @@ function parseArgs(argv) {
 
     if (arg === '--no-color') {
       result.noColor = true;
+      continue;
+    }
+
+    if (arg === '--global') {
+      result.configGlobal = true;
       continue;
     }
 
@@ -1104,6 +1184,28 @@ function parseArgs(argv) {
     if (positional.length > 0) {
       throw new Error(formatError('dashboard does not accept positional arguments; use --spec <slug>'));
     }
+  } else if (result.mode === 'config') {
+    if (!result.configSection && positional.length > 0) {
+      result.configSection = positional.shift();
+    }
+    if (!SUPPORTED_CONFIG_SECTIONS.has(result.configSection)) {
+      throw new Error(formatError(`unsupported config section: ${result.configSection || '(missing)'}. Supported sections: language`));
+    }
+    if (!result.configCommand && positional.length > 0) {
+      result.configCommand = positional.shift();
+    }
+    if (!SUPPORTED_CONFIG_LANGUAGE_COMMANDS.has(result.configCommand)) {
+      throw new Error(formatError(`unsupported config language command: ${result.configCommand || '(missing)'}. Supported commands: show, set`));
+    }
+    if (result.configCommand === 'set') {
+      if (positional.length === 0) {
+        throw new Error(formatError('missing language for config language set. Use: npx create-quiver config language set <en|es>'));
+      }
+      result.configValue = positional.shift();
+    }
+    if (result.configCommand === 'show' && positional.length > 0) {
+      throw new Error(formatError('config language show does not accept a language value'));
+    }
   } else if (result.mode === 'ai') {
     if (!result.aiCommand && positional.length > 0) {
       result.aiCommand = positional.shift();
@@ -1203,6 +1305,14 @@ function parseArgs(argv) {
   if (result.dashboardLimit !== null || result.dashboardOptionErrors.some((error) => error.includes('--limit'))) requestedDashboardFlags.push('--limit');
   if (result.mode !== 'dashboard' && requestedDashboardFlags.length > 0) {
     throw new Error(formatError(`${requestedDashboardFlags.join(', ')} ${requestedDashboardFlags.length === 1 ? 'is' : 'are'} only supported by dashboard. Use: npx create-quiver dashboard ${requestedDashboardFlags[0]}${requestedDashboardFlags[0] === '--section' ? ' <name>' : requestedDashboardFlags[0] === '--limit' ? ' <n>' : ''}`));
+  }
+
+  if (result.mode !== 'config' && result.configGlobal) {
+    throw new Error(formatError('--global is only supported by config language set. Use: npx create-quiver config language set <en|es> --global'));
+  }
+
+  if (result.mode === 'config' && result.configGlobal && result.configCommand !== 'set') {
+    throw new Error(formatError('--global is only supported by config language set. Use: npx create-quiver config language set <en|es> --global'));
   }
 
   return result;
@@ -2857,24 +2967,59 @@ function printInitNextSteps(targetDir, projectName) {
 }
 
 async function run(argv) {
-  if (argv.length === 1 && argv[0] === 'help') {
-    printUsage();
+  let languageArgs;
+  try {
+    languageArgs = extractCliLanguageFlag(argv);
+  } catch (error) {
+    const languageResolution = resolveLanguage({
+      env: process.env,
+      projectRoot: process.cwd(),
+    });
+    setCurrentErrorLanguage(languageResolution.language);
+    throw new Error(formatError(error.message));
+  }
+
+  const normalizedArgv = languageArgs.argv;
+  const languageResolution = resolveLanguage({
+    cliLanguage: languageArgs.language,
+    env: process.env,
+    projectRoot: process.cwd(),
+  });
+  setCurrentErrorLanguage(languageResolution.language);
+
+  if (normalizedArgv.length === 1 && normalizedArgv[0] === 'help') {
+    printUsage(languageResolution.language);
     return;
   }
 
-  if (argv.length === 1 && (argv[0] === '-V' || argv[0] === '--version')) {
+  if (normalizedArgv.length === 1 && (normalizedArgv[0] === '-V' || normalizedArgv[0] === '--version')) {
     console.log(CLI_VERSION);
     return;
   }
 
-  const args = parseArgs(argv);
+  const args = parseArgs(normalizedArgv, {
+    language: languageArgs.language,
+  });
+  args.languageResolution = languageResolution;
+  args.language = args.languageResolution.language;
 
   if (args.help) {
-    printUsage();
+    if (!args.json) {
+      for (const warning of args.languageResolution.warnings || []) {
+        process.stderr.write(`${formatLanguageWarningForCli(warning, args.language)}\n`);
+      }
+    }
+    printUsage(args.language);
     return;
   }
 
   validateUxFlags(args);
+
+  if (!args.json) {
+    for (const warning of args.languageResolution.warnings || []) {
+      process.stderr.write(`${formatLanguageWarningForCli(warning, args.language)}\n`);
+    }
+  }
 
   if (args.mode === 'analyze') {
     runAnalyze(args.targetDir, {
@@ -2918,6 +3063,18 @@ async function run(argv) {
         stdoutIsTTY: Boolean(process.stdout.isTTY),
       }));
     }
+    return;
+  }
+
+  if (args.mode === 'config') {
+    runConfig(process.cwd(), {
+      command: args.configCommand,
+      global: args.configGlobal,
+      json: args.json,
+      languageResolution: args.languageResolution,
+      section: args.configSection,
+      value: args.configValue,
+    });
     return;
   }
 

@@ -42,6 +42,27 @@ Reglas:
 | `--json` | Emite salida machine-readable. | Incompatible con `--interactive` y `--review`. |
 | `--no-color` | Desactiva color ANSI. | Debe respetarse en toda salida humana. |
 
+## Idioma de salida
+
+Quiver soporta salida humana en `en` y `es`. Los comandos deben resolver el idioma con esta precedencia:
+
+1. `--lang en|es`
+2. `QUIVER_LANG`
+3. `.quiver/config.json`
+4. `~/.quiver/config.json`
+5. locale del entorno
+6. fallback `en`
+
+Reglas:
+
+- `--lang` debe funcionar antes o despues del comando.
+- `config language set es` guarda el idioma del proyecto sin exigir flags en cada ejecucion.
+- `config language set en --global` guarda el idioma global del usuario.
+- Los comandos, flags, rutas, ids, providers, modelos y snippets sugeridos no se traducen.
+- `--json` mantiene claves, codigos y estructura estable; no se localizan campos machine-readable.
+- Warnings por idioma no soportado se muestran solo en salida humana y no contaminan stdout JSON.
+- CI, no-TTY y `--no-color` deben seguir sin prompts, spinners ni ANSI inesperado.
+
 ## Matriz de soporte
 
 | Comando | `--with-planner` | `--interactive` | `--review` | Notas |

@@ -1,0 +1,61 @@
+{
+  "slice_id": "slice-01-command-language-mode-matrix",
+  "ticket": "QUIVER-43-01",
+  "type": "validation",
+  "title": "Command language mode matrix",
+  "objective": "Build the final command x language x mode coverage matrix for the CLI i18n program.",
+  "description": "Audits every documented command and mode to identify remaining i18n gaps.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v43-command-language-mode-matrix",
+    "branch_name": "feature/QUIVER-43-01-v43-command-language-mode-matrix"
+  },
+  "files": [
+    "specs/quiver-v43-cli-i18n-audit-release-readiness/EVIDENCE_REPORT.md",
+    "tests/**/*.test.js"
+  ],
+  "expected_read_paths": [
+    "docs/reference/commands.md",
+    "docs/CLI_UX_GUIDE.md",
+    "specs/quiver-v37-cli-i18n-foundation/SPEC.md",
+    "specs/quiver-v38-cli-i18n-read-only-commands/SPEC.md",
+    "specs/quiver-v39-cli-i18n-setup-onboarding/SPEC.md",
+    "specs/quiver-v40-cli-i18n-spec-slice-workflows/SPEC.md",
+    "specs/quiver-v41-cli-i18n-ai-lifecycle/SPEC.md",
+    "specs/quiver-v42-cli-i18n-generated-docs/SPEC.md"
+  ],
+  "allowed_write_paths": [
+    "tests/**",
+    "specs/quiver-v43-cli-i18n-audit-release-readiness/**"
+  ],
+  "depends_on": [
+    "slice-00-audit-foundation"
+  ],
+  "parallel_safe": "no",
+  "parallel_safe_reason": "The matrix is the source for all later v43 audit slices.",
+  "must": [
+    "Cover every documented command.",
+    "Classify language and mode coverage.",
+    "Mark critical gaps as blockers.",
+    "Document accepted temporary exceptions."
+  ],
+  "not_included": [
+    "Broad command migration implementation."
+  ],
+  "acceptance": [
+    "Matrix exists in evidence report.",
+    "Critical cells have pass/fail status.",
+    "Uncovered critical cells block release."
+  ],
+  "tests": [
+    "node --test tests/**/*.test.js",
+    "git diff --check"
+  ],
+  "validation_hints": [
+    "Use docs/reference/commands.md as the command source of truth."
+  ],
+  "estimated_hours": 6,
+  "status": "planned",
+  "blocked_reason": "Requires completion of specs/quiver-v37-cli-i18n-foundation through specs/quiver-v42-cli-i18n-generated-docs."
+}

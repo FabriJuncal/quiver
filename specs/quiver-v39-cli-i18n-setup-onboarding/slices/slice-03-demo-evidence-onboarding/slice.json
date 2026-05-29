@@ -1,0 +1,60 @@
+{
+  "slice_id": "slice-03-demo-evidence-onboarding",
+  "ticket": "QUIVER-39-03",
+  "type": "feature",
+  "title": "Demo, evidence, and onboarding messages",
+  "objective": "Localize remaining setup-facing human CLI messages without changing generated docs scope.",
+  "description": "Covers demo/evidence/onboarding outputs that users see during setup flows.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v39-demo-evidence-onboarding",
+    "branch_name": "feature/QUIVER-39-03-v39-demo-evidence-onboarding"
+  },
+  "files": [
+    "src/create-quiver/commands/demo.js",
+    "src/create-quiver/commands/ai.js",
+    "tests/commands/demo.test.js"
+  ],
+  "expected_read_paths": [
+    "src/create-quiver/commands/demo.js",
+    "src/create-quiver/commands/ai.js",
+    "src/create-quiver/lib/i18n/**"
+  ],
+  "allowed_write_paths": [
+    "src/create-quiver/commands/demo.js",
+    "src/create-quiver/commands/ai.js",
+    "src/create-quiver/lib/i18n/**",
+    "tests/commands/demo.test.js",
+    "tests/commands/ai-onboard.test.js",
+    "specs/quiver-v39-cli-i18n-setup-onboarding/**"
+  ],
+  "depends_on": [
+    "slice-01-init-interactive-language"
+  ],
+  "parallel_safe": "conditional",
+  "parallel_safe_reason": "Can overlap with slice-02 only if command file ownership is split.",
+  "must": [
+    "Localize human-facing onboarding messages.",
+    "Avoid changing generated documentation templates.",
+    "Keep command snippets exact."
+  ],
+  "not_included": [
+    "Template localization owned by v42."
+  ],
+  "acceptance": [
+    "Onboarding messages render in en and es.",
+    "Tests cover project config and --lang override.",
+    "Generated docs are not accidentally translated."
+  ],
+  "tests": [
+    "node --test tests/commands/demo.test.js tests/commands/ai-onboard.test.js",
+    "git diff --check"
+  ],
+  "validation_hints": [
+    "Audit fixtures that assert literal English output."
+  ],
+  "estimated_hours": 6,
+  "status": "planned",
+  "blocked_reason": "Requires completion of slice-01-init-interactive-language."
+}

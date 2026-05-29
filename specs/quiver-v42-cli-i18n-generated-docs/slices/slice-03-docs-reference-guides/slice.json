@@ -1,0 +1,59 @@
+{
+  "slice_id": "slice-03-docs-reference-guides",
+  "ticket": "QUIVER-42-03",
+  "type": "documentation",
+  "title": "Docs reference and guides",
+  "objective": "Document generated documentation language behavior for users and agents.",
+  "description": "Updates public docs so language configuration and generated-doc scope are clear.",
+  "git": {
+    "branch_type": "docs",
+    "base_branch": "main",
+    "branch_slug": "v42-docs-reference-guides",
+    "branch_name": "docs/QUIVER-42-03-v42-docs-reference-guides"
+  },
+  "files": [
+    "docs/CLI_UX_GUIDE.md",
+    "docs/reference/commands.md",
+    "docs/getting-started/installation.md"
+  ],
+  "expected_read_paths": [
+    "docs/INDEX.md",
+    "docs/CLI_UX_GUIDE.md",
+    "docs/reference/commands.md",
+    "docs/getting-started/installation.md"
+  ],
+  "allowed_write_paths": [
+    "docs/CLI_UX_GUIDE.md",
+    "docs/reference/commands.md",
+    "docs/getting-started/**",
+    "specs/quiver-v42-cli-i18n-generated-docs/**"
+  ],
+  "depends_on": [
+    "slice-01-template-language-routing"
+  ],
+  "parallel_safe": "conditional",
+  "parallel_safe_reason": "Can overlap with init docs implementation if public contract is already agreed.",
+  "must": [
+    "Document generated-doc language scope.",
+    "Document exclusions for machine artifacts.",
+    "Avoid duplicating command reference content."
+  ],
+  "not_included": [
+    "Runtime command output migration."
+  ],
+  "acceptance": [
+    "Docs explain configured language behavior.",
+    "Docs explain --lang override where relevant.",
+    "Docs do not claim JSON localization."
+  ],
+  "tests": [
+    "git diff --check",
+    "npx create-quiver spec validate specs/quiver-v42-cli-i18n-generated-docs --strict"
+  ],
+  "validation_hints": [
+    "Link to existing command reference instead of duplicating large sections."
+  ],
+  "estimated_hours": 4,
+  "status": "planned",
+  "blocked_reason": "Requires completion of slice-01-template-language-routing."
+}

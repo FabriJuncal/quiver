@@ -1,0 +1,72 @@
+{
+  "slice_id": "slice-02-flow-doctor-next-graph",
+  "ticket": "QUIVER-38-02",
+  "type": "feature",
+  "title": "Flow, doctor, next, graph, and plan",
+  "objective": "Localize workflow inspection commands without changing their machine-readable contracts.",
+  "description": "Migrates the read-only workflow guidance commands to the shared i18n catalog.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v38-flow-doctor-next-graph",
+    "branch_name": "feature/QUIVER-38-02-v38-flow-doctor-next-graph"
+  },
+  "files": [
+    "src/create-quiver/commands/flow.js",
+    "src/create-quiver/commands/doctor.js",
+    "src/create-quiver/commands/next.js",
+    "src/create-quiver/commands/graph.js",
+    "src/create-quiver/commands/plan.js"
+  ],
+  "expected_read_paths": [
+    "src/create-quiver/lib/i18n/**",
+    "tests/commands/flow.test.js",
+    "tests/commands/doctor.test.js",
+    "tests/commands/next.test.js",
+    "tests/commands/graph.test.js",
+    "tests/commands/plan.test.js"
+  ],
+  "allowed_write_paths": [
+    "src/create-quiver/commands/flow.js",
+    "src/create-quiver/commands/doctor.js",
+    "src/create-quiver/commands/next.js",
+    "src/create-quiver/commands/graph.js",
+    "src/create-quiver/commands/plan.js",
+    "src/create-quiver/lib/i18n/**",
+    "tests/commands/flow.test.js",
+    "tests/commands/doctor.test.js",
+    "tests/commands/next.test.js",
+    "tests/commands/graph.test.js",
+    "tests/commands/plan.test.js",
+    "specs/quiver-v38-cli-i18n-read-only-commands/**"
+  ],
+  "depends_on": [
+    "slice-01-version-dashboard-help"
+  ],
+  "parallel_safe": "conditional",
+  "parallel_safe_reason": "Can overlap with slice-03 if catalog keys are namespaced by command group.",
+  "must": [
+    "Localize workflow status labels and guidance.",
+    "Keep exact commands in suggestions.",
+    "Keep JSON stable.",
+    "Test warnings and blocker states."
+  ],
+  "not_included": [
+    "AI provider execution commands."
+  ],
+  "acceptance": [
+    "Each included command has en and es test coverage.",
+    "JSON contract tests remain stable.",
+    "No localized command snippet is altered."
+  ],
+  "tests": [
+    "node --test tests/commands/flow.test.js tests/commands/doctor.test.js tests/commands/next.test.js tests/commands/graph.test.js tests/commands/plan.test.js",
+    "git diff --check"
+  ],
+  "validation_hints": [
+    "Include fixtures with no specs and with blocked slices."
+  ],
+  "estimated_hours": 8,
+  "status": "planned",
+  "blocked_reason": "Requires completion of slice-01-version-dashboard-help."
+}

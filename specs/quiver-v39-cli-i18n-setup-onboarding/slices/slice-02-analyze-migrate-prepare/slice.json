@@ -1,0 +1,64 @@
+{
+  "slice_id": "slice-02-analyze-migrate-prepare",
+  "ticket": "QUIVER-39-02",
+  "type": "feature",
+  "title": "Analyze, migrate, and prepare-context",
+  "objective": "Localize setup-adjacent commands while preserving dry-run and automation behavior.",
+  "description": "Migrates analyze, migrate, and ai prepare-context human output to the shared i18n catalog.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v39-analyze-migrate-prepare",
+    "branch_name": "feature/QUIVER-39-02-v39-analyze-migrate-prepare"
+  },
+  "files": [
+    "src/create-quiver/commands/analyze.js",
+    "src/create-quiver/commands/migrate.js",
+    "src/create-quiver/commands/ai.js"
+  ],
+  "expected_read_paths": [
+    "src/create-quiver/commands/analyze.js",
+    "src/create-quiver/commands/migrate.js",
+    "src/create-quiver/commands/ai.js",
+    "src/create-quiver/lib/i18n/**"
+  ],
+  "allowed_write_paths": [
+    "src/create-quiver/commands/analyze.js",
+    "src/create-quiver/commands/migrate.js",
+    "src/create-quiver/commands/ai.js",
+    "src/create-quiver/lib/i18n/**",
+    "tests/commands/analyze.test.js",
+    "tests/commands/init-profiles.test.js",
+    "tests/commands/ai-onboard.test.js",
+    "specs/quiver-v39-cli-i18n-setup-onboarding/**"
+  ],
+  "depends_on": [
+    "slice-01-init-interactive-language"
+  ],
+  "parallel_safe": "conditional",
+  "parallel_safe_reason": "Can overlap with slice-03 if AI command ownership is coordinated.",
+  "must": [
+    "Localize human setup-adjacent output.",
+    "Keep dry-run write-free.",
+    "Keep JSON stable.",
+    "Do not translate file paths or command snippets."
+  ],
+  "not_included": [
+    "Provider-backed planning output."
+  ],
+  "acceptance": [
+    "Commands render in en and es.",
+    "Dry-run tests prove no writes.",
+    "JSON tests remain stable."
+  ],
+  "tests": [
+    "node --test tests/commands/analyze.test.js tests/commands/init-profiles.test.js tests/commands/ai-onboard.test.js",
+    "git diff --check"
+  ],
+  "validation_hints": [
+    "Separate CLI wrapper localization from generated prompt contents."
+  ],
+  "estimated_hours": 8,
+  "status": "planned",
+  "blocked_reason": "Requires completion of slice-01-init-interactive-language."
+}

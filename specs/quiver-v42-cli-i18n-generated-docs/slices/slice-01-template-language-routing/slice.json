@@ -1,0 +1,59 @@
+{
+  "slice_id": "slice-01-template-language-routing",
+  "ticket": "QUIVER-42-01",
+  "type": "feature",
+  "title": "Template language routing",
+  "objective": "Add a reusable routing layer for generated human docs in en and es.",
+  "description": "Defines how generated documentation chooses localized templates or fragments.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v42-template-language-routing",
+    "branch_name": "feature/QUIVER-42-01-v42-template-language-routing"
+  },
+  "files": [
+    "src/create-quiver/lib/i18n/templates.js",
+    "tests/lib/i18n-templates.test.js"
+  ],
+  "expected_read_paths": [
+    "src/create-quiver/lib/i18n/**",
+    "docs/*.template",
+    "docs/ai/*.template",
+    "specs/quiver-v42-cli-i18n-generated-docs/SPEC.md"
+  ],
+  "allowed_write_paths": [
+    "src/create-quiver/lib/i18n/**",
+    "docs/**",
+    "tests/lib/i18n-templates.test.js",
+    "specs/quiver-v42-cli-i18n-generated-docs/**"
+  ],
+  "depends_on": [
+    "slice-00-generated-docs-foundation"
+  ],
+  "parallel_safe": "no",
+  "parallel_safe_reason": "Establishes template routing for all v42 work.",
+  "must": [
+    "Reuse v37 language resolution.",
+    "Define template naming/routing convention.",
+    "Exclude machine artifacts from localization.",
+    "Test fallback behavior."
+  ],
+  "not_included": [
+    "Migrating every template."
+  ],
+  "acceptance": [
+    "Template routing supports en and es.",
+    "Missing localized templates are caught by tests or fall back explicitly.",
+    "Machine artifacts are not routed through human template localization."
+  ],
+  "tests": [
+    "node --test tests/lib/i18n-templates.test.js",
+    "git diff --check"
+  ],
+  "validation_hints": [
+    "Keep routing pure and independent from command side effects."
+  ],
+  "estimated_hours": 5,
+  "status": "planned",
+  "blocked_reason": "Requires completion of specs/quiver-v37-cli-i18n-foundation."
+}

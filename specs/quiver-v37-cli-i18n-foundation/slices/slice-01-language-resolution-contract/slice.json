@@ -1,0 +1,66 @@
+{
+  "slice_id": "slice-01-language-resolution-contract",
+  "ticket": "QUIVER-37-01",
+  "type": "feature",
+  "title": "Language resolution contract",
+  "objective": "Implement the ordered language resolution and config persistence foundation for Spanish and English CLI output.",
+  "description": "Adds the reusable resolver that all localized command output will consume.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v37-language-resolution-contract",
+    "branch_name": "feature/QUIVER-37-01-v37-language-resolution-contract"
+  },
+  "files": [
+    "src/create-quiver/lib/i18n/language.js",
+    "tests/lib/i18n-language.test.js"
+  ],
+  "expected_read_paths": [
+    "src/create-quiver/index.js",
+    "src/create-quiver/lib/paths.js",
+    "docs/CLI_UX_GUIDE.md",
+    "specs/quiver-v37-cli-i18n-foundation/SPEC.md"
+  ],
+  "allowed_write_paths": [
+    "src/create-quiver/lib/i18n/language.js",
+    "src/create-quiver/index.js",
+    "tests/lib/i18n-language.test.js",
+    "tests/commands/cli-contract.test.js",
+    "specs/quiver-v37-cli-i18n-foundation/**"
+  ],
+  "depends_on": [
+    "slice-00-foundation-and-program-roadmap"
+  ],
+  "parallel_safe": "no",
+  "parallel_safe_reason": "All later i18n work depends on the exact precedence and parser contract.",
+  "must": [
+    "Support only en and es.",
+    "Apply the approved precedence order.",
+    "Resolve global config through os.homedir().",
+    "Normalize common locale variants.",
+    "Keep JSON output stable."
+  ],
+  "not_included": [
+    "Message catalog implementation.",
+    "Command-by-command migration."
+  ],
+  "acceptance": [
+    "Tests prove each language source wins in the approved order.",
+    "Tests prove --lang works before and after commands.",
+    "Unsupported language values fall back to en with human guidance.",
+    "No JSON schema keys are localized."
+  ],
+  "tests": [
+    "node --test tests/lib/i18n-language.test.js",
+    "node --test tests/commands/cli-contract.test.js",
+    "git diff --check"
+  ],
+  "validation_hints": [
+    "Use environment isolation in tests.",
+    "Include Windows-style home path coverage where practical."
+  ],
+  "estimated_hours": 5,
+  "status": "completed",
+  "completed_at": "2026-05-29T00:00:00.000Z",
+  "blocked_reason": null
+}

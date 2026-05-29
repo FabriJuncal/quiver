@@ -1,0 +1,60 @@
+{
+  "slice_id": "slice-04-spec-slice-tests-smokes",
+  "ticket": "QUIVER-40-04",
+  "type": "validation",
+  "title": "Spec/slice tests and smokes",
+  "objective": "Validate spec/slice workflow localization and record evidence.",
+  "description": "Runs full validation for v40 after workflow command migration.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v40-spec-slice-tests-smokes",
+    "branch_name": "feature/QUIVER-40-04-v40-spec-slice-tests-smokes"
+  },
+  "files": [
+    "tests/**/*.test.js",
+    "specs/quiver-v40-cli-i18n-spec-slice-workflows/EVIDENCE_REPORT.md"
+  ],
+  "expected_read_paths": [
+    "specs/quiver-v40-cli-i18n-spec-slice-workflows/SPEC.md",
+    "docs/CLI_UX_GUIDE.md",
+    "docs/reference/commands.md"
+  ],
+  "allowed_write_paths": [
+    "tests/**",
+    "specs/quiver-v40-cli-i18n-spec-slice-workflows/**"
+  ],
+  "depends_on": [
+    "slice-02-spec-validate-close",
+    "slice-03-slice-lifecycle-handoffs"
+  ],
+  "parallel_safe": "no",
+  "parallel_safe_reason": "This is the closing validation slice for v40.",
+  "must": [
+    "Run full validation.",
+    "Confirm generated artifacts are stable.",
+    "Record evidence."
+  ],
+  "not_included": [
+    "Generated template localization."
+  ],
+  "acceptance": [
+    "Full tests pass.",
+    "Package smoke passes.",
+    "Spec validation passes.",
+    "Evidence report is updated."
+  ],
+  "tests": [
+    "node --test tests/**/*.test.js",
+    "npx create-quiver spec validate specs/quiver-v40-cli-i18n-spec-slice-workflows --strict",
+    "npm run package:quiver",
+    "npm run smoke:create-quiver",
+    "git diff --check"
+  ],
+  "validation_hints": [
+    "Run at least one spec validate failure fixture in both languages."
+  ],
+  "estimated_hours": 4,
+  "status": "planned",
+  "blocked_reason": "Requires completion of slice-02-spec-validate-close and slice-03-slice-lifecycle-handoffs."
+}
