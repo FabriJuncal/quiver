@@ -1,0 +1,37 @@
+# Agentes de {{PROJECT_NAME}}
+
+## Proposito
+
+Este archivo orienta a agentes de IA y personas que trabajan en el proyecto.
+
+## Presupuesto de lectura
+
+- Empeza por `README.md`.
+- Usa `docs/INDEX.md` como mapa.
+- Lee solo los documentos necesarios para la tarea actual.
+
+## Orden de lectura
+
+1. `docs/INDEX.md`
+2. `docs/PROJECT_MAP.md`, si existe
+3. `docs/AI_CONTEXT.md`
+4. `docs/AI_ONBOARDING_PROMPT.md`
+5. El spec y slice activos, si la tarea los requiere
+
+## Politica de salida
+
+- Responde con cambios y evidencia verificable.
+- No inventes reglas de negocio, rutas, flags ni convenciones.
+- No leas todo `docs/` sin una razon documentada.
+
+## Reglas de ejecucion de slices
+
+- Un slice equivale a un commit.
+- Un spec equivale a un PR.
+- No modifiques archivos fuera del scope declarado por el slice.
+
+## Links
+
+- `docs/WORKFLOW.md`
+- `docs/STATUS.md`
+- `docs/DECISIONS.md`

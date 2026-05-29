@@ -6,10 +6,10 @@
   "objective": "Document generated documentation language behavior for users and agents.",
   "description": "Updates public docs so language configuration and generated-doc scope are clear.",
   "git": {
-    "branch_type": "docs",
+    "branch_type": "feature",
     "base_branch": "main",
     "branch_slug": "v42-docs-reference-guides",
-    "branch_name": "docs/QUIVER-42-03-v42-docs-reference-guides"
+    "branch_name": "feature/QUIVER-42-03-v42-docs-reference-guides"
   },
   "files": [
     "docs/CLI_UX_GUIDE.md",
@@ -54,6 +54,7 @@
     "Link to existing command reference instead of duplicating large sections."
   ],
   "estimated_hours": 4,
-  "status": "planned",
-  "blocked_reason": "Requires completion of slice-01-template-language-routing."
+  "status": "completed",
+  "blocked_reason": "",
+  "completed_at": "2026-05-29T19:02:46Z"
 }

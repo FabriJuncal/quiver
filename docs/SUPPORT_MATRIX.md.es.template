@@ -1,0 +1,22 @@
+# Matriz de soporte
+
+**Proyecto:** {{PROJECT_NAME}}
+**Ultima actualizacion:** {{FECHA}}
+
+## Entornos soportados
+
+| Area | Soportado | Notas |
+|---|---|---|
+| Sistemas operativos | macOS, Linux y Windows | Runtime principal: Node CLI y scripts `quiver:*`. |
+| Shells | Terminal, shells compatibles con bash, PowerShell y CMD | Bash es compatibilidad heredada, no dependencia obligatoria. |
+| Git | Git 2.40+ | Debe soportar worktrees y refs estandar. |
+| Node.js | Node 22.x LTS | Requerido en todos los OS soportados. |
+| Branch base | `develop` o `main` | Preferir branch local; `origin` es opcional. |
+| Estado del worktree | Limpio | La ejecucion de slices espera no mezclar cambios. |
+
+## Reglas cross-platform
+
+- Usar APIs Node para paths y filesystem.
+- Mantener `--json` como contrato primario de automatizacion.
+- Respetar `NO_COLOR`, CI y terminales sin TTY.
+- No concatenar prompts largos en comandos shell.

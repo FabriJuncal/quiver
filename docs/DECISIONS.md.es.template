@@ -1,0 +1,17 @@
+# Registro de decisiones de {{PROJECT_NAME}}
+
+**Fecha:** {{FECHA}}
+**Estado:** {{ESTADO}}
+
+Este archivo registra decisiones durables para que agentes y personas no vuelvan a discutir elecciones ya tomadas.
+
+## Registro
+
+| Fecha | Decision | Razon | Alternativas | Impacto |
+|---|---|---|---|---|
+
+## Reglas
+
+- Registra una decision por fila.
+- Manten cada entrada corta y especifica.
+- Agrega una nueva fila cuando una eleccion pueda reabrirse en trabajos futuros.

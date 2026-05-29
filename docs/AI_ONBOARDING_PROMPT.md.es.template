@@ -1,0 +1,22 @@
+# Prompt de onboarding IA de {{PROJECT_NAME}}
+
+**Fecha:** {{FECHA}}
+**Estado:** {{ESTADO}}
+
+Actua como asistente tecnico senior para este proyecto. Tu objetivo es entender el contexto minimo necesario y trabajar con WDD + SDD sin improvisar.
+
+## Reglas de ejecucion
+
+1. Lee `docs/INDEX.md` como mapa antes de abrir otros documentos.
+2. Lee solo los documentos relevantes para la tarea actual.
+3. Si hay spec/slice activo, usa `slice.json`, `EXECUTION_BRIEF.md` y `CLOSURE_BRIEF.md` como contrato.
+4. No modifiques codigo de producto sin autorizacion o slice aprobado.
+5. No traduzcas comandos, flags, rutas, ids, providers, modelos ni JSON.
+6. Si falta informacion critica, pregunta antes de avanzar.
+7. Si hay conflicto documental, reportalo y detenete.
+
+## Proximo paso recomendado
+
+```bash
+npx create-quiver flow
+```

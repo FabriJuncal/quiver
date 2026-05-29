@@ -1467,6 +1467,7 @@ function runInitDocs(repoRoot, projectName, options = {}) {
     migrateMode: false,
     profile: options.profile || 'default',
     templateRoot: templateRoot.path,
+    language: options.language || '',
   });
 }
 
@@ -3038,6 +3039,35 @@ function persistInitLanguage(targetDir, initOptions = {}) {
   };
 }
 
+function resolveInitGeneratedLanguage(args, targetDir, initOptions = {}) {
+  if (initOptions.language) {
+    return {
+      configLanguage: initOptions.language,
+      docsLanguage: initOptions.language,
+    };
+  }
+
+  if (args.languageResolution?.source === '--lang') {
+    return {
+      configLanguage: args.language,
+      docsLanguage: args.language,
+    };
+  }
+
+  const existingProjectLanguage = resolveExistingProjectLanguage(targetDir);
+  if (existingProjectLanguage) {
+    return {
+      configLanguage: existingProjectLanguage,
+      docsLanguage: existingProjectLanguage,
+    };
+  }
+
+  return {
+    configLanguage: '',
+    docsLanguage: args.language || DEFAULT_LANGUAGE,
+  };
+}
+
 function runDoctor(targetDir, options = {}) {
   const projectRoot = resolveTargetRoot(process.cwd(), targetDir);
 
@@ -3774,12 +3804,13 @@ async function run(argv) {
     });
     return;
   }
+  const initLanguage = resolveInitGeneratedLanguage(args, targetDir, initOptions);
   const initLayout = buildInitLayout(targetDir, {
     compatibilityAlias: !args.explicitInit,
     dryRun: args.dryRun,
     full: initOptions.full,
     includeTemplates: initOptions.includeTemplates,
-    language: initOptions.language,
+    language: initLanguage.configLanguage,
     legacyScripts: initOptions.legacyScripts,
     minimal: initOptions.minimal,
     projectName: initOptions.projectName,
@@ -3802,11 +3833,12 @@ async function run(argv) {
     }
     runInitDocs(targetDir, initOptions.projectName, {
       includeTemplates: initOptions.includeTemplates,
+      language: initLanguage.docsLanguage,
       legacyScripts: initOptions.legacyScripts,
       profile: initLayout.profile,
       templateRoot,
     });
-    const languageWrite = persistInitLanguage(targetDir, initOptions);
+    const languageWrite = persistInitLanguage(targetDir, { language: initLanguage.configLanguage });
 
     if (!args.skipInstall) {
       const installResult = installSelfAsDevDep(targetDir, CLI_VERSION);

@@ -1,0 +1,29 @@
+# Workflow
+
+**Fecha:** {{FECHA}}
+
+Este documento define el workflow canonico de implementacion del proyecto.
+
+## Reglas centrales
+
+- No implementar sin slice.
+- Un slice equivale a un commit.
+- Un spec equivale a un PR.
+- El spec define el plan; el slice define la ejecucion.
+- Ningun slice debe ejecutarse hasta estar listo.
+- La salida JSON y los artefactos machine-readable no se traducen.
+
+## Planificacion
+
+1. Ejecuta `npx create-quiver flow` si no sabes el siguiente paso seguro.
+2. Redacta criterios de aceptacion.
+3. Redacta y revisa el plan tecnico.
+4. Crea el spec con `npx create-quiver spec create`.
+5. Ejecuta slices de a uno, manteniendo scope y evidencia.
+
+## Validacion
+
+```bash
+npx create-quiver spec validate specs/<spec> --strict
+git diff --check
+```

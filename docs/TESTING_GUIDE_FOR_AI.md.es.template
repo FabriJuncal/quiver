@@ -1,0 +1,19 @@
+# Guia de testing para IA
+
+**Proyecto:** {{PROJECT_NAME}}
+**Ultima actualizacion:** {{FECHA}}
+
+## Reglas
+
+- Ejecuta primero tests focalizados del slice.
+- Ejecuta validacion amplia solo cuando el cambio toque superficie compartida.
+- No inventes comandos; usa los documentados en `docs/PROJECT_MAP.md` o `package.json`.
+- Registra evidencia en el spec o slice correspondiente.
+
+## Comandos sugeridos
+
+```bash
+npm test
+npx create-quiver spec validate specs/<spec> --strict
+git diff --check
+```

@@ -68,6 +68,26 @@ npx --yes create-quiver@latest config language set en --global
 
 `--json` conserva claves y estructura machine-readable en ingles tecnico; no traduce campos, codigos, comandos, flags, rutas, ids, providers ni modelos.
 
+## Idioma de docs generados
+
+El idioma configurado tambien aplica a documentacion humana generada por Quiver, como los docs creados por `init`.
+
+Ejemplos:
+
+```bash
+npx --yes create-quiver@latest --lang es init --name "Proyecto"
+npx --yes create-quiver@latest config language set es
+npx --yes create-quiver@latest init --name "Proyecto"
+```
+
+Reglas:
+
+- `--lang en|es` puede usarse como override para una ejecucion.
+- `.quiver/config.json` se usa como idioma por defecto del proyecto cuando no se pasa `--lang`.
+- Templates humanos Markdown pueden tener variantes localizadas, por ejemplo `docs/INDEX.md.es.template`.
+- Si falta una variante localizada, Quiver hace fallback explicito al template base en `en`.
+- Artefactos machine-readable como `package.template.json`, `slice.json`, JSON/JSONL, ids, comandos, flags, rutas, providers y modelos no se traducen.
+
 ## Planificación con IA
 
 | Comando | Para qué sirve |

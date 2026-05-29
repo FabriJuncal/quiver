@@ -1,0 +1,28 @@
+# Comandos
+
+**Proyecto:** {{PROJECT_NAME}}
+**Ultima actualizacion:** {{FECHA}}
+
+Este documento resume los comandos principales del workflow Quiver. Los comandos, flags y snippets se mantienen sin traducir.
+
+## Tabla de comandos
+
+| Comando | Proposito | Ejemplo |
+|---|---|---|
+| `npx create-quiver init --name "<project>"` | Crea el contrato Quiver inicial del proyecto | `npx create-quiver init --name "{{PROJECT_NAME}}"` |
+| `npx create-quiver init --interactive` | Guia modo de proyecto, metodologia, perfil e idioma | `npx create-quiver init --interactive` |
+| `npx create-quiver analyze` | Genera mapa visible del proyecto y scan interno | `npx create-quiver analyze` |
+| `npx create-quiver flow` | Muestra el proximo paso seguro | `npx create-quiver flow` |
+| `npx create-quiver dashboard` | Resume specs, slices, runs, agentes y aprobaciones | `npx create-quiver dashboard` |
+| `npx create-quiver ai agent set planner --provider <provider> --model <model>` | Configura el perfil del planner sin guardar credenciales | `npx create-quiver ai agent set planner --provider codex --model gpt-5.5 --dry-run` |
+| `npx create-quiver ai plan --phase acceptance --input <requirements.md>` | Genera criterios de aceptacion para aprobar | `npx create-quiver ai plan --phase acceptance --input requirements.md --dry-run` |
+| `npx create-quiver ai review-plan` | Revisa el plan tecnico antes de aprobarlo | `npx create-quiver ai review-plan --dry-run` |
+| `npx create-quiver spec create` | Crea el paquete de spec desde un plan tecnico aprobado | `npx create-quiver spec create --dry-run` |
+| `npx create-quiver spec validate <spec>` | Valida estructura y handoffs del spec | `npx create-quiver spec validate specs/<spec> --strict` |
+
+## Reglas
+
+- Usa `--dry-run` antes de escrituras.
+- Usa `--json` solo para automatizacion.
+- Configura idioma con `npx create-quiver config language set es` o `--lang es`.
+- Los artefactos machine-readable no se traducen.

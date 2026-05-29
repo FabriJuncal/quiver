@@ -2,9 +2,9 @@
 
 ## Summary
 
-Pending implementation.
+Completed. Added a pure generated-doc template routing layer for `en` and `es`, including deterministic fallback to the base English template, machine-artifact exclusion, coverage reporting for missing localized human templates, and documented naming conventions.
 
 ## Validation
 
-- [ ] `node --test tests/lib/i18n-templates.test.js`
-- [ ] `git diff --check`
+- [x] `node --test tests/lib/i18n-templates.test.js`
+- [x] `git diff --check`

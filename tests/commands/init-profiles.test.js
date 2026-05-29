@@ -336,6 +336,51 @@ test('init command without dry-run writes the default clean AI-first layout', ()
   }
 });
 
+test('init generated human docs follow --lang and keep machine artifacts stable', () => {
+  const { dir, cleanup } = makeTmpDir();
+  const enTarget = path.join(dir, 'target-en');
+  const esTarget = path.join(dir, 'target-es');
+  try {
+    runCli(['--lang', 'en', 'init', '--name', 'Language Project', '--dir', enTarget, '--skip-install']);
+    runCli(['--lang', 'es', 'init', '--name', 'Language Project', '--dir', esTarget, '--skip-install']);
+
+    assert.match(readText(enTarget, path.join('docs', 'INDEX.md')), /Documentation Index/);
+    assert.match(readText(esTarget, path.join('docs', 'INDEX.md')), /Indice de documentacion/);
+    assert.match(readText(esTarget, 'AGENTS.md'), /# Agentes de Language Project/);
+    assert.match(readText(esTarget, path.join('docs', 'AI_CONTEXT.md')), /# Contexto IA de Language Project/);
+
+    assert.deepEqual(readPackageJson(esTarget).scripts, readPackageJson(enTarget).scripts);
+    assert.equal(readPackageJson(esTarget).name, readPackageJson(enTarget).name);
+    assert.equal(JSON.parse(readText(esTarget, path.join('.quiver', 'config.json'))).language, 'es');
+  } finally {
+    cleanup();
+  }
+});
+
+test('init uses existing project language config for generated docs without --lang', () => {
+  const { dir, cleanup } = makeTmpDir();
+  const target = path.join(dir, 'target');
+  try {
+    fs.mkdirSync(path.join(target, '.quiver'), { recursive: true });
+    fs.writeFileSync(path.join(target, '.quiver', 'config.json'), `${JSON.stringify({
+      layout_version: 1,
+      language: 'es',
+      custom: true,
+    }, null, 2)}\n`);
+
+    runCli(['init', '--name', 'Configured Project', '--dir', target, '--skip-install']);
+
+    assert.match(readText(target, path.join('docs', 'INDEX.md')), /Indice de documentacion/);
+    assert.deepEqual(JSON.parse(readText(target, path.join('.quiver', 'config.json'))), {
+      layout_version: 1,
+      language: 'es',
+      custom: true,
+    });
+  } finally {
+    cleanup();
+  }
+});
+
 test('init --minimal writes only the essential onboarding contract', () => {
   const { dir, cleanup } = makeTmpDir();
   const target = path.join(dir, 'target');

@@ -1,0 +1,25 @@
+# Guia Git y PR
+
+## Reglas principales
+
+- Un slice equivale a un commit.
+- Un spec equivale a un PR.
+- No mezclar specs en la misma branch.
+- No abrir PR sin evidencia de validacion.
+
+## Preflight de PR
+
+```bash
+npx create-quiver ai pr --dry-run --ssh-host-alias <alias> --identity-file <key> --input <pr.md>
+```
+
+## Secciones requeridas del PR
+
+- `## Title`
+- `## Summary`
+- `## Scope`
+- `## Files`
+- `## How to Test (DETAILED - REQUIRED)`
+- `## Evidence`
+- `## Rollback`
+- `## Risks / Notes`
