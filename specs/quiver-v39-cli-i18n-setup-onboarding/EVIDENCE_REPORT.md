@@ -21,6 +21,20 @@ Validation:
 - Passed: `node bin/create-quiver.js spec validate specs/quiver-v39-cli-i18n-setup-onboarding --strict`
 - Passed with expected completed-slice warning: `node bin/create-quiver.js check-slice specs/quiver-v39-cli-i18n-setup-onboarding/slices/slice-01-init-interactive-language/slice.json --local`
 
+## slice-02-analyze-migrate-prepare
+
+- Localized `analyze` dry-run and completion output through the shared `en`/`es` catalog.
+- Localized `migrate` dry-run and completion output while preserving exact commands and paths.
+- Localized deterministic and planner dry-run wrapper output for `ai prepare-context` while keeping generated prompt/content contracts untouched.
+- Added Spanish regression coverage for `analyze --dry-run`, `migrate --dry-run`, `ai prepare-context --dry-run`, and `ai prepare-context --with-planner --dry-run`.
+
+Validation:
+
+- Passed: `node --test tests/commands/analyze.test.js tests/commands/init-profiles.test.js tests/commands/ai-onboard.test.js tests/lib/i18n-catalog.test.js`
+- Passed: `git diff --check`
+- Passed: `node bin/create-quiver.js spec validate specs/quiver-v39-cli-i18n-setup-onboarding --strict`
+- Passed with expected completed-slice warning: `node bin/create-quiver.js check-slice specs/quiver-v39-cli-i18n-setup-onboarding/slices/slice-02-analyze-migrate-prepare/slice.json --local`
+
 ## Pending Evidence
 
 - `node --test tests/**/*.test.js`

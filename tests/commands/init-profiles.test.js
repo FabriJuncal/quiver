@@ -497,3 +497,22 @@ test('migrate --dry-run reports planned changes without writing', () => {
     cleanup();
   }
 });
+
+test('migrate --dry-run supports Spanish human output without translating commands', () => {
+  const { dir, cleanup } = makeTmpDir();
+  const target = path.join(dir, 'target');
+  try {
+    runCli(['init', '--name', 'Legacy Project', '--dir', target, '--full', '--skip-install']);
+    const statePath = path.join(target, '.quiver', 'state.json');
+    const beforeState = fs.readFileSync(statePath, 'utf8');
+
+    const output = runCli(['--lang', 'es', 'migrate', '--dir', target, '--dry-run', '--skip-install']);
+
+    assert.match(output, /Dry-run de migracion de Quiver/);
+    assert.match(output, /Escrituras: ninguna/);
+    assert.match(output, /Proximo comando: npx create-quiver migrate --skip-install/);
+    assert.equal(fs.readFileSync(statePath, 'utf8'), beforeState);
+  } finally {
+    cleanup();
+  }
+});

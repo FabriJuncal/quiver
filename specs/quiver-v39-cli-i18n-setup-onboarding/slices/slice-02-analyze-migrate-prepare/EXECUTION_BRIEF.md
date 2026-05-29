@@ -18,6 +18,6 @@ Localize `analyze`, `migrate`, and `ai prepare-context` human output.
 
 ## Completion Checklist
 
-- [ ] Human strings cataloged.
-- [ ] Dry-run tests added.
-- [ ] JSON regression tests preserved.
+- [x] Human strings cataloged.
+- [x] Dry-run tests added.
+- [x] JSON regression tests preserved.

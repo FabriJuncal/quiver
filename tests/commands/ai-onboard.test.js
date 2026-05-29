@@ -219,6 +219,66 @@ test('ai prepare-context dry-run prints proposed docs, assumptions, risks, and o
   }
 });
 
+test('ai prepare-context dry-run supports Spanish human output without translating paths', () => {
+  const repo = makeRepo({
+    README: '',
+    'README.md': '# Demo\n',
+    'package.json': JSON.stringify({ name: 'demo-project' }, null, 2),
+    'docs/PROJECT_MAP.md': '# Project Map\n',
+    'docs/INDEX.md': '# Index\n',
+    'docs/WORKFLOW.md': '# Workflow\n',
+  });
+
+  try {
+    const output = execFileSync('node', [BIN_PATH, '--lang', 'es', 'ai', 'prepare-context', '--dry-run'], {
+      cwd: repo.root,
+      encoding: 'utf8',
+      env: process.env,
+    });
+
+    assert.ok(output.includes('Dry-run de AI prepare-context'));
+    assert.ok(output.includes('Modo: dry-run'));
+    assert.ok(output.includes('Escrituras: solo docs'));
+    assert.ok(output.includes('Docs propuestos: docs/INDEX.md, docs/PROJECT_MAP.md'));
+    assert.ok(output.includes('Cambios propuestos:'));
+    assert.ok(output.includes('Archivos considerados:'));
+    assert.ok(output.includes('README_FOR_AI.md'));
+    assert.ok(output.includes('Supuestos:'));
+    assert.ok(output.includes('Riesgos:'));
+    assert.ok(output.includes('Rutas omitidas:'));
+    assert.equal(fs.existsSync(path.join(repo.root, '.quiver')), false);
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('ai prepare-context planner dry-run supports Spanish wrapper output without translating commands', () => {
+  const repo = makeRepo({
+    'README.md': '# Demo\n',
+    'package.json': JSON.stringify({ name: 'demo-project' }, null, 2),
+    'docs/PROJECT_MAP.md': '# Project Map\n',
+    'docs/INDEX.md': '# Index\n',
+  });
+
+  try {
+    const output = execFileSync('node', [BIN_PATH, '--lang', 'es', 'ai', 'prepare-context', '--with-planner', '--dry-run'], {
+      cwd: repo.root,
+      encoding: 'utf8',
+      env: process.env,
+    });
+
+    assert.ok(output.includes('Dry-run de AI prepare-context con planner'));
+    assert.ok(output.includes('Planner: habilitado'));
+    assert.ok(output.includes('Ejecucion del provider: omitida'));
+    assert.ok(output.includes('Escrituras: ninguna'));
+    assert.ok(output.includes('Proximos comandos seguros:'));
+    assert.ok(output.includes('npx create-quiver ai prepare-context --with-planner --print-prompt'));
+    assert.equal(fs.existsSync(path.join(repo.root, '.quiver')), false);
+  } finally {
+    repo.cleanup();
+  }
+});
+
 test('ai prepare-context writes docs-only drafts and keeps product code untouched', async () => {
   const repo = makeRepo({
     'README.md': '# Demo\n',

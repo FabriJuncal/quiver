@@ -2322,6 +2322,7 @@ function writeProjectScanArtifacts(projectRoot, scan) {
 
 function runAnalyze(targetDir, options = {}) {
   const projectRoot = resolveTargetRoot(process.cwd(), targetDir);
+  const translator = createTranslator(options.language);
 
   if (!fs.existsSync(projectRoot)) {
     throw new Error(formatError(`target directory does not exist: ${projectRoot}`));
@@ -2330,14 +2331,14 @@ function runAnalyze(targetDir, options = {}) {
   const scan = buildProjectScan(projectRoot);
 
   if (options.dryRun) {
-    console.log(`Project analysis dry-run for ${projectRoot}`);
-    console.log('Writes: none');
-    console.log(`Would write ${CURRENT_SCAN_RELATIVE_PATH}`);
-    console.log(`Would write ${PROJECT_MAP_RELATIVE_PATH}`);
-    console.log('Would refresh docs/AI_CONTEXT.md');
-    console.log(`Detected primary stack: ${scan.stack.primary}`);
-    console.log(`Detected frameworks: ${scan.stack.frameworks.length > 0 ? scan.stack.frameworks.join(', ') : 'none detected'}`);
-    console.log(`Detected package manager: ${scan.project.package_manager}`);
+    console.log(translator.t('analyze.dry_run_for', { path: projectRoot }));
+    console.log(translator.t('analyze.writes_none'));
+    console.log(translator.t('analyze.would_write', { path: CURRENT_SCAN_RELATIVE_PATH }));
+    console.log(translator.t('analyze.would_write', { path: PROJECT_MAP_RELATIVE_PATH }));
+    console.log(translator.t('analyze.would_refresh', { path: 'docs/AI_CONTEXT.md' }));
+    console.log(translator.t('analyze.detected_primary_stack', { stack: scan.stack.primary }));
+    console.log(translator.t('analyze.detected_frameworks', { frameworks: scan.stack.frameworks.length > 0 ? scan.stack.frameworks.join(', ') : translator.t('common.none_detected') }));
+    console.log(translator.t('analyze.detected_package_manager', { manager: scan.project.package_manager }));
     return {
       artifacts: {
         jsonPath: path.join(projectRoot, CURRENT_SCAN_RELATIVE_PATH),
@@ -2352,12 +2353,12 @@ function runAnalyze(targetDir, options = {}) {
   const aiContextPath = refreshAiContextDoc(projectRoot, scan);
   updateStateForAnalyze(projectRoot, CLI_VERSION);
 
-  console.log(`Project analysis completed for ${projectRoot}`);
-  console.log(`Wrote ${relativePosixPath(projectRoot, artifacts.jsonPath)}`);
-  console.log(`Wrote ${relativePosixPath(projectRoot, artifacts.mdPath)}`);
-  console.log(`Wrote ${relativePosixPath(projectRoot, aiContextPath)}`);
-  console.log(`Detected primary stack: ${scan.stack.primary}`);
-  console.log(`Detected package manager: ${scan.project.package_manager}`);
+  console.log(translator.t('analyze.completed_for', { path: projectRoot }));
+  console.log(translator.t('analyze.wrote', { path: relativePosixPath(projectRoot, artifacts.jsonPath) }));
+  console.log(translator.t('analyze.wrote', { path: relativePosixPath(projectRoot, artifacts.mdPath) }));
+  console.log(translator.t('analyze.wrote', { path: relativePosixPath(projectRoot, aiContextPath) }));
+  console.log(translator.t('analyze.detected_primary_stack', { stack: scan.stack.primary }));
+  console.log(translator.t('analyze.detected_package_manager', { manager: scan.project.package_manager }));
 
   return {
     artifacts,
@@ -2369,6 +2370,7 @@ function runAnalyze(targetDir, options = {}) {
 
 function runMigrate(targetDir, options = {}) {
   const projectRoot = resolveTargetRoot(process.cwd(), targetDir);
+  const translator = createTranslator(options.language);
 
   if (!fs.existsSync(projectRoot)) {
     throw new Error(formatError(`target directory does not exist: ${projectRoot}`));
@@ -2391,17 +2393,17 @@ function runMigrate(targetDir, options = {}) {
       projectName,
       skipInstall: options.skipInstall === true,
     });
-    console.log('Quiver migration dry-run');
-    console.log(`- Project: ${projectName}`);
-    console.log(`- Target: ${projectRoot}`);
-    console.log('- Writes: none');
-    console.log(`- Planned create: ${migrationPlan.summary.create}`);
-    console.log(`- Planned update: ${migrationPlan.summary.update}`);
-    console.log(`- Planned preserve: ${migrationPlan.summary.preserve}`);
+    console.log(translator.t('migrate.dry_run_title'));
+    console.log(`- ${translator.t('migrate.project', { project: projectName })}`);
+    console.log(`- ${translator.t('migrate.target', { path: projectRoot })}`);
+    console.log(`- ${translator.t('migrate.writes_none')}`);
+    console.log(`- ${translator.t('migrate.planned_create', { count: migrationPlan.summary.create })}`);
+    console.log(`- ${translator.t('migrate.planned_update', { count: migrationPlan.summary.update })}`);
+    console.log(`- ${translator.t('migrate.planned_preserve', { count: migrationPlan.summary.preserve })}`);
     if (legacyLayout.hasLegacyLayout) {
-      console.log(`- Legacy layout detected and preserved: ${legacyLayout.legacyPaths.join(', ')}`);
+      console.log(`- ${translator.t('migrate.legacy_preserved', { paths: legacyLayout.legacyPaths.join(', ') })}`);
     }
-    console.log('- Next command: npx create-quiver migrate --skip-install');
+    console.log(`- ${translator.t('migrate.next_command', { command: 'npx create-quiver migrate --skip-install' })}`);
     console.log('');
     console.log(formatInitLayoutPlan(migrationPlan));
     return;
@@ -2432,10 +2434,10 @@ function runMigrate(targetDir, options = {}) {
       }
     }
 
-    console.log(`Quiver migration completed for ${projectRoot}`);
-    console.log('Missing workflow files were restored without overwriting existing project files.');
+    console.log(translator.t('migrate.completed_for', { path: projectRoot }));
+    console.log(translator.t('migrate.restored_missing'));
     if (legacyLayout.hasLegacyLayout) {
-      console.log(`Legacy layout detected and preserved: ${legacyLayout.legacyPaths.join(', ')}`);
+      console.log(translator.t('migrate.legacy_preserved', { paths: legacyLayout.legacyPaths.join(', ') }));
     }
   } finally {
     fs.rmSync(tempRoot, { recursive: true, force: true });
@@ -3153,6 +3155,7 @@ async function run(argv) {
   if (args.mode === 'analyze') {
     runAnalyze(args.targetDir, {
       dryRun: args.dryRun,
+      language: args.language,
     });
     return;
   }
@@ -3362,6 +3365,7 @@ async function run(argv) {
         context: args.aiContext || undefined,
         dryRun: args.dryRun,
         interactive: args.interactive,
+        language: args.language,
         printPrompt: args.aiPrintPrompt,
         provider: args.aiProvider,
         providerExplicit: args.aiProviderExplicit,
@@ -3592,6 +3596,7 @@ async function run(argv) {
   if (args.mode === 'migrate') {
     runMigrate(args.targetDir, {
       dryRun: args.dryRun,
+      language: args.language,
       skipInstall: args.skipInstall,
     });
     return;

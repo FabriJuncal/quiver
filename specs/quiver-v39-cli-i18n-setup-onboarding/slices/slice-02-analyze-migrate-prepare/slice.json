@@ -12,19 +12,16 @@
     "branch_name": "feature/QUIVER-39-02-v39-analyze-migrate-prepare"
   },
   "files": [
-    "src/create-quiver/commands/analyze.js",
-    "src/create-quiver/commands/migrate.js",
+    "src/create-quiver/index.js",
     "src/create-quiver/commands/ai.js"
   ],
   "expected_read_paths": [
-    "src/create-quiver/commands/analyze.js",
-    "src/create-quiver/commands/migrate.js",
+    "src/create-quiver/index.js",
     "src/create-quiver/commands/ai.js",
     "src/create-quiver/lib/i18n/**"
   ],
   "allowed_write_paths": [
-    "src/create-quiver/commands/analyze.js",
-    "src/create-quiver/commands/migrate.js",
+    "src/create-quiver/index.js",
     "src/create-quiver/commands/ai.js",
     "src/create-quiver/lib/i18n/**",
     "tests/commands/analyze.test.js",
@@ -59,6 +56,7 @@
     "Separate CLI wrapper localization from generated prompt contents."
   ],
   "estimated_hours": 8,
-  "status": "planned",
-  "blocked_reason": "Requires completion of slice-01-init-interactive-language."
+  "status": "completed",
+  "blocked_reason": null,
+  "completed_at": "2026-05-29T00:00:00.000Z"
 }

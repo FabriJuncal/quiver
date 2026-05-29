@@ -77,6 +77,8 @@ test('analyze dry-run reports planned artifacts without writing files', () => {
       name: 'dry-run-project',
       scripts: { test: 'node --test' },
     }, null, 2));
+    fs.mkdirSync(path.join(projectRoot, 'src'), { recursive: true });
+    fs.writeFileSync(path.join(projectRoot, 'src', 'index.js'), 'console.log("ok");\n');
 
     const output = runCli(['analyze', '--dry-run'], { cwd: projectRoot });
 
@@ -85,6 +87,32 @@ test('analyze dry-run reports planned artifacts without writing files', () => {
     assert.match(output, /Would write \.quiver\/scans\/PROJECT_SCAN\.json/);
     assert.match(output, /Would write docs\/PROJECT_MAP\.md/);
     assert.match(output, /Would refresh docs\/AI_CONTEXT\.md/);
+    assert.equal(fs.existsSync(path.join(projectRoot, '.quiver')), false);
+    assert.equal(fs.existsSync(path.join(projectRoot, 'docs')), false);
+  } finally {
+    cleanup();
+  }
+});
+
+test('analyze dry-run supports Spanish human output without translating paths', () => {
+  const { dir, cleanup } = makeTmpDir();
+  try {
+    const projectRoot = path.join(dir, 'project');
+    fs.mkdirSync(projectRoot, { recursive: true });
+    fs.writeFileSync(path.join(projectRoot, 'package.json'), JSON.stringify({
+      name: 'dry-run-project',
+      scripts: { test: 'node --test' },
+    }, null, 2));
+    fs.mkdirSync(path.join(projectRoot, 'src'), { recursive: true });
+    fs.writeFileSync(path.join(projectRoot, 'src', 'index.js'), 'console.log("ok");\n');
+
+    const output = runCli(['--lang', 'es', 'analyze', '--dry-run'], { cwd: projectRoot });
+
+    assert.match(output, /Dry-run de analisis del proyecto/);
+    assert.match(output, /Escrituras: ninguna/);
+    assert.match(output, /Escribiria \.quiver\/scans\/PROJECT_SCAN\.json/);
+    assert.match(output, /Actualizaria docs\/AI_CONTEXT\.md/);
+    assert.match(output, /Stack principal detectado: node/);
     assert.equal(fs.existsSync(path.join(projectRoot, '.quiver')), false);
     assert.equal(fs.existsSync(path.join(projectRoot, 'docs')), false);
   } finally {
