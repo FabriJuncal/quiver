@@ -1,5 +1,6 @@
 const path = require('path');
 const { runEvidenceCommand } = require('../lib/evidence');
+const { createTranslator } = require('../lib/i18n/catalog');
 
 function formatOutputPath(repoRoot, outputPath) {
   const relativeOutput = path.relative(repoRoot, outputPath).split(path.sep).join('/');
@@ -11,6 +12,7 @@ function formatOutputPath(repoRoot, outputPath) {
 }
 
 function runEvidence(repoRoot, options = {}) {
+  const translator = createTranslator(options.language);
   const command = options.command || '';
   if (options.subcommand !== 'run') {
     throw new Error('create-quiver: missing evidence subcommand. Use: npx create-quiver evidence run -- <command>');
@@ -23,10 +25,10 @@ function runEvidence(repoRoot, options = {}) {
   });
   const displayOutput = formatOutputPath(repoRoot, result.outputPath);
 
-  console.log('Quiver evidence recorded');
-  console.log(`- Command: ${result.record.command}`);
-  console.log(`- Exit code: ${result.exitCode}`);
-  console.log(`- Output: ${displayOutput}`);
+  console.log(translator.t('evidence.recorded'));
+  console.log(`- ${translator.t('evidence.command', { command: result.record.command })}`);
+  console.log(`- ${translator.t('evidence.exit_code', { code: result.exitCode })}`);
+  console.log(`- ${translator.t('evidence.output', { path: displayOutput })}`);
 
   return result;
 }

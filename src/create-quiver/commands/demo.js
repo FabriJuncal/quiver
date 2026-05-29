@@ -8,12 +8,12 @@ function runDemo(options = {}) {
   const plan = buildDemoPlan(options.targetRoot, { demo: options.demo });
 
   if (options.dryRun) {
-    console.log(formatDemoPlan(plan, { dryRun: true }));
+    console.log(formatDemoPlan(plan, { dryRun: true, language: options.language }));
     return plan;
   }
 
   writeDemoPlan(plan);
-  console.log(formatDemoPlan(plan));
+  console.log(formatDemoPlan(plan, { language: options.language }));
   return plan;
 }
 

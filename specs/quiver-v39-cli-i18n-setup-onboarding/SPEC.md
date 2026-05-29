@@ -43,7 +43,7 @@ Localize setup and onboarding commands while making `init --interactive` the pri
 | slice-00 | Setup foundation | completed | none |
 | slice-01 | Init interactive language | planned | v37 complete |
 | slice-02 | Analyze, migrate, and prepare-context | planned | slice-01 |
-| slice-03 | Demo, evidence, and onboarding messages | planned | slice-01 |
+| slice-03 | Demo, evidence, and onboarding messages | completed | slice-01 |
 | slice-04 | Setup tests and smokes | planned | slice-02, slice-03 |
 
 ## Guardrails

@@ -35,6 +35,20 @@ Validation:
 - Passed: `node bin/create-quiver.js spec validate specs/quiver-v39-cli-i18n-setup-onboarding --strict`
 - Passed with expected completed-slice warning: `node bin/create-quiver.js check-slice specs/quiver-v39-cli-i18n-setup-onboarding/slices/slice-02-analyze-migrate-prepare/slice.json --local`
 
+## slice-03-demo-evidence-onboarding
+
+- Localized `demo create spec-viewer` human output through the shared `en`/`es` catalog.
+- Localized `evidence run` command summary output while keeping command strings and output paths exact.
+- Localized `ai onboard` dry-run and prompt-only wrapper output while keeping prompt delimiters and generated prompt contents unchanged.
+- Added regression coverage for `--lang es` and project-configured Spanish defaults.
+
+Validation:
+
+- Passed: `node --test tests/commands/demo.test.js tests/commands/evidence.test.js tests/commands/ai-onboard.test.js tests/lib/i18n-catalog.test.js`
+- Passed: `git diff --check`
+- Passed: `node bin/create-quiver.js spec validate specs/quiver-v39-cli-i18n-setup-onboarding --strict`
+- Passed with expected completed-slice warning: `node bin/create-quiver.js check-slice specs/quiver-v39-cli-i18n-setup-onboarding/slices/slice-03-demo-evidence-onboarding/slice.json --local`
+
 ## Pending Evidence
 
 - `node --test tests/**/*.test.js`

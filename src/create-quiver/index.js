@@ -3353,6 +3353,7 @@ async function run(argv) {
         provider: args.aiProvider,
         providerExplicit: args.aiProviderExplicit,
         model: args.aiModel || undefined,
+        language: args.language,
         plannerProfile: args.aiPlannerProfile || undefined,
         role: args.aiRole,
         timeout: args.aiTimeout,
@@ -3574,6 +3575,7 @@ async function run(argv) {
   if (args.mode === 'evidence') {
     const result = runEvidence(process.cwd(), {
       command: args.evidenceArgs,
+      language: args.language,
       maxOutput: args.evidenceMaxOutput || undefined,
       output: args.evidenceOutput || undefined,
       subcommand: args.evidenceCommand,
@@ -3588,6 +3590,7 @@ async function run(argv) {
       command: args.demoCommand,
       demo: args.demoName,
       dryRun: args.dryRun,
+      language: args.language,
       targetRoot: demoTarget,
     });
     return;

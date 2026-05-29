@@ -60,6 +60,32 @@ test('evidence run records successful command output', () => {
   }
 });
 
+test('evidence run supports Spanish human output without translating command or path', () => {
+  const { dir, cleanup } = makeTmpDir();
+  try {
+    const output = runCli([
+      '--lang',
+      'es',
+      'evidence',
+      'run',
+      '--output',
+      'exito.md',
+      '--',
+      process.execPath,
+      '-e',
+      'console.log("ok")',
+    ], { cwd: dir });
+
+    assert.match(output, /Evidencia de Quiver registrada/);
+    assert.match(output, /Comando: .*node/);
+    assert.match(output, /Codigo de salida: 0/);
+    assert.match(output, /Salida: exito\.md/);
+    assert.equal(fs.existsSync(path.join(dir, 'exito.md')), true);
+  } finally {
+    cleanup();
+  }
+});
+
 test('evidence run preserves failing command exit code', () => {
   const { dir, cleanup } = makeTmpDir();
   try {

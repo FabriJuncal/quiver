@@ -17,6 +17,6 @@ Localize demo, evidence, and onboarding helper outputs that are human-facing CLI
 
 ## Completion Checklist
 
-- [ ] Human-facing onboarding strings cataloged.
-- [ ] Tests added or updated.
-- [ ] Generated artifacts left for v42 unless explicitly in scope.
+- [x] Human-facing onboarding strings cataloged.
+- [x] Tests added or updated.
+- [x] Generated artifacts left for v42 unless explicitly in scope.

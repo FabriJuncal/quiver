@@ -77,6 +77,74 @@ test('ai onboard CLI dry-run prints provider, role, context pack, and invocation
   }
 });
 
+test('ai onboard CLI dry-run supports Spanish human output without translating commands', () => {
+  const repo = makeRepo({
+    'docs/onboarding-notes.md': '# onboarding notes\nRead-only planning only.',
+  });
+  try {
+    const output = execFileSync('node', [
+      BIN_PATH,
+      '--lang',
+      'es',
+      'ai',
+      'onboard',
+      '--provider',
+      'claude',
+      '--role',
+      'planner',
+      '--context',
+      'full',
+      '--input',
+      'docs/onboarding-notes.md',
+      '--timeout',
+      '120',
+      '--dry-run',
+    ], {
+      cwd: repo.root,
+      encoding: 'utf8',
+      env: process.env,
+    });
+
+    assert.ok(output.includes('Dry-run de IA onboard'));
+    assert.ok(output.includes('Provider: claude'));
+    assert.ok(output.includes('Rol: planner'));
+    assert.ok(output.includes('Pack de contexto: full'));
+    assert.ok(output.includes('Comando: claude -p'));
+    assert.ok(output.includes('Timeout: 120ms'));
+    assert.ok(output.includes('Fuente del prompt: packaged planner onboarding template'));
+    assert.ok(output.includes('Docs seleccionados:'));
+    assert.ok(output.includes('Deuda documental:'));
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('ai onboard CLI dry-run reads the configured project language by default', () => {
+  const repo = makeRepo({
+    '.quiver/config.json': `${JSON.stringify({ language: 'es' }, null, 2)}\n`,
+    'docs/onboarding-notes.md': '# onboarding notes\nRead-only planning only.',
+  });
+  try {
+    const output = execAi(repo.root, [
+      '--provider',
+      'claude',
+      '--role',
+      'planner',
+      '--context',
+      'full',
+      '--input',
+      'docs/onboarding-notes.md',
+      '--dry-run',
+    ]);
+
+    assert.ok(output.includes('Dry-run de IA onboard'));
+    assert.ok(output.includes('Rol: planner'));
+    assert.ok(output.includes('Comando: claude -p'));
+  } finally {
+    repo.cleanup();
+  }
+});
+
 test('ai onboard print-prompt prints the exact prompt without invoking provider auth', () => {
   const repo = makeRepo({
     'docs/onboarding-notes.md': '# onboarding notes\nRead-only planning only.',

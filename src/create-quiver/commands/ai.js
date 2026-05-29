@@ -329,77 +329,85 @@ function buildOnboardContext({ role, context, inputText, inputPath, repoRoot }) 
   };
 }
 
-function formatDryRunReport({ task, provider, role, contextPack, phase, invocation, onboardingPlan }) {
+function formatDryRunReport({ task, provider, role, contextPack, phase, invocation, onboardingPlan, language = 'en' }) {
+  const translator = createTranslator(language);
+  const modelStatus = invocation.modelSelection?.supported
+    ? translator.t('ai_task.model_supported')
+    : translator.t('ai_task.model_unsupported');
   const lines = [
-    `AI ${task} dry-run`,
-    `Provider: ${provider}`,
-    `Role: ${role}`,
-    `Context pack: ${contextPack}`,
+    translator.t('ai_task.title.dry_run', { task }),
+    translator.t('ai_task.provider', { provider }),
+    translator.t('ai_task.role', { role }),
+    translator.t('ai_task.context_pack', { context: contextPack }),
   ];
 
   if (phase) {
-    lines.push(`Phase: ${phase}`);
+    lines.push(translator.t('ai_task.phase', { phase }));
   }
 
-  lines.push(`Command: ${invocation.command} ${invocation.args.join(' ')}`);
-  lines.push(`Timeout: ${invocation.timeoutMs}ms`);
-  lines.push(`Prompt transport: ${invocation.promptTransport.mode}`);
-  lines.push(`Prompt length: ${invocation.promptLength} bytes`);
+  lines.push(translator.t('ai_task.command', { command: `${invocation.command} ${invocation.args.join(' ')}`.trim() }));
+  lines.push(translator.t('ai_task.timeout', { timeout: invocation.timeoutMs }));
+  lines.push(translator.t('ai_task.prompt_transport', { mode: invocation.promptTransport.mode }));
+  lines.push(translator.t('ai_task.prompt_length', { bytes: invocation.promptLength }));
   if (invocation.modelSelection && invocation.modelSelection.model) {
-    lines.push(`Model: ${invocation.modelSelection.model}`);
-    lines.push(`Model support: ${invocation.modelSelection.supported ? 'supported' : 'unsupported'} (${invocation.modelSelection.reason})`);
+    lines.push(translator.t('ai_task.model', { model: invocation.modelSelection.model }));
+    lines.push(translator.t('ai_task.model_support', { status: modelStatus, reason: invocation.modelSelection.reason }));
   }
 
   if (onboardingPlan) {
-    lines.push(`Prompt source: ${onboardingPlan.promptSource}`);
-    lines.push(`Selected docs: ${onboardingPlan.selectedDocs.length}`);
-    lines.push(`Documentation debt: ${onboardingPlan.missingDocs.length}`);
+    lines.push(translator.t('ai_task.prompt_source', { source: onboardingPlan.promptSource }));
+    lines.push(translator.t('ai_task.selected_docs', { count: onboardingPlan.selectedDocs.length }));
+    lines.push(translator.t('ai_task.documentation_debt', { count: onboardingPlan.missingDocs.length }));
   }
 
   return `${lines.join('\n')}\n`;
 }
 
-function formatPromptOnlyReport({ task, provider, role, contextPack, phase, invocation, prompt, onboardingPlan, promptSource, inputPath, inputKind, inputVersion }) {
+function formatPromptOnlyReport({ task, provider, role, contextPack, phase, invocation, prompt, onboardingPlan, promptSource, inputPath, inputKind, inputVersion, language = 'en' }) {
+  const translator = createTranslator(language);
+  const modelStatus = invocation.modelSelection?.supported
+    ? translator.t('ai_task.model_supported')
+    : translator.t('ai_task.model_unsupported');
   const lines = [
-    `AI ${task} prompt-only`,
-    `Provider: ${provider}`,
-    `Role: ${role}`,
-    `Context pack: ${contextPack}`,
+    translator.t('ai_task.title.prompt_only', { task }),
+    translator.t('ai_task.provider', { provider }),
+    translator.t('ai_task.role', { role }),
+    translator.t('ai_task.context_pack', { context: contextPack }),
   ];
 
   if (phase) {
-    lines.push(`Phase: ${phase}`);
+    lines.push(translator.t('ai_task.phase', { phase }));
   }
 
-  lines.push(`Command: ${invocation.command} ${invocation.args.join(' ')}`);
-  lines.push(`Timeout: ${invocation.timeoutMs}ms`);
-  lines.push(`Prompt transport: ${invocation.promptTransport.mode}`);
-  lines.push(`Prompt length: ${invocation.promptLength} bytes`);
+  lines.push(translator.t('ai_task.command', { command: `${invocation.command} ${invocation.args.join(' ')}`.trim() }));
+  lines.push(translator.t('ai_task.timeout', { timeout: invocation.timeoutMs }));
+  lines.push(translator.t('ai_task.prompt_transport', { mode: invocation.promptTransport.mode }));
+  lines.push(translator.t('ai_task.prompt_length', { bytes: invocation.promptLength }));
   if (invocation.modelSelection && invocation.modelSelection.model) {
-    lines.push(`Model: ${invocation.modelSelection.model}`);
-    lines.push(`Model support: ${invocation.modelSelection.supported ? 'supported' : 'unsupported'} (${invocation.modelSelection.reason})`);
+    lines.push(translator.t('ai_task.model', { model: invocation.modelSelection.model }));
+    lines.push(translator.t('ai_task.model_support', { status: modelStatus, reason: invocation.modelSelection.reason }));
   }
 
   if (onboardingPlan) {
-    lines.push(`Prompt source: ${onboardingPlan.promptSource}`);
-    lines.push(`Selected docs: ${onboardingPlan.selectedDocs.length}`);
-    lines.push(`Documentation debt: ${onboardingPlan.missingDocs.length}`);
+    lines.push(translator.t('ai_task.prompt_source', { source: onboardingPlan.promptSource }));
+    lines.push(translator.t('ai_task.selected_docs', { count: onboardingPlan.selectedDocs.length }));
+    lines.push(translator.t('ai_task.documentation_debt', { count: onboardingPlan.missingDocs.length }));
   }
 
   if (promptSource) {
-    lines.push(`Prompt source: ${promptSource}`);
+    lines.push(translator.t('ai_task.prompt_source', { source: promptSource }));
   }
 
   if (inputPath) {
-    lines.push(`Input file: ${inputPath}`);
+    lines.push(translator.t('ai_task.input_file', { path: inputPath }));
   }
 
   if (inputKind) {
-    lines.push(`Input kind: ${inputKind}`);
+    lines.push(translator.t('ai_task.input_kind', { kind: inputKind }));
   }
 
   if (inputVersion) {
-    lines.push(`Input version: v${inputVersion}`);
+    lines.push(translator.t('ai_task.input_version', { version: inputVersion }));
   }
 
   lines.push('--- PROMPT START ---');
@@ -1354,6 +1362,7 @@ async function runOnboard(repoRoot, options = {}) {
       role,
       contextPack: context,
       invocation,
+      language: options.language,
       onboardingPlan: contextInfo.plan,
       profile: runtimeProfile,
     };
@@ -1368,6 +1377,7 @@ async function runOnboard(repoRoot, options = {}) {
       role,
       contextPack: context,
       invocation,
+      language: options.language,
       onboardingPlan: contextInfo.plan,
       prompt,
       profile: runtimeProfile,
