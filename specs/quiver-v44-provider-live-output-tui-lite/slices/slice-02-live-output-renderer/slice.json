@@ -1,0 +1,70 @@
+{
+  "slice_id": "slice-02-live-output-renderer",
+  "ticket": "QUIVER-44-02",
+  "type": "feature",
+  "title": "Live output renderer",
+  "objective": "Create a reusable TUI-lite provider output renderer for human TTY verbose mode.",
+  "description": "Adds a shared renderer that presents agent metadata, progress, provider output, elapsed time, heartbeat, and next steps using Quiver's theme and safe fallbacks.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v44-live-output-renderer",
+    "branch_name": "feature/QUIVER-44-02-v44-live-output-renderer"
+  },
+  "files": [
+    "src/create-quiver/lib/cli/provider-live-output.js",
+    "src/create-quiver/lib/cli/ux.js",
+    "tests/lib/cli-ux.test.js",
+    "tests/lib/provider-live-output.test.js"
+  ],
+  "expected_read_paths": [
+    "src/create-quiver/lib/cli/ux.js",
+    "src/create-quiver/lib/cli/theme.js",
+    "src/create-quiver/lib/evidence.js",
+    "tests/lib/cli-ux.test.js",
+    "docs/CLI_UX_GUIDE.md"
+  ],
+  "allowed_write_paths": [
+    "src/create-quiver/lib/cli/provider-live-output.js",
+    "src/create-quiver/lib/cli/ux.js",
+    "tests/lib/cli-ux.test.js",
+    "tests/lib/provider-live-output.test.js",
+    "specs/quiver-v44-provider-live-output-tui-lite/**"
+  ],
+  "depends_on": [
+    "slice-01-provider-stream-hooks"
+  ],
+  "parallel_safe": "after_dependencies",
+  "parallel_safe_reason": "Renderer depends on callback contract but does not yet modify command execution.",
+  "must": [
+    "Render a TUI-lite append-only view for human TTY verbose mode.",
+    "Use Quiver theme symbols and colors.",
+    "Support no-color, dumb terminal, ASCII, and no-TTY fallbacks.",
+    "Redact and truncate displayed provider output.",
+    "Expose a heartbeat/status update API for long silent provider runs.",
+    "Avoid full-screen terminal control and heavyweight dependencies."
+  ],
+  "not_included": [
+    "Provider runner changes.",
+    "Command integration.",
+    "Full-screen TUI or keyboard navigation."
+  ],
+  "acceptance": [
+    "Renderer outputs sections for agent, progress, provider output, and next step.",
+    "Renderer suppresses decorative output in JSON/no-TTY/CI modes.",
+    "No-color and dumb terminal output remain readable.",
+    "Long output is truncated with an explicit marker.",
+    "Secret-like values are redacted before display."
+  ],
+  "tests": [
+    "node --test tests/lib/cli-ux.test.js tests/lib/provider-live-output.test.js",
+    "git diff --check"
+  ],
+  "validation_hints": [
+    "Use deterministic writer injection for snapshot-like assertions.",
+    "Avoid asserting transient spinner frames."
+  ],
+  "estimated_hours": 5,
+  "status": "planned",
+  "blocked_reason": null
+}

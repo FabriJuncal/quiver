@@ -39,6 +39,7 @@ Canonical specs live outside `docs/` in [`../specs/`](../specs/).
 
 Recent specs:
 
+- [`../specs/quiver-v44-provider-live-output-tui-lite/SPEC.md`](../specs/quiver-v44-provider-live-output-tui-lite/SPEC.md)
 - [`../specs/quiver-v43-cli-i18n-audit-release-readiness/SPEC.md`](../specs/quiver-v43-cli-i18n-audit-release-readiness/SPEC.md)
 - [`../specs/quiver-v42-cli-i18n-generated-docs/SPEC.md`](../specs/quiver-v42-cli-i18n-generated-docs/SPEC.md)
 - [`../specs/quiver-v41-cli-i18n-ai-lifecycle/SPEC.md`](../specs/quiver-v41-cli-i18n-ai-lifecycle/SPEC.md)

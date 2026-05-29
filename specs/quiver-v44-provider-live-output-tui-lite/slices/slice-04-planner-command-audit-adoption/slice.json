@@ -1,0 +1,72 @@
+{
+  "slice_id": "slice-04-planner-command-audit-adoption",
+  "ticket": "QUIVER-44-04",
+  "type": "feature",
+  "title": "Planner command audit and adoption",
+  "objective": "Audit and adopt TUI-lite verbose provider output across planner and reviewer commands where appropriate.",
+  "description": "Extends or explicitly documents TUI-lite adoption decisions for ai plan, ai revise, ai review-plan, and ai repair-plan.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v44-planner-command-audit-adoption",
+    "branch_name": "feature/QUIVER-44-04-v44-planner-command-audit-adoption"
+  },
+  "files": [
+    "src/create-quiver/index.js",
+    "src/create-quiver/commands/ai.js",
+    "tests/commands/ai-plan.test.js",
+    "tests/commands/ai-review-plan.test.js",
+    "specs/quiver-v44-provider-live-output-tui-lite/EVIDENCE_REPORT.md"
+  ],
+  "expected_read_paths": [
+    "src/create-quiver/index.js",
+    "src/create-quiver/commands/ai.js",
+    "src/create-quiver/lib/cli/provider-live-output.js",
+    "tests/commands/ai-plan.test.js",
+    "tests/commands/ai-review-plan.test.js",
+    "specs/quiver-v33-approval-ux-and-planner-progress/SPEC.md"
+  ],
+  "allowed_write_paths": [
+    "src/create-quiver/index.js",
+    "src/create-quiver/commands/ai.js",
+    "tests/commands/ai-plan.test.js",
+    "tests/commands/ai-review-plan.test.js",
+    "specs/quiver-v44-provider-live-output-tui-lite/**"
+  ],
+  "depends_on": [
+    "slice-03-prepare-context-integration"
+  ],
+  "parallel_safe": "after_dependencies",
+  "parallel_safe_reason": "Uses the integration pattern proven by prepare-context.",
+  "must": [
+    "Audit ai plan acceptance and technical-plan flows.",
+    "Audit ai revise acceptance and technical-plan flows.",
+    "Audit ai review-plan.",
+    "Audit ai repair-plan.",
+    "Adopt the renderer where the command uses live provider execution and has compatible output contracts.",
+    "Document any command not adopted with reason and follow-up."
+  ],
+  "not_included": [
+    "Executor command adoption.",
+    "PR command adoption.",
+    "Changing approval semantics."
+  ],
+  "acceptance": [
+    "Each listed command has an explicit verbose-output decision.",
+    "Adopted commands keep dry-run, print-prompt, JSON, CI, and no-TTY clean.",
+    "Non-verbose progress remains unchanged.",
+    "Provider failures surface redacted diagnostic output.",
+    "Evidence report records the audit outcome."
+  ],
+  "tests": [
+    "node --test tests/commands/ai-plan.test.js tests/commands/ai-review-plan.test.js",
+    "git diff --check"
+  ],
+  "validation_hints": [
+    "Prefer shared provider progress path changes over per-command formatting.",
+    "Keep approval candidate and plan-review gates unchanged."
+  ],
+  "estimated_hours": 6,
+  "status": "planned",
+  "blocked_reason": null
+}

@@ -1,0 +1,70 @@
+{
+  "slice_id": "slice-03-prepare-context-integration",
+  "ticket": "QUIVER-44-03",
+  "type": "feature",
+  "title": "Prepare-context integration",
+  "objective": "Integrate verbose TUI-lite provider output into planner-assisted ai prepare-context.",
+  "description": "Adds parser plumbing and command integration so `ai prepare-context --with-planner --review --interactive --verbose` shows elegant live provider output in human TTY mode.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v44-prepare-context-integration",
+    "branch_name": "feature/QUIVER-44-03-v44-prepare-context-integration"
+  },
+  "files": [
+    "src/create-quiver/index.js",
+    "src/create-quiver/commands/ai.js",
+    "tests/commands/ai-prepare-context-planner.test.js"
+  ],
+  "expected_read_paths": [
+    "src/create-quiver/index.js",
+    "src/create-quiver/commands/ai.js",
+    "src/create-quiver/lib/cli/provider-live-output.js",
+    "src/create-quiver/lib/ai/providers.js",
+    "src/create-quiver/lib/ai/artifacts.js",
+    "tests/commands/ai-prepare-context-planner.test.js",
+    "docs/CLI_UX_GUIDE.md"
+  ],
+  "allowed_write_paths": [
+    "src/create-quiver/index.js",
+    "src/create-quiver/commands/ai.js",
+    "tests/commands/ai-prepare-context-planner.test.js",
+    "specs/quiver-v44-provider-live-output-tui-lite/**"
+  ],
+  "depends_on": [
+    "slice-02-live-output-renderer"
+  ],
+  "parallel_safe": "after_dependencies",
+  "parallel_safe_reason": "Command integration depends on provider hooks and renderer.",
+  "must": [
+    "Parse and pass `--verbose` to ai prepare-context.",
+    "Activate TUI-lite only for human TTY live provider execution.",
+    "Keep non-verbose spinner behavior unchanged.",
+    "Keep dry-run, print-prompt, JSON, CI, and no-TTY clean.",
+    "Preserve review and interactive approval behavior.",
+    "Preserve planner proposal parsing and docs-only validation."
+  ],
+  "not_included": [
+    "Adoption across all planner commands.",
+    "Provider hook internals.",
+    "Renderer implementation."
+  ],
+  "acceptance": [
+    "`ai prepare-context --with-planner --review --interactive --verbose` shows TUI-lite output in human TTY mode.",
+    "The same command without `--verbose` keeps existing loader output.",
+    "Provider failure shows actionable error plus relevant redacted output.",
+    "Invalid planner output still fails before docs writes.",
+    "`--json`, CI, no-TTY, `--dry-run`, and `--print-prompt` remain clean."
+  ],
+  "tests": [
+    "node --test tests/commands/ai-prepare-context-planner.test.js",
+    "git diff --check"
+  ],
+  "validation_hints": [
+    "Use injected provider functions and writer fixtures.",
+    "Assert docs are not written on provider failure or invalid proposal."
+  ],
+  "estimated_hours": 5,
+  "status": "planned",
+  "blocked_reason": null
+}
