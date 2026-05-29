@@ -13,10 +13,12 @@
   },
   "files": [
     "src/create-quiver/commands/flow.js",
-    "src/create-quiver/commands/doctor.js",
     "src/create-quiver/commands/next.js",
     "src/create-quiver/commands/graph.js",
-    "src/create-quiver/commands/plan.js"
+    "src/create-quiver/commands/plan.js",
+    "src/create-quiver/index.js",
+    "src/create-quiver/lib/doctor.js",
+    "src/create-quiver/lib/renderers/tree.js"
   ],
   "expected_read_paths": [
     "src/create-quiver/lib/i18n/**",
@@ -28,10 +30,12 @@
   ],
   "allowed_write_paths": [
     "src/create-quiver/commands/flow.js",
-    "src/create-quiver/commands/doctor.js",
     "src/create-quiver/commands/next.js",
     "src/create-quiver/commands/graph.js",
     "src/create-quiver/commands/plan.js",
+    "src/create-quiver/index.js",
+    "src/create-quiver/lib/doctor.js",
+    "src/create-quiver/lib/renderers/tree.js",
     "src/create-quiver/lib/i18n/**",
     "tests/commands/flow.test.js",
     "tests/commands/doctor.test.js",
@@ -67,6 +71,7 @@
     "Include fixtures with no specs and with blocked slices."
   ],
   "estimated_hours": 8,
-  "status": "planned",
-  "blocked_reason": "Requires completion of slice-01-version-dashboard-help."
+  "status": "completed",
+  "blocked_reason": null,
+  "completed_at": "2026-05-29T00:00:00.000Z"
 }

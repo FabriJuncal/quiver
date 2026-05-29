@@ -13,6 +13,9 @@
   },
   "files": [
     "src/create-quiver/commands/ai.js",
+    "src/create-quiver/index.js",
+    "src/create-quiver/lib/ai/export-state.js",
+    "src/create-quiver/lib/ai/run-state.js",
     "tests/commands/ai-export.test.js",
     "tests/commands/ai-run-state.test.js"
   ],
@@ -23,6 +26,9 @@
   ],
   "allowed_write_paths": [
     "src/create-quiver/commands/ai.js",
+    "src/create-quiver/index.js",
+    "src/create-quiver/lib/ai/export-state.js",
+    "src/create-quiver/lib/ai/run-state.js",
     "src/create-quiver/lib/i18n/**",
     "tests/commands/ai-export.test.js",
     "tests/commands/ai-run-state.test.js",
@@ -54,6 +60,7 @@
     "Avoid changing export file contents unless they are explicitly human-facing docs."
   ],
   "estimated_hours": 7,
-  "status": "planned",
-  "blocked_reason": "Requires completion of slice-01-version-dashboard-help."
+  "status": "completed",
+  "blocked_reason": null,
+  "completed_at": "2026-05-29T00:00:00.000Z"
 }

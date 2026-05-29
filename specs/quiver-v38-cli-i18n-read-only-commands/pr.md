@@ -1,83 +1,119 @@
 ## Title
 
-feat: localize version and dashboard read-only output
+feat: complete v38 read-only CLI i18n
 
 ## Summary
 
-- Localizes the first v38 read-only command slice: `version`, help contract coverage, and `dashboard`.
-- Routes human `version` and `dashboard` output through the shared `en`/`es` catalog.
-- Preserves stable JSON output for `version --json` and `dashboard --json`.
-- Marks `slice-01-version-dashboard-help` as completed with evidence.
+- Completes the v38 read-only command migration to the shared `en`/`es` i18n catalog.
+- Localizes human output for `flow`, `doctor`, `next`, `graph`, `plan`, and AI read-only inspection/export/status surfaces.
+- Preserves JSON contracts, ids, paths, provider/model names, and exact suggested command snippets.
+- Closes v38 with full tests, package smoke, create-quiver smoke, spec validation, slice validation, and evidence.
 
 ## Scope
 
-- Included: `version` human labels, `dashboard` compact/details/section labels, localized dashboard warnings and human option errors.
-- Included: command tests for explicit `--lang`, configured project language, and JSON stability.
-- Excluded: v38 slice-02 command groups (`flow`, `doctor`, `next`, `graph`, `plan`) and later AI lifecycle/localization slices.
+- Included: `flow`, `doctor`, `next`, `graph`, `plan` human output in `en` and `es`.
+- Included: `ai inspect`, `ai export --format markdown`, `ai specs list`, `ai slices list`, `ai trace report`, `ai status`, `ai resume`, and `ai approvals` human output in `en` and `es`.
+- Included: shared read-only formatting helpers for status labels, warning prefixes, and human translators.
+- Included: focused command tests plus full v38 evidence and handoff closure.
+- Excluded: write commands, provider-backed AI execution, generated project docs, and v44 TUI-lite work.
 
 ## Files
 
 - `src/create-quiver/index.js`
-- `src/create-quiver/lib/version.js`
-- `src/create-quiver/lib/dashboard.js`
+- `src/create-quiver/commands/ai.js`
+- `src/create-quiver/commands/flow.js`
+- `src/create-quiver/commands/graph.js`
+- `src/create-quiver/commands/next.js`
+- `src/create-quiver/commands/plan.js`
+- `src/create-quiver/lib/ai/export-state.js`
+- `src/create-quiver/lib/ai/run-state.js`
 - `src/create-quiver/lib/i18n/messages/en.js`
 - `src/create-quiver/lib/i18n/messages/es.js`
-- `tests/commands/version.test.js`
-- `tests/commands/dashboard.test.js`
+- `src/create-quiver/lib/i18n/read-only-format.js`
+- `src/create-quiver/lib/renderers/tree.js`
+- `tests/commands/ai-export.test.js`
+- `tests/commands/ai-run-state.test.js`
+- `tests/commands/doctor.test.js`
+- `tests/commands/flow.test.js`
+- `tests/commands/graph.test.js`
+- `tests/commands/next.test.js`
+- `tests/commands/plan.test.js`
 - `specs/quiver-v38-cli-i18n-read-only-commands/**`
 
 ## How to Test (DETAILED - REQUIRED)
 
 ### Required Environment
 
-- Node.js available.
+- Node.js and npm available.
+- Repository dependencies installed.
 - `gh` available only for PR creation, not for runtime validation.
 
 ### Worktree Access
 
-- Branch: `feature/QUIVER-38-01-v38-version-dashboard-help`
+- Worktree: `/Users/fabrijk/Documents/Work/Proyectos Personales/nika/frameworks/quiver-v38-02`
+- Branch: `feature/QUIVER-38-02-v38-flow-doctor-next-graph`
 - Base: `main`
 
 ### Run the Project
 
 ```bash
-node bin/create-quiver.js version --no-color --lang es
-node bin/create-quiver.js dashboard --lang es
-node bin/create-quiver.js dashboard --json
+node bin/create-quiver.js flow --lang es
+node bin/create-quiver.js doctor --lang es
+node bin/create-quiver.js next --lang es --json
+node bin/create-quiver.js graph --lang es
+node bin/create-quiver.js plan --lang es
+node bin/create-quiver.js ai inspect --lang es
+node bin/create-quiver.js ai specs list --lang es
+node bin/create-quiver.js ai slices list --lang es
+node bin/create-quiver.js ai trace report --lang es
+node bin/create-quiver.js ai export --format markdown --lang es
+node bin/create-quiver.js ai export --format json --lang es
+node bin/create-quiver.js ai status --lang es
+node bin/create-quiver.js ai resume --lang es
+node bin/create-quiver.js ai approvals --lang es
 ```
 
 ### Use Cases
 
-- Run `version` with `--lang es` and confirm Spanish labels.
-- Configure `.quiver/config.json` with `"language": "es"` and run `version` or `dashboard` without `--lang`.
-- Run `dashboard --section slices --lang es` and confirm suggested commands stay exact.
-- Run JSON modes and confirm stdout remains parseable JSON without localized human text.
+- Run included read-only commands with `--lang es` and confirm labels/messages render in Spanish.
+- Run the same commands without `--lang` in a project configured with `"language": "es"` and confirm the configured project language is used.
+- Run included JSON modes and confirm stdout remains parseable JSON without localized field names.
+- Confirm suggested commands, flags, ids, paths, provider names, and model names remain exact and untranslated.
+- Confirm empty, warning, and blocker states render localized human text without changing machine-readable contracts.
 
 ### Technical Verification
 
 ```bash
-node --test tests/commands/version.test.js tests/commands/dashboard.test.js tests/commands/cli-contract.test.js tests/lib/version.test.js tests/lib/dashboard.test.js tests/lib/i18n-catalog.test.js tests/lib/i18n-language.test.js
+node --test tests/commands/flow.test.js tests/commands/doctor.test.js tests/commands/next.test.js tests/commands/graph.test.js tests/commands/plan.test.js tests/lib/i18n-catalog.test.js
+node --test tests/commands/ai-export.test.js tests/commands/ai-run-state.test.js tests/lib/ai-export-state.test.js tests/lib/ai-run-state.test.js tests/lib/i18n-catalog.test.js
 node --test tests/**/*.test.js
+npm run package:quiver
+npm run smoke:create-quiver
 git diff --check
 node bin/create-quiver.js spec validate specs/quiver-v38-cli-i18n-read-only-commands --strict
-node bin/create-quiver.js check-slice specs/quiver-v38-cli-i18n-read-only-commands/slices/slice-01-version-dashboard-help/slice.json --local
+node bin/create-quiver.js check-slice specs/quiver-v38-cli-i18n-read-only-commands/slices/slice-04-read-only-tests-smokes/slice.json --local
 ```
 
 ## Evidence
 
-- Passed: focused command/lib test set.
-- Passed: full Node suite, 555 tests.
+- Passed: focused slice-02 command/lib test set.
+- Passed: focused slice-03 AI command/lib test set.
+- Passed: `node --test tests/**/*.test.js` (562 tests).
+- Passed: `npm run package:quiver`.
+- Passed: `npm run smoke:create-quiver`.
 - Passed: `git diff --check`.
 - Passed: strict v38 spec validation.
 - Passed: `check-slice --local` with expected warning because the slice is already marked completed.
 
 ## Rollback
 
-- Revert the single slice commit.
+- Revert the v38 slice commits in this PR.
 - Re-run `node --test tests/**/*.test.js`.
+- Re-run `npm run package:quiver`.
+- Re-run `npm run smoke:create-quiver`.
 - Re-run `node bin/create-quiver.js spec validate specs/quiver-v38-cli-i18n-read-only-commands --strict`.
 
 ## Risks / Notes
 
-- `npm run package:quiver` and `npm run smoke:create-quiver` remain pending for final v38 release readiness.
-- This PR intentionally does not include `specs/quiver-v44-provider-live-output-tui-lite/`.
+- AI lifecycle work in later specs should account for the read-only AI status/resume coverage already completed here to avoid duplicate localization work.
+- This PR intentionally does not include or modify `specs/quiver-v44-provider-live-output-tui-lite/`.

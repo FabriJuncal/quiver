@@ -62,6 +62,7 @@ const { createUx } = require('./lib/cli/ux');
 const { validateUxFlags } = require('./lib/cli/ux-flags');
 const { DEFAULT_LANGUAGE, extractCliLanguageFlag, resolveLanguage } = require('./lib/i18n/language');
 const { createTranslator, getCatalog, translate } = require('./lib/i18n/catalog');
+const { formatWarningPrefix } = require('./lib/i18n/read-only-format');
 const { relativePosixPath, resolveTargetRoot } = require('./lib/paths');
 const {
   CURRENT_SCAN_RELATIVE_PATH,
@@ -2668,6 +2669,7 @@ function buildDoctorCommandReport(projectRoot) {
 }
 
 function formatDoctorHumanReport(report, options = {}) {
+  const translator = createTranslator(options.language);
   const lines = [];
   const ux = createUx({
     ...options,
@@ -2684,19 +2686,39 @@ function formatDoctorHumanReport(report, options = {}) {
     if (status === 'error') return 'error';
     return 'warning';
   };
+  const localizeDoctorText = (message) => {
+    const text = String(message || '');
+    let match = text.match(/^Quiver doctor passed for (.+)$/);
+    if (match) return translator.t('doctor.check.passed_for', { path: match[1] });
+    match = text.match(/^Layout: (.+)$/);
+    if (match) return translator.t('doctor.check.layout', { layout: match[1] });
+    if (text === 'Specs: none yet') return translator.t('doctor.check.specs_none');
+    match = text.match(/^Specs: (.+)$/);
+    if (match) return translator.t('doctor.check.specs_found', { specs: match[1] });
+    if (text === 'Required files found') return translator.t('doctor.check.required_files_found');
+    if (text === 'Workflow scripts available') return translator.t('doctor.check.workflow_scripts_available');
+    if (text === 'Quiver state metadata found') return translator.t('doctor.check.state_found');
+    if (text === 'Project analysis artifacts found') return translator.t('doctor.check.project_analysis_found');
+    if (text === 'No specs yet. That is valid after the AI-first init flow.') return translator.t('doctor.fix.no_specs_yet');
+    if (text === 'Run `npx create-quiver analyze` to generate docs/PROJECT_MAP.md when you want the visible project map.') return translator.t('doctor.fix.generate_project_map');
+    if (text === 'Analyze the project first: npx create-quiver analyze') return translator.t('doctor.fix.analyze_first');
+    if (text === 'Check the next ready slice: npx create-quiver next') return translator.t('doctor.fix.check_next');
+    if (text === 'Create real specs and slices only after acceptance criteria are approved and the technical plan is reviewed and approved.') return translator.t('doctor.fix.create_specs_after_approval');
+    return formatWarningPrefix(text, translator);
+  };
 
-  ux.section('Quiver Doctor');
+  ux.section(translator.t('doctor.title'));
   ux.line('');
-  ux.line('Checks');
+  ux.line(translator.t('doctor.checks'));
   for (const check of report.checks) {
-    const line = `  ${symbolForStatus(check.status)} ${check.message}`;
+    const line = `  ${symbolForStatus(check.status)} ${localizeDoctorText(check.message)}`;
     ux.line(ux.mode.decoration ? ux.theme.status(colorForStatus(check.status), line) : line);
   }
 
   ux.line('');
-  ux.line('Suggested fixes');
+  ux.line(translator.t('doctor.suggested_fixes'));
   for (const fix of report.suggested_fixes) {
-    const line = `  ${ux.theme.symbols.bullet} ${fix}`;
+    const line = `  ${ux.theme.symbols.bullet} ${localizeDoctorText(fix)}`;
     ux.line(ux.mode.decoration ? ux.theme.status('command', line) : line);
   }
 
@@ -2947,6 +2969,7 @@ function runDoctor(targetDir, options = {}) {
     console.log(JSON.stringify(commandReport, null, 2));
   } else {
     process.stdout.write(formatDoctorHumanReport(commandReport, {
+      language: options.language,
       noColor: options.noColor,
       unicode: options.unicode,
     }));
@@ -3031,6 +3054,7 @@ async function run(argv) {
   if (args.mode === 'flow') {
     await runFlow(process.cwd(), {
       json: args.json,
+      language: args.language,
     });
     return;
   }
@@ -3084,6 +3108,7 @@ async function run(argv) {
     runPlan(process.cwd(), {
       includeCompleted: args.includeCompleted,
       json: args.json,
+      language: args.language,
       onlyReady: args.onlyReady,
       specSlug: args.specSlug,
       unicode: args.unicode,
@@ -3120,12 +3145,14 @@ async function run(argv) {
       runAiActiveSlice(process.cwd(), {
         command: args.aiSecondaryCommand || 'status',
         dryRun: args.dryRun,
+        language: args.language,
       });
       return;
     }
 
     if (args.aiCommand === 'status') {
       runAiLifecycleStatus(process.cwd(), {
+        language: args.language,
         runId: args.aiRunId || undefined,
       });
       return;
@@ -3133,6 +3160,7 @@ async function run(argv) {
 
     if (args.aiCommand === 'resume') {
       runAiLifecycleResume(process.cwd(), {
+        language: args.language,
         runId: args.aiRunId || undefined,
       });
       return;
@@ -3141,6 +3169,7 @@ async function run(argv) {
     if (args.aiCommand === 'inspect') {
       runAiInspect(process.cwd(), {
         includeCompleted: args.includeCompleted,
+        language: args.language,
       });
       return;
     }
@@ -3149,6 +3178,7 @@ async function run(argv) {
       runAiExport(process.cwd(), {
         format: args.formatExplicit ? args.format : 'json',
         includeCompleted: args.includeCompleted,
+        language: args.language,
       });
       return;
     }
@@ -3157,6 +3187,7 @@ async function run(argv) {
       runAiSpecsList(process.cwd(), {
         includeCompleted: args.includeCompleted,
         json: args.json,
+        language: args.language,
       });
       return;
     }
@@ -3165,6 +3196,7 @@ async function run(argv) {
       runAiSlicesList(process.cwd(), {
         includeCompleted: args.includeCompleted,
         json: args.json,
+        language: args.language,
       });
       return;
     }
@@ -3172,6 +3204,7 @@ async function run(argv) {
     if (args.aiCommand === 'trace') {
       runAiTraceReport(process.cwd(), {
         includeCompleted: args.includeCompleted,
+        language: args.language,
       });
       return;
     }
@@ -3321,7 +3354,9 @@ async function run(argv) {
     }
 
     if (args.aiCommand === 'approvals' || args.aiCommand === 'approval-status') {
-      await runAiApprovalStatus(process.cwd());
+      await runAiApprovalStatus(process.cwd(), {
+        language: args.language,
+      });
       return;
     }
 
@@ -3405,6 +3440,7 @@ async function run(argv) {
       format: args.format,
       includeCompleted: args.includeCompleted,
       json: args.json,
+      language: args.language,
       level: args.level,
       showConflicts: args.showConflicts,
       specSlug: args.specSlug,
@@ -3419,6 +3455,7 @@ async function run(argv) {
       autoStart: args.autoStart,
       includeCompleted: args.includeCompleted,
       json: args.json,
+      language: args.language,
       specSlug: args.specSlug,
     });
     return;
@@ -3459,6 +3496,7 @@ async function run(argv) {
       dryRun: args.dryRun,
       fix: args.doctorFix,
       json: args.json,
+      language: args.language,
       noColor: args.noColor,
       unicode: args.unicode,
     });

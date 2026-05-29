@@ -4,6 +4,7 @@ const path = require('node:path');
 const { listAgentProfiles } = require('../agent-profiles');
 const { PLANNER_APPROVAL_PHASES, readPhaseApproval } = require('../approvals');
 const { collectLayoutReport } = require('../doctor');
+const { formatStatus, translatorForHuman } = require('../i18n/read-only-format');
 const {
   collectActiveSliceState,
   filterSlicesForExecution,
@@ -534,17 +535,23 @@ function collectLifecycleExport(projectRoot, options = {}) {
   return exportData;
 }
 
-function formatLifecycleInspect(data) {
+function formatLifecycleInspect(data, options = {}) {
+  const translator = translatorForHuman(options);
   const lines = [
-    'Quiver lifecycle inspect',
-    `Project: ${data.project.name}`,
-    `Specs: ${data.summary.specs}`,
-    `Slices: ${data.summary.slices} total, ${data.summary.open_slices} open, ${data.summary.blocked_slices} blocked, ${data.summary.progress_percent}% done`,
-    `Runs: ${data.summary.runs}`,
-    `Agents configured: ${data.summary.configured_agents}/${data.agents.length}`,
-    `Layout: ${data.migration.layout}`,
+    translator.t('ai.inspect.title'),
+    `${translator.t('ai.label.project')}: ${data.project.name}`,
+    `${translator.t('ai.label.specs')}: ${data.summary.specs}`,
+    `${translator.t('ai.inspect.slices_summary', {
+      total: data.summary.slices,
+      open: data.summary.open_slices,
+      blocked: data.summary.blocked_slices,
+      percent: data.summary.progress_percent,
+    })}`,
+    `${translator.t('ai.label.runs')}: ${data.summary.runs}`,
+    `${translator.t('ai.inspect.agents_configured')}: ${data.summary.configured_agents}/${data.agents.length}`,
+    `${translator.t('ai.label.layout')}: ${data.migration.layout}`,
     '',
-    'Next safe commands',
+    translator.t('ai.label.next_safe_commands'),
   ];
 
   for (const step of data.next_steps || collectNextSteps(data)) {
@@ -554,14 +561,14 @@ function formatLifecycleInspect(data) {
   if (data.active_slice) {
     lines.push(
       '',
-      'Active slice state',
-      `- Sources: ${data.active_slice.sources.length}`,
-      `- Reconciliation: ${data.active_slice.reconciliation.decision} (${data.active_slice.reconciliation.reason})`,
+      translator.t('ai.inspect.active_slice_state'),
+      `- ${translator.t('ai.label.sources')}: ${data.active_slice.sources.length}`,
+      `- ${translator.t('ai.label.reconciliation')}: ${data.active_slice.reconciliation.decision} (${data.active_slice.reconciliation.reason})`,
     );
   }
 
   if (data.dashboard.blockers.length > 0) {
-    lines.push('', 'Blockers');
+    lines.push('', translator.t('ai.label.blockers'));
     for (const blocker of data.dashboard.blockers) {
       lines.push(`- ${blocker.ref}: ${blocker.reason}`);
     }
@@ -571,72 +578,75 @@ function formatLifecycleInspect(data) {
   return `${lines.join('\n')}\n`;
 }
 
-function formatSpecsList(data) {
-  const lines = ['Quiver specs list'];
+function formatSpecsList(data, options = {}) {
+  const translator = translatorForHuman(options);
+  const lines = [translator.t('ai.specs.title')];
 
   if (data.specs.length === 0) {
-    lines.push('- No specs found. Next: npx create-quiver spec create --dry-run');
+    lines.push(`- ${translator.t('ai.specs.empty')} ${translator.t('ai.label.next')}: npx create-quiver spec create --dry-run`);
     lines.push('');
     return `${lines.join('\n')}\n`;
   }
 
   for (const spec of data.specs) {
-    lines.push(`- ${spec.slug}: ${spec.status}, ${spec.progress.percent}% done, ${spec.progress.total} slices (${spec.path})`);
+    lines.push(`- ${spec.slug}: ${formatStatus(spec.status, translator)}, ${spec.progress.percent}% ${translator.t('ai.label.done')}, ${translator.t('common.slice.count', { count: spec.progress.total })} (${spec.path})`);
   }
 
   lines.push('');
   return `${lines.join('\n')}\n`;
 }
 
-function formatSlicesList(data) {
-  const lines = ['Quiver slices list'];
+function formatSlicesList(data, options = {}) {
+  const translator = translatorForHuman(options);
+  const lines = [translator.t('ai.slices.title')];
 
   if (data.slices.length === 0) {
-    lines.push('- No slices found. Next: npx create-quiver spec create --dry-run');
+    lines.push(`- ${translator.t('ai.slices.empty')} ${translator.t('ai.label.next')}: npx create-quiver spec create --dry-run`);
     lines.push('');
     return `${lines.join('\n')}\n`;
   }
 
   for (const slice of data.slices) {
-    const deps = slice.dependencies.length > 0 ? ` deps=${slice.dependencies.join(',')}` : '';
-    const blocked = slice.blocked_reason ? ` blocked=${slice.blocked_reason}` : '';
-    lines.push(`- ${slice.ref}: ${slice.status}, ${slice.progress}% done${deps}${blocked}`);
+    const deps = slice.dependencies.length > 0 ? ` ${translator.t('ai.slices.deps')}=${slice.dependencies.join(',')}` : '';
+    const blocked = slice.blocked_reason ? ` ${translator.t('ai.slices.blocked')}=${slice.blocked_reason}` : '';
+    lines.push(`- ${slice.ref}: ${formatStatus(slice.status, translator)}, ${slice.progress}% ${translator.t('ai.label.done')}${deps}${blocked}`);
   }
 
   lines.push('');
   return `${lines.join('\n')}\n`;
 }
 
-function formatTraceReport(data) {
+function formatTraceReport(data, options = {}) {
+  const translator = translatorForHuman(options);
   const lines = [
-    'Quiver trace report',
-    `Project: ${data.project.name}`,
-    `Schema: ${data.schema_version}`,
+    translator.t('ai.trace.title'),
+    `${translator.t('ai.label.project')}: ${data.project.name}`,
+    `${translator.t('ai.label.schema')}: ${data.schema_version}`,
     '',
-    'Runs',
+    translator.t('ai.label.runs'),
   ];
 
   if (data.runs.length === 0) {
-    lines.push('- none');
+    lines.push(`- ${translator.t('common.none')}`);
   } else {
     for (const run of data.runs) {
-      lines.push(`- ${run.run_id}: ${run.phase} (${run.status}) -> ${run.next_command}`);
+      lines.push(`- ${run.run_id}: ${run.phase} (${formatStatus(run.status, translator)}) -> ${run.next_command}`);
     }
   }
 
-  lines.push('', 'Execution waves');
+  lines.push('', translator.t('ai.trace.execution_waves'));
   if (!data.graph.ok) {
-    lines.push(`- graph error: ${data.graph.error.message}`);
+    lines.push(`- ${translator.t('ai.trace.graph_error')}: ${data.graph.error.message}`);
   } else if (data.graph.levels.length === 0) {
-    lines.push('- none');
+    lines.push(`- ${translator.t('common.none')}`);
   } else {
     for (const level of data.graph.levels) {
-      lines.push(`- wave ${level.level}: ${level.slices.join(', ')}`);
+      lines.push(`- ${translator.t('ai.trace.wave')} ${level.level}: ${level.slices.join(', ')}`);
     }
   }
 
-  lines.push('', 'Migration');
-  lines.push(`- layout: ${data.migration.layout}`);
+  lines.push('', translator.t('ai.trace.migration'));
+  lines.push(`- ${translator.t('ai.label.layout').toLowerCase()}: ${data.migration.layout}`);
   for (const recommendation of data.migration.recommendations) {
     lines.push(`- ${recommendation}`);
   }
@@ -645,71 +655,72 @@ function formatTraceReport(data) {
   return `${lines.join('\n')}\n`;
 }
 
-function formatLifecycleExportMarkdown(data) {
+function formatLifecycleExportMarkdown(data, options = {}) {
+  const translator = translatorForHuman(options);
   const lines = [
-    '# Quiver Lifecycle Export',
+    `# ${translator.t('ai.export_markdown.title')}`,
     '',
-    `- Project: ${data.project.name}`,
-    `- Generated: ${data.generated_at}`,
-    `- Schema version: ${data.schema_version}`,
-    `- Specs: ${data.summary.specs}`,
-    `- Slices: ${data.summary.slices} total, ${data.summary.completed_slices} completed, ${data.summary.open_slices} open`,
-    `- Progress: ${data.summary.progress_percent}%`,
-    `- Layout: ${data.migration.layout}`,
+    `- ${translator.t('ai.label.project')}: ${data.project.name}`,
+    `- ${translator.t('ai.export_markdown.generated')}: ${data.generated_at}`,
+    `- ${translator.t('ai.export_markdown.schema_version')}: ${data.schema_version}`,
+    `- ${translator.t('ai.label.specs')}: ${data.summary.specs}`,
+    `- ${translator.t('ai.label.slices')}: ${data.summary.slices} ${translator.t('ai.label.total')}, ${data.summary.completed_slices} ${translator.t('status.completed')}, ${data.summary.open_slices} ${translator.t('status.open')}`,
+    `- ${translator.t('ai.label.progress')}: ${data.summary.progress_percent}%`,
+    `- ${translator.t('ai.label.layout')}: ${data.migration.layout}`,
     '',
-    '## Specs',
+    `## ${translator.t('ai.label.specs')}`,
     '',
   ];
 
   if (data.specs.length === 0) {
-    lines.push('No specs found.');
+    lines.push(translator.t('ai.specs.empty_sentence'));
   } else {
-    lines.push('| Spec | Status | Progress | Slices | Path |');
+    lines.push(`| ${translator.t('ai.table.spec')} | ${translator.t('ai.table.status')} | ${translator.t('ai.table.progress')} | ${translator.t('ai.table.slices')} | ${translator.t('ai.table.path')} |`);
     lines.push('|---|---|---:|---:|---|');
     for (const spec of data.specs) {
-      lines.push(`| ${spec.slug} | ${spec.status} | ${spec.progress.percent}% | ${spec.progress.total} | ${spec.path} |`);
+      lines.push(`| ${spec.slug} | ${formatStatus(spec.status, translator)} | ${spec.progress.percent}% | ${spec.progress.total} | ${spec.path} |`);
     }
   }
 
-  lines.push('', '## Slices', '');
+  lines.push('', `## ${translator.t('ai.label.slices')}`, '');
   if (data.slices.length === 0) {
-    lines.push('No slices found.');
+    lines.push(translator.t('ai.slices.empty_sentence'));
   } else {
-    lines.push('| Slice | Status | Progress | Dependencies | Write Scope |');
+    lines.push(`| ${translator.t('ai.table.slice')} | ${translator.t('ai.table.status')} | ${translator.t('ai.table.progress')} | ${translator.t('ai.table.dependencies')} | ${translator.t('ai.table.write_scope')} |`);
     lines.push('|---|---|---:|---|---|');
     for (const slice of data.slices) {
-      lines.push(`| ${slice.ref} | ${slice.status} | ${slice.progress}% | ${slice.dependencies.join(', ') || '-'} | ${slice.allowed_write_paths.join(', ') || slice.files.join(', ') || '-'} |`);
+      lines.push(`| ${slice.ref} | ${formatStatus(slice.status, translator)} | ${slice.progress}% | ${slice.dependencies.join(', ') || '-'} | ${slice.allowed_write_paths.join(', ') || slice.files.join(', ') || '-'} |`);
     }
   }
 
-  lines.push('', '## Agents', '');
+  lines.push('', `## ${translator.t('ai.label.agents')}`, '');
   if (data.agents.length === 0) {
-    lines.push('No agent roles available.');
+    lines.push(translator.t('ai.agents.empty_sentence'));
   } else {
-    lines.push('| Role | Configured | Provider | Model |');
+    lines.push(`| ${translator.t('ai.table.role')} | ${translator.t('ai.table.configured')} | ${translator.t('ai.table.provider')} | ${translator.t('ai.table.model')} |`);
     lines.push('|---|---|---|---|');
     for (const agent of data.agents) {
-      lines.push(`| ${agent.role} | ${agent.configured ? 'yes' : 'no'} | ${agent.provider || '-'} | ${agent.model || '-'} |`);
+      lines.push(`| ${agent.role} | ${agent.configured ? translator.t('common.yes') : translator.t('common.no')} | ${agent.provider || '-'} | ${agent.model || '-'} |`);
     }
   }
 
-  lines.push('', '## Runs', '');
+  lines.push('', `## ${translator.t('ai.label.runs')}`, '');
   if (data.runs.length === 0) {
-    lines.push('No AI runs found.');
+    lines.push(translator.t('ai.runs.empty_sentence'));
   } else {
-    lines.push('| Run | Phase | Status | Next Command |');
+    lines.push(`| ${translator.t('ai.table.run')} | ${translator.t('ai.table.phase')} | ${translator.t('ai.table.status')} | ${translator.t('ai.table.next_command')} |`);
     lines.push('|---|---|---|---|');
     for (const run of data.runs) {
-      lines.push(`| ${run.run_id} | ${run.phase} | ${run.status} | \`${run.next_command}\` |`);
+      lines.push(`| ${run.run_id} | ${run.phase} | ${formatStatus(run.status, translator)} | \`${run.next_command}\` |`);
     }
   }
 
-  lines.push('', '## Migration', '');
-  lines.push(`- Layout: ${data.migration.layout}`);
+  lines.push('', `## ${translator.t('ai.trace.migration')}`, '');
+  lines.push(`- ${translator.t('ai.label.layout')}: ${data.migration.layout}`);
   for (const recommendation of data.migration.recommendations) {
     lines.push(`- ${recommendation}`);
   }
-  lines.push(`- Dry-run: \`${data.migration.dry_run_command}\``);
+  lines.push(`- ${translator.t('ai.export_markdown.dry_run')}: \`${data.migration.dry_run_command}\``);
   lines.push('');
 
   return `${lines.join('\n')}\n`;

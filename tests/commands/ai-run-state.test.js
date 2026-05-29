@@ -36,6 +36,13 @@ function execAi(repoRoot, args = []) {
   });
 }
 
+function execCli(repoRoot, args = []) {
+  return execFileSync(process.execPath, [BIN_PATH, ...args], {
+    cwd: repoRoot,
+    encoding: 'utf8',
+  });
+}
+
 function structuredTechnicalPlanText(slug = 'run-state-spec') {
   return `${JSON.stringify({
     spec: {
@@ -72,6 +79,27 @@ test('ai run create creates persistent run state and ai status can inspect it', 
     const resume = execAi(repo.root, ['resume']);
     assert.match(resume, /AI run resume/);
     assert.match(resume, /Current phase: created/);
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('ai status and resume render Spanish human output while preserving commands', () => {
+  const repo = makeRepo();
+
+  try {
+    execAi(repo.root, ['run', 'create', '--input', 'requirements.md', '--run', 'run-cli']);
+
+    const status = execCli(repo.root, ['--lang', 'es', 'ai', 'status']);
+    assert.match(status, /Estado del run de IA/);
+    assert.match(status, /Run: run-cli/);
+    assert.match(status, /Estado: activo/);
+    assert.match(status, /Proximo comando seguro: npx create-quiver ai plan --phase acceptance/);
+
+    const resume = execCli(repo.root, ['--lang', 'es', 'ai', 'resume']);
+    assert.match(resume, /Reanudar run de IA/);
+    assert.match(resume, /Fase actual: created/);
+    assert.match(resume, /npx create-quiver ai plan --phase acceptance/);
   } finally {
     repo.cleanup();
   }
@@ -192,6 +220,14 @@ test('ai approvals separates run-scoped approvals from global planner approvals'
     assert.match(output, /Global planner approvals/);
     assert.match(output, /Phase: acceptance/);
     assert.match(output, /Run relation: historical/);
+
+    const spanish = execCli(repo.root, ['--lang', 'es', 'ai', 'approvals']);
+    assert.match(spanish, /Estado de aprobaciones de IA/);
+    assert.match(spanish, /Aprobaciones asociadas a runs/);
+    assert.match(spanish, /Run activo: run-active/);
+    assert.match(spanish, /Aprobaciones globales del planner/);
+    assert.match(spanish, /Relacion con run: historico/);
+    assert.match(spanish, /npx create-quiver ai approve --phase acceptance --version 1/);
   } finally {
     repo.cleanup();
   }
@@ -204,6 +240,9 @@ test('ai status reports no active run without creating files', () => {
     const output = execAi(repo.root, ['status']);
     assert.match(output, /Status: no active run/);
     assert.match(output, /ai run create --input <requirements.md>/);
+    const spanish = execCli(repo.root, ['--lang', 'es', 'ai', 'status']);
+    assert.match(spanish, /Estado: sin run activo/);
+    assert.match(spanish, /npx create-quiver ai run create --input <requirements\.md>/);
     assert.equal(fs.existsSync(path.join(repo.root, '.quiver')), false);
   } finally {
     repo.cleanup();

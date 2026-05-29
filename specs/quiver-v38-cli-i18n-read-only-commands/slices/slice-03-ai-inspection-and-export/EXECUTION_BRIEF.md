@@ -17,6 +17,6 @@ Localize AI read-only commands such as `ai inspect`, `ai export`, `ai specs list
 
 ## Completion Checklist
 
-- [ ] AI read-only human strings cataloged.
-- [ ] JSON/export tests preserved.
-- [ ] Empty/missing-state tests added.
+- [x] AI read-only human strings cataloged.
+- [x] JSON/export tests preserved.
+- [x] Empty/missing-state tests added.

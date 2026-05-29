@@ -72,6 +72,7 @@ function formatHumanGraph(report, options = {}) {
   const format = options.format || 'tree';
   const sharedOptions = {
     showConflicts: options.showConflicts === true,
+    language: options.language,
     unicode: options.unicode === true || isUnicodeEnabled(options),
   };
 

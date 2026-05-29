@@ -194,6 +194,20 @@ test('plan CLI emits parseable JSON', () => {
   }
 });
 
+test('plan CLI localizes human output without altering slice refs', () => {
+  const repo = planFixture();
+  try {
+    const output = execPlan(repo.root, ['--lang', 'es'], { LANG: 'C', LC_ALL: 'C' });
+    assert.ok(output.includes('Plan de Quiver'));
+    assert.ok(output.includes('Horas totales: 10'));
+    assert.ok(output.includes('Ruta critica: spec-a/slice-01-alpha -> spec-a/slice-02-beta -> spec-c/slice-01-epsilon'));
+    assert.ok(output.includes('TITULO'));
+    assert.ok(output.includes('spec-a/slice-01-alpha'));
+  } finally {
+    repo.cleanup();
+  }
+});
+
 test('plan CLI stays ASCII by default and can opt into Unicode', () => {
   const repo = planFixture();
   try {

@@ -125,6 +125,20 @@ test('next CLI prints the top ready slice and the copy-paste command', () => {
   }
 });
 
+test('next CLI localizes human output while preserving start command', () => {
+  const repo = nextFixture();
+  try {
+    const output = execNext(repo.root, ['--lang', 'es']);
+    assert.ok(output.includes('Proximo slice listo'));
+    assert.ok(output.includes('Slice: spec-a/slice-01-alpha'));
+    assert.ok(output.includes('Titulo: slice-01-alpha'));
+    assert.ok(output.includes('Estado: draft'));
+    assert.ok(output.includes('Iniciar: npx create-quiver start-slice "specs/spec-a/slices/slice-01-alpha/slice.json"'));
+  } finally {
+    repo.cleanup();
+  }
+});
+
 test('next CLI can list all ready slices', () => {
   const repo = nextFixture();
   try {
