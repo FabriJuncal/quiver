@@ -1,7 +1,7 @@
 # Quiver v42 - CLI i18n Generated Docs
 
 **Date:** 2026-05-28
-**Status:** In progress
+**Status:** Completed
 **Source:** Continuation of the approved CLI i18n program.
 
 ## Problem
@@ -43,7 +43,7 @@ Add Spanish and English support to generated human documentation and templates, 
 | slice-01 | Template language routing | completed | v37 complete |
 | slice-02 | Init docs and i18n assets | completed | slice-01 |
 | slice-03 | Docs reference and guides | completed | slice-01 |
-| slice-04 | Generated docs tests and smokes | planned | slice-02, slice-03 |
+| slice-04 | Generated docs tests and smokes | completed | slice-02, slice-03 |
 
 ## Guardrails
 

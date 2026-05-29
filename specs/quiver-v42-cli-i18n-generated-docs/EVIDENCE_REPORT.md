@@ -44,8 +44,21 @@ Validation:
 - PASS `git diff --check`
 - PASS `node bin/create-quiver.js spec validate specs/quiver-v42-cli-i18n-generated-docs --strict`
 
-## Pending Evidence
+## slice-04-generated-docs-tests-smokes
 
-- `node --test tests/**/*.test.js`
-- `npm run package:quiver`
-- `npm run smoke:create-quiver`
+- Full test suite passed: 608 tests, 0 failures.
+- `npm run package:quiver` passed and produced a package smoke result for `create-quiver-0.15.3.tgz`.
+- `npm run smoke:create-quiver` passed.
+- Manual temporary project smoke generated `en` and `es` projects with `--full --skip-install`.
+- Manual smoke confirmed `docs/INDEX.md` routes to English and Spanish human docs.
+- Manual smoke confirmed stable machine artifacts by comparing `package.json` and `specs/lang-demo/slices/slice-template/slice.json` across `en` and `es`.
+- Manual smoke confirmed `.quiver/config.json` stores the intended project language per project.
+
+Validation:
+
+- PASS `node --test tests/**/*.test.js`
+- PASS `npm run package:quiver`
+- PASS `npm run smoke:create-quiver`
+- PASS manual generated-doc language smoke for `--lang en` and `--lang es`
+- PASS `node bin/create-quiver.js spec validate specs/quiver-v42-cli-i18n-generated-docs --strict`
+- PASS `git diff --check`
