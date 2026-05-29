@@ -31,6 +31,19 @@ Validation:
 - PASS `node --test tests/lib/i18n-catalog.test.js`
 - PASS `git diff --check`
 
+## slice-03-ai-planner-approval-review
+
+- Routed `ai plan`, `ai review-plan`, `ai repair-plan`, `ai revise`, and `ai approve` through the shared language option.
+- Localized planner dry-runs, spec-generation wrappers, review/repair wrappers, approval output, progress checks, selector prompts, and actionable wrapper labels.
+- Added regression coverage proving Spanish wrappers work while provider prompt bodies, commands, phase names, version ids, draft paths, and generated spec ids remain exact.
+
+Validation:
+
+- PASS `node --test tests/commands/ai-plan-spec-phase.test.js`
+- PASS `node --test tests/commands/flow.test.js`
+- PASS `node --test tests/lib/i18n-catalog.test.js`
+- PASS `git diff --check`
+
 ## Pending Evidence
 
 - `node --test tests/**/*.test.js`

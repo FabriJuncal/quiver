@@ -12,9 +12,13 @@
     "branch_name": "feature/QUIVER-41-03-v41-ai-planner-approval-review"
   },
   "files": [
+    "src/create-quiver/index.js",
     "src/create-quiver/commands/ai.js",
     "src/create-quiver/lib/ai/approval-candidates.js",
-    "src/create-quiver/lib/ai/plan-review.js"
+    "src/create-quiver/lib/ai/plan-review.js",
+    "src/create-quiver/lib/i18n/messages/en.js",
+    "src/create-quiver/lib/i18n/messages/es.js",
+    "tests/commands/ai-plan-spec-phase.test.js"
   ],
   "expected_read_paths": [
     "src/create-quiver/commands/ai.js",
@@ -23,6 +27,7 @@
     "docs/CLI_UX_GUIDE.md"
   ],
   "allowed_write_paths": [
+    "src/create-quiver/index.js",
     "src/create-quiver/commands/ai.js",
     "src/create-quiver/lib/ai/**",
     "src/create-quiver/lib/i18n/**",
@@ -50,13 +55,14 @@
     "Approval artifacts remain stable."
   ],
   "tests": [
-    "node --test tests/commands/ai-plan-spec-phase.test.js tests/commands/flow.test.js",
+    "node --test tests/commands/ai-plan-spec-phase.test.js tests/commands/flow.test.js tests/lib/i18n-catalog.test.js",
     "git diff --check"
   ],
   "validation_hints": [
     "Test --print-prompt in both languages to prove prompt text is stable."
   ],
   "estimated_hours": 9,
-  "status": "planned",
-  "blocked_reason": "Requires completion of slice-01-ai-run-status-resume."
+  "status": "completed",
+  "blocked_reason": "",
+  "completed_at": "2026-05-29T17:45:51Z"
 }

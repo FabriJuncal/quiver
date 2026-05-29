@@ -245,8 +245,12 @@ function shouldShowHumanProgress(ux, options = {}) {
     && ux?.mode?.decoration === true;
 }
 
-function plannerProgressTitle(action, runtimeProfile) {
-  return `${action} con ${runtimeProfile.displayName || runtimeProfile.model || runtimeProfile.provider}`;
+function plannerProgressTitle(action, runtimeProfile, options = {}) {
+  const translator = createTranslator(options.language);
+  return translator.t('ai.planner.progress.title', {
+    action,
+    profile: runtimeProfile.displayName || runtimeProfile.model || runtimeProfile.provider,
+  });
 }
 
 function writeProgressChecks(ux, enabled, title, checks = []) {
@@ -259,7 +263,7 @@ function writeProgressChecks(ux, enabled, title, checks = []) {
   }
 }
 
-async function runProviderWithProgress({ ux, enabled, message = 'Ejecutando agente...', successMessage = 'Agente finalizado', failureMessage = 'Fallo ejecutando agente', run }) {
+async function runProviderWithProgress({ ux, enabled, message = 'Running agent...', successMessage = 'Agent finished', failureMessage = 'Agent failed', run }) {
   async function runAndFailOnProviderResult() {
     const result = await run();
     if (result && result.ok === false) {
@@ -938,17 +942,18 @@ function writeDraftDocs(writePlan) {
   return writtenDocs;
 }
 
-function formatSpecDryRunReport({ manifest, repoRoot }) {
+function formatSpecDryRunReport({ manifest, repoRoot, language }) {
+  const translator = createTranslator(language);
   const preview = describeSpecGeneration(manifest, repoRoot);
   const relativeSpecDir = path.relative(repoRoot, preview.specDir).split(path.sep).join('/');
   const lines = [
-    'AI plan dry-run',
-    'Phase: spec',
-    `Spec slug: ${manifest.slug}`,
-    `Title: ${manifest.title}`,
-    `Input file: ${manifest.sourcePath}`,
-    `Target: ${relativeSpecDir}`,
-    `Planned files: ${preview.files.length}`,
+    translator.t('ai.plan.spec.dry_run.title'),
+    translator.t('ai_task.phase', { phase: 'spec' }),
+    translator.t('ai.plan.spec.slug', { slug: manifest.slug }),
+    translator.t('ai.plan.spec.title', { title: manifest.title }),
+    translator.t('ai_task.input_file', { path: manifest.sourcePath }),
+    translator.t('ai.plan.spec.target', { target: relativeSpecDir }),
+    translator.t('ai.plan.spec.planned_files', { count: preview.files.length }),
   ];
 
   for (const file of preview.files) {
@@ -958,13 +963,14 @@ function formatSpecDryRunReport({ manifest, repoRoot }) {
   return `${lines.join('\n')}\n`;
 }
 
-function formatSpecGenerationResult(result, repoRoot) {
+function formatSpecGenerationResult(result, repoRoot, options = {}) {
+  const translator = createTranslator(options.language);
   const relativeSpecDir = path.relative(repoRoot, result.specDir).split(path.sep).join('/');
   const lines = [
-    'AI plan spec generation completed',
-    `Spec slug: ${result.manifest.slug}`,
-    `Target: ${relativeSpecDir}`,
-    `Files written: ${result.files.length}`,
+    translator.t('ai.plan.spec.completed'),
+    translator.t('ai.plan.spec.slug', { slug: result.manifest.slug }),
+    translator.t('ai.plan.spec.target', { target: relativeSpecDir }),
+    translator.t('ai.plan.spec.files_written', { count: result.files.length }),
   ];
 
   for (const filePath of result.files) {
@@ -974,30 +980,32 @@ function formatSpecGenerationResult(result, repoRoot) {
   return `${lines.join('\n')}\n`;
 }
 
-function formatApprovalResult(result, repoRoot) {
+function formatApprovalResult(result, repoRoot, options = {}) {
+  const translator = createTranslator(options.language);
   const relativePath = path.relative(repoRoot, result.filePath).split(path.sep).join('/');
   const lines = [
-    'AI approval saved',
-    `Phase: ${result.phase}`,
-    `Status: approved`,
-    `Artifact: ${relativePath}`,
-    `Source file: ${result.sourceFile}`,
-    `Timestamp: ${result.createdAt}`,
+    translator.t('ai.approve.saved'),
+    translator.t('ai_task.phase', { phase: result.phase }),
+    `${translator.t('ai.table.status')}: ${translator.t('ai.approve.status.approved')}`,
+    `${translator.t('ai.approve.artifact')}: ${relativePath}`,
+    `${translator.t('ai.approvals.source_file')}: ${result.sourceFile}`,
+    `${translator.t('ai.approve.timestamp')}: ${result.createdAt}`,
   ];
   if (result.version) {
-    lines.push(`Version: v${result.version}`);
+    lines.push(`${translator.t('ai.approve.version')}: v${result.version}`);
   }
 
   return `${lines.join('\n')}\n`;
 }
 
-function formatApprovalDryRunResult({ phase, input, version }) {
-  const lines = ['AI approval dry-run', `Phase: ${phase}`];
+function formatApprovalDryRunResult({ phase, input, version, language }) {
+  const translator = createTranslator(language);
+  const lines = [translator.t('ai.approve.dry_run.title'), translator.t('ai_task.phase', { phase })];
   if (version) {
-    lines.push(`Version: v${version}`);
+    lines.push(`${translator.t('ai.approve.version')}: v${version}`);
   }
   if (input) {
-    lines.push(`Input file: ${input}`);
+    lines.push(translator.t('ai_task.input_file', { path: input }));
   }
   return `${lines.join('\n')}\n`;
 }
@@ -1105,15 +1113,16 @@ function buildRepairPlanContext({ context, inputText, inputPath, repoRoot, role,
   };
 }
 
-function formatRepairPlanResult(result, repoRoot) {
+function formatRepairPlanResult(result, repoRoot, options = {}) {
+  const translator = createTranslator(options.language);
   const relativePath = path.relative(repoRoot, result.filePath).split(path.sep).join('/');
   return [
-    'AI technical-plan repair draft saved',
-    `Draft: ${relativePath}`,
-    `Version: v${result.version}`,
-    `Source approved artifact: ${result.sourcePath}`,
-    'Original approved artifact: preserved',
-    'Next safe commands:',
+    translator.t('ai.repair_plan.saved'),
+    `${translator.t('ai.approvals.draft')}: ${relativePath}`,
+    `${translator.t('ai.approve.version')}: v${result.version}`,
+    `${translator.t('ai.repair_plan.source_approved_artifact')}: ${result.sourcePath}`,
+    translator.t('ai.repair_plan.original_preserved'),
+    `${translator.t('ai.label.next_safe_commands')}:`,
     '- npx create-quiver ai review-plan --dry-run',
     '- npx create-quiver ai review-plan',
     `- npx create-quiver ai approve --phase technical-plan --version ${result.version}`,
@@ -1408,15 +1417,19 @@ async function runOnboard(repoRoot, options = {}) {
   writeProgressChecks(
     ux,
     showProgress,
-    plannerProgressTitle('Ejecutando onboarding', runtimeProfile),
+    plannerProgressTitle(createTranslator(options.language).t('ai.planner.progress.onboarding'), runtimeProfile, options),
     ['Leyendo docs base', 'Detectando estructura', 'Preparando prompt'],
   );
 
   let result;
   try {
+    const progressTranslator = createTranslator(options.language);
     result = await runProviderWithProgress({
       ux,
       enabled: showProgress,
+      message: progressTranslator.t('ai.planner.progress.running_agent'),
+      successMessage: progressTranslator.t('ai.planner.progress.agent_finished'),
+      failureMessage: progressTranslator.t('ai.planner.progress.agent_failed'),
       run: () => (options.runProviderFn || runProvider)(provider, {
         prompt,
         cwd: repoRoot,
@@ -1603,15 +1616,19 @@ async function runPrepareContextWithPlanner(repoRoot, options = {}) {
   writeProgressChecks(
     ux,
     showProgress,
-    plannerProgressTitle('Ejecutando onboarding', runtimeProfile),
+    plannerProgressTitle(createTranslator(options.language).t('ai.planner.progress.onboarding'), runtimeProfile, options),
     ['Leyendo docs base', 'Detectando estructura', 'Preparando prompt'],
   );
 
   let result;
   try {
+    const progressTranslator = createTranslator(options.language);
     result = await runProviderWithProgress({
       ux,
       enabled: showProgress,
+      message: progressTranslator.t('ai.planner.progress.running_agent'),
+      successMessage: progressTranslator.t('ai.planner.progress.agent_finished'),
+      failureMessage: progressTranslator.t('ai.planner.progress.agent_failed'),
       run: () => (options.runProviderFn || runProvider)(provider, {
         prompt,
         cwd: repoRoot,
@@ -1724,8 +1741,9 @@ async function runPlan(repoRoot, options = {}) {
         phase,
         manifest,
       };
-      process.stdout.write('AI plan prompt-only\nPhase: spec\nNo provider prompt is used for spec generation; showing the local generation plan instead.\n');
-      process.stdout.write(formatSpecDryRunReport({ manifest, repoRoot }));
+      const translator = createTranslator(options.language);
+      process.stdout.write(`${translator.t('ai_task.title.prompt_only', { task: 'plan' })}\n${translator.t('ai_task.phase', { phase: 'spec' })}\n${translator.t('ai.plan.spec.prompt_only_no_provider')}\n`);
+      process.stdout.write(formatSpecDryRunReport({ manifest, repoRoot, language: options.language }));
       return report;
     }
 
@@ -1735,7 +1753,7 @@ async function runPlan(repoRoot, options = {}) {
         phase,
         manifest,
       };
-      process.stdout.write(formatSpecDryRunReport({ manifest, repoRoot }));
+      process.stdout.write(formatSpecDryRunReport({ manifest, repoRoot, language: options.language }));
       return report;
     }
 
@@ -1743,7 +1761,7 @@ async function runPlan(repoRoot, options = {}) {
       input: inputPath,
       specSlug: options.specSlug,
     });
-    process.stdout.write(formatSpecGenerationResult(result, repoRoot));
+    process.stdout.write(formatSpecGenerationResult(result, repoRoot, options));
 
     return {
       task: 'plan',
@@ -1824,15 +1842,15 @@ async function runPlan(repoRoot, options = {}) {
       invocation,
       profile: runtimeProfile,
     };
-    process.stdout.write(formatDryRunReport(report));
+    process.stdout.write(formatDryRunReport({ ...report, language: options.language }));
     if (options.withPlanner === true) {
-      process.stdout.write('Planner mode: already active for ai plan; --with-planner is accepted for UX consistency.\n');
+      process.stdout.write(`${createTranslator(options.language).t('ai.plan.with_planner_already_active')}\n`);
     }
     if (options.review === true) {
-      process.stdout.write('Review requested: provider output will be opened for review before saving the draft in live mode.\n');
+      process.stdout.write(`${createTranslator(options.language).t('ai.plan.review_requested')}\n`);
     }
     if (options.interactive === true) {
-      process.stdout.write('Interactive requested: live mode will ask before saving the draft.\n');
+      process.stdout.write(`${createTranslator(options.language).t('ai.plan.interactive_requested')}\n`);
     }
     return report;
   }
@@ -1848,7 +1866,7 @@ async function runPlan(repoRoot, options = {}) {
       prompt,
       profile: runtimeProfile,
     };
-    process.stdout.write(formatPromptOnlyReport(report));
+    process.stdout.write(formatPromptOnlyReport({ ...report, language: options.language }));
     return report;
   }
 
@@ -1857,8 +1875,12 @@ async function runPlan(repoRoot, options = {}) {
   writeProgressChecks(
     ux,
     showProgress,
-    plannerProgressTitle(`Ejecutando plan ${phase}`, runtimeProfile),
-    ['Leyendo entrada', 'Preparando contexto', 'Preparando prompt'],
+    plannerProgressTitle(createTranslator(options.language).t('ai.planner.progress.plan', { phase }), runtimeProfile, options),
+    [
+      createTranslator(options.language).t('ai.planner.progress.reading_input'),
+      createTranslator(options.language).t('ai.planner.progress.preparing_context'),
+      createTranslator(options.language).t('ai.planner.progress.preparing_prompt'),
+    ],
   );
 
   let result;
@@ -2001,12 +2023,14 @@ async function runReviewPlan(repoRoot, options = {}) {
       contextPack: pack.packName,
       phase: 'plan-review',
       invocation,
+      language: options.language,
     }));
-    process.stdout.write(`Prompt source: ${built.promptSource}\n`);
-    process.stdout.write(`Input file: ${inputPath}\n`);
-    process.stdout.write(`Input kind: ${resolved.kind}\n`);
+    const translator = createTranslator(options.language);
+    process.stdout.write(`${translator.t('ai_task.prompt_source', { source: built.promptSource })}\n`);
+    process.stdout.write(`${translator.t('ai_task.input_file', { path: inputPath })}\n`);
+    process.stdout.write(`${translator.t('ai_task.input_kind', { kind: resolved.kind })}\n`);
     if (resolved.version) {
-      process.stdout.write(`Input version: v${resolved.version}\n`);
+      process.stdout.write(`${translator.t('ai_task.input_version', { version: resolved.version })}\n`);
     }
     return report;
   }
@@ -2026,7 +2050,7 @@ async function runReviewPlan(repoRoot, options = {}) {
       inputVersion: resolved.version,
       profile: runtimeProfile,
     };
-    process.stdout.write(formatPromptOnlyReport(report));
+    process.stdout.write(formatPromptOnlyReport({ ...report, language: options.language }));
     return report;
   }
 
@@ -2035,8 +2059,12 @@ async function runReviewPlan(repoRoot, options = {}) {
   writeProgressChecks(
     ux,
     showProgress,
-    plannerProgressTitle('Ejecutando revisión del plan', runtimeProfile),
-    ['Leyendo plan técnico', 'Preparando contexto', 'Preparando prompt'],
+    plannerProgressTitle(createTranslator(options.language).t('ai.planner.progress.review_plan'), runtimeProfile, options),
+    [
+      createTranslator(options.language).t('ai.planner.progress.reading_technical_plan'),
+      createTranslator(options.language).t('ai.planner.progress.preparing_context'),
+      createTranslator(options.language).t('ai.planner.progress.preparing_prompt'),
+    ],
   );
 
   let result;
@@ -2095,8 +2123,9 @@ async function runReviewPlan(repoRoot, options = {}) {
     rawArtifactPath: rawArtifact.path,
   });
   const relativePath = path.relative(repoRoot, saved.filePath).split(path.sep).join('/');
-  const summary = summarizePlanReview(repoRoot).trimEnd();
-  process.stdout.write(`AI plan review saved\nArtifact: ${relativePath}\nPrompt source: ${PLAN_REVIEW_PROMPT_SOURCE}\n${summary}\n`);
+  const summary = localizeApprovalSummary(summarizePlanReview(repoRoot), createTranslator(options.language)).trimEnd();
+  const translator = createTranslator(options.language);
+  process.stdout.write(`${translator.t('ai.review_plan.saved')}\n${translator.t('ai.approve.artifact')}: ${relativePath}\n${translator.t('ai_task.prompt_source', { source: PLAN_REVIEW_PROMPT_SOURCE })}\n${summary}\n`);
 
   return {
     task: 'review-plan',
@@ -2156,9 +2185,10 @@ async function runRepairPlan(repoRoot, options = {}) {
       invocation,
       profile: runtimeProfile,
     };
-    process.stdout.write(formatDryRunReport(report));
-    process.stdout.write(`Source approved artifact: ${source.path}\n`);
-    process.stdout.write(`Validation failure: ${source.validationError}\n`);
+    process.stdout.write(formatDryRunReport({ ...report, language: options.language }));
+    const translator = createTranslator(options.language);
+    process.stdout.write(`${translator.t('ai.repair_plan.source_approved_artifact')}: ${source.path}\n`);
+    process.stdout.write(`${translator.t('ai.repair_plan.validation_failure')}: ${source.validationError}\n`);
     return report;
   }
 
@@ -2176,7 +2206,7 @@ async function runRepairPlan(repoRoot, options = {}) {
       inputVersion: source.approval.meta?.approved?.version || null,
       profile: runtimeProfile,
     };
-    process.stdout.write(formatPromptOnlyReport(report));
+    process.stdout.write(formatPromptOnlyReport({ ...report, language: options.language }));
     return report;
   }
 
@@ -2185,15 +2215,23 @@ async function runRepairPlan(repoRoot, options = {}) {
   writeProgressChecks(
     ux,
     showProgress,
-    plannerProgressTitle('Ejecutando reparación del plan', runtimeProfile),
-    ['Leyendo plan aprobado', 'Preparando contexto', 'Preparando prompt'],
+    plannerProgressTitle(createTranslator(options.language).t('ai.planner.progress.repair_plan'), runtimeProfile, options),
+    [
+      createTranslator(options.language).t('ai.planner.progress.reading_approved_plan'),
+      createTranslator(options.language).t('ai.planner.progress.preparing_context'),
+      createTranslator(options.language).t('ai.planner.progress.preparing_prompt'),
+    ],
   );
 
   let providerResult;
   try {
+    const progressTranslator = createTranslator(options.language);
     providerResult = await runProviderWithProgress({
       ux,
       enabled: showProgress,
+      message: progressTranslator.t('ai.planner.progress.running_agent'),
+      successMessage: progressTranslator.t('ai.planner.progress.agent_finished'),
+      failureMessage: progressTranslator.t('ai.planner.progress.agent_failed'),
       run: () => (options.runProviderFn || runProvider)(provider, {
         prompt: built.prompt,
         cwd: repoRoot,
@@ -2260,7 +2298,7 @@ async function runRepairPlan(repoRoot, options = {}) {
   process.stdout.write(formatRepairPlanResult({
     ...draft,
     sourcePath: source.path,
-  }, repoRoot));
+  }, repoRoot, options));
 
   return {
     task: 'repair-plan',
@@ -2277,14 +2315,18 @@ async function runRepairPlan(repoRoot, options = {}) {
 }
 
 async function runRevise(repoRoot, options = {}) {
+  const translator = createTranslator(options.language);
   const phase = normalizePlannerPhase(options.phase || DEFAULT_PLAN_PHASE);
   if (phase === 'spec') {
-    throw new Error(formatError(`ai revise does not support phase '${phase}'`));
+    throw new Error(formatError(translator.t('ai.revise.error.unsupported_phase', { phase })));
   }
 
   const approval = readPhaseApproval(repoRoot, phase);
   if (approval.status !== 'draft' && approval.status !== 'stale') {
-    throw new Error(formatError(`ai revise --phase ${phase} requires an existing draft; current status is ${approval.status}. Run \`npx create-quiver ai plan --phase ${phase} --input <file>\` first.`));
+    throw new Error(formatError(translator.t('ai.revise.error.requires_draft', {
+      phase,
+      status: approval.status,
+    })));
   }
 
   return runPlan(repoRoot, {
@@ -2294,10 +2336,11 @@ async function runRevise(repoRoot, options = {}) {
   });
 }
 
-function formatApprovalCandidateHint(candidate) {
+function formatApprovalCandidateHint(candidate, options = {}) {
+  const translator = createTranslator(options.language);
   const parts = [];
   if (candidate.current) {
-    parts.push('current');
+    parts.push(translator.t('ai.approvals.current_candidate').toLowerCase());
   }
   if (candidate.created_at) {
     parts.push(candidate.created_at);
@@ -2306,10 +2349,10 @@ function formatApprovalCandidateHint(candidate) {
     parts.push(`review=${candidate.review.recommendation}`);
   }
   if (candidate.review?.required_fixes_count) {
-    parts.push(`required fixes=${candidate.review.required_fixes_count}`);
+    parts.push(`${translator.t('ai.approvals.required_fixes').toLowerCase()}=${candidate.review.required_fixes_count}`);
   }
   if (candidate.review?.optional_hardening_count) {
-    parts.push(`optional=${candidate.review.optional_hardening_count}`);
+    parts.push(`${translator.t('ai.approvals.optional_hardening').toLowerCase()}=${candidate.review.optional_hardening_count}`);
   }
   if (candidate.review?.risks_count) {
     parts.push(`risks=${candidate.review.risks_count}`);
@@ -2318,17 +2361,19 @@ function formatApprovalCandidateHint(candidate) {
   return parts.filter(Boolean).join(', ');
 }
 
-function approvalSelectionOptions(report) {
+function approvalSelectionOptions(report, options = {}) {
+  const translator = createTranslator(options.language);
   return report.candidates.map((candidate) => ({
-    label: `${candidate.label}${candidate.recommended ? ' (recommended)' : candidate.current ? ' (current)' : ' (history)'}`,
+    label: `${candidate.label}${candidate.recommended ? ` (${translator.t('ai.approvals.recommended_approval').toLowerCase()})` : candidate.current ? ` (${translator.t('ai.approvals.current_candidate').toLowerCase()})` : ` (${translator.t('ai.approvals.draft_history').toLowerCase()})`}`,
     value: String(candidate.version || ''),
-    hint: formatApprovalCandidateHint(candidate),
+    hint: formatApprovalCandidateHint(candidate, options),
     default: candidate.recommended === true,
     raw: candidate,
   }));
 }
 
 async function resolveApprovalVersion(repoRoot, phase, options = {}) {
+  const translator = createTranslator(options.language);
   if (options.version) {
     return options.version;
   }
@@ -2339,24 +2384,24 @@ async function resolveApprovalVersion(repoRoot, phase, options = {}) {
 
   if (!shouldPrompt || !canPrompt) {
     const recommended = report.recommended?.version || report.latest_version || '<n>';
-    throw new Error(formatActionableError({
-      failure: `ai approve --phase ${phase} requires --version <n> when prompts are not available.`,
-      impact: 'Quiver cannot safely guess which saved planner draft the human approved.',
-      fix: 'Review drafts with `npx create-quiver ai approvals`, then pass the version explicitly.',
+    throw new Error(formatLocalizedActionableError({
+      failure: translator.t('ai.approve.error.no_prompt.failure', { phase }),
+      impact: translator.t('ai.approve.error.no_prompt.impact'),
+      fix: translator.t('ai.approve.error.no_prompt.fix'),
       nextCommand: `npx create-quiver ai approve --phase ${phase} --version ${recommended}`,
-    }));
+    }, options));
   }
 
   if (report.candidates.length === 0) {
-    throw new Error(formatActionableError({
-      failure: `ai approve --phase ${phase} has no saved drafts to approve.`,
-      impact: 'There is no planner artifact that can pass the approval gate.',
-      fix: `Generate a ${phase} draft first.`,
+    throw new Error(formatLocalizedActionableError({
+      failure: translator.t('ai.approve.error.no_drafts.failure', { phase }),
+      impact: translator.t('ai.approve.error.no_drafts.impact'),
+      fix: translator.t('ai.approve.error.no_drafts.fix', { phase }),
       nextCommand: `npx create-quiver ai plan --phase ${phase}${phase === 'acceptance' ? ' --input <requirements.md>' : ''} --dry-run`,
-    }));
+    }, options));
   }
 
-  const selected = await selectOption(`¿Qué ${phase} draft querés aprobar?`, approvalSelectionOptions(report), {
+  const selected = await selectOption(translator.t('ai.approve.prompt.version', { phase }), approvalSelectionOptions(report, options), {
     env: options.env,
     error: options.error,
     input: options.input,
@@ -2375,27 +2420,28 @@ async function resolveApprovalVersion(repoRoot, phase, options = {}) {
 
   const candidate = selected.raw;
   if (!candidate?.approvable) {
-    throw new Error(formatActionableError({
-      failure: `${phase} draft ${selected.label} is not approvable.`,
+    throw new Error(formatLocalizedActionableError({
+      failure: translator.t('ai.approve.error.not_approvable.failure', { phase, label: selected.label }),
       impact: candidate?.review?.blocking
-        ? 'The current review gate blocks technical-plan approval.'
-        : 'Quiver only approves the current eligible draft version.',
-      fix: candidate?.reason || 'Inspect planner approvals before approving.',
+        ? translator.t('ai.approve.error.not_approvable.impact_blocked')
+        : translator.t('ai.approve.error.not_approvable.impact'),
+      fix: candidate?.reason || translator.t('ai.approve.error.not_approvable.fix'),
       nextCommand: candidate?.next_command || `npx create-quiver ai approvals`,
-    }));
+    }, options));
   }
 
   return selected.value;
 }
 
 async function runApprove(repoRoot, options = {}) {
+  const translator = createTranslator(options.language);
   const phase = normalizePlannerPhase(options.phase || DEFAULT_PLAN_PHASE);
   if (phase === 'spec') {
-    throw new Error(formatError(`ai approve does not support phase '${phase}'`));
+    throw new Error(formatError(translator.t('ai.approve.error.unsupported_phase', { phase })));
   }
 
   if (options.input) {
-    throw new Error(formatError(`ai approve --phase ${phase} approves saved draft versions only. Use \`npx create-quiver ai revise --phase ${phase} --input ${options.input}\` to create a new draft first.`));
+    throw new Error(formatError(translator.t('ai.approve.error.input_not_supported', { phase, input: options.input })));
   }
 
   const version = await resolveApprovalVersion(repoRoot, phase, options);
@@ -2403,12 +2449,16 @@ async function runApprove(repoRoot, options = {}) {
   if (phase === 'technical-plan') {
     const review = readPlanReview(repoRoot);
     if (review.status !== 'unapproved' && review.status !== 'reviewed') {
-      throw new Error(formatError(`ai approve --phase technical-plan requires a production review for the current draft; current review status is ${review.status}. Run \`npx create-quiver ai review-plan --dry-run\`, then \`npx create-quiver ai review-plan\`.`));
+      throw new Error(formatError(translator.t('ai.approve.error.review_required', { status: review.status })));
     }
     if (reviewBlocksApproval(review)) {
       const result = review.meta.review_result;
       const requiredFixes = Array.isArray(result.required_fixes) ? result.required_fixes.length : 0;
-      throw new Error(formatError(`ai approve --phase technical-plan is blocked by plan review; approval recommendation is ${result.approval_recommendation}. Required fixes: ${requiredFixes}. Next command: ${result.next_command}`));
+      throw new Error(formatError(translator.t('ai.approve.error.review_blocked', {
+        recommendation: result.approval_recommendation,
+        fixes: requiredFixes,
+        command: result.next_command,
+      })));
     }
     assertTechnicalPlanDraftHasSpecContract(repoRoot, version);
   }
@@ -2416,7 +2466,7 @@ async function runApprove(repoRoot, options = {}) {
   const inputText = '';
 
   if (options.dryRun) {
-    process.stdout.write(formatApprovalDryRunResult({ phase, input: options.input, version }));
+    process.stdout.write(formatApprovalDryRunResult({ phase, input: options.input, version, language: options.language }));
     return {
       task: 'approve',
       phase,
@@ -2447,7 +2497,7 @@ async function runApprove(repoRoot, options = {}) {
   process.stdout.write(formatApprovalResult({
     ...result,
     sourceFile: options.input || `draft version ${version}`,
-  }, repoRoot));
+  }, repoRoot, options));
 
   return {
     task: 'approve',
