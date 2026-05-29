@@ -1,7 +1,7 @@
 # Quiver v39 - CLI i18n Setup and Onboarding
 
 **Date:** 2026-05-28
-**Status:** Planned
+**Status:** Completed
 **Source:** Continuation of the approved CLI i18n program.
 
 ## Problem
@@ -41,10 +41,10 @@ Localize setup and onboarding commands while making `init --interactive` the pri
 | Slice | Title | Status | Dependencies |
 |---|---|---|---|
 | slice-00 | Setup foundation | completed | none |
-| slice-01 | Init interactive language | planned | v37 complete |
-| slice-02 | Analyze, migrate, and prepare-context | planned | slice-01 |
+| slice-01 | Init interactive language | completed | v37 complete |
+| slice-02 | Analyze, migrate, and prepare-context | completed | slice-01 |
 | slice-03 | Demo, evidence, and onboarding messages | completed | slice-01 |
-| slice-04 | Setup tests and smokes | planned | slice-02, slice-03 |
+| slice-04 | Setup tests and smokes | completed | slice-02, slice-03 |
 
 ## Guardrails
 

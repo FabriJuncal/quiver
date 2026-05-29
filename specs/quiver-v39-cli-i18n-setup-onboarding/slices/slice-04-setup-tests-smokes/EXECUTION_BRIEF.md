@@ -17,6 +17,6 @@ Close v39 with full tests, package smoke, and evidence.
 
 ## Completion Checklist
 
-- [ ] Full tests run.
-- [ ] Smoke commands run.
-- [ ] Evidence updated.
+- [x] Full tests run.
+- [x] Smoke commands run.
+- [x] Evidence updated.

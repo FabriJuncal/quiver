@@ -49,10 +49,23 @@ Validation:
 - Passed: `node bin/create-quiver.js spec validate specs/quiver-v39-cli-i18n-setup-onboarding --strict`
 - Passed with expected completed-slice warning: `node bin/create-quiver.js check-slice specs/quiver-v39-cli-i18n-setup-onboarding/slices/slice-03-demo-evidence-onboarding/slice.json --local`
 
+## slice-04-setup-tests-smokes
+
+- Closed v39 with full regression coverage across CLI commands and library helpers.
+- Confirmed package creation and create-quiver smoke still pass after i18n setup changes.
+- Confirmed a project with `.quiver/config.json` set to Spanish renders setup output in Spanish without passing `--lang`.
+- Revalidated the full v39 spec package and diff hygiene.
+
+Validation:
+
+- Passed: `node --test tests/**/*.test.js` (574 passing)
+- Passed: `node bin/create-quiver.js spec validate specs/quiver-v39-cli-i18n-setup-onboarding --strict`
+- Passed with expected completed-slice warning: `node bin/create-quiver.js check-slice specs/quiver-v39-cli-i18n-setup-onboarding/slices/slice-04-setup-tests-smokes/slice.json --local`
+- Passed: `npm run package:quiver` (`create-quiver-0.15.3.tgz`)
+- Passed: `npm run smoke:create-quiver`
+- Passed: configured-language smoke with `.quiver/config.json` language `es` and `demo create spec-viewer --dry-run` without `--lang`
+- Passed: `git diff --check`
+
 ## Pending Evidence
 
-- `node --test tests/**/*.test.js`
-- `git diff --check`
-- `node bin/create-quiver.js spec validate specs/quiver-v39-cli-i18n-setup-onboarding --strict`
-- `npm run package:quiver`
-- `npm run smoke:create-quiver`
+- None.

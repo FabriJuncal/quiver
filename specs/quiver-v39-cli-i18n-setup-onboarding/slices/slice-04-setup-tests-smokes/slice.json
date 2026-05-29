@@ -55,6 +55,7 @@
     "Run at least one smoke in a temp project with .quiver/config.json language set."
   ],
   "estimated_hours": 4,
-  "status": "planned",
-  "blocked_reason": "Requires completion of slice-02-analyze-migrate-prepare and slice-03-demo-evidence-onboarding."
+  "status": "completed",
+  "blocked_reason": null,
+  "completed_at": "2026-05-29T00:00:00.000Z"
 }
