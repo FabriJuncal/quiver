@@ -13,6 +13,9 @@
   },
   "files": [
     "tests/**/*.test.js",
+    "specs/quiver-v41-cli-i18n-ai-lifecycle/SPEC.md",
+    "specs/quiver-v41-cli-i18n-ai-lifecycle/STATUS.md",
+    "specs/quiver-v41-cli-i18n-ai-lifecycle/slices/slice-05-ai-tests-smokes/CLOSURE_BRIEF.md",
     "specs/quiver-v41-cli-i18n-ai-lifecycle/EVIDENCE_REPORT.md"
   ],
   "expected_read_paths": [
@@ -26,7 +29,8 @@
   ],
   "depends_on": [
     "slice-02-ai-agent-models",
-    "slice-04-ai-execution-pr"
+    "slice-04-ai-execution-pr",
+    "slice-06-ai-prepare-context-progress-i18n-fix"
   ],
   "parallel_safe": "no",
   "parallel_safe_reason": "This is the closing validation slice for v41.",
@@ -56,6 +60,7 @@
     "Use dry-run and print-prompt tests for provider-backed flows instead of requiring provider credentials."
   ],
   "estimated_hours": 5,
-  "status": "planned",
-  "blocked_reason": "Requires completion of slice-02-ai-agent-models and slice-04-ai-execution-pr."
+  "status": "completed",
+  "blocked_reason": "",
+  "completed_at": "2026-05-29T18:04:10Z"
 }

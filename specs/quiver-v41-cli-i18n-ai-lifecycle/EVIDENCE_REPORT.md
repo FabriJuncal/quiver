@@ -72,10 +72,19 @@ Validation:
 - PASS `node --test tests/**/*.test.js` (`599/599`)
 - PASS `git diff --check`
 
-## Pending Evidence
+## slice-05-ai-tests-smokes
 
-- `node --test tests/**/*.test.js`
-- `git diff --check`
-- `npx create-quiver spec validate specs/quiver-v41-cli-i18n-ai-lifecycle --strict`
-- `npm run package:quiver`
-- `npm run smoke:create-quiver`
+- Closed v41 with full local test, package, smoke, spec, slice, and whitespace validation.
+- Confirmed provider-backed flows remain covered through injected provider runners, `--dry-run`, and `--print-prompt` tests; no live provider credentials are required.
+- Confirmed JSON/JSONL stability through the full CLI suite and existing machine-output tests.
+- Confirmed the package tarball smoke creates `create-quiver-0.15.3.tgz`.
+
+Validation:
+
+- PASS `node --test tests/**/*.test.js` (`599/599`)
+- PASS `npm run package:quiver` (`create-quiver-0.15.3.tgz`)
+- PASS `npm run smoke:create-quiver`
+- PASS `node bin/create-quiver.js spec validate specs/quiver-v41-cli-i18n-ai-lifecycle --strict`
+- PASS `node bin/create-quiver.js check-slice specs/quiver-v41-cli-i18n-ai-lifecycle/slices/slice-05-ai-tests-smokes/slice.json --local`
+- PASS `node bin/create-quiver.js check-slice specs/quiver-v41-cli-i18n-ai-lifecycle/slices/slice-06-ai-prepare-context-progress-i18n-fix/slice.json --local`
+- PASS `git diff --check`
