@@ -9,12 +9,15 @@ const BIN_PATH = path.resolve(__dirname, '../../bin/create-quiver.js');
 
 function makeRepo() {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'quiver-dashboard-cli-'));
+  const home = fs.mkdtempSync(path.join(os.tmpdir(), 'quiver-dashboard-home-'));
   seedLayout(root);
   seedSlices(root);
   return {
+    home,
     root,
     cleanup() {
       fs.rmSync(root, { recursive: true, force: true });
+      fs.rmSync(home, { recursive: true, force: true });
     },
   };
 }
@@ -71,25 +74,37 @@ function seedSlices(root) {
   });
 }
 
-function execDashboard(repoRoot, args = []) {
+function cleanEnv(home, overrides = {}) {
+  return {
+    ...process.env,
+    HOME: home,
+    QUIVER_LANG: '',
+    LANG: 'en_US.UTF-8',
+    ...overrides,
+  };
+}
+
+function execDashboard(repoRoot, args = [], env = {}) {
   return execFileSync(process.execPath, [BIN_PATH, 'dashboard', ...args], {
     cwd: repoRoot,
     encoding: 'utf8',
+    env,
     stdio: ['ignore', 'pipe', 'pipe'],
   });
 }
 
-function spawnDashboard(repoRoot, args = []) {
+function spawnDashboard(repoRoot, args = [], env = {}) {
   return spawnSync(process.execPath, [BIN_PATH, 'dashboard', ...args], {
     cwd: repoRoot,
     encoding: 'utf8',
+    env,
   });
 }
 
 test('dashboard human output shows consolidated project status', () => {
   const repo = makeRepo();
   try {
-    const output = execDashboard(repo.root, ['--spec', 'demo']);
+    const output = execDashboard(repo.root, ['--spec', 'demo'], cleanEnv(repo.home));
 
     assert.match(output, /Quiver Dashboard/);
     assert.match(output, /Project: dashboard-cli-project/);
@@ -105,7 +120,7 @@ test('dashboard human output shows consolidated project status', () => {
 test('dashboard JSON output is parseable and stable', () => {
   const repo = makeRepo();
   try {
-    const output = execDashboard(repo.root, ['--json', '--spec', 'demo']);
+    const output = execDashboard(repo.root, ['--json', '--spec', 'demo'], cleanEnv(repo.home));
     const report = JSON.parse(output);
 
     assert.equal(report.dashboard_schema_version, 1);
@@ -120,10 +135,29 @@ test('dashboard JSON output is parseable and stable', () => {
   }
 });
 
+test('dashboard human output renders Spanish with flag or project config', () => {
+  const repo = makeRepo();
+  try {
+    const flagged = execDashboard(repo.root, ['--lang', 'es', '--spec', 'demo'], cleanEnv(repo.home));
+    writeJson(repo.root, '.quiver/config.json', { layout_version: 1, language: 'es' });
+    const configured = execDashboard(repo.root, ['--spec', 'demo'], cleanEnv(repo.home));
+
+    assert.match(flagged, /Dashboard de Quiver/);
+    assert.match(flagged, /Proyecto: dashboard-cli-project/);
+    assert.match(flagged, /Proximo comando seguro:/);
+    assert.match(flagged, /Global: 1\/3 completado/);
+    assert.match(configured, /Dashboard de Quiver/);
+    assert.match(configured, /Proximo slice listo:/);
+    assert.doesNotMatch(configured, /Project:/);
+  } finally {
+    repo.cleanup();
+  }
+});
+
 test('dashboard --include-completed changes only the visible slice set', () => {
   const repo = makeRepo();
   try {
-    const report = JSON.parse(execDashboard(repo.root, ['--json', '--spec', 'demo', '--include-completed']));
+    const report = JSON.parse(execDashboard(repo.root, ['--json', '--spec', 'demo', '--include-completed'], cleanEnv(repo.home)));
 
     assert.equal(report.global_progress.total, 3);
     assert.equal(report.visible_progress.total, 2);
@@ -133,10 +167,26 @@ test('dashboard --include-completed changes only the visible slice set', () => {
   }
 });
 
+test('dashboard keeps JSON error payloads stable with Spanish language', () => {
+  const repo = makeRepo();
+  try {
+    const result = spawnDashboard(repo.root, ['--json', '--lang', 'es', '--spec', 'missing'], cleanEnv(repo.home));
+    const payload = JSON.parse(result.stdout);
+
+    assert.notEqual(result.status, 0);
+    assert.equal(result.stderr, '');
+    assert.equal(payload.error.code, 'SPEC_NOT_FOUND');
+    assert.match(payload.error.message, /Spec "missing" was not found/);
+    assert.doesNotMatch(payload.error.message, /No se encontro/);
+  } finally {
+    repo.cleanup();
+  }
+});
+
 test('dashboard missing spec keeps JSON stdout parseable on failure', () => {
   const repo = makeRepo();
   try {
-    const result = spawnDashboard(repo.root, ['--json', '--spec', 'missing']);
+    const result = spawnDashboard(repo.root, ['--json', '--spec', 'missing'], cleanEnv(repo.home));
     const payload = JSON.parse(result.stdout);
 
     assert.notEqual(result.status, 0);
@@ -149,11 +199,26 @@ test('dashboard missing spec keeps JSON stdout parseable on failure', () => {
   }
 });
 
+test('dashboard localized details and section views preserve exact commands', () => {
+  const repo = makeRepo();
+  try {
+    const details = execDashboard(repo.root, ['--details', '--lang', 'es', '--spec', 'demo'], cleanEnv(repo.home));
+    const slices = execDashboard(repo.root, ['--section', 'slices', '--limit', '1', '--lang', 'es'], cleanEnv(repo.home));
+
+    assert.match(details, /\nProgreso\n/);
+    assert.match(details, /Iniciar: npx create-quiver start-slice "specs\/demo\/slices\/slice-01-dashboard\/slice.json"/);
+    assert.match(slices, /\+ 1 mas\. Ejecuta: npx create-quiver dashboard --section slices/);
+    assert.doesNotMatch(details, /Start:/);
+  } finally {
+    repo.cleanup();
+  }
+});
+
 test('dashboard supports details, section, and limit human views', () => {
   const repo = makeRepo();
   try {
-    const details = execDashboard(repo.root, ['--details', '--spec', 'demo']);
-    const slices = execDashboard(repo.root, ['--section', 'slices', '--limit', '1']);
+    const details = execDashboard(repo.root, ['--details', '--spec', 'demo'], cleanEnv(repo.home));
+    const slices = execDashboard(repo.root, ['--section', 'slices', '--limit', '1'], cleanEnv(repo.home));
 
     assert.match(details, /\nSpecs\n/);
     assert.match(details, /\nSlices\n/);
@@ -169,8 +234,8 @@ test('dashboard supports details, section, and limit human views', () => {
 test('dashboard rejects ambiguous and invalid human flags', () => {
   const repo = makeRepo();
   try {
-    const detailsSection = spawnDashboard(repo.root, ['--details', '--section', 'specs']);
-    const invalidLimit = spawnDashboard(repo.root, ['--limit', '0']);
+    const detailsSection = spawnDashboard(repo.root, ['--details', '--section', 'specs'], cleanEnv(repo.home));
+    const invalidLimit = spawnDashboard(repo.root, ['--limit', '0'], cleanEnv(repo.home));
 
     assert.notEqual(detailsSection.status, 0);
     assert.match(detailsSection.stderr, /cannot be combined/);
@@ -184,7 +249,7 @@ test('dashboard rejects ambiguous and invalid human flags', () => {
 test('dashboard human-only flags keep JSON failures parseable', () => {
   const repo = makeRepo();
   try {
-    const result = spawnDashboard(repo.root, ['--json', '--section', 'specs']);
+    const result = spawnDashboard(repo.root, ['--json', '--section', 'specs'], cleanEnv(repo.home));
     const payload = JSON.parse(result.stdout);
 
     assert.notEqual(result.status, 0);
@@ -197,17 +262,24 @@ test('dashboard human-only flags keep JSON failures parseable', () => {
 });
 
 test('dashboard-only flags fail clearly outside dashboard command', () => {
+  const home = fs.mkdtempSync(path.join(os.tmpdir(), 'quiver-dashboard-plan-home-'));
   const result = spawnSync(process.execPath, [BIN_PATH, 'plan', '--section', 'specs'], {
     cwd: process.cwd(),
     encoding: 'utf8',
+    env: cleanEnv(home),
   });
 
-  assert.notEqual(result.status, 0);
-  assert.match(result.stderr, /--section is only supported by dashboard/);
+  try {
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /--section is only supported by dashboard/);
+  } finally {
+    fs.rmSync(home, { recursive: true, force: true });
+  }
 });
 
 test('dashboard reports graph errors without crashing JSON output', () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'quiver-dashboard-cycle-'));
+  const home = fs.mkdtempSync(path.join(os.tmpdir(), 'quiver-dashboard-cycle-home-'));
   try {
     seedLayout(root);
     writeJson(root, 'specs/demo/slices/slice-01-a/slice.json', {
@@ -228,6 +300,7 @@ test('dashboard reports graph errors without crashing JSON output', () => {
     const result = spawnSync(process.execPath, [BIN_PATH, 'dashboard', '--json', '--spec', 'demo'], {
       cwd: root,
       encoding: 'utf8',
+      env: cleanEnv(home),
     });
     const report = JSON.parse(result.stdout);
 
@@ -238,5 +311,6 @@ test('dashboard reports graph errors without crashing JSON output', () => {
     assert.equal(report.warnings.some((warning) => warning.code === 'CYCLE_DETECTED'), true);
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
+    fs.rmSync(home, { recursive: true, force: true });
   }
 });

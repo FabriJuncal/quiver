@@ -12,8 +12,9 @@
     "branch_name": "feature/QUIVER-38-01-v38-version-dashboard-help"
   },
   "files": [
-    "src/create-quiver/commands/version.js",
+    "src/create-quiver/lib/version.js",
     "src/create-quiver/commands/dashboard.js",
+    "src/create-quiver/lib/dashboard.js",
     "tests/commands/version.test.js",
     "tests/commands/dashboard.test.js"
   ],
@@ -24,8 +25,9 @@
     "specs/quiver-v38-cli-i18n-read-only-commands/SPEC.md"
   ],
   "allowed_write_paths": [
-    "src/create-quiver/commands/version.js",
     "src/create-quiver/commands/dashboard.js",
+    "src/create-quiver/lib/version.js",
+    "src/create-quiver/lib/dashboard.js",
     "src/create-quiver/lib/i18n/**",
     "tests/commands/version.test.js",
     "tests/commands/dashboard.test.js",
@@ -61,6 +63,7 @@
     "Assert Spanish labels do not expand dashboard beyond readable layout assumptions."
   ],
   "estimated_hours": 6,
-  "status": "planned",
-  "blocked_reason": "Requires completion of specs/quiver-v37-cli-i18n-foundation."
+  "status": "completed",
+  "completed_at": "2026-05-29T00:00:00.000Z",
+  "blocked_reason": null
 }

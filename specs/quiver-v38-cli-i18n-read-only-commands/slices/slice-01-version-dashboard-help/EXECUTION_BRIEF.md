@@ -18,6 +18,6 @@ Localize `version`, `--version`, `--help`, and `dashboard` human output.
 
 ## Completion Checklist
 
-- [ ] Human output catalog keys added.
-- [ ] `en` and `es` command tests added.
-- [ ] JSON regression tests preserved.
+- [x] Human output catalog keys added.
+- [x] `en` and `es` command tests added.
+- [x] JSON regression tests preserved.

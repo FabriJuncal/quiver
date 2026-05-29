@@ -3040,6 +3040,7 @@ async function run(argv) {
       details: args.dashboardDetails,
       includeCompleted: args.includeCompleted,
       json: args.json,
+      language: args.language,
       limit: args.dashboardLimit,
       noColor: args.noColor,
       optionErrors: args.dashboardOptionErrors,
@@ -3059,6 +3060,7 @@ async function run(argv) {
     } else {
       process.stdout.write(formatHumanVersionReport(report, {
         env: process.env,
+        language: args.language,
         noColor: args.noColor,
         stdoutIsTTY: Boolean(process.stdout.isTTY),
       }));
