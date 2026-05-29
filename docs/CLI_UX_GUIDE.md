@@ -63,6 +63,23 @@ Reglas:
 - Warnings por idioma no soportado se muestran solo en salida humana y no contaminan stdout JSON.
 - CI, no-TTY y `--no-color` deben seguir sin prompts, spinners ni ANSI inesperado.
 
+## Templates y docs generados
+
+Los templates humanos generados por Quiver usan el mismo idioma resuelto para la salida CLI. El template base sin sufijo es el fallback `en`; las variantes localizadas agregan el idioma antes de `.template`.
+
+Ejemplos:
+
+- `docs/INDEX.md.template` es el fallback estable en ingles.
+- `docs/INDEX.md.es.template` es la variante espanola.
+- `AGENTS.md.es.template` es la variante espanola de `AGENTS.md.template`.
+
+Reglas:
+
+- Solo se enrutan templates humanos, principalmente Markdown.
+- Artefactos machine-readable como `package.template.json` y `slice.json` no se localizan.
+- Si falta una variante localizada, Quiver debe hacer fallback explicito a `en` y la cobertura debe poder detectarlo en tests.
+- No duplicar templates grandes si una fragmentacion compartida resuelve el caso con menor mantenimiento.
+
 ## Matriz de soporte
 
 | Comando | `--with-planner` | `--interactive` | `--review` | Notas |
