@@ -2,6 +2,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const { resolveTheme } = require('./cli/theme');
+const { createTranslator } = require('./i18n/catalog');
 
 const VERSION_SCHEMA_VERSION = 1;
 const PACKAGE_ROOT = path.resolve(__dirname, '../../..');
@@ -108,9 +109,9 @@ function collectVersionReport(projectRoot = process.cwd(), options = {}) {
   };
 }
 
-function formatPackageManager(packageManager) {
+function formatPackageManager(packageManager, translator = createTranslator()) {
   if (!packageManager?.name || packageManager.name === 'unknown') {
-    return 'unknown';
+    return translator.t('common.unknown');
   }
   return packageManager.version ? `${packageManager.name}@${packageManager.version}` : packageManager.name;
 }
@@ -128,20 +129,21 @@ function quiverBanner(theme) {
 }
 
 function formatHumanVersionReport(report, options = {}) {
+  const translator = createTranslator(options.language);
   const theme = resolveTheme({ noColor: options.noColor }, options.env || process.env, {
     stdout: options.stdoutIsTTY ?? Boolean(process.stdout.isTTY),
   });
   const project = report.project?.name
-    ? `${report.project.name}${report.project.quiver_initialized ? ' (Quiver project)' : ''}`
-    : 'none';
+    ? `${report.project.name}${report.project.quiver_initialized ? ` (${translator.t('version.project.quiver')})` : ''}`
+    : translator.t('common.none');
   const lines = [
     quiverBanner(theme),
     '',
-    `Quiver CLI: ${report.cli.version}`,
-    `Node: ${report.runtime.node}`,
-    `Package manager: ${formatPackageManager(report.package_manager)}`,
-    `OS: ${report.runtime.platform} ${report.runtime.arch}`,
-    `Project: ${project}`,
+    `${translator.t('version.label.cli')}: ${report.cli.version}`,
+    `${translator.t('version.label.node')}: ${report.runtime.node}`,
+    `${translator.t('version.label.package_manager')}: ${formatPackageManager(report.package_manager, translator)}`,
+    `${translator.t('version.label.os')}: ${report.runtime.platform} ${report.runtime.arch}`,
+    `${translator.t('version.label.project')}: ${project}`,
     '',
   ];
 

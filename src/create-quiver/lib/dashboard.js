@@ -2,6 +2,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const { collectLifecycleExport } = require('./ai/export-state');
+const { createTranslator } = require('./i18n/catalog');
 const {
   collectActiveSliceState,
   filterSlicesForExecution,
@@ -39,6 +40,36 @@ class DashboardError extends Error {
     this.code = code;
     this.nextCommand = nextCommand;
   }
+}
+
+function translatorForOptions(options = {}) {
+  return createTranslator(options.json ? 'en' : options.language);
+}
+
+function formatStatus(status, translator) {
+  const key = `status.${String(status || '').replace(/-/g, '_')}`;
+  const translated = translator.t(key);
+  return translated.startsWith('[missing:') ? String(status || '') : translated;
+}
+
+function formatWarningMessage(warning, specSlug, translator) {
+  if (warning.code === 'NO_SPECS_FOUND') {
+    return translator.t('dashboard.warning.no_specs_found');
+  }
+  if (warning.code === 'NO_VISIBLE_SLICES') {
+    return specSlug
+      ? translator.t('dashboard.warning.no_visible_slices_for_spec', { spec: specSlug })
+      : translator.t('dashboard.warning.no_visible_slices');
+  }
+  return warning.message;
+}
+
+function translateIfCatalogKey(value, translator) {
+  const text = String(value || '');
+  if (!text.startsWith('dashboard.')) {
+    return text;
+  }
+  return translator.t(text);
 }
 
 function compareRefs(left, right) {
@@ -405,6 +436,7 @@ function buildErrorPayload(error) {
 }
 
 function collectDashboardReport(projectRoot, options = {}) {
+  const translator = translatorForOptions(options);
   const specSlug = options.specSlug ? String(options.specSlug).trim() : '';
   const includeCompleted = options.includeCompleted === true;
   const specDirs = listSpecDirectories(projectRoot);
@@ -413,7 +445,7 @@ function collectDashboardReport(projectRoot, options = {}) {
   if (specSlug && !selectedSpecDir) {
     throw new DashboardError(
       'SPEC_NOT_FOUND',
-      `Spec '${specSlug}' was not found in specs/ or specs-fix/.`,
+      translator.t('dashboard.error.spec_not_found', { spec: specSlug }),
       'npx create-quiver ai specs list',
     );
   }
@@ -530,8 +562,8 @@ function collectDashboardReport(projectRoot, options = {}) {
   };
 }
 
-function formatProgress(progress) {
-  return `${progress.completed}/${progress.total} completed, ${progress.open} open, ${progress.blocked} blocked, ${progress.percent}%`;
+function formatProgress(progress, translator = createTranslator()) {
+  return `${progress.completed}/${progress.total} ${translator.t('status.completed')}, ${progress.open} ${translator.t('dashboard.open')}, ${progress.blocked} ${translator.t('status.blocked')}, ${progress.percent}%`;
 }
 
 function dashboardOptionError(message, nextCommand = 'npx create-quiver dashboard --help') {
@@ -545,13 +577,13 @@ function parseDashboardLimit(rawLimit, errors) {
 
   const value = String(rawLimit).trim();
   if (!/^[1-9]\d*$/.test(value)) {
-    errors.push('invalid value for --limit: expected an integer from 1 to 100');
+    errors.push('dashboard.limit.invalid');
     return DEFAULT_DASHBOARD_LIMIT;
   }
 
   const parsed = Number.parseInt(value, 10);
   if (parsed > MAX_DASHBOARD_LIMIT) {
-    errors.push('invalid value for --limit: expected an integer from 1 to 100');
+    errors.push('dashboard.limit.invalid');
     return DEFAULT_DASHBOARD_LIMIT;
   }
 
@@ -559,6 +591,7 @@ function parseDashboardLimit(rawLimit, errors) {
 }
 
 function normalizeDashboardOptions(options = {}) {
+  const translator = translatorForOptions(options);
   const errors = Array.isArray(options.optionErrors) ? [...options.optionErrors] : [];
   const details = options.details === true;
   const section = String(options.section || '').trim();
@@ -566,23 +599,27 @@ function normalizeDashboardOptions(options = {}) {
   const limit = parseDashboardLimit(options.limit, errors);
 
   if (section && !SUPPORTED_DASHBOARD_SECTIONS.includes(section)) {
-    errors.push(`unsupported dashboard section: ${section}. Supported sections: ${SUPPORTED_DASHBOARD_SECTIONS.join(', ')}`);
+    errors.push(translator.t('dashboard.unsupported_section', {
+      section,
+      sections: SUPPORTED_DASHBOARD_SECTIONS.join(', '),
+    }));
   }
 
   if (details && section) {
-    errors.push('dashboard --details cannot be combined with --section <name>');
+    errors.push(translator.t('dashboard.cannot_combine_details_section'));
   }
 
   if (options.json && (details || section || hasLimit || errors.length > 0)) {
-    errors.push('dashboard --json cannot be combined with human-only flags: --details, --section, --limit');
+    errors.push(translator.t('dashboard.json_human_flags'));
   }
 
   if (errors.length > 0) {
-    throw dashboardOptionError(errors.join(' '));
+    throw dashboardOptionError(errors.map((error) => translateIfCatalogKey(error, translator)).join(' '));
   }
 
   return {
     details,
+    language: options.language,
     limit,
     section,
   };
@@ -610,13 +647,16 @@ function dashboardCommand(report, suffix = '') {
   return parts.join(' ');
 }
 
-function truncationLine(report, section, hidden) {
-  return `- + ${hidden} more. Run: ${dashboardCommand(report, `--section ${section}`)}`;
+function truncationLine(report, section, hidden, translator = createTranslator()) {
+  return `- ${translator.t('dashboard.more_run', {
+    command: dashboardCommand(report, `--section ${section}`),
+    count: hidden,
+  })}`;
 }
 
-function pushLimitedList(lines, report, section, items, limit, formatter) {
+function pushLimitedList(lines, report, section, items, limit, formatter, translator = createTranslator()) {
   if (!items.length) {
-    lines.push('- none');
+    lines.push(`- ${translator.t('common.none')}`);
     return;
   }
 
@@ -626,41 +666,42 @@ function pushLimitedList(lines, report, section, items, limit, formatter) {
 
   const hidden = items.length - limit;
   if (hidden > 0) {
-    lines.push(truncationLine(report, section, hidden));
+    lines.push(truncationLine(report, section, hidden, translator));
   }
 }
 
-function formatSpecLine(spec) {
-  return `${spec.slug}: ${spec.status}, ${spec.progress.percent}% (${spec.progress.completed}/${spec.progress.total})`;
+function formatSpecLine(spec, translator = createTranslator()) {
+  return `${spec.slug}: ${formatStatus(spec.status, translator)}, ${spec.progress.percent}% (${spec.progress.completed}/${spec.progress.total})`;
 }
 
-function formatSliceLine(slice) {
+function formatSliceLine(slice, translator = createTranslator()) {
   const blocked = slice.blocked_reason ? ` blocked=${truncateText(slice.blocked_reason, 48)}` : '';
-  return `${slice.ref}: ${slice.status}, ${slice.progress}%${blocked}`;
+  return `${slice.ref}: ${formatStatus(slice.status, translator)}, ${slice.progress}%${blocked}`;
 }
 
-function formatAgentLine(agent) {
-  return `${agent.role}: ${agent.configured ? agent.provider || 'configured' : 'missing'}`;
+function formatAgentLine(agent, translator = createTranslator()) {
+  return `${agent.role}: ${agent.configured ? agent.provider || translator.t('dashboard.configured') : translator.t('dashboard.missing')}`;
 }
 
-function formatApprovalLine(approval) {
-  const version = approval.approved_version ? ` approved=v${approval.approved_version}` : '';
-  return `${approval.phase}: ${approval.status}${version}`;
+function formatApprovalLine(approval, translator = createTranslator()) {
+  const version = approval.approved_version ? ` ${translator.t('dashboard.approved')}=v${approval.approved_version}` : '';
+  return `${approval.phase}: ${formatStatus(approval.status, translator)}${version}`;
 }
 
-function formatRunLine(run) {
-  return `${run.run_id}: ${run.phase} (${run.status})`;
+function formatRunLine(run, translator = createTranslator()) {
+  return `${run.run_id}: ${run.phase} (${formatStatus(run.status, translator)})`;
 }
 
-function pushSignalSection(lines, report, title, section, items, limit, formatter) {
-  lines.push(`${title}: ${items.length === 0 ? 'none' : ''}`.trimEnd());
+function pushSignalSection(lines, report, title, section, items, limit, formatter, translator = createTranslator()) {
+  lines.push(`${title}: ${items.length === 0 ? translator.t('common.none') : ''}`.trimEnd());
   if (items.length > 0) {
-    pushLimitedList(lines, report, section, items, limit, formatter);
+    pushLimitedList(lines, report, section, items, limit, formatter, translator);
   }
 }
 
 function formatCompactDashboard(report, options) {
-  const nextCommand = report.next_steps[0]?.command || 'none';
+  const translator = createTranslator(options.language);
+  const nextCommand = report.next_steps[0]?.command || translator.t('common.none');
   const state = report.blockers.length > 0
     ? 'blocked'
     : report.warnings.length > 0
@@ -669,38 +710,38 @@ function formatCompactDashboard(report, options) {
         ? 'ready'
         : 'idle';
   const lines = [
-    'Quiver Dashboard',
-    `Project: ${truncateText(report.project.name, 42)} | Layout: ${report.summary.layout} | Filter: ${report.source_metadata.spec_filter || 'all specs'}`,
-    `State: ${state}`,
-    `Next safe command: ${nextCommand}`,
-    `Progress: Global: ${formatProgress(report.global_progress)} | Visible: ${formatProgress(report.visible_progress)}`,
-    `Counts: specs ${report.summary.specs} (${report.summary.visible_specs} visible), slices ${report.summary.slices} (${report.summary.visible_slices} visible), agents ${report.summary.configured_agents}/${report.summary.agents}, runs ${report.summary.runs}`,
-    `Next ready slice: ${report.next_ready ? `${report.next_ready.ref} - ${truncateText(report.next_ready.title, 48)}` : 'none'}`,
+    translator.t('dashboard.title'),
+    `${translator.t('dashboard.project')}: ${truncateText(report.project.name, 42)} | ${translator.t('dashboard.layout')}: ${report.summary.layout} | ${translator.t('dashboard.filter')}: ${report.source_metadata.spec_filter || translator.t('dashboard.all_specs')}`,
+    `${translator.t('dashboard.state')}: ${translator.t(`dashboard.state.${state}`)}`,
+    `${translator.t('dashboard.next_safe_command')}: ${nextCommand}`,
+    `${translator.t('dashboard.progress')}: ${translator.t('dashboard.global')}: ${formatProgress(report.global_progress, translator)} | ${translator.t('dashboard.visible')}: ${formatProgress(report.visible_progress, translator)}`,
+    `${translator.t('dashboard.counts')}: ${translator.t('dashboard.specs')} ${report.summary.specs} (${report.summary.visible_specs} ${translator.t('dashboard.visible_count')}), ${translator.t('dashboard.slices')} ${report.summary.slices} (${report.summary.visible_slices} ${translator.t('dashboard.visible_count')}), ${translator.t('dashboard.agents')} ${report.summary.configured_agents}/${report.summary.agents}, ${translator.t('dashboard.runs')} ${report.summary.runs}`,
+    `${translator.t('dashboard.next_ready_slice')}: ${report.next_ready ? `${report.next_ready.ref} - ${truncateText(report.next_ready.title, 48)}` : translator.t('common.none')}`,
   ];
 
-  pushSignalSection(lines, report, 'Blockers', 'blockers', report.blockers, options.limit, (blocker) => `${blocker.ref}: ${truncateText(blocker.reason, 70)}`);
-  pushSignalSection(lines, report, 'Warnings', 'warnings', report.warnings, options.limit, (warning) => `${warning.code}: ${truncateText(warning.message, 70)}`);
+  pushSignalSection(lines, report, translator.t('dashboard.blockers'), 'blockers', report.blockers, options.limit, (blocker) => `${blocker.ref}: ${truncateText(blocker.reason, 70)}`, translator);
+  pushSignalSection(lines, report, translator.t('dashboard.warnings'), 'warnings', report.warnings, options.limit, (warning) => `${warning.code}: ${truncateText(formatWarningMessage(warning, report.source_metadata.spec_filter, translator), 70)}`, translator);
 
-  lines.push(`Active slice: ${report.active_slice.reconciliation.decision} (${truncateText(report.active_slice.reconciliation.reason, 60)})`);
-  lines.push(`Inspect: ${dashboardCommand(report, '--details')}`);
+  lines.push(`${translator.t('dashboard.active_slice')}: ${report.active_slice.reconciliation.decision} (${truncateText(report.active_slice.reconciliation.reason, 60)})`);
+  lines.push(`${translator.t('dashboard.inspect')}: ${dashboardCommand(report, '--details')}`);
   lines.push('');
   return `${lines.join('\n')}\n`;
 }
 
-function formatDashboardOverview(report) {
+function formatDashboardOverview(report, translator = createTranslator()) {
   const lines = [
-    'Dashboard Overview',
-    `Project: ${report.project.name}`,
-    `Layout: ${report.summary.layout}`,
-    `Filter: ${report.source_metadata.spec_filter || 'all specs'}`,
-    `Completed hidden: ${report.source_metadata.include_completed ? 'no' : 'yes'}`,
-    `Global progress: ${formatProgress(report.global_progress)}`,
-    `Visible progress: ${formatProgress(report.visible_progress)}`,
-    `Specs: ${report.summary.specs} (${report.summary.visible_specs} visible)`,
-    `Slices: ${report.summary.slices} (${report.summary.visible_slices} visible)`,
-    `Blockers: ${report.summary.blockers}`,
-    `Warnings: ${report.summary.warnings}`,
-    `Runs: ${report.summary.runs}`,
+    translator.t('dashboard.dashboard_overview'),
+    `${translator.t('dashboard.project')}: ${report.project.name}`,
+    `${translator.t('dashboard.layout')}: ${report.summary.layout}`,
+    `${translator.t('dashboard.filter')}: ${report.source_metadata.spec_filter || translator.t('dashboard.all_specs')}`,
+    `${translator.t('dashboard.completed_hidden')}: ${report.source_metadata.include_completed ? translator.t('common.no') : translator.t('common.yes')}`,
+    `${translator.t('dashboard.global_progress')}: ${formatProgress(report.global_progress, translator)}`,
+    `${translator.t('dashboard.visible_progress')}: ${formatProgress(report.visible_progress, translator)}`,
+    `${translator.t('dashboard.specs')}: ${report.summary.specs} (${report.summary.visible_specs} ${translator.t('dashboard.visible_count')})`,
+    `${translator.t('dashboard.slices')}: ${report.summary.slices} (${report.summary.visible_slices} ${translator.t('dashboard.visible_count')})`,
+    `${translator.t('dashboard.blockers')}: ${report.summary.blockers}`,
+    `${translator.t('dashboard.warnings')}: ${report.summary.warnings}`,
+    `${translator.t('dashboard.runs')}: ${report.summary.runs}`,
     '',
   ];
 
@@ -708,161 +749,163 @@ function formatDashboardOverview(report) {
 }
 
 function formatDashboardSection(report, options) {
+  const translator = createTranslator(options.language);
   const lines = [];
   const limit = options.limit;
 
   if (options.section === 'overview') {
-    return formatDashboardOverview(report);
+    return formatDashboardOverview(report, translator);
   }
 
   if (options.section === 'specs') {
-    lines.push('Specs');
-    pushLimitedList(lines, report, 'specs', report.specs, limit, formatSpecLine);
+    lines.push(translator.t('dashboard.specs'));
+    pushLimitedList(lines, report, 'specs', report.specs, limit, (spec) => formatSpecLine(spec, translator), translator);
   }
 
   if (options.section === 'slices') {
-    lines.push('Slices');
-    pushLimitedList(lines, report, 'slices', report.slices, limit, formatSliceLine);
+    lines.push(translator.t('dashboard.slices'));
+    pushLimitedList(lines, report, 'slices', report.slices, limit, (slice) => formatSliceLine(slice, translator), translator);
   }
 
   if (options.section === 'blockers') {
-    lines.push('Blockers');
-    pushLimitedList(lines, report, 'blockers', report.blockers, limit, (blocker) => `${blocker.ref}: ${blocker.reason}`);
+    lines.push(translator.t('dashboard.blockers'));
+    pushLimitedList(lines, report, 'blockers', report.blockers, limit, (blocker) => `${blocker.ref}: ${blocker.reason}`, translator);
   }
 
   if (options.section === 'warnings') {
-    lines.push('Warnings');
-    pushLimitedList(lines, report, 'warnings', report.warnings, limit, (warning) => `${warning.code}: ${warning.message}`);
+    lines.push(translator.t('dashboard.warnings'));
+    pushLimitedList(lines, report, 'warnings', report.warnings, limit, (warning) => `${warning.code}: ${formatWarningMessage(warning, report.source_metadata.spec_filter, translator)}`, translator);
   }
 
   if (options.section === 'agents') {
-    lines.push('Agents');
-    pushLimitedList(lines, report, 'agents', report.agents, limit, formatAgentLine);
+    lines.push(translator.t('dashboard.agents'));
+    pushLimitedList(lines, report, 'agents', report.agents, limit, (agent) => formatAgentLine(agent, translator), translator);
   }
 
   if (options.section === 'approvals') {
-    lines.push('Approvals');
-    pushLimitedList(lines, report, 'approvals', report.approvals, limit, formatApprovalLine);
+    lines.push(translator.t('dashboard.approvals'));
+    pushLimitedList(lines, report, 'approvals', report.approvals, limit, (approval) => formatApprovalLine(approval, translator), translator);
   }
 
   if (options.section === 'runs') {
-    lines.push('Runs');
-    pushLimitedList(lines, report, 'runs', report.runs, limit, formatRunLine);
+    lines.push(translator.t('dashboard.runs'));
+    pushLimitedList(lines, report, 'runs', report.runs, limit, (run) => formatRunLine(run, translator), translator);
   }
 
   if (options.section === 'active-slice') {
     lines.push(
-      'Active slice',
-      `- Sources: ${report.active_slice.sources_count}`,
-      `- Reconciliation: ${report.active_slice.reconciliation.decision} (${report.active_slice.reconciliation.reason})`,
+      translator.t('dashboard.active_slice'),
+      `- ${translator.t('dashboard.sources')}: ${report.active_slice.sources_count}`,
+      `- ${translator.t('dashboard.reconciliation')}: ${report.active_slice.reconciliation.decision} (${report.active_slice.reconciliation.reason})`,
     );
   }
 
   if (options.section === 'next-steps') {
-    lines.push('Next safe commands');
-    pushLimitedList(lines, report, 'next-steps', report.next_steps, limit, (step) => step.command);
+    lines.push(translator.t('dashboard.next_safe_commands'));
+    pushLimitedList(lines, report, 'next-steps', report.next_steps, limit, (step) => step.command, translator);
   }
 
   lines.push('');
   return `${lines.join('\n')}\n`;
 }
 
-function formatDashboardDetails(report) {
+function formatDashboardDetails(report, options = {}) {
+  const translator = createTranslator(options.language);
   const lines = [
-    'Quiver Dashboard',
-    `Project: ${report.project.name}`,
-    `Layout: ${report.summary.layout}`,
-    `Filter: ${report.source_metadata.spec_filter || 'all specs'}`,
-    `Completed hidden: ${report.source_metadata.include_completed ? 'no' : 'yes'}`,
+    translator.t('dashboard.title'),
+    `${translator.t('dashboard.project')}: ${report.project.name}`,
+    `${translator.t('dashboard.layout')}: ${report.summary.layout}`,
+    `${translator.t('dashboard.filter')}: ${report.source_metadata.spec_filter || translator.t('dashboard.all_specs')}`,
+    `${translator.t('dashboard.completed_hidden')}: ${report.source_metadata.include_completed ? translator.t('common.no') : translator.t('common.yes')}`,
     '',
-    'Progress',
-    `- Global: ${formatProgress(report.global_progress)}`,
-    `- Visible: ${formatProgress(report.visible_progress)}`,
+    translator.t('dashboard.progress'),
+    `- ${translator.t('dashboard.global')}: ${formatProgress(report.global_progress, translator)}`,
+    `- ${translator.t('dashboard.visible')}: ${formatProgress(report.visible_progress, translator)}`,
     '',
-    'Next ready slice',
+    translator.t('dashboard.next_ready_slice'),
   ];
 
   if (report.next_ready) {
     lines.push(`- ${report.next_ready.ref}: ${report.next_ready.title}`);
-    lines.push(`- Start: ${report.next_ready.start_slice_command}`);
+    lines.push(`- ${translator.t('dashboard.start')}: ${report.next_ready.start_slice_command}`);
   } else {
-    lines.push('- none');
+    lines.push(`- ${translator.t('common.none')}`);
   }
 
-  lines.push('', 'Specs');
+  lines.push('', translator.t('dashboard.specs'));
   if (report.specs.length === 0) {
-    lines.push('- none');
+    lines.push(`- ${translator.t('common.none')}`);
   } else {
     for (const spec of report.specs) {
-      lines.push(`- ${formatSpecLine(spec)}`);
+      lines.push(`- ${formatSpecLine(spec, translator)}`);
     }
   }
 
-  lines.push('', 'Slices');
+  lines.push('', translator.t('dashboard.slices'));
   if (report.slices.length === 0) {
-    lines.push('- none');
+    lines.push(`- ${translator.t('common.none')}`);
   } else {
     for (const slice of report.slices) {
-      lines.push(`- ${formatSliceLine(slice)}`);
+      lines.push(`- ${formatSliceLine(slice, translator)}`);
     }
   }
 
-  lines.push('', 'Blockers');
+  lines.push('', translator.t('dashboard.blockers'));
   if (report.blockers.length === 0) {
-    lines.push('- none');
+    lines.push(`- ${translator.t('common.none')}`);
   } else {
     for (const blocker of report.blockers) {
       lines.push(`- ${blocker.ref}: ${blocker.reason}`);
     }
   }
 
-  lines.push('', 'Warnings');
+  lines.push('', translator.t('dashboard.warnings'));
   if (report.warnings.length === 0) {
-    lines.push('- none');
+    lines.push(`- ${translator.t('common.none')}`);
   } else {
     for (const warning of report.warnings) {
-      lines.push(`- ${warning.code}: ${warning.message}`);
+      lines.push(`- ${warning.code}: ${formatWarningMessage(warning, report.source_metadata.spec_filter, translator)}`);
     }
   }
 
-  lines.push('', 'Agents');
+  lines.push('', translator.t('dashboard.agents'));
   if (report.agents.length === 0) {
-    lines.push('- none');
+    lines.push(`- ${translator.t('common.none')}`);
   } else {
     for (const agent of report.agents) {
-      lines.push(`- ${formatAgentLine(agent)}`);
+      lines.push(`- ${formatAgentLine(agent, translator)}`);
     }
   }
 
-  lines.push('', 'Approvals');
+  lines.push('', translator.t('dashboard.approvals'));
   if (report.approvals.length === 0) {
-    lines.push('- none');
+    lines.push(`- ${translator.t('common.none')}`);
   } else {
     for (const approval of report.approvals) {
-      lines.push(`- ${formatApprovalLine(approval)}`);
+      lines.push(`- ${formatApprovalLine(approval, translator)}`);
     }
   }
 
-  lines.push('', 'Runs');
+  lines.push('', translator.t('dashboard.runs'));
   if (report.runs.length === 0) {
-    lines.push('- none');
+    lines.push(`- ${translator.t('common.none')}`);
   } else {
     for (const run of report.runs) {
-      lines.push(`- ${formatRunLine(run)}`);
+      lines.push(`- ${formatRunLine(run, translator)}`);
     }
   }
 
   lines.push(
     '',
-    'Active slice',
-    `- Sources: ${report.active_slice.sources_count}`,
-    `- Reconciliation: ${report.active_slice.reconciliation.decision} (${report.active_slice.reconciliation.reason})`,
+    translator.t('dashboard.active_slice'),
+    `- ${translator.t('dashboard.sources')}: ${report.active_slice.sources_count}`,
+    `- ${translator.t('dashboard.reconciliation')}: ${report.active_slice.reconciliation.decision} (${report.active_slice.reconciliation.reason})`,
     '',
-    'Next safe commands',
+    translator.t('dashboard.next_safe_commands'),
   );
 
   if (report.next_steps.length === 0) {
-    lines.push('- none');
+    lines.push(`- ${translator.t('common.none')}`);
   } else {
     for (const step of report.next_steps) {
       lines.push(`- ${step.command}`);
@@ -876,7 +919,7 @@ function formatDashboardDetails(report) {
 function formatHumanDashboard(report, options = {}) {
   const normalized = normalizeDashboardOptions({ ...options, json: false });
   if (normalized.details) {
-    return formatDashboardDetails(report);
+    return formatDashboardDetails(report, normalized);
   }
   if (normalized.section) {
     return formatDashboardSection(report, normalized);
