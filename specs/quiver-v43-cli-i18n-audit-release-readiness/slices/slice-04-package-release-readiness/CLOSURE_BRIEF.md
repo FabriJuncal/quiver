@@ -2,13 +2,16 @@
 
 ## Summary
 
-Pending implementation.
+- Ran the final v43 release-readiness gate.
+- Added release-note language behavior summary to `docs/reference/commands.md`.
+- Confirmed full tests, spec validation, package smoke, create smoke, npm pack dry-run, and diff check pass.
+- Confirmed no critical i18n release gaps remain open in this spec.
 
 ## Validation
 
-- [ ] `node --test tests/**/*.test.js`
-- [ ] `npx create-quiver spec validate specs/quiver-v43-cli-i18n-audit-release-readiness --strict`
-- [ ] `npm run package:quiver`
-- [ ] `npm run smoke:create-quiver`
-- [ ] `npm pack --dry-run --json`
-- [ ] `git diff --check`
+- [x] `node --test tests/**/*.test.js`
+- [x] `node bin/create-quiver.js spec validate specs/quiver-v43-cli-i18n-audit-release-readiness --strict`
+- [x] `npm run package:quiver`
+- [x] `npm run smoke:create-quiver`
+- [x] `npm pack --dry-run --json`
+- [x] `git diff --check`

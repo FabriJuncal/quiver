@@ -180,9 +180,24 @@ Validation:
 - PASS `node --test tests/lib/paths.test.js tests/commands/config-language.test.js tests/commands/dashboard.test.js`
 - PASS `git diff --check`
 
-## Pending Evidence
+## slice-04-package-release-readiness
 
-- `npx create-quiver spec validate specs/quiver-v43-cli-i18n-audit-release-readiness --strict`
-- `npm run package:quiver`
-- `npm run smoke:create-quiver`
-- `npm pack --dry-run --json`
+- Added release-note language behavior summary to `docs/reference/commands.md`.
+- Confirmed the command matrix, string audit, cross-platform smoke evidence, package smoke, and pack dry-run all pass.
+- Confirmed no critical i18n release gaps remain open in this spec.
+
+Validation:
+
+- PASS `node --test tests/**/*.test.js` (612 passed)
+- PASS `node bin/create-quiver.js spec validate specs/quiver-v43-cli-i18n-audit-release-readiness --strict`
+- PASS `npm run package:quiver`
+- PASS `npm run smoke:create-quiver`
+- PASS `npm pack --dry-run --json`
+- PASS `git diff --check`
+
+Package evidence:
+
+| Check | Result |
+|---|---|
+| Package script | `Package smoke passed: create-quiver-0.15.3.tgz` |
+| Pack dry-run | `create-quiver@0.15.3`, `create-quiver-0.15.3.tgz`, 980 entries |

@@ -1,9 +1,9 @@
 # Status - Quiver v43 CLI i18n Audit and Release Readiness
 
-**Overall status:** In progress
+**Overall status:** Completed
 **Created:** 2026-05-28
-**Completed:** Not completed
-**Current slice:** slice-04-package-release-readiness
+**Completed:** 2026-05-29
+**Current slice:** none
 
 ## Summary
 
@@ -17,7 +17,7 @@ This spec is the final audit and release-readiness stage for the full CLI i18n p
 | slice-01-command-language-mode-matrix | Completed | Created command x language x mode matrix for every documented command. |
 | slice-02-public-string-audit | Completed | Localized remaining critical public command strings found in the audit. |
 | slice-03-cross-platform-smokes | Completed | Added i18n-specific smoke coverage and recorded platform evidence. |
-| slice-04-package-release-readiness | Planned | Final release-readiness gate. |
+| slice-04-package-release-readiness | Completed | Final release-readiness gate passed. |
 
 ## Current Blockers
 

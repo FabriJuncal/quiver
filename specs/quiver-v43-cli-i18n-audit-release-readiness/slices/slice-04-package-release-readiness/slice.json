@@ -60,6 +60,7 @@
     "Do not publish from this slice unless the user explicitly approves publication."
   ],
   "estimated_hours": 5,
-  "status": "planned",
-  "blocked_reason": "Requires completion of slice-03-cross-platform-smokes."
+  "status": "completed",
+  "blocked_reason": "",
+  "completed_at": "2026-05-29T19:59:31Z"
 }

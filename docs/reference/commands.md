@@ -68,6 +68,12 @@ npx --yes create-quiver@latest config language set en --global
 
 `--json` conserva claves y estructura machine-readable en ingles tecnico; no traduce campos, codigos, comandos, flags, rutas, ids, providers ni modelos.
 
+## Nota de release i18n
+
+La superficie documentada del CLI soporta salida humana en `en` y `es` para comandos de inicializacion, configuracion, lectura de estado, dashboard, workflow de specs/slices, comandos IA, gates y PR. El idioma configurado al ejecutar `config language set es|en` se reutiliza en ejecuciones posteriores sin repetir flags; `--lang` y `QUIVER_LANG` siguen disponibles como overrides puntuales.
+
+La garantia de compatibilidad aplica a la salida humana. JSON/JSONL, nombres de campos, codigos, comandos, flags, rutas, ids, providers, modelos y snippets copiables se mantienen estables para automatizacion.
+
 ## Idioma de docs generados
 
 El idioma configurado tambien aplica a documentacion humana generada por Quiver, como los docs creados por `init`.
