@@ -1,0 +1,65 @@
+{
+  "slice_id": "slice-01-actions-node24-readiness",
+  "ticket": "QUIVER-45-01",
+  "type": "fix",
+  "title": "Actions Node 24 readiness",
+  "objective": "Opt CI into the GitHub Actions Node.js 24 action runtime without changing Quiver's tested Node version.",
+  "description": "Adds the documented GitHub Actions runtime opt-in while preserving existing jobs, smoke coverage, and node-version 22.",
+  "git": {
+    "branch_type": "fix",
+    "base_branch": "main",
+    "branch_slug": "ci-actions-node24-readiness",
+    "branch_name": "fix/QUIVER-45-01-ci-actions-node24-readiness"
+  },
+  "files": [
+    ".github/workflows/ci.yml",
+    "docs/INDEX.md",
+    "specs/quiver-v45-ci-actions-node24-readiness/**"
+  ],
+  "expected_read_paths": [
+    ".github/workflows/ci.yml",
+    "docs/INDEX.md",
+    "docs/GITFLOW_PR_GUIDE.md"
+  ],
+  "allowed_write_paths": [
+    ".github/workflows/ci.yml",
+    "docs/INDEX.md",
+    "specs/quiver-v45-ci-actions-node24-readiness/**"
+  ],
+  "depends_on": [
+    "slice-00-ci-actions-foundation"
+  ],
+  "parallel_safe": "after_dependencies",
+  "parallel_safe_reason": "This fix touches only CI workflow and its own spec package.",
+  "must": [
+    "Set FORCE_JAVASCRIPT_ACTIONS_TO_NODE24 to true for CI.",
+    "Preserve node-version: 22.",
+    "Preserve existing job and step coverage.",
+    "Record validation evidence."
+  ],
+  "not_included": [
+    "Changing project Node runtime.",
+    "Changing package scripts.",
+    "Changing command behavior."
+  ],
+  "acceptance": [
+    "Workflow includes the Node 24 action runtime opt-in.",
+    "node-version: 22 remains unchanged.",
+    "Package and smoke validation pass.",
+    "Spec validation passes."
+  ],
+  "tests": [
+    "node --test tests/lib/package-safety.test.js",
+    "npm run package:quiver",
+    "npm run smoke:create-quiver",
+    "git diff --check",
+    "node bin/create-quiver.js spec validate specs/quiver-v45-ci-actions-node24-readiness --strict"
+  ],
+  "validation_hints": [
+    "Use git diff to confirm no unrelated workflow changes."
+  ],
+  "estimated_hours": 1,
+  "status": "completed",
+  "blocked_reason": null,
+  "completed_at": "2026-05-29T00:00:00.000Z"
+}

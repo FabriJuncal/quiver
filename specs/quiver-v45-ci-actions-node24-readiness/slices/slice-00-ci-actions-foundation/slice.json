@@ -1,0 +1,48 @@
+{
+  "slice_id": "slice-00-ci-actions-foundation",
+  "ticket": "QUIVER-45-00",
+  "type": "documentation",
+  "title": "CI Actions foundation",
+  "objective": "Create the spec package and handoffs for CI Actions Node 24 readiness.",
+  "description": "Documents the CI deprecation warning and creates implementation handoffs before changing workflow behavior.",
+  "git": {
+    "branch_type": "fix",
+    "base_branch": "main",
+    "branch_slug": "ci-actions-node24-foundation",
+    "branch_name": "fix/QUIVER-45-00-ci-actions-node24-foundation"
+  },
+  "files": [
+    "specs/quiver-v45-ci-actions-node24-readiness/**"
+  ],
+  "expected_read_paths": [
+    "docs/INDEX.md",
+    "docs/GITFLOW_PR_GUIDE.md"
+  ],
+  "allowed_write_paths": [
+    "specs/quiver-v45-ci-actions-node24-readiness/**"
+  ],
+  "depends_on": [],
+  "parallel_safe": "no",
+  "parallel_safe_reason": "Foundation defines the fix contract.",
+  "must": [
+    "Create SPEC, STATUS, EXECUTION_PLAN, EVIDENCE_REPORT, PR body, and slice handoffs.",
+    "Keep implementation code untouched."
+  ],
+  "not_included": [
+    "Workflow implementation."
+  ],
+  "acceptance": [
+    "Spec package exists.",
+    "Implementation is deferred to slice-01."
+  ],
+  "tests": [
+    "git diff --check"
+  ],
+  "validation_hints": [
+    "Confirm slice JSON parses."
+  ],
+  "estimated_hours": 1,
+  "status": "completed",
+  "blocked_reason": null,
+  "completed_at": "2026-05-29T00:00:00.000Z"
+}
