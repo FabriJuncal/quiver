@@ -1,9 +1,9 @@
 # Status - Quiver v41 CLI i18n AI Lifecycle
 
-**Overall status:** Planned
+**Overall status:** Completed
 **Created:** 2026-05-28
-**Completed:** Not completed
-**Current slice:** slice-01-ai-run-status-resume
+**Completed:** 2026-05-29
+**Current slice:** none
 
 ## Summary
 
@@ -14,12 +14,13 @@ This spec localizes AI lifecycle command output after the v37 foundation is comp
 | Slice | Status | Notes |
 |---|---|---|
 | slice-00-ai-i18n-foundation | Completed | Spec package and handoffs created. |
-| slice-01-ai-run-status-resume | Planned | Blocked until v37 foundation is complete. |
-| slice-02-ai-agent-models | Planned | Depends on shared AI localization patterns. |
-| slice-03-ai-planner-approval-review | Planned | Covers provider-backed planner wrappers and approvals. |
-| slice-04-ai-execution-pr | Planned | Covers execution and PR command wrappers. |
-| slice-05-ai-tests-smokes | Planned | Closing validation slice. |
+| slice-01-ai-run-status-resume | Completed | Localized current run/status/resume wrappers; full watcher runtime remains in v36. |
+| slice-02-ai-agent-models | Completed | Localized agent/model wrappers and selectors while preserving profile/JSON contracts. |
+| slice-03-ai-planner-approval-review | Completed | Localized planner/review/approval wrappers while preserving prompt and artifact contracts. |
+| slice-04-ai-execution-pr | Completed | Localized execution and PR wrappers while preserving git/gh semantics. |
+| slice-05-ai-tests-smokes | Completed | Full tests, package smoke, spec validation, and evidence completed. |
+| slice-06-ai-prepare-context-progress-i18n-fix | Completed | Fixed mixed-language live progress in onboard and planner prepare-context paths. |
 
 ## Current Blockers
 
-- Requires completion of `specs/quiver-v37-cli-i18n-foundation`.
+- No blockers for v41. `ai run watch` runtime remains a separate planned dependency in `specs/quiver-v36-ai-run-watch-portable`.

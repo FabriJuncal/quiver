@@ -111,6 +111,37 @@ test('ai agent set --dry-run previews the profile without writing state', () => 
   }
 });
 
+test('ai agent commands render Spanish human output while preserving profile state', () => {
+  const repo = makeRepo();
+
+  try {
+    const saved = runCli(repo.root, ['--lang', 'es', 'ai', 'agent', 'set', 'planner', '--provider', 'codex', '--model', 'gpt-5.5', '--display-name', 'GPT 5.5']);
+    assert.match(saved, /Perfil de agente IA guardado/);
+    assert.match(saved, /Rol: planner/);
+    assert.match(saved, /Provider: codex/);
+    assert.match(saved, /Modelo: gpt-5\.5/);
+    assert.match(saved, /Nombre visible: GPT 5\.5/);
+
+    const stored = JSON.parse(fs.readFileSync(path.join(repo.root, '.quiver', 'agents', 'profiles.json'), 'utf8'));
+    assert.equal(stored.profiles.planner.provider, 'codex');
+    assert.equal(stored.profiles.planner.model, 'gpt-5.5');
+    assert.equal(stored.profiles.planner.displayName, 'GPT 5.5');
+
+    const list = runCli(repo.root, ['--lang', 'es', 'ai', 'agent', 'list']);
+    assert.match(list, /Perfiles de agentes IA/);
+    assert.match(list, /planner: provider=codex model=gpt-5\.5 nombreVisible=GPT 5\.5/);
+    assert.match(list, /executor: no configurado/);
+
+    const dryRun = runCli(repo.root, ['--lang', 'es', 'ai', 'agent', 'set', 'executor', '--provider', 'claude', '--model', 'sonnet', '--dry-run']);
+    assert.match(dryRun, /Dry-run de perfil de agente IA/);
+    assert.match(dryRun, /Escrituras: ninguna/);
+    assert.match(dryRun, /Haria crear: \.quiver\/agents\/profiles\.json/);
+    assert.match(dryRun, /Rol: executor/);
+  } finally {
+    repo.cleanup();
+  }
+});
+
 test('ai agent supports doctor profiles and rejects researcher profiles', () => {
   const repo = makeRepo();
 
@@ -155,6 +186,26 @@ test('ai agent show reports missing profile with actionable guidance', () => {
         && error.stderr.includes('Fix:')
         && error.stderr.includes('Next command: npx create-quiver ai agent set executor --provider <provider> --model <model-id>'),
     );
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('ai agent actionable errors render Spanish wrappers while preserving commands', () => {
+  const repo = makeRepo();
+
+  try {
+    const missing = runCliResult(repo.root, ['--lang', 'es', 'ai', 'agent', 'show', 'executor']);
+    assert.equal(missing.status, 1);
+    assert.match(missing.stderr, /el perfil de agente 'executor' no esta configurado/);
+    assert.match(missing.stderr, /Impacto:/);
+    assert.match(missing.stderr, /Arreglo:/);
+    assert.match(missing.stderr, /Siguiente comando: npx create-quiver ai agent set executor --provider <provider> --model <model-id>/);
+
+    const noPrompt = runCliResult(repo.root, ['--lang', 'es', 'ai', 'agent', 'set', 'planner', '--provider', 'codex']);
+    assert.equal(noPrompt.status, 1);
+    assert.match(noPrompt.stderr, /ai agent set planner requiere --provider y --model/);
+    assert.match(noPrompt.stderr, /Siguiente comando: npx create-quiver ai agent set planner --provider codex --model gpt-5\.5/);
   } finally {
     repo.cleanup();
   }
@@ -212,6 +263,7 @@ test('ai agent interactive set resolves provider and catalog model selections', 
   try {
     const resolved = await resolveInteractiveAgentSetOptions(repo.root, {
       role: 'planner',
+      language: 'es',
       interactive: true,
       stdinIsTTY: true,
       stdoutIsTTY: true,
@@ -239,6 +291,7 @@ test('ai agent interactive set can create an additional named profile', async ()
 
     const resolved = await resolveInteractiveAgentSetOptions(repo.root, {
       role: 'planner',
+      language: 'es',
       interactive: true,
       stdinIsTTY: true,
       stdoutIsTTY: true,
@@ -270,6 +323,7 @@ test('ai agent interactive set supports custom model id and display name', async
   try {
     const resolved = await resolveInteractiveAgentSetOptions(repo.root, {
       role: 'executor',
+      language: 'es',
       interactive: true,
       stdinIsTTY: true,
       stdoutIsTTY: true,

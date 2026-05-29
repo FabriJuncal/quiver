@@ -45,6 +45,19 @@ function execAiSubcommand(repoRoot, args = [], env = {}) {
   });
 }
 
+function execCli(repoRoot, args = [], env = {}) {
+  return execFileSync('node', [BIN_PATH, ...args], {
+    cwd: repoRoot,
+    encoding: 'utf8',
+    env: { ...process.env, ...env },
+  });
+}
+
+function promptBody(output) {
+  const match = String(output).match(/--- PROMPT START ---\n([\s\S]*?)\n--- PROMPT END ---/);
+  return match ? match[1] : '';
+}
+
 function approvedPlanManifest() {
   return {
     spec: {
@@ -103,6 +116,71 @@ test('ai plan spec phase dry-run reports the generated spec tree and does not wr
   }
 });
 
+test('ai plan spec phase dry-run renders Spanish wrappers while preserving generated target ids', () => {
+  const repo = makeRepo({
+    'technical-plan.md': `${JSON.stringify(approvedPlanManifest(), null, 2)}\n`,
+  });
+
+  try {
+    savePlannerDraft(repo.root, 'technical-plan', 'technical-plan.md', fs.readFileSync(path.join(repo.root, 'technical-plan.md'), 'utf8'));
+    savePlanReview(repo.root, {
+      contents: 'production review\n',
+      inputPath: '.quiver/approvals/technical-plan/drafts/001.md',
+      inputKind: 'draft',
+      inputVersion: 1,
+    });
+    execAiSubcommand(repo.root, ['approve', '--phase', 'technical-plan', '--version', '1']);
+
+    const output = execCli(repo.root, ['--lang', 'es', 'ai', 'plan', '--phase', 'spec', '--dry-run']);
+    assert.ok(output.includes('Dry-run de plan IA'));
+    assert.ok(output.includes('Fase: spec'));
+    assert.ok(output.includes('Slug de spec: quiver-v21-cli-spec'));
+    assert.ok(output.includes('Destino: specs/quiver-v21-cli-spec'));
+    assert.ok(output.includes('slice-00-spec-foundation'));
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('ai plan print-prompt localizes wrappers but keeps provider prompt body stable', () => {
+  const repo = makeRepo({
+    'requirements.md': '# Requirements\nBuild the feature.\n',
+  });
+
+  try {
+    const en = execCli(repo.root, ['ai', 'plan', '--phase', 'acceptance', '--input', 'requirements.md', '--print-prompt']);
+    const es = execCli(repo.root, ['--lang', 'es', 'ai', 'plan', '--phase', 'acceptance', '--input', 'requirements.md', '--print-prompt']);
+
+    assert.ok(en.includes('AI plan prompt-only'));
+    assert.ok(es.includes('Prompt-only de IA plan'));
+    assert.equal(promptBody(es), promptBody(en));
+    assert.match(promptBody(es), /Task: produce acceptance criteria only/);
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('ai review-plan dry-run renders Spanish wrapper fields without changing draft path', () => {
+  const repo = makeRepo({
+    'technical-plan.md': '# Technical plan\n',
+  });
+
+  try {
+    savePlannerDraft(repo.root, 'technical-plan', 'technical-plan.md', '# Technical plan\n');
+
+    const output = execCli(repo.root, ['--lang', 'es', 'ai', 'review-plan', '--dry-run']);
+    assert.ok(output.includes('Dry-run de IA review-plan'));
+    assert.ok(output.includes('Provider: codex'));
+    assert.ok(output.includes('Rol: reviewer'));
+    assert.ok(output.includes('Fuente del prompt: packaged production-readiness plan review template'));
+    assert.ok(output.includes('Archivo de entrada: .quiver/approvals/technical-plan/drafts/001.md'));
+    assert.ok(output.includes('Tipo de entrada: draft'));
+    assert.ok(output.includes('Version de entrada: v1'));
+  } finally {
+    repo.cleanup();
+  }
+});
+
 test('ai plan spec phase can infer the spec slug from approved technical-plan input and write artifacts', () => {
   const repo = makeRepo({
     'technical-plan.md': `${JSON.stringify(approvedPlanManifest(), null, 2)}\n`,
@@ -147,6 +225,29 @@ test('ai plan spec phase rejects unapproved technical-plan input', () => {
     assert.throws(
       () => execAi(repo.root, ['--phase', 'spec', '--input', 'technical-plan.md']),
       (error) => error.stderr.includes("requires approved technical-plan input") && error.stderr.includes("current status: missing"),
+    );
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('ai approve dry-run and missing-version guidance render Spanish wrappers', () => {
+  const repo = makeRepo({
+    'acceptance.md': '# Acceptance\n',
+  });
+
+  try {
+    savePlannerDraft(repo.root, 'acceptance', 'acceptance.md', '# Draft criteria\n');
+
+    const dryRun = execCli(repo.root, ['--lang', 'es', 'ai', 'approve', '--phase', 'acceptance', '--version', '1', '--dry-run']);
+    assert.ok(dryRun.includes('Dry-run de aprobacion IA'));
+    assert.ok(dryRun.includes('Fase: acceptance'));
+    assert.ok(dryRun.includes('Version: v1'));
+
+    assert.throws(
+      () => execCli(repo.root, ['--lang', 'es', 'ai', 'approve', '--phase', 'acceptance']),
+      (error) => error.stderr.includes('requiere --version <n>')
+        && error.stderr.includes('Siguiente comando: npx create-quiver ai approve --phase acceptance --version 1'),
     );
   } finally {
     repo.cleanup();

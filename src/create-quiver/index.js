@@ -3244,6 +3244,7 @@ async function run(argv) {
       runAiLifecycleRun(process.cwd(), {
         command: args.aiRunCommand,
         input: args.aiInput || undefined,
+        language: args.language,
         runId: args.aiRunId || undefined,
         specSlug: args.specSlug || undefined,
       });
@@ -3321,6 +3322,7 @@ async function run(argv) {
     if (args.aiCommand === 'models') {
       runAiModelsList({
         json: args.json,
+        language: args.language,
         provider: args.aiProviderExplicit ? args.aiProvider : undefined,
       });
       return;
@@ -3335,6 +3337,7 @@ async function run(argv) {
         id: args.aiProfileId || undefined,
         interactive: args.interactive,
         json: args.json,
+        language: args.language,
         label: args.aiLabel || undefined,
         model: args.aiModel || undefined,
         provider: args.aiProviderExplicit ? args.aiProvider : undefined,
@@ -3387,6 +3390,7 @@ async function run(argv) {
         dryRun: args.dryRun,
         input: args.aiInput || undefined,
         phase: args.aiPhase,
+        language: args.language,
         printPrompt: args.aiPrintPrompt,
         provider: args.aiProvider,
         providerExplicit: args.aiProviderExplicit,
@@ -3408,6 +3412,7 @@ async function run(argv) {
         context: args.aiContext || undefined,
         dryRun: args.dryRun,
         input: args.aiInput || undefined,
+        language: args.language,
         printPrompt: args.aiPrintPrompt,
         provider: args.aiProvider,
         providerExplicit: args.aiProviderExplicit,
@@ -3423,6 +3428,7 @@ async function run(argv) {
         context: args.aiContext || undefined,
         dryRun: args.dryRun,
         input: args.aiInput || undefined,
+        language: args.language,
         printPrompt: args.aiPrintPrompt,
         provider: args.aiProvider,
         providerExplicit: args.aiProviderExplicit,
@@ -3441,6 +3447,7 @@ async function run(argv) {
         dryRun: args.dryRun,
         input: args.aiInput || undefined,
         phase: args.aiPhase,
+        language: args.language,
         printPrompt: args.aiPrintPrompt,
         provider: args.aiProvider,
         providerExplicit: args.aiProviderExplicit,
@@ -3457,6 +3464,7 @@ async function run(argv) {
       await runAiApprove(process.cwd(), {
         dryRun: args.dryRun,
         input: args.aiInput || undefined,
+        language: args.language,
         phase: args.aiPhase,
         runId: args.aiRunId || undefined,
         version: args.aiVersion || undefined,
@@ -3508,6 +3516,7 @@ async function run(argv) {
         executorProfile: args.aiExecutorProfile || undefined,
         interactive: args.interactive,
         json: args.json,
+        language: args.language,
         model: args.aiModel || undefined,
         mode: args.aiExecutionMode,
         provider: args.aiProvider,
@@ -3536,6 +3545,7 @@ async function run(argv) {
         dryRun: args.dryRun,
         input: args.aiInput || undefined,
         interactive: args.interactive,
+        language: args.language,
         remote: args.aiRemote || undefined,
         review: args.review,
         sshHostAlias: args.aiSshHostAlias || undefined,

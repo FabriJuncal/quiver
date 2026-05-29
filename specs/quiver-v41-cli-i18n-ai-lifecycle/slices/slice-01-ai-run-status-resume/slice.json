@@ -12,8 +12,11 @@
     "branch_name": "feature/QUIVER-41-01-v41-ai-run-status-resume"
   },
   "files": [
+    "src/create-quiver/index.js",
     "src/create-quiver/commands/ai.js",
     "src/create-quiver/lib/ai/run-state.js",
+    "src/create-quiver/lib/i18n/messages/en.js",
+    "src/create-quiver/lib/i18n/messages/es.js",
     "tests/commands/ai-run-state.test.js"
   ],
   "expected_read_paths": [
@@ -24,6 +27,7 @@
   ],
   "allowed_write_paths": [
     "src/create-quiver/commands/ai.js",
+    "src/create-quiver/index.js",
     "src/create-quiver/lib/ai/**",
     "src/create-quiver/lib/i18n/**",
     "tests/commands/ai-run-state.test.js",
@@ -44,18 +48,21 @@
     "Planner and provider prompt localization."
   ],
   "acceptance": [
-    "Run/status/watch outputs render in en and es.",
+    "Run/status/resume outputs render in en and es.",
+    "The current unsupported watch wrapper error renders in en and es until the v36 watcher runtime lands.",
     "JSON and JSONL tests remain stable.",
-    "Watcher Ctrl+C behavior is unchanged."
+    "Watcher Ctrl+C behavior is unchanged because v36 owns watcher runtime implementation."
   ],
   "tests": [
     "node --test tests/commands/ai-run-state.test.js",
+    "node --test tests/lib/i18n-catalog.test.js",
     "git diff --check"
   ],
   "validation_hints": [
     "If ai-run-watch tests do not exist yet, add focused tests with temporary run fixtures."
   ],
   "estimated_hours": 7,
-  "status": "planned",
-  "blocked_reason": "Requires completion of specs/quiver-v37-cli-i18n-foundation."
+  "status": "completed",
+  "blocked_reason": "",
+  "completed_at": "2026-05-29T17:29:09Z"
 }

@@ -47,9 +47,34 @@ test('ai models list --json emits clean parseable catalog metadata', () => {
   assert.doesNotMatch(output, /AI models known by Quiver/);
 });
 
+test('ai models list localizes Spanish human output without changing JSON', () => {
+  const output = runCli(['--lang', 'es', 'ai', 'models', 'list', '--provider', 'codex']);
+
+  assert.match(output, /Modelos de IA conocidos por Quiver/);
+  assert.match(output, /Version del catalogo:/);
+  assert.match(output, /Ultima actualizacion:/);
+  assert.match(output, /Codex \(codex\)/);
+  assert.match(output, /gpt-5\.5 \(GPT 5\.5\)/);
+  assert.match(output, /roles: planner, reviewer/);
+  assert.doesNotMatch(output, /AI models known by Quiver/);
+
+  const json = runCli(['--lang', 'es', 'ai', 'models', 'list', '--json']);
+  const parsed = JSON.parse(json);
+  assert.equal(parsed.providers[0].id, 'codex');
+  assert.equal(parsed.providers[0].models.some((model) => model.id === 'gpt-5.5'), true);
+  assert.doesNotMatch(json, /Modelos de IA conocidos por Quiver/);
+});
+
 test('ai models list rejects unsupported provider filters with guidance', () => {
   assert.throws(
     () => runCli(['ai', 'models', 'list', '--provider', 'openai']),
     /unsupported provider filter 'openai'. Supported providers: codex, claude, gemini\./,
+  );
+});
+
+test('ai models list rejects unsupported provider filters in Spanish', () => {
+  assert.throws(
+    () => runCli(['--lang', 'es', 'ai', 'models', 'list', '--provider', 'openai']),
+    /filtro de provider no soportado 'openai'. Providers soportados: codex, claude, gemini\./,
   );
 });

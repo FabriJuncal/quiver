@@ -236,12 +236,12 @@ test('ai review-plan shows human TTY progress during live provider execution', a
     });
 
     assert.deepEqual(progress.events, [
-      ['write', '◇ Ejecutando revisión del plan con codex\n'],
-      ['write', '✓ Leyendo plan técnico\n'],
-      ['write', '✓ Preparando contexto\n'],
-      ['write', '✓ Preparando prompt\n'],
-      ['start', 'Ejecutando agente...'],
-      ['stop', 'Agente finalizado', undefined],
+      ['write', '◇ Running plan review with codex\n'],
+      ['write', '✓ Reading technical plan\n'],
+      ['write', '✓ Preparing context\n'],
+      ['write', '✓ Preparing prompt\n'],
+      ['start', 'Running agent...'],
+      ['stop', 'Agent finished', undefined],
     ]);
   } finally {
     repo.cleanup();
@@ -535,7 +535,7 @@ test('ai approve selects technical-plan draft interactively with review context'
         assert.match(message, /technical-plan draft/);
         assert.equal(options.length, 1);
         assert.match(options[0].hint, /review=approve-with-risk/);
-        assert.match(options[0].hint, /optional=1/);
+        assert.match(options[0].hint, /optional hardening=1/);
         assert.match(options[0].hint, /risks=1/);
         return '1';
       },

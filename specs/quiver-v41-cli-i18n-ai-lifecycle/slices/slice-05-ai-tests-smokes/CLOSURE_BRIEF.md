@@ -2,12 +2,14 @@
 
 ## Summary
 
-Pending implementation.
+Completed. v41 was closed with full local test, package, smoke, spec, slice, and whitespace validation. During validation, a mixed-language live progress gap was fixed under `slice-06-ai-prepare-context-progress-i18n-fix`; this slice records the final validation evidence after that fix.
 
 ## Validation
 
-- [ ] `node --test tests/**/*.test.js`
-- [ ] `npx create-quiver spec validate specs/quiver-v41-cli-i18n-ai-lifecycle --strict`
-- [ ] `npm run package:quiver`
-- [ ] `npm run smoke:create-quiver`
-- [ ] `git diff --check`
+- [x] `node --test tests/**/*.test.js` (`599/599`)
+- [x] `npm run package:quiver` (`create-quiver-0.15.3.tgz`)
+- [x] `npm run smoke:create-quiver`
+- [x] `node bin/create-quiver.js spec validate specs/quiver-v41-cli-i18n-ai-lifecycle --strict`
+- [x] `node bin/create-quiver.js check-slice specs/quiver-v41-cli-i18n-ai-lifecycle/slices/slice-05-ai-tests-smokes/slice.json --local`
+- [x] `node bin/create-quiver.js check-slice specs/quiver-v41-cli-i18n-ai-lifecycle/slices/slice-06-ai-prepare-context-progress-i18n-fix/slice.json --local`
+- [x] `git diff --check`
