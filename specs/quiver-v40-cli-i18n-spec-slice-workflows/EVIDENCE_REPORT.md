@@ -32,8 +32,19 @@
   - `node --test tests/commands/ai-execute-slice.test.js tests/lib/check-slice.test.js tests/lib/handoff.test.js tests/lib/lifecycle.test.js tests/lib/scope.test.js tests/lib/i18n-catalog.test.js` - passed.
   - `git diff --check` - passed.
 
+## slice-04-spec-slice-tests-smokes
+
+- Adjusted package, cross-platform, and tiered-pack smokes to set `QUIVER_LANG=es` explicitly for Spanish workflow wrapper assertions.
+- Confirmed generated spec artifacts, command snippets, ids, paths, and JSON contracts remain stable.
+- Validation:
+  - `node --test tests/**/*.test.js` - passed, 587 tests.
+  - `node bin/create-quiver.js spec validate specs/quiver-v40-cli-i18n-spec-slice-workflows --strict` - passed.
+  - `npm run package:quiver` - passed, package smoke produced `create-quiver-0.15.3.tgz`.
+  - `npm run smoke:create-quiver` - passed.
+  - `node scripts/ci/smoke-cross-platform.js` - passed.
+  - `bash scripts/ci/smoke-tiered-pack.sh` - passed.
+  - `git diff --check` - passed.
+
 ## Pending Evidence
 
-- `node --test tests/**/*.test.js`
-- `npm run package:quiver`
-- `npm run smoke:create-quiver`
+- None.

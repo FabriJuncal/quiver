@@ -614,7 +614,7 @@ git -C "$new_target" branch develop HEAD
 
 npm install --prefix "$new_target" --save-dev "$repo_root" --ignore-scripts --no-audit --no-fund >/dev/null
 
-start_output="$(cd "$new_target" && SLICE_WORKTREES_DIR="$temp_root/worktrees-shell" bash tools/scripts/start-slice.sh --allow-draft specs/smoke-project/slices/slice-template/slice.json)"
+start_output="$(cd "$new_target" && QUIVER_LANG=es SLICE_WORKTREES_DIR="$temp_root/worktrees-shell" bash tools/scripts/start-slice.sh --allow-draft specs/smoke-project/slices/slice-template/slice.json)"
 if [[ "$start_output" != *"Slice listo para trabajar."* ]]; then
   echo "Missing expected output from start-slice wrapper: Slice listo para trabajar." >&2
   exit 1
@@ -624,7 +624,7 @@ assert_front_matter "$new_target/docs/ai/ACTIVE_SLICE.md"
 assert_contains "$new_target/docs/ai/ACTIVE_SLICE.md" "## allowed_files"
 assert_contains "$new_target/docs/ai/ACTIVE_SLICE.md" "Definition of Done"
 
-start_again_output="$(cd "$new_target" && SLICE_WORKTREES_DIR="$temp_root/worktrees-shell" bash tools/scripts/start-slice.sh --allow-draft specs/smoke-project/slices/slice-template/slice.json)"
+start_again_output="$(cd "$new_target" && QUIVER_LANG=es SLICE_WORKTREES_DIR="$temp_root/worktrees-shell" bash tools/scripts/start-slice.sh --allow-draft specs/smoke-project/slices/slice-template/slice.json)"
 if [[ "$start_again_output" != *"Reemplazando docs/ai/ACTIVE_SLICE.md existente."* ]]; then
   echo "Missing replacement message from start-slice wrapper" >&2
   exit 1
@@ -644,7 +644,7 @@ if [ -f "$new_target/docs/ai/ACTIVE_SLICE.md" ]; then
   exit 1
 fi
 
-start_missing_output="$(cd "$new_target" && SLICE_WORKTREES_DIR="$temp_root/worktrees-shell" bash tools/scripts/start-slice.sh --allow-draft specs/smoke-project/slices/slice-template/slice.json)"
+start_missing_output="$(cd "$new_target" && QUIVER_LANG=es SLICE_WORKTREES_DIR="$temp_root/worktrees-shell" bash tools/scripts/start-slice.sh --allow-draft specs/smoke-project/slices/slice-template/slice.json)"
 if [[ "$start_missing_output" != *"Slice listo para trabajar."* ]]; then
   echo "Missing expected output from second start-slice wrapper" >&2
   exit 1

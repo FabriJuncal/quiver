@@ -1,7 +1,7 @@
 # Quiver v40 - CLI i18n Spec and Slice Workflows
 
 **Date:** 2026-05-28
-**Status:** Planned
+**Status:** Completed
 **Source:** Continuation of the approved CLI i18n program.
 
 ## Problem
@@ -43,7 +43,7 @@ Localize spec/slice workflow command output in `en` and `es` while preserving ge
 | slice-01 | Spec create, start, and status surfaces | completed | v37 complete |
 | slice-02 | Spec validate and close | completed | slice-01 |
 | slice-03 | Slice lifecycle and handoffs | completed | slice-01 |
-| slice-04 | Spec/slice tests and smokes | planned | slice-02, slice-03 |
+| slice-04 | Spec/slice tests and smokes | completed | slice-02, slice-03 |
 
 ## Guardrails
 
