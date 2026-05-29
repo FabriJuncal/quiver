@@ -1,0 +1,33 @@
+# Contexto de {{PROJECT_NAME}}
+
+## Que es {{PROJECT_NAME}}?
+
+[Uno o dos parrafos que expliquen el proyecto.]
+
+## Propuesta de valor
+
+> "[Frase principal del proyecto]"
+
+## Usuario objetivo
+
+[Describe el usuario principal.]
+
+## Foco actual
+
+- [Objetivo actual 1]
+- [Objetivo actual 2]
+- [TODO: confirmar contexto antes de ampliar alcance]
+
+## Donde vive el stack
+
+El stack, package manager y comandos se generan en `docs/PROJECT_MAP.md` despues de ejecutar `analyze`.
+
+## Seguridad y privacidad
+
+- [Datos sensibles que nunca se guardan]
+- [Datos que si se guardan]
+- [Medida de seguridad importante]
+
+## Proximo paso
+
+Si sos agente IA, lee `AI_CONTEXT.md`. Si sos humano, usa `INDEX.md` para navegar la documentacion.

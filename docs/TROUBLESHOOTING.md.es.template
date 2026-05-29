@@ -1,0 +1,35 @@
+# Troubleshooting
+
+**Proyecto:** {{PROJECT_NAME}}
+**Ultima actualizacion:** {{FECHA}}
+
+Usa esta guia cuando falle bootstrap, validacion o ejecucion de Quiver.
+
+## Quiver no aparece en node_modules
+
+### Sintoma
+
+- `npx --yes create-quiver@latest ...` funciona.
+- `node_modules/create-quiver` no existe.
+- `package.json` no declara `create-quiver`.
+
+### Recuperacion
+
+1. Esto es esperado cuando se usa `npx`.
+2. Usa `npx --yes create-quiver@latest` para ejecutar la version publicada mas reciente.
+3. Instala localmente solo si el equipo quiere un workflow pineado:
+
+```bash
+npm install --save-dev create-quiver
+```
+
+## Falta branch base
+
+### Sintoma
+
+- `start-slice` no encuentra `develop` o `main`.
+
+### Recuperacion
+
+1. Crea o fetchea la branch base.
+2. Vuelve a ejecutar la validacion del slice.

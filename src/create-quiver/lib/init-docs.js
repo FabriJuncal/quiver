@@ -7,6 +7,7 @@ const {
   quiverInternalPaths,
   resolveInitPackageScripts,
 } = require('./init-layout');
+const { resolveLocalizedTemplatePath } = require('./i18n/templates');
 const { writeState } = require('./state');
 
 function ensureDir(dirPath) {
@@ -116,6 +117,17 @@ function copyRenderedFile(sourcePath, destinationPath, replacements, skipIfExist
   }
 
   return 'created';
+}
+
+function resolveGeneratedTemplatePath(templateRoot, relativePath, options = {}) {
+  const basePath = path.join(templateRoot, relativePath);
+  if (!fs.existsSync(basePath)) {
+    return '';
+  }
+  return resolveLocalizedTemplatePath(templateRoot, relativePath, {
+    language: options.language,
+    projectRoot: options.projectRoot,
+  }).templatePath;
 }
 
 function copyBinaryFile(sourcePath, destinationPath, skipIfExists) {
@@ -686,6 +698,7 @@ function initializeProjectDocs(options) {
     migrateMode = false,
     profile = 'default',
     templateRoot: providedTemplateRoot = '',
+    language = '',
   } = options;
 
   const templateRoot = providedTemplateRoot || path.join(projectRoot, 'docs-template');
@@ -747,8 +760,9 @@ function initializeProjectDocs(options) {
     operations.push({ source: 'packaged templates', destination: '.quiver/templates', result: 'merged' });
   }
 
-  const agentsSourcePath = path.join(templateRoot, 'AGENTS.md.template');
-  if (fs.existsSync(agentsSourcePath)) {
+  const templateLanguageOptions = { language, projectRoot };
+  const agentsSourcePath = resolveGeneratedTemplatePath(templateRoot, 'AGENTS.md.template', templateLanguageOptions);
+  if (agentsSourcePath) {
     const agentsDestinationPath = path.join(projectRoot, 'AGENTS.md');
     const result = copyRenderedFile(agentsSourcePath, agentsDestinationPath, replacements, true);
     operations.push({ source: 'AGENTS.md.template', destination: 'AGENTS.md', result });
@@ -814,8 +828,8 @@ function initializeProjectDocs(options) {
       continue;
     }
 
-    const sourcePath = path.join(templateRoot, source);
-    if (!fs.existsSync(sourcePath)) {
+    const sourcePath = resolveGeneratedTemplatePath(templateRoot, source, templateLanguageOptions);
+    if (!sourcePath) {
       continue;
     }
 

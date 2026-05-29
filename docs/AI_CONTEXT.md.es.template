@@ -1,0 +1,35 @@
+# Contexto IA de {{PROJECT_NAME}}
+
+Este archivo comprime el contrato de trabajo para agentes IA. Usa los documentos canonicos cuando necesites mas detalle.
+
+## Que es este proyecto
+
+[Resumen corto del proyecto.]
+
+## Leer primero
+
+1. `docs/PROJECT_MAP.md`
+2. `docs/INDEX.md`
+3. `docs/AI_ONBOARDING_PROMPT.md`
+4. `docs/DECISIONS.md`
+5. `docs/CONTEXTO.md`
+6. `docs/WORKFLOW.md`
+7. `specs/{{PROJECT_SLUG}}/SPEC.md`
+8. `specs/{{PROJECT_SLUG}}/slices/[slice-id]/slice.json`
+
+## Reglas criticas
+
+- Un slice equivale a un commit.
+- Un spec equivale a un PR.
+- No inventes archivos, rutas, flags ni reglas de negocio.
+- No sobrescribas contenido humano sin revisar si debe preservarse.
+- Usa `TODO`, `Assumption` o `Pending confirmation` para incertidumbre.
+- Los prompts y salidas JSON son contratos estables y no deben traducirse.
+
+## Comandos utiles
+
+```bash
+npx create-quiver flow
+npx create-quiver dashboard
+npx create-quiver spec validate specs/{{PROJECT_SLUG}} --strict
+```

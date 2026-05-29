@@ -1,0 +1,28 @@
+# Estado de {{PROJECT_NAME}}
+
+Este archivo registra progreso, bloqueos y slice actual. Stack y comandos viven en `docs/PROJECT_MAP.md`.
+
+## Estado general
+
+- Progreso: {{X}}% completo
+- Fase actual: {{FASE}}
+- Proximo hito: [Descripcion]
+
+## Resumen de slices
+
+Todavia no hay slices de implementacion. Crea specs y slices solo despues de aprobar criterios de aceptacion y plan tecnico.
+
+| Slice | Titulo | Estado | Progreso | Spec |
+|---|---|---|---|---|
+| slice-00 | Fundacion documental | Pendiente | 0% | `specs/<spec>/slices/slice-00-.../slice.json` |
+
+## Bloqueos
+
+| Bloqueo | Impacto | Mitigacion |
+|---|---|---|
+| - | - | - |
+
+## Notas
+
+- Actualiza este archivo al cerrar cada slice.
+- Registra incertidumbre con `TODO`, `Assumption` o `Pending confirmation`.

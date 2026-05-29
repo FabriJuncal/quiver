@@ -1,0 +1,36 @@
+# Indice de documentacion de {{PROJECT_NAME}}
+
+**Ultima actualizacion:** {{FECHA}}
+
+## Empezar aca
+
+- **Contexto** - `./CONTEXTO.md`
+- **Contexto para IA** - `./AI_CONTEXT.md`
+- **Decisiones** - `./DECISIONS.md`
+- **Prompt de onboarding IA** - `./AI_ONBOARDING_PROMPT.md`
+- **Workflow** - `./WORKFLOW.md`
+- **Comandos** - `./COMMANDS.md`
+- **Matriz de soporte** - `./SUPPORT_MATRIX.md`
+- **Troubleshooting** - `./TROUBLESHOOTING.md`
+
+## Configuracion de IA
+
+- **Principios** - `./ai/PRINCIPLES.md`
+- **Reglas** - `./ai/RULES.yaml`
+- **Lecciones** - `./ai/LESSONS.md`
+
+## Mapa del proyecto
+
+`docs/PROJECT_MAP.md` se crea con:
+
+```bash
+npx create-quiver analyze
+```
+
+Usalo despues del analisis para stack, package manager, comandos y pistas de archivos.
+
+## Docs opcionales y perfiles
+
+- `npx create-quiver init --full` agrega notas multi-agente, ejemplos y assets iniciales de spec.
+- Los specs y slices reales se crean despues de aprobar criterios y plan tecnico con `npx create-quiver spec create`.
+- Los wrappers Bash heredados solo se agregan con `--full` o `--legacy-scripts`.

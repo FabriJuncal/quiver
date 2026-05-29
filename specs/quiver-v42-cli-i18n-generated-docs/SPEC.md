@@ -41,7 +41,7 @@ Add Spanish and English support to generated human documentation and templates, 
 |---|---|---|---|
 | slice-00 | Generated docs foundation | completed | none |
 | slice-01 | Template language routing | completed | v37 complete |
-| slice-02 | Init docs and i18n assets | planned | slice-01 |
+| slice-02 | Init docs and i18n assets | completed | slice-01 |
 | slice-03 | Docs reference and guides | planned | slice-01 |
 | slice-04 | Generated docs tests and smokes | planned | slice-02, slice-03 |
 

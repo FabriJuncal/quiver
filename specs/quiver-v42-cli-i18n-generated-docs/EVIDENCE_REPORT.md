@@ -19,6 +19,19 @@ Validation:
 - PASS `node --test tests/lib/i18n-templates.test.js`
 - PASS `git diff --check`
 
+## slice-02-init-docs-and-i18n-assets
+
+- Routed `init` generated human templates through the v42 template language resolver.
+- Added Spanish template variants for default init human docs and AGENTS onboarding guidance.
+- Kept machine artifacts such as `package.template.json`, package scripts, and `slice.json` outside localization routing.
+- Made `--lang` configure generated docs and persisted project language, while existing project config remains the default when `--lang` is absent.
+- Preserved overwrite behavior for existing docs and config keys.
+
+Validation:
+
+- PASS `node --test tests/commands/init-profiles.test.js tests/lib/init-docs.test.js tests/lib/i18n-templates.test.js`
+- PASS `node --test tests/commands/demo.test.js`
+
 ## Pending Evidence
 
 - `node --test tests/**/*.test.js`
