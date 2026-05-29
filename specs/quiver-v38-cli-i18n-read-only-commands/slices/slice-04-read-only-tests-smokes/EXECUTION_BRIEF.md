@@ -17,6 +17,6 @@ Run full validation and update evidence for the v38 read-only command migration.
 
 ## Completion Checklist
 
-- [ ] Full tests run.
-- [ ] Package smoke run.
-- [ ] Evidence updated.
+- [x] Full tests run.
+- [x] Package smoke run.
+- [x] Evidence updated.

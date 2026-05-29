@@ -46,7 +46,7 @@
   ],
   "tests": [
     "node --test tests/**/*.test.js",
-    "npx create-quiver spec validate specs/quiver-v38-cli-i18n-read-only-commands --strict",
+    "node bin/create-quiver.js spec validate specs/quiver-v38-cli-i18n-read-only-commands --strict",
     "npm run package:quiver",
     "npm run smoke:create-quiver",
     "git diff --check"
@@ -55,6 +55,7 @@
     "Audit that no read-only command still emits hardcoded English in human mode."
   ],
   "estimated_hours": 4,
-  "status": "planned",
-  "blocked_reason": "Requires completion of slice-02-flow-doctor-next-graph and slice-03-ai-inspection-and-export."
+  "status": "completed",
+  "blocked_reason": null,
+  "completed_at": "2026-05-29T00:00:00.000Z"
 }

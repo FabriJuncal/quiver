@@ -1,7 +1,7 @@
 # Quiver v38 - CLI i18n Read-only Commands
 
 **Date:** 2026-05-28
-**Status:** Planned
+**Status:** Completed
 **Source:** Continuation of the approved CLI i18n program.
 
 ## Problem
@@ -40,10 +40,10 @@ Migrate Quiver read-only human output to `en` and `es` while preserving JSON con
 | Slice | Title | Status | Dependencies |
 |---|---|---|---|
 | slice-00 | Read-only foundation | completed | none |
-| slice-01 | Version, dashboard, and help | planned | v37 complete |
-| slice-02 | Flow, doctor, next, graph, and plan | planned | slice-01 |
-| slice-03 | AI inspection and export read-only commands | planned | slice-01 |
-| slice-04 | Read-only tests and smokes | planned | slice-02, slice-03 |
+| slice-01 | Version, dashboard, and help | completed | v37 complete |
+| slice-02 | Flow, doctor, next, graph, and plan | completed | slice-01 |
+| slice-03 | AI inspection and export read-only commands | completed | slice-01 |
+| slice-04 | Read-only tests and smokes | completed | slice-02, slice-03 |
 
 ## Guardrails
 
