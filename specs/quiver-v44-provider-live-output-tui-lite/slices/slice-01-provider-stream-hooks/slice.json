@@ -1,0 +1,65 @@
+{
+  "slice_id": "slice-01-provider-stream-hooks",
+  "ticket": "QUIVER-44-01",
+  "type": "feature",
+  "title": "Provider stream hooks",
+  "objective": "Add optional provider output callbacks without changing default provider execution behavior.",
+  "description": "Extends provider runner internals so verbose TTY flows can observe stdout, stderr, and status while existing callers still receive the same accumulated provider result.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v44-provider-stream-hooks",
+    "branch_name": "feature/QUIVER-44-01-v44-provider-stream-hooks"
+  },
+  "files": [
+    "src/create-quiver/lib/ai/providers.js",
+    "tests/lib/ai-providers.test.js"
+  ],
+  "expected_read_paths": [
+    "src/create-quiver/lib/ai/providers.js",
+    "src/create-quiver/lib/evidence.js",
+    "src/create-quiver/lib/ai/artifacts.js",
+    "tests/lib/ai-providers.test.js",
+    "docs/CLI_UX_GUIDE.md"
+  ],
+  "allowed_write_paths": [
+    "src/create-quiver/lib/ai/providers.js",
+    "tests/lib/ai-providers.test.js",
+    "specs/quiver-v44-provider-live-output-tui-lite/**"
+  ],
+  "depends_on": [
+    "slice-00-tui-lite-contract-foundation"
+  ],
+  "parallel_safe": "after_dependencies",
+  "parallel_safe_reason": "Provider hooks are foundational for renderer work and should land before command integration.",
+  "must": [
+    "Add optional callbacks for stdout, stderr, and provider status.",
+    "Preserve existing runProvider return shape and stdout/stderr accumulation.",
+    "Keep callbacks opt-in and safe when absent.",
+    "Redact chunks before they leave provider internals for human display paths.",
+    "Preserve timeout, preflight, prompt transport, and error behavior."
+  ],
+  "not_included": [
+    "TUI renderer implementation.",
+    "Command parser changes beyond what is strictly needed for provider tests.",
+    "Changing provider CLI invocation semantics."
+  ],
+  "acceptance": [
+    "Existing provider tests pass without callback options.",
+    "Callback tests receive stdout and stderr chunks in order.",
+    "Provider result still contains accumulated redacted stdout/stderr.",
+    "Provider failure and timeout paths still surface actionable errors.",
+    "No provider output is printed directly by this layer."
+  ],
+  "tests": [
+    "node --test tests/lib/ai-providers.test.js",
+    "git diff --check"
+  ],
+  "validation_hints": [
+    "Use fake spawn fixtures to avoid live provider CLIs.",
+    "Assert callbacks do not change final stdout/stderr."
+  ],
+  "estimated_hours": 4,
+  "status": "planned",
+  "blocked_reason": null
+}

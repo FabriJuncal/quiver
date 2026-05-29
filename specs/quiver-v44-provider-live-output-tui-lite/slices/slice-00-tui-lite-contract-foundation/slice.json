@@ -1,0 +1,64 @@
+{
+  "slice_id": "slice-00-tui-lite-contract-foundation",
+  "ticket": "QUIVER-44-00",
+  "type": "documentation",
+  "title": "TUI-lite contract foundation",
+  "objective": "Create the approved spec package and implementation handoffs for provider live output TUI-lite.",
+  "description": "Documents the user-approved acceptance criteria, technical plan, execution order, risks, and slice handoffs before runtime implementation starts.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v44-tui-lite-contract-foundation",
+    "branch_name": "feature/QUIVER-44-00-v44-tui-lite-contract-foundation"
+  },
+  "files": [
+    "specs/quiver-v44-provider-live-output-tui-lite/**",
+    "docs/INDEX.md"
+  ],
+  "expected_read_paths": [
+    "docs/INDEX.md",
+    "docs/CLI_UX_GUIDE.md",
+    "docs/reference/commands.md",
+    "README_FOR_AI.md",
+    "specs/quiver-v33-approval-ux-and-planner-progress/SPEC.md",
+    "specs/quiver-v30-interactive-cli-ux-agent-selection/slices/slice-05-executor-pr-progress-flows/slice.json"
+  ],
+  "allowed_write_paths": [
+    "specs/quiver-v44-provider-live-output-tui-lite/**",
+    "docs/INDEX.md"
+  ],
+  "depends_on": [],
+  "parallel_safe": "no",
+  "parallel_safe_reason": "Foundation defines the contract for all later v44 slices.",
+  "must": [
+    "Create SPEC, STATUS, EXECUTION_PLAN, EVIDENCE_REPORT, PR body, and all slice handoffs.",
+    "Capture approved acceptance criteria and technical plan.",
+    "Keep implementation code untouched.",
+    "Add the new spec to the documentation index for discoverability."
+  ],
+  "not_included": [
+    "Runtime implementation.",
+    "Provider stream hooks.",
+    "CLI parser changes.",
+    "Tests beyond structural validation."
+  ],
+  "acceptance": [
+    "Spec package exists under specs/quiver-v44-provider-live-output-tui-lite.",
+    "Every slice has slice.json, EXECUTION_BRIEF.md, and CLOSURE_BRIEF.md.",
+    "The package records that runtime implementation has not started.",
+    "No source code implementation files are modified by this slice."
+  ],
+  "tests": [
+    "node -e \"const fs=require('fs'); for (const f of fs.globSync('specs/quiver-v44-provider-live-output-tui-lite/slices/*/slice.json')) JSON.parse(fs.readFileSync(f,'utf8')); console.log('slice json ok')\"",
+    "git diff --check"
+  ],
+  "validation_hints": [
+    "Validate JSON parseability for every slice file.",
+    "Inspect git diff to confirm only docs/spec files changed for this slice."
+  ],
+  "estimated_hours": 1,
+  "status": "completed",
+  "blocked_reason": null,
+  "actual_hours": 1,
+  "completed_at": "2026-05-29"
+}

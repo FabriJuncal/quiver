@@ -1,0 +1,75 @@
+{
+  "slice_id": "slice-05-docs-tests-readiness",
+  "ticket": "QUIVER-44-05",
+  "type": "validation",
+  "title": "Docs, tests, and readiness",
+  "objective": "Finalize documentation, validation evidence, and package readiness for provider live output TUI-lite.",
+  "description": "Updates public docs and AI guidance, runs focused and broad validation, and records final evidence.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v44-docs-tests-readiness",
+    "branch_name": "feature/QUIVER-44-05-v44-docs-tests-readiness"
+  },
+  "files": [
+    "docs/CLI_UX_GUIDE.md",
+    "docs/reference/commands.md",
+    "README_FOR_AI.md",
+    "specs/quiver-v44-provider-live-output-tui-lite/**",
+    "tests/**/*.test.js"
+  ],
+  "expected_read_paths": [
+    "docs/CLI_UX_GUIDE.md",
+    "docs/reference/commands.md",
+    "README_FOR_AI.md",
+    "specs/quiver-v44-provider-live-output-tui-lite/SPEC.md",
+    "specs/quiver-v44-provider-live-output-tui-lite/EVIDENCE_REPORT.md"
+  ],
+  "allowed_write_paths": [
+    "docs/CLI_UX_GUIDE.md",
+    "docs/reference/commands.md",
+    "README_FOR_AI.md",
+    "specs/quiver-v44-provider-live-output-tui-lite/**",
+    "tests/**/*.test.js"
+  ],
+  "depends_on": [
+    "slice-04-planner-command-audit-adoption"
+  ],
+  "parallel_safe": "no",
+  "parallel_safe_reason": "Final readiness depends on all implementation and audit slices.",
+  "must": [
+    "Document `--verbose` provider live output behavior.",
+    "Document TTY/no-TTY/CI/JSON constraints.",
+    "Update AI guidance if the agent-visible contract changed.",
+    "Run focused provider, renderer, prepare-context, plan, and review-plan tests.",
+    "Run full tests and package/smoke validation where feasible.",
+    "Record evidence and any residual risks."
+  ],
+  "not_included": [
+    "New runtime behavior beyond fixing validation gaps discovered during readiness.",
+    "npm publication."
+  ],
+  "acceptance": [
+    "Docs describe the new opt-in verbose behavior accurately.",
+    "Focused tests pass.",
+    "Full test suite or documented fallback evidence exists.",
+    "Package/smoke readiness is validated or blocked with concrete reason.",
+    "EVIDENCE_REPORT.md is updated with commands and outcomes."
+  ],
+  "tests": [
+    "node --test tests/lib/ai-providers.test.js tests/lib/cli-ux.test.js",
+    "node --test tests/commands/ai-prepare-context-planner.test.js tests/commands/ai-plan.test.js tests/commands/ai-review-plan.test.js",
+    "node --test tests/**/*.test.js",
+    "npm run smoke:create-quiver",
+    "npm run package:quiver",
+    "git diff --check",
+    "node bin/create-quiver.js spec validate specs/quiver-v44-provider-live-output-tui-lite --strict"
+  ],
+  "validation_hints": [
+    "If full validation is too slow, record exact focused evidence and the reason broad validation was deferred.",
+    "Do not claim package release or npm publication."
+  ],
+  "estimated_hours": 4,
+  "status": "planned",
+  "blocked_reason": null
+}
