@@ -125,6 +125,7 @@ function normalizeInitLayoutOptions(options = {}) {
     dryRun: options.dryRun === true,
     full,
     includeTemplates: options.includeTemplates === true,
+    language: typeof options.language === 'string' ? options.language : '',
     legacyScripts: options.legacyScripts === true,
     minimal,
     skipInstall: options.skipInstall === true,
@@ -353,6 +354,7 @@ function buildInitLayout(projectRoot, options = {}) {
     projectSlug,
     targetRoot: path.resolve(projectRoot),
     flags: normalized,
+    language: normalized.language,
     operations,
     ignoredPaths: [...new Set(ignoredPaths)],
     risks,
@@ -374,6 +376,10 @@ function formatInitLayoutPlan(plan) {
   lines.push(`- Slug: ${plan.projectSlug}`);
   lines.push(`- Target: ${plan.targetRoot}`);
   lines.push(`- Profile: ${plan.profile}`);
+  if (plan.language) {
+    lines.push(`- Language: ${plan.language}`);
+    lines.push('- Language config: write .quiver/config.json');
+  }
   lines.push(`- Entry point: ${entryPoint}`);
   lines.push(`- Planned create: ${plan.summary.create}`);
   lines.push(`- Planned update: ${plan.summary.update}`);

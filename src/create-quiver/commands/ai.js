@@ -15,6 +15,7 @@ const { parseContextProposalOutput } = require('../lib/ai/context-proposal');
 const { openEditor } = require('../lib/cli/editor');
 const { selectOption, promptText } = require('../lib/cli/selectors');
 const { createUx } = require('../lib/cli/ux');
+const { createTranslator } = require('../lib/i18n/catalog');
 const { runExecuteSlice, runPromptSlice } = require('../lib/ai/executor');
 const { runExecutePlan } = require('../lib/ai/execution-plan');
 const { buildPrCreatePlan, formatPreflightReport, formatPrCreateReport, preflightGitHubPr, runGhPrCreate } = require('../lib/ai/github');
@@ -328,77 +329,85 @@ function buildOnboardContext({ role, context, inputText, inputPath, repoRoot }) 
   };
 }
 
-function formatDryRunReport({ task, provider, role, contextPack, phase, invocation, onboardingPlan }) {
+function formatDryRunReport({ task, provider, role, contextPack, phase, invocation, onboardingPlan, language = 'en' }) {
+  const translator = createTranslator(language);
+  const modelStatus = invocation.modelSelection?.supported
+    ? translator.t('ai_task.model_supported')
+    : translator.t('ai_task.model_unsupported');
   const lines = [
-    `AI ${task} dry-run`,
-    `Provider: ${provider}`,
-    `Role: ${role}`,
-    `Context pack: ${contextPack}`,
+    translator.t('ai_task.title.dry_run', { task }),
+    translator.t('ai_task.provider', { provider }),
+    translator.t('ai_task.role', { role }),
+    translator.t('ai_task.context_pack', { context: contextPack }),
   ];
 
   if (phase) {
-    lines.push(`Phase: ${phase}`);
+    lines.push(translator.t('ai_task.phase', { phase }));
   }
 
-  lines.push(`Command: ${invocation.command} ${invocation.args.join(' ')}`);
-  lines.push(`Timeout: ${invocation.timeoutMs}ms`);
-  lines.push(`Prompt transport: ${invocation.promptTransport.mode}`);
-  lines.push(`Prompt length: ${invocation.promptLength} bytes`);
+  lines.push(translator.t('ai_task.command', { command: `${invocation.command} ${invocation.args.join(' ')}`.trim() }));
+  lines.push(translator.t('ai_task.timeout', { timeout: invocation.timeoutMs }));
+  lines.push(translator.t('ai_task.prompt_transport', { mode: invocation.promptTransport.mode }));
+  lines.push(translator.t('ai_task.prompt_length', { bytes: invocation.promptLength }));
   if (invocation.modelSelection && invocation.modelSelection.model) {
-    lines.push(`Model: ${invocation.modelSelection.model}`);
-    lines.push(`Model support: ${invocation.modelSelection.supported ? 'supported' : 'unsupported'} (${invocation.modelSelection.reason})`);
+    lines.push(translator.t('ai_task.model', { model: invocation.modelSelection.model }));
+    lines.push(translator.t('ai_task.model_support', { status: modelStatus, reason: invocation.modelSelection.reason }));
   }
 
   if (onboardingPlan) {
-    lines.push(`Prompt source: ${onboardingPlan.promptSource}`);
-    lines.push(`Selected docs: ${onboardingPlan.selectedDocs.length}`);
-    lines.push(`Documentation debt: ${onboardingPlan.missingDocs.length}`);
+    lines.push(translator.t('ai_task.prompt_source', { source: onboardingPlan.promptSource }));
+    lines.push(translator.t('ai_task.selected_docs', { count: onboardingPlan.selectedDocs.length }));
+    lines.push(translator.t('ai_task.documentation_debt', { count: onboardingPlan.missingDocs.length }));
   }
 
   return `${lines.join('\n')}\n`;
 }
 
-function formatPromptOnlyReport({ task, provider, role, contextPack, phase, invocation, prompt, onboardingPlan, promptSource, inputPath, inputKind, inputVersion }) {
+function formatPromptOnlyReport({ task, provider, role, contextPack, phase, invocation, prompt, onboardingPlan, promptSource, inputPath, inputKind, inputVersion, language = 'en' }) {
+  const translator = createTranslator(language);
+  const modelStatus = invocation.modelSelection?.supported
+    ? translator.t('ai_task.model_supported')
+    : translator.t('ai_task.model_unsupported');
   const lines = [
-    `AI ${task} prompt-only`,
-    `Provider: ${provider}`,
-    `Role: ${role}`,
-    `Context pack: ${contextPack}`,
+    translator.t('ai_task.title.prompt_only', { task }),
+    translator.t('ai_task.provider', { provider }),
+    translator.t('ai_task.role', { role }),
+    translator.t('ai_task.context_pack', { context: contextPack }),
   ];
 
   if (phase) {
-    lines.push(`Phase: ${phase}`);
+    lines.push(translator.t('ai_task.phase', { phase }));
   }
 
-  lines.push(`Command: ${invocation.command} ${invocation.args.join(' ')}`);
-  lines.push(`Timeout: ${invocation.timeoutMs}ms`);
-  lines.push(`Prompt transport: ${invocation.promptTransport.mode}`);
-  lines.push(`Prompt length: ${invocation.promptLength} bytes`);
+  lines.push(translator.t('ai_task.command', { command: `${invocation.command} ${invocation.args.join(' ')}`.trim() }));
+  lines.push(translator.t('ai_task.timeout', { timeout: invocation.timeoutMs }));
+  lines.push(translator.t('ai_task.prompt_transport', { mode: invocation.promptTransport.mode }));
+  lines.push(translator.t('ai_task.prompt_length', { bytes: invocation.promptLength }));
   if (invocation.modelSelection && invocation.modelSelection.model) {
-    lines.push(`Model: ${invocation.modelSelection.model}`);
-    lines.push(`Model support: ${invocation.modelSelection.supported ? 'supported' : 'unsupported'} (${invocation.modelSelection.reason})`);
+    lines.push(translator.t('ai_task.model', { model: invocation.modelSelection.model }));
+    lines.push(translator.t('ai_task.model_support', { status: modelStatus, reason: invocation.modelSelection.reason }));
   }
 
   if (onboardingPlan) {
-    lines.push(`Prompt source: ${onboardingPlan.promptSource}`);
-    lines.push(`Selected docs: ${onboardingPlan.selectedDocs.length}`);
-    lines.push(`Documentation debt: ${onboardingPlan.missingDocs.length}`);
+    lines.push(translator.t('ai_task.prompt_source', { source: onboardingPlan.promptSource }));
+    lines.push(translator.t('ai_task.selected_docs', { count: onboardingPlan.selectedDocs.length }));
+    lines.push(translator.t('ai_task.documentation_debt', { count: onboardingPlan.missingDocs.length }));
   }
 
   if (promptSource) {
-    lines.push(`Prompt source: ${promptSource}`);
+    lines.push(translator.t('ai_task.prompt_source', { source: promptSource }));
   }
 
   if (inputPath) {
-    lines.push(`Input file: ${inputPath}`);
+    lines.push(translator.t('ai_task.input_file', { path: inputPath }));
   }
 
   if (inputKind) {
-    lines.push(`Input kind: ${inputKind}`);
+    lines.push(translator.t('ai_task.input_kind', { kind: inputKind }));
   }
 
   if (inputVersion) {
-    lines.push(`Input version: v${inputVersion}`);
+    lines.push(translator.t('ai_task.input_version', { version: inputVersion }));
   }
 
   lines.push('--- PROMPT START ---');
@@ -416,21 +425,22 @@ function formatPathList(items, emptyLabel = 'none') {
   return items.map((item) => `- ${item}`);
 }
 
-function formatContextPreparationReport({ dryRun, plan, writePlan, writtenDocs, snapshot, completed = false }) {
+function formatContextPreparationReport({ dryRun, plan, writePlan, writtenDocs, snapshot, completed = false, language = 'en' }) {
+  const translator = createTranslator(language);
   const lines = [
-    dryRun ? 'AI prepare-context dry-run' : completed ? 'AI prepare-context completed' : 'AI prepare-context write plan',
-    `Mode: ${dryRun ? 'dry-run' : 'live'}`,
-    `Project: ${plan.projectName}`,
-    `Project slug: ${plan.projectSlug}`,
-    'Writes: docs-only',
-    'Product code: untouched',
-    `Proposed docs: ${writePlan.length > 0 ? writePlan.map((item) => item.path).join(', ') : 'none'}`,
+    dryRun ? translator.t('prepare_context.title.dry_run') : completed ? translator.t('prepare_context.title.completed') : translator.t('prepare_context.title.write_plan'),
+    translator.t('prepare_context.mode', { mode: dryRun ? 'dry-run' : 'live' }),
+    translator.t('prepare_context.project', { project: plan.projectName }),
+    translator.t('prepare_context.project_slug', { slug: plan.projectSlug }),
+    translator.t('prepare_context.writes_docs_only'),
+    translator.t('prepare_context.product_code_untouched'),
+    translator.t('prepare_context.proposed_docs', { docs: writePlan.length > 0 ? writePlan.map((item) => item.path).join(', ') : translator.t('common.none') }),
   ];
 
   if (!dryRun) {
-    lines.push(`${completed ? 'Written docs' : 'Planned writes'}: ${writtenDocs.length > 0 ? writtenDocs.join(', ') : 'none'}`);
+    lines.push(translator.t(completed ? 'prepare_context.written_docs' : 'prepare_context.planned_writes', { docs: writtenDocs.length > 0 ? writtenDocs.join(', ') : translator.t('common.none') }));
     if (snapshot) {
-      lines.push(`Snapshot: ${snapshot.root}`);
+      lines.push(translator.t('prepare_context.snapshot', { path: snapshot.root }));
     }
   }
 
@@ -439,21 +449,21 @@ function formatContextPreparationReport({ dryRun, plan, writePlan, writtenDocs, 
   }
 
   lines.push(
-    'Proposed changes:',
+    translator.t('prepare_context.proposed_changes'),
     ...writePlan.map((item) => `- ${item.path}: ${item.action}${item.reason ? ` (${item.reason})` : ''}`),
-    'Diff preview:',
+    translator.t('prepare_context.diff_preview'),
     ...formatDiffPreview(writePlan),
-    'Files considered:',
-    ...plan.filesConsidered.map((item) => `- ${item.path}: ${item.present ? 'present' : 'absent'}${item.reason ? ` (${item.reason})` : ''}`),
-    'Assumptions:',
-    ...formatPathList(plan.assumptions),
-    'Risks:',
-    ...formatPathList(plan.risks),
-    'Contradictions:',
-    ...formatPathList(plan.contradictions),
-    'Omitted paths:',
-    ...formatPathList(plan.omittedPaths),
-    'Uncertainty markers: TODO | Assumption | Pending confirmation',
+    translator.t('prepare_context.files_considered'),
+    ...plan.filesConsidered.map((item) => `- ${item.path}: ${item.present ? translator.t('prepare_context.present') : translator.t('prepare_context.absent')}${item.reason ? ` (${item.reason})` : ''}`),
+    translator.t('prepare_context.assumptions'),
+    ...formatPathList(plan.assumptions, translator.t('common.none')),
+    translator.t('prepare_context.risks'),
+    ...formatPathList(plan.risks, translator.t('common.none')),
+    translator.t('prepare_context.contradictions'),
+    ...formatPathList(plan.contradictions, translator.t('common.none')),
+    translator.t('prepare_context.omitted_paths'),
+    ...formatPathList(plan.omittedPaths, translator.t('common.none')),
+    translator.t('prepare_context.uncertainty_markers'),
   );
 
   return `${lines.join('\n')}\n`;
@@ -538,12 +548,13 @@ function buildPrepareContextPlannerPrompt({ pack, draftPack }) {
   };
 }
 
-function formatPrepareContextPlannerDryRunReport({ provider, role, context, invocation, promptInfo, review, interactive }) {
+function formatPrepareContextPlannerDryRunReport({ provider, role, context, invocation, promptInfo, review, interactive, language = 'en' }) {
+  const translator = createTranslator(language);
   const plan = promptInfo.plan;
   const lines = [
-    'AI prepare-context planner dry-run',
-    'Mode: dry-run',
-    'Planner: enabled',
+    translator.t('prepare_context_planner.title.dry_run'),
+    translator.t('prepare_context.mode', { mode: 'dry-run' }),
+    translator.t('prepare_context_planner.enabled'),
     `Provider: ${provider}`,
     `Role: ${role}`,
     `Context pack: ${context}`,
@@ -555,18 +566,18 @@ function formatPrepareContextPlannerDryRunReport({ provider, role, context, invo
     invocation.modelSelection && invocation.modelSelection.model
       ? `Model support: ${invocation.modelSelection.supported ? 'supported' : 'unsupported'} (${invocation.modelSelection.reason})`
       : '',
-    `Prompt source: ${promptInfo.promptSource}`,
-    `Review requested: ${review ? 'yes' : 'no'}`,
-    `Interactive requested: ${interactive ? 'yes' : 'no'}`,
-    'Provider execution: skipped',
-    'Writes: none',
-    'Product code: untouched',
-    `Candidate docs: ${promptInfo.allowedPaths.join(', ')}`,
-    'Files considered:',
-    ...plan.filesConsidered.map((item) => `- ${item.path}: ${item.present ? 'present' : 'absent'}`),
-    'Allowed docs-only paths:',
+    translator.t('prepare_context.prompt_source', { source: promptInfo.promptSource }),
+    translator.t('prepare_context_planner.review_requested', { value: review ? translator.t('common.yes') : translator.t('common.no') }),
+    translator.t('prepare_context_planner.interactive_requested', { value: interactive ? translator.t('common.yes') : translator.t('common.no') }),
+    translator.t('prepare_context_planner.provider_execution_skipped'),
+    translator.t('prepare_context.writes_none'),
+    translator.t('prepare_context.product_code_untouched'),
+    translator.t('prepare_context_planner.candidate_docs', { docs: promptInfo.allowedPaths.join(', ') }),
+    translator.t('prepare_context.files_considered'),
+    ...plan.filesConsidered.map((item) => `- ${item.path}: ${item.present ? translator.t('prepare_context.present') : translator.t('prepare_context.absent')}`),
+    translator.t('prepare_context_planner.allowed_docs_only_paths'),
     ...promptInfo.allowedPaths.map((item) => `- ${item}`),
-    'Next safe commands:',
+    translator.t('prepare_context_planner.next_safe_commands'),
     '- npx create-quiver ai prepare-context --with-planner --print-prompt',
     '- npx create-quiver ai prepare-context --with-planner --dry-run --review',
     '- npx create-quiver ai prepare-context --with-planner',
@@ -1351,6 +1362,7 @@ async function runOnboard(repoRoot, options = {}) {
       role,
       contextPack: context,
       invocation,
+      language: options.language,
       onboardingPlan: contextInfo.plan,
       profile: runtimeProfile,
     };
@@ -1365,6 +1377,7 @@ async function runOnboard(repoRoot, options = {}) {
       role,
       contextPack: context,
       invocation,
+      language: options.language,
       onboardingPlan: contextInfo.plan,
       prompt,
       profile: runtimeProfile,
@@ -1450,6 +1463,7 @@ async function runPrepareContext(repoRoot, options = {}) {
       plan: draftPack.plan,
       writePlan,
       writtenDocs: [],
+      language: options.language,
     }));
     return report;
   }
@@ -1468,6 +1482,7 @@ async function runPrepareContext(repoRoot, options = {}) {
     writePlan,
     writtenDocs: plannedDocs,
     snapshot,
+    language: options.language,
   }));
   const writtenDocs = writeDraftDocs(writePlan);
   updateAiRunPhase(repoRoot, lifecycleRun.run_id, 'onboarding-ready', {
@@ -1481,6 +1496,7 @@ async function runPrepareContext(repoRoot, options = {}) {
     writtenDocs,
     snapshot,
     completed: true,
+    language: options.language,
   }));
 
   return {
@@ -1545,6 +1561,7 @@ async function runPrepareContextWithPlanner(repoRoot, options = {}) {
       promptInfo,
       review: options.review === true,
       interactive: options.interactive === true,
+      language: options.language,
     }));
     return report;
   }
@@ -1629,6 +1646,7 @@ async function runPrepareContextWithPlanner(repoRoot, options = {}) {
     writePlan,
     writtenDocs: plannedDocs,
     snapshot,
+    language: options.language,
   }));
 
   const writtenDocs = writeDraftDocs(writePlan);
@@ -1643,6 +1661,7 @@ async function runPrepareContextWithPlanner(repoRoot, options = {}) {
     writtenDocs,
     snapshot,
     completed: true,
+    language: options.language,
   }));
 
   return {

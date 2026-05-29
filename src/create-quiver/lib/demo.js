@@ -6,6 +6,7 @@ const {
   resolveInitPackageScripts,
   toProjectSlug,
 } = require('./init-layout');
+const { createTranslator } = require('./i18n/catalog');
 const cliPackageJson = require('../../../package.json');
 
 const SPEC_VIEWER_DEMO = 'spec-viewer';
@@ -770,38 +771,39 @@ function buildDemoPlan(targetRoot, options = {}) {
 }
 
 function formatDemoPlan(plan, options = {}) {
+  const translator = createTranslator(options.language);
   const lines = [];
-  const title = options.dryRun ? 'Quiver demo dry-run' : 'Quiver demo created';
+  const title = options.dryRun ? translator.t('demo.title.dry_run') : translator.t('demo.title.created');
 
   lines.push(title);
-  lines.push(`- Demo: ${plan.demo}`);
-  lines.push(`- Project: ${plan.projectName}`);
-  lines.push(`- Target: ${plan.targetRoot}`);
-  lines.push(`- Files to create: ${plan.summary.create}`);
-  lines.push(`- Files to preserve: ${plan.summary.preserve}`);
+  lines.push(`- ${translator.t('demo.label.demo', { demo: plan.demo })}`);
+  lines.push(`- ${translator.t('demo.label.project', { project: plan.projectName })}`);
+  lines.push(`- ${translator.t('demo.label.target', { path: plan.targetRoot })}`);
+  lines.push(`- ${translator.t('demo.label.files_to_create', { count: plan.summary.create })}`);
+  lines.push(`- ${translator.t('demo.label.files_to_preserve', { count: plan.summary.preserve })}`);
   lines.push('');
-  lines.push('Files to create');
+  lines.push(translator.t('demo.section.files_to_create'));
   for (const operation of plan.operations.filter((item) => item.action === 'create')) {
     lines.push(`- ${operation.path}`);
   }
   if (plan.summary.create === 0) {
-    lines.push('- none');
+    lines.push(`- ${translator.t('common.none')}`);
   }
   lines.push('');
-  lines.push('Files to preserve');
+  lines.push(translator.t('demo.section.files_to_preserve'));
   for (const operation of plan.operations.filter((item) => item.action === 'preserve')) {
     lines.push(`- ${operation.path}`);
   }
   if (plan.summary.preserve === 0) {
-    lines.push('- none');
+    lines.push(`- ${translator.t('common.none')}`);
   }
 
   if (options.dryRun) {
     lines.push('');
-    lines.push('No files were written.');
+    lines.push(translator.t('demo.no_files_written'));
   } else {
     lines.push('');
-    lines.push('Next commands');
+    lines.push(translator.t('demo.next_commands'));
     lines.push(`- cd ${plan.targetRoot}`);
     lines.push('- npm run validate');
     lines.push('- npm start');

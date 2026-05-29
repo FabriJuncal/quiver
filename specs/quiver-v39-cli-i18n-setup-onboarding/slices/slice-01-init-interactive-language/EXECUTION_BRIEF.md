@@ -18,6 +18,6 @@ Add language selection to `init --interactive` and persist it to project config.
 
 ## Completion Checklist
 
-- [ ] Interactive selector added.
-- [ ] Config persistence tested.
-- [ ] Dry-run and no-TTY behavior tested.
+- [x] Interactive selector added.
+- [x] Config persistence tested.
+- [x] Dry-run and no-TTY behavior tested.

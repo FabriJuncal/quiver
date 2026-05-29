@@ -77,6 +77,74 @@ test('ai onboard CLI dry-run prints provider, role, context pack, and invocation
   }
 });
 
+test('ai onboard CLI dry-run supports Spanish human output without translating commands', () => {
+  const repo = makeRepo({
+    'docs/onboarding-notes.md': '# onboarding notes\nRead-only planning only.',
+  });
+  try {
+    const output = execFileSync('node', [
+      BIN_PATH,
+      '--lang',
+      'es',
+      'ai',
+      'onboard',
+      '--provider',
+      'claude',
+      '--role',
+      'planner',
+      '--context',
+      'full',
+      '--input',
+      'docs/onboarding-notes.md',
+      '--timeout',
+      '120',
+      '--dry-run',
+    ], {
+      cwd: repo.root,
+      encoding: 'utf8',
+      env: process.env,
+    });
+
+    assert.ok(output.includes('Dry-run de IA onboard'));
+    assert.ok(output.includes('Provider: claude'));
+    assert.ok(output.includes('Rol: planner'));
+    assert.ok(output.includes('Pack de contexto: full'));
+    assert.ok(output.includes('Comando: claude -p'));
+    assert.ok(output.includes('Timeout: 120ms'));
+    assert.ok(output.includes('Fuente del prompt: packaged planner onboarding template'));
+    assert.ok(output.includes('Docs seleccionados:'));
+    assert.ok(output.includes('Deuda documental:'));
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('ai onboard CLI dry-run reads the configured project language by default', () => {
+  const repo = makeRepo({
+    '.quiver/config.json': `${JSON.stringify({ language: 'es' }, null, 2)}\n`,
+    'docs/onboarding-notes.md': '# onboarding notes\nRead-only planning only.',
+  });
+  try {
+    const output = execAi(repo.root, [
+      '--provider',
+      'claude',
+      '--role',
+      'planner',
+      '--context',
+      'full',
+      '--input',
+      'docs/onboarding-notes.md',
+      '--dry-run',
+    ]);
+
+    assert.ok(output.includes('Dry-run de IA onboard'));
+    assert.ok(output.includes('Rol: planner'));
+    assert.ok(output.includes('Comando: claude -p'));
+  } finally {
+    repo.cleanup();
+  }
+});
+
 test('ai onboard print-prompt prints the exact prompt without invoking provider auth', () => {
   const repo = makeRepo({
     'docs/onboarding-notes.md': '# onboarding notes\nRead-only planning only.',
@@ -213,6 +281,66 @@ test('ai prepare-context dry-run prints proposed docs, assumptions, risks, and o
     assert.ok(output.includes('Contradictions:'));
     assert.ok(output.includes('Omitted paths:'));
     assert.ok(output.includes('Uncertainty markers: TODO | Assumption | Pending confirmation'));
+    assert.equal(fs.existsSync(path.join(repo.root, '.quiver')), false);
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('ai prepare-context dry-run supports Spanish human output without translating paths', () => {
+  const repo = makeRepo({
+    README: '',
+    'README.md': '# Demo\n',
+    'package.json': JSON.stringify({ name: 'demo-project' }, null, 2),
+    'docs/PROJECT_MAP.md': '# Project Map\n',
+    'docs/INDEX.md': '# Index\n',
+    'docs/WORKFLOW.md': '# Workflow\n',
+  });
+
+  try {
+    const output = execFileSync('node', [BIN_PATH, '--lang', 'es', 'ai', 'prepare-context', '--dry-run'], {
+      cwd: repo.root,
+      encoding: 'utf8',
+      env: process.env,
+    });
+
+    assert.ok(output.includes('Dry-run de AI prepare-context'));
+    assert.ok(output.includes('Modo: dry-run'));
+    assert.ok(output.includes('Escrituras: solo docs'));
+    assert.ok(output.includes('Docs propuestos: docs/INDEX.md, docs/PROJECT_MAP.md'));
+    assert.ok(output.includes('Cambios propuestos:'));
+    assert.ok(output.includes('Archivos considerados:'));
+    assert.ok(output.includes('README_FOR_AI.md'));
+    assert.ok(output.includes('Supuestos:'));
+    assert.ok(output.includes('Riesgos:'));
+    assert.ok(output.includes('Rutas omitidas:'));
+    assert.equal(fs.existsSync(path.join(repo.root, '.quiver')), false);
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('ai prepare-context planner dry-run supports Spanish wrapper output without translating commands', () => {
+  const repo = makeRepo({
+    'README.md': '# Demo\n',
+    'package.json': JSON.stringify({ name: 'demo-project' }, null, 2),
+    'docs/PROJECT_MAP.md': '# Project Map\n',
+    'docs/INDEX.md': '# Index\n',
+  });
+
+  try {
+    const output = execFileSync('node', [BIN_PATH, '--lang', 'es', 'ai', 'prepare-context', '--with-planner', '--dry-run'], {
+      cwd: repo.root,
+      encoding: 'utf8',
+      env: process.env,
+    });
+
+    assert.ok(output.includes('Dry-run de AI prepare-context con planner'));
+    assert.ok(output.includes('Planner: habilitado'));
+    assert.ok(output.includes('Ejecucion del provider: omitida'));
+    assert.ok(output.includes('Escrituras: ninguna'));
+    assert.ok(output.includes('Proximos comandos seguros:'));
+    assert.ok(output.includes('npx create-quiver ai prepare-context --with-planner --print-prompt'));
     assert.equal(fs.existsSync(path.join(repo.root, '.quiver')), false);
   } finally {
     repo.cleanup();

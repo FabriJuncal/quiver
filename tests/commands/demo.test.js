@@ -47,6 +47,38 @@ test('demo create spec-viewer dry-run prints planned files without writing', () 
   }
 });
 
+test('demo create spec-viewer dry-run supports Spanish human output without translating paths', () => {
+  const { dir, cleanup } = makeTmpDir();
+  try {
+    const target = path.join(dir, 'demo');
+    const output = runCli(['--lang', 'es', 'demo', 'create', 'spec-viewer', '--dir', target, '--dry-run']);
+
+    assert.match(output, /Dry-run de demo Quiver/);
+    assert.match(output, /Demo: spec-viewer/);
+    assert.match(output, /Archivos a crear/);
+    assert.match(output, /src\/index\.html/);
+    assert.match(output, /No se escribieron archivos/);
+    assert.equal(fs.existsSync(path.join(target, 'package.json')), false);
+  } finally {
+    cleanup();
+  }
+});
+
+test('demo create spec-viewer reads the configured project language by default', () => {
+  const { dir, cleanup } = makeTmpDir();
+  try {
+    fs.mkdirSync(path.join(dir, '.quiver'), { recursive: true });
+    fs.writeFileSync(path.join(dir, '.quiver', 'config.json'), `${JSON.stringify({ language: 'es' }, null, 2)}\n`);
+
+    const output = runCli(['demo', 'create', 'spec-viewer', '--dry-run'], { cwd: dir });
+
+    assert.match(output, /Dry-run de demo Quiver/);
+    assert.match(output, /Destino: .*quiver-spec-viewer/);
+  } finally {
+    cleanup();
+  }
+});
+
 test('demo create spec-viewer defaults to a nested target on dry-run', () => {
   const { dir, cleanup } = makeTmpDir();
   try {

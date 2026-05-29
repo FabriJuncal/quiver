@@ -129,6 +129,22 @@ test('formatInitLayoutPlan prints core dry-run sections', () => {
   }
 });
 
+test('formatInitLayoutPlan reports planned language config writes', () => {
+  const { dir, cleanup } = makeTmpDir();
+  try {
+    const output = formatInitLayoutPlan(buildInitLayout(dir, {
+      dryRun: true,
+      language: 'es',
+      projectName: 'Language Project',
+    }));
+
+    assert.match(output, /Language: es/);
+    assert.match(output, /Language config: write \.quiver\/config\.json/);
+  } finally {
+    cleanup();
+  }
+});
+
 test('default generated package scripts target supported CLI commands', () => {
   const scripts = resolveInitPackageScripts('default');
   const supportedCommands = new Set([
