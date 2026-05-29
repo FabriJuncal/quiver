@@ -19,6 +19,7 @@ This spec localizes AI lifecycle command output after the v37 foundation is comp
 | slice-03-ai-planner-approval-review | Completed | Localized planner/review/approval wrappers while preserving prompt and artifact contracts. |
 | slice-04-ai-execution-pr | Completed | Localized execution and PR wrappers while preserving git/gh semantics. |
 | slice-05-ai-tests-smokes | Planned | Closing validation slice. |
+| slice-06-ai-prepare-context-progress-i18n-fix | Completed | Fixed mixed-language live progress in onboard and planner prepare-context paths. |
 
 ## Current Blockers
 

@@ -1414,16 +1414,20 @@ async function runOnboard(repoRoot, options = {}) {
 
   const ux = createCommandUx(options);
   const showProgress = shouldShowHumanProgress(ux, options);
+  const progressTranslator = createTranslator(options.language);
   writeProgressChecks(
     ux,
     showProgress,
-    plannerProgressTitle(createTranslator(options.language).t('ai.planner.progress.onboarding'), runtimeProfile, options),
-    ['Leyendo docs base', 'Detectando estructura', 'Preparando prompt'],
+    plannerProgressTitle(progressTranslator.t('ai.planner.progress.onboarding'), runtimeProfile, options),
+    [
+      progressTranslator.t('ai.planner.progress.reading_base_docs'),
+      progressTranslator.t('ai.planner.progress.detecting_structure'),
+      progressTranslator.t('ai.planner.progress.preparing_prompt'),
+    ],
   );
 
   let result;
   try {
-    const progressTranslator = createTranslator(options.language);
     result = await runProviderWithProgress({
       ux,
       enabled: showProgress,
@@ -1613,16 +1617,20 @@ async function runPrepareContextWithPlanner(repoRoot, options = {}) {
 
   const ux = createCommandUx(options);
   const showProgress = shouldShowHumanProgress(ux, options);
+  const progressTranslator = createTranslator(options.language);
   writeProgressChecks(
     ux,
     showProgress,
-    plannerProgressTitle(createTranslator(options.language).t('ai.planner.progress.onboarding'), runtimeProfile, options),
-    ['Leyendo docs base', 'Detectando estructura', 'Preparando prompt'],
+    plannerProgressTitle(progressTranslator.t('ai.planner.progress.onboarding'), runtimeProfile, options),
+    [
+      progressTranslator.t('ai.planner.progress.reading_base_docs'),
+      progressTranslator.t('ai.planner.progress.detecting_structure'),
+      progressTranslator.t('ai.planner.progress.preparing_prompt'),
+    ],
   );
 
   let result;
   try {
-    const progressTranslator = createTranslator(options.language);
     result = await runProviderWithProgress({
       ux,
       enabled: showProgress,

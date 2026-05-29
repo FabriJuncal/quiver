@@ -894,12 +894,12 @@ test('ai plan shows human TTY progress during live provider execution', async ()
     });
 
     assert.deepEqual(progress.events, [
-      ['write', '◇ Ejecutando plan acceptance con codex\n'],
-      ['write', '✓ Leyendo entrada\n'],
-      ['write', '✓ Preparando contexto\n'],
-      ['write', '✓ Preparando prompt\n'],
-      ['start', 'Ejecutando agente...'],
-      ['stop', 'Agente finalizado', undefined],
+      ['write', '◇ Running plan acceptance with codex\n'],
+      ['write', '✓ Reading input\n'],
+      ['write', '✓ Preparing context\n'],
+      ['write', '✓ Preparing prompt\n'],
+      ['start', 'Running agent...'],
+      ['stop', 'Agent finished', undefined],
     ]);
   } finally {
     repo.cleanup();
@@ -1138,12 +1138,12 @@ test('ai repair-plan shows human TTY progress during live provider execution', a
     });
 
     assert.deepEqual(progress.events, [
-      ['write', '◇ Ejecutando reparación del plan con codex\n'],
-      ['write', '✓ Leyendo plan aprobado\n'],
-      ['write', '✓ Preparando contexto\n'],
-      ['write', '✓ Preparando prompt\n'],
-      ['start', 'Ejecutando agente...'],
-      ['stop', 'Agente finalizado', undefined],
+      ['write', '◇ Running plan repair with codex\n'],
+      ['write', '✓ Reading approved plan\n'],
+      ['write', '✓ Preparing context\n'],
+      ['write', '✓ Preparing prompt\n'],
+      ['start', 'Running agent...'],
+      ['stop', 'Agent finished', undefined],
     ]);
   } finally {
     repo.cleanup();

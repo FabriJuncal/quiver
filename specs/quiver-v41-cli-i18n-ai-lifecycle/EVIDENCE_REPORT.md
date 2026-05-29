@@ -59,6 +59,19 @@ Validation:
 - PASS `node --test tests/lib/i18n-catalog.test.js`
 - PASS `git diff --check`
 
+## slice-06-ai-prepare-context-progress-i18n-fix
+
+- Fixed mixed-language live progress in `ai onboard` and `ai prepare-context --with-planner`.
+- Added `en` and `es` catalog keys for base-doc reading and structure detection progress checks.
+- Updated progress tests to assert English defaults and localized approval selector hints after the planner localization work.
+- Preserved provider prompt bodies, JSON surfaces, command snippets, provider ids, and model ids.
+
+Validation:
+
+- PASS `node --test tests/commands/ai-plan.test.js tests/commands/ai-prepare-context-planner.test.js tests/commands/ai-review-plan.test.js tests/lib/i18n-catalog.test.js`
+- PASS `node --test tests/**/*.test.js` (`599/599`)
+- PASS `git diff --check`
+
 ## Pending Evidence
 
 - `node --test tests/**/*.test.js`

@@ -215,12 +215,12 @@ test('planner prepare-context shows human TTY progress with selected profile nam
     });
 
     assert.deepEqual(events, [
-      ['write', '◇ Ejecutando onboarding con codex\n'],
-      ['write', '✓ Leyendo docs base\n'],
-      ['write', '✓ Detectando estructura\n'],
-      ['write', '✓ Preparando prompt\n'],
-      ['start', 'Ejecutando agente...'],
-      ['stop', 'Agente finalizado', undefined],
+      ['write', '◇ Running onboarding with codex\n'],
+      ['write', '✓ Reading base docs\n'],
+      ['write', '✓ Detecting structure\n'],
+      ['write', '✓ Preparing prompt\n'],
+      ['start', 'Running agent...'],
+      ['stop', 'Agent finished', undefined],
     ]);
   } finally {
     repo.cleanup();
@@ -277,12 +277,12 @@ test('planner prepare-context stops progress spinner on provider failure', async
     );
 
     assert.deepEqual(events.slice(0, 6), [
-      ['write', '◇ Ejecutando onboarding con codex\n'],
-      ['write', '✓ Leyendo docs base\n'],
-      ['write', '✓ Detectando estructura\n'],
-      ['write', '✓ Preparando prompt\n'],
-      ['start', 'Ejecutando agente...'],
-      ['stop', 'Fallo ejecutando agente', 1],
+      ['write', '◇ Running onboarding with codex\n'],
+      ['write', '✓ Reading base docs\n'],
+      ['write', '✓ Detecting structure\n'],
+      ['write', '✓ Preparing prompt\n'],
+      ['start', 'Running agent...'],
+      ['stop', 'Agent failed', 1],
     ]);
   } finally {
     repo.cleanup();

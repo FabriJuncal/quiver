@@ -1,7 +1,7 @@
 # Quiver v41 - CLI i18n AI Lifecycle
 
 **Date:** 2026-05-28
-**Status:** Planned
+**Status:** In progress
 **Source:** Continuation of the approved CLI i18n program.
 
 ## Problem
@@ -47,6 +47,7 @@ Localize AI lifecycle command output in `en` and `es`, including planning, appro
 | slice-03 | AI planner, approvals, and review | planned | slice-01 |
 | slice-04 | AI execution and PR | planned | slice-03 |
 | slice-05 | AI tests and smokes | planned | slice-02, slice-04 |
+| slice-06 | AI prepare-context progress i18n fix | completed | slice-03 |
 
 ## Guardrails
 

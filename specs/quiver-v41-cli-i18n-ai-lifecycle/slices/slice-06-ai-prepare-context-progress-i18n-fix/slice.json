@@ -1,0 +1,70 @@
+{
+  "slice_id": "slice-06-ai-prepare-context-progress-i18n-fix",
+  "ticket": "QUIVER-41-06",
+  "type": "fix",
+  "title": "AI prepare-context progress i18n fix",
+  "objective": "Remove mixed-language live progress from onboard and planner prepare-context flows.",
+  "description": "Fixes progress checks that still used hardcoded Spanish labels after planner progress wrappers were localized.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v41-prepare-context-progress-i18n-fix",
+    "branch_name": "feature/QUIVER-41-06-v41-prepare-context-progress-i18n-fix"
+  },
+  "files": [
+    "src/create-quiver/commands/ai.js",
+    "src/create-quiver/lib/i18n/messages/en.js",
+    "src/create-quiver/lib/i18n/messages/es.js",
+    "tests/commands/ai-plan.test.js",
+    "tests/commands/ai-prepare-context-planner.test.js",
+    "tests/commands/ai-review-plan.test.js",
+    "specs/quiver-v41-cli-i18n-ai-lifecycle/**"
+  ],
+  "expected_read_paths": [
+    "specs/quiver-v41-cli-i18n-ai-lifecycle/SPEC.md",
+    "src/create-quiver/commands/ai.js",
+    "src/create-quiver/lib/i18n/**",
+    "tests/commands/ai-prepare-context-planner.test.js"
+  ],
+  "allowed_write_paths": [
+    "src/create-quiver/commands/ai.js",
+    "src/create-quiver/lib/i18n/**",
+    "tests/commands/ai-plan.test.js",
+    "tests/commands/ai-prepare-context-planner.test.js",
+    "tests/commands/ai-review-plan.test.js",
+    "specs/quiver-v41-cli-i18n-ai-lifecycle/**"
+  ],
+  "depends_on": [
+    "slice-03-ai-planner-approval-review"
+  ],
+  "parallel_safe": "no",
+  "parallel_safe_reason": "Touches shared AI progress output after planner localization.",
+  "must": [
+    "Use catalog-backed progress checks for onboard and planner prepare-context.",
+    "Keep English defaults fully English.",
+    "Keep Spanish progress labels available through the catalog.",
+    "Preserve provider prompt and machine-output contracts."
+  ],
+  "not_included": [
+    "Changing provider adapters or prompt content.",
+    "Changing prepare-context write semantics."
+  ],
+  "acceptance": [
+    "Focused AI progress tests pass.",
+    "i18n catalog completeness passes.",
+    "Full test suite passes.",
+    "Whitespace validation passes."
+  ],
+  "tests": [
+    "node --test tests/commands/ai-plan.test.js tests/commands/ai-prepare-context-planner.test.js tests/commands/ai-review-plan.test.js tests/lib/i18n-catalog.test.js",
+    "node --test tests/**/*.test.js",
+    "git diff --check"
+  ],
+  "validation_hints": [
+    "Use injected provider runners; do not require live provider credentials."
+  ],
+  "estimated_hours": 2,
+  "status": "completed",
+  "blocked_reason": "",
+  "completed_at": "2026-05-29T18:02:20Z"
+}
