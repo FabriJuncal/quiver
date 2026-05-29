@@ -3714,6 +3714,7 @@ async function run(argv) {
       discard: args.discard,
       dryRun: args.dryRun,
       force: args.force,
+      language: args.language,
     });
     return;
   }

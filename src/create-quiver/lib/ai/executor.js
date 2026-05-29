@@ -137,8 +137,9 @@ async function resolveInteractiveExecutorProfile(repoRoot, role, options = {}) {
     return options.executorProfile || '';
   }
 
+  const translator = createTranslator(options.language);
   const selected = await selectOption(
-    '¿Qué Executor querés usar?',
+    translator.t('execute_slice.prompt.select_executor'),
     profiles.map((profile) => ({
       label: resolveAgentProfileDisplayName(profile),
       value: profile.id,
@@ -207,8 +208,9 @@ async function resolveInteractiveSliceInput(repoRoot, options = {}) {
     throw new Error(formatError('no ready slices found for interactive execution. Run `npx create-quiver ai execute-plan --dry-run` to inspect dependencies and blockers.'));
   }
 
+  const translator = createTranslator(options.language);
   const selected = await selectOption(
-    '¿Qué slice querés ejecutar?',
+    translator.t('execute_slice.prompt.select_slice'),
     optionsForSlices,
     selectorOptions({
       ...options,
@@ -246,7 +248,9 @@ async function runWithProgress({ ux, enabled, message, successMessage, failureMe
   });
 }
 
-async function runProviderWithProgress({ ux, enabled, run }) {
+async function runProviderWithProgress({ ux, enabled, language, run }) {
+  const translator = createTranslator(language);
+
   async function runAndFailOnProviderResult() {
     const result = await run();
     if (result && result.ok === false) {
@@ -261,9 +265,9 @@ async function runProviderWithProgress({ ux, enabled, run }) {
   return runWithProgress({
     ux,
     enabled,
-    message: 'Ejecutando agente...',
-    successMessage: 'Agente finalizado',
-    failureMessage: 'Fallo ejecutando agente',
+    message: translator.t('ai.planner.progress.running_agent'),
+    successMessage: translator.t('ai.planner.progress.agent_finished'),
+    failureMessage: translator.t('ai.planner.progress.agent_failed'),
     run: runAndFailOnProviderResult,
   });
 }
@@ -1019,11 +1023,16 @@ async function runExecuteSlice(repoRoot, options = {}) {
 
   const ux = createCommandUx(options);
   const showProgress = shouldShowHumanProgress(ux, options);
+  const translator = createTranslator(options.language);
   writeProgressChecks(
     ux,
     showProgress,
-    `Ejecutando slice con ${runtimeProfile.displayName}`,
-    ['Leyendo slice', 'Validando worktree', 'Preparando prompt'],
+    translator.t('execute_slice.progress.title', { profile: runtimeProfile.displayName }),
+    [
+      translator.t('execute_slice.progress.reading_slice'),
+      translator.t('execute_slice.progress.validating_worktree'),
+      translator.t('execute_slice.progress.preparing_prompt'),
+    ],
   );
 
   let result;
@@ -1031,6 +1040,7 @@ async function runExecuteSlice(repoRoot, options = {}) {
     result = await runProviderWithProgress({
       ux,
       enabled: showProgress,
+      language: options.language,
       run: () => (options.runProviderFn || runProvider)(provider, {
         prompt,
         cwd: canonicalRepoRoot,
@@ -1097,9 +1107,9 @@ async function runExecuteSlice(repoRoot, options = {}) {
     validationResults = await runWithProgress({
       ux,
       enabled: showProgress && executorContext.validationCommands.length > 0,
-      message: 'Ejecutando validaciones...',
-      successMessage: 'Validaciones completadas',
-      failureMessage: 'Fallaron las validaciones',
+      message: translator.t('execute_slice.progress.running_validations'),
+      successMessage: translator.t('execute_slice.progress.validations_done'),
+      failureMessage: translator.t('execute_slice.progress.validations_failed'),
       run: () => runValidationCommands(
         canonicalRepoRoot,
         executorContext.validationCommands,
@@ -1136,9 +1146,9 @@ async function runExecuteSlice(repoRoot, options = {}) {
       commitResult = await runWithProgress({
         ux,
         enabled: showProgress,
-        message: 'Creando commit del slice...',
-        successMessage: 'Commit del slice creado',
-        failureMessage: 'Fallo creando commit del slice',
+        message: translator.t('execute_slice.progress.creating_commit'),
+        successMessage: translator.t('execute_slice.progress.commit_done'),
+        failureMessage: translator.t('execute_slice.progress.commit_failed'),
         run: () => commitSliceChanges(canonicalRepoRoot, executorContext.slice, finalScopeResult.changedFiles, {
           message: options.commitMessage,
         }),

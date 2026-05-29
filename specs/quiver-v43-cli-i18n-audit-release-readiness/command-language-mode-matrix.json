@@ -1,0 +1,545 @@
+{
+  "schema_version": 1,
+  "source": "docs/reference/commands.md",
+  "status": "pass",
+  "generated_at": "2026-05-29",
+  "coverage_profiles": {
+    "top-level-help": {
+      "modes": {
+        "en_human": "pass",
+        "es_human": "pass",
+        "json": "not_supported",
+        "dry_run": "not_applicable",
+        "interactive": "not_applicable",
+        "review": "not_applicable",
+        "ci_no_tty": "pass",
+        "no_color": "pass"
+      },
+      "evidence": [
+        "tests/commands/cli-contract.test.js"
+      ]
+    },
+    "version-report": {
+      "modes": {
+        "en_human": "pass",
+        "es_human": "pass",
+        "json": "pass",
+        "dry_run": "not_applicable",
+        "interactive": "not_applicable",
+        "review": "not_applicable",
+        "ci_no_tty": "pass",
+        "no_color": "pass"
+      },
+      "evidence": [
+        "tests/commands/version.test.js",
+        "tests/commands/cli-contract.test.js"
+      ]
+    },
+    "version-json": {
+      "modes": {
+        "en_human": "not_applicable",
+        "es_human": "not_applicable",
+        "json": "pass",
+        "dry_run": "not_applicable",
+        "interactive": "not_applicable",
+        "review": "not_applicable",
+        "ci_no_tty": "pass",
+        "no_color": "not_applicable"
+      },
+      "evidence": [
+        "tests/commands/version.test.js",
+        "tests/commands/cli-contract.test.js"
+      ]
+    },
+    "language-config-human": {
+      "modes": {
+        "en_human": "pass",
+        "es_human": "pass",
+        "json": "not_applicable",
+        "dry_run": "not_applicable",
+        "interactive": "not_applicable",
+        "review": "not_applicable",
+        "ci_no_tty": "pass",
+        "no_color": "pass"
+      },
+      "evidence": [
+        "tests/commands/config-language.test.js",
+        "tests/lib/i18n-language.test.js"
+      ]
+    },
+    "language-config-json": {
+      "modes": {
+        "en_human": "not_applicable",
+        "es_human": "not_applicable",
+        "json": "pass",
+        "dry_run": "not_applicable",
+        "interactive": "not_applicable",
+        "review": "not_applicable",
+        "ci_no_tty": "pass",
+        "no_color": "not_applicable"
+      },
+      "evidence": [
+        "tests/commands/config-language.test.js"
+      ]
+    },
+    "init-write": {
+      "modes": {
+        "en_human": "pass",
+        "es_human": "pass",
+        "json": "not_supported",
+        "dry_run": "pass",
+        "interactive": "not_applicable",
+        "review": "not_supported",
+        "ci_no_tty": "pass",
+        "no_color": "pass"
+      },
+      "evidence": [
+        "tests/commands/init-profiles.test.js",
+        "tests/lib/init-docs.test.js",
+        "tests/lib/i18n-templates.test.js"
+      ]
+    },
+    "init-interactive": {
+      "modes": {
+        "en_human": "pass",
+        "es_human": "pass",
+        "json": "not_supported",
+        "dry_run": "pass",
+        "interactive": "pass",
+        "review": "not_supported",
+        "ci_no_tty": "pass",
+        "no_color": "pass"
+      },
+      "evidence": [
+        "tests/commands/init-profiles.test.js",
+        "tests/lib/cli-selectors.test.js"
+      ]
+    },
+    "migrate": {
+      "modes": {
+        "en_human": "pass",
+        "es_human": "pass",
+        "json": "not_supported",
+        "dry_run": "pass",
+        "interactive": "not_supported",
+        "review": "not_supported",
+        "ci_no_tty": "pass",
+        "no_color": "pass"
+      },
+      "evidence": [
+        "tests/commands/init-profiles.test.js",
+        "tests/commands/doctor.test.js"
+      ]
+    },
+    "read-only-human": {
+      "modes": {
+        "en_human": "pass",
+        "es_human": "pass",
+        "json": "not_supported",
+        "dry_run": "not_applicable",
+        "interactive": "not_supported",
+        "review": "not_supported",
+        "ci_no_tty": "pass",
+        "no_color": "pass"
+      },
+      "evidence": [
+        "tests/commands/analyze.test.js",
+        "tests/commands/doctor.test.js",
+        "tests/commands/flow.test.js"
+      ]
+    },
+    "doctor-json": {
+      "modes": {
+        "en_human": "not_applicable",
+        "es_human": "not_applicable",
+        "json": "pass",
+        "dry_run": "not_applicable",
+        "interactive": "not_supported",
+        "review": "not_supported",
+        "ci_no_tty": "pass",
+        "no_color": "not_applicable"
+      },
+      "evidence": [
+        "tests/commands/doctor.test.js"
+      ]
+    },
+    "dashboard-human": {
+      "modes": {
+        "en_human": "pass",
+        "es_human": "pass",
+        "json": "not_applicable",
+        "dry_run": "not_applicable",
+        "interactive": "not_supported",
+        "review": "not_supported",
+        "ci_no_tty": "pass",
+        "no_color": "pass"
+      },
+      "evidence": [
+        "tests/commands/dashboard.test.js",
+        "tests/lib/dashboard.test.js"
+      ]
+    },
+    "dashboard-json": {
+      "modes": {
+        "en_human": "not_applicable",
+        "es_human": "not_applicable",
+        "json": "pass",
+        "dry_run": "not_applicable",
+        "interactive": "not_supported",
+        "review": "not_supported",
+        "ci_no_tty": "pass",
+        "no_color": "not_applicable"
+      },
+      "evidence": [
+        "tests/commands/dashboard.test.js"
+      ]
+    },
+    "ai-prepare-context": {
+      "modes": {
+        "en_human": "pass",
+        "es_human": "pass",
+        "json": "not_supported",
+        "dry_run": "pass",
+        "interactive": "pass",
+        "review": "pass",
+        "ci_no_tty": "pass",
+        "no_color": "pass"
+      },
+      "evidence": [
+        "tests/commands/ai-onboard.test.js",
+        "tests/commands/ai-prepare-context-planner.test.js"
+      ]
+    },
+    "ai-prepare-context-planner": {
+      "modes": {
+        "en_human": "pass",
+        "es_human": "pass",
+        "json": "not_supported",
+        "dry_run": "pass",
+        "print_prompt": "pass",
+        "interactive": "pass",
+        "review": "pass",
+        "ci_no_tty": "pass",
+        "no_color": "pass",
+        "live_provider": "accepted_exception"
+      },
+      "evidence": [
+        "tests/commands/ai-prepare-context-planner.test.js"
+      ]
+    },
+    "ai-models-human": {
+      "modes": {
+        "en_human": "pass",
+        "es_human": "pass",
+        "json": "not_applicable",
+        "dry_run": "not_applicable",
+        "interactive": "not_supported",
+        "review": "not_supported",
+        "ci_no_tty": "pass",
+        "no_color": "pass"
+      },
+      "evidence": [
+        "tests/commands/ai-models.test.js"
+      ]
+    },
+    "ai-models-json": {
+      "modes": {
+        "en_human": "not_applicable",
+        "es_human": "not_applicable",
+        "json": "pass",
+        "dry_run": "not_applicable",
+        "interactive": "not_supported",
+        "review": "not_supported",
+        "ci_no_tty": "pass",
+        "no_color": "not_applicable"
+      },
+      "evidence": [
+        "tests/commands/ai-models.test.js"
+      ]
+    },
+    "ai-agent-profile": {
+      "modes": {
+        "en_human": "pass",
+        "es_human": "pass",
+        "json": "not_applicable",
+        "dry_run": "pass",
+        "interactive": "pass",
+        "review": "not_supported",
+        "ci_no_tty": "pass",
+        "no_color": "pass"
+      },
+      "evidence": [
+        "tests/commands/ai-agent.test.js",
+        "tests/lib/agent-profiles.test.js"
+      ]
+    },
+    "ai-agent-json": {
+      "modes": {
+        "en_human": "not_applicable",
+        "es_human": "not_applicable",
+        "json": "pass",
+        "dry_run": "not_applicable",
+        "interactive": "not_supported",
+        "review": "not_supported",
+        "ci_no_tty": "pass",
+        "no_color": "not_applicable"
+      },
+      "evidence": [
+        "tests/commands/ai-agent.test.js"
+      ]
+    },
+    "ai-agent-repair": {
+      "modes": {
+        "en_human": "pass",
+        "es_human": "pass",
+        "json": "not_supported",
+        "dry_run": "pass",
+        "interactive": "not_supported",
+        "review": "not_supported",
+        "ci_no_tty": "pass",
+        "no_color": "pass"
+      },
+      "evidence": [
+        "tests/commands/ai-agent.test.js"
+      ]
+    },
+    "ai-run-lifecycle": {
+      "modes": {
+        "en_human": "pass",
+        "es_human": "pass",
+        "json": "not_supported",
+        "dry_run": "not_applicable",
+        "interactive": "not_supported",
+        "review": "not_supported",
+        "ci_no_tty": "pass",
+        "no_color": "pass"
+      },
+      "evidence": [
+        "tests/commands/ai-run-state.test.js"
+      ]
+    },
+    "ai-planner-provider": {
+      "modes": {
+        "en_human": "pass",
+        "es_human": "pass",
+        "json": "not_supported",
+        "dry_run": "pass",
+        "print_prompt": "pass",
+        "interactive": "pass",
+        "review": "pass",
+        "ci_no_tty": "pass",
+        "no_color": "pass",
+        "live_provider": "accepted_exception"
+      },
+      "evidence": [
+        "tests/commands/ai-plan.test.js",
+        "tests/commands/ai-review-plan.test.js",
+        "tests/commands/ai-plan-spec-phase.test.js"
+      ]
+    },
+    "ai-approve": {
+      "modes": {
+        "en_human": "pass",
+        "es_human": "pass",
+        "json": "not_supported",
+        "dry_run": "not_applicable",
+        "interactive": "pass",
+        "review": "not_applicable",
+        "ci_no_tty": "pass",
+        "no_color": "pass"
+      },
+      "evidence": [
+        "tests/commands/ai-review-plan.test.js",
+        "tests/commands/ai-run-state.test.js"
+      ]
+    },
+    "spec-create": {
+      "modes": {
+        "en_human": "pass",
+        "es_human": "pass",
+        "json": "not_supported",
+        "dry_run": "pass",
+        "interactive": "pass",
+        "review": "pass",
+        "ci_no_tty": "pass",
+        "no_color": "pass"
+      },
+      "evidence": [
+        "tests/commands/spec-create.test.js",
+        "tests/commands/ux-flags.test.js"
+      ]
+    },
+    "spec-workflow": {
+      "modes": {
+        "en_human": "pass",
+        "es_human": "pass",
+        "json": "not_supported",
+        "dry_run": "pass",
+        "interactive": "not_supported",
+        "review": "not_supported",
+        "ci_no_tty": "pass",
+        "no_color": "pass"
+      },
+      "evidence": [
+        "tests/commands/spec-worktree.test.js",
+        "tests/commands/spec-validate.test.js",
+        "tests/commands/spec-close.test.js",
+        "tests/lib/check-slice.test.js"
+      ]
+    },
+    "plan-graph-next": {
+      "modes": {
+        "en_human": "pass",
+        "es_human": "pass",
+        "json": "pass",
+        "dry_run": "not_applicable",
+        "interactive": "not_supported",
+        "review": "not_supported",
+        "ci_no_tty": "pass",
+        "no_color": "pass"
+      },
+      "evidence": [
+        "tests/commands/plan.test.js",
+        "tests/commands/graph.test.js",
+        "tests/commands/next.test.js"
+      ]
+    },
+    "ai-executor": {
+      "modes": {
+        "en_human": "pass",
+        "es_human": "pass",
+        "json": "pass",
+        "dry_run": "pass",
+        "interactive": "pass",
+        "review": "not_supported",
+        "ci_no_tty": "pass",
+        "no_color": "pass",
+        "live_provider": "accepted_exception"
+      },
+      "evidence": [
+        "tests/commands/ai-execute-slice.test.js",
+        "tests/commands/ai-execute-plan.test.js",
+        "tests/lib/ai-executor.test.js",
+        "tests/lib/ai-execution-plan.test.js"
+      ]
+    },
+    "ai-pr": {
+      "modes": {
+        "en_human": "pass",
+        "es_human": "pass",
+        "json": "not_supported",
+        "dry_run": "pass",
+        "interactive": "pass",
+        "review": "pass",
+        "ci_no_tty": "pass",
+        "no_color": "pass",
+        "external_github_create": "accepted_exception"
+      },
+      "evidence": [
+        "tests/commands/ai-pr.test.js",
+        "tests/lib/ai-github.test.js"
+      ]
+    },
+    "ai-export-inspection": {
+      "modes": {
+        "en_human": "pass",
+        "es_human": "pass",
+        "json": "pass",
+        "dry_run": "not_applicable",
+        "interactive": "not_supported",
+        "review": "not_supported",
+        "ci_no_tty": "pass",
+        "no_color": "pass"
+      },
+      "evidence": [
+        "tests/commands/ai-export.test.js",
+        "tests/lib/ai-export-state.test.js"
+      ]
+    }
+  },
+  "accepted_exceptions": [
+    {
+      "id": "live-provider-credentials",
+      "owner": "release-readiness",
+      "reason": "Live provider credential tests are explicitly excluded by the v43 spec; dry-run, print-prompt, review, prompt transport, and provider adapter behavior are covered.",
+      "follow_up": "Run provider-backed commands manually only in a credentialed release environment.",
+      "status": "accepted"
+    },
+    {
+      "id": "external-github-pr-create",
+      "owner": "release-readiness",
+      "reason": "`ai pr --create` has external GitHub side effects; preflight, body handling, and create command construction are covered locally.",
+      "follow_up": "Use real `gh pr create` during PR opening with the documented SSH identity.",
+      "status": "accepted"
+    }
+  ],
+  "commands": [
+    { "command": "--help", "profile": "top-level-help", "critical": "pass" },
+    { "command": "--version", "profile": "version-report", "critical": "pass" },
+    { "command": "version", "profile": "version-report", "critical": "pass" },
+    { "command": "version --json", "profile": "version-json", "critical": "pass" },
+    { "command": "config language show", "profile": "language-config-human", "critical": "pass" },
+    { "command": "config language show --json", "profile": "language-config-json", "critical": "pass" },
+    { "command": "config language set es", "profile": "language-config-human", "critical": "pass" },
+    { "command": "config language set en --global", "profile": "language-config-human", "critical": "pass" },
+    { "command": "init --name \"Proyecto\"", "profile": "init-write", "critical": "pass" },
+    { "command": "init --interactive", "profile": "init-interactive", "critical": "pass" },
+    { "command": "migrate --dry-run", "profile": "migrate", "critical": "pass" },
+    { "command": "migrate", "profile": "migrate", "critical": "pass" },
+    { "command": "analyze", "profile": "read-only-human", "critical": "pass" },
+    { "command": "doctor", "profile": "read-only-human", "critical": "pass" },
+    { "command": "doctor --json", "profile": "doctor-json", "critical": "pass" },
+    { "command": "flow", "profile": "read-only-human", "critical": "pass" },
+    { "command": "dashboard", "profile": "dashboard-human", "critical": "pass" },
+    { "command": "dashboard --details", "profile": "dashboard-human", "critical": "pass" },
+    { "command": "dashboard --section <name>", "profile": "dashboard-human", "critical": "pass" },
+    { "command": "dashboard --limit <n>", "profile": "dashboard-human", "critical": "pass" },
+    { "command": "ai prepare-context --dry-run", "profile": "ai-prepare-context", "critical": "pass" },
+    { "command": "ai prepare-context", "profile": "ai-prepare-context", "critical": "pass" },
+    { "command": "ai prepare-context --with-planner --dry-run", "profile": "ai-prepare-context-planner", "critical": "pass" },
+    { "command": "ai prepare-context --with-planner --print-prompt", "profile": "ai-prepare-context-planner", "critical": "pass" },
+    { "command": "ai prepare-context --with-planner --review --interactive", "profile": "ai-prepare-context-planner", "critical": "pass" },
+    { "command": "ai models list", "profile": "ai-models-human", "critical": "pass" },
+    { "command": "ai models list --provider codex", "profile": "ai-models-human", "critical": "pass" },
+    { "command": "ai models list --json", "profile": "ai-models-json", "critical": "pass" },
+    { "command": "ai agent set <role>", "profile": "ai-agent-profile", "critical": "pass" },
+    { "command": "ai agent set <role> --provider <provider> --model <model-id>", "profile": "ai-agent-profile", "critical": "pass" },
+    { "command": "ai agent set planner --provider codex --model gpt-5.5 --dry-run", "profile": "ai-agent-profile", "critical": "pass" },
+    { "command": "ai agent doctor", "profile": "ai-agent-profile", "critical": "pass" },
+    { "command": "ai agent doctor --json", "profile": "ai-agent-json", "critical": "pass" },
+    { "command": "ai agent repair --dry-run", "profile": "ai-agent-repair", "critical": "pass" },
+    { "command": "ai run create --input <file>", "profile": "ai-run-lifecycle", "critical": "pass" },
+    { "command": "ai status", "profile": "ai-run-lifecycle", "critical": "pass" },
+    { "command": "ai plan --phase acceptance --input <file>", "profile": "ai-planner-provider", "critical": "pass" },
+    { "command": "ai plan --phase acceptance --review --interactive --input <file>", "profile": "ai-planner-provider", "critical": "pass" },
+    { "command": "ai revise --phase acceptance --input <feedback.md>", "profile": "ai-planner-provider", "critical": "pass" },
+    { "command": "ai approve --phase acceptance", "profile": "ai-approve", "critical": "pass" },
+    { "command": "ai approve --phase acceptance --version <n>", "profile": "ai-approve", "critical": "pass" },
+    { "command": "ai plan --phase technical-plan", "profile": "ai-planner-provider", "critical": "pass" },
+    { "command": "ai revise --phase technical-plan --input <feedback.md>", "profile": "ai-planner-provider", "critical": "pass" },
+    { "command": "ai review-plan", "profile": "ai-planner-provider", "critical": "pass" },
+    { "command": "ai repair-plan", "profile": "ai-planner-provider", "critical": "pass" },
+    { "command": "ai approve --phase technical-plan", "profile": "ai-approve", "critical": "pass" },
+    { "command": "ai approve --phase technical-plan --version <n>", "profile": "ai-approve", "critical": "pass" },
+    { "command": "ai approvals", "profile": "ai-run-lifecycle", "critical": "pass" },
+    { "command": "spec create --dry-run", "profile": "spec-create", "critical": "pass" },
+    { "command": "spec create", "profile": "spec-create", "critical": "pass" },
+    { "command": "spec create --review --interactive", "profile": "spec-create", "critical": "pass" },
+    { "command": "spec create --interactive", "profile": "spec-create", "critical": "pass" },
+    { "command": "spec validate specs/<spec> --strict", "profile": "spec-workflow", "critical": "pass" },
+    { "command": "spec start specs/<spec>", "profile": "spec-workflow", "critical": "pass" },
+    { "command": "plan --spec <spec>", "profile": "plan-graph-next", "critical": "pass" },
+    { "command": "dashboard --spec <spec>", "profile": "dashboard-human", "critical": "pass" },
+    { "command": "dashboard --section slices --spec <spec>", "profile": "dashboard-human", "critical": "pass" },
+    { "command": "graph --spec <spec>", "profile": "plan-graph-next", "critical": "pass" },
+    { "command": "next --all-ready --spec <spec>", "profile": "plan-graph-next", "critical": "pass" },
+    { "command": "ai prompt-slice --slice <slice.json> --dry-run", "profile": "ai-executor", "critical": "pass" },
+    { "command": "ai execute-slice --slice <slice.json> --commit", "profile": "ai-executor", "critical": "pass" },
+    { "command": "ai execute-plan --execute --commit --mode delegated", "profile": "ai-executor", "critical": "pass" },
+    { "command": "ai pr --dry-run --input specs/<spec>/pr.md", "profile": "ai-pr", "critical": "pass" },
+    { "command": "ai pr --review --dry-run --input specs/<spec>/pr.md", "profile": "ai-pr", "critical": "pass" },
+    { "command": "ai pr --create --input specs/<spec>/pr.md", "profile": "ai-pr", "critical": "pass" },
+    { "command": "spec close specs/<spec> --dry-run", "profile": "spec-workflow", "critical": "pass" },
+    { "command": "spec close specs/<spec>", "profile": "spec-workflow", "critical": "pass" }
+  ]
+}

@@ -313,6 +313,89 @@ test('runExecuteSlice interactive mode selects a ready slice and executor profil
     assert.equal(capturedProvider, 'claude');
     assert.equal(capturedOptions.model, 'sonnet');
     assert.equal(capturedOptions.enforceModelSelection, true);
+    assert.deepEqual(selected, ['Which slice do you want to execute?', 'Which Executor do you want to use?']);
+    assert.deepEqual(events.slice(0, 6), [
+      ['write', '◇ Executing slice with Sonnet\n'],
+      ['write', '✓ Reading slice\n'],
+      ['write', '✓ Validating worktree\n'],
+      ['write', '✓ Preparing prompt\n'],
+      ['start', 'Running agent...'],
+      ['stop', 'Agent finished', undefined],
+    ]);
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('runExecuteSlice interactive progress renders Spanish when language is es', async () => {
+  const repo = createRepo();
+  const events = [];
+  const selected = [];
+
+  try {
+    setAgentProfile(repo.root, 'executor', {
+      id: 'mini',
+      provider: 'codex',
+      model: 'gpt-mini',
+      displayName: 'GPT Mini',
+      default: true,
+    });
+    setAgentProfile(repo.root, 'executor', {
+      id: 'sonnet',
+      provider: 'claude',
+      model: 'sonnet',
+      displayName: 'Sonnet',
+    });
+
+    await runExecuteSlice(repo.root, {
+      allowDirty: true,
+      interactive: true,
+      language: 'es',
+      stdoutIsTTY: true,
+      stdinIsTTY: true,
+      stderrIsTTY: true,
+      noColor: true,
+      env: { LANG: 'en_US.UTF-8' },
+      write: (text) => events.push(['write', text]),
+      promptSelect: async (message, options) => {
+        selected.push(message);
+        if (message.includes('Executor')) {
+          return options.find((option) => option.value === 'sonnet').value;
+        }
+        return options[0].value;
+      },
+      prompts: {
+        spinner() {
+          return {
+            start(message) {
+              events.push(['start', message]);
+            },
+            stop(message, code) {
+              events.push(['stop', message, code]);
+            },
+          };
+        },
+      },
+      runProviderFn: async (provider) => {
+        fs.writeFileSync(path.join(repo.root, repo.allowedFile), 'module.exports = 2;\n');
+        return {
+          ok: true,
+          dryRun: false,
+          provider,
+          command: 'claude',
+          args: ['-p', '--model', 'sonnet'],
+          cwd: repo.root,
+          timeoutMs: 0,
+          promptTransport: { mode: 'stdin' },
+          exitCode: 0,
+          stdout: '',
+          stderr: '',
+          error: null,
+          preflight: { ok: true },
+        };
+      },
+    });
+
     assert.deepEqual(selected, ['¿Qué slice querés ejecutar?', '¿Qué Executor querés usar?']);
     assert.deepEqual(events.slice(0, 6), [
       ['write', '◇ Ejecutando slice con Sonnet\n'],

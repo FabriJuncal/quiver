@@ -14,7 +14,7 @@ function ensureDir(dirPath) {
 }
 
 function lifecycleTranslator(options = {}) {
-  return createTranslator(options.language || 'es');
+  return createTranslator(options.language);
 }
 
 function estimateTokenCost(text) {
@@ -272,7 +272,7 @@ function refreshActiveSlicesBoard(repoRoot) {
   return outputPath;
 }
 
-function resolveBaseRef(repoRoot, baseBranch) {
+function resolveBaseRef(repoRoot, baseBranch, translator = lifecycleTranslator()) {
   if (hasLocalBranch(repoRoot, baseBranch)) {
     return baseBranch;
   }
@@ -284,10 +284,10 @@ function resolveBaseRef(repoRoot, baseBranch) {
       fetchBranch(repoRoot, baseBranch);
       return `origin/${baseBranch}`;
     } catch {
-      throw new Error(`create-quiver: origin existe pero no se pudo actualizar '${baseBranch}'. Revisa conectividad o crea la rama local '${baseBranch}' antes de correr start-slice.`);
+      throw new Error(`create-quiver: ${translator.t('lifecycle.base_ref.fetch_failed', { base: baseBranch })}`);
     }
   }
-  throw new Error(`create-quiver: no se encontró '${baseBranch}' como rama local ni como ref remota 'origin/${baseBranch}'. Crea la rama base localmente o configura origin antes de correr start-slice.`);
+  throw new Error(`create-quiver: ${translator.t('lifecycle.base_ref.missing', { base: baseBranch, remoteRef: `origin/${baseBranch}` })}`);
 }
 
 function findExistingWorktreeForBranch(repoRoot, branchName) {
@@ -424,7 +424,7 @@ function startSlice(sliceInput, options = {}) {
     }
     worktreeAdd(repoRoot, worktreePath, slice.branchName);
   } else {
-    const baseRef = resolveBaseRef(repoRoot, slice.baseBranch);
+    const baseRef = resolveBaseRef(repoRoot, slice.baseBranch, translator);
     worktreeAdd(repoRoot, worktreePath, baseRef, { branch: slice.branchName });
   }
 
@@ -453,6 +453,7 @@ function startSlice(sliceInput, options = {}) {
 }
 
 function cleanupSlice(sliceInput, options = {}) {
+  const translator = lifecycleTranslator(options);
   const closeBaseline = options.closeBaseline === true;
   const discard = options.discard === true;
   const forceDelete = options.force === true;
@@ -463,18 +464,18 @@ function cleanupSlice(sliceInput, options = {}) {
   const worktreePath = path.join(worktreesRoot, safeBranchName(slice.branchName));
 
   if (slice.isBaseline && !closeBaseline) {
-    console.log(`INFO: '${slice.sliceId}' es baseline. El worktree queda congelado por default.`);
-    console.log('INFO: Usa --close-baseline solo cuando la primera ola del spec ya este estable o mergeada.');
+    console.log(translator.t('lifecycle.cleanup.baseline.info', { slice: slice.sliceId }));
+    console.log(translator.t('lifecycle.cleanup.baseline.close_hint'));
     return;
   }
 
   if (!discard) {
     const branch = currentBranch(repoRoot);
     if (branch !== 'develop') {
-      throw new Error(`create-quiver: el cleanup normal debe correrse desde develop. Rama actual: ${branch}`);
+      throw new Error(`create-quiver: ${translator.t('lifecycle.cleanup.error.branch', { branch })}`);
     }
     if (statusPorcelain(repoRoot) !== '') {
-      throw new Error('create-quiver: el checkout actual no esta limpio. Limpialo antes del cleanup.');
+      throw new Error(`create-quiver: ${translator.t('lifecycle.cleanup.error.dirty')}`);
     }
 
     try {
@@ -486,12 +487,12 @@ function cleanupSlice(sliceInput, options = {}) {
     const localDevelopSha = runGit(['rev-parse', 'HEAD'], repoRoot);
     const remoteDevelopSha = runGit(['rev-parse', 'origin/develop'], repoRoot);
     if (localDevelopSha !== remoteDevelopSha) {
-      throw new Error('create-quiver: develop local no esta actualizado. Ejecuta git pull --ff-only antes del cleanup.');
+      throw new Error(`create-quiver: ${translator.t('lifecycle.cleanup.error.develop_stale')}`);
     }
 
     if (hasLocalBranch(repoRoot, slice.branchName)) {
       if (!mergeBaseIsAncestor(repoRoot, slice.branchName, 'origin/develop')) {
-        throw new Error(`create-quiver: la rama '${slice.branchName}' no esta mergeada en origin/develop. Usa --discard si el slice se descarta.`);
+        throw new Error(`create-quiver: ${translator.t('lifecycle.cleanup.error.unmerged', { branch: slice.branchName })}`);
       }
     }
   }
@@ -499,38 +500,38 @@ function cleanupSlice(sliceInput, options = {}) {
   const worktreeExists = fs.existsSync(worktreePath);
   const branchExists = hasLocalBranch(repoRoot, slice.branchName);
   if (!worktreeExists && !branchExists) {
-    throw new Error(`create-quiver: no existe worktree ni rama local para '${slice.sliceId}'.`);
+    throw new Error(`create-quiver: ${translator.t('lifecycle.cleanup.error.missing', { slice: slice.sliceId })}`);
   }
 
   const removeWorktree = () => worktreeRemove(repoRoot, worktreePath, forceDelete || discard);
   const removeBranch = () => branchDelete(repoRoot, slice.branchName, forceDelete || discard);
 
   if (dryRun) {
-    console.log(`DRY RUN: slice=${slice.sliceId} branch=${slice.branchName}`);
+    console.log(translator.t('lifecycle.cleanup.dry_run.slice', { slice: slice.sliceId, branch: slice.branchName }));
     if (worktreeExists) {
-      console.log(`DRY RUN: git worktree remove ${forceDelete || discard ? '--force ' : ''}${worktreePath}`);
+      console.log(translator.t('lifecycle.cleanup.dry_run.worktree', { force: forceDelete || discard ? '--force ' : '', path: worktreePath }));
     }
     if (branchExists) {
-      console.log(`DRY RUN: git branch ${forceDelete || discard ? '-D' : '-d'} ${slice.branchName}`);
+      console.log(translator.t('lifecycle.cleanup.dry_run.branch', { flag: forceDelete || discard ? '-D' : '-d', branch: slice.branchName }));
     }
     return;
   }
 
   if (worktreeExists) {
     removeWorktree();
-    console.log(`PASS: Worktree eliminado: ${worktreePath}`);
+    console.log(translator.t('lifecycle.cleanup.removed_worktree', { path: worktreePath }));
   }
   if (branchExists) {
     removeBranch();
-    console.log(`PASS: Rama local eliminada: ${slice.branchName}`);
+    console.log(translator.t('lifecycle.cleanup.removed_branch', { branch: slice.branchName }));
   }
 
   if (removeActiveSlice(repoRoot)) {
-    console.log('PASS: ACTIVE_SLICE.md eliminado');
+    console.log(translator.t('lifecycle.cleanup.removed_active_slice'));
   }
 
   refreshActiveSlicesBoard(repoRoot);
-  console.log(`PASS: Cleanup finalizado para '${slice.sliceId}'.`);
+  console.log(translator.t('lifecycle.cleanup.finished', { slice: slice.sliceId }));
 }
 
 module.exports = {

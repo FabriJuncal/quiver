@@ -1,9 +1,9 @@
 # Status - Quiver v43 CLI i18n Audit and Release Readiness
 
-**Overall status:** Planned
+**Overall status:** Completed
 **Created:** 2026-05-28
-**Completed:** Not completed
-**Current slice:** slice-01-command-language-mode-matrix
+**Completed:** 2026-05-29
+**Current slice:** none
 
 ## Summary
 
@@ -14,11 +14,11 @@ This spec is the final audit and release-readiness stage for the full CLI i18n p
 | Slice | Status | Notes |
 |---|---|---|
 | slice-00-audit-foundation | Completed | Spec package and handoffs created. |
-| slice-01-command-language-mode-matrix | Planned | Blocked until v37-v42 complete. |
-| slice-02-public-string-audit | Planned | Depends on the full matrix. |
-| slice-03-cross-platform-smokes | Planned | Depends on string audit fixes. |
-| slice-04-package-release-readiness | Planned | Final release-readiness gate. |
+| slice-01-command-language-mode-matrix | Completed | Created command x language x mode matrix for every documented command. |
+| slice-02-public-string-audit | Completed | Localized remaining critical public command strings found in the audit. |
+| slice-03-cross-platform-smokes | Completed | Added i18n-specific smoke coverage and recorded platform evidence. |
+| slice-04-package-release-readiness | Completed | Final release-readiness gate passed. |
 
 ## Current Blockers
 
-- Requires completion of `specs/quiver-v37-cli-i18n-foundation` through `specs/quiver-v42-cli-i18n-generated-docs`.
+- No current blocker. `specs/quiver-v37-cli-i18n-foundation` through `specs/quiver-v42-cli-i18n-generated-docs` are complete.

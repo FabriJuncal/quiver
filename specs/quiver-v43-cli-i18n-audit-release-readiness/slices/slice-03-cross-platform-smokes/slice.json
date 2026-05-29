@@ -13,6 +13,8 @@
   },
   "files": [
     "scripts/ci/smoke-cross-platform.js",
+    "scripts/ci/smoke-create-quiver.sh",
+    "specs/quiver-v43-cli-i18n-audit-release-readiness/cross-platform-smoke-matrix.md",
     "specs/quiver-v43-cli-i18n-audit-release-readiness/EVIDENCE_REPORT.md"
   ],
   "expected_read_paths": [
@@ -54,6 +56,7 @@
     "Prefer automated Node-based smokes where a platform is available; otherwise record exact manual command output in evidence."
   ],
   "estimated_hours": 6,
-  "status": "planned",
-  "blocked_reason": "Requires completion of slice-02-public-string-audit."
+  "status": "completed",
+  "blocked_reason": "",
+  "completed_at": "2026-05-29T19:54:37Z"
 }

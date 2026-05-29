@@ -6,7 +6,7 @@ const cp = require('node:child_process');
 const test = require('node:test');
 
 const { buildSpecStatus, ensureSpecSliceZeroComplete, startSpecWorktree } = require('../../src/create-quiver/lib/spec-worktrees');
-const { startSlice } = require('../../src/create-quiver/lib/lifecycle');
+const { cleanupSlice, startSlice } = require('../../src/create-quiver/lib/lifecycle');
 const { acquireLock, releaseLock } = require('../../src/create-quiver/lib/locks');
 
 function writeJson(filePath, data) {
@@ -219,6 +219,32 @@ test('startSlice renders English lifecycle output when requested', () => {
     assert.match(output, /Slice ready to work/);
     assert.match(output, /Branch: feature\/QUIVER-22-05-spec-worktree-lifecycle/);
     assert.match(output, /Context: .*WORKTREE_CONTEXT\.md/);
+  } finally {
+    process.chdir(previous);
+    repo.cleanup();
+  }
+});
+
+test('cleanupSlice dry-run renders English lifecycle output when requested', () => {
+  const repo = makeRepo('main');
+  const previous = process.cwd();
+  try {
+    process.chdir(repo.root);
+    startSlice('specs/quiver-v22-guided-ai-workflow/slices/slice-05-spec-worktree-lifecycle/slice.json', {
+      allowDraft: true,
+      language: 'en',
+    });
+
+    const output = captureConsole(() => cleanupSlice('specs/quiver-v22-guided-ai-workflow/slices/slice-05-spec-worktree-lifecycle/slice.json', {
+      discard: true,
+      dryRun: true,
+      language: 'en',
+    }));
+
+    assert.match(output, /DRY RUN: slice=slice-05-spec-worktree-lifecycle branch=feature\/QUIVER-22-05-spec-worktree-lifecycle/);
+    assert.match(output, /DRY RUN: git worktree remove --force /);
+    assert.match(output, /DRY RUN: git branch -D feature\/QUIVER-22-05-spec-worktree-lifecycle/);
+    assert.doesNotMatch(output, /Rama local eliminada|Cleanup finalizado|worktree queda congelado/);
   } finally {
     process.chdir(previous);
     repo.cleanup();

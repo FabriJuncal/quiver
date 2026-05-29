@@ -2,9 +2,12 @@
 
 ## Summary
 
-Pending implementation.
+Created the command x language x mode matrix for every command documented in `docs/reference/commands.md`.
+
+The matrix is stored in `command-language-mode-matrix.json`, summarized in `EVIDENCE_REPORT.md`, and protected by `tests/commands/i18n-audit-matrix.test.js`.
 
 ## Validation
 
-- [ ] `node --test tests/**/*.test.js`
-- [ ] `git diff --check`
+- [x] `node --test tests/commands/i18n-audit-matrix.test.js`
+- [x] `node --test tests/**/*.test.js`
+- [x] `git diff --check`
