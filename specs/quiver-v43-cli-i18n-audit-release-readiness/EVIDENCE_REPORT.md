@@ -153,6 +153,33 @@ Validation:
 - PASS focused source audit for removed executor Spanish literals; only catalog entries remain.
 - PASS focused source audit for removed lifecycle cleanup Spanish literals; only catalog entries remain.
 
+## slice-03-cross-platform-smokes
+
+- Added i18n-specific checks to `scripts/ci/smoke-cross-platform.js`.
+- Covered configured project language without repeated flags by setting project language to `es` in a path with spaces and running `dashboard` without `--lang`.
+- Covered `--lang` override by forcing English over the Spanish project config.
+- Covered `QUIVER_LANG` override by forcing English over the Spanish project config.
+- Covered parseable JSON by parsing `config language show --json` and `dashboard --json`.
+- Covered paths with spaces through `ai path project`, `language home`, and `requirements with spaces.md`.
+- Updated `scripts/ci/smoke-create-quiver.sh` to make cleanup wrapper language expectations explicit with `QUIVER_LANG=es`.
+- Recorded cross-platform command matrix and platform exceptions in `cross-platform-smoke-matrix.md`.
+
+Platform evidence:
+
+| Platform or shell | Status | Evidence |
+|---|---|---|
+| macOS Darwin arm64 | PASS | Executed locally. |
+| Linux Bash | Approved exception | Docker CLI exists, but Docker daemon was unavailable locally; reproducible commands are recorded for CI/Linux runner execution. |
+| Windows PowerShell | Approved exception | `pwsh` is unavailable locally; win32 path behavior is covered by tests and shell commands are recorded. |
+| Windows Git Bash/WSL | Approved exception | Git Bash/WSL is unavailable locally; Git Bash drive path behavior is covered by tests and shell commands are recorded. |
+
+Validation:
+
+- PASS `node scripts/ci/smoke-cross-platform.js`
+- PASS `npm run smoke:create-quiver`
+- PASS `node --test tests/lib/paths.test.js tests/commands/config-language.test.js tests/commands/dashboard.test.js`
+- PASS `git diff --check`
+
 ## Pending Evidence
 
 - `npx create-quiver spec validate specs/quiver-v43-cli-i18n-audit-release-readiness --strict`

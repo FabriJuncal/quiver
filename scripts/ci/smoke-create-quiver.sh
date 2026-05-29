@@ -630,7 +630,7 @@ if [[ "$start_again_output" != *"Reemplazando docs/ai/ACTIVE_SLICE.md existente.
   exit 1
 fi
 
-cleanup_output="$(cd "$new_target" && SLICE_WORKTREES_DIR="$temp_root/worktrees-shell" bash tools/scripts/cleanup-slice.sh --discard specs/smoke-project/slices/slice-template/slice.json)"
+cleanup_output="$(cd "$new_target" && QUIVER_LANG=es SLICE_WORKTREES_DIR="$temp_root/worktrees-shell" bash tools/scripts/cleanup-slice.sh --discard specs/smoke-project/slices/slice-template/slice.json)"
 if [[ "$cleanup_output" != *"PASS: Cleanup finalizado"* ]]; then
   echo "Missing cleanup completion message from wrapper" >&2
   exit 1
@@ -650,7 +650,7 @@ if [[ "$start_missing_output" != *"Slice listo para trabajar."* ]]; then
   exit 1
 fi
 rm "$new_target/docs/ai/ACTIVE_SLICE.md"
-cleanup_missing_output="$(cd "$new_target" && SLICE_WORKTREES_DIR="$temp_root/worktrees-shell" bash tools/scripts/cleanup-slice.sh --discard specs/smoke-project/slices/slice-template/slice.json)"
+cleanup_missing_output="$(cd "$new_target" && QUIVER_LANG=es SLICE_WORKTREES_DIR="$temp_root/worktrees-shell" bash tools/scripts/cleanup-slice.sh --discard specs/smoke-project/slices/slice-template/slice.json)"
 if [[ "$cleanup_missing_output" != *"PASS: Cleanup finalizado"* ]]; then
   echo "Missing cleanup completion message when ACTIVE_SLICE.md was already absent" >&2
   exit 1

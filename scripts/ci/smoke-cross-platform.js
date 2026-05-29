@@ -77,6 +77,12 @@ function assertNotContains(text, needle, label) {
   assert(!text.includes(needle), `${label} unexpectedly contained: ${needle}`);
 }
 
+function assertJsonObject(text, label) {
+  const parsed = JSON.parse(text);
+  assert(parsed && typeof parsed === 'object' && !Array.isArray(parsed), `${label} did not parse to an object`);
+  return parsed;
+}
+
 function assertFrontMatter(filePath) {
   const text = fs.readFileSync(filePath, 'utf8');
   const lines = text.split(/\r?\n/);
@@ -347,12 +353,52 @@ function runSmoke() {
   assertContains(graphDot, 'digraph QuiverGraph', 'graph dot output');
 
   initProject(aiSpaceProject, 'AI Path Project');
+  const languageEnv = {
+    ...process.env,
+    HOME: path.join(tempRoot, 'language home'),
+    USERPROFILE: path.join(tempRoot, 'language home'),
+    LANG: 'C',
+    LANGUAGE: '',
+    LC_ALL: '',
+    LC_MESSAGES: '',
+    QUIVER_LANG: '',
+  };
+  runNodeCli(aiSpaceProject, ['config', 'language', 'set', 'es'], { env: languageEnv });
+  const configuredLanguage = runNodeCli(aiSpaceProject, ['dashboard', '--limit', '1'], { env: languageEnv });
+  const flagLanguage = runNodeCli(aiSpaceProject, ['dashboard', '--lang', 'en', '--limit', '1'], { env: languageEnv });
+  const envLanguage = runNodeCli(aiSpaceProject, ['dashboard', '--limit', '1'], {
+    env: { ...languageEnv, QUIVER_LANG: 'en' },
+  });
+  const configuredLanguageJson = assertJsonObject(
+    runNodeCli(aiSpaceProject, ['config', 'language', 'show', '--json'], { env: languageEnv }),
+    'configured language JSON',
+  );
+  const envLanguageJson = assertJsonObject(
+    runNodeCli(aiSpaceProject, ['config', 'language', 'show', '--json'], {
+      env: { ...languageEnv, QUIVER_LANG: 'en' },
+    }),
+    'QUIVER_LANG override JSON',
+  );
+  const languageDashboardJson = assertJsonObject(
+    runNodeCli(aiSpaceProject, ['dashboard', '--json'], { env: languageEnv }),
+    'dashboard JSON with configured language',
+  );
+  assertContains(configuredLanguage, 'Dashboard de Quiver', 'configured language dashboard');
+  assertNotContains(configuredLanguage, 'Quiver Dashboard', 'configured language dashboard');
+  assertContains(flagLanguage, 'Quiver Dashboard', '--lang override dashboard');
+  assertContains(envLanguage, 'Quiver Dashboard', 'QUIVER_LANG override dashboard');
+  assert(configuredLanguageJson.language === 'es', 'configured language JSON mismatch');
+  assert(configuredLanguageJson.source === '.quiver/config.json', 'configured language JSON source mismatch');
+  assert(envLanguageJson.language === 'en', 'QUIVER_LANG override JSON mismatch');
+  assert(envLanguageJson.source === 'QUIVER_LANG', 'QUIVER_LANG override JSON source mismatch');
+  assert(languageDashboardJson.dashboard_schema_version === 1, 'dashboard JSON schema mismatch in spaced path');
+
   const aiRequirements = path.join(aiSpaceProject, 'requirements with spaces.md');
   fs.writeFileSync(aiRequirements, 'Build a dry-run AI path smoke.\n');
   const aiOnboardDryRun = runNodeCli(aiSpaceProject, ['ai', 'onboard', '--dry-run']);
   const aiPlanDryRun = runNodeCli(aiSpaceProject, ['ai', 'plan', '--phase', 'acceptance', '--input', 'requirements with spaces.md', '--dry-run']);
-  assertContains(aiOnboardDryRun, 'AI onboard dry-run', 'ai onboard dry-run');
-  assertContains(aiPlanDryRun, 'Phase: acceptance', 'ai plan dry-run');
+  assertContains(aiOnboardDryRun, 'Dry-run de IA onboard', 'ai onboard dry-run');
+  assertContains(aiPlanDryRun, 'Fase: acceptance', 'ai plan dry-run');
   const aiSliceDir = path.join(aiSpaceProject, 'specs', 'ai-path-project', 'slices', 'slice-ai-dry-run');
   fs.mkdirSync(aiSliceDir, { recursive: true });
   writeJson(path.join(aiSliceDir, 'slice.json'), {
@@ -375,8 +421,8 @@ function runSmoke() {
   });
   fs.writeFileSync(path.join(aiSliceDir, 'EXECUTION_BRIEF.md'), '# Execution Brief\n\nValidate dry-run only.\n');
   const aiExecuteDryRun = runNodeCli(aiSpaceProject, ['ai', 'execute-slice', '--slice', 'specs/ai-path-project/slices/slice-ai-dry-run/slice.json', '--dry-run']);
-  assertContains(aiExecuteDryRun, 'AI execute-slice dry-run', 'ai execute-slice dry-run');
-  assertContains(aiExecuteDryRun, 'Role: executor', 'ai execute-slice dry-run');
+  assertContains(aiExecuteDryRun, 'Dry-run de AI execute-slice', 'ai execute-slice dry-run');
+  assertContains(aiExecuteDryRun, 'Rol: executor', 'ai execute-slice dry-run');
 
   const readySlicePath = path.join(newProject, 'specs', 'smoke-project', 'slices', 'slice-01-ready', 'slice.json');
   writeJson(readySlicePath, {
