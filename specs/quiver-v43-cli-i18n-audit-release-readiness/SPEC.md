@@ -42,7 +42,7 @@ Validate that Quiver has complete Spanish and English support across the documen
 | Slice | Title | Status | Dependencies |
 |---|---|---|---|
 | slice-00 | Audit foundation | completed | none |
-| slice-01 | Command language mode matrix | planned | v37-v42 complete |
+| slice-01 | Command language mode matrix | completed | v37-v42 complete |
 | slice-02 | Public string audit | planned | slice-01 |
 | slice-03 | Cross-platform smokes | planned | slice-02 |
 | slice-04 | Package release readiness | planned | slice-03 |
