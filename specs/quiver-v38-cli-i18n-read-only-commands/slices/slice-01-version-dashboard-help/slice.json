@@ -1,0 +1,66 @@
+{
+  "slice_id": "slice-01-version-dashboard-help",
+  "ticket": "QUIVER-38-01",
+  "type": "feature",
+  "title": "Version, dashboard, and help",
+  "objective": "Localize the most visible read-only CLI surfaces in Spanish and English.",
+  "description": "Migrates version, help, and dashboard human output while preserving JSON contracts.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v38-version-dashboard-help",
+    "branch_name": "feature/QUIVER-38-01-v38-version-dashboard-help"
+  },
+  "files": [
+    "src/create-quiver/commands/version.js",
+    "src/create-quiver/commands/dashboard.js",
+    "tests/commands/version.test.js",
+    "tests/commands/dashboard.test.js"
+  ],
+  "expected_read_paths": [
+    "src/create-quiver/lib/i18n/**",
+    "docs/CLI_UX_GUIDE.md",
+    "docs/reference/commands.md",
+    "specs/quiver-v38-cli-i18n-read-only-commands/SPEC.md"
+  ],
+  "allowed_write_paths": [
+    "src/create-quiver/commands/version.js",
+    "src/create-quiver/commands/dashboard.js",
+    "src/create-quiver/lib/i18n/**",
+    "tests/commands/version.test.js",
+    "tests/commands/dashboard.test.js",
+    "tests/commands/cli-contract.test.js",
+    "specs/quiver-v38-cli-i18n-read-only-commands/**"
+  ],
+  "depends_on": [
+    "slice-00-read-only-foundation"
+  ],
+  "parallel_safe": "no",
+  "parallel_safe_reason": "Establishes command migration patterns for the rest of v38.",
+  "must": [
+    "Localize human output for version, help, and dashboard.",
+    "Keep JSON output stable.",
+    "Preserve exact command snippets.",
+    "Maintain compact dashboard readability."
+  ],
+  "not_included": [
+    "Provider-backed AI commands.",
+    "Generated project docs."
+  ],
+  "acceptance": [
+    "Representative output snapshots pass in en and es.",
+    "JSON tests continue to pass.",
+    "Color/no-color behavior remains correct."
+  ],
+  "tests": [
+    "node --test tests/commands/version.test.js tests/commands/dashboard.test.js tests/commands/cli-contract.test.js",
+    "git diff --check"
+  ],
+  "validation_hints": [
+    "Use project config language tests, not only --lang tests.",
+    "Assert Spanish labels do not expand dashboard beyond readable layout assumptions."
+  ],
+  "estimated_hours": 6,
+  "status": "planned",
+  "blocked_reason": "Requires completion of specs/quiver-v37-cli-i18n-foundation."
+}

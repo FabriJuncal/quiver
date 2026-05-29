@@ -1,0 +1,65 @@
+{
+  "slice_id": "slice-04-parser-help-error-foundation",
+  "ticket": "QUIVER-37-04",
+  "type": "feature",
+  "title": "Parser, help, and early error foundation",
+  "objective": "Localize CLI help and early parser errors before command-specific migrations begin.",
+  "description": "Ensures global UX obeys selected language even before command handlers run.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v37-parser-help-error-foundation",
+    "branch_name": "feature/QUIVER-37-04-v37-parser-help-error-foundation"
+  },
+  "files": [
+    "src/create-quiver/index.js",
+    "src/create-quiver/lib/i18n/messages/en.js",
+    "src/create-quiver/lib/i18n/messages/es.js",
+    "tests/commands/cli-contract.test.js"
+  ],
+  "expected_read_paths": [
+    "src/create-quiver/index.js",
+    "src/create-quiver/lib/i18n/**",
+    "docs/CLI_UX_GUIDE.md",
+    "docs/reference/commands.md"
+  ],
+  "allowed_write_paths": [
+    "src/create-quiver/index.js",
+    "src/create-quiver/lib/cli/**",
+    "src/create-quiver/lib/i18n/**",
+    "tests/commands/cli-contract.test.js",
+    "specs/quiver-v37-cli-i18n-foundation/**"
+  ],
+  "depends_on": [
+    "slice-01-language-resolution-contract",
+    "slice-02-message-catalog-interpolation"
+  ],
+  "parallel_safe": "conditional",
+  "parallel_safe_reason": "Can run after catalog API is stable and should avoid overlapping config command files.",
+  "must": [
+    "Localize help output.",
+    "Localize unknown command and unsupported flag errors.",
+    "Respect --lang before command dispatch.",
+    "Keep JSON mode clean."
+  ],
+  "not_included": [
+    "Migrating every command's business output."
+  ],
+  "acceptance": [
+    "Help renders in en and es.",
+    "Early parser errors render in en and es.",
+    "JSON error payloads keep stable fields.",
+    "CI/no-TTY outputs contain no prompts or spinners."
+  ],
+  "tests": [
+    "node --test tests/commands/cli-contract.test.js",
+    "git diff --check"
+  ],
+  "validation_hints": [
+    "Assert that command snippets remain exact in both languages."
+  ],
+  "estimated_hours": 5,
+  "status": "completed",
+  "completed_at": "2026-05-29T00:00:00.000Z",
+  "blocked_reason": null
+}

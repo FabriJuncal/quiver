@@ -1,0 +1,61 @@
+{
+  "slice_id": "slice-05-ai-tests-smokes",
+  "ticket": "QUIVER-41-05",
+  "type": "validation",
+  "title": "AI tests and smokes",
+  "objective": "Validate AI lifecycle localization and record release evidence.",
+  "description": "Runs full validation for v41 after AI lifecycle command migration.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v41-ai-tests-smokes",
+    "branch_name": "feature/QUIVER-41-05-v41-ai-tests-smokes"
+  },
+  "files": [
+    "tests/**/*.test.js",
+    "specs/quiver-v41-cli-i18n-ai-lifecycle/EVIDENCE_REPORT.md"
+  ],
+  "expected_read_paths": [
+    "specs/quiver-v41-cli-i18n-ai-lifecycle/SPEC.md",
+    "docs/CLI_UX_GUIDE.md",
+    "docs/reference/commands.md"
+  ],
+  "allowed_write_paths": [
+    "tests/**",
+    "specs/quiver-v41-cli-i18n-ai-lifecycle/**"
+  ],
+  "depends_on": [
+    "slice-02-ai-agent-models",
+    "slice-04-ai-execution-pr"
+  ],
+  "parallel_safe": "no",
+  "parallel_safe_reason": "This is the closing validation slice for v41.",
+  "must": [
+    "Run full validation.",
+    "Confirm provider prompts remain stable.",
+    "Confirm JSON/JSONL outputs remain pure.",
+    "Record evidence."
+  ],
+  "not_included": [
+    "Live provider execution requiring external credentials."
+  ],
+  "acceptance": [
+    "Full tests pass.",
+    "Package smoke passes.",
+    "Spec validation passes.",
+    "Evidence report is updated."
+  ],
+  "tests": [
+    "node --test tests/**/*.test.js",
+    "npx create-quiver spec validate specs/quiver-v41-cli-i18n-ai-lifecycle --strict",
+    "npm run package:quiver",
+    "npm run smoke:create-quiver",
+    "git diff --check"
+  ],
+  "validation_hints": [
+    "Use dry-run and print-prompt tests for provider-backed flows instead of requiring provider credentials."
+  ],
+  "estimated_hours": 5,
+  "status": "planned",
+  "blocked_reason": "Requires completion of slice-02-ai-agent-models and slice-04-ai-execution-pr."
+}

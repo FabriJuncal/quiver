@@ -1,0 +1,53 @@
+{
+  "slice_id": "slice-00-spec-slice-foundation",
+  "ticket": "QUIVER-40-00",
+  "type": "documentation",
+  "title": "Spec/slice foundation",
+  "objective": "Create the approved v40 spec/slice workflow i18n spec package and handoffs.",
+  "description": "Documents migration of workflow-critical commands to en and es.",
+  "git": {
+    "branch_type": "docs",
+    "base_branch": "main",
+    "branch_slug": "v40-spec-slice-foundation",
+    "branch_name": "docs/QUIVER-40-00-v40-spec-slice-foundation"
+  },
+  "files": [
+    "specs/quiver-v40-cli-i18n-spec-slice-workflows/**"
+  ],
+  "expected_read_paths": [
+    "docs/INDEX.md",
+    "docs/CLI_UX_GUIDE.md",
+    "docs/reference/commands.md",
+    "specs/quiver-v37-cli-i18n-foundation/SPEC.md"
+  ],
+  "allowed_write_paths": [
+    "specs/quiver-v40-cli-i18n-spec-slice-workflows/**"
+  ],
+  "depends_on": [],
+  "parallel_safe": "no",
+  "parallel_safe_reason": "This creates the roadmap for v40.",
+  "must": [
+    "Create v40 package.",
+    "Document artifact stability guardrails.",
+    "Keep runtime code untouched."
+  ],
+  "not_included": [
+    "Runtime command migration."
+  ],
+  "acceptance": [
+    "Spec package exists.",
+    "Slice handoffs exist.",
+    "Runtime code is untouched."
+  ],
+  "tests": [
+    "npx create-quiver spec validate specs/quiver-v40-cli-i18n-spec-slice-workflows --strict",
+    "git diff --check"
+  ],
+  "validation_hints": [
+    "Strict validation requires completed slices to appear in EVIDENCE_REPORT.md."
+  ],
+  "estimated_hours": 1,
+  "status": "completed",
+  "completed_at": "2026-05-28T00:00:00.000Z",
+  "blocked_reason": null
+}

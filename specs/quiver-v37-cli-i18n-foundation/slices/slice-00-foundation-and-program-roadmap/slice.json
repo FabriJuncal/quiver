@@ -1,0 +1,54 @@
+{
+  "slice_id": "slice-00-foundation-and-program-roadmap",
+  "ticket": "QUIVER-37-00",
+  "type": "documentation",
+  "title": "Foundation and program roadmap",
+  "objective": "Create the approved v37 i18n foundation spec package and handoffs without runtime implementation.",
+  "description": "Documents the shared foundation required before migrating commands to Spanish and English output.",
+  "git": {
+    "branch_type": "docs",
+    "base_branch": "main",
+    "branch_slug": "v37-i18n-foundation-roadmap",
+    "branch_name": "docs/QUIVER-37-00-v37-i18n-foundation-roadmap"
+  },
+  "files": [
+    "specs/quiver-v37-cli-i18n-foundation/**"
+  ],
+  "expected_read_paths": [
+    "docs/INDEX.md",
+    "docs/CLI_UX_GUIDE.md",
+    "docs/reference/commands.md"
+  ],
+  "allowed_write_paths": [
+    "specs/quiver-v37-cli-i18n-foundation/**"
+  ],
+  "depends_on": [],
+  "parallel_safe": "no",
+  "parallel_safe_reason": "This creates the contract for all later v37 slices.",
+  "must": [
+    "Create the spec package and slice handoffs.",
+    "Document the language precedence and JSON stability guardrails.",
+    "Mark slice-01 as ready."
+  ],
+  "not_included": [
+    "Runtime implementation.",
+    "Catalog migration for existing commands."
+  ],
+  "acceptance": [
+    "Spec root documents exist.",
+    "Each slice has execution and closure briefs.",
+    "slice.json files are valid JSON.",
+    "Runtime code is untouched."
+  ],
+  "tests": [
+    "npx create-quiver spec validate specs/quiver-v37-cli-i18n-foundation --strict",
+    "git diff --check"
+  ],
+  "validation_hints": [
+    "Strict validation requires completed slices to be referenced in EVIDENCE_REPORT.md."
+  ],
+  "estimated_hours": 1,
+  "status": "completed",
+  "completed_at": "2026-05-28T00:00:00.000Z",
+  "blocked_reason": null
+}

@@ -1,0 +1,59 @@
+{
+  "slice_id": "slice-03-cross-platform-smokes",
+  "ticket": "QUIVER-43-03",
+  "type": "validation",
+  "title": "Cross-platform smokes",
+  "objective": "Validate i18n behavior across supported shells and path environments.",
+  "description": "Runs or records smokes for macOS, Linux, Windows PowerShell, Git Bash/WSL, and paths with spaces.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v43-cross-platform-smokes",
+    "branch_name": "feature/QUIVER-43-03-v43-cross-platform-smokes"
+  },
+  "files": [
+    "scripts/ci/smoke-cross-platform.js",
+    "specs/quiver-v43-cli-i18n-audit-release-readiness/EVIDENCE_REPORT.md"
+  ],
+  "expected_read_paths": [
+    "scripts/ci/smoke-cross-platform.js",
+    "docs/getting-started/macos.md",
+    "docs/getting-started/linux.md",
+    "docs/getting-started/windows-powershell.md",
+    "docs/getting-started/windows-git-bash-wsl.md"
+  ],
+  "allowed_write_paths": [
+    "scripts/ci/**",
+    "tests/**",
+    "specs/quiver-v43-cli-i18n-audit-release-readiness/**"
+  ],
+  "depends_on": [
+    "slice-02-public-string-audit"
+  ],
+  "parallel_safe": "no",
+  "parallel_safe_reason": "Cross-platform smoke should run after string audit gaps are resolved.",
+  "must": [
+    "Cover configured project language.",
+    "Cover --lang and QUIVER_LANG overrides.",
+    "Cover paths with spaces.",
+    "Record platform evidence."
+  ],
+  "not_included": [
+    "Live provider credential tests."
+  ],
+  "acceptance": [
+    "Cross-platform evidence is recorded.",
+    "JSON/JSONL outputs parse where relevant.",
+    "Any missing platform evidence is a documented blocker or approved exception."
+  ],
+  "tests": [
+    "npm run smoke:create-quiver",
+    "git diff --check"
+  ],
+  "validation_hints": [
+    "Prefer automated Node-based smokes where a platform is available; otherwise record exact manual command output in evidence."
+  ],
+  "estimated_hours": 6,
+  "status": "planned",
+  "blocked_reason": "Requires completion of slice-02-public-string-audit."
+}

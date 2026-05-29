@@ -1,0 +1,59 @@
+{
+  "slice_id": "slice-01-spec-create-start-status",
+  "ticket": "QUIVER-40-01",
+  "type": "feature",
+  "title": "Spec create, start, and status surfaces",
+  "objective": "Localize spec creation and start/status guidance while preserving generated artifacts.",
+  "description": "Covers spec create previews, review wrappers, and spec worktree startup output.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v40-spec-create-start-status",
+    "branch_name": "feature/QUIVER-40-01-v40-spec-create-start-status"
+  },
+  "files": [
+    "src/create-quiver/commands/spec.js",
+    "tests/commands/spec-create.test.js",
+    "tests/commands/spec-worktree.test.js"
+  ],
+  "expected_read_paths": [
+    "src/create-quiver/commands/spec.js",
+    "src/create-quiver/lib/ai/spec-generator.js",
+    "src/create-quiver/lib/i18n/**"
+  ],
+  "allowed_write_paths": [
+    "src/create-quiver/commands/spec.js",
+    "src/create-quiver/lib/i18n/**",
+    "tests/commands/spec-create.test.js",
+    "tests/commands/spec-worktree.test.js",
+    "specs/quiver-v40-cli-i18n-spec-slice-workflows/**"
+  ],
+  "depends_on": [
+    "slice-00-spec-slice-foundation"
+  ],
+  "parallel_safe": "no",
+  "parallel_safe_reason": "Establishes workflow command localization patterns for v40.",
+  "must": [
+    "Localize human wrapper messages.",
+    "Preserve generated artifact contents.",
+    "Keep suggested commands exact."
+  ],
+  "not_included": [
+    "Generated template localization."
+  ],
+  "acceptance": [
+    "Spec create/start outputs render in en and es.",
+    "Generated artifact tests remain stable.",
+    "Dry-run and review modes remain safe."
+  ],
+  "tests": [
+    "node --test tests/commands/spec-create.test.js tests/commands/spec-worktree.test.js",
+    "git diff --check"
+  ],
+  "validation_hints": [
+    "Assert generated slice.json values are unchanged across languages."
+  ],
+  "estimated_hours": 7,
+  "status": "planned",
+  "blocked_reason": "Requires completion of specs/quiver-v37-cli-i18n-foundation."
+}

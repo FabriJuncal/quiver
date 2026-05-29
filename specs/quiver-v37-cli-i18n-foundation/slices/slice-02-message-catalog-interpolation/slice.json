@@ -1,0 +1,62 @@
+{
+  "slice_id": "slice-02-message-catalog-interpolation",
+  "ticket": "QUIVER-37-02",
+  "type": "feature",
+  "title": "Message catalog and interpolation",
+  "objective": "Create versioned English and Spanish catalogs with safe interpolation, pluralization, fallback, and missing-key coverage.",
+  "description": "Provides the string infrastructure needed before migrating command output.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v37-message-catalog-interpolation",
+    "branch_name": "feature/QUIVER-37-02-v37-message-catalog-interpolation"
+  },
+  "files": [
+    "src/create-quiver/lib/i18n/catalog.js",
+    "src/create-quiver/lib/i18n/messages/en.js",
+    "src/create-quiver/lib/i18n/messages/es.js",
+    "tests/lib/i18n-catalog.test.js"
+  ],
+  "expected_read_paths": [
+    "src/create-quiver/lib/i18n/language.js",
+    "specs/quiver-v37-cli-i18n-foundation/SPEC.md"
+  ],
+  "allowed_write_paths": [
+    "src/create-quiver/lib/i18n/**",
+    "tests/lib/i18n-catalog.test.js",
+    "specs/quiver-v37-cli-i18n-foundation/**"
+  ],
+  "depends_on": [
+    "slice-01-language-resolution-contract"
+  ],
+  "parallel_safe": "no",
+  "parallel_safe_reason": "Later command migrations must share the same catalog API.",
+  "must": [
+    "Implement en and es catalogs.",
+    "Support interpolation and one/other plural forms.",
+    "Fail tests on missing keys.",
+    "Keep command snippets untranslated."
+  ],
+  "not_included": [
+    "Migrating all command output.",
+    "Generated docs localization."
+  ],
+  "acceptance": [
+    "All keys present in en exist in es and vice versa.",
+    "Missing key behavior is deterministic.",
+    "Fallback behavior is tested.",
+    "Pluralization covers one and other."
+  ],
+  "tests": [
+    "node --test tests/lib/i18n-catalog.test.js",
+    "git diff --check"
+  ],
+  "validation_hints": [
+    "Use stable key names grouped by command or domain.",
+    "Avoid embedding ANSI codes in catalog strings."
+  ],
+  "estimated_hours": 5,
+  "status": "completed",
+  "completed_at": "2026-05-29T00:00:00.000Z",
+  "blocked_reason": null
+}

@@ -29,6 +29,10 @@ Más detalle: [Instalación y uso con npx](../getting-started/installation.md).
 | `npx --yes create-quiver@latest version` | Muestra un reporte de versión con banner Quiver, runtime, package manager y proyecto detectado. |
 | `npx --yes create-quiver@latest version --json` | Emite el reporte de versión como JSON parseable para automatización. |
 | `npx --yes create-quiver@latest --help` | Muestra los comandos soportados. |
+| `npx --yes create-quiver@latest config language show` | Muestra el idioma efectivo y su fuente de configuración. |
+| `npx --yes create-quiver@latest config language show --json` | Emite el idioma efectivo como JSON estable. |
+| `npx --yes create-quiver@latest config language set es` | Guarda `es` como idioma del proyecto en `.quiver/config.json`. |
+| `npx --yes create-quiver@latest config language set en --global` | Guarda `en` como idioma global en `~/.quiver/config.json`. |
 | `npx --yes create-quiver@latest init --name "Proyecto"` | Inicializa Quiver en un proyecto. |
 | `npx --yes create-quiver@latest init --interactive` | Abre una guía interactiva para elegir modo de proyecto, metodología `wdd-sdd`, perfil inicial y próximos pasos de agentes. |
 | `npx --yes create-quiver@latest migrate --dry-run` | Previsualiza migración de un proyecto Quiver anterior. |
@@ -41,6 +45,28 @@ Más detalle: [Instalación y uso con npx](../getting-started/installation.md).
 | `npx --yes create-quiver@latest dashboard --details` | Muestra el reporte humano completo cuando se necesita auditoría sin perder el resumen por defecto. |
 | `npx --yes create-quiver@latest dashboard --section <name>` | Muestra una sección humana puntual como `specs`, `slices`, `blockers`, `warnings`, `agents`, `approvals`, `runs`, `active-slice` o `next-steps`. |
 | `npx --yes create-quiver@latest dashboard --limit <n>` | Ajusta el límite de listas del dashboard compacto entre 1 y 100. |
+
+## Idioma del CLI
+
+Quiver resuelve el idioma de salida humana en este orden:
+
+1. `--lang en|es`
+2. variable de entorno `QUIVER_LANG`
+3. `.quiver/config.json`
+4. `~/.quiver/config.json`
+5. locale del entorno
+6. `en`
+
+Ejemplos:
+
+```bash
+npx --yes create-quiver@latest --lang es dashboard
+QUIVER_LANG=es npx --yes create-quiver@latest flow
+npx --yes create-quiver@latest config language set es
+npx --yes create-quiver@latest config language set en --global
+```
+
+`--json` conserva claves y estructura machine-readable en ingles tecnico; no traduce campos, codigos, comandos, flags, rutas, ids, providers ni modelos.
 
 ## Planificación con IA
 
@@ -116,6 +142,8 @@ Más detalle: [Instalación y uso con npx](../getting-started/installation.md).
 | `--methodology wdd-sdd` | Declara la metodología soportada por comandos interactivos o automatizados. |
 | `--no-color` | Desactiva colores ANSI en salida humana. |
 | `--json` | Emite salida machine-readable en comandos que lo soportan, incluyendo `dashboard` y `version`. |
+| `--lang en\|es` | Sobrescribe el idioma efectivo de la salida humana para una ejecución. |
+| `--global` | En `config language set`, escribe la configuración global de usuario en `~/.quiver/config.json`. |
 | `--details` | Expande el dashboard humano completo; no combina con `--json` ni `--section`. |
 | `--section <name>` | Muestra una sección humana del dashboard; no combina con `--json` ni `--details`. |
 | `--limit <n>` | Limita listas del dashboard compacto entre 1 y 100; no combina con `--json`. |

@@ -1,0 +1,62 @@
+{
+  "slice_id": "slice-04-ai-execution-pr",
+  "ticket": "QUIVER-41-04",
+  "type": "feature",
+  "title": "AI execution and PR",
+  "objective": "Localize AI execution and PR wrapper output without changing git, gh, or validation behavior.",
+  "description": "Covers execute-slice, execute-plan, and PR creation dry-run/review/create surfaces.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v41-ai-execution-pr",
+    "branch_name": "feature/QUIVER-41-04-v41-ai-execution-pr"
+  },
+  "files": [
+    "src/create-quiver/commands/ai.js",
+    "tests/commands/ai-execute-slice.test.js",
+    "tests/commands/ai-execute-plan.test.js"
+  ],
+  "expected_read_paths": [
+    "src/create-quiver/commands/ai.js",
+    "src/create-quiver/lib/i18n/**",
+    "docs/GITFLOW_PR_GUIDE.md",
+    "docs/reference/commands.md"
+  ],
+  "allowed_write_paths": [
+    "src/create-quiver/commands/ai.js",
+    "src/create-quiver/lib/i18n/**",
+    "tests/commands/ai-execute-slice.test.js",
+    "tests/commands/ai-execute-plan.test.js",
+    "tests/commands/ai-pr.test.js",
+    "specs/quiver-v41-cli-i18n-ai-lifecycle/**"
+  ],
+  "depends_on": [
+    "slice-03-ai-planner-approval-review"
+  ],
+  "parallel_safe": "no",
+  "parallel_safe_reason": "Touches AI execution and PR command logic after planner/approval localization.",
+  "must": [
+    "Localize execution and PR wrapper messages.",
+    "Keep git/gh commands exact.",
+    "Preserve review and dry-run behavior.",
+    "Keep automation outputs stable."
+  ],
+  "not_included": [
+    "Changing GitHub integration behavior."
+  ],
+  "acceptance": [
+    "Execution and PR commands render in en and es.",
+    "Dry-run and review tests pass.",
+    "GitHub/gh command semantics are unchanged."
+  ],
+  "tests": [
+    "node --test tests/commands/ai-execute-slice.test.js tests/commands/ai-execute-plan.test.js",
+    "git diff --check"
+  ],
+  "validation_hints": [
+    "If no ai-pr test exists, add focused dry-run tests rather than relying on live gh."
+  ],
+  "estimated_hours": 8,
+  "status": "planned",
+  "blocked_reason": "Requires completion of slice-03-ai-planner-approval-review."
+}

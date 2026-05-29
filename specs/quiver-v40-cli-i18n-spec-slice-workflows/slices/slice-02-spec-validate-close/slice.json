@@ -1,0 +1,59 @@
+{
+  "slice_id": "slice-02-spec-validate-close",
+  "ticket": "QUIVER-40-02",
+  "type": "feature",
+  "title": "Spec validate and close",
+  "objective": "Localize spec validation and close command output without changing validation semantics.",
+  "description": "Covers success/failure reports, strict warnings, and close guidance.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v40-spec-validate-close",
+    "branch_name": "feature/QUIVER-40-02-v40-spec-validate-close"
+  },
+  "files": [
+    "src/create-quiver/commands/spec.js",
+    "tests/commands/spec-validate.test.js",
+    "tests/commands/spec-close.test.js"
+  ],
+  "expected_read_paths": [
+    "src/create-quiver/commands/spec.js",
+    "src/create-quiver/lib/handoff.js",
+    "src/create-quiver/lib/i18n/**"
+  ],
+  "allowed_write_paths": [
+    "src/create-quiver/commands/spec.js",
+    "src/create-quiver/lib/i18n/**",
+    "tests/commands/spec-validate.test.js",
+    "tests/commands/spec-close.test.js",
+    "specs/quiver-v40-cli-i18n-spec-slice-workflows/**"
+  ],
+  "depends_on": [
+    "slice-01-spec-create-start-status"
+  ],
+  "parallel_safe": "conditional",
+  "parallel_safe_reason": "Can overlap with slice-03 if handoff library ownership is coordinated.",
+  "must": [
+    "Localize validation report headings.",
+    "Keep file paths and slice ids stable.",
+    "Preserve strict-mode behavior."
+  ],
+  "not_included": [
+    "Changing validation rules."
+  ],
+  "acceptance": [
+    "Validation success/failure outputs render in en and es.",
+    "Strict warnings remain deterministic.",
+    "No JSON or schema contracts change."
+  ],
+  "tests": [
+    "node --test tests/commands/spec-validate.test.js tests/commands/spec-close.test.js",
+    "git diff --check"
+  ],
+  "validation_hints": [
+    "Keep exact path strings in assertion fixtures."
+  ],
+  "estimated_hours": 6,
+  "status": "planned",
+  "blocked_reason": "Requires completion of slice-01-spec-create-start-status."
+}

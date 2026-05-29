@@ -1,0 +1,53 @@
+{
+  "slice_id": "slice-00-ai-i18n-foundation",
+  "ticket": "QUIVER-41-00",
+  "type": "documentation",
+  "title": "AI i18n foundation",
+  "objective": "Create the approved v41 AI lifecycle i18n spec package and handoffs.",
+  "description": "Documents migration of AI lifecycle command wrappers to en and es.",
+  "git": {
+    "branch_type": "docs",
+    "base_branch": "main",
+    "branch_slug": "v41-ai-i18n-foundation",
+    "branch_name": "docs/QUIVER-41-00-v41-ai-i18n-foundation"
+  },
+  "files": [
+    "specs/quiver-v41-cli-i18n-ai-lifecycle/**"
+  ],
+  "expected_read_paths": [
+    "docs/INDEX.md",
+    "docs/CLI_UX_GUIDE.md",
+    "docs/reference/commands.md",
+    "specs/quiver-v37-cli-i18n-foundation/SPEC.md"
+  ],
+  "allowed_write_paths": [
+    "specs/quiver-v41-cli-i18n-ai-lifecycle/**"
+  ],
+  "depends_on": [],
+  "parallel_safe": "no",
+  "parallel_safe_reason": "This creates the roadmap for v41.",
+  "must": [
+    "Create v41 package.",
+    "Document provider prompt guardrails.",
+    "Keep runtime code untouched."
+  ],
+  "not_included": [
+    "Runtime command migration."
+  ],
+  "acceptance": [
+    "Spec package exists.",
+    "Slice handoffs exist.",
+    "Runtime code is untouched."
+  ],
+  "tests": [
+    "npx create-quiver spec validate specs/quiver-v41-cli-i18n-ai-lifecycle --strict",
+    "git diff --check"
+  ],
+  "validation_hints": [
+    "Strict validation requires completed slices to appear in EVIDENCE_REPORT.md."
+  ],
+  "estimated_hours": 1,
+  "status": "completed",
+  "completed_at": "2026-05-28T00:00:00.000Z",
+  "blocked_reason": null
+}

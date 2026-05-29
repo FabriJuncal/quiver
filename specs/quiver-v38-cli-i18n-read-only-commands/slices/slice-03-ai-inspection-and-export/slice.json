@@ -1,0 +1,59 @@
+{
+  "slice_id": "slice-03-ai-inspection-and-export",
+  "ticket": "QUIVER-38-03",
+  "type": "feature",
+  "title": "AI inspection and export read-only commands",
+  "objective": "Localize AI read-only inspection surfaces while preserving exports and JSON contracts.",
+  "description": "Covers AI status/introspection outputs that do not execute providers or write product files.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v38-ai-inspection-export",
+    "branch_name": "feature/QUIVER-38-03-v38-ai-inspection-export"
+  },
+  "files": [
+    "src/create-quiver/commands/ai.js",
+    "tests/commands/ai-export.test.js",
+    "tests/commands/ai-run-state.test.js"
+  ],
+  "expected_read_paths": [
+    "src/create-quiver/commands/ai.js",
+    "src/create-quiver/lib/i18n/**",
+    "docs/reference/commands.md"
+  ],
+  "allowed_write_paths": [
+    "src/create-quiver/commands/ai.js",
+    "src/create-quiver/lib/i18n/**",
+    "tests/commands/ai-export.test.js",
+    "tests/commands/ai-run-state.test.js",
+    "specs/quiver-v38-cli-i18n-read-only-commands/**"
+  ],
+  "depends_on": [
+    "slice-01-version-dashboard-help"
+  ],
+  "parallel_safe": "conditional",
+  "parallel_safe_reason": "Can overlap with slice-02 if AI catalog keys are isolated.",
+  "must": [
+    "Localize human AI inspection output.",
+    "Keep JSON and export payloads stable.",
+    "Preserve ids, providers, and model identifiers."
+  ],
+  "not_included": [
+    "Provider-backed AI planning/execution commands."
+  ],
+  "acceptance": [
+    "AI read-only commands render in en and es.",
+    "Export and JSON tests remain stable.",
+    "Empty states are localized."
+  ],
+  "tests": [
+    "node --test tests/commands/ai-export.test.js tests/commands/ai-run-state.test.js",
+    "git diff --check"
+  ],
+  "validation_hints": [
+    "Avoid changing export file contents unless they are explicitly human-facing docs."
+  ],
+  "estimated_hours": 7,
+  "status": "planned",
+  "blocked_reason": "Requires completion of slice-01-version-dashboard-help."
+}
