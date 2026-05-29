@@ -32,10 +32,20 @@ Validation:
 - PASS `node --test tests/commands/init-profiles.test.js tests/lib/init-docs.test.js tests/lib/i18n-templates.test.js`
 - PASS `node --test tests/commands/demo.test.js`
 
+## slice-03-docs-reference-guides
+
+- Documented generated human docs language behavior in `docs/reference/commands.md`.
+- Clarified in `docs/CLI_UX_GUIDE.md` that CLI output, generated human docs, and machine artifacts are separate surfaces.
+- Added getting-started guidance for using `--lang es init` and `config language set es`.
+- Explicitly documented that JSON, JSONL, package metadata, `slice.json`, commands, flags, routes, providers, and models are not localized.
+
+Validation:
+
+- PASS `git diff --check`
+- PASS `node bin/create-quiver.js spec validate specs/quiver-v42-cli-i18n-generated-docs --strict`
+
 ## Pending Evidence
 
 - `node --test tests/**/*.test.js`
-- `git diff --check`
-- `npx create-quiver spec validate specs/quiver-v42-cli-i18n-generated-docs --strict`
 - `npm run package:quiver`
 - `npm run smoke:create-quiver`

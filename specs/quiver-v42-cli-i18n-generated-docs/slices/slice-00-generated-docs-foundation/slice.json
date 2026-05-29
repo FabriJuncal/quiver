@@ -6,10 +6,10 @@
   "objective": "Create the approved v42 generated docs i18n spec package and handoffs.",
   "description": "Documents language routing for generated human documentation.",
   "git": {
-    "branch_type": "docs",
+    "branch_type": "feature",
     "base_branch": "main",
     "branch_slug": "v42-generated-docs-foundation",
-    "branch_name": "docs/QUIVER-42-00-v42-generated-docs-foundation"
+    "branch_name": "feature/QUIVER-42-00-v42-generated-docs-foundation"
   },
   "files": [
     "specs/quiver-v42-cli-i18n-generated-docs/**"

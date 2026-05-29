@@ -71,9 +71,28 @@ Qué cambia:
 |---|---|
 | Probar Quiver rápidamente | `npx --yes create-quiver@latest` |
 | Inicializar un proyecto nuevo | `npx --yes create-quiver@latest init --name "Mi Proyecto"` |
+| Inicializar docs en espanol | `npx --yes create-quiver@latest --lang es init --name "Mi Proyecto"` |
 | Usar siempre la última versión publicada | `npx --yes create-quiver@latest` |
 | Fijar una versión para el equipo | `npm install --save-dev create-quiver` |
 | Evitar dependencia local de workflow | Usar `npx` |
+
+## Idioma del proyecto
+
+Quiver puede generar documentacion humana inicial en `en` o `es`.
+
+Para una ejecucion puntual:
+
+```bash
+npx --yes create-quiver@latest --lang es init --name "Mi Proyecto"
+```
+
+Para guardar el idioma del proyecto y no repetir flags:
+
+```bash
+npx --yes create-quiver@latest config language set es
+```
+
+El idioma configurado afecta la salida humana y los docs humanos generados. No traduce JSON, JSONL, `package.json`, `slice.json`, comandos, flags, rutas, providers, modelos ni otros artefactos machine-readable.
 
 ## Qué no hace Quiver
 

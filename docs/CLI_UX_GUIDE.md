@@ -65,6 +65,14 @@ Reglas:
 
 ## Templates y docs generados
 
+La salida CLI y los docs generados comparten resolucion de idioma, pero son superficies distintas:
+
+- salida CLI: textos humanos impresos durante un comando;
+- docs generados: archivos Markdown creados por comandos como `init`;
+- machine artifacts: JSON, JSONL, `package.json`, `slice.json`, ids, comandos, flags, rutas, providers y modelos.
+
+Solo las dos primeras superficies se localizan. Los machine artifacts permanecen estables.
+
 Los templates humanos generados por Quiver usan el mismo idioma resuelto para la salida CLI. El template base sin sufijo es el fallback `en`; las variantes localizadas agregan el idioma antes de `.template`.
 
 Ejemplos:

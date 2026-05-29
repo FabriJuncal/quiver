@@ -2,9 +2,11 @@
 
 ## Summary
 
-Pending implementation.
+Documented generated human docs language behavior across the command reference, CLI UX guide, and getting-started installation guide.
+
+The docs now explain configured project language defaults, `--lang` overrides, localized Markdown template naming, fallback to base `en`, and machine artifact exclusions.
 
 ## Validation
 
-- [ ] `git diff --check`
-- [ ] `npx create-quiver spec validate specs/quiver-v42-cli-i18n-generated-docs --strict`
+- [x] `git diff --check`
+- [x] `node bin/create-quiver.js spec validate specs/quiver-v42-cli-i18n-generated-docs --strict`
