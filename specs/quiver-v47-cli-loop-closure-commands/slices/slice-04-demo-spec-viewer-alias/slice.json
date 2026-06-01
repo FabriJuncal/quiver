@@ -1,0 +1,65 @@
+{
+  "slice_id": "slice-04-demo-spec-viewer-alias",
+  "ticket": "QUIVER-47-04",
+  "type": "feature",
+  "title": "Demo spec-viewer alias",
+  "objective": "Add `demo spec-viewer` as the simplified entrypoint while preserving `demo create spec-viewer`.",
+  "description": "Reduces command depth for the only current demo while keeping compatibility.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v47-demo-spec-viewer-alias",
+    "branch_name": "feature/QUIVER-47-04-v47-demo-spec-viewer-alias"
+  },
+  "files": [
+    "src/create-quiver/index.js",
+    "tests/commands/demo.test.js",
+    "tests/commands/cli-contract.test.js",
+    "tests/lib/i18n-catalog.test.js",
+    "tests/commands/i18n-audit-matrix.test.js"
+  ],
+  "expected_read_paths": [
+    "specs/quiver-v47-cli-loop-closure-commands/SPEC.md"
+  ],
+  "allowed_write_paths": [
+    "src/create-quiver/**",
+    "tests/**",
+    "docs/**",
+    "specs/quiver-v47-cli-loop-closure-commands/**"
+  ],
+  "depends_on": [
+    "slice-00-loop-closure-foundation"
+  ],
+  "parallel_safe": "yes",
+  "parallel_safe_reason": "Demo alias is isolated from other v47 commands.",
+  "must": [
+    "Add `demo spec-viewer [--dry-run]`.",
+    "Keep `demo create spec-viewer [--dry-run]` functional.",
+    "Document canonical and compatibility forms."
+  ],
+  "not_included": [
+    "Removing `demo create spec-viewer`.",
+    "Adding new demo types."
+  ],
+  "acceptance": [
+    "demo spec-viewer works.",
+    "demo create spec-viewer still works.",
+    "Dry-run behavior is unchanged.",
+    "Help and tests cover both forms."
+  ],
+  "tests": [
+    "node --test tests/commands/demo.test.js",
+    "node --test tests/commands/cli-contract.test.js",
+    "node --test tests/lib/i18n-catalog.test.js",
+    "node --test tests/commands/i18n-audit-matrix.test.js",
+    "git diff --check"
+  ],
+  "validation_hints": [
+    "Check default target directory remains intentional."
+  ],
+  "estimated_hours": 3,
+  "actual_hours": 2,
+  "status": "completed",
+  "completed_at": "2026-05-31T22:26:16-0300",
+  "blocked_reason": null
+}

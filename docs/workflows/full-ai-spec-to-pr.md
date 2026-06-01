@@ -33,7 +33,7 @@ Qué hace:
 ## 3. Crear una ejecución de IA
 
 ```bash
-npx --yes create-quiver@latest ai run create --input requirements/mi-requerimiento.md
+npx --yes create-quiver@latest ai lifecycle create --input requirements/mi-requerimiento.md
 npx --yes create-quiver@latest ai status
 ```
 

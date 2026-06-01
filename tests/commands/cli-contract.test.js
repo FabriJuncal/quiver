@@ -61,14 +61,18 @@ test('top-level help command prints grouped command descriptions', () => {
   assert.match(output, /Commands:/);
   assert.match(output, /Bootstrap and project context:/);
   assert.match(output, /AI lifecycle:/);
+  assert.match(output, /Advanced diagnostics:/);
   assert.match(output, /Specs, slices, and validation:/);
   assert.match(output, /init\s+Create the default AI-first Quiver contract/);
   assert.match(output, /ai plan\s+Generate versioned planner drafts/);
   assert.match(output, /ai agent set\|list\|show\|doctor\|repair\s+Manage, diagnose, and dry-run repair planner, executor, reviewer, and doctor provider profiles without secrets\./);
   assert.match(output, /ai models list\s+List provider\/model ids known by Quiver without claiming account availability\./);
-  assert.match(output, /check-slice\s+Validate slice structure/);
+  assert.match(output, /slice check\s+Validate slice structure/);
+  assert.match(output, /check-slice\s+Deprecated compatibility alias for slice check/);
   assert.match(output, /dashboard\s+Show compact read-only project, spec, slice, run, approval, and agent status\./);
   assert.match(output, /version\s+Show a Quiver-branded version report/);
+  assert.match(output, /ai active-slice status\|reconcile\s+Advanced: inspect or dry-run reconcile local active-slice state/);
+  assert.match(output, /ai trace report\s+Advanced: report AI runs, execution waves, and migration guidance\./);
   assert.match(output, /demo create spec-viewer\s+Create or preview the optional static Quiver Spec Viewer demo scaffold/);
 });
 
@@ -77,6 +81,7 @@ test('help output documents important public commands', () => {
   const expectedCommands = [
     'init',
     'version',
+    'changelog',
     'config language show|set',
     'analyze',
     'doctor',
@@ -87,6 +92,7 @@ test('help output documents important public commands', () => {
     'plan',
     'graph',
     'next',
+    'ai lifecycle create',
     'ai run create',
     'ai active-slice status|reconcile',
     'ai status',
@@ -101,7 +107,9 @@ test('help output documents important public commands', () => {
     'ai review-plan',
     'ai approve',
     'ai approvals',
+    'ai approval-status',
     'ai prompt-slice',
+    'ai executor-prompt',
     'ai execute-slice',
     'ai execute-plan',
     'ai doctor',
@@ -116,6 +124,14 @@ test('help output documents important public commands', () => {
     'spec status',
     'spec validate',
     'spec close',
+    'slice start',
+    'slice check',
+    'slice check-pr',
+    'slice scope',
+    'slice cleanup',
+    'slice refresh',
+    'handoff check',
+    'handoff create',
     'start-slice',
     'check-slice',
     'check-pr',
@@ -125,6 +141,9 @@ test('help output documents important public commands', () => {
     'check-handoff',
     'new-handoff',
     'evidence run',
+    'evidence list',
+    'evidence show',
+    'demo spec-viewer',
     'demo create spec-viewer',
     '--version / -V',
     '--help / help',
@@ -135,11 +154,14 @@ test('help output documents important public commands', () => {
     assert.match(output, new RegExp(`${command.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s+\\S`));
   }
   assert.match(output, /--dry-run\s+Preview .*ai agent set/);
+  assert.match(output, /--dry-run\s+.*\[scope: init, analyze, migrate, prepare, spec, demo, AI workflows\]/);
   assert.match(output, /--details\s+Show the full human dashboard report/);
+  assert.match(output, /--details\s+.*\[scope: dashboard\]/);
   assert.match(output, /--section <name>\s+Show one human dashboard section/);
   assert.match(output, /--limit <n>\s+Limit dashboard human lists/);
   assert.match(output, /--model <model-id>\s+Technical model id for AI agent profiles or provider-backed AI commands/);
   assert.match(output, /--lang <en\|es>\s+Override CLI human output language/);
+  assert.match(output, /--lang <en\|es>\s+.*\[scope: global\]/);
   assert.match(output, /--global\s+For config language set, write the global user config/);
   assert.match(output, /ai agent set planner --provider codex --model gpt-5\.5 --dry-run/);
   assert.match(output, new RegExp(`npx --yes create-quiver@${packageJson.version.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')} ai prompt-slice`));

@@ -1,0 +1,54 @@
+{
+  "slice_id": "slice-00-parser-modernization-foundation",
+  "ticket": "QUIVER-49-00",
+  "type": "documentation",
+  "title": "Parser modernization foundation",
+  "objective": "Define parser modernization constraints and compatibility guardrails.",
+  "description": "Prepares parser modernization without runtime changes.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v49-parser-foundation",
+    "branch_name": "feature/QUIVER-49-00-v49-parser-foundation"
+  },
+  "files": [
+    "specs/quiver-v49-parser-modernization/**"
+  ],
+  "expected_read_paths": [
+    "CLI_ANALYSIS.md",
+    "src/create-quiver/index.js",
+    "src/create-quiver/lib/cli/ux-flags.js",
+    "tests/commands/cli-contract.test.js"
+  ],
+  "allowed_write_paths": [
+    "specs/quiver-v49-parser-modernization/**"
+  ],
+  "depends_on": [],
+  "parallel_safe": "no",
+  "parallel_safe_reason": "Foundation defines all parser migration constraints.",
+  "must": [
+    "Document parser modernization constraints.",
+    "Preserve aliases, --lang, --version, -V, -- separator, and positional behavior.",
+    "Do not modify runtime code."
+  ],
+  "not_included": [
+    "Runtime parser changes."
+  ],
+  "acceptance": [
+    "Parser constraints are explicit.",
+    "Compatibility guardrails are documented.",
+    "Implementation is deferred."
+  ],
+  "tests": [
+    "git diff --check",
+    "node bin/create-quiver.js spec validate specs/quiver-v49-parser-modernization"
+  ],
+  "validation_hints": [
+    "Do not pick a parser library before slice-03."
+  ],
+  "estimated_hours": 1,
+  "status": "completed",
+  "blocked_reason": null,
+  "actual_hours": 1,
+  "completed_at": "2026-06-01T00:28:50-0300"
+}

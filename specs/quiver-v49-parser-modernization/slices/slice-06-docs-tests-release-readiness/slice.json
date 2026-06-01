@@ -1,0 +1,69 @@
+{
+  "slice_id": "slice-06-docs-tests-release-readiness",
+  "ticket": "QUIVER-49-06",
+  "type": "test",
+  "title": "Docs tests and release readiness",
+  "objective": "Complete parser modernization validation and documentation.",
+  "description": "Closes v49 with docs, full tests, package smoke, and evidence.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v49-docs-tests-release-readiness",
+    "branch_name": "feature/QUIVER-49-06-v49-docs-tests-release-readiness"
+  },
+  "files": [
+    "docs/reference/commands.md",
+    "docs/CLI_UX_GUIDE.md",
+    "README_FOR_AI.md",
+    "tests/commands/**",
+    "scripts/ci/**",
+    "specs/quiver-v49-parser-modernization/**"
+  ],
+  "expected_read_paths": [
+    "specs/quiver-v49-parser-modernization/SPEC.md",
+    "specs/quiver-v49-parser-modernization/slices/*/CLOSURE_BRIEF.md"
+  ],
+  "allowed_write_paths": [
+    "docs/**",
+    "README_FOR_AI.md",
+    "tests/**",
+    "scripts/ci/**",
+    "specs/quiver-v49-parser-modernization/**"
+  ],
+  "depends_on": [
+    "slice-04-parser-adapter-incremental-migration",
+    "slice-05-help-and-shell-readiness"
+  ],
+  "parallel_safe": "no",
+  "parallel_safe_reason": "Final validation depends on parser migration and help readiness.",
+  "must": [
+    "Run parser contract tests.",
+    "Run full test suite.",
+    "Run package-installed parser smoke for both binaries.",
+    "Update docs, status, and evidence."
+  ],
+  "not_included": [
+    "Removing compatibility aliases.",
+    "Changing command semantics beyond approved parser migration."
+  ],
+  "acceptance": [
+    "Parser docs match behavior.",
+    "Full validation passes or blockers are documented.",
+    "Package-installed smoke covers both binaries.",
+    "Status and evidence are updated."
+  ],
+  "tests": [
+    "node --test",
+    "npm run package:quiver",
+    "git diff --check",
+    "node bin/create-quiver.js spec validate specs/quiver-v49-parser-modernization"
+  ],
+  "validation_hints": [
+    "Smoke --lang, --version, -V, -- separator, aliases, and command-scoped flags."
+  ],
+  "estimated_hours": 5,
+  "status": "completed",
+  "blocked_reason": null,
+  "actual_hours": 3,
+  "completed_at": "2026-06-01T00:46:29-0300"
+}

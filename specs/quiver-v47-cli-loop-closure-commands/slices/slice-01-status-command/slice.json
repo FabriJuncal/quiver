@@ -1,0 +1,69 @@
+{
+  "slice_id": "slice-01-status-command",
+  "ticket": "QUIVER-47-01",
+  "type": "feature",
+  "title": "Status command",
+  "objective": "Add a read-only top-level `status` command as the primary current-state entrypoint.",
+  "description": "Surfaces the most relevant current state and next safe command without writes or prompts.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v47-status-command",
+    "branch_name": "feature/QUIVER-47-01-v47-status-command"
+  },
+  "files": [
+    "src/create-quiver/index.js",
+    "src/create-quiver/commands/status.js",
+    "src/create-quiver/lib/i18n/messages/en.js",
+    "src/create-quiver/lib/i18n/messages/es.js",
+    "tests/commands/status.test.js",
+    "tests/commands/cli-contract.test.js"
+  ],
+  "expected_read_paths": [
+    "specs/quiver-v47-cli-loop-closure-commands/SPEC.md",
+    "specs/quiver-v47-cli-loop-closure-commands/slices/slice-00-loop-closure-foundation/CLOSURE_BRIEF.md"
+  ],
+  "allowed_write_paths": [
+    "src/create-quiver/**",
+    "tests/**",
+    "docs/**",
+    "specs/quiver-v47-cli-loop-closure-commands/**"
+  ],
+  "depends_on": [
+    "slice-00-loop-closure-foundation"
+  ],
+  "parallel_safe": "no",
+  "parallel_safe_reason": "Adds a top-level command and help contract.",
+  "must": [
+    "Add `status` as a read-only command.",
+    "Show current state and next safe command.",
+    "Support JSON only if the contract is explicit and parseable.",
+    "Prove no writes occur."
+  ],
+  "not_included": [
+    "Interactive status flows.",
+    "Starting slices or running providers."
+  ],
+  "acceptance": [
+    "status is read-only.",
+    "status shows useful state and next command.",
+    "status --json is either supported with parseable JSON or rejected with clear documented guidance.",
+    "Tests prove no writes."
+  ],
+  "tests": [
+    "node --test tests/commands/status.test.js",
+    "node --test tests/commands/cli-contract.test.js",
+    "node --test tests/lib/i18n-catalog.test.js",
+    "node --test tests/commands/i18n-audit-matrix.test.js",
+    "git diff --check",
+    "node bin/create-quiver.js spec validate specs/quiver-v47-cli-loop-closure-commands"
+  ],
+  "validation_hints": [
+    "Use temp dirs and compare filesystem before/after."
+  ],
+  "estimated_hours": 5,
+  "actual_hours": 3,
+  "status": "completed",
+  "completed_at": "2026-05-31T20:41:13-0300",
+  "blocked_reason": null
+}

@@ -1,0 +1,62 @@
+{
+  "slice_id": "slice-01-ai-dispatch-contract-baseline",
+  "ticket": "QUIVER-48-01",
+  "type": "test",
+  "title": "AI dispatch contract baseline",
+  "objective": "Capture AI command dispatch behavior before refactoring modules.",
+  "description": "Adds golden tests for representative AI commands, aliases, help, stdout/stderr, and exit behavior.",
+  "git": {
+    "branch_type": "test",
+    "base_branch": "main",
+    "branch_slug": "v48-ai-dispatch-baseline",
+    "branch_name": "test/QUIVER-48-01-v48-ai-dispatch-baseline"
+  },
+  "files": [
+    "tests/commands/ai-dispatch-contract.test.js",
+    "tests/commands/ai-*.test.js",
+    "specs/quiver-v48-ai-command-modularization/**"
+  ],
+  "expected_read_paths": [
+    "src/create-quiver/index.js",
+    "src/create-quiver/commands/ai.js",
+    "tests/commands/ai-*.test.js"
+  ],
+  "allowed_write_paths": [
+    "tests/**",
+    "specs/quiver-v48-ai-command-modularization/**"
+  ],
+  "depends_on": [
+    "slice-00-ai-modularization-foundation"
+  ],
+  "parallel_safe": "no",
+  "parallel_safe_reason": "Baseline must land before any behavior or refactor changes.",
+  "must": [
+    "Add representative golden tests for current AI dispatch.",
+    "Cover canonical commands and known aliases.",
+    "Capture stdout/stderr and exit behavior for non-provider dry-run paths."
+  ],
+  "not_included": [
+    "Changing runtime behavior.",
+    "Splitting modules."
+  ],
+  "acceptance": [
+    "Baseline tests pass before refactor.",
+    "At least one command per AI domain is covered.",
+    "Aliases are covered.",
+    "Provider-backed paths use dry-run or print-prompt only."
+  ],
+  "tests": [
+    "node --test tests/commands/ai-dispatch-contract.test.js",
+    "node --test tests/commands/ai-run-state.test.js",
+    "node --test tests/commands/ai-export.test.js",
+    "git diff --check"
+  ],
+  "validation_hints": [
+    "Avoid live provider dependencies."
+  ],
+  "estimated_hours": 5,
+  "status": "completed",
+  "blocked_reason": null,
+  "actual_hours": 5,
+  "completed_at": "2026-05-31T22:36:38-0300"
+}

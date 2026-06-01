@@ -74,9 +74,9 @@ test('config language show reports effective project language in human and JSON 
     const human = runCli(project.root, ['config', 'language', 'show'], cleanEnv(project.home));
     const json = JSON.parse(runCli(project.root, ['config', 'language', 'show', '--json'], cleanEnv(project.home)));
 
-    assert.match(human, /Quiver config language/);
-    assert.match(human, /Language: es/);
-    assert.match(human, /Source: \.quiver\/config\.json/);
+    assert.match(human, /Idioma de configuracion de Quiver/);
+    assert.match(human, /Idioma: es/);
+    assert.match(human, /Fuente: \.quiver\/config\.json/);
     assert.deepEqual(json, {
       schema_version: 1,
       language: 'es',
@@ -85,6 +85,22 @@ test('config language show reports effective project language in human and JSON 
       requested_language: 'es',
       warnings: [],
     });
+  } finally {
+    project.cleanup();
+  }
+});
+
+test('config language errors localize in Spanish without changing JSON output', () => {
+  const project = makeProject();
+  try {
+    assert.throws(
+      () => runCli(project.root, ['--lang', 'es', 'config', 'language', 'set', 'fr'], cleanEnv(project.home)),
+      /create-quiver: idioma no compatible: fr\. Idiomas soportados: en, es/,
+    );
+
+    const json = JSON.parse(runCli(project.root, ['--lang', 'es', 'config', 'language', 'show', '--json'], cleanEnv(project.home)));
+    assert.equal(json.language, 'es');
+    assert.equal(json.source, '--lang');
   } finally {
     project.cleanup();
   }

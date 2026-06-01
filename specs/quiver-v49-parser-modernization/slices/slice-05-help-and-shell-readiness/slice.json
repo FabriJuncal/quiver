@@ -1,0 +1,65 @@
+{
+  "slice_id": "slice-05-help-and-shell-readiness",
+  "ticket": "QUIVER-49-05",
+  "type": "feature",
+  "title": "Help and shell readiness",
+  "objective": "Improve help scoping and shell-readiness after parser migration.",
+  "description": "Moves help toward command-scoped flags and documents shell completion readiness if supported.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v49-help-shell-readiness",
+    "branch_name": "feature/QUIVER-49-05-v49-help-shell-readiness"
+  },
+  "files": [
+    "src/create-quiver/index.js",
+    "src/create-quiver/lib/cli/parser.js",
+    "src/create-quiver/lib/cli/command-registry.js",
+    "docs/reference/commands.md",
+    "tests/commands/cli-contract.test.js",
+    "tests/commands/parser-contract.test.js"
+  ],
+  "expected_read_paths": [
+    "specs/quiver-v49-parser-modernization/parser-decision.md",
+    "specs/quiver-v49-parser-modernization/command-flag-registry.md"
+  ],
+  "allowed_write_paths": [
+    "src/create-quiver/**",
+    "docs/**",
+    "tests/**",
+    "specs/quiver-v49-parser-modernization/**"
+  ],
+  "depends_on": [
+    "slice-04-parser-adapter-incremental-migration"
+  ],
+  "parallel_safe": "no",
+  "parallel_safe_reason": "Help scoping depends on final parser adapter behavior.",
+  "must": [
+    "Scope help flags by command where possible.",
+    "Annotate command-scoped flags if global help still lists them.",
+    "Document shell completion readiness only if actually supported."
+  ],
+  "not_included": [
+    "Generating shell completion unless explicitly supported by selected parser path.",
+    "Changing command semantics."
+  ],
+  "acceptance": [
+    "Help no longer misrepresents command-scoped flags.",
+    "Shell readiness is documented accurately.",
+    "Help tests pass.",
+    "Golden parser tests remain stable."
+  ],
+  "tests": [
+    "node --test tests/commands/cli-contract.test.js",
+    "node --test tests/commands/parser-contract.test.js",
+    "git diff --check"
+  ],
+  "validation_hints": [
+    "Do not promise completion if it is not implemented."
+  ],
+  "estimated_hours": 5,
+  "status": "completed",
+  "blocked_reason": null,
+  "actual_hours": 4,
+  "completed_at": "2026-06-01T00:44:11-0300"
+}

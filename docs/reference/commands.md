@@ -41,10 +41,17 @@ Más detalle: [Instalación y uso con npx](../getting-started/installation.md).
 | `npx --yes create-quiver@latest doctor` | Valida la salud de Quiver. |
 | `npx --yes create-quiver@latest doctor --json` | Emite el mismo diagnóstico de Doctor como JSON parseable para automatización. |
 | `npx --yes create-quiver@latest flow` | Muestra el próximo paso seguro. |
+| `npx --yes create-quiver@latest status` | Muestra estado Quiver compacto, read-only, con el próximo comando seguro. |
+| `npx --yes create-quiver@latest status --json` | Emite el estado Quiver como JSON schema v1. |
 | `npx --yes create-quiver@latest dashboard` | Muestra un resumen compacto read-only del proyecto, specs, slices, runs, approvals y agentes. |
 | `npx --yes create-quiver@latest dashboard --details` | Muestra el reporte humano completo cuando se necesita auditoría sin perder el resumen por defecto. |
 | `npx --yes create-quiver@latest dashboard --section <name>` | Muestra una sección humana puntual como `specs`, `slices`, `blockers`, `warnings`, `agents`, `approvals`, `runs`, `active-slice` o `next-steps`. |
 | `npx --yes create-quiver@latest dashboard --limit <n>` | Ajusta el límite de listas del dashboard compacto entre 1 y 100. |
+| `npx --yes create-quiver@latest changelog` | Muestra cambios locales de contrato/version desde el `CHANGELOG.md` empaquetado, sin red. |
+
+### Contrato de config
+
+En v47 la superficie canónica de configuración sigue siendo `config language show|set`. No se agrega todavía un alias genérico `config get|set` ni nuevos dominios de configuración. Si en una versión futura se simplifica `config`, el cambio debe ser aditivo: `config language` debe seguir funcionando o tener aliases/deprecations compatibles, con advertencias humanas solo por `stderr` y sin contaminar salidas JSON.
 
 ## Idioma del CLI
 
@@ -112,7 +119,8 @@ Reglas:
 | `npx --yes create-quiver@latest ai agent doctor` | Diagnostica perfiles de agentes, alias visuales, proveedores faltantes y modelos custom no validados. |
 | `npx --yes create-quiver@latest ai agent doctor --json` | Emite el diagnóstico de perfiles como JSON parseable. |
 | `npx --yes create-quiver@latest ai agent repair --dry-run` | Previsualiza reparaciones seguras de perfiles, como normalizar `model: "GPT 5.5"` a `model: "gpt-5.5"` y `displayName: "GPT 5.5"`. |
-| `npx --yes create-quiver@latest ai run create --input <file>` | Inicia una ejecución persistente de IA. |
+| `npx --yes create-quiver@latest ai lifecycle create --input <file>` | Inicia una ejecución persistente de IA. |
+| `npx --yes create-quiver@latest ai run create --input <file>` | Alias de compatibilidad para iniciar una ejecución persistente de IA. |
 | `npx --yes create-quiver@latest ai status` | Muestra el estado de la ejecución actual. |
 | `npx --yes create-quiver@latest ai plan --phase acceptance --input <file>` | Genera criterios de aceptación. |
 | `npx --yes create-quiver@latest ai plan --phase acceptance --review --interactive --input <file>` | Permite revisar y confirmar el borrador del planner antes de guardarlo. |
@@ -126,6 +134,11 @@ Reglas:
 | `npx --yes create-quiver@latest ai approve --phase technical-plan` | En TTY lista drafts con datos de review; `revise` bloquea aprobación y `approve-with-risk` muestra riesgos. |
 | `npx --yes create-quiver@latest ai approve --phase technical-plan --version <n>` | Aprueba el plan técnico revisado en modo explícito/script-safe. |
 | `npx --yes create-quiver@latest ai approvals` | Muestra approvals run-scoped/globales, candidatos actuales, versión recomendada y próximo comando. |
+| `npx --yes create-quiver@latest ai approval-status` | Alias de compatibilidad deprecado para `ai approvals`; la advertencia va a stderr. |
+| `npx --yes create-quiver@latest ai prompt-slice --slice <slice.json> --dry-run` | Imprime el prompt manual del executor para un slice. |
+| `npx --yes create-quiver@latest ai executor-prompt --slice <slice.json> --dry-run` | Alias de compatibilidad deprecado para `ai prompt-slice`; la advertencia va a stderr. |
+| `npx --yes create-quiver@latest ai active-slice reconcile --dry-run` | Avanzado: inspecciona conflictos de active-slice y previsualiza reconciliación sin escribir. |
+| `npx --yes create-quiver@latest ai trace report` | Avanzado: reporta runs de IA, waves de ejecución y guía de migración. |
 
 ## Specs y slices
 
@@ -142,9 +155,21 @@ Reglas:
 | `npx --yes create-quiver@latest dashboard --section slices --spec <spec>` | Inspecciona solo slices de la spec seleccionada. |
 | `npx --yes create-quiver@latest graph --spec <spec>` | Muestra dependencias entre slices. |
 | `npx --yes create-quiver@latest next --all-ready --spec <spec>` | Lista slices listos para ejecutar. |
+| `npx --yes create-quiver@latest slice start <slice.json>` | Inicia trabajo en un slice y lo marca activo. |
+| `npx --yes create-quiver@latest slice check <slice.json> --local` | Valida estructura local del slice sin checks remoto/base. |
+| `npx --yes create-quiver@latest slice check-pr <slice.json>` | Valida preparación de PR para el workflow de slice/spec. |
+| `npx --yes create-quiver@latest slice scope <slice.json>` | Compara archivos modificados contra el scope declarado del slice. |
+| `npx --yes create-quiver@latest slice cleanup <slice.json>` | Limpia estado active-slice cuando un slice termina o se descarta. |
+| `npx --yes create-quiver@latest slice refresh` | Refresca tableros generados de active-slice. |
+| `npx --yes create-quiver@latest handoff check <path.md>` | Valida un handoff de spec o un `EXECUTION_BRIEF.md`/`CLOSURE_BRIEF.md` de slice. |
+| `npx --yes create-quiver@latest handoff create <spec-slug>` | Crea un scaffold de handoff para transferencia excepcional de contexto. |
 | `npx --yes create-quiver@latest ai prompt-slice --slice <slice.json> --dry-run` | Imprime un prompt mínimo para el ejecutor. |
 | `npx --yes create-quiver@latest ai execute-slice --slice <slice.json> --commit` | Ejecuta un slice y commitea después de validar. |
 | `npx --yes create-quiver@latest ai execute-plan --execute --commit --mode delegated` | Ejecuta slices delegados por olas. |
+
+Los comandos legacy `start-slice`, `check-slice`, `check-pr`, `check-scope`, `cleanup-slice` y `refresh-active-slices` siguen funcionando como aliases de compatibilidad. En modo humano emiten una advertencia deprecada por `stderr`; no contaminan `stdout` ni salidas JSON.
+
+Los comandos legacy `check-handoff` y `new-handoff` siguen funcionando como aliases de compatibilidad de `handoff check` y `handoff create`. En modo humano emiten una advertencia deprecada por `stderr`; no contaminan `stdout`.
 
 ## PR y cierre
 
@@ -156,7 +181,20 @@ Reglas:
 | `npx --yes create-quiver@latest spec close specs/<spec> --dry-run` | Previsualiza limpieza del worktree después del merge. |
 | `npx --yes create-quiver@latest spec close specs/<spec>` | Cierra el worktree de la spec mergeada. |
 
+## Evidencia y demos
+
+| Comando | Para qué sirve |
+|---|---|
+| `npx --yes create-quiver@latest evidence run -- npm test` | Ejecuta un comando y guarda evidencia Markdown con exit code, duración y salida redactada. |
+| `npx --yes create-quiver@latest evidence list` | Lista artefactos locales bajo `.quiver/evidence/` en orden estable, más reciente primero. |
+| `npx --yes create-quiver@latest evidence list --json` | Emite los artefactos de evidencia como JSON schema v1. |
+| `npx --yes create-quiver@latest evidence show .quiver/evidence/<file.md>` | Muestra un artefacto de evidencia seguro dentro de `.quiver/evidence/`. |
+| `npx --yes create-quiver@latest demo spec-viewer --dry-run` | Previsualiza el demo estático Quiver Spec Viewer con el comando simplificado. |
+| `npx --yes create-quiver@latest demo create spec-viewer --dry-run` | Forma compatible del demo; sigue funcionando. |
+
 ## Opciones útiles
+
+El help global muestra opciones globales y opciones de comandos específicos. Cuando una opción es de alcance limitado, el CLI la anota con `scope` para evitar tratarla como global.
 
 | Opción | Para qué sirve |
 |---|---|
@@ -196,3 +234,7 @@ Reglas:
 `--json` no se puede combinar con `--interactive` ni `--review`, porque la salida debe mantenerse legible por máquinas. El estándar completo vive en [docs/CLI_UX_GUIDE.md](../CLI_UX_GUIDE.md).
 
 Nota: `spec create --with-planner` no ejecuta un proveedor nuevo; indica que el comando consume el plan técnico aprobado generado por el planner.
+
+## Shell readiness
+
+Quiver v49 no genera scripts de shell completion. La preparación para shell queda limitada a comandos y flags documentados, aliases compatibles (`create-quiver` y `quiver`) y salidas JSON estables para automatización. No debe documentarse `completion`, autocompletado ni instalación de completions hasta que exista un slice explícito que lo implemente y lo pruebe.

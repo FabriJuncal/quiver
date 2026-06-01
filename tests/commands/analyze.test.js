@@ -42,6 +42,7 @@ test('analyze writes raw scan under .quiver and keeps project map visible', () =
     assert.match(output, /Wrote \.quiver\/scans\/PROJECT_SCAN\.json/);
     assert.match(output, /Wrote docs\/PROJECT_MAP\.md/);
     assert.match(output, /Wrote docs\/AI_CONTEXT\.md/);
+    assert.match(output, /Applied writes: 3 files/);
     assert.equal(fs.existsSync(path.join(projectRoot, '.quiver', 'scans', 'PROJECT_SCAN.json')), true);
     assert.equal(fs.existsSync(path.join(projectRoot, 'docs', 'PROJECT_MAP.md')), true);
     assert.equal(fs.existsSync(path.join(projectRoot, 'docs', 'PROJECT_SCAN.json')), false);
@@ -84,6 +85,7 @@ test('analyze dry-run reports planned artifacts without writing files', () => {
 
     assert.match(output, /Project analysis dry-run/);
     assert.match(output, /Writes: none/);
+    assert.match(output, /Planned writes: 3 files/);
     assert.match(output, /Would write \.quiver\/scans\/PROJECT_SCAN\.json/);
     assert.match(output, /Would write docs\/PROJECT_MAP\.md/);
     assert.match(output, /Would refresh docs\/AI_CONTEXT\.md/);
@@ -110,6 +112,7 @@ test('analyze dry-run supports Spanish human output without translating paths', 
 
     assert.match(output, /Dry-run de analisis del proyecto/);
     assert.match(output, /Escrituras: ninguna/);
+    assert.match(output, /Escrituras planificadas: 3 archivos/);
     assert.match(output, /Escribiria \.quiver\/scans\/PROJECT_SCAN\.json/);
     assert.match(output, /Actualizaria docs\/AI_CONTEXT\.md/);
     assert.match(output, /Stack principal detectado: node/);

@@ -1,0 +1,77 @@
+{
+  "slice_id": "slice-07-docs-tests-release-readiness",
+  "ticket": "QUIVER-46-07",
+  "type": "test",
+  "title": "Docs tests and release readiness",
+  "objective": "Update public documentation and complete release-grade validation for v46.",
+  "description": "Closes the v46 spec by aligning docs, help, generated guidance, tests, package smoke, and evidence.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v46-docs-tests-release-readiness",
+    "branch_name": "feature/QUIVER-46-07-v46-docs-tests-release-readiness"
+  },
+  "files": [
+    "docs/reference/commands.md",
+    "docs/CLI_UX_GUIDE.md",
+    "README_FOR_AI.md",
+    "docs/COMMANDS.md.template",
+    "docs/COMMANDS.md.es.template",
+    "tests/commands/**",
+    "scripts/ci/**",
+    "specs/quiver-v46-cli-surface-ergonomics/**"
+  ],
+  "expected_read_paths": [
+    "specs/quiver-v46-cli-surface-ergonomics/SPEC.md",
+    "specs/quiver-v46-cli-surface-ergonomics/slices/*/CLOSURE_BRIEF.md"
+  ],
+  "allowed_write_paths": [
+    "docs/**",
+    "README_FOR_AI.md",
+    "tests/**",
+    "scripts/ci/**",
+    "specs/quiver-v46-cli-surface-ergonomics/**"
+  ],
+  "depends_on": [
+    "slice-01-i18n-command-error-hardening",
+    "slice-02-read-only-ux-quick-wins",
+    "slice-03-write-command-feedback-safety",
+    "slice-04-slice-namespace-compatibility",
+    "slice-05-handoff-namespace-compatibility",
+    "slice-06-init-analyze-doctor-command-modules"
+  ],
+  "parallel_safe": "no",
+  "parallel_safe_reason": "Final validation depends on all previous behavior slices.",
+  "must": [
+    "Update public command docs and generated guidance.",
+    "Run focused tests and full test suite.",
+    "Run package build and package-installed smoke.",
+    "Update evidence and status."
+  ],
+  "not_included": [
+    "Implementing v47-v49 runtime behavior.",
+    "Removing legacy aliases."
+  ],
+  "acceptance": [
+    "Docs match CLI help and behavior.",
+    "Generated docs/templates use canonical commands where appropriate.",
+    "Full validation passes or failures are documented with blockers.",
+    "Spec status and evidence are updated."
+  ],
+  "tests": [
+    "node --test",
+    "npm run package:quiver",
+    "package-installed smoke for create-quiver and quiver binaries",
+    "git diff --check",
+    "node bin/create-quiver.js spec validate specs/quiver-v46-cli-surface-ergonomics"
+  ],
+  "validation_hints": [
+    "Package-installed smoke must verify both create-quiver and quiver binaries.",
+    "Keep release evidence concise and command-specific."
+  ],
+  "estimated_hours": 5,
+  "actual_hours": 4,
+  "status": "completed",
+  "completed_at": "2026-05-31T20:37:35-0300",
+  "blocked_reason": null
+}

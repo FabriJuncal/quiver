@@ -68,12 +68,12 @@ npm install --save-dev create-quiver
 
 ### Symptom
 
-- `check-slice` asks for a remote/base branch while the repo is still local-only
+- `slice check` asks for a remote/base branch while the repo is still local-only
 
 ### Recovery
 
-1. Run `npx create-quiver check-slice --local <slice.json>` for structural validation.
-2. Before PR readiness, run normal `check-slice <slice.json>` with a local base branch, `--base <branch>`, or a configured remote.
+1. Run `npx create-quiver slice check --local <slice.json>` for structural validation.
+2. Before PR readiness, run normal `slice check <slice.json>` with a local base branch, `--base <branch>`, or a configured remote.
 3. Treat `--local` as a first-use validation mode, not as a replacement for PR checks.
 
 ## Context Preparation Overwrites Docs

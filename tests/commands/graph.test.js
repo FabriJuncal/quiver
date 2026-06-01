@@ -32,6 +32,22 @@ function makeRepo(structure) {
   };
 }
 
+function snapshotFiles(root) {
+  const files = [];
+  const walk = (dirPath) => {
+    for (const entry of fs.readdirSync(dirPath, { withFileTypes: true })) {
+      const fullPath = path.join(dirPath, entry.name);
+      if (entry.isDirectory()) {
+        walk(fullPath);
+      } else {
+        files.push(path.relative(root, fullPath).split(path.sep).join('/'));
+      }
+    }
+  };
+  walk(root);
+  return files.sort();
+}
+
 function slice(ref, files, extra = {}) {
   const [, sliceId] = ref.split('/');
   return {
@@ -77,7 +93,17 @@ function execGraph(repoRoot, args = [], env = {}) {
     cwd: repoRoot,
     encoding: 'utf8',
     env: { ...process.env, ...env },
+    stdio: ['ignore', 'pipe', 'pipe'],
   });
+}
+
+function execGraphFailure(repoRoot, args = [], env = {}) {
+  try {
+    execGraph(repoRoot, args, env);
+  } catch (error) {
+    return error;
+  }
+  throw new Error('Expected graph command to fail');
 }
 
 test('collectGraph returns pending levels and conflicts', () => {
@@ -177,6 +203,47 @@ test('graph CLI emits valid JSON', () => {
   }
 });
 
+test('graph CLI treats --json as machine-readable output when --format is also passed', () => {
+  const repo = graphFixture();
+  try {
+    const output = execGraph(repo.root, ['--json', '--format', 'mermaid']);
+    const parsed = JSON.parse(output);
+
+    assert.ok(Array.isArray(parsed.levels));
+    assert.equal(parsed.requested_level, null);
+    assert.doesNotMatch(output, /```mermaid/);
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('graph CLI explains empty level filters in human output', () => {
+  const repo = graphFixture();
+  try {
+    const output = execGraph(repo.root, ['--level', '99']);
+    const spanish = execGraph(repo.root, ['--lang', 'es', '--level', '99']);
+
+    assert.match(output, /No pending slices found for level 99/);
+    assert.match(spanish, /No se encontraron slices pendientes para el nivel 99/);
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('graph CLI is read-only', () => {
+  const repo = graphFixture();
+  try {
+    const before = snapshotFiles(repo.root);
+    execGraph(repo.root, ['--json']);
+    execGraph(repo.root, ['--format', 'dot']);
+    const after = snapshotFiles(repo.root);
+
+    assert.deepEqual(after, before);
+  } finally {
+    repo.cleanup();
+  }
+});
+
 test('graph CLI prefers Unicode when requested', () => {
   const repo = graphFixture();
   try {
@@ -197,6 +264,18 @@ test('graph CLI renders Mermaid and DOT formats', () => {
     assert.ok(mermaid.includes('docs/shared.md'));
     assert.ok(dot.startsWith('digraph QuiverGraph {'));
     assert.ok(dot.includes('rankdir=TB;'));
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('graph CLI localizes unsupported format errors', () => {
+  const repo = graphFixture();
+  try {
+    const error = execGraphFailure(repo.root, ['--lang', 'es', '--format', 'xml']);
+
+    assert.equal(error.status, 1);
+    assert.match(String(error.stderr), /create-quiver: formato graph no soportado: xml/);
   } finally {
     repo.cleanup();
   }

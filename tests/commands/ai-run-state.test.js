@@ -184,6 +184,32 @@ test('ai run close archives a selected run without deleting evidence', () => {
   }
 });
 
+test('ai lifecycle create and close match run lifecycle behavior', () => {
+  const repo = makeRepo();
+
+  try {
+    const created = execAi(repo.root, ['lifecycle', 'create', '--input', 'requirements.md', '--run', 'lifecycle-cli']);
+    assert.match(created, /AI run status/);
+    assert.match(created, /Run: lifecycle-cli/);
+    assert.match(created, /Phase: created/);
+    assert.equal(fs.existsSync(path.join(repo.root, '.quiver/runs/lifecycle-cli/state.json')), true);
+
+    const state = JSON.parse(fs.readFileSync(path.join(repo.root, '.quiver/runs/lifecycle-cli/state.json'), 'utf8'));
+    assert.equal(state.requirement.source_file, 'requirements.md');
+    assert.equal(state.history[0].command, 'ai lifecycle create');
+
+    const closed = execAi(repo.root, ['lifecycle', 'close', '--run', 'lifecycle-cli']);
+    assert.match(closed, /AI run closed/);
+    assert.match(closed, /Run: lifecycle-cli/);
+    assert.match(closed, /Status: closed/);
+
+    const closedState = JSON.parse(fs.readFileSync(path.join(repo.root, '.quiver/runs/lifecycle-cli/state.json'), 'utf8'));
+    assert.equal(closedState.history.at(-1).command, 'ai lifecycle close');
+  } finally {
+    repo.cleanup();
+  }
+});
+
 test('ai run create and close render Spanish human wrappers while preserving ids', () => {
   const repo = makeRepo();
 
@@ -276,10 +302,10 @@ test('ai status reports no active run without creating files', () => {
   try {
     const output = execAi(repo.root, ['status']);
     assert.match(output, /Status: no active run/);
-    assert.match(output, /ai run create --input <requirements.md>/);
+    assert.match(output, /ai lifecycle create --input <requirements.md>/);
     const spanish = execCli(repo.root, ['--lang', 'es', 'ai', 'status']);
     assert.match(spanish, /Estado: sin run activo/);
-    assert.match(spanish, /npx create-quiver ai run create --input <requirements\.md>/);
+    assert.match(spanish, /npx create-quiver ai lifecycle create --input <requirements\.md>/);
     assert.equal(fs.existsSync(path.join(repo.root, '.quiver')), false);
   } finally {
     repo.cleanup();

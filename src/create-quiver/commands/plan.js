@@ -8,6 +8,10 @@ function toHourCount(value) {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
 }
 
+function hasEstimatedHours(value) {
+  return toHourCount(value) > 0;
+}
+
 function compareRefs(left, right) {
   return String(left || '').localeCompare(String(right || ''));
 }
@@ -137,11 +141,13 @@ function collectPlan(repoRoot, options = {}) {
   const targetNodes = options.onlyReady ? readyNodes : selectedNodes;
   const criticalPath = buildCriticalPath(graph, targetNodes.map((node) => node.ref));
   const totalHours = targetNodes.reduce((sum, node) => sum + toHourCount(node.json?.estimated_hours), 0);
+  const missingEstimates = targetNodes.filter((node) => !hasEstimatedHours(node.json?.estimated_hours)).length;
   const plan = targetNodes.map((node, index) => sliceToPlanItem(repoRoot, node, index + 1, readyRefs));
 
   return {
     critical_path: criticalPath,
     include_completed: includeCompleted,
+    missing_estimates: missingEstimates,
     plan,
     total_hours: totalHours,
   };
@@ -158,8 +164,11 @@ function formatHumanPlan(report, options = {}) {
     title,
     `${translator.t('plan.total_hours')}: ${report.total_hours}`,
     `${translator.t('plan.critical_path')}: ${report.critical_path.length > 0 ? report.critical_path.join(pathSeparator) : '-'}`,
-    '',
   ];
+  if (report.missing_estimates > 0) {
+    lines.push(translator.t('plan.missing_estimates', { count: report.missing_estimates }));
+  }
+  lines.push('');
 
   if (report.plan.length === 0) {
     lines.push(report.include_completed ? translator.t('plan.empty.filtered') : translator.t('plan.empty.pending'));

@@ -281,3 +281,23 @@ exit 1
     repo.cleanup();
   }
 });
+
+test('prepare parser errors localize in Spanish', () => {
+  const repo = makeRepo();
+  try {
+    assert.throws(
+      () => execFileSync(process.execPath, [BIN_PATH, '--lang', 'es', 'prepare', 'extra'], {
+        cwd: repo.root,
+        encoding: 'utf8',
+        env: process.env,
+        stdio: ['ignore', 'pipe', 'pipe'],
+      }),
+      (error) => {
+        assert.match(String(error.stderr), /create-quiver: prepare no acepta argumentos posicionales/);
+        return true;
+      },
+    );
+  } finally {
+    repo.cleanup();
+  }
+});

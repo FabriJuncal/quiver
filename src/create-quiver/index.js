@@ -35,6 +35,8 @@ const {
   runSpecsList: runAiSpecsList,
   runTraceReport: runAiTraceReport,
 } = require('./commands/ai');
+const { createRunAnalyze } = require('./commands/analyze');
+const { runChangelog } = require('./commands/changelog');
 const { runConfig } = require('./commands/config');
 const { runDashboard } = require('./commands/dashboard');
 const { runDemo } = require('./commands/demo');
@@ -42,8 +44,21 @@ const { runPrepare } = require('./commands/prepare');
 const { runEvidence } = require('./commands/evidence');
 const { runFlow } = require('./commands/flow');
 const { runGraph } = require('./commands/graph');
+const {
+  HANDOFF_COMMAND_MODE,
+  LEGACY_HANDOFF_COMMANDS,
+  SUPPORTED_HANDOFF_COMMANDS,
+} = require('./commands/handoff');
+const { createRunInit } = require('./commands/init');
 const { runNext } = require('./commands/next');
 const { runPlan } = require('./commands/plan');
+const { runStatus } = require('./commands/status');
+const {
+  LEGACY_SLICE_COMMANDS,
+  SLICE_COMMAND_MODE,
+  SUPPORTED_SLICE_COMMANDS,
+} = require('./commands/slice');
+const { createRunDoctor } = require('./commands/doctor');
 const { runCreateSpec, runValidateSpec } = require('./commands/spec');
 const { collectVersionReport, formatHumanVersionReport } = require('./lib/version');
 const { buildInitLayout, formatInitLayoutPlan } = require('./lib/init-layout');
@@ -58,6 +73,16 @@ const { cleanupSlice, refreshActiveSlicesBoard, startSlice } = require('./lib/li
 const { buildSpecStatus, closeSpecWorktree, formatSpecCloseResult, formatSpecStartResult, formatSpecStatus, startSpecWorktree } = require('./lib/spec-worktrees');
 const { getContextPathExclusionReason } = require('./lib/ai/safety');
 const { selectOption } = require('./lib/cli/selectors');
+const {
+  HELP_OPTION_SCOPES,
+  SUPPORTED_AI_COMMANDS,
+  SUPPORTED_COMMAND_MODES,
+  SUPPORTED_CONFIG_LANGUAGE_COMMANDS,
+  SUPPORTED_CONFIG_SECTIONS,
+  SUPPORTED_DEMO_COMMANDS,
+  SUPPORTED_SPEC_COMMANDS,
+} = require('./lib/cli/command-registry');
+const { parseCliArgs } = require('./lib/cli/parser');
 const { createUx } = require('./lib/cli/ux');
 const { validateUxFlags } = require('./lib/cli/ux-flags');
 const {
@@ -112,6 +137,70 @@ function localizeParserMessage(message, language = currentErrorLanguage) {
     return translate(language, 'error.flag.unknown', { flag: unknownFlag[1] });
   }
 
+  const exactMessages = {
+    'missing language for config language set. Use: npx create-quiver config language set <en|es>': 'config.error.missing_language_set',
+    'config language show does not accept a language value': 'config.error.show_no_value',
+    '--global is only supported by config language set. Use: npx create-quiver config language set <en|es> --global': 'config.error.global_only_set',
+    'missing evidence subcommand. Use: npx create-quiver evidence run -- <command>': 'evidence.error.missing_subcommand',
+    'evidence run does not accept positional arguments before --': 'evidence.error.positional_before_separator',
+    'missing evidence path. Use: npx create-quiver evidence show .quiver/evidence/<file.md>': 'evidence.error.missing_path',
+    'evidence list does not accept positional arguments': 'evidence.error.list_no_positional',
+    'missing spec subcommand. Use: npx create-quiver spec <create|start|status|validate|close>': 'spec.error.missing_subcommand',
+    'spec create does not accept positional arguments; use --input <file> or --spec <slug>': 'spec.error.create_positional',
+    'missing spec directory. Use: npx create-quiver spec <start|status|validate|close> <spec-dir>': 'spec.error.missing_dir_for_command',
+    'missing spec directory. Use: npx create-quiver spec validate specs/<spec-slug>': 'spec.error.missing_dir',
+    'prepare does not accept positional arguments': 'prepare.error.no_positional',
+    'missing slice subcommand. Use: npx create-quiver slice <start|check|check-pr|scope|cleanup|refresh>': 'slice.error.missing_subcommand',
+    'missing handoff subcommand. Use: npx create-quiver handoff <check|create>': 'handoff.error.missing_subcommand',
+    'missing handoff or brief path. Use: npx create-quiver handoff check specs/<spec-slug>/HANDOFF.md or specs/<spec-slug>/slices/<slice-id>/EXECUTION_BRIEF.md': 'handoff.error.missing_path',
+  };
+  if (exactMessages[raw]) {
+    return translate(language, exactMessages[raw]);
+  }
+
+  let match = raw.match(/^unsupported config section: (.+)\. Supported sections: language$/);
+  if (match) {
+    return translate(language, 'config.error.unsupported_section', { section: match[1] });
+  }
+
+  match = raw.match(/^unsupported config language command: (.+)\. Supported commands: show, set$/);
+  if (match) {
+    return translate(language, 'config.error.unsupported_language_command', { command: match[1] });
+  }
+
+  match = raw.match(/^unsupported evidence subcommand: (.+)\. Supported tasks: run(?:, list, show)?$/);
+  if (match) {
+    return translate(language, 'evidence.error.unsupported_subcommand', { command: match[1] });
+  }
+
+  match = raw.match(/^unsupported ai (specs|slices|models) subcommand: (.+)\. Supported tasks: list$/);
+  if (match) {
+    return translate(language, 'ai.error.unsupported_collection_subcommand', {
+      command: match[1],
+      subcommand: match[2],
+    });
+  }
+
+  match = raw.match(/^unsupported ai trace subcommand: (.+)\. Supported tasks: report$/);
+  if (match) {
+    return translate(language, 'ai.error.unsupported_trace_subcommand', { command: match[1] });
+  }
+
+  match = raw.match(/^unsupported ai active-slice subcommand: (.+)\. Supported tasks: status, reconcile$/);
+  if (match) {
+    return translate(language, 'ai.error.unsupported_active_slice_subcommand', { command: match[1] });
+  }
+
+  match = raw.match(/^unsupported slice subcommand: (.+)\. Supported tasks: start, check, check-pr, scope, cleanup, refresh$/);
+  if (match) {
+    return translate(language, 'slice.error.unsupported_subcommand', { command: match[1] });
+  }
+
+  match = raw.match(/^unsupported handoff subcommand: (.+)\. Supported tasks: check, create$/);
+  if (match) {
+    return translate(language, 'handoff.error.unsupported_subcommand', { command: match[1] });
+  }
+
   return raw;
 }
 
@@ -128,8 +217,10 @@ function helpText(help, section, key, fallback) {
   return help?.[section]?.[key] || fallback;
 }
 
-function optionDescription(help, fallback) {
-  return helpText(help, 'optionDescriptions', fallback, fallback);
+function optionDescription(help, fallback, scopeKey = '') {
+  const description = helpText(help, 'optionDescriptions', fallback, fallback);
+  const scope = HELP_OPTION_SCOPES[scopeKey] || '';
+  return scope ? `${description} [scope: ${scope}]` : description;
 }
 
 function formatLanguageWarningForCli(warning, language = DEFAULT_LANGUAGE) {
@@ -145,65 +236,27 @@ function formatLanguageWarningForCli(warning, language = DEFAULT_LANGUAGE) {
   }));
 }
 
-const SUPPORTED_COMMAND_MODES = new Set([
-  'init',
-  'version',
-  'flow',
-  'dashboard',
-  'plan',
-  'graph',
-  'next',
-  'doctor',
-  'prepare',
-  'analyze',
-  'migrate',
-  'start-slice',
-  'check-slice',
-  'check-pr',
-  'check-handoff',
-  'new-handoff',
-  'cleanup-slice',
-  'check-scope',
-  'config',
-  'refresh-active-slices',
-  'spec',
-  'evidence',
-  'demo',
-  'ai',
-]);
+function formatDeprecatedCommandWarning(warning) {
+  if (!warning) {
+    return '';
+  }
 
-const SUPPORTED_AI_COMMANDS = new Set([
-  'active-slice',
-  'agent',
-  'approve',
-  'approval-status',
-  'approvals',
-  'doctor',
-  'execute-plan',
-  'execute-slice',
-  'executor-prompt',
-  'export',
-  'inspect',
-  'onboard',
-  'plan',
-  'prepare-context',
-  'pr',
-  'prompt-slice',
-  'repair-plan',
-  'review-plan',
-  'revise',
-  'resume',
-  'run',
-  'slices',
-  'specs',
-  'status',
-  'trace',
-]);
+  return `create-quiver: deprecated command: ${warning.command}. Use: npx create-quiver ${warning.canonical}`;
+}
 
-const SUPPORTED_SPEC_COMMANDS = new Set(['close', 'create', 'start', 'status', 'validate']);
-const SUPPORTED_DEMO_COMMANDS = new Set(['create']);
-const SUPPORTED_CONFIG_SECTIONS = new Set(['language']);
-const SUPPORTED_CONFIG_LANGUAGE_COMMANDS = new Set(['show', 'set']);
+function legacyCommandWarning(command) {
+  const sliceWarning = LEGACY_SLICE_COMMANDS.get(command);
+  if (sliceWarning) {
+    return { command, canonical: sliceWarning.canonical };
+  }
+
+  const handoffWarning = LEGACY_HANDOFF_COMMANDS.get(command);
+  if (handoffWarning) {
+    return { command, canonical: handoffWarning.canonical };
+  }
+
+  return null;
+}
 
 function unsupportedCommandMessage(commandName) {
   const translator = createTranslator(currentErrorLanguage);
@@ -223,8 +276,10 @@ const COMMAND_HELP_GROUPS = [
       ['analyze', 'Scan the project and write docs/PROJECT_MAP.md plus .quiver scan data.'],
       ['doctor', 'Validate the Quiver layout, generated docs, environment, and next safe steps.'],
       ['flow', 'Show the read-only guided workflow stage, blockers, and next safe command.'],
+      ['status', 'Show the current Quiver state and next safe command.'],
       ['dashboard', 'Show compact read-only project, spec, slice, run, approval, and agent status.'],
       ['version', 'Show a Quiver-branded version report; use --json for metadata.'],
+      ['changelog', 'Show local Quiver contract and version changes without network access.'],
       ['config language show|set', 'Inspect or update the effective Quiver language without editing JSON by hand.'],
       ['prepare', 'Run setup diagnostics for providers, GitHub, SSH, and project readiness.'],
       ['migrate', 'Upgrade an already initialized Quiver project to the current contract.'],
@@ -241,8 +296,8 @@ const COMMAND_HELP_GROUPS = [
   {
     title: 'AI lifecycle',
     commands: [
-      ['ai run create|close', 'Create a durable AI lifecycle run or close/archive a completed or stale run without deleting evidence.'],
-      ['ai active-slice status|reconcile', 'Inspect or dry-run reconcile local active-slice state from every supported source.'],
+      ['ai lifecycle create|close', 'Create a durable AI lifecycle run or close/archive a completed or stale run without deleting evidence.'],
+      ['ai run create|close', 'Compatibility alias for ai lifecycle create|close.'],
       ['ai status', 'Show current AI lifecycle phase, approved versions, blockers, and next command.'],
       ['ai resume', 'Resume guidance from the last valid lifecycle phase without chat memory.'],
       ['ai onboard', 'Run or print the planner onboarding prompt with a token-aware context pack.'],
@@ -255,7 +310,9 @@ const COMMAND_HELP_GROUPS = [
       ['ai review-plan', 'Review the technical-plan draft for production readiness before approval.'],
       ['ai approve', 'Approve a concrete saved draft version for the next planner phase.'],
       ['ai approvals', 'Inspect approval status and saved planner drafts.'],
+      ['ai approval-status', 'Deprecated compatibility alias for ai approvals.'],
       ['ai prompt-slice', 'Print a minimal executor prompt for one slice without provider execution.'],
+      ['ai executor-prompt', 'Deprecated compatibility alias for ai prompt-slice.'],
       ['ai execute-slice', 'Execute one slice with scope checks, redacted evidence, closure updates, and optional commit.'],
       ['ai execute-plan', 'Print or execute dependency-safe waves in manual or delegated mode.'],
       ['ai doctor', 'Run GitHub, SSH, and PR readiness preflight checks.'],
@@ -269,7 +326,13 @@ const COMMAND_HELP_GROUPS = [
       ['ai export', 'Export lifecycle state as JSON or Markdown for dashboards, PRs, or other agents.'],
       ['ai specs list', 'List specs with status, progress, slice counts, and paths.'],
       ['ai slices list', 'List slices with status, dependencies, blockers, and optional JSON.'],
-      ['ai trace report', 'Report AI runs, execution waves, and migration guidance.'],
+    ],
+  },
+  {
+    title: 'Advanced diagnostics',
+    commands: [
+      ['ai active-slice status|reconcile', 'Advanced: inspect or dry-run reconcile local active-slice state from every supported source.'],
+      ['ai trace report', 'Advanced: report AI runs, execution waves, and migration guidance.'],
     ],
   },
   {
@@ -280,20 +343,31 @@ const COMMAND_HELP_GROUPS = [
       ['spec status', 'Show spec worktree, branch, slice-00 state, and pending slices.'],
       ['spec validate', 'Validate spec docs, slices, briefs, evidence, status, dependencies, and safe paths.'],
       ['spec close', 'Close a merged clean spec worktree and guide local sync.'],
-      ['start-slice', 'Start work on one slice and mark it active.'],
-      ['check-slice', 'Validate slice structure, dependencies, scope, and readiness.'],
-      ['check-pr', 'Validate PR readiness for a slice/spec workflow.'],
-      ['check-scope', 'Compare changed files against a slice scope.'],
-      ['cleanup-slice', 'Clean active-slice state after a slice finishes or is discarded.'],
-      ['refresh-active-slices', 'Refresh generated active-slice boards.'],
-      ['check-handoff', 'Validate a transfer handoff or per-slice execution/closure brief.'],
-      ['new-handoff', 'Create a handoff scaffold for exceptional context transfer.'],
+      ['slice start', 'Start work on one slice and mark it active.'],
+      ['slice check', 'Validate slice structure, dependencies, scope, and readiness.'],
+      ['slice check-pr', 'Validate PR readiness for a slice/spec workflow.'],
+      ['slice scope', 'Compare changed files against a slice scope.'],
+      ['slice cleanup', 'Clean active-slice state after a slice finishes or is discarded.'],
+      ['slice refresh', 'Refresh generated active-slice boards.'],
+      ['start-slice', 'Deprecated compatibility alias for slice start.'],
+      ['check-slice', 'Deprecated compatibility alias for slice check.'],
+      ['check-pr', 'Deprecated compatibility alias for slice check-pr.'],
+      ['check-scope', 'Deprecated compatibility alias for slice scope.'],
+      ['cleanup-slice', 'Deprecated compatibility alias for slice cleanup.'],
+      ['refresh-active-slices', 'Deprecated compatibility alias for slice refresh.'],
+      ['handoff check', 'Validate a transfer handoff or per-slice execution/closure brief.'],
+      ['handoff create', 'Create a handoff scaffold for exceptional context transfer.'],
+      ['check-handoff', 'Deprecated compatibility alias for handoff check.'],
+      ['new-handoff', 'Deprecated compatibility alias for handoff create.'],
     ],
   },
   {
     title: 'Evidence and demos',
     commands: [
       ['evidence run', 'Run a command and record exit code, duration, redacted output, and Markdown evidence.'],
+      ['evidence list', 'List local evidence artifacts generated by evidence run.'],
+      ['evidence show', 'Display one safe local evidence artifact.'],
+      ['demo spec-viewer', 'Create or preview the optional static Quiver Spec Viewer demo scaffold.'],
       ['demo create spec-viewer', 'Create or preview the optional static Quiver Spec Viewer demo scaffold.'],
     ],
   },
@@ -327,14 +401,17 @@ function printUsage(language = DEFAULT_LANGUAGE) {
   npx create-quiver init [options]
   npx create-quiver analyze [options]
   npx create-quiver flow [options]
+  npx create-quiver status [--json]
   npx create-quiver dashboard [options]
   npx create-quiver version [--json]
+  npx create-quiver changelog [--json]
   npx create-quiver config language show [--json]
   npx create-quiver config language set <en|es> [--global]
   npx create-quiver plan [options]
   npx create-quiver ai <task> [options]
+  npx create-quiver ai lifecycle create --input <requirements.md>
+  npx create-quiver ai lifecycle close --run <id>
   npx create-quiver ai run create --input <requirements.md>
-  npx create-quiver ai run close --run <id>
   npx create-quiver ai active-slice reconcile --dry-run
   npx create-quiver ai status [options]
   npx create-quiver ai resume [options]
@@ -353,6 +430,14 @@ function printUsage(language = DEFAULT_LANGUAGE) {
   npx create-quiver migrate [options]
   npx create-quiver doctor [options]
   npx create-quiver prepare [options]
+  npx create-quiver slice start [options] <slice.json>
+  npx create-quiver slice check [options] <slice.json>
+  npx create-quiver slice check-pr <slice.json>
+  npx create-quiver slice scope [options] <slice.json>
+  npx create-quiver slice cleanup [options] <slice.json>
+  npx create-quiver slice refresh
+  npx create-quiver handoff check <handoff-or-brief.md>
+  npx create-quiver handoff create <spec-slug>
   npx create-quiver start-slice [options] <slice.json>
   npx create-quiver check-slice [options] <slice.json>
   npx create-quiver check-pr <slice.json>
@@ -367,61 +452,64 @@ function printUsage(language = DEFAULT_LANGUAGE) {
   npx create-quiver spec validate <spec-dir>
   npx create-quiver spec close <spec-dir>
   npx create-quiver evidence run [options] -- <command>
+  npx create-quiver evidence list [--json]
+  npx create-quiver evidence show <path.md> [--json]
+  npx create-quiver demo spec-viewer [options]
   npx create-quiver demo create spec-viewer [options]
 
 ${formatCommandHelpGroups(language)}
 
 ${helpText(help, 'headings', 'options', 'Options:')}
-  -n, --name <project-name>   ${optionDescription(help, 'Project name to generate')}
-  -d, --dir <target-dir>      ${optionDescription(help, 'Target directory to scaffold into or inspect')}
-      --spec <slug>           ${optionDescription(help, 'Restrict plan, graph, next, or dashboard output to one spec')}
-      --format <name>         ${optionDescription(help, 'Graph or AI export output format (tree, mermaid, dot, json, markdown)')}
-      --show-conflicts        ${optionDescription(help, 'Show shared file paths in graph output')}
-      --level <n>             ${optionDescription(help, 'Restrict graph output to one level')}
-      --json                  ${optionDescription(help, 'Emit machine-readable JSON')}
-      --lang <en|es>          ${optionDescription(help, 'Override CLI human output language')}
-      --global                ${optionDescription(help, 'For config language set, write the global user config')}
-      --include-completed     ${optionDescription(help, 'Include completed slices in dashboard, plan, graph, or next history output')}
-      --details               ${optionDescription(help, 'Show the full human dashboard report')}
-      --section <name>        ${optionDescription(help, 'Show one human dashboard section')}
-      --limit <n>             ${optionDescription(help, 'Limit dashboard human lists (1-100)')}
-      --only-ready            ${optionDescription(help, 'Show only slices with no pending dependencies')}
-      --all-ready             ${optionDescription(help, 'List every ready slice returned by next')}
-      --auto-start            ${optionDescription(help, 'Prompt for confirmation and run start-slice on next')}
-      --local                 ${optionDescription(help, 'For check-slice, run structural validation without remote/base checks')}
-      --strict                ${optionDescription(help, 'Treat supported validation warnings as failures')}
-      --unicode               ${optionDescription(help, 'Prefer Unicode output when supported')}
-      --minimal               ${optionDescription(help, 'Plan or run the minimal init profile')}
-      --full                  ${optionDescription(help, 'Plan or run the full compatibility init profile')}
-      --legacy-scripts        ${optionDescription(help, 'Include legacy Bash wrappers in init profile')}
-      --include-templates     ${optionDescription(help, 'Export packaged templates in init profile')}
-      --dry-run               ${optionDescription(help, 'Preview init, analyze, migrate, prepare, spec create/start/close, demo, ai agent set, or AI work without executing writes/providers')}
-      --print-prompt          ${optionDescription(help, 'Print the exact AI prompt and exit without executing provider CLIs')}
-      --with-planner          ${optionDescription(help, 'Enable planner-assisted behavior on commands that explicitly support it')}
-      --interactive           ${optionDescription(help, 'Enable prompts on commands that explicitly support interactive choices')}
-      --review                ${optionDescription(help, 'Open or prepare human review before persistent writes where supported')}
-      --methodology <name>    ${optionDescription(help, 'Select methodology where supported (currently wdd-sdd)')}
-      --no-color              ${optionDescription(help, 'Disable ANSI colors in human output')}
-      --fix                   ${optionDescription(help, 'For doctor, apply safe non-destructive repairs')}
-      --execute               ${optionDescription(help, 'For ai execute-plan, run the planned slices instead of printing commands')}
-      --create                ${optionDescription(help, 'For ai pr, create the PR after preflight instead of printing the plan only')}
-      --commit                ${optionDescription(help, 'For ai execute-slice, commit validated slice changes after provider, scope, and tests pass')}
-      --allow-dirty           ${optionDescription(help, 'For ai execute-slice, allow pre-existing dirty files and ignore them for scope diff')}
-      --mode <name>           ${optionDescription(help, 'Execution mode for ai execute-plan (auto, manual, delegated)')}
-      --provider <name>       ${optionDescription(help, 'Provider CLI to preflight for prepare or AI commands')}
-      --model <model-id>      ${optionDescription(help, 'Technical model id for AI agent profiles or provider-backed AI commands')}
-      --version <n>           ${optionDescription(help, 'Draft version to approve for AI planner phases')}
-      --run <id>              ${optionDescription(help, 'AI lifecycle run id')}
-      --ssh-host-alias <name> ${optionDescription(help, 'SSH host alias to validate for prepare or AI commands')}
-      --identity-file <path>  ${optionDescription(help, 'SSH identity file to validate for prepare or AI commands')}
-      --remote <name>         ${optionDescription(help, 'Git remote name for check-slice or AI PR checks')}
-      --base <branch>         ${optionDescription(help, 'Base branch for check-slice, check-scope, ai pr, or spec close (default: main)')}
-      --output <file>         ${optionDescription(help, 'Output file for evidence run')}
-      --max-output <n>        ${optionDescription(help, 'Maximum stdout/stderr chars per evidence section')}
-      --title <text>          ${optionDescription(help, 'Override PR title for ai pr create')}
-  -y, --yes                   ${optionDescription(help, 'Skip prompts and use the provided inputs')}
-  -V, --version               ${optionDescription(help, 'Show the installed create-quiver version')}
-  -h, --help                  ${optionDescription(help, 'Show this help message')}
+  -n, --name <project-name>   ${optionDescription(help, 'Project name to generate', '--name')}
+  -d, --dir <target-dir>      ${optionDescription(help, 'Target directory to scaffold into or inspect', '--dir')}
+      --spec <slug>           ${optionDescription(help, 'Restrict plan, graph, next, or dashboard output to one spec', '--spec')}
+      --format <name>         ${optionDescription(help, 'Graph or AI export output format (tree, mermaid, dot, json, markdown)', '--format')}
+      --show-conflicts        ${optionDescription(help, 'Show shared file paths in graph output', '--show-conflicts')}
+      --level <n>             ${optionDescription(help, 'Restrict graph output to one level', '--level')}
+      --json                  ${optionDescription(help, 'Emit machine-readable JSON; when combined with graph --format, JSON wins', '--json')}
+      --lang <en|es>          ${optionDescription(help, 'Override CLI human output language', '--lang')}
+      --global                ${optionDescription(help, 'For config language set, write the global user config', '--global')}
+      --include-completed     ${optionDescription(help, 'Include completed slices in dashboard, plan, graph, or next history output', '--include-completed')}
+      --details               ${optionDescription(help, 'Show the full human dashboard report', '--details')}
+      --section <name>        ${optionDescription(help, 'Show one human dashboard section', '--section')}
+      --limit <n>             ${optionDescription(help, 'Limit dashboard human lists (1-100)', '--limit')}
+      --only-ready            ${optionDescription(help, 'Show only slices with no pending dependencies', '--only-ready')}
+      --all-ready             ${optionDescription(help, 'List every ready slice returned by next', '--all-ready')}
+      --auto-start            ${optionDescription(help, 'Prompt for confirmation and run start-slice on next', '--auto-start')}
+      --local                 ${optionDescription(help, 'For check-slice, run structural validation without remote/base checks', '--local')}
+      --strict                ${optionDescription(help, 'Treat supported validation warnings as failures', '--strict')}
+      --unicode               ${optionDescription(help, 'Prefer Unicode output when supported', '--unicode')}
+      --minimal               ${optionDescription(help, 'Plan or run the minimal init profile', '--minimal')}
+      --full                  ${optionDescription(help, 'Plan or run the full compatibility init profile', '--full')}
+      --legacy-scripts        ${optionDescription(help, 'Include legacy Bash wrappers in init profile', '--legacy-scripts')}
+      --include-templates     ${optionDescription(help, 'Export packaged templates in init profile', '--include-templates')}
+      --dry-run               ${optionDescription(help, 'Preview init, analyze, migrate, prepare, spec create/start/close, demo, ai agent set, or AI work without executing writes/providers', '--dry-run')}
+      --print-prompt          ${optionDescription(help, 'Print the exact AI prompt and exit without executing provider CLIs', '--print-prompt')}
+      --with-planner          ${optionDescription(help, 'Enable planner-assisted behavior on commands that explicitly support it', '--with-planner')}
+      --interactive           ${optionDescription(help, 'Enable prompts on commands that explicitly support interactive choices', '--interactive')}
+      --review                ${optionDescription(help, 'Open or prepare human review before persistent writes where supported', '--review')}
+      --methodology <name>    ${optionDescription(help, 'Select methodology where supported (currently wdd-sdd)', '--methodology')}
+      --no-color              ${optionDescription(help, 'Disable ANSI colors in human output', '--no-color')}
+      --fix                   ${optionDescription(help, 'For doctor, apply safe non-destructive repairs', '--fix')}
+      --execute               ${optionDescription(help, 'For ai execute-plan, run the planned slices instead of printing commands', '--execute')}
+      --create                ${optionDescription(help, 'For ai pr, create the PR after preflight instead of printing the plan only', '--create')}
+      --commit                ${optionDescription(help, 'For ai execute-slice, commit validated slice changes after provider, scope, and tests pass', '--commit')}
+      --allow-dirty           ${optionDescription(help, 'For ai execute-slice, allow pre-existing dirty files and ignore them for scope diff', '--allow-dirty')}
+      --mode <name>           ${optionDescription(help, 'Execution mode for ai execute-plan (auto, manual, delegated)', '--mode')}
+      --provider <name>       ${optionDescription(help, 'Provider CLI to preflight for prepare or AI commands', '--provider')}
+      --model <model-id>      ${optionDescription(help, 'Technical model id for AI agent profiles or provider-backed AI commands', '--model')}
+      --version <n>           ${optionDescription(help, 'Draft version to approve for AI planner phases', '--version')}
+      --run <id>              ${optionDescription(help, 'AI lifecycle run id', '--run')}
+      --ssh-host-alias <name> ${optionDescription(help, 'SSH host alias to validate for prepare or AI commands', '--ssh-host-alias')}
+      --identity-file <path>  ${optionDescription(help, 'SSH identity file to validate for prepare or AI commands', '--identity-file')}
+      --remote <name>         ${optionDescription(help, 'Git remote name for check-slice or AI PR checks', '--remote')}
+      --base <branch>         ${optionDescription(help, 'Base branch for check-slice, check-scope, ai pr, or spec close (default: main)', '--base')}
+      --output <file>         ${optionDescription(help, 'Output file for evidence run', '--output')}
+      --max-output <n>        ${optionDescription(help, 'Maximum stdout/stderr chars per evidence section', '--max-output')}
+      --title <text>          ${optionDescription(help, 'Override PR title for ai pr create', '--title')}
+  -y, --yes                   ${optionDescription(help, 'Skip prompts and use the provided inputs', '--yes')}
+  -V, --version               ${optionDescription(help, 'Show the installed create-quiver version', '--version')}
+  -h, --help                  ${optionDescription(help, 'Show this help message', '--help')}
 
 ${helpText(help, 'headings', 'examples', 'Examples:')}
   npx create-quiver init --name "My Project"
@@ -443,7 +531,7 @@ ${helpText(help, 'headings', 'examples', 'Examples:')}
   cd ./my-project && npx create-quiver ai onboard --dry-run
   cd ./my-project && npx create-quiver ai onboard --print-prompt
   cd ./my-project && npx create-quiver ai prepare-context --dry-run
-  cd ./my-project && npx create-quiver ai run create --input requirements.md
+  cd ./my-project && npx create-quiver ai lifecycle create --input requirements.md
   cd ./my-project && npx create-quiver ai active-slice reconcile --dry-run
   cd ./my-project && npx create-quiver ai status
   cd ./my-project && npx create-quiver ai resume
@@ -486,15 +574,15 @@ ${helpText(help, 'headings', 'examples', 'Examples:')}
   cd ./my-project && npx create-quiver next --auto-start
   cd ./my-project && npx create-quiver migrate
   cd ./my-project && npx create-quiver doctor
-  cd ./my-project && npx create-quiver start-slice specs/my-project/slices/slice-01/slice.json
-  cd ./my-project && npx create-quiver check-slice specs/my-project/slices/slice-01/slice.json
-  cd ./my-project && npx create-quiver check-pr specs/my-project/slices/slice-01/slice.json
-  cd ./my-project && npx create-quiver check-handoff specs/my-project/HANDOFF.md
-  cd ./my-project && npx create-quiver check-handoff specs/my-project/slices/slice-01/EXECUTION_BRIEF.md
-  cd ./my-project && npx create-quiver new-handoff my-spec
-  cd ./my-project && npx create-quiver cleanup-slice specs/my-project/slices/slice-01/slice.json
-  cd ./my-project && npx create-quiver check-scope specs/my-project/slices/slice-01/slice.json
-  cd ./my-project && npx create-quiver refresh-active-slices
+  cd ./my-project && npx create-quiver slice start specs/my-project/slices/slice-01/slice.json
+  cd ./my-project && npx create-quiver slice check specs/my-project/slices/slice-01/slice.json
+  cd ./my-project && npx create-quiver slice check-pr specs/my-project/slices/slice-01/slice.json
+  cd ./my-project && npx create-quiver handoff check specs/my-project/HANDOFF.md
+  cd ./my-project && npx create-quiver handoff check specs/my-project/slices/slice-01/EXECUTION_BRIEF.md
+  cd ./my-project && npx create-quiver handoff create my-spec
+  cd ./my-project && npx create-quiver slice cleanup specs/my-project/slices/slice-01/slice.json
+  cd ./my-project && npx create-quiver slice scope specs/my-project/slices/slice-01/slice.json
+  cd ./my-project && npx create-quiver slice refresh
   cd ./my-project && npx create-quiver spec start specs/my-project
   cd ./my-project && npx create-quiver spec status specs/my-project
   cd ./my-project && npx create-quiver spec validate specs/my-project
@@ -524,6 +612,7 @@ function parseArgs(argv, options = {}) {
     targetDirExplicit: false,
     strict: false,
     strictOverlap: false,
+    legacyCommandWarning: null,
     json: false,
     language: options.language || '',
     languageResolution: null,
@@ -551,6 +640,7 @@ function parseArgs(argv, options = {}) {
     level: null,
     unicode: false,
     aiCommand: '',
+    aiAliasWarning: null,
     aiSecondaryCommand: '',
     aiAgentCommand: '',
     aiAgentRole: '',
@@ -595,17 +685,45 @@ function parseArgs(argv, options = {}) {
   const args = [...argv];
   if (SUPPORTED_COMMAND_MODES.has(args[0])) {
     result.mode = args[0];
+    result.legacyCommandWarning = legacyCommandWarning(args[0]);
     result.explicitInit = args[0] === 'init';
     args.shift();
     if (result.mode === 'spec') {
       result.specCommand = args.shift() || '';
+    }
+    if (result.mode === 'slice') {
+      const sliceCommand = args.shift() || '';
+      if (!sliceCommand) {
+        throw new Error(formatError('missing slice subcommand. Use: npx create-quiver slice <start|check|check-pr|scope|cleanup|refresh>'));
+      }
+      if (!SUPPORTED_SLICE_COMMANDS.has(sliceCommand)) {
+        throw new Error(formatError(`unsupported slice subcommand: ${sliceCommand}. Supported tasks: start, check, check-pr, scope, cleanup, refresh`));
+      }
+      result.sliceCommand = sliceCommand;
+      result.mode = SLICE_COMMAND_MODE.get(sliceCommand);
+    }
+    if (result.mode === 'handoff') {
+      const handoffCommand = args.shift() || '';
+      if (!handoffCommand) {
+        throw new Error(formatError('missing handoff subcommand. Use: npx create-quiver handoff <check|create>'));
+      }
+      if (!SUPPORTED_HANDOFF_COMMANDS.has(handoffCommand)) {
+        throw new Error(formatError(`unsupported handoff subcommand: ${handoffCommand}. Supported tasks: check, create`));
+      }
+      result.handoffCommand = handoffCommand;
+      result.mode = HANDOFF_COMMAND_MODE.get(handoffCommand);
     }
     if (result.mode === 'evidence') {
       result.evidenceCommand = args.shift() || '';
     }
     if (result.mode === 'demo') {
       result.demoCommand = args.shift() || '';
-      result.demoName = args.shift() || '';
+      if (result.demoCommand === 'spec-viewer') {
+        result.demoName = result.demoCommand;
+        result.demoCommand = 'create';
+      } else {
+        result.demoName = args.shift() || '';
+      }
     }
   } else if (args[0] === '--analyze') {
     result.mode = 'analyze';
@@ -1226,7 +1344,7 @@ function parseArgs(argv, options = {}) {
         result.aiAgentRole = positional.shift();
       }
     }
-    if (result.aiCommand === 'run' && !result.aiRunCommand && positional.length > 0) {
+    if ((result.aiCommand === 'run' || result.aiCommand === 'lifecycle') && !result.aiRunCommand && positional.length > 0) {
       result.aiRunCommand = positional.shift();
     }
     if ((result.aiCommand === 'specs' || result.aiCommand === 'slices' || result.aiCommand === 'models' || result.aiCommand === 'trace' || result.aiCommand === 'active-slice') && !result.aiSecondaryCommand && positional.length > 0) {
@@ -1241,6 +1359,12 @@ function parseArgs(argv, options = {}) {
     if (result.aiCommand === 'active-slice' && result.aiSecondaryCommand && result.aiSecondaryCommand !== 'status' && result.aiSecondaryCommand !== 'reconcile') {
       throw new Error(formatError(`unsupported ai active-slice subcommand: ${result.aiSecondaryCommand}. Supported tasks: status, reconcile`));
     }
+    if (result.aiCommand === 'approval-status') {
+      result.aiAliasWarning = { command: 'ai approval-status', canonical: 'ai approvals' };
+    }
+    if (result.aiCommand === 'executor-prompt') {
+      result.aiAliasWarning = { command: 'ai executor-prompt', canonical: 'ai prompt-slice' };
+    }
     if (positional.length > 0) {
       throw new Error(formatError('ai does not accept extra positional arguments'));
     }
@@ -1251,6 +1375,10 @@ function parseArgs(argv, options = {}) {
   } else if (result.mode === 'refresh-active-slices') {
     if (positional.length > 0) {
       throw new Error(formatError('refresh-active-slices does not accept positional arguments'));
+    }
+  } else if (result.mode === 'start-slice' || result.mode === 'check-slice' || result.mode === 'check-pr' || result.mode === 'check-scope' || result.mode === 'cleanup-slice') {
+    if (positional.length > 0) {
+      result.targetDir = positional.shift();
     }
   } else if (result.mode === 'spec') {
     if (!result.specCommand && positional.length > 0) {
@@ -1272,15 +1400,28 @@ function parseArgs(argv, options = {}) {
     if (!result.evidenceCommand) {
       throw new Error(formatError('missing evidence subcommand. Use: npx create-quiver evidence run -- <command>'));
     }
-    if (result.evidenceCommand !== 'run') {
-      throw new Error(formatError(`unsupported evidence subcommand: ${result.evidenceCommand}. Supported tasks: run`));
+    if (!['run', 'list', 'show'].includes(result.evidenceCommand)) {
+      throw new Error(formatError(`unsupported evidence subcommand: ${result.evidenceCommand}. Supported tasks: run, list, show`));
     }
-    if (positional.length > 0) {
+    if (result.evidenceCommand === 'show' && positional.length > 0) {
+      result.targetDir = positional.shift();
+    }
+    if (result.evidenceCommand === 'show' && (!result.targetDir || result.targetDir === '.')) {
+      throw new Error(formatError(translate(currentErrorLanguage, 'evidence.error.missing_path')));
+    }
+    if (result.evidenceCommand === 'run' && positional.length > 0) {
       throw new Error(formatError('evidence run does not accept positional arguments before --'));
+    }
+    if (result.evidenceCommand === 'list' && positional.length > 0) {
+      throw new Error(formatError(translate(currentErrorLanguage, 'evidence.error.list_no_positional')));
     }
   } else if (result.mode === 'demo') {
     if (!result.demoCommand && positional.length > 0) {
       result.demoCommand = positional.shift();
+    }
+    if (result.demoCommand === 'spec-viewer') {
+      result.demoName = result.demoCommand;
+      result.demoCommand = 'create';
     }
     if (!result.demoName && positional.length > 0) {
       result.demoName = positional.shift();
@@ -1295,7 +1436,7 @@ function parseArgs(argv, options = {}) {
       throw new Error(formatError(`unsupported demo: ${result.demoName || '(missing)'}. Supported demos: spec-viewer`));
     }
     if (positional.length > 0) {
-      throw new Error(formatError('demo create spec-viewer does not accept positional target paths; use --dir <target-dir>'));
+      throw new Error(formatError('demo spec-viewer does not accept positional target paths; use --dir <target-dir>'));
     }
   } else {
     if (positional.length > 0) {
@@ -1801,6 +1942,24 @@ function findUnsupportedCreateQuiverScripts(scripts = {}) {
       unsupported.push({
         command,
         reason: `unsupported spec subcommand "${parsed.subcommand || '(missing)'}"`,
+        scriptName,
+      });
+      continue;
+    }
+
+    if (parsed.commandName === 'slice' && !SUPPORTED_SLICE_COMMANDS.has(parsed.subcommand)) {
+      unsupported.push({
+        command,
+        reason: `unsupported slice subcommand "${parsed.subcommand || '(missing)'}"`,
+        scriptName,
+      });
+      continue;
+    }
+
+    if (parsed.commandName === 'handoff' && !SUPPORTED_HANDOFF_COMMANDS.has(parsed.subcommand)) {
+      unsupported.push({
+        command,
+        reason: `unsupported handoff subcommand "${parsed.subcommand || '(missing)'}"`,
         scriptName,
       });
       continue;
@@ -2322,51 +2481,21 @@ function writeProjectScanArtifacts(projectRoot, scan) {
 }
 
 function runAnalyze(targetDir, options = {}) {
-  const projectRoot = resolveTargetRoot(process.cwd(), targetDir);
-  const translator = createTranslator(options.language);
-
-  if (!fs.existsSync(projectRoot)) {
-    throw new Error(formatError(`target directory does not exist: ${projectRoot}`));
-  }
-
-  const scan = buildProjectScan(projectRoot);
-
-  if (options.dryRun) {
-    console.log(translator.t('analyze.dry_run_for', { path: projectRoot }));
-    console.log(translator.t('analyze.writes_none'));
-    console.log(translator.t('analyze.would_write', { path: CURRENT_SCAN_RELATIVE_PATH }));
-    console.log(translator.t('analyze.would_write', { path: PROJECT_MAP_RELATIVE_PATH }));
-    console.log(translator.t('analyze.would_refresh', { path: 'docs/AI_CONTEXT.md' }));
-    console.log(translator.t('analyze.detected_primary_stack', { stack: scan.stack.primary }));
-    console.log(translator.t('analyze.detected_frameworks', { frameworks: scan.stack.frameworks.length > 0 ? scan.stack.frameworks.join(', ') : translator.t('common.none_detected') }));
-    console.log(translator.t('analyze.detected_package_manager', { manager: scan.project.package_manager }));
-    return {
-      artifacts: {
-        jsonPath: path.join(projectRoot, CURRENT_SCAN_RELATIVE_PATH),
-        mdPath: path.join(projectRoot, PROJECT_MAP_RELATIVE_PATH),
-      },
-      dryRun: true,
-      scan,
-    };
-  }
-
-  const artifacts = writeProjectScanArtifacts(projectRoot, scan);
-  const aiContextPath = refreshAiContextDoc(projectRoot, scan);
-  updateStateForAnalyze(projectRoot, CLI_VERSION);
-
-  console.log(translator.t('analyze.completed_for', { path: projectRoot }));
-  console.log(translator.t('analyze.wrote', { path: relativePosixPath(projectRoot, artifacts.jsonPath) }));
-  console.log(translator.t('analyze.wrote', { path: relativePosixPath(projectRoot, artifacts.mdPath) }));
-  console.log(translator.t('analyze.wrote', { path: relativePosixPath(projectRoot, aiContextPath) }));
-  console.log(translator.t('analyze.detected_primary_stack', { stack: scan.stack.primary }));
-  console.log(translator.t('analyze.detected_package_manager', { manager: scan.project.package_manager }));
-
-  return {
-    artifacts,
-    aiContextPath,
-    dryRun: false,
-    scan,
-  };
+  return createRunAnalyze({
+    buildProjectScan,
+    CLI_VERSION,
+    createTranslator,
+    CURRENT_SCAN_RELATIVE_PATH,
+    formatError,
+    fs,
+    path,
+    PROJECT_MAP_RELATIVE_PATH,
+    refreshAiContextDoc,
+    relativePosixPath,
+    resolveTargetRoot,
+    updateStateForAnalyze,
+    writeProjectScanArtifacts,
+  })(targetDir, options);
 }
 
 function runMigrate(targetDir, options = {}) {
@@ -2385,15 +2514,15 @@ function runMigrate(targetDir, options = {}) {
   const projectName = packageJson.name || path.basename(projectRoot) || 'Quiver Project';
   const packageRoot = path.resolve(__dirname, '../..');
   const legacyLayout = inspectLegacyMigrationLayout(projectRoot);
+  const migrationPlan = buildInitLayout(projectRoot, {
+    dryRun: true,
+    full: true,
+    legacyScripts: true,
+    projectName,
+    skipInstall: options.skipInstall === true,
+  });
 
   if (options.dryRun) {
-    const migrationPlan = buildInitLayout(projectRoot, {
-      dryRun: true,
-      full: true,
-      legacyScripts: true,
-      projectName,
-      skipInstall: options.skipInstall === true,
-    });
     console.log(translator.t('migrate.dry_run_title'));
     console.log(`- ${translator.t('migrate.project', { project: projectName })}`);
     console.log(`- ${translator.t('migrate.target', { path: projectRoot })}`);
@@ -2404,11 +2533,17 @@ function runMigrate(targetDir, options = {}) {
     if (legacyLayout.hasLegacyLayout) {
       console.log(`- ${translator.t('migrate.legacy_preserved', { paths: legacyLayout.legacyPaths.join(', ') })}`);
     }
+    console.log(`- ${translator.t('migrate.changelog_hint', { command: 'npx create-quiver changelog' })}`);
     console.log(`- ${translator.t('migrate.next_command', { command: 'npx create-quiver migrate --skip-install' })}`);
     console.log('');
     console.log(formatInitLayoutPlan(migrationPlan));
     return;
   }
+
+  const dryRunCommand = `npx create-quiver migrate --dry-run${options.skipInstall ? ' --skip-install' : ''}`;
+  process.stderr.write(`${translator.t('migrate.write_warning')}\n`);
+  process.stderr.write(`${translator.t('migrate.dry_run_hint', { command: dryRunCommand })}\n`);
+  process.stderr.write(`${translator.t('migrate.changelog_hint', { command: 'npx create-quiver changelog' })}\n`);
 
   const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'quiver-migrate-'));
 
@@ -2437,6 +2572,9 @@ function runMigrate(targetDir, options = {}) {
 
     console.log(translator.t('migrate.completed_for', { path: projectRoot }));
     console.log(translator.t('migrate.restored_missing'));
+    console.log(translator.t('migrate.applied_create', { count: migrationPlan.summary.create }));
+    console.log(translator.t('migrate.applied_update', { count: migrationPlan.summary.update }));
+    console.log(translator.t('migrate.applied_preserve', { count: migrationPlan.summary.preserve }));
     if (legacyLayout.hasLegacyLayout) {
       console.log(translator.t('migrate.legacy_preserved', { paths: legacyLayout.legacyPaths.join(', ') }));
     }
@@ -2503,18 +2641,21 @@ function buildDoctorCommandReport(projectRoot) {
   const pkg = fs.existsSync(path.join(projectRoot, 'package.json')) ? loadPackageJson(projectRoot) : {};
   const workflowScriptGroups = [
     { label: 'migrate', node: 'quiver:migrate', legacy: 'migrate' },
-    { label: 'start-slice', node: 'quiver:start-slice', legacy: 'start:slice' },
-    { label: 'check-slice', node: 'quiver:check-slice', legacy: 'check:slice' },
-    { label: 'check-pr', node: 'quiver:check-pr', legacy: 'check:pr' },
-    { label: 'cleanup-slice', node: 'quiver:cleanup-slice', legacy: 'cleanup:slice' },
-    { label: 'check-scope', node: 'quiver:check-scope', legacy: 'check:scope' },
-    { label: 'refresh-active-slices', node: 'quiver:refresh-active-slices', legacy: 'refresh:active-slices' },
+    { label: 'slice start', node: 'quiver:slice:start', legacy: 'quiver:start-slice', bashLegacy: 'start:slice' },
+    { label: 'slice check', node: 'quiver:slice:check', legacy: 'quiver:check-slice', bashLegacy: 'check:slice' },
+    { label: 'slice check-pr', node: 'quiver:slice:check-pr', legacy: 'quiver:check-pr', bashLegacy: 'check:pr' },
+    { label: 'slice cleanup', node: 'quiver:slice:cleanup', legacy: 'quiver:cleanup-slice', bashLegacy: 'cleanup:slice' },
+    { label: 'slice scope', node: 'quiver:slice:scope', legacy: 'quiver:check-scope', bashLegacy: 'check:scope' },
+    { label: 'slice refresh', node: 'quiver:slice:refresh', legacy: 'quiver:refresh-active-slices', bashLegacy: 'refresh:active-slices' },
   ];
+  const hasWorkflowScript = (group) => typeof pkg.scripts?.[group.node] === 'string'
+    || typeof pkg.scripts?.[group.legacy] === 'string'
+    || (group.bashLegacy && typeof pkg.scripts?.[group.bashLegacy] === 'string');
   const missingScripts = workflowScriptGroups
-    .filter((group) => typeof pkg.scripts?.[group.node] !== 'string' && typeof pkg.scripts?.[group.legacy] !== 'string')
-    .map((group) => `${group.node} (or legacy ${group.legacy})`);
+    .filter((group) => !hasWorkflowScript(group))
+    .map((group) => `${group.node} (or legacy ${group.legacy}${group.bashLegacy ? ` / ${group.bashLegacy}` : ''})`);
   const legacyOnlyScripts = workflowScriptGroups
-    .filter((group) => typeof pkg.scripts?.[group.node] !== 'string' && typeof pkg.scripts?.[group.legacy] === 'string')
+    .filter((group) => typeof pkg.scripts?.[group.node] !== 'string' && hasWorkflowScript(group))
     .map((group) => group.label);
   const missingNodeNativeScripts = ['quiver:migrate', 'quiver:analyze', 'quiver:doctor']
     .filter((name) => typeof pkg.scripts?.[name] !== 'string');
@@ -2651,8 +2792,8 @@ function buildDoctorCommandReport(projectRoot) {
     } else if (doctorExampleTarget.source === 'generic-multiple-specs') {
       suggestedFixes.push('Example target: specs/<spec-slug>/slices/<slice-id>/slice.json (generic because no active slice is obvious)');
     }
-    suggestedFixes.push(`Start a slice: npx create-quiver start-slice specs/${projectSlug}/slices/${sliceId}/slice.json`);
-    suggestedFixes.push(`Validate a slice: npx create-quiver check-slice specs/${projectSlug}/slices/${sliceId}/slice.json`);
+    suggestedFixes.push(`Start a slice: npx create-quiver slice start specs/${projectSlug}/slices/${sliceId}/slice.json`);
+    suggestedFixes.push(`Validate a slice: npx create-quiver slice check specs/${projectSlug}/slices/${sliceId}/slice.json`);
     suggestedFixes.push(`Validate the PR gate: npx create-quiver check-pr specs/${projectSlug}/slices/${sliceId}/slice.json`);
   } else {
     suggestedFixes.push('Create real specs and slices only after acceptance criteria are approved and the technical plan is reviewed and approved.');
@@ -3069,52 +3210,17 @@ function resolveInitGeneratedLanguage(args, targetDir, initOptions = {}) {
 }
 
 function runDoctor(targetDir, options = {}) {
-  const projectRoot = resolveTargetRoot(process.cwd(), targetDir);
-
-  if (!fs.existsSync(projectRoot)) {
-    throw new Error(formatError(`target directory does not exist: ${projectRoot}`));
-  }
-
-  if (!hasQuiverInitializationEvidence(projectRoot)) {
-    throw new Error(formatError('doctor requires a project previously initialized by Quiver.\nRun init first: npx create-quiver --name "Project Name"'));
-  }
-
-  const fixPlan = buildDoctorFixPlan(projectRoot);
-  if (options.fix) {
-    if (options.dryRun) {
-      if (options.json) {
-        console.log(JSON.stringify({
-          schema_version: 1,
-          command: 'doctor fix',
-          dry_run: true,
-          fixes: fixPlan,
-        }, null, 2));
-        return;
-      }
-      console.log(formatDoctorFixPlan(fixPlan, { dryRun: true }));
-      return;
-    }
-
-    applyDoctorFixPlan(projectRoot, fixPlan);
-    if (!options.json) {
-      console.log(formatDoctorFixPlan(fixPlan));
-    }
-  }
-
-  const commandReport = buildDoctorCommandReport(projectRoot);
-  if (options.json) {
-    console.log(JSON.stringify(commandReport, null, 2));
-  } else {
-    process.stdout.write(formatDoctorHumanReport(commandReport, {
-      language: options.language,
-      noColor: options.noColor,
-      unicode: options.unicode,
-    }));
-  }
-
-  if (commandReport.exit_code !== 0) {
-    process.exitCode = commandReport.exit_code;
-  }
+  return createRunDoctor({
+    applyDoctorFixPlan,
+    buildDoctorCommandReport,
+    buildDoctorFixPlan,
+    formatDoctorFixPlan,
+    formatDoctorHumanReport,
+    formatError,
+    fs,
+    hasQuiverInitializationEvidence,
+    resolveTargetRoot,
+  })(targetDir, options);
 }
 
 function printInitNextSteps(targetDir, projectName, options = {}) {
@@ -3158,8 +3264,9 @@ async function run(argv) {
     return;
   }
 
-  const args = parseArgs(normalizedArgv, {
+  const args = parseCliArgs(normalizedArgv, {
     language: languageArgs.language,
+    legacyParseArgs: parseArgs,
   });
   args.languageResolution = languageResolution;
   args.language = args.languageResolution.language;
@@ -3179,6 +3286,12 @@ async function run(argv) {
   if (!args.json) {
     for (const warning of args.languageResolution.warnings || []) {
       process.stderr.write(`${formatLanguageWarningForCli(warning, args.language)}\n`);
+    }
+    if (args.legacyCommandWarning) {
+      process.stderr.write(`${formatDeprecatedCommandWarning(args.legacyCommandWarning)}\n`);
+    }
+    if (args.aiAliasWarning) {
+      process.stderr.write(`${formatDeprecatedCommandWarning(args.aiAliasWarning)}\n`);
     }
   }
 
@@ -3236,6 +3349,7 @@ async function run(argv) {
       command: args.configCommand,
       global: args.configGlobal,
       json: args.json,
+      language: args.language,
       languageResolution: args.languageResolution,
       section: args.configSection,
       value: args.configValue,
@@ -3259,6 +3373,7 @@ async function run(argv) {
     await runPrepare(process.cwd(), {
       dryRun: args.dryRun,
       identityFile: args.aiIdentityFile || undefined,
+      language: args.language,
       provider: args.prepareProvider || undefined,
       sshHostAlias: args.aiSshHostAlias || undefined,
     });
@@ -3267,14 +3382,15 @@ async function run(argv) {
 
   if (args.mode === 'ai') {
     if (!args.aiCommand) {
-      throw new Error(formatError('missing ai subcommand. Use: npx create-quiver ai onboard | prepare-context | run | active-slice | status | resume | inspect | export | specs | slices | models | trace | plan | revise | repair-plan | review-plan | approve | approvals | agent | prompt-slice | execute-slice | execute-plan | doctor | pr'));
+      throw new Error(formatError(translate(args.language, 'ai.error.missing_subcommand')));
     }
 
-    if (args.aiCommand === 'run') {
+    if (args.aiCommand === 'run' || args.aiCommand === 'lifecycle') {
       runAiLifecycleRun(process.cwd(), {
         command: args.aiRunCommand,
         input: args.aiInput || undefined,
         language: args.language,
+        namespace: args.aiCommand === 'lifecycle' ? 'lifecycle' : 'run',
         runId: args.aiRunId || undefined,
         specSlug: args.specSlug || undefined,
       });
@@ -3585,7 +3701,7 @@ async function run(argv) {
       return;
     }
 
-    throw new Error(formatError(`unsupported ai subcommand: ${args.aiCommand}. Supported tasks: onboard, prepare-context, run, active-slice, status, resume, inspect, export, specs, slices, models, trace, plan, revise, repair-plan, review-plan, approve, approvals, agent, prompt-slice, execute-slice, execute-plan, doctor, pr`));
+    throw new Error(formatError(translate(args.language, 'ai.error.unsupported_subcommand', { command: args.aiCommand })));
   }
 
   if (args.mode === 'graph') {
@@ -3598,6 +3714,14 @@ async function run(argv) {
       showConflicts: args.showConflicts,
       specSlug: args.specSlug,
       unicode: args.unicode,
+    });
+    return;
+  }
+
+  if (args.mode === 'status') {
+    runStatus(process.cwd(), {
+      json: args.json,
+      language: args.language,
     });
     return;
   }
@@ -3617,9 +3741,11 @@ async function run(argv) {
   if (args.mode === 'evidence') {
     const result = runEvidence(process.cwd(), {
       command: args.evidenceArgs,
+      json: args.json,
       language: args.language,
       maxOutput: args.evidenceMaxOutput || undefined,
       output: args.evidenceOutput || undefined,
+      path: args.targetDir || undefined,
       subcommand: args.evidenceCommand,
     });
     process.exitCode = result.exitCode;
@@ -3643,6 +3769,14 @@ async function run(argv) {
       dryRun: args.dryRun,
       language: args.language,
       skipInstall: args.skipInstall,
+    });
+    return;
+  }
+
+  if (args.mode === 'changelog') {
+    runChangelog({
+      json: args.json,
+      packageRoot: path.resolve(__dirname, '../..'),
     });
     return;
   }
@@ -3688,7 +3822,7 @@ async function run(argv) {
     const repoRoot = process.cwd();
     const handoffInput = args.targetDir;
     if (!handoffInput || handoffInput === '.') {
-      throw new Error(formatError('missing handoff or brief path. Use: npx create-quiver check-handoff specs/<spec-slug>/HANDOFF.md or specs/<spec-slug>/slices/<slice-id>/EXECUTION_BRIEF.md'));
+      throw new Error(formatError('missing handoff or brief path. Use: npx create-quiver handoff check specs/<spec-slug>/HANDOFF.md or specs/<spec-slug>/slices/<slice-id>/EXECUTION_BRIEF.md'));
     }
     const translator = createTranslator(args.language);
     const resolved = checkHandoff(handoffInput, repoRoot, { language: args.language });
@@ -3791,74 +3925,28 @@ async function run(argv) {
     throw new Error(formatError(`unsupported spec subcommand: ${args.specCommand}. Supported tasks: create, start, status, validate, close`));
   }
 
-  const packageRoot = path.resolve(__dirname, '../..');
-  const targetDir = resolveTargetRoot(process.cwd(), args.targetDir);
-  const projectName = args.projectName || path.basename(targetDir) || 'Quiver Project';
-  const initOptions = await resolveInteractiveInitOptions(args, targetDir, projectName);
-  if (initOptions.action === 'doctor') {
-    runDoctor(targetDir, {
-      dryRun: args.dryRun,
-      fix: false,
-      json: args.json,
-      noColor: args.noColor,
-      unicode: args.unicode,
-    });
-    return;
-  }
-  const initLanguage = resolveInitGeneratedLanguage(args, targetDir, initOptions);
-  const initLayout = buildInitLayout(targetDir, {
-    compatibilityAlias: !args.explicitInit,
-    dryRun: args.dryRun,
-    full: initOptions.full,
-    includeTemplates: initOptions.includeTemplates,
-    language: initLanguage.configLanguage,
-    legacyScripts: initOptions.legacyScripts,
-    minimal: initOptions.minimal,
-    projectName: initOptions.projectName,
-    skipInstall: args.skipInstall,
-  });
-
-  if (args.dryRun) {
-    console.log(formatInitLayoutPlan(initLayout));
-    return;
-  }
-
-  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'quiver-create-'));
-
-  try {
-    ensureDir(targetDir);
-
-    const templateRoot = packTemplate(packageRoot, tempRoot);
-    if (initLayout.profile === 'full') {
-      exportTemplatesToLegacyRoot(templateRoot, targetDir);
-    }
-    runInitDocs(targetDir, initOptions.projectName, {
-      includeTemplates: initOptions.includeTemplates,
-      language: initLanguage.docsLanguage,
-      legacyScripts: initOptions.legacyScripts,
-      profile: initLayout.profile,
-      templateRoot,
-    });
-    const languageWrite = persistInitLanguage(targetDir, { language: initLanguage.configLanguage });
-
-    if (!args.skipInstall) {
-      const installResult = installSelfAsDevDep(targetDir, CLI_VERSION);
-      if (installResult === 'installed') {
-        console.log(`Added create-quiver@${CLI_VERSION} as dev dependency`);
-      } else if (installResult === 'failed') {
-        console.warn(`Warning: could not install create-quiver automatically. Run: ${formatInstallSelfCommand(targetDir, CLI_VERSION)}`);
-      }
-    }
-
-    const translator = createTranslator(args.language);
-    console.log(translator.t('init.installed', { path: targetDir }));
-    if (languageWrite) {
-      console.log(translator.t('init.language.saved', { language: languageWrite.language }));
-    }
-    printInitNextSteps(targetDir, initOptions.projectName, { language: args.language });
-  } finally {
-    fs.rmSync(tempRoot, { recursive: true, force: true });
-  }
+  await createRunInit({
+    buildInitLayout,
+    CLI_VERSION,
+    createTranslator,
+    ensureDir,
+    exportTemplatesToLegacyRoot,
+    formatInitLayoutPlan,
+    formatInstallSelfCommand,
+    fs,
+    installSelfAsDevDep,
+    os,
+    packageRoot: path.resolve(__dirname, '../..'),
+    packTemplate,
+    path,
+    persistInitLanguage,
+    printInitNextSteps,
+    resolveInitGeneratedLanguage,
+    resolveInteractiveInitOptions,
+    resolveTargetRoot,
+    runDoctor,
+    runInitDocs,
+  })(args);
 }
 
 module.exports = {

@@ -9,6 +9,67 @@ const matrixPath = path.join(
   repoRoot,
   'specs/quiver-v43-cli-i18n-audit-release-readiness/command-language-mode-matrix.json',
 );
+const hardcodedCommandErrorFiles = [
+  'src/create-quiver/index.js',
+  'src/create-quiver/commands/config.js',
+  'src/create-quiver/commands/evidence.js',
+  'src/create-quiver/commands/spec.js',
+  'src/create-quiver/commands/graph.js',
+  'src/create-quiver/commands/prepare.js',
+  'src/create-quiver/commands/ai.js',
+];
+const hardcodedCommandErrorAllowlist = [
+  {
+    file: 'src/create-quiver/index.js',
+    pattern: /formatError\('(?:missing|invalid) value for --[a-z-]+'\)/,
+    reason: 'Generic parser flag errors are localized by localizeParserMessage before rendering.',
+  },
+  {
+    file: 'src/create-quiver/index.js',
+    pattern: /formatError\(`unknown flag: \$\{arg\}`\)/,
+    reason: 'Generic unknown-flag errors are localized by localizeParserMessage before rendering.',
+  },
+  {
+    file: 'src/create-quiver/index.js',
+    pattern: /formatError\('(?:missing language for config language set|config language show does not accept a language value|--global is only supported by config language set|missing evidence subcommand|evidence run does not accept positional arguments before --|missing spec subcommand|spec create does not accept positional arguments|missing spec directory\. Use: npx create-quiver spec|prepare does not accept positional arguments|missing slice subcommand|missing handoff subcommand|missing handoff or brief path)/,
+    reason: 'Targeted parser command errors are localized by localizeParserMessage exact-message mappings.',
+  },
+  {
+    file: 'src/create-quiver/index.js',
+    pattern: /formatError\(`unsupported (?:config|evidence|ai|slice|handoff)/,
+    reason: 'Targeted parser command errors are localized by localizeParserMessage regex mappings.',
+  },
+  {
+    file: 'src/create-quiver/index.js',
+    pattern: /formatError\('(?:plan|flow|version|dashboard|ai|refresh-active-slices|demo|missing demo|too many)/,
+    reason: 'Out of slice-01 targeted command set; covered by existing parser tests or future slices.',
+  },
+  {
+    file: 'src/create-quiver/index.js',
+    pattern: /formatError\(`(?:unsupported demo|pack output not found|docs-template already exists|missing package\.json|target directory does not exist|unsupported methodology|unsupported spec subcommand|\$\{requestedDashboardFlags)/,
+    reason: 'Out of slice-01 targeted command set; owned by demo, init, migrate, doctor, or later namespace slices.',
+  },
+  {
+    file: 'src/create-quiver/index.js',
+    pattern: /formatError\('(?:migrate|init|doctor|missing handoff)/,
+    reason: 'Write-command and handoff namespace messages are owned by later v46 slices.',
+  },
+  {
+    file: 'src/create-quiver/commands/spec.js',
+    pattern: /formatError\('spec create --interactive requires an interactive TTY/,
+    reason: 'Accepted temporary exception; review/create errors are localized where user-facing review artifacts are emitted.',
+  },
+  {
+    file: 'src/create-quiver/commands/ai.js',
+    pattern: /formatError\('(?:ai repair-plan requires an approved technical-plan artifact|approved technical-plan already includes a valid structured)/,
+    reason: 'AI repair-plan deep workflow errors are deferred to v48 AI command modularization.',
+  },
+  {
+    file: 'src/create-quiver/commands/ai.js',
+    pattern: /formatError\(`(?:missing input file|invalid timeout value|ai revise --phase|missing \$\{phase\} draft|\$\{phase\} draft version|ai repair-plan input must match|missing feedback input file for ai revise phase|missing input file for ai plan phase)/,
+    reason: 'AI planner deep workflow errors are deferred to v48 AI command modularization.',
+  },
+];
 
 function documentedCommands() {
   const text = fs.readFileSync(referencePath, 'utf8');
@@ -68,4 +129,27 @@ test('v43 i18n audit matrix records actionable mode and exception status', () =>
     assert.ok(exception.reason);
     assert.ok(exception.follow_up);
   }
+});
+
+test('command error audit blocks new non-allowlisted hardcoded errors', () => {
+  const offenders = [];
+
+  for (const relativeFile of hardcodedCommandErrorFiles) {
+    const text = fs.readFileSync(path.join(repoRoot, relativeFile), 'utf8');
+    const lines = text.split('\n');
+    lines.forEach((line, index) => {
+      const trimmed = line.trim();
+      const suspicious = /throw new Error\(formatError\((['"`])/.test(trimmed)
+        || /throw new Error\((['"`])create-quiver:/.test(trimmed);
+      if (!suspicious || trimmed.includes('translator.t(') || trimmed.includes('createTranslator(') || trimmed.includes('formatCatalogError(')) {
+        return;
+      }
+      const allowed = hardcodedCommandErrorAllowlist.some((entry) => entry.file === relativeFile && entry.pattern.test(trimmed));
+      if (!allowed) {
+        offenders.push(`${relativeFile}:${index + 1}: ${trimmed}`);
+      }
+    });
+  }
+
+  assert.deepEqual(offenders, []);
 });

@@ -117,7 +117,7 @@ npm run quiver:spec:close -- specs/{{PROJECT_SLUG}} --dry-run
 4. Actualiza `docs/STATUS.md` con el estado inicial, dudas abiertas y próximos pasos.
 5. Si hace falta, refina `specs/{{PROJECT_SLUG}}/SPEC.md` solo para alinear la spec de onboarding con la realidad observada.
 6. Si existe un handoff, trátalo como brief de transferencia y valida que aplique al trabajo solicitado.
-7. Si no existe un handoff y el trabajo necesita uno, créalo con `npx create-quiver new-handoff <spec-slug>` y valídalo con `npx create-quiver check-handoff specs/<spec-slug>/HANDOFF.md`.
+7. Si no existe un handoff y el trabajo necesita uno, créalo con `npx create-quiver handoff create <spec-slug>` y valídalo con `npx create-quiver handoff check specs/<spec-slug>/HANDOFF.md`.
 8. Registra los archivos inspeccionados, los archivos modificados y las suposiciones realizadas.
 9. Cuando prepares contexto, marca las incertidumbres como `TODO`, `Assumption` o `Pending confirmation` y evita tocar código de producto.
 10. Cuando configures perfiles de agentes, usa `model` para el identificador técnico que se pasa al proveedor y `displayName` para el nombre humano mostrado por Quiver.

@@ -1,0 +1,57 @@
+{
+  "slice_id": "slice-00-loop-closure-foundation",
+  "ticket": "QUIVER-47-00",
+  "type": "documentation",
+  "title": "Loop closure foundation",
+  "objective": "Define command contracts and implementation boundaries for v47 loop-closure commands.",
+  "description": "Prepares v47 without runtime implementation and records overlap with v46 compatibility work.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v47-loop-closure-foundation",
+    "branch_name": "feature/QUIVER-47-00-v47-loop-closure-foundation"
+  },
+  "files": [
+    "specs/quiver-v47-cli-loop-closure-commands/**"
+  ],
+  "expected_read_paths": [
+    "CLI_ANALYSIS.md",
+    "specs/quiver-v46-cli-surface-ergonomics/SPEC.md",
+    "src/create-quiver/index.js",
+    "src/create-quiver/commands/evidence.js",
+    "src/create-quiver/commands/demo.js",
+    "src/create-quiver/commands/flow.js",
+    "src/create-quiver/commands/dashboard.js"
+  ],
+  "allowed_write_paths": [
+    "specs/quiver-v47-cli-loop-closure-commands/**"
+  ],
+  "depends_on": [],
+  "parallel_safe": "no",
+  "parallel_safe_reason": "Foundation clarifies contracts for all v47 command additions.",
+  "must": [
+    "Document exact command contracts for status, evidence list/show, changelog, demo spec-viewer, and config decision.",
+    "Record dependencies on v46 deprecation conventions.",
+    "Do not modify runtime code."
+  ],
+  "not_included": [
+    "Runtime implementation."
+  ],
+  "acceptance": [
+    "v47 command contracts are explicit.",
+    "Overlap with v46 is documented.",
+    "Implementation is deferred to later slices."
+  ],
+  "tests": [
+    "git diff --check",
+    "node bin/create-quiver.js spec validate specs/quiver-v47-cli-loop-closure-commands"
+  ],
+  "validation_hints": [
+    "Keep status read-only and evidence show path-safe."
+  ],
+  "estimated_hours": 1,
+  "actual_hours": 1,
+  "status": "completed",
+  "completed_at": "2026-05-31T20:38:39-0300",
+  "blocked_reason": null
+}

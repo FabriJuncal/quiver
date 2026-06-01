@@ -1,0 +1,68 @@
+{
+  "slice_id": "slice-06-docs-tests-release-readiness",
+  "ticket": "QUIVER-48-06",
+  "type": "test",
+  "title": "Docs tests and release readiness",
+  "objective": "Complete validation and documentation for v48 AI modularization.",
+  "description": "Runs full validation, package smoke, and updates evidence/status after AI modularization.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v48-docs-tests-release-readiness",
+    "branch_name": "feature/QUIVER-48-06-v48-docs-tests-release-readiness"
+  },
+  "files": [
+    "docs/reference/commands.md",
+    "README_FOR_AI.md",
+    "tests/commands/**",
+    "scripts/ci/**",
+    "specs/quiver-v48-ai-command-modularization/**"
+  ],
+  "expected_read_paths": [
+    "specs/quiver-v48-ai-command-modularization/SPEC.md",
+    "specs/quiver-v48-ai-command-modularization/slices/*/CLOSURE_BRIEF.md"
+  ],
+  "allowed_write_paths": [
+    "docs/**",
+    "README_FOR_AI.md",
+    "tests/**",
+    "scripts/ci/**",
+    "specs/quiver-v48-ai-command-modularization/**"
+  ],
+  "depends_on": [
+    "slice-04-ai-domain-module-split",
+    "slice-05-ai-help-advanced-surface"
+  ],
+  "parallel_safe": "no",
+  "parallel_safe_reason": "Final validation depends on module split and help updates.",
+  "must": [
+    "Run focused AI tests.",
+    "Run full tests.",
+    "Run package-installed AI help/alias smoke.",
+    "Update docs and evidence."
+  ],
+  "not_included": [
+    "Parser modernization.",
+    "Provider behavior changes."
+  ],
+  "acceptance": [
+    "Docs match AI command behavior.",
+    "Focused and full tests pass.",
+    "Package-installed smoke covers AI help and aliases.",
+    "Status and evidence are updated."
+  ],
+  "tests": [
+    "node --test",
+    "npm run package:quiver",
+    "git diff --check",
+    "node bin/create-quiver.js spec validate specs/quiver-v48-ai-command-modularization"
+  ],
+  "validation_hints": [
+    "Use dry-run/provider-free commands for smoke."
+  ],
+  "estimated_hours": 4,
+  "status": "completed",
+  "blocked_reason": null,
+  "actual_hours": 4,
+  "completed_at": "2026-05-31T22:48:58-0300"
+}

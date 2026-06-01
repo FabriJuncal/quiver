@@ -165,6 +165,10 @@ test('ai export rejects unsupported formats with a clear error', () => {
       () => execAi(repo.root, ['export', '--format', 'xml']),
       /unsupported ai export format: xml/,
     );
+    assert.throws(
+      () => execCli(repo.root, ['--lang', 'es', 'ai', 'export', '--format', 'xml']),
+      /formato ai export no soportado: xml/,
+    );
   } finally {
     repo.cleanup();
   }
@@ -235,6 +239,10 @@ test('ai active-slice reconcile requires dry-run before writes exist', () => {
     assert.throws(
       () => execAi(repo.root, ['active-slice', 'reconcile']),
       /ai active-slice reconcile is dry-run first/,
+    );
+    assert.throws(
+      () => execCli(repo.root, ['--lang', 'es', 'ai', 'active-slice', 'reconcile']),
+      /ai active-slice reconcile es dry-run-first/,
     );
   } finally {
     repo.cleanup();

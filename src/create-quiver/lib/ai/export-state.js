@@ -323,7 +323,7 @@ function collectNextSteps(data) {
   } else {
     commands.push({
       id: activeRun ? 'continue-active-run' : 'create-ai-run',
-      command: activeRun ? activeRun.next_command : 'npx create-quiver ai run create --input <requirements.md>',
+      command: activeRun ? activeRun.next_command : 'npx create-quiver ai lifecycle create --input <requirements.md>',
       reason: activeRun ? `Continue AI run ${activeRun.run_id}.` : 'Start a new AI lifecycle run.',
     });
   }

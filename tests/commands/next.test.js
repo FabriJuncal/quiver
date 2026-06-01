@@ -27,6 +27,22 @@ function makeRepo(structure) {
   };
 }
 
+function snapshotFiles(root) {
+  const files = [];
+  const walk = (dirPath) => {
+    for (const entry of fs.readdirSync(dirPath, { withFileTypes: true })) {
+      const fullPath = path.join(dirPath, entry.name);
+      if (entry.isDirectory()) {
+        walk(fullPath);
+      } else {
+        files.push(path.relative(root, fullPath).split(path.sep).join('/'));
+      }
+    }
+  };
+  walk(root);
+  return files.sort();
+}
+
 function slice(ref, files, extra = {}) {
   const [, sliceId] = ref.split('/');
   return {
@@ -119,6 +135,7 @@ test('next CLI prints the top ready slice and the copy-paste command', () => {
     assert.ok(output.includes('Next ready slice'));
     assert.ok(output.includes('spec-a/slice-01-alpha'));
     assert.ok(output.includes('npx create-quiver start-slice "specs/spec-a/slices/slice-01-alpha/slice.json"'));
+    assert.ok(output.includes('Also ready: 1 more. Run: npx create-quiver next --all-ready'));
     assert.ok(!output.includes('spec-b/slice-01-delta\nStart:'));
   } finally {
     repo.cleanup();
@@ -134,6 +151,7 @@ test('next CLI localizes human output while preserving start command', () => {
     assert.ok(output.includes('Titulo: slice-01-alpha'));
     assert.ok(output.includes('Estado: draft'));
     assert.ok(output.includes('Iniciar: npx create-quiver start-slice "specs/spec-a/slices/slice-01-alpha/slice.json"'));
+    assert.ok(output.includes('Tambien listo: 1 mas. Ejecuta: npx create-quiver next --all-ready'));
   } finally {
     repo.cleanup();
   }
@@ -204,6 +222,21 @@ test('next formatter keeps the ready slice command visible', () => {
     const report = collectNext(repo.root);
     const output = formatHumanNext(report);
     assert.ok(output.includes('Start: npx create-quiver start-slice "specs/spec-a/slices/slice-01-alpha/slice.json"'));
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('next CLI is read-only unless auto-start is explicitly requested', () => {
+  const repo = nextFixture();
+  try {
+    const before = snapshotFiles(repo.root);
+    execNext(repo.root);
+    execNext(repo.root, ['--json']);
+    execNext(repo.root, ['--all-ready']);
+    const after = snapshotFiles(repo.root);
+
+    assert.deepEqual(after, before);
   } finally {
     repo.cleanup();
   }

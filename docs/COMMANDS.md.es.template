@@ -13,12 +13,25 @@ Este documento resume los comandos principales del workflow Quiver. Los comandos
 | `npx create-quiver init --interactive` | Guia modo de proyecto, metodologia, perfil e idioma | `npx create-quiver init --interactive` |
 | `npx create-quiver analyze` | Genera mapa visible del proyecto y scan interno | `npx create-quiver analyze` |
 | `npx create-quiver flow` | Muestra el proximo paso seguro | `npx create-quiver flow` |
+| `npx create-quiver status` | Muestra estado compacto read-only y proximo comando seguro | `npx create-quiver status --json` |
 | `npx create-quiver dashboard` | Resume specs, slices, runs, agentes y aprobaciones | `npx create-quiver dashboard` |
+| `npx create-quiver changelog` | Muestra cambios locales de contrato/version sin red | `npx create-quiver changelog --json` |
+| `npx create-quiver evidence list` | Lista evidencia local en orden estable | `npx create-quiver evidence list` |
+| `npx create-quiver evidence show <path.md>` | Muestra un artefacto seguro de evidencia | `npx create-quiver evidence show .quiver/evidence/evidence.md` |
 | `npx create-quiver ai agent set planner --provider <provider> --model <model>` | Configura el perfil del planner sin guardar credenciales | `npx create-quiver ai agent set planner --provider codex --model gpt-5.5 --dry-run` |
 | `npx create-quiver ai plan --phase acceptance --input <requirements.md>` | Genera criterios de aceptacion para aprobar | `npx create-quiver ai plan --phase acceptance --input requirements.md --dry-run` |
 | `npx create-quiver ai review-plan` | Revisa el plan tecnico antes de aprobarlo | `npx create-quiver ai review-plan --dry-run` |
 | `npx create-quiver spec create` | Crea el paquete de spec desde un plan tecnico aprobado | `npx create-quiver spec create --dry-run` |
 | `npx create-quiver spec validate <spec>` | Valida estructura y handoffs del spec | `npx create-quiver spec validate specs/<spec> --strict` |
+| `npx create-quiver slice start <slice.json>` | Inicia un slice y lo marca activo | `npx create-quiver slice start specs/<spec>/slices/<slice>/slice.json` |
+| `npx create-quiver slice check <slice.json>` | Valida estructura, dependencias y readiness del slice | `npx create-quiver slice check specs/<spec>/slices/<slice>/slice.json` |
+| `npx create-quiver slice check-pr <slice.json>` | Valida readiness de PR para el workflow spec/slice | `npx create-quiver slice check-pr specs/<spec>/slices/<slice>/slice.json` |
+| `npx create-quiver slice scope <slice.json>` | Compara archivos modificados contra el alcance del slice | `npx create-quiver slice scope specs/<spec>/slices/<slice>/slice.json` |
+| `npx create-quiver slice cleanup <slice.json>` | Limpia estado activo del slice | `npx create-quiver slice cleanup specs/<spec>/slices/<slice>/slice.json` |
+| `npx create-quiver slice refresh` | Refresca tableros generados de active-slice | `npx create-quiver slice refresh` |
+| `npx create-quiver handoff check <path.md>` | Valida un handoff o brief de slice | `npx create-quiver handoff check specs/<spec>/HANDOFF.md` |
+| `npx create-quiver handoff create <spec-slug>` | Crea un scaffold de handoff excepcional | `npx create-quiver handoff create <spec-slug>` |
+| `npx create-quiver demo spec-viewer --dry-run` | Previsualiza el demo Quiver Spec Viewer | `npx create-quiver demo spec-viewer --dry-run` |
 
 ## Reglas
 
@@ -26,3 +39,4 @@ Este documento resume los comandos principales del workflow Quiver. Los comandos
 - Usa `--json` solo para automatizacion.
 - Configura idioma con `npx create-quiver config language set es` o `--lang es`.
 - Los artefactos machine-readable no se traducen.
+- Los comandos legacy `start-slice`, `check-slice`, `check-pr`, `check-scope`, `cleanup-slice`, `refresh-active-slices`, `check-handoff` y `new-handoff` siguen funcionando como aliases de compatibilidad. En modo humano advierten por `stderr`; no deben contaminar `stdout` JSON.

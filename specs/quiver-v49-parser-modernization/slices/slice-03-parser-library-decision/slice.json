@@ -1,0 +1,58 @@
+{
+  "slice_id": "slice-03-parser-library-decision",
+  "ticket": "QUIVER-49-03",
+  "type": "documentation",
+  "title": "Parser library decision",
+  "objective": "Choose Commander.js, yargs, or internal declarative parser with production rationale.",
+  "description": "Records the parser migration decision after inventory and golden tests exist.",
+  "git": {
+    "branch_type": "docs",
+    "base_branch": "main",
+    "branch_slug": "v49-parser-library-decision",
+    "branch_name": "docs/QUIVER-49-03-v49-parser-library-decision"
+  },
+  "files": [
+    "specs/quiver-v49-parser-modernization/parser-decision.md",
+    "specs/quiver-v49-parser-modernization/SPEC.md"
+  ],
+  "expected_read_paths": [
+    "specs/quiver-v49-parser-modernization/command-flag-registry.md",
+    "tests/commands/parser-contract.test.js",
+    "package.json"
+  ],
+  "allowed_write_paths": [
+    "specs/quiver-v49-parser-modernization/**"
+  ],
+  "depends_on": [
+    "slice-02-parser-golden-contract-suite"
+  ],
+  "parallel_safe": "no",
+  "parallel_safe_reason": "Decision must be based on complete inventory and golden tests.",
+  "must": [
+    "Compare Commander.js, yargs, and internal declarative parser.",
+    "Include dependency, bundle, help, alias, i18n, and JSON-error implications.",
+    "Choose one path with rationale.",
+    "Do not modify runtime parser."
+  ],
+  "not_included": [
+    "Installing dependencies.",
+    "Migrating parser."
+  ],
+  "acceptance": [
+    "Decision record exists.",
+    "Tradeoffs are explicit.",
+    "Chosen path preserves compatibility guardrails."
+  ],
+  "tests": [
+    "git diff --check",
+    "node bin/create-quiver.js spec validate specs/quiver-v49-parser-modernization"
+  ],
+  "validation_hints": [
+    "If external dependency is chosen, document package-lock and package-size implications."
+  ],
+  "estimated_hours": 3,
+  "status": "completed",
+  "blocked_reason": null,
+  "actual_hours": 2,
+  "completed_at": "2026-06-01T00:42:00-0300"
+}

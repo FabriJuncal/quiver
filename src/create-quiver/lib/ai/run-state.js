@@ -299,7 +299,7 @@ function recordAiRunApproval(projectRoot, runId, approval) {
 
 function assertAiRunPhaseAllows(run, requiredPhase, commandName) {
   if (!run) {
-    throw new Error(formatError(`cannot run ${commandName}: no AI run exists. Next: npx create-quiver ai run create --input <requirements.md>`));
+    throw new Error(formatError(`cannot run ${commandName}: no AI run exists. Next: npx create-quiver ai lifecycle create --input <requirements.md>`));
   }
   assertKnownPhase(requiredPhase);
 
@@ -371,7 +371,7 @@ function formatAiRunStatus(projectRoot, run, options = {}) {
     return [
       translator.t('ai.run.status.title'),
       `${translator.t('ai.run.status')}: ${translator.t('ai.run.status.no_active')}`,
-      `${translator.t('ai.label.next_safe_command')}: npx create-quiver ai run create --input <requirements.md>`,
+      `${translator.t('ai.label.next_safe_command')}: npx create-quiver ai lifecycle create --input <requirements.md>`,
       '',
     ].join('\n');
   }
@@ -411,7 +411,7 @@ function formatAiRunResume(projectRoot, run, options = {}) {
     return [
       translator.t('ai.run.resume.title'),
       translator.t('ai.run.resume.no_active'),
-      `${translator.t('ai.label.next_safe_command')}: npx create-quiver ai run create --input <requirements.md>`,
+      `${translator.t('ai.label.next_safe_command')}: npx create-quiver ai lifecycle create --input <requirements.md>`,
       '',
     ].join('\n');
   }

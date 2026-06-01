@@ -1,0 +1,71 @@
+{
+  "slice_id": "slice-03-changelog-contract",
+  "ticket": "QUIVER-47-03",
+  "type": "feature",
+  "title": "Changelog contract",
+  "objective": "Add a local changelog surface and connect migrate guidance to it.",
+  "description": "Implements `changelog` without network access and updates migration guidance.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v47-changelog-contract",
+    "branch_name": "feature/QUIVER-47-03-v47-changelog-contract"
+  },
+  "files": [
+    "src/create-quiver/index.js",
+    "src/create-quiver/commands/changelog.js",
+    "src/create-quiver/lib/i18n/messages/en.js",
+    "src/create-quiver/lib/i18n/messages/es.js",
+    "tests/commands/changelog.test.js",
+    "tests/commands/cli-contract.test.js",
+    "tests/commands/init-profiles.test.js",
+    "tests/lib/i18n-catalog.test.js",
+    "tests/commands/i18n-audit-matrix.test.js"
+  ],
+  "expected_read_paths": [
+    "CHANGELOG.md",
+    "specs/quiver-v47-cli-loop-closure-commands/SPEC.md"
+  ],
+  "allowed_write_paths": [
+    "src/create-quiver/**",
+    "tests/**",
+    "docs/**",
+    "specs/quiver-v47-cli-loop-closure-commands/**"
+  ],
+  "depends_on": [
+    "slice-00-loop-closure-foundation"
+  ],
+  "parallel_safe": "yes",
+  "parallel_safe_reason": "Changelog surface is independent from status and evidence browsing.",
+  "must": [
+    "Add `changelog` backed by local content.",
+    "Avoid network access.",
+    "Update migrate help/guidance to reference changelog or preview guidance."
+  ],
+  "not_included": [
+    "Remote changelog fetch.",
+    "Changing migration semantics."
+  ],
+  "acceptance": [
+    "changelog outputs local contract/version information.",
+    "migrate guidance points users to preview or changelog.",
+    "No network access is required.",
+    "Tests cover missing or malformed local changelog behavior."
+  ],
+  "tests": [
+    "node --test tests/commands/changelog.test.js",
+    "node --test tests/commands/cli-contract.test.js",
+    "node --test tests/commands/init-profiles.test.js",
+    "node --test tests/lib/i18n-catalog.test.js",
+    "node --test tests/commands/i18n-audit-matrix.test.js",
+    "git diff --check"
+  ],
+  "validation_hints": [
+    "Keep output useful outside initialized projects."
+  ],
+  "estimated_hours": 4,
+  "actual_hours": 3,
+  "status": "completed",
+  "completed_at": "2026-05-31T22:24:43-0300",
+  "blocked_reason": null
+}

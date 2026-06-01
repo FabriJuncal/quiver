@@ -1,0 +1,62 @@
+{
+  "slice_id": "slice-00-cli-surface-baseline-and-delta",
+  "ticket": "QUIVER-46-00",
+  "type": "documentation",
+  "title": "CLI surface baseline and delta",
+  "objective": "Create a current-state matrix before runtime implementation so v46 only changes missing or partial behavior.",
+  "description": "Audits approved criteria against the repository state and assigns every gap to a concrete slice.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v46-cli-surface-baseline-delta",
+    "branch_name": "feature/QUIVER-46-00-v46-cli-surface-baseline-delta"
+  },
+  "files": [
+    "specs/quiver-v46-cli-surface-ergonomics/**"
+  ],
+  "expected_read_paths": [
+    "CLI_ANALYSIS.md",
+    "specs/quiver-v35-compact-dashboard-version-ux/SPEC.md",
+    "specs/quiver-v37-cli-i18n-foundation/SPEC.md",
+    "specs/quiver-v43-cli-i18n-audit-release-readiness/SPEC.md",
+    "src/create-quiver/index.js",
+    "src/create-quiver/commands/**",
+    "tests/commands/**"
+  ],
+  "allowed_write_paths": [
+    "specs/quiver-v46-cli-surface-ergonomics/**"
+  ],
+  "depends_on": [],
+  "parallel_safe": "no",
+  "parallel_safe_reason": "The baseline controls scope for all later v46 implementation slices.",
+  "must": [
+    "Create a baseline/delta matrix with status values present, partial, missing, or regression-risk.",
+    "Attach evidence paths for each criterion.",
+    "Assign every non-present criterion to a v46 slice.",
+    "Do not change runtime code."
+  ],
+  "not_included": [
+    "Runtime implementation.",
+    "Changing approved criteria.",
+    "Creating v47-v49 implementation changes."
+  ],
+  "acceptance": [
+    "Baseline matrix exists in the v46 spec package.",
+    "Every approved v46 criterion is classified.",
+    "Every gap has an owning slice.",
+    "Matrix distinguishes already implemented behavior from missing work."
+  ],
+  "tests": [
+    "git diff --check",
+    "node bin/create-quiver.js spec validate specs/quiver-v46-cli-surface-ergonomics"
+  ],
+  "validation_hints": [
+    "Use existing tests as evidence where possible.",
+    "Do not trust CLI_ANALYSIS.md if repo evidence contradicts it."
+  ],
+  "estimated_hours": 2,
+  "actual_hours": 2,
+  "status": "completed",
+  "blocked_reason": null,
+  "completed_at": "2026-05-31T19:29:27-0300"
+}

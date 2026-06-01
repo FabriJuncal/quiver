@@ -20,22 +20,28 @@ function formatError(message) {
   return `create-quiver: ${message}`;
 }
 
+function formatCatalogError(options = {}, key, params = {}) {
+  return formatError(createTranslator(options.language).t(key, params));
+}
+
 function toRelativePosix(root, filePath) {
   return path.relative(root, filePath).split(path.sep).join('/');
 }
 
-function readInputText(repoRoot, inputPath) {
+function readInputText(repoRoot, inputPath, options = {}) {
   const resolved = path.resolve(repoRoot, inputPath || '');
   if (!inputPath || !fs.existsSync(resolved)) {
-    throw new Error(formatError(`missing reviewed and approved plan input: ${inputPath || '<default>'}`));
+    throw new Error(formatCatalogError(options, 'spec.error.missing_approved_input', {
+      path: inputPath || '<default>',
+    }));
   }
   return fs.readFileSync(resolved, 'utf8');
 }
 
-function resolveSpecDir(repoRoot, specInput) {
+function resolveSpecDir(repoRoot, specInput, options = {}) {
   const value = String(specInput || '').trim();
   if (!value) {
-    throw new Error(formatError('missing spec directory. Use: npx create-quiver spec validate specs/<spec-slug>'));
+    throw new Error(formatCatalogError(options, 'spec.error.missing_dir'));
   }
 
   const candidates = [
@@ -51,7 +57,7 @@ function resolveSpecDir(repoRoot, specInput) {
     }
   }
 
-  throw new Error(formatError(`spec directory not found: ${value}`));
+  throw new Error(formatCatalogError(options, 'spec.error.dir_not_found', { path: value }));
 }
 
 function findSliceJsonFiles(specDir) {
@@ -142,7 +148,7 @@ function missingGitFields(git) {
 
 function buildSpecValidationReport(repoRoot, specInput, options = {}) {
   const strict = options.strict === true;
-  const specDir = resolveSpecDir(repoRoot, specInput);
+  const specDir = resolveSpecDir(repoRoot, specInput, options);
   const relativeSpecDir = toRelativePosix(repoRoot, specDir);
   const specSlug = path.basename(specDir);
   const errors = [];
@@ -310,7 +316,7 @@ function runValidateSpec(repoRoot, specInput, options = {}) {
   process.stdout.write(formatSpecValidationReport(report, options));
 
   if (!report.ok) {
-    const error = new Error(formatError(`spec validate failed for ${report.specDir}`));
+    const error = new Error(formatCatalogError(options, 'spec.error.validate_failed', { path: report.specDir }));
     error.code = 'SPEC_VALIDATE_FAILED';
     error.details = report;
     throw error;
@@ -322,7 +328,7 @@ function runValidateSpec(repoRoot, specInput, options = {}) {
 function buildSpecCreatePreview(repoRoot, options = {}) {
   const resolved = resolveReviewedTechnicalPlanInput(repoRoot, options.input || undefined);
   const inputPath = resolved.inputPath;
-  const inputText = readInputText(repoRoot, inputPath);
+  const inputText = readInputText(repoRoot, inputPath, options);
   const manifest = buildSpecGenerationManifest({
     inputPath,
     inputText,
@@ -333,7 +339,7 @@ function buildSpecCreatePreview(repoRoot, options = {}) {
   const relativeSpecDir = toRelativePosix(repoRoot, preview.specDir);
 
   if (fs.existsSync(preview.specDir)) {
-    throw new Error(formatError(`spec directory already exists: ${relativeSpecDir}`));
+    throw new Error(formatCatalogError(options, 'spec.error.dir_exists', { path: relativeSpecDir }));
   }
 
   return {
@@ -528,7 +534,7 @@ async function confirmSpecCreate(message, options = {}) {
   });
   const confirmed = await ux.promptConfirm(message, { initialValue: false });
   if (!confirmed) {
-    throw new Error(formatError('spec create interactive approval declined. No files were written.'));
+    throw new Error(formatCatalogError(options, 'spec.error.create_declined'));
   }
 }
 
@@ -542,7 +548,7 @@ async function reviewSpecCreatePreview(repoRoot, preview, options = {}) {
   const canOpenEditor = hasEditorRunner || options.stdinIsTTY === true || (options.stdinIsTTY !== false && Boolean(process.stdin.isTTY));
 
   if (!canOpenEditor) {
-    throw new Error(formatError(`spec create --review requires an interactive terminal or an injected editor runner.\nReview artifact: ${reviewPath}`));
+    throw new Error(formatCatalogError(options, 'spec.error.review_requires_tty', { path: reviewPath }));
   }
 
   const editorResult = hasEditorRunner
@@ -550,7 +556,10 @@ async function reviewSpecCreatePreview(repoRoot, preview, options = {}) {
     : openEditor(reviewPath, { cwd: repoRoot, env: options.env || process.env });
 
   if (!editorResult || editorResult.ok !== true) {
-    throw new Error(formatError(`${editorResult?.reason || 'spec create review was canceled.'}\nReview artifact: ${reviewPath}`));
+    throw new Error(formatCatalogError(options, 'spec.error.review_canceled', {
+      path: reviewPath,
+      reason: editorResult?.reason || 'spec create review was canceled.',
+    }));
   }
 
   return reviewPath;

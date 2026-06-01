@@ -1,0 +1,62 @@
+{
+  "slice_id": "slice-02-parser-golden-contract-suite",
+  "ticket": "QUIVER-49-02",
+  "type": "test",
+  "title": "Parser golden contract suite",
+  "objective": "Capture current parser behavior before modernization.",
+  "description": "Adds golden tests for global flags, command-scoped flags, aliases, positional errors, and separator behavior.",
+  "git": {
+    "branch_type": "test",
+    "base_branch": "main",
+    "branch_slug": "v49-parser-golden-contract",
+    "branch_name": "test/QUIVER-49-02-v49-parser-golden-contract"
+  },
+  "files": [
+    "tests/commands/parser-contract.test.js",
+    "tests/commands/cli-contract.test.js",
+    "specs/quiver-v49-parser-modernization/**"
+  ],
+  "expected_read_paths": [
+    "specs/quiver-v49-parser-modernization/command-flag-registry.md",
+    "src/create-quiver/index.js",
+    "tests/commands/cli-contract.test.js"
+  ],
+  "allowed_write_paths": [
+    "tests/**",
+    "specs/quiver-v49-parser-modernization/**"
+  ],
+  "depends_on": [
+    "slice-01-command-flag-registry-inventory"
+  ],
+  "parallel_safe": "no",
+  "parallel_safe_reason": "Golden suite must reflect the completed registry.",
+  "must": [
+    "Cover --lang before and after commands.",
+    "Cover --version and -V.",
+    "Cover -- separator behavior.",
+    "Cover aliases, missing values, unknown flags, and positional errors.",
+    "Do not modify runtime code."
+  ],
+  "not_included": [
+    "Parser migration.",
+    "Help scoping changes."
+  ],
+  "acceptance": [
+    "Golden tests pass against current parser.",
+    "Tests cover registry-critical behavior.",
+    "No runtime code is changed."
+  ],
+  "tests": [
+    "node --test tests/commands/parser-contract.test.js",
+    "node --test tests/commands/cli-contract.test.js",
+    "git diff --check"
+  ],
+  "validation_hints": [
+    "Use spawnSync when stdout/stderr and exit codes matter."
+  ],
+  "estimated_hours": 5,
+  "status": "completed",
+  "blocked_reason": null,
+  "actual_hours": 4,
+  "completed_at": "2026-06-01T00:36:43-0300"
+}

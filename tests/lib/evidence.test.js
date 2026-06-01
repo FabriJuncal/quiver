@@ -6,7 +6,9 @@ const test = require('node:test');
 
 const {
   defaultEvidencePath,
+  listEvidenceArtifacts,
   redactSecrets,
+  readEvidenceArtifact,
   runEvidenceCommand,
   truncateText,
 } = require('../../src/create-quiver/lib/evidence');
@@ -80,6 +82,55 @@ test('runEvidenceCommand records redacted and truncated output', () => {
     assert.match(content, /\[\.\.\. truncated /);
     assert.doesNotMatch(content, /very-secret-value/);
     assert.doesNotMatch(content, /bearer-secret/);
+  } finally {
+    cleanup();
+  }
+});
+
+test('listEvidenceArtifacts returns markdown evidence in stable newest-first order', () => {
+  const { dir, cleanup } = makeTmpDir();
+  try {
+    const evidenceDir = path.join(dir, '.quiver', 'evidence');
+    fs.mkdirSync(evidenceDir, { recursive: true });
+    const older = path.join(evidenceDir, 'older.md');
+    const newer = path.join(evidenceDir, 'newer.md');
+    const ignored = path.join(evidenceDir, 'ignored.txt');
+    fs.writeFileSync(older, '# Older\n');
+    fs.writeFileSync(newer, '# Newer\n');
+    fs.writeFileSync(ignored, 'ignore');
+    fs.utimesSync(older, new Date('2026-05-22T10:00:00.000Z'), new Date('2026-05-22T10:00:00.000Z'));
+    fs.utimesSync(newer, new Date('2026-05-22T11:00:00.000Z'), new Date('2026-05-22T11:00:00.000Z'));
+
+    const artifacts = listEvidenceArtifacts(dir);
+
+    assert.deepEqual(artifacts.map((artifact) => artifact.path), [
+      '.quiver/evidence/newer.md',
+      '.quiver/evidence/older.md',
+    ]);
+  } finally {
+    cleanup();
+  }
+});
+
+test('readEvidenceArtifact rejects traversal and non-evidence paths', () => {
+  const { dir, cleanup } = makeTmpDir();
+  try {
+    fs.mkdirSync(path.join(dir, '.quiver', 'evidence'), { recursive: true });
+    fs.writeFileSync(path.join(dir, '.quiver', 'evidence', 'safe.md'), '# Safe\n');
+    fs.writeFileSync(path.join(dir, 'outside.md'), '# Outside\n');
+
+    const artifact = readEvidenceArtifact(dir, '.quiver/evidence/safe.md');
+
+    assert.equal(artifact.relativePath, '.quiver/evidence/safe.md');
+    assert.equal(artifact.content, '# Safe\n');
+    assert.throws(
+      () => readEvidenceArtifact(dir, '../outside.md'),
+      /evidence artifact not found|evidence path must stay inside/,
+    );
+    assert.throws(
+      () => readEvidenceArtifact(dir, 'outside.md'),
+      /evidence path must stay inside/,
+    );
   } finally {
     cleanup();
   }

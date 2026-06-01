@@ -1,0 +1,78 @@
+{
+  "slice_id": "slice-01-i18n-command-error-hardening",
+  "ticket": "QUIVER-46-01",
+  "type": "feature",
+  "title": "i18n command error hardening",
+  "objective": "Route command human errors through the i18n catalog and add static protection against new hardcoded errors.",
+  "description": "Completes missing i18n coverage for command errors identified by the baseline.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v46-i18n-command-errors",
+    "branch_name": "feature/QUIVER-46-01-v46-i18n-command-errors"
+  },
+  "files": [
+    "src/create-quiver/index.js",
+    "src/create-quiver/commands/config.js",
+    "src/create-quiver/commands/evidence.js",
+    "src/create-quiver/commands/spec.js",
+    "src/create-quiver/commands/graph.js",
+    "src/create-quiver/commands/prepare.js",
+    "src/create-quiver/commands/ai.js",
+    "src/create-quiver/lib/i18n/messages/en.js",
+    "src/create-quiver/lib/i18n/messages/es.js",
+    "tests/commands/i18n-audit-matrix.test.js",
+    "tests/lib/i18n-catalog.test.js"
+  ],
+  "expected_read_paths": [
+    "specs/quiver-v46-cli-surface-ergonomics/SPEC.md",
+    "specs/quiver-v46-cli-surface-ergonomics/slices/slice-00-cli-surface-baseline-and-delta/CLOSURE_BRIEF.md"
+  ],
+  "allowed_write_paths": [
+    "src/create-quiver/**",
+    "tests/**",
+    "specs/quiver-v46-cli-surface-ergonomics/**"
+  ],
+  "depends_on": [
+    "slice-00-cli-surface-baseline-and-delta"
+  ],
+  "parallel_safe": "no",
+  "parallel_safe_reason": "Catalog changes affect all later human command output.",
+  "must": [
+    "Localize missing human command errors found by slice-00.",
+    "Keep JSON contracts and JSON keys unlocalized.",
+    "Add static or matrix coverage for hardcoded command errors with an explicit allowlist.",
+    "Test representative EN and ES error output."
+  ],
+  "not_included": [
+    "Translating commands, flags, paths, provider names, model ids, or JSON keys.",
+    "Changing command behavior beyond message localization."
+  ],
+  "acceptance": [
+    "Representative errors in config, evidence, spec, graph, prepare, and ai are localized.",
+    "Catalog completeness tests pass.",
+    "Static i18n audit fails on non-allowlisted new hardcoded command errors.",
+    "JSON outputs remain parseable and unlocalized."
+  ],
+  "tests": [
+    "node --test tests/lib/i18n-catalog.test.js",
+    "node --test tests/commands/i18n-audit-matrix.test.js",
+    "node --test tests/commands/config-language.test.js",
+    "node --test tests/commands/evidence.test.js",
+    "node --test tests/commands/graph.test.js",
+    "node --test tests/commands/spec-validate.test.js",
+    "node --test tests/commands/prepare.test.js",
+    "node --test tests/commands/ai-export.test.js",
+    "node --test tests/commands/cli-contract.test.js",
+    "git diff --check"
+  ],
+  "validation_hints": [
+    "Suggested commands in translated messages must remain exact.",
+    "Prefer translator keys over local regex localization when feasible."
+  ],
+  "estimated_hours": 6,
+  "actual_hours": 6,
+  "status": "completed",
+  "blocked_reason": null,
+  "completed_at": "2026-05-31T19:43:41-0300"
+}

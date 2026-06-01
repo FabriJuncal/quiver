@@ -199,7 +199,7 @@ test('spec create --interactive can decline writes', async () => {
         stderrIsTTY: true,
         write: () => {},
       }),
-      /spec create interactive approval declined/,
+      /aprobacion interactiva de spec create rechazada/,
     );
     assert.deepEqual(selections, [
       'Que metodologia aplica esta spec?',

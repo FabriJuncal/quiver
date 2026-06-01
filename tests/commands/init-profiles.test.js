@@ -1,5 +1,5 @@
 const assert = require('node:assert/strict');
-const { execFileSync } = require('node:child_process');
+const { execFileSync, spawnSync } = require('node:child_process');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
@@ -20,6 +20,37 @@ function runCli(args, options = {}) {
     encoding: 'utf8',
     stdio: ['ignore', 'pipe', 'pipe'],
   });
+}
+
+function runCliResult(args, options = {}) {
+  const result = spawnSync(process.execPath, [cliPath, ...args], {
+    cwd: options.cwd || path.resolve(__dirname, '../..'),
+    encoding: 'utf8',
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
+
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+  return result;
+}
+
+function snapshotFiles(root) {
+  const files = [];
+  if (!fs.existsSync(root)) {
+    return files;
+  }
+
+  const walk = (dirPath) => {
+    for (const entry of fs.readdirSync(dirPath, { withFileTypes: true })) {
+      const fullPath = path.join(dirPath, entry.name);
+      if (entry.isDirectory()) {
+        walk(fullPath);
+      } else {
+        files.push(path.relative(root, fullPath).split(path.sep).join('/'));
+      }
+    }
+  };
+  walk(root);
+  return files.sort();
 }
 
 test('init --dry-run prints the planned layout and does not write files', () => {
@@ -297,8 +328,9 @@ test('init command without dry-run writes the default clean AI-first layout', ()
   const { dir, cleanup } = makeTmpDir();
   const target = path.join(dir, 'target');
   try {
-    runCli(['init', '--name', 'Real Project', '--dir', target, '--skip-install']);
+    const output = runCli(['init', '--name', 'Real Project', '--dir', target, '--skip-install']);
 
+    assert.match(output, /Applied changes: create \d+, update \d+, preserve \d+/);
     assert.equal(fs.existsSync(path.join(target, 'README.md')), true);
     assert.equal(fs.existsSync(path.join(target, 'AGENTS.md')), true);
     assert.equal(fs.existsSync(path.join(target, '.gitignore')), true);
@@ -331,6 +363,30 @@ test('init command without dry-run writes the default clean AI-first layout', ()
     assert.doesNotMatch(index, /\.\.\/specs\/real-project/);
     assert.doesNotMatch(index, /\.\/tools\//);
     assert.doesNotMatch(index, /\.\/archive\//);
+  } finally {
+    cleanup();
+  }
+});
+
+test('init can be rerun idempotently without duplicating generated metadata', () => {
+  const { dir, cleanup } = makeTmpDir();
+  const target = path.join(dir, 'target');
+  try {
+    const firstOutput = runCli(['init', '--name', 'Idempotent Project', '--dir', target, '--skip-install']);
+    const firstPkg = readPackageJson(target);
+    const firstFiles = snapshotFiles(target);
+    const secondOutput = runCli(['init', '--name', 'Idempotent Project', '--dir', target, '--skip-install']);
+    const secondPkg = readPackageJson(target);
+    const secondFiles = snapshotFiles(target);
+    const gitignore = readText(target, '.gitignore');
+
+    assert.match(firstOutput, /Applied changes: create \d+, update \d+, preserve \d+/);
+    assert.match(secondOutput, /Applied changes: create \d+, update \d+, preserve \d+/);
+    assert.deepEqual(secondFiles, firstFiles);
+    assert.deepEqual(secondPkg.scripts, firstPkg.scripts);
+    assert.equal((gitignore.match(/^node_modules\/$/gm) || []).length, 1);
+    assert.equal((gitignore.match(/^dist\/$/gm) || []).length, 1);
+    assert.equal((gitignore.match(/^coverage\/$/gm) || []).length, 1);
   } finally {
     cleanup();
   }
@@ -511,8 +567,15 @@ test('migrate reports legacy layout paths and preserves existing legacy files', 
     fs.writeFileSync(path.join(target, 'docs', 'PROJECT_SCAN.json'), '{"legacy":true}\n');
     fs.writeFileSync(path.join(target, 'docs', 'SEARCH.md'), 'keep me\n');
 
-    const output = runCli(['migrate', '--dir', target, '--skip-install']);
+    const result = runCliResult(['migrate', '--dir', target, '--skip-install']);
+    const output = result.stdout;
 
+    assert.match(result.stderr, /Warning: migrate can write project files\./);
+    assert.match(result.stderr, /Preview first with: npx create-quiver migrate --dry-run --skip-install/);
+    assert.match(result.stderr, /Review local contract changes with: npx create-quiver changelog/);
+    assert.match(output, /Applied create: \d+/);
+    assert.match(output, /Applied update: \d+/);
+    assert.match(output, /Applied preserve: \d+/);
     assert.match(output, /Legacy layout detected and preserved:/);
     assert.match(output, /docs-template\//);
     assert.match(output, /tools\/scripts\//);
@@ -531,13 +594,42 @@ test('migrate --dry-run reports planned changes without writing', () => {
     runCli(['init', '--name', 'Legacy Project', '--dir', target, '--full', '--skip-install']);
     const statePath = path.join(target, '.quiver', 'state.json');
     const beforeState = fs.readFileSync(statePath, 'utf8');
+    const beforeFiles = snapshotFiles(target);
 
     const output = runCli(['migrate', '--dir', target, '--dry-run', '--skip-install']);
 
     assert.match(output, /Quiver migration dry-run/);
     assert.match(output, /Writes: none/);
     assert.match(output, /Next command: npx create-quiver migrate --skip-install/);
+    assert.match(output, /Review local contract changes with: npx create-quiver changelog/);
     assert.equal(fs.readFileSync(statePath, 'utf8'), beforeState);
+    assert.deepEqual(snapshotFiles(target), beforeFiles);
+  } finally {
+    cleanup();
+  }
+});
+
+test('migrate can be rerun idempotently after applying the current layout', () => {
+  const { dir, cleanup } = makeTmpDir();
+  const target = path.join(dir, 'target');
+  try {
+    runCli(['init', '--name', 'Migrate Idempotent Project', '--dir', target, '--full', '--skip-install']);
+
+    const first = runCliResult(['migrate', '--dir', target, '--skip-install']);
+    const firstPkg = readPackageJson(target);
+    const firstFiles = snapshotFiles(target);
+    const second = runCliResult(['migrate', '--dir', target, '--skip-install']);
+    const secondPkg = readPackageJson(target);
+    const secondFiles = snapshotFiles(target);
+    const gitignore = readText(target, '.gitignore');
+
+    assert.match(first.stderr, /Preview first with: npx create-quiver migrate --dry-run --skip-install/);
+    assert.match(first.stdout, /Applied create: \d+/);
+    assert.match(second.stdout, /Applied preserve: \d+/);
+    assert.deepEqual(secondFiles, firstFiles);
+    assert.deepEqual(secondPkg.scripts, firstPkg.scripts);
+    assert.equal((gitignore.match(/^node_modules\/$/gm) || []).length, 1);
+    assert.equal((gitignore.match(/^dist\/$/gm) || []).length, 1);
   } finally {
     cleanup();
   }

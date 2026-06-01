@@ -160,11 +160,14 @@ test('default generated package scripts target supported CLI commands', () => {
     'evidence',
     'flow',
     'graph',
+    'handoff',
     'migrate',
     'next',
+    'new-handoff',
     'plan',
     'prepare',
     'refresh-active-slices',
+    'slice',
     'spec',
     'start-slice',
     'version',
@@ -192,6 +195,8 @@ test('default generated package scripts target supported CLI commands', () => {
     'trace',
   ]);
   const supportedSpecCommands = new Set(['close', 'create', 'start', 'status', 'validate']);
+  const supportedSliceCommands = new Set(['check', 'check-pr', 'cleanup', 'refresh', 'scope', 'start']);
+  const supportedHandoffCommands = new Set(['check', 'create']);
 
   for (const [scriptName, command] of Object.entries(scripts)) {
     if (!command.startsWith('npx create-quiver ')) {
@@ -207,6 +212,14 @@ test('default generated package scripts target supported CLI commands', () => {
 
     if (commandName === 'spec') {
       assert.ok(supportedSpecCommands.has(subcommand), `${scriptName} points to unsupported spec command: ${command}`);
+    }
+
+    if (commandName === 'slice') {
+      assert.ok(supportedSliceCommands.has(subcommand), `${scriptName} points to unsupported slice command: ${command}`);
+    }
+
+    if (commandName === 'handoff') {
+      assert.ok(supportedHandoffCommands.has(subcommand), `${scriptName} points to unsupported handoff command: ${command}`);
     }
   }
 });

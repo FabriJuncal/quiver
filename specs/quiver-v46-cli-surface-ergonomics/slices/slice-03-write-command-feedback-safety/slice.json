@@ -1,0 +1,82 @@
+{
+  "slice_id": "slice-03-write-command-feedback-safety",
+  "ticket": "QUIVER-46-03",
+  "type": "feature",
+  "title": "Write-command feedback and safety",
+  "objective": "Make write-capable commands explicit about dry-run, planned changes, applied changes, cleanup, and idempotency.",
+  "description": "Hardens init, analyze, doctor, prepare, and migrate based on baseline gaps.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v46-write-command-feedback-safety",
+    "branch_name": "feature/QUIVER-46-03-v46-write-command-feedback-safety"
+  },
+  "files": [
+    "src/create-quiver/index.js",
+    "src/create-quiver/commands/analyze.js",
+    "src/create-quiver/commands/doctor.js",
+    "src/create-quiver/commands/init.js",
+    "src/create-quiver/commands/prepare.js",
+    "src/create-quiver/lib/init-layout.js",
+    "src/create-quiver/lib/init-docs.js",
+    "src/create-quiver/lib/doctor.js",
+    "src/create-quiver/lib/i18n/messages/en.js",
+    "src/create-quiver/lib/i18n/messages/es.js",
+    "tests/commands/init-profiles.test.js",
+    "tests/commands/analyze.test.js",
+    "tests/commands/doctor.test.js",
+    "tests/commands/prepare.test.js"
+  ],
+  "expected_read_paths": [
+    "specs/quiver-v46-cli-surface-ergonomics/SPEC.md",
+    "specs/quiver-v46-cli-surface-ergonomics/slices/slice-00-cli-surface-baseline-and-delta/CLOSURE_BRIEF.md"
+  ],
+  "allowed_write_paths": [
+    "src/create-quiver/**",
+    "tests/**",
+    "specs/quiver-v46-cli-surface-ergonomics/**"
+  ],
+  "depends_on": [
+    "slice-00-cli-surface-baseline-and-delta",
+    "slice-01-i18n-command-error-hardening"
+  ],
+  "parallel_safe": "no",
+  "parallel_safe_reason": "Write-command behavior must be validated coherently across shared init/migrate/doctor flows.",
+  "must": [
+    "Add no-write dry-run assertions where applicable.",
+    "Add idempotency coverage or document why not applicable.",
+    "Report planned and applied changes clearly.",
+    "Validate temp cleanup on failures where feasible."
+  ],
+  "not_included": [
+    "Changing migration contract semantics.",
+    "Adding changelog command; covered by v47.",
+    "Moving command modules; covered by slice-06."
+  ],
+  "acceptance": [
+    "Dry-run paths do not write project files.",
+    "Applied changes are reported in human output.",
+    "Doctor fix dry-run reports planned fixes without applying them.",
+    "Migrate warns and points to dry-run before writes.",
+    "Idempotency or non-applicability is tested."
+  ],
+  "tests": [
+    "node --test tests/commands/init-profiles.test.js",
+    "node --test tests/commands/analyze.test.js",
+    "node --test tests/commands/doctor.test.js",
+    "node --test tests/commands/prepare.test.js",
+    "node --test tests/lib/i18n-catalog.test.js",
+    "node --test tests/commands/cli-contract.test.js",
+    "node --test tests/commands/i18n-audit-matrix.test.js",
+    "git diff --check"
+  ],
+  "validation_hints": [
+    "Use temp dirs and snapshot file lists before/after dry-run.",
+    "Avoid live network/provider checks."
+  ],
+  "estimated_hours": 7,
+  "actual_hours": 5,
+  "status": "completed",
+  "completed_at": "2026-05-31T19:54:33-0300",
+  "blocked_reason": null
+}

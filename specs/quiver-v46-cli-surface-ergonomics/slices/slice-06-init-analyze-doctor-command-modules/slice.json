@@ -1,0 +1,74 @@
+{
+  "slice_id": "slice-06-init-analyze-doctor-command-modules",
+  "ticket": "QUIVER-46-06",
+  "type": "refactor",
+  "title": "Init analyze doctor command modules",
+  "objective": "Move init, analyze, and doctor command orchestration out of index.js without behavior drift.",
+  "description": "Performs a pure extraction after safety behavior is tested.",
+  "git": {
+    "branch_type": "refactor",
+    "base_branch": "main",
+    "branch_slug": "v46-init-analyze-doctor-modules",
+    "branch_name": "refactor/QUIVER-46-06-v46-init-analyze-doctor-modules"
+  },
+  "files": [
+    "src/create-quiver/index.js",
+    "src/create-quiver/commands/init.js",
+    "src/create-quiver/commands/analyze.js",
+    "src/create-quiver/commands/doctor.js",
+    "tests/commands/init-profiles.test.js",
+    "tests/commands/analyze.test.js",
+    "tests/commands/doctor.test.js",
+    "tests/commands/cli-contract.test.js"
+  ],
+  "expected_read_paths": [
+    "specs/quiver-v46-cli-surface-ergonomics/SPEC.md",
+    "specs/quiver-v46-cli-surface-ergonomics/slices/slice-03-write-command-feedback-safety/CLOSURE_BRIEF.md"
+  ],
+  "allowed_write_paths": [
+    "src/create-quiver/**",
+    "tests/**",
+    "specs/quiver-v46-cli-surface-ergonomics/**"
+  ],
+  "depends_on": [
+    "slice-00-cli-surface-baseline-and-delta",
+    "slice-03-write-command-feedback-safety"
+  ],
+  "parallel_safe": "no",
+  "parallel_safe_reason": "This refactor depends on behavior being locked by previous tests.",
+  "must": [
+    "Add or confirm golden tests before moving code.",
+    "Extract init command orchestration to commands/init.js.",
+    "Extract analyze command orchestration to commands/analyze.js.",
+    "Extract doctor command orchestration to commands/doctor.js.",
+    "Keep public exports stable where tests or users rely on them."
+  ],
+  "not_included": [
+    "Changing command behavior.",
+    "Parser modernization.",
+    "AI command modularization."
+  ],
+  "acceptance": [
+    "Focused command tests pass before and after extraction.",
+    "index.js delegates to command modules.",
+    "No output, exit-code, or filesystem behavior changes beyond wiring.",
+    "Existing module exports remain compatible or are updated with tests."
+  ],
+  "tests": [
+    "node --test tests/commands/init-profiles.test.js",
+    "node --test tests/commands/analyze.test.js",
+    "node --test tests/commands/doctor.test.js",
+    "node --test tests/commands/cli-contract.test.js",
+    "git diff --check",
+    "node bin/create-quiver.js spec validate specs/quiver-v46-cli-surface-ergonomics"
+  ],
+  "validation_hints": [
+    "Keep the extraction as pure as possible.",
+    "If behavior must change, stop and move it to the relevant behavior slice."
+  ],
+  "estimated_hours": 6,
+  "actual_hours": 4,
+  "status": "completed",
+  "completed_at": "2026-05-31T20:30:15-0300",
+  "blocked_reason": null
+}

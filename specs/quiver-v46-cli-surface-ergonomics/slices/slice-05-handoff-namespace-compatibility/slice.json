@@ -1,0 +1,85 @@
+{
+  "slice_id": "slice-05-handoff-namespace-compatibility",
+  "ticket": "QUIVER-46-05",
+  "type": "feature",
+  "title": "Handoff namespace compatibility",
+  "objective": "Introduce canonical `handoff` subcommands while preserving existing root handoff commands.",
+  "description": "Adds `handoff check` and `handoff create` with deprecated compatibility aliases.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v46-handoff-namespace",
+    "branch_name": "feature/QUIVER-46-05-v46-handoff-namespace"
+  },
+  "files": [
+    "src/create-quiver/index.js",
+    "src/create-quiver/commands/handoff.js",
+    "src/create-quiver/lib/handoff.js",
+    "src/create-quiver/lib/cli/ux-flags.js",
+    "src/create-quiver/lib/i18n/messages/en.js",
+    "src/create-quiver/lib/i18n/messages/es.js",
+    "src/create-quiver/lib/init-docs.js",
+    "src/create-quiver/lib/init-layout.js",
+    "docs/reference/commands.md",
+    "specs/quiver-v43-cli-i18n-audit-release-readiness/command-language-mode-matrix.json",
+    "tests/commands/cli-contract.test.js",
+    "tests/commands/handoff-namespace.test.js",
+    "tests/commands/i18n-audit-matrix.test.js",
+    "tests/lib/handoff.test.js",
+    "tests/lib/init-layout.test.js"
+  ],
+  "expected_read_paths": [
+    "specs/quiver-v46-cli-surface-ergonomics/SPEC.md",
+    "specs/quiver-v46-cli-surface-ergonomics/slices/slice-00-cli-surface-baseline-and-delta/CLOSURE_BRIEF.md"
+  ],
+  "allowed_write_paths": [
+    "src/create-quiver/**",
+    "docs/**",
+    "tests/**",
+    "specs/quiver-v46-cli-surface-ergonomics/**"
+  ],
+  "depends_on": [
+    "slice-00-cli-surface-baseline-and-delta",
+    "slice-01-i18n-command-error-hardening"
+  ],
+  "parallel_safe": "no",
+  "parallel_safe_reason": "Parser and help updates overlap with slice namespace work.",
+  "must": [
+    "Add `handoff check <path.md>`.",
+    "Add `handoff create <spec-slug>`.",
+    "Keep `check-handoff` and `new-handoff` functional.",
+    "Emit deprecation warnings only to stderr in human mode."
+  ],
+  "not_included": [
+    "Changing handoff heading contracts.",
+    "Removing root handoff commands."
+  ],
+  "acceptance": [
+    "Canonical handoff commands match legacy behavior.",
+    "Legacy aliases remain functional.",
+    "Warnings do not contaminate stdout or JSON.",
+    "Help and docs show canonical commands and compatibility aliases.",
+    "Brief validation still covers EXECUTION_BRIEF and CLOSURE_BRIEF."
+  ],
+  "tests": [
+    "node --test tests/lib/handoff.test.js",
+    "node --test tests/commands/handoff-namespace.test.js",
+    "node --test tests/commands/cli-contract.test.js",
+    "node --test tests/commands/i18n-audit-matrix.test.js",
+    "node --test tests/lib/i18n-catalog.test.js",
+    "node --test tests/lib/init-layout.test.js",
+    "node --test tests/lib/init-docs.test.js",
+    "Package-installed smoke via local npm pack and temp install",
+    "node bin/create-quiver.js spec validate specs/quiver-v46-cli-surface-ergonomics",
+    "git diff --check"
+  ],
+  "validation_hints": [
+    "Test both HANDOFF.md and slice-local brief paths.",
+    "Test missing path errors."
+  ],
+  "estimated_hours": 5,
+  "actual_hours": 4,
+  "status": "completed",
+  "completed_at": "2026-05-31T20:23:55-0300",
+  "blocked_reason": null
+}

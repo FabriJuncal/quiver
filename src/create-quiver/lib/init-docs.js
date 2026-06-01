@@ -73,12 +73,12 @@ function renderTemplate(text, replacements) {
     .replace(/{{GRAPH_COMMAND}}/g, replacements.graphCommand || 'npx create-quiver graph')
     .replace(/{{NEXT_COMMAND}}/g, replacements.nextCommand || 'npx create-quiver next')
     .replace(/{{DOCTOR_COMMAND}}/g, replacements.doctorCommand || 'npx create-quiver doctor')
-    .replace(/{{START_SLICE_COMMAND}}/g, replacements.startSliceCommand || 'npx create-quiver start-slice <slice.json>')
-    .replace(/{{CHECK_SLICE_COMMAND}}/g, replacements.checkSliceCommand || 'npx create-quiver check-slice <slice.json>')
-    .replace(/{{CHECK_PR_COMMAND}}/g, replacements.checkPrCommand || 'npx create-quiver check-pr <slice.json>')
-    .replace(/{{CLEANUP_SLICE_COMMAND}}/g, replacements.cleanupSliceCommand || 'npx create-quiver cleanup-slice <slice.json>')
-    .replace(/{{CHECK_SCOPE_COMMAND}}/g, replacements.checkScopeCommand || 'npx create-quiver check-scope <slice.json>')
-    .replace(/{{REFRESH_ACTIVE_SLICES_COMMAND}}/g, replacements.refreshActiveSlicesCommand || 'npx create-quiver refresh-active-slices');
+    .replace(/{{START_SLICE_COMMAND}}/g, replacements.startSliceCommand || 'npx create-quiver slice start <slice.json>')
+    .replace(/{{CHECK_SLICE_COMMAND}}/g, replacements.checkSliceCommand || 'npx create-quiver slice check <slice.json>')
+    .replace(/{{CHECK_PR_COMMAND}}/g, replacements.checkPrCommand || 'npx create-quiver slice check-pr <slice.json>')
+    .replace(/{{CLEANUP_SLICE_COMMAND}}/g, replacements.cleanupSliceCommand || 'npx create-quiver slice cleanup <slice.json>')
+    .replace(/{{CHECK_SCOPE_COMMAND}}/g, replacements.checkScopeCommand || 'npx create-quiver slice scope <slice.json>')
+    .replace(/{{REFRESH_ACTIVE_SLICES_COMMAND}}/g, replacements.refreshActiveSlicesCommand || 'npx create-quiver slice refresh');
 }
 
 function copyRenderedFile(sourcePath, destinationPath, replacements, skipIfExists, frontMatterFactory) {
@@ -543,14 +543,14 @@ npm run quiver:spec:start -- specs/${projectSlug}
 npm run quiver:spec:status -- specs/${projectSlug}
 npm run quiver:spec:close -- specs/${projectSlug} --dry-run
 npm run quiver:migrate
-npm run quiver:start-slice -- specs/${projectSlug}/slices/slice-01/slice.json
-npm run quiver:check-slice -- specs/${projectSlug}/slices/slice-01/slice.json
-npm run quiver:check-pr -- specs/${projectSlug}/slices/slice-01/slice.json
-npm run quiver:check-handoff -- specs/${projectSlug}/HANDOFF.md
-npm run quiver:check-handoff -- specs/${projectSlug}/slices/slice-01/EXECUTION_BRIEF.md
-npm run quiver:cleanup-slice -- specs/${projectSlug}/slices/slice-01/slice.json
-npm run quiver:check-scope -- specs/${projectSlug}/slices/slice-01/slice.json
-npm run quiver:refresh-active-slices
+npm run quiver:slice:start -- specs/${projectSlug}/slices/slice-01/slice.json
+npm run quiver:slice:check -- specs/${projectSlug}/slices/slice-01/slice.json
+npm run quiver:slice:check-pr -- specs/${projectSlug}/slices/slice-01/slice.json
+npm run quiver:handoff:check -- specs/${projectSlug}/HANDOFF.md
+npm run quiver:handoff:check -- specs/${projectSlug}/slices/slice-01/EXECUTION_BRIEF.md
+npm run quiver:slice:cleanup -- specs/${projectSlug}/slices/slice-01/slice.json
+npm run quiver:slice:scope -- specs/${projectSlug}/slices/slice-01/slice.json
+npm run quiver:slice:refresh
 \`\`\`
 
 The \`quiver:graph\` script prints the tree view by default; use \`npx create-quiver graph --format mermaid\` for PR-ready Markdown and \`--format dot\` when you want Graphviz source.
@@ -563,8 +563,8 @@ Use \`npx create-quiver next --all-ready\` when you want the full ready level in
 The legacy Bash wrappers remain in \`tools/scripts/\` for compatibility, but new project-level automation should prefer the \`quiver:*\` scripts and the direct \`npx create-quiver ...\` commands below.
 \`npm run quiver:migrate\` is only for projects that were already initialized by Quiver.
 \`npm run check-handoff -- specs/${projectSlug}/HANDOFF.md\` is available as a legacy-friendly alias for the handoff validator.
-If a new bounded transfer is needed, scaffold \`specs/${projectSlug}/HANDOFF.md\` with \`npx create-quiver new-handoff ${projectSlug}\` and validate it with \`npx create-quiver check-handoff specs/${projectSlug}/HANDOFF.md\`.
-Use \`npx create-quiver check-handoff specs/${projectSlug}/slices/slice-01/EXECUTION_BRIEF.md\` or \`CLOSURE_BRIEF.md\` to validate the current per-slice brief contract.
+If a new bounded transfer is needed, scaffold \`specs/${projectSlug}/HANDOFF.md\` with \`npx create-quiver handoff create ${projectSlug}\` and validate it with \`npx create-quiver handoff check specs/${projectSlug}/HANDOFF.md\`.
+Use \`npx create-quiver handoff check specs/${projectSlug}/slices/slice-01/EXECUTION_BRIEF.md\` or \`CLOSURE_BRIEF.md\` to validate the current per-slice brief contract.
 For exceptional context transfers between agents or phases, a dedicated \`HANDOFF.md\` can live alongside the usual spec and docs files.
 
 ## Cross-Platform Support
@@ -643,7 +643,7 @@ Use this section only for projects generated with the full compatibility layout.
 3. Review the plan with \`{{PLAN_COMMAND}}\` or \`npm run quiver:plan\`.
 4. Inspect parallel lots with \`{{GRAPH_COMMAND}}\` or \`npm run quiver:graph\`.
 5. Check the next ready slice with \`{{NEXT_COMMAND}}\` or \`npm run quiver:next\`.
-6. Start work with \`{{START_SLICE_COMMAND}}\` or \`npm run quiver:start-slice -- <slice.json>\`.
+6. Start work with \`{{START_SLICE_COMMAND}}\` or \`npm run quiver:slice:start -- <slice.json>\`.
 7. Make one commit per slice.
 8. Open one PR per spec.
 
@@ -664,7 +664,7 @@ Use this section only for projects generated with the full compatibility layout.
 - [Decision Log](./docs/DECISIONS.md) - Decisiones durables del proyecto
 - [AI Onboarding Prompt](./docs/AI_ONBOARDING_PROMPT.md) - Handoff exacto para agentes después del análisis
 - [Handoff](./specs/${projectSlug}/HANDOFF.md) - Transferencia excepcional entre agentes o fases
-- [Check Handoff](./docs/WORKFLOW.md) - Valida el handoff con \`npx create-quiver check-handoff\`
+- [Check Handoff](./docs/WORKFLOW.md) - Valida el handoff con \`npx create-quiver handoff check\`
 - [Commands](./docs/COMMANDS.md) - Tabla canónica de comandos de orquestación
 - [Contexto](./docs/CONTEXTO.md) - Qué es ${projectName}
 - [Workflow](./docs/WORKFLOW.md) - Cómo implementar
@@ -951,12 +951,12 @@ function initializeProjectDocs(options) {
     graphCommand: 'npx create-quiver graph',
     nextCommand: 'npx create-quiver next',
     doctorCommand: 'npx create-quiver doctor',
-    startSliceCommand: 'npx create-quiver start-slice <slice.json>',
-    checkSliceCommand: 'npx create-quiver check-slice <slice.json>',
-    checkPrCommand: 'npx create-quiver check-pr <slice.json>',
-    cleanupSliceCommand: 'npx create-quiver cleanup-slice <slice.json>',
-    checkScopeCommand: 'npx create-quiver check-scope <slice.json>',
-    refreshActiveSlicesCommand: 'npx create-quiver refresh-active-slices',
+    startSliceCommand: 'npx create-quiver slice start <slice.json>',
+    checkSliceCommand: 'npx create-quiver slice check <slice.json>',
+    checkPrCommand: 'npx create-quiver slice check-pr <slice.json>',
+    cleanupSliceCommand: 'npx create-quiver slice cleanup <slice.json>',
+    checkScopeCommand: 'npx create-quiver slice scope <slice.json>',
+    refreshActiveSlicesCommand: 'npx create-quiver slice refresh',
   };
 
   const tierCopies = [
@@ -1052,7 +1052,7 @@ function initializeProjectDocs(options) {
 
 - **Spec:** \`../specs/${replacements.projectSlug}/slices/slice-01/slice.json\`
 - **PR del slice:** \`../specs/${replacements.projectSlug}/slices/slice-01/pr.md\`
-- **Bootstrap del slice:** \`npx create-quiver start-slice ../specs/${replacements.projectSlug}/slices/slice-01/slice.json\`
+- **Bootstrap del slice:** \`npx create-quiver slice start ../specs/${replacements.projectSlug}/slices/slice-01/slice.json\`
 - **Hook:** \`hooks/useAuth.ts\`
 - **API:** \`docs/api/auth/README.md\`
 - **Componentes:** \`app/(auth)/\`

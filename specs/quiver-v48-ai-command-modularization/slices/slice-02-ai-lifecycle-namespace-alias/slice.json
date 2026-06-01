@@ -1,0 +1,63 @@
+{
+  "slice_id": "slice-02-ai-lifecycle-namespace-alias",
+  "ticket": "QUIVER-48-02",
+  "type": "feature",
+  "title": "AI lifecycle namespace alias",
+  "objective": "Add `ai lifecycle create|close` while preserving `ai run create|close`.",
+  "description": "Clarifies lifecycle terminology without removing the current `ai run` path.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v48-ai-lifecycle-alias",
+    "branch_name": "feature/QUIVER-48-02-v48-ai-lifecycle-alias"
+  },
+  "files": [
+    "src/create-quiver/index.js",
+    "src/create-quiver/commands/ai.js",
+    "tests/commands/ai-run-state.test.js",
+    "tests/commands/ai-dispatch-contract.test.js"
+  ],
+  "expected_read_paths": [
+    "specs/quiver-v48-ai-command-modularization/SPEC.md",
+    "specs/quiver-v48-ai-command-modularization/slices/slice-01-ai-dispatch-contract-baseline/CLOSURE_BRIEF.md"
+  ],
+  "allowed_write_paths": [
+    "src/create-quiver/**",
+    "tests/**",
+    "docs/**",
+    "specs/quiver-v48-ai-command-modularization/**"
+  ],
+  "depends_on": [
+    "slice-01-ai-dispatch-contract-baseline"
+  ],
+  "parallel_safe": "yes",
+  "parallel_safe_reason": "Can land before module split after baseline tests exist.",
+  "must": [
+    "Add `ai lifecycle create|close`.",
+    "Keep `ai run create|close` functional.",
+    "Apply v46 deprecation warning policy if `ai run` is warned."
+  ],
+  "not_included": [
+    "Removing `ai run`.",
+    "Changing lifecycle state schema."
+  ],
+  "acceptance": [
+    "ai lifecycle create|close matches ai run create|close behavior.",
+    "ai run remains compatible.",
+    "Warnings, if emitted, are stderr-only and human-only.",
+    "Help/docs prefer lifecycle while documenting compatibility."
+  ],
+  "tests": [
+    "node --test tests/commands/ai-run-state.test.js",
+    "node --test tests/commands/ai-dispatch-contract.test.js",
+    "git diff --check"
+  ],
+  "validation_hints": [
+    "Test missing lifecycle subcommands."
+  ],
+  "estimated_hours": 4,
+  "status": "completed",
+  "blocked_reason": null,
+  "actual_hours": 4,
+  "completed_at": "2026-05-31T22:40:26-0300"
+}

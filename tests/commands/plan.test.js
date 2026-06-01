@@ -32,6 +32,22 @@ function makeRepo(structure) {
   };
 }
 
+function snapshotFiles(root) {
+  const files = [];
+  const walk = (dirPath) => {
+    for (const entry of fs.readdirSync(dirPath, { withFileTypes: true })) {
+      const fullPath = path.join(dirPath, entry.name);
+      if (entry.isDirectory()) {
+        walk(fullPath);
+      } else {
+        files.push(path.relative(root, fullPath).split(path.sep).join('/'));
+      }
+    }
+  };
+  walk(root);
+  return files.sort();
+}
+
 function slice(ref, files, extra = {}) {
   const [, sliceId] = ref.split('/');
   const data = {
@@ -51,7 +67,7 @@ function slice(ref, files, extra = {}) {
     status: extra.status || 'draft',
     acceptance: extra.acceptance || [`Acceptance for ${ref}`],
     tests: extra.tests || [],
-    estimated_hours: extra.estimated_hours ?? 1,
+    estimated_hours: Object.prototype.hasOwnProperty.call(extra, 'estimated_hours') ? extra.estimated_hours : 1,
   };
 
   if (extra.dependencies !== undefined) {
@@ -189,6 +205,37 @@ test('plan CLI emits parseable JSON', () => {
     assert.equal(parsed.total_hours, 5);
     assert.deepEqual(parsed.critical_path, ['spec-a/slice-01-alpha', 'spec-a/slice-02-beta']);
     assert.equal(parsed.plan[0].slice_path, 'specs/spec-a/slices/slice-01-alpha/slice.json');
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('plan reports missing estimated hours without polluting JSON', () => {
+  const repo = makeRepo({
+    'specs/spec-a/slices/slice-01-alpha/slice.json': slice('spec-a/slice-01-alpha', ['docs/a.md'], { estimated_hours: null }),
+    'specs/spec-a/slices/slice-02-beta/slice.json': slice('spec-a/slice-02-beta', ['docs/b.md'], { estimated_hours: 2 }),
+  });
+  try {
+    const human = execPlan(repo.root);
+    const json = JSON.parse(execPlan(repo.root, ['--json']));
+
+    assert.match(human, /Estimated hours missing: 1 slice counted as 0h/);
+    assert.equal(json.missing_estimates, 1);
+    assert.equal(json.total_hours, 2);
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('plan CLI is read-only', () => {
+  const repo = planFixture();
+  try {
+    const before = snapshotFiles(repo.root);
+    execPlan(repo.root, ['--json']);
+    execPlan(repo.root, ['--lang', 'es']);
+    const after = snapshotFiles(repo.root);
+
+    assert.deepEqual(after, before);
   } finally {
     repo.cleanup();
   }

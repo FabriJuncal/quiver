@@ -134,6 +134,67 @@ test('evidence run truncates long output', () => {
   }
 });
 
+test('evidence list and show browse generated evidence safely', () => {
+  const { dir, cleanup } = makeTmpDir();
+  try {
+    runCli([
+      'evidence',
+      'run',
+      '--output',
+      '.quiver/evidence/first.md',
+      '--',
+      process.execPath,
+      '-e',
+      'console.log("first")',
+    ], { cwd: dir });
+    runCli([
+      'evidence',
+      'run',
+      '--output',
+      '.quiver/evidence/second.md',
+      '--',
+      process.execPath,
+      '-e',
+      'console.log("second")',
+    ], { cwd: dir });
+    fs.utimesSync(path.join(dir, '.quiver/evidence/first.md'), new Date('2026-05-22T10:00:00.000Z'), new Date('2026-05-22T10:00:00.000Z'));
+    fs.utimesSync(path.join(dir, '.quiver/evidence/second.md'), new Date('2026-05-22T11:00:00.000Z'), new Date('2026-05-22T11:00:00.000Z'));
+
+    const listOutput = runCli(['evidence', 'list'], { cwd: dir });
+    const jsonOutput = runCli(['evidence', 'list', '--json'], { cwd: dir });
+    const parsed = JSON.parse(jsonOutput);
+    const showOutput = runCli(['evidence', 'show', '.quiver/evidence/second.md'], { cwd: dir });
+
+    assert.match(listOutput, /Quiver evidence artifacts/);
+    assert.ok(listOutput.indexOf('second.md') < listOutput.indexOf('first.md'));
+    assert.equal(parsed.schema_version, 1);
+    assert.deepEqual(parsed.items.map((item) => item.path), [
+      '.quiver/evidence/second.md',
+      '.quiver/evidence/first.md',
+    ]);
+    assert.match(showOutput, /Command: `.*node/);
+    assert.match(showOutput, /second/);
+  } finally {
+    cleanup();
+  }
+});
+
+test('evidence show rejects unsafe paths', () => {
+  const { dir, cleanup } = makeTmpDir();
+  try {
+    fs.mkdirSync(path.join(dir, '.quiver', 'evidence'), { recursive: true });
+    fs.writeFileSync(path.join(dir, '.quiver', 'evidence', 'safe.md'), '# Safe\n');
+    fs.writeFileSync(path.join(dir, 'outside.md'), '# Outside\n');
+
+    const error = runCliFailure(['evidence', 'show', 'outside.md'], { cwd: dir });
+
+    assert.equal(error.status, 1);
+    assert.match(String(error.stderr), /evidence path must stay inside \.quiver\/evidence/);
+  } finally {
+    cleanup();
+  }
+});
+
 test('evidence run requires a command after separator', () => {
   const { dir, cleanup } = makeTmpDir();
   try {
@@ -141,6 +202,21 @@ test('evidence run requires a command after separator', () => {
 
     assert.equal(error.status, 1);
     assert.match(String(error.stderr), /evidence run requires a command after --/);
+  } finally {
+    cleanup();
+  }
+});
+
+test('evidence command errors localize in Spanish', () => {
+  const { dir, cleanup } = makeTmpDir();
+  try {
+    const missingCommand = runCliFailure(['--lang', 'es', 'evidence', 'run'], { cwd: dir });
+    const missingSubcommand = runCliFailure(['--lang', 'es', 'evidence'], { cwd: dir });
+
+    assert.equal(missingCommand.status, 1);
+    assert.match(String(missingCommand.stderr), /create-quiver: evidence run requiere un comando despues de --/);
+    assert.equal(missingSubcommand.status, 1);
+    assert.match(String(missingSubcommand.stderr), /create-quiver: falta el subcomando evidence/);
   } finally {
     cleanup();
   }

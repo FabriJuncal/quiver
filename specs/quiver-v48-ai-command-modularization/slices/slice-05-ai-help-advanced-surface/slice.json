@@ -1,0 +1,65 @@
+{
+  "slice_id": "slice-05-ai-help-advanced-surface",
+  "ticket": "QUIVER-48-05",
+  "type": "feature",
+  "title": "AI help and advanced surface",
+  "objective": "Group AI help by domain and label diagnostic commands as advanced.",
+  "description": "Improves AI command discoverability after module boundaries are stable.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v48-ai-help-advanced-surface",
+    "branch_name": "feature/QUIVER-48-05-v48-ai-help-advanced-surface"
+  },
+  "files": [
+    "src/create-quiver/index.js",
+    "src/create-quiver/commands/ai.js",
+    "src/create-quiver/commands/ai/*.js",
+    "docs/reference/commands.md",
+    "tests/commands/cli-contract.test.js",
+    "tests/commands/ai-dispatch-contract.test.js"
+  ],
+  "expected_read_paths": [
+    "specs/quiver-v48-ai-command-modularization/SPEC.md",
+    "specs/quiver-v48-ai-command-modularization/slices/slice-04-ai-domain-module-split/CLOSURE_BRIEF.md"
+  ],
+  "allowed_write_paths": [
+    "src/create-quiver/**",
+    "docs/**",
+    "tests/**",
+    "specs/quiver-v48-ai-command-modularization/**"
+  ],
+  "depends_on": [
+    "slice-04-ai-domain-module-split"
+  ],
+  "parallel_safe": "no",
+  "parallel_safe_reason": "Help should reflect final domain module boundaries.",
+  "must": [
+    "Group AI help by domain.",
+    "Mark active-slice reconcile and trace report as advanced.",
+    "Document canonical and compatibility aliases."
+  ],
+  "not_included": [
+    "Changing command behavior.",
+    "Removing advanced commands."
+  ],
+  "acceptance": [
+    "AI help is grouped by domain.",
+    "Advanced diagnostics are labeled.",
+    "Canonical and compatibility aliases are clear.",
+    "Help tests pass."
+  ],
+  "tests": [
+    "node --test tests/commands/cli-contract.test.js",
+    "node --test tests/commands/ai-dispatch-contract.test.js",
+    "git diff --check"
+  ],
+  "validation_hints": [
+    "Do not hide advanced commands; label them."
+  ],
+  "estimated_hours": 4,
+  "status": "completed",
+  "blocked_reason": null,
+  "actual_hours": 4,
+  "completed_at": "2026-05-31T22:47:08-0300"
+}

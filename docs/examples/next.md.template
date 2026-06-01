@@ -1,6 +1,6 @@
 # Next Example
 
-Use `next` to ask Quiver what slice is ready right now. The default output gives you one slice and the exact `start-slice` command to copy.
+Use `next` to ask Quiver what slice is ready right now. The default output gives you one slice and the exact compatibility command to copy.
 
 ## Input
 
@@ -23,5 +23,6 @@ Start: npx create-quiver start-slice "specs/spec-a/slices/slice-01-alpha/slice.j
 ## Notes
 
 - `--all-ready` lists every slice in the first unblocked level.
-- `--auto-start` requires a TTY confirmation before it calls `start-slice`.
+- `--auto-start` requires a TTY confirmation before it starts the slice.
+- Prefer `npx create-quiver slice start <slice.json>` for new docs and scripts; `start-slice` remains a compatibility alias.
 - Use `--json` when another tool needs the next slice payload.

@@ -1,0 +1,61 @@
+{
+  "slice_id": "slice-01-command-flag-registry-inventory",
+  "ticket": "QUIVER-49-01",
+  "type": "documentation",
+  "title": "Command flag registry inventory",
+  "objective": "Create a complete command/flag ownership inventory before parser changes.",
+  "description": "Distinguishes global flags from command-scoped flags and records aliases.",
+  "git": {
+    "branch_type": "docs",
+    "base_branch": "main",
+    "branch_slug": "v49-command-flag-inventory",
+    "branch_name": "docs/QUIVER-49-01-v49-command-flag-inventory"
+  },
+  "files": [
+    "specs/quiver-v49-parser-modernization/command-flag-registry.md",
+    "specs/quiver-v49-parser-modernization/SPEC.md",
+    "specs/quiver-v49-parser-modernization/**"
+  ],
+  "expected_read_paths": [
+    "src/create-quiver/index.js",
+    "src/create-quiver/lib/cli/ux-flags.js",
+    "docs/reference/commands.md",
+    "tests/commands/cli-contract.test.js"
+  ],
+  "allowed_write_paths": [
+    "specs/quiver-v49-parser-modernization/**"
+  ],
+  "depends_on": [
+    "slice-00-parser-modernization-foundation"
+  ],
+  "parallel_safe": "no",
+  "parallel_safe_reason": "Inventory is the source for later golden tests and migration.",
+  "must": [
+    "List every public command and alias.",
+    "List global and command-scoped flags.",
+    "Document positional arguments and -- separator behavior.",
+    "Do not modify runtime code."
+  ],
+  "not_included": [
+    "Parser implementation.",
+    "Changing help output."
+  ],
+  "acceptance": [
+    "Every public command has an inventory entry.",
+    "Every public flag has an owner.",
+    "Aliases and deprecated forms are listed.",
+    "Inventory links to source evidence."
+  ],
+  "tests": [
+    "git diff --check",
+    "node bin/create-quiver.js spec validate specs/quiver-v49-parser-modernization"
+  ],
+  "validation_hints": [
+    "Use current help and parseArgs as sources."
+  ],
+  "estimated_hours": 4,
+  "status": "completed",
+  "blocked_reason": null,
+  "actual_hours": 3,
+  "completed_at": "2026-06-01T00:45:00-0300"
+}

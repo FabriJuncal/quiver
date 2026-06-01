@@ -40,6 +40,92 @@ function defaultEvidencePath(repoRoot, startedAt = new Date()) {
   return path.join(repoRoot, '.quiver', 'evidence', `evidence-${stamp}.md`);
 }
 
+function evidenceRoot(repoRoot) {
+  return path.join(repoRoot, '.quiver', 'evidence');
+}
+
+function toPosixRelative(root, filePath) {
+  return path.relative(root, filePath).split(path.sep).join('/');
+}
+
+function listEvidenceArtifacts(repoRoot) {
+  const root = evidenceRoot(repoRoot);
+  if (!fs.existsSync(root)) {
+    return [];
+  }
+
+  const files = [];
+  const walk = (dirPath) => {
+    for (const entry of fs.readdirSync(dirPath, { withFileTypes: true })) {
+      const fullPath = path.join(dirPath, entry.name);
+      if (entry.isDirectory()) {
+        walk(fullPath);
+      } else if (entry.isFile() && entry.name.endsWith('.md')) {
+        const stats = fs.statSync(fullPath);
+        files.push({
+          path: toPosixRelative(repoRoot, fullPath),
+          size: stats.size,
+          mtimeMs: stats.mtimeMs,
+          updatedAt: stats.mtime.toISOString(),
+        });
+      }
+    }
+  };
+
+  walk(root);
+  return files.sort((left, right) => {
+    if (right.mtimeMs !== left.mtimeMs) {
+      return right.mtimeMs - left.mtimeMs;
+    }
+    return left.path.localeCompare(right.path);
+  });
+}
+
+function resolveEvidenceArtifact(repoRoot, inputPath) {
+  if (!inputPath || typeof inputPath !== 'string') {
+    throw new Error('missing evidence path');
+  }
+
+  const root = evidenceRoot(repoRoot);
+  const candidate = path.isAbsolute(inputPath)
+    ? inputPath
+    : path.resolve(repoRoot, inputPath);
+
+  if (!fs.existsSync(candidate)) {
+    throw new Error(`evidence artifact not found: ${inputPath}`);
+  }
+
+  const rootReal = fs.realpathSync.native(root);
+  const realCandidate = fs.realpathSync.native(candidate);
+  const relative = path.relative(rootReal, realCandidate);
+  if (relative === '' || relative.startsWith('..') || path.isAbsolute(relative)) {
+    throw new Error('evidence path must stay inside .quiver/evidence');
+  }
+
+  const stats = fs.statSync(realCandidate);
+  if (!stats.isFile()) {
+    throw new Error('evidence path must be a file');
+  }
+  if (path.extname(realCandidate) !== '.md') {
+    throw new Error('evidence path must be a Markdown file');
+  }
+
+  return {
+    absolutePath: realCandidate,
+    relativePath: toPosixRelative(fs.realpathSync.native(repoRoot), realCandidate),
+    size: stats.size,
+    updatedAt: stats.mtime.toISOString(),
+  };
+}
+
+function readEvidenceArtifact(repoRoot, inputPath) {
+  const artifact = resolveEvidenceArtifact(repoRoot, inputPath);
+  return {
+    ...artifact,
+    content: fs.readFileSync(artifact.absolutePath, 'utf8'),
+  };
+}
+
 function renderEvidenceMarkdown(record) {
   return `# Quiver Evidence
 
@@ -108,8 +194,12 @@ function runEvidenceCommand(repoRoot, commandArgs, options = {}) {
 module.exports = {
   DEFAULT_OUTPUT_LIMIT,
   defaultEvidencePath,
+  evidenceRoot,
+  listEvidenceArtifacts,
   redactSecrets,
+  readEvidenceArtifact,
   renderEvidenceMarkdown,
+  resolveEvidenceArtifact,
   runEvidenceCommand,
   truncateText,
 };

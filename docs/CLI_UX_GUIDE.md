@@ -42,6 +42,15 @@ Reglas:
 | `--json` | Emite salida machine-readable. | Incompatible con `--interactive` y `--review`. |
 | `--no-color` | Desactiva color ANSI. | Debe respetarse en toda salida humana. |
 
+## Help y shell readiness
+
+- El help global puede listar flags globales y flags de comandos especificos, pero debe anotar ownership con `scope` cuando una opcion no sea global.
+- La metadata de scope vive en `src/create-quiver/lib/cli/command-registry.js`; no duplicar ownership a mano en nuevos renderers de help.
+- `--version` conserva dos contratos: como unico argumento de root imprime solo semver; dentro de `ai approve`, `--version <n>` selecciona version de draft.
+- `--lang` se extrae antes del parser normal y debe seguir funcionando antes o despues del comando.
+- `evidence run -- <command>` debe conservar passthrough despues de `--`; no tratar flags posteriores como flags de Quiver.
+- Quiver v49 no implementa shell completions. No documentar `completion`, autocompletado ni instalacion de completions hasta que exista soporte probado.
+
 ## Idioma de salida
 
 Quiver soporta salida humana en `en` y `es`. Los comandos deben resolver el idioma con esta precedencia:
@@ -58,10 +67,18 @@ Reglas:
 - `--lang` debe funcionar antes o despues del comando.
 - `config language set es` guarda el idioma del proyecto sin exigir flags en cada ejecucion.
 - `config language set en --global` guarda el idioma global del usuario.
+- `config language show|set` es el contrato canonico de configuracion en v47. No se debe introducir un `config get|set` generico sin una migracion aditiva que preserve `config language`.
 - Los comandos, flags, rutas, ids, providers, modelos y snippets sugeridos no se traducen.
 - `--json` mantiene claves, codigos y estructura estable; no se localizan campos machine-readable.
 - Warnings por idioma no soportado se muestran solo en salida humana y no contaminan stdout JSON.
 - CI, no-TTY y `--no-color` deben seguir sin prompts, spinners ni ANSI inesperado.
+
+## Namespaces y aliases
+
+- Los comandos canonicos para slices son `slice start`, `slice check`, `slice check-pr`, `slice scope`, `slice cleanup` y `slice refresh`.
+- Los comandos canonicos para handoffs son `handoff check` y `handoff create`.
+- Los aliases legacy `start-slice`, `check-slice`, `check-pr`, `check-scope`, `cleanup-slice`, `refresh-active-slices`, `check-handoff` y `new-handoff` siguen funcionando por compatibilidad.
+- Las advertencias de deprecacion de aliases legacy pertenecen a `stderr` en modo humano. No deben contaminar `stdout` ni salidas JSON.
 
 ## Templates y docs generados
 

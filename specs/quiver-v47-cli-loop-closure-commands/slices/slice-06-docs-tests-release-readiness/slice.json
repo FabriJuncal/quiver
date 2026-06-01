@@ -1,0 +1,72 @@
+{
+  "slice_id": "slice-06-docs-tests-release-readiness",
+  "ticket": "QUIVER-47-06",
+  "type": "test",
+  "title": "Docs tests and release readiness",
+  "objective": "Update public docs and complete validation for v47 loop-closure commands.",
+  "description": "Closes v47 with docs/help alignment, tests, package smoke, and evidence.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v47-docs-tests-release-readiness",
+    "branch_name": "feature/QUIVER-47-06-v47-docs-tests-release-readiness"
+  },
+  "files": [
+    "docs/reference/commands.md",
+    "docs/CLI_UX_GUIDE.md",
+    "README_FOR_AI.md",
+    "tests/commands/**",
+    "scripts/ci/**",
+    "specs/quiver-v47-cli-loop-closure-commands/**"
+  ],
+  "expected_read_paths": [
+    "specs/quiver-v47-cli-loop-closure-commands/SPEC.md",
+    "specs/quiver-v47-cli-loop-closure-commands/slices/*/CLOSURE_BRIEF.md"
+  ],
+  "allowed_write_paths": [
+    "docs/**",
+    "README_FOR_AI.md",
+    "tests/**",
+    "scripts/ci/**",
+    "specs/quiver-v47-cli-loop-closure-commands/**"
+  ],
+  "depends_on": [
+    "slice-01-status-command",
+    "slice-02-evidence-list-show",
+    "slice-03-changelog-contract",
+    "slice-04-demo-spec-viewer-alias",
+    "slice-05-config-contract-decision"
+  ],
+  "parallel_safe": "no",
+  "parallel_safe_reason": "Final validation depends on all v47 command slices.",
+  "must": [
+    "Update docs and help.",
+    "Run focused and full tests.",
+    "Run package smoke for new commands.",
+    "Update status and evidence."
+  ],
+  "not_included": [
+    "Removing compatibility aliases.",
+    "Implementing v48/v49 scope."
+  ],
+  "acceptance": [
+    "Docs match implemented commands.",
+    "Package-installed smoke covers new commands.",
+    "Full validation passes or blockers are documented.",
+    "Status and evidence are updated."
+  ],
+  "tests": [
+    "node --test",
+    "npm run package:quiver",
+    "git diff --check",
+    "node bin/create-quiver.js spec validate specs/quiver-v47-cli-loop-closure-commands"
+  ],
+  "validation_hints": [
+    "Smoke both create-quiver and quiver binaries."
+  ],
+  "estimated_hours": 4,
+  "status": "completed",
+  "blocked_reason": null,
+  "actual_hours": 4,
+  "completed_at": "2026-05-31T22:32:53-0300"
+}

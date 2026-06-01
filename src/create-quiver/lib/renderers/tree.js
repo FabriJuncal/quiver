@@ -83,6 +83,9 @@ function renderTreeGraph(report, options = {}) {
   const lines = [];
 
   if (!Array.isArray(report.levels) || report.levels.length === 0) {
+    if (typeof report.requested_level === 'number') {
+      return `${translator.t('graph.empty.level', { level: report.requested_level })}\n`;
+    }
     return `${translator.t('graph.empty.pending')}\n`;
   }
 

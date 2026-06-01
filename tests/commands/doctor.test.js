@@ -323,8 +323,8 @@ test('doctor examples prefer an active slice over the first spec alphabetically'
     const output = runCli(['doctor'], { cwd: target });
 
     assert.match(output, /Example target: zeta-active-spec\/slice-01-active \(in-progress\)/);
-    assert.match(output, /start-slice specs\/zeta-active-spec\/slices\/slice-01-active\/slice\.json/);
-    assert.doesNotMatch(output, /start-slice specs\/alpha-spec\/slices\/<slice-id>\/slice\.json/);
+    assert.match(output, /slice start specs\/zeta-active-spec\/slices\/slice-01-active\/slice\.json/);
+    assert.doesNotMatch(output, /slice start specs\/alpha-spec\/slices\/<slice-id>\/slice\.json/);
   } finally {
     cleanup();
   }
@@ -348,8 +348,8 @@ test('doctor uses generic examples when multiple specs have no active slice', ()
     const output = runCli(['doctor'], { cwd: target });
 
     assert.match(output, /Example target: specs\/<spec-slug>\/slices\/<slice-id>\/slice\.json/);
-    assert.match(output, /start-slice specs\/<spec-slug>\/slices\/<slice-id>\/slice\.json/);
-    assert.doesNotMatch(output, /start-slice specs\/alpha-spec\/slices\/<slice-id>\/slice\.json/);
+    assert.match(output, /slice start specs\/<spec-slug>\/slices\/<slice-id>\/slice\.json/);
+    assert.doesNotMatch(output, /slice start specs\/alpha-spec\/slices\/<slice-id>\/slice\.json/);
   } finally {
     cleanup();
   }

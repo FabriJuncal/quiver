@@ -115,6 +115,22 @@ test('spec validate renders Spanish report labels without translating paths', ()
   }
 });
 
+test('spec validate localizes missing spec errors without translating paths', () => {
+  const project = makeProject();
+  try {
+    assert.throws(
+      () => execCli(project.root, ['--lang', 'es', 'spec', 'validate', 'missing-spec']),
+      (error) => {
+        const output = `${error.stdout || ''}${error.stderr || ''}`;
+        assert.match(output, /create-quiver: directorio de spec no encontrado: missing-spec/);
+        return true;
+      },
+    );
+  } finally {
+    project.cleanup();
+  }
+});
+
 test('spec validate fails on unsafe paths and incomplete briefs', () => {
   const project = makeProject();
   try {

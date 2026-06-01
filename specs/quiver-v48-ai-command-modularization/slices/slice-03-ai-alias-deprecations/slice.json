@@ -1,0 +1,66 @@
+{
+  "slice_id": "slice-03-ai-alias-deprecations",
+  "ticket": "QUIVER-48-03",
+  "type": "feature",
+  "title": "AI alias deprecations",
+  "objective": "Make duplicate AI aliases explicit and safe.",
+  "description": "Marks `approval-status` and `executor-prompt` as deprecated compatibility aliases.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v48-ai-alias-deprecations",
+    "branch_name": "feature/QUIVER-48-03-v48-ai-alias-deprecations"
+  },
+  "files": [
+    "src/create-quiver/index.js",
+    "src/create-quiver/commands/ai.js",
+    "tests/commands/ai-dispatch-contract.test.js",
+    "tests/commands/ai-export.test.js",
+    "tests/commands/ai-execute-slice.test.js"
+  ],
+  "expected_read_paths": [
+    "specs/quiver-v48-ai-command-modularization/SPEC.md",
+    "specs/quiver-v48-ai-command-modularization/slices/slice-01-ai-dispatch-contract-baseline/CLOSURE_BRIEF.md"
+  ],
+  "allowed_write_paths": [
+    "src/create-quiver/**",
+    "tests/**",
+    "docs/**",
+    "specs/quiver-v48-ai-command-modularization/**"
+  ],
+  "depends_on": [
+    "slice-01-ai-dispatch-contract-baseline"
+  ],
+  "parallel_safe": "yes",
+  "parallel_safe_reason": "Alias deprecations can land before module split after baseline tests exist.",
+  "must": [
+    "Treat approvals as canonical over approval-status.",
+    "Treat prompt-slice as canonical over executor-prompt.",
+    "Keep aliases functional.",
+    "Apply stderr-only human-mode warnings."
+  ],
+  "not_included": [
+    "Removing aliases.",
+    "Changing prompt or approval behavior."
+  ],
+  "acceptance": [
+    "Canonical commands work.",
+    "Aliases work with safe warnings.",
+    "Warnings do not contaminate stdout or JSON.",
+    "Help documents canonical and compatibility names."
+  ],
+  "tests": [
+    "node --test tests/commands/ai-dispatch-contract.test.js",
+    "node --test tests/commands/ai-export.test.js",
+    "node --test tests/commands/ai-execute-slice.test.js",
+    "git diff --check"
+  ],
+  "validation_hints": [
+    "If a command has no JSON mode, document warning behavior for human output only."
+  ],
+  "estimated_hours": 4,
+  "status": "completed",
+  "blocked_reason": null,
+  "actual_hours": 4,
+  "completed_at": "2026-05-31T22:43:15-0300"
+}

@@ -455,6 +455,22 @@
         "tests/commands/ai-export.test.js",
         "tests/lib/ai-export-state.test.js"
       ]
+    },
+    "ai-diagnostics-advanced": {
+      "modes": {
+        "en_human": "pass",
+        "es_human": "pass",
+        "json": "not_supported",
+        "dry_run": "pass",
+        "interactive": "not_supported",
+        "review": "not_supported",
+        "ci_no_tty": "pass",
+        "no_color": "pass"
+      },
+      "evidence": [
+        "tests/commands/ai-export.test.js",
+        "tests/commands/cli-contract.test.js"
+      ]
     }
   },
   "accepted_exceptions": [
@@ -490,10 +506,13 @@
     { "command": "doctor", "profile": "read-only-human", "critical": "pass" },
     { "command": "doctor --json", "profile": "doctor-json", "critical": "pass" },
     { "command": "flow", "profile": "read-only-human", "critical": "pass" },
+    { "command": "status", "profile": "read-only-human", "critical": "pass" },
+    { "command": "status --json", "profile": "dashboard-json", "critical": "pass" },
     { "command": "dashboard", "profile": "dashboard-human", "critical": "pass" },
     { "command": "dashboard --details", "profile": "dashboard-human", "critical": "pass" },
     { "command": "dashboard --section <name>", "profile": "dashboard-human", "critical": "pass" },
     { "command": "dashboard --limit <n>", "profile": "dashboard-human", "critical": "pass" },
+    { "command": "changelog", "profile": "read-only-human", "critical": "pass" },
     { "command": "ai prepare-context --dry-run", "profile": "ai-prepare-context", "critical": "pass" },
     { "command": "ai prepare-context", "profile": "ai-prepare-context", "critical": "pass" },
     { "command": "ai prepare-context --with-planner --dry-run", "profile": "ai-prepare-context-planner", "critical": "pass" },
@@ -508,7 +527,8 @@
     { "command": "ai agent doctor", "profile": "ai-agent-profile", "critical": "pass" },
     { "command": "ai agent doctor --json", "profile": "ai-agent-json", "critical": "pass" },
     { "command": "ai agent repair --dry-run", "profile": "ai-agent-repair", "critical": "pass" },
-    { "command": "ai run create --input <file>", "profile": "ai-run-lifecycle", "critical": "pass" },
+    { "command": "ai lifecycle create --input <file>", "profile": "ai-run-lifecycle", "critical": "pass" },
+    { "command": "ai run create --input <file>", "profile": "ai-run-lifecycle", "critical": "pass", "exception": "compatibility alias" },
     { "command": "ai status", "profile": "ai-run-lifecycle", "critical": "pass" },
     { "command": "ai plan --phase acceptance --input <file>", "profile": "ai-planner-provider", "critical": "pass" },
     { "command": "ai plan --phase acceptance --review --interactive --input <file>", "profile": "ai-planner-provider", "critical": "pass" },
@@ -522,6 +542,9 @@
     { "command": "ai approve --phase technical-plan", "profile": "ai-approve", "critical": "pass" },
     { "command": "ai approve --phase technical-plan --version <n>", "profile": "ai-approve", "critical": "pass" },
     { "command": "ai approvals", "profile": "ai-run-lifecycle", "critical": "pass" },
+    { "command": "ai approval-status", "profile": "ai-run-lifecycle", "critical": "pass", "exception": "deprecated compatibility alias warning on stderr" },
+    { "command": "ai active-slice reconcile --dry-run", "profile": "ai-diagnostics-advanced", "critical": "pass" },
+    { "command": "ai trace report", "profile": "ai-diagnostics-advanced", "critical": "pass" },
     { "command": "spec create --dry-run", "profile": "spec-create", "critical": "pass" },
     { "command": "spec create", "profile": "spec-create", "critical": "pass" },
     { "command": "spec create --review --interactive", "profile": "spec-create", "critical": "pass" },
@@ -533,13 +556,28 @@
     { "command": "dashboard --section slices --spec <spec>", "profile": "dashboard-human", "critical": "pass" },
     { "command": "graph --spec <spec>", "profile": "plan-graph-next", "critical": "pass" },
     { "command": "next --all-ready --spec <spec>", "profile": "plan-graph-next", "critical": "pass" },
+    { "command": "slice start <slice.json>", "profile": "spec-workflow", "critical": "pass" },
+    { "command": "slice check <slice.json> --local", "profile": "spec-workflow", "critical": "pass" },
+    { "command": "slice check-pr <slice.json>", "profile": "spec-workflow", "critical": "pass" },
+    { "command": "slice scope <slice.json>", "profile": "spec-workflow", "critical": "pass" },
+    { "command": "slice cleanup <slice.json>", "profile": "spec-workflow", "critical": "pass" },
+    { "command": "slice refresh", "profile": "spec-workflow", "critical": "pass" },
+    { "command": "handoff check <path.md>", "profile": "spec-workflow", "critical": "pass" },
+    { "command": "handoff create <spec-slug>", "profile": "spec-workflow", "critical": "pass" },
     { "command": "ai prompt-slice --slice <slice.json> --dry-run", "profile": "ai-executor", "critical": "pass" },
+    { "command": "ai executor-prompt --slice <slice.json> --dry-run", "profile": "ai-executor", "critical": "pass", "exception": "deprecated compatibility alias warning on stderr" },
     { "command": "ai execute-slice --slice <slice.json> --commit", "profile": "ai-executor", "critical": "pass" },
     { "command": "ai execute-plan --execute --commit --mode delegated", "profile": "ai-executor", "critical": "pass" },
     { "command": "ai pr --dry-run --input specs/<spec>/pr.md", "profile": "ai-pr", "critical": "pass" },
     { "command": "ai pr --review --dry-run --input specs/<spec>/pr.md", "profile": "ai-pr", "critical": "pass" },
     { "command": "ai pr --create --input specs/<spec>/pr.md", "profile": "ai-pr", "critical": "pass" },
     { "command": "spec close specs/<spec> --dry-run", "profile": "spec-workflow", "critical": "pass" },
-    { "command": "spec close specs/<spec>", "profile": "spec-workflow", "critical": "pass" }
+    { "command": "spec close specs/<spec>", "profile": "spec-workflow", "critical": "pass" },
+    { "command": "evidence run -- npm test", "profile": "migrate", "critical": "pass" },
+    { "command": "evidence list", "profile": "read-only-human", "critical": "pass" },
+    { "command": "evidence list --json", "profile": "dashboard-json", "critical": "pass" },
+    { "command": "evidence show .quiver/evidence/<file.md>", "profile": "read-only-human", "critical": "pass" },
+    { "command": "demo spec-viewer --dry-run", "profile": "init-write", "critical": "pass" },
+    { "command": "demo create spec-viewer --dry-run", "profile": "init-write", "critical": "pass" }
   ]
 }

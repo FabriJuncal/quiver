@@ -1,0 +1,71 @@
+{
+  "slice_id": "slice-04-parser-adapter-incremental-migration",
+  "ticket": "QUIVER-49-04",
+  "type": "feature",
+  "title": "Parser adapter incremental migration",
+  "objective": "Migrate parser behavior incrementally behind an adapter while preserving golden contracts.",
+  "description": "Introduces the selected parser strategy without breaking existing invocations.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v49-parser-adapter-migration",
+    "branch_name": "feature/QUIVER-49-04-v49-parser-adapter-migration"
+  },
+  "files": [
+    "src/create-quiver/index.js",
+    "src/create-quiver/lib/cli/parser.js",
+    "src/create-quiver/lib/cli/command-registry.js",
+    "package.json",
+    "package-lock.json",
+    "tests/commands/parser-contract.test.js",
+    "tests/commands/cli-contract.test.js"
+  ],
+  "expected_read_paths": [
+    "specs/quiver-v49-parser-modernization/parser-decision.md",
+    "specs/quiver-v49-parser-modernization/command-flag-registry.md",
+    "tests/commands/parser-contract.test.js"
+  ],
+  "allowed_write_paths": [
+    "src/create-quiver/**",
+    "tests/**",
+    "package.json",
+    "package-lock.json",
+    "specs/quiver-v49-parser-modernization/**"
+  ],
+  "depends_on": [
+    "slice-03-parser-library-decision"
+  ],
+  "parallel_safe": "no",
+  "parallel_safe_reason": "Parser migration touches central command dispatch.",
+  "must": [
+    "Implement selected parser path behind an adapter.",
+    "Preserve all golden parser tests.",
+    "Keep old behavior callable until parity is proven.",
+    "Migrate incrementally by command groups where possible."
+  ],
+  "not_included": [
+    "Removing aliases.",
+    "Changing command semantics."
+  ],
+  "acceptance": [
+    "Golden parser tests pass.",
+    "Existing command tests pass.",
+    "Package-installed smoke passes for both binaries.",
+    "No public command invocation is intentionally broken."
+  ],
+  "tests": [
+    "node --test tests/commands/parser-contract.test.js",
+    "node --test tests/commands/cli-contract.test.js",
+    "node --test",
+    "git diff --check"
+  ],
+  "validation_hints": [
+    "If adding dependency, use normal npm install and commit package-lock changes.",
+    "Keep parser errors localized or compatible with existing i18n behavior."
+  ],
+  "estimated_hours": 14,
+  "status": "completed",
+  "blocked_reason": null,
+  "actual_hours": 7,
+  "completed_at": "2026-06-01T00:41:15-0300"
+}

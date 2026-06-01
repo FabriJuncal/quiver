@@ -47,6 +47,23 @@ test('demo create spec-viewer dry-run prints planned files without writing', () 
   }
 });
 
+test('demo spec-viewer dry-run matches compatibility create form', () => {
+  const { dir, cleanup } = makeTmpDir();
+  try {
+    const target = path.join(dir, 'demo');
+    const canonical = runCli(['demo', 'spec-viewer', '--dir', target, '--dry-run']);
+    const compatibility = runCli(['demo', 'create', 'spec-viewer', '--dir', target, '--dry-run']);
+
+    assert.match(canonical, /Quiver demo dry-run/);
+    assert.match(canonical, /Demo: spec-viewer/);
+    assert.match(canonical, /No files were written/);
+    assert.equal(canonical, compatibility);
+    assert.equal(fs.existsSync(path.join(target, 'package.json')), false);
+  } finally {
+    cleanup();
+  }
+});
+
 test('demo create spec-viewer dry-run supports Spanish human output without translating paths', () => {
   const { dir, cleanup } = makeTmpDir();
   try {
@@ -136,6 +153,21 @@ test('demo create spec-viewer writes a small runnable demo', () => {
     assert.match(graph, /flowchart TD/);
     assert.match(next, /slice-01-static-spec-viewer/);
     assert.match(brief, /PASS: Execution brief validated/);
+  } finally {
+    cleanup();
+  }
+});
+
+test('demo spec-viewer writes the same runnable demo as compatibility form', () => {
+  const { dir, cleanup } = makeTmpDir();
+  try {
+    const target = path.join(dir, 'demo');
+    const output = runCli(['demo', 'spec-viewer', '--dir', target]);
+
+    assert.match(output, /Quiver demo created/);
+    assert.equal(fs.existsSync(path.join(target, 'package.json')), true);
+    assert.equal(fs.existsSync(path.join(target, 'src', 'index.html')), true);
+    assert.equal(fs.existsSync(path.join(target, 'specs', 'quiver-spec-viewer', 'SPEC.md')), true);
   } finally {
     cleanup();
   }

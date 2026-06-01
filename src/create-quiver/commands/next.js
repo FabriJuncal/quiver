@@ -66,7 +66,10 @@ function formatHumanNext(report, options = {}) {
       lines.push(`${translator.t('next.label.status')}: ${formatStatus(item.status, translator)}`);
       lines.push(`${translator.t('next.label.start')}: ${command}`);
       if (report.all_ready.length > 1) {
-        lines.push(`${translator.t('next.label.also_ready')}: ${report.all_ready.slice(1).map((candidate) => candidate.ref).join(', ')}`);
+        lines.push(translator.t('next.also_ready_more', {
+          command: 'npx create-quiver next --all-ready',
+          count: report.all_ready.length - 1,
+        }));
       }
     }
   }
