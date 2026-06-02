@@ -72,6 +72,9 @@ function collectGraph(repoRoot, options = {}) {
 function formatHumanGraph(report, options = {}) {
   const translator = createTranslator(options.language);
   const format = options.format || 'tree';
+  if (format === 'tree' && typeof options.level === 'number' && (!Array.isArray(report.levels) || report.levels.length === 0)) {
+    return `${translator.t('graph.empty.level', { level: options.level })}\n`;
+  }
   const sharedOptions = {
     showConflicts: options.showConflicts === true,
     language: options.language,

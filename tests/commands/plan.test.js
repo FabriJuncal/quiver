@@ -51,8 +51,11 @@ function slice(ref, files, extra = {}) {
     status: extra.status || 'draft',
     acceptance: extra.acceptance || [`Acceptance for ${ref}`],
     tests: extra.tests || [],
-    estimated_hours: extra.estimated_hours ?? 1,
   };
+
+  if (extra.omit_estimated_hours !== true) {
+    data.estimated_hours = extra.estimated_hours ?? 1;
+  }
 
   if (extra.dependencies !== undefined) {
     data.dependencies = extra.dependencies;
@@ -189,6 +192,30 @@ test('plan CLI emits parseable JSON', () => {
     assert.equal(parsed.total_hours, 5);
     assert.deepEqual(parsed.critical_path, ['spec-a/slice-01-alpha', 'spec-a/slice-02-beta']);
     assert.equal(parsed.plan[0].slice_path, 'specs/spec-a/slices/slice-01-alpha/slice.json');
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('plan missing-estimates note is human-only and JSON-safe', () => {
+  const repo = makeRepo({
+    'specs/spec-a/slices/slice-01-alpha/slice.json': slice('spec-a/slice-01-alpha', ['docs/a.md'], {
+      omit_estimated_hours: true,
+    }),
+  });
+
+  try {
+    const human = execPlan(repo.root, ['--lang', 'en']);
+    const localized = execPlan(repo.root, ['--lang', 'es']);
+    const jsonText = execPlan(repo.root, ['--json']);
+    const parsed = JSON.parse(jsonText);
+
+    assert.ok(human.includes('Note: 1 slice has no positive estimated_hours and is counted as 0h.'));
+    assert.ok(localized.includes('Nota: 1 slice no tiene estimated_hours positivo y cuenta como 0h.'));
+    assert.equal(parsed.total_hours, 0);
+    assert.equal(parsed.plan[0].hours, 0);
+    assert.ok(!jsonText.includes('Note:'));
+    assert.ok(!jsonText.includes('Nota:'));
   } finally {
     repo.cleanup();
   }

@@ -109,6 +109,13 @@ Reglas:
 | `flow`, `dashboard`, `next`, `graph`, `version` | no | no | no | Lectura/inspeccion; `dashboard` puede acotarse con `--details`, `--section` y `--limit`, pero no acepta flags decorativas. |
 | `ai inspect`, `ai export`, `ai specs list`, `ai slices list`, `ai trace report` | no | no | no | Superficies read-only o machine-readable. |
 
+## Contratos read-only de plan, graph y next
+
+- `next --auto-start` requiere TTY interactiva; en CI/no-TTY falla antes de iniciar un slice y no emite JSON parcial.
+- `plan` mantiene JSON limpio. Las advertencias sobre slices sin `estimated_hours` positivo aparecen solo en salida humana y esos slices cuentan como `0h`.
+- `graph --level <n>` mantiene JSON limpio. Si el nivel no existe, la salida humana muestra un estado vacio localizado y `--json` emite `levels: []` / `conflicts: []`.
+- `graph --json` tiene precedencia sobre `--format tree|mermaid|dot`; con ambos flags, la salida sigue siendo JSON parseable.
+
 ## Flujo recomendado para contexto de IA
 
 Modo deterministico:

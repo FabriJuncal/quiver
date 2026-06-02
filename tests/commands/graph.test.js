@@ -174,6 +174,40 @@ test('graph CLI can show conflicts and filter a single level', () => {
   }
 });
 
+test('graph CLI reports an empty level in human output and keeps JSON clean', () => {
+  const repo = graphFixture();
+  try {
+    const human = execGraph(repo.root, ['--level', '99', '--lang', 'en']);
+    const localized = execGraph(repo.root, ['--level', '99', '--lang', 'es']);
+    const jsonText = execGraph(repo.root, ['--level', '99', '--json']);
+    const parsed = JSON.parse(jsonText);
+
+    assert.equal(human, 'No slices found for graph level 99.\n');
+    assert.equal(localized, 'No se encontraron slices para el nivel de graph 99.\n');
+    assert.deepEqual(parsed.levels, []);
+    assert.deepEqual(parsed.conflicts, []);
+    assert.ok(!jsonText.includes('No slices found'));
+    assert.ok(!jsonText.includes('No se encontraron'));
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('graph --json keeps JSON output even when --format selects a human renderer', () => {
+  const repo = graphFixture();
+  try {
+    const output = execGraph(repo.root, ['--json', '--format', 'mermaid', '--show-conflicts']);
+    const parsed = JSON.parse(output);
+
+    assert.ok(Array.isArray(parsed.levels));
+    assert.ok(Array.isArray(parsed.conflicts));
+    assert.ok(!output.startsWith('```mermaid'));
+    assert.ok(!output.includes('flowchart TD'));
+  } finally {
+    repo.cleanup();
+  }
+});
+
 test('graph CLI emits valid JSON', () => {
   const repo = graphFixture();
   try {
