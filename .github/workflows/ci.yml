@@ -106,8 +106,8 @@ jobs:
         run: |
           $versionJson = node .\bin\create-quiver.js version --json
           $version = $versionJson | ConvertFrom-Json
-          if (-not $version.version) {
-            throw "create-quiver version JSON did not include a version field"
+          if (-not $version.version_schema_version -or -not $version.cli.version) {
+            throw "create-quiver version JSON did not include version schema metadata"
           }
           npm run test:ci -- tests\lib\paths.test.js
 
