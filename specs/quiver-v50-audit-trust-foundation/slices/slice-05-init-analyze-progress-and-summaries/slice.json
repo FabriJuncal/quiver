@@ -1,0 +1,73 @@
+{
+  "slice_id": "slice-05-init-analyze-progress-and-summaries",
+  "ticket": "QUIVER-50-05",
+  "type": "feature",
+  "title": "Init/analyze progress and summaries",
+  "objective": "Add safe progress feedback and stable summaries to onboarding commands.",
+  "description": "Improves perceived responsiveness for init and analyze while preserving JSON, CI, no-TTY, and no-color behavior.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v50-init-analyze-progress",
+    "branch_name": "feature/QUIVER-50-05-v50-init-analyze-progress"
+  },
+  "files": [
+    "src/create-quiver/commands/init.js",
+    "src/create-quiver/commands/analyze.js",
+    "src/create-quiver/index.js",
+    "src/create-quiver/lib/cli/ux.js",
+    "src/create-quiver/lib/i18n/messages/en.js",
+    "src/create-quiver/lib/i18n/messages/es.js",
+    "tests/commands/init*.test.js",
+    "tests/commands/analyze.test.js",
+    "tests/lib/cli-ux.test.js",
+    "specs/quiver-v50-audit-trust-foundation/**"
+  ],
+  "expected_read_paths": [
+    "src/create-quiver/commands/init.js",
+    "src/create-quiver/commands/analyze.js",
+    "src/create-quiver/lib/cli/ux.js",
+    "tests/commands/analyze.test.js",
+    "tests/commands/init-profiles.test.js"
+  ],
+  "allowed_write_paths": [
+    "src/create-quiver/**",
+    "tests/**",
+    "specs/quiver-v50-audit-trust-foundation/**"
+  ],
+  "depends_on": [
+    "slice-00-audit-baseline-and-resolved-findings",
+    "slice-04-user-facing-i18n-error-coverage"
+  ],
+  "parallel_safe": "no",
+  "parallel_safe_reason": "Progress messages share i18n and UX behavior with slice-04.",
+  "must": [
+    "Show transient progress only in safe TTY conditions.",
+    "Preserve final summaries in normal human output.",
+    "Suppress progress frames in JSON, no-TTY, CI=true, and --no-color.",
+    "Localize new human messages."
+  ],
+  "not_included": [
+    "Changing init/analyze core logic.",
+    "Adding progress to unrelated commands."
+  ],
+  "acceptance": [
+    "TTY users see progress during slow phases.",
+    "CI/no-TTY/JSON/no-color do not receive transient progress.",
+    "Stable final summaries remain in normal human output.",
+    "Tests distinguish progress from final summaries."
+  ],
+  "tests": [
+    "node --test tests/commands/analyze.test.js",
+    "node --test tests/commands/init-profiles.test.js",
+    "node --test tests/lib/cli-ux.test.js",
+    "node --test",
+    "git diff --check"
+  ],
+  "validation_hints": [
+    "If using createUx.withSpinner, ensure fallback echo does not create progress noise in CI."
+  ],
+  "estimated_hours": 5,
+  "status": "planned",
+  "blocked_reason": null
+}

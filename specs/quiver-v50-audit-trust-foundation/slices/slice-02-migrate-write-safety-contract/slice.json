@@ -1,0 +1,72 @@
+{
+  "slice_id": "slice-02-migrate-write-safety-contract",
+  "ticket": "QUIVER-50-02",
+  "type": "feature",
+  "title": "Migrate write-safety contract",
+  "objective": "Require explicit confirmation before migrate performs any side effects.",
+  "description": "Protects migrate writes with TTY confirmation, no-TTY safety, and a documented --yes automation path.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v50-migrate-write-safety",
+    "branch_name": "feature/QUIVER-50-02-v50-migrate-write-safety"
+  },
+  "files": [
+    "src/create-quiver/index.js",
+    "src/create-quiver/lib/i18n/messages/en.js",
+    "src/create-quiver/lib/i18n/messages/es.js",
+    "tests/commands/parser-contract.test.js",
+    "tests/commands/*migrate*.test.js",
+    "docs/reference/commands.md",
+    "docs/CLI_UX_GUIDE.md",
+    "specs/quiver-v50-audit-trust-foundation/**"
+  ],
+  "expected_read_paths": [
+    "src/create-quiver/index.js",
+    "src/create-quiver/commands/init.js",
+    "src/create-quiver/lib/cli/ux.js",
+    "tests/commands/parser-contract.test.js"
+  ],
+  "allowed_write_paths": [
+    "src/create-quiver/**",
+    "tests/**",
+    "docs/reference/commands.md",
+    "docs/CLI_UX_GUIDE.md",
+    "specs/quiver-v50-audit-trust-foundation/**"
+  ],
+  "depends_on": [
+    "slice-00-audit-baseline-and-resolved-findings"
+  ],
+  "parallel_safe": "yes",
+  "parallel_safe_reason": "Touches migrate/parser/help but is isolated from runtime metadata and docs work.",
+  "must": [
+    "Prompt before any migrate side effect in TTY.",
+    "Refuse or guide safely in no-TTY without --yes.",
+    "Allow migrate --yes for automation.",
+    "Keep migrate --dry-run side-effect free and prompt-free.",
+    "Update --yes parser/help scope."
+  ],
+  "not_included": [
+    "Changing migration semantics.",
+    "Removing legacy migrate paths."
+  ],
+  "acceptance": [
+    "Cancellation leaves the file tree unchanged.",
+    "migrate --yes proceeds without prompt.",
+    "migrate --dry-run does not require --yes.",
+    "Warnings/prompts never pollute JSON stdout.",
+    "EN/ES messages are covered."
+  ],
+  "tests": [
+    "node --test tests/commands/parser-contract.test.js",
+    "node --test tests/commands/*migrate*.test.js",
+    "node --test",
+    "git diff --check"
+  ],
+  "validation_hints": [
+    "Snapshot files before and after cancellation/no-TTY tests."
+  ],
+  "estimated_hours": 6,
+  "status": "planned",
+  "blocked_reason": null
+}

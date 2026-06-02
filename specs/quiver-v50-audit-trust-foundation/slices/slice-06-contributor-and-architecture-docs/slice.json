@@ -1,0 +1,72 @@
+{
+  "slice_id": "slice-06-contributor-and-architecture-docs",
+  "ticket": "QUIVER-50-06",
+  "type": "documentation",
+  "title": "Contributor and architecture docs",
+  "objective": "Make contribution and architecture documentation accurate enough for external contributors.",
+  "description": "Expands CONTRIBUTING.md and creates ARCHITECTURE.md based on the real CLI/package/spec structure.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v50-contributor-architecture-docs",
+    "branch_name": "feature/QUIVER-50-06-v50-contributor-architecture-docs"
+  },
+  "files": [
+    "CONTRIBUTING.md",
+    "ARCHITECTURE.md",
+    "README.md",
+    "ROADMAP.md",
+    "docs/CLI_UX_GUIDE.md",
+    "docs/reference/commands.md",
+    "specs/quiver-v50-audit-trust-foundation/**"
+  ],
+  "expected_read_paths": [
+    "README.md",
+    "README_FOR_AI.md",
+    "package.json",
+    "src/create-quiver/**",
+    "specs/quiver-v49-parser-modernization/**",
+    "scripts/package-quiver.sh",
+    ".npmignore"
+  ],
+  "allowed_write_paths": [
+    "CONTRIBUTING.md",
+    "ARCHITECTURE.md",
+    "README.md",
+    "ROADMAP.md",
+    "docs/**",
+    "specs/quiver-v50-audit-trust-foundation/**"
+  ],
+  "depends_on": [
+    "slice-00-audit-baseline-and-resolved-findings"
+  ],
+  "parallel_safe": "yes",
+  "parallel_safe_reason": "Docs work can run independently after baseline, but must stay aligned with real commands.",
+  "must": [
+    "Document real setup, tests, smokes, commits, and PR process.",
+    "Document real architecture and package boundaries.",
+    "Document specs/quiver-vNN-* as the real spec convention.",
+    "Explain templates and examples.",
+    "Clean public references to internal vNN wording where needed."
+  ],
+  "not_included": [
+    "Creating a docs site.",
+    "Changing CLI behavior."
+  ],
+  "acceptance": [
+    "A contributor can set up and run tests from CONTRIBUTING.md.",
+    "ARCHITECTURE.md describes real entrypoints, layers, specs, and package boundaries.",
+    "Docs mention only commands that exist in current help.",
+    "Public docs avoid unexplained internal version references."
+  ],
+  "tests": [
+    "node bin/create-quiver.js --help",
+    "git diff --check"
+  ],
+  "validation_hints": [
+    "Do not document docs/specs as canonical; this repo uses specs/quiver-vNN-*."
+  ],
+  "estimated_hours": 5,
+  "status": "planned",
+  "blocked_reason": null
+}

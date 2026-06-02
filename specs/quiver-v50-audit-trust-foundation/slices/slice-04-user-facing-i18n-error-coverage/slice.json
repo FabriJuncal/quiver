@@ -1,0 +1,72 @@
+{
+  "slice_id": "slice-04-user-facing-i18n-error-coverage",
+  "ticket": "QUIVER-50-04",
+  "type": "quality",
+  "title": "User-facing i18n error coverage",
+  "objective": "Ensure user-facing errors in covered command paths respect EN/ES language selection.",
+  "description": "Audits commands and invoked libraries for hardcoded user-facing errors and replaces them with catalog-backed messages where needed.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v50-i18n-error-coverage",
+    "branch_name": "feature/QUIVER-50-04-v50-i18n-error-coverage"
+  },
+  "files": [
+    "src/create-quiver/commands/**",
+    "src/create-quiver/lib/**",
+    "tests/commands/i18n-audit-matrix.test.js",
+    "tests/lib/i18n-catalog.test.js",
+    "specs/quiver-v50-audit-trust-foundation/**"
+  ],
+  "expected_read_paths": [
+    "src/create-quiver/commands/config.js",
+    "src/create-quiver/commands/evidence.js",
+    "src/create-quiver/commands/spec.js",
+    "src/create-quiver/commands/graph.js",
+    "src/create-quiver/commands/prepare.js",
+    "src/create-quiver/commands/ai-core.js",
+    "src/create-quiver/lib/i18n/catalog.js",
+    "src/create-quiver/lib/i18n/messages/en.js",
+    "src/create-quiver/lib/i18n/messages/es.js"
+  ],
+  "allowed_write_paths": [
+    "src/create-quiver/commands/**",
+    "src/create-quiver/lib/**",
+    "tests/commands/**",
+    "tests/lib/**",
+    "specs/quiver-v50-audit-trust-foundation/**"
+  ],
+  "depends_on": [
+    "slice-00-audit-baseline-and-resolved-findings"
+  ],
+  "parallel_safe": "yes",
+  "parallel_safe_reason": "Can run independently after baseline, but coordinate catalog keys with slice-05.",
+  "must": [
+    "Audit command-to-library error paths.",
+    "Localize user-facing errors in EN/ES.",
+    "Maintain JSON stdout cleanliness.",
+    "Document allowlisted technical strings."
+  ],
+  "not_included": [
+    "Localizing machine-readable JSON keys.",
+    "Changing command semantics."
+  ],
+  "acceptance": [
+    "Covered errors respect --lang es and --lang en.",
+    "Catalog completeness passes.",
+    "No user-facing hardcoded English error remains in covered paths outside allowlist.",
+    "JSON outputs remain parseable."
+  ],
+  "tests": [
+    "node --test tests/commands/i18n-audit-matrix.test.js",
+    "node --test tests/lib/i18n-catalog.test.js",
+    "node --test",
+    "git diff --check"
+  ],
+  "validation_hints": [
+    "Validate behavior by executing commands, not only by grep."
+  ],
+  "estimated_hours": 6,
+  "status": "planned",
+  "blocked_reason": null
+}
