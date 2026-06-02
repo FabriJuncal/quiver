@@ -1,4 +1,41 @@
 # Guía de Git y PR
 
-Usá un branch, un worktree y un PR por slice.
+Usá un branch, un worktree y un PR por slice por defecto.
 
+## Regla base
+
+- Un slice equivale a un commit.
+- Un slice equivale a un PR por defecto.
+- Un spec puede generar múltiples PRs.
+- Los PRs agrupados son excepciones y deben cumplir la política de agrupación.
+
+## PR individual obligatorio
+
+Abrí un PR individual para cualquier slice que incluya:
+
+- código funcional;
+- UI/UX;
+- Supabase, Edge Functions, auth o storage;
+- preview o comportamiento de deploy;
+- performance o code-splitting;
+- refactors;
+- tests o CI que afecten gates.
+
+## PR agrupado permitido
+
+Un PR agrupado está permitido sólo si:
+
+- incluye como máximo 2-3 slices;
+- todos los slices son docs-only, research-only o limpieza mecánica de bajo riesgo;
+- no cambia comportamiento;
+- no mezcla docs con UI, backend, refactor o performance;
+- cada slice mantiene evidencia separada;
+- el PR completo puede revertirse sin dejar estado parcial.
+
+## Merge y auto-merge
+
+- El merge humano es el default.
+- Los agentes IA pueden crear PRs, corregir CI, monitorear checks y marcar PRs como listos.
+- El auto-merge asistido sólo está permitido con autorización humana explícita para ese PR o para una categoría documentada.
+- El auto-merge asistido sólo aplica a PRs docs-only o chore-only de bajo riesgo, sin runtime, sin configuración productiva, con checks verdes y sin comentarios pendientes.
+- El auto-merge asistido está prohibido para UI, Supabase, Edge Functions, auth, storage, preview, performance, refactors y cambios con rollback dudoso.

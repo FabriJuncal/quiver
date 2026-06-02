@@ -34,7 +34,9 @@ This file is the main context pack after `AGENTS.md` and `docs/PROJECT_MAP.md`. 
 ## Critical Rules
 
 - One slice maps to one commit.
-- One spec maps to one PR.
+- One slice maps to one PR by default.
+- One spec can produce multiple PRs.
+- Grouped PRs are exceptions and must follow `docs/GITFLOW_PR_GUIDE.md`.
 - Slice numbering resets inside each spec.
 - Do not invent files that the bootstrap did not generate.
 - Use canonical paths when a path matters.

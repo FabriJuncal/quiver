@@ -645,7 +645,7 @@ Use this section only for projects generated with the full compatibility layout.
 5. Check the next ready slice with \`{{NEXT_COMMAND}}\` or \`npm run quiver:next\`.
 6. Start work with \`{{START_SLICE_COMMAND}}\` or \`npm run quiver:start-slice -- <slice.json>\`.
 7. Make one commit per slice.
-8. Open one PR per spec.
+8. Open one PR per slice by default; group slices only when \`docs/GITFLOW_PR_GUIDE.md\` allows it.
 
 ## Verification Checklist
 

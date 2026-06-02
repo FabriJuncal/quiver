@@ -3,9 +3,67 @@
 ## Reglas principales
 
 - Un slice equivale a un commit.
-- Un spec equivale a un PR.
-- No mezclar specs en la misma branch.
+- Un slice equivale a un PR por defecto.
+- Un spec puede generar multiples PRs.
+- Los PRs agrupados son excepciones y deben cumplir la politica de agrupacion.
+- No mezclar PRs no relacionados en la misma branch.
 - No abrir PR sin evidencia de validacion.
+
+## Politica de tamano de PR
+
+### PR individual obligatorio
+
+Abri un PR individual para cualquier slice que incluya:
+
+- codigo funcional;
+- UI/UX;
+- Supabase, Edge Functions, auth o storage;
+- preview o comportamiento de deploy;
+- performance o code-splitting;
+- refactors;
+- tests o CI que afecten gates.
+
+### PR agrupado permitido
+
+Un PR agrupado esta permitido solo si:
+
+- incluye como maximo 2-3 slices;
+- todos los slices son docs-only, research-only o limpieza mecanica de bajo riesgo;
+- no cambia comportamiento;
+- no mezcla docs con UI, backend, refactor o performance;
+- cada slice mantiene evidencia separada;
+- el PR completo puede revertirse sin dejar estado parcial.
+
+Si una condicion falla, separa el trabajo en PRs individuales por slice.
+
+## Politica de merge
+
+- El merge humano es el default.
+- Los agentes IA pueden crear PRs, corregir CI, monitorear checks y marcar PRs como listos.
+- El auto-merge asistido solo esta permitido con autorizacion humana explicita para ese PR o para una categoria documentada.
+
+## Politica de auto-merge asistido
+
+El auto-merge asistido esta permitido solo si:
+
+- el PR es docs-only o chore-only;
+- el riesgo es bajo;
+- no hay cambios runtime;
+- no hay cambios de configuracion productiva;
+- los checks estan verdes;
+- no hay comentarios pendientes.
+
+El auto-merge asistido esta prohibido para:
+
+- UI;
+- Supabase;
+- Edge Functions;
+- auth;
+- storage;
+- preview;
+- performance;
+- refactors;
+- cambios con rollback dudoso.
 
 ## Preflight de PR
 
@@ -17,6 +75,7 @@ npx create-quiver ai pr --dry-run --ssh-host-alias <alias> --identity-file <key>
 
 - `## Title`
 - `## Summary`
+- `## PR Policy`
 - `## Scope`
 - `## Files`
 - `## How to Test (DETAILED - REQUIRED)`

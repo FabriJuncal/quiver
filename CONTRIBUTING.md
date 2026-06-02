@@ -33,7 +33,9 @@ can run the local checkout directly with `node bin/create-quiver.js ...`.
 5. Record validation evidence in the spec's `EVIDENCE_REPORT.md`.
 6. Update the slice `CLOSURE_BRIEF.md`, `STATUS.md`, and `slice.json` when a
    slice is completed.
-7. Open one PR per spec using that spec's `pr.md`.
+7. Open one PR per slice by default using the relevant `pr.md`.
+8. Group slices in one PR only when the grouped PR policy in
+   `docs/GITFLOW_PR_GUIDE.md` allows it.
 
 Use the branch and base metadata in the target `slice.json`. If a branch guide
 and `slice.json` disagree, prefer the current slice metadata and document the
@@ -109,10 +111,12 @@ Always record commands, exit codes, and meaningful output in the relevant
 
 ## PR Requirements
 
-Follow `docs/GITFLOW_PR_GUIDE.md` for PR structure. Spec PR bodies must use:
+Follow `docs/GITFLOW_PR_GUIDE.md` for PR structure, PR sizing, and merge
+policy. Slice PR bodies must use:
 
 - `## Title`
 - `## Summary`
+- `## PR Policy`
 - `## Scope`
 - `## Files`
 - `## How to Test (DETAILED - REQUIRED)`
@@ -122,6 +126,17 @@ Follow `docs/GITFLOW_PR_GUIDE.md` for PR structure. Spec PR bodies must use:
 
 Use draft PRs while a spec or slice still needs review. Do not include local
 audit inputs, PDFs, `.DS_Store`, worktrees, provider state, or secrets.
+
+Open an individual PR when a slice changes functional code, UI/UX, Supabase,
+Edge Functions, auth, storage, preview, performance/code-splitting, refactors,
+or tests/CI gates. Grouped PRs are limited to at most 2-3 docs-only,
+research-only, or low-risk mechanical-cleanup slices, with separate evidence
+and no behavior changes.
+
+Human merge is the default. Agents may create PRs, fix CI, monitor checks, and
+mark PRs as ready. Assisted auto-merge requires explicit human authorization and
+is limited to low-risk docs-only or chore-only PRs with green checks, no runtime
+or production configuration changes, and no pending comments.
 
 ## Templates and Examples
 
