@@ -1,0 +1,74 @@
+{
+  "slice_id": "slice-01-json-schema-for-slice-json",
+  "ticket": "QUIVER-52-01",
+  "type": "feature",
+  "title": "JSON Schema for slice.json",
+  "objective": "Publish a slice.json JSON Schema aligned with runtime behavior.",
+  "description": "Generates or authors a schema only after the source of truth is confirmed and validates it against real fixtures.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v52-slice-json-schema",
+    "branch_name": "feature/QUIVER-52-01-v52-slice-json-schema"
+  },
+  "files": [
+    "docs/schema/slice.schema.json",
+    "package.json",
+    "package-lock.json",
+    "scripts/**",
+    "tests/**",
+    "docs/**",
+    "specs/quiver-v52-schema-docs-release-hygiene/**"
+  ],
+  "expected_read_paths": [
+    "src/create-quiver/lib/slice.js",
+    "src/create-quiver/lib/slice-graph.js",
+    "src/create-quiver/commands/spec.js",
+    "specs/**/slices/**/slice.json",
+    "tests/**"
+  ],
+  "allowed_write_paths": [
+    "docs/schema/**",
+    "package.json",
+    "package-lock.json",
+    "scripts/**",
+    "tests/**",
+    "docs/**",
+    "specs/quiver-v52-schema-docs-release-hygiene/**"
+  ],
+  "depends_on": [
+    "slice-00-schema-docs-release-baseline"
+  ],
+  "parallel_safe": "yes",
+  "parallel_safe_reason": "Schema work can run independently after baseline, but package smoke updates must coordinate with slice-03.",
+  "must": [
+    "Create docs/schema/slice.schema.json.",
+    "Validate real valid fixtures.",
+    "Reject representative invalid fixtures.",
+    "Document schema usage and generation.",
+    "Keep schema aligned with runtime behavior."
+  ],
+  "not_included": [
+    "Changing slice runtime semantics unless required and explicitly documented.",
+    "Adding IDE-specific config unless minimal and justified."
+  ],
+  "acceptance": [
+    "Schema is valid JSON Schema Draft-07 or higher.",
+    "Schema validates existing valid slice fixtures.",
+    "Schema rejects representative invalid fixtures.",
+    "Docs reference the schema.",
+    "Package smoke includes the schema if it is public."
+  ],
+  "tests": [
+    "npm ci",
+    "node --test",
+    "npm run package:quiver",
+    "git diff --check"
+  ],
+  "validation_hints": [
+    "If adding schema tooling dependencies, commit package-lock changes."
+  ],
+  "estimated_hours": 6,
+  "status": "planned",
+  "blocked_reason": null
+}

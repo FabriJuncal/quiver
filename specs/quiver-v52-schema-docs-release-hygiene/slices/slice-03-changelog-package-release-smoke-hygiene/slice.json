@@ -1,0 +1,82 @@
+{
+  "slice_id": "slice-03-changelog-package-release-smoke-hygiene",
+  "ticket": "QUIVER-52-03",
+  "type": "automation",
+  "title": "Changelog, package, and release smoke hygiene",
+  "objective": "Formalize changelog handling and validate actual npm package installation behavior.",
+  "description": "Updates release/package smoke gates so new docs/schema/scripts are included or excluded intentionally and installed CLI behavior is verified.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v52-release-package-hygiene",
+    "branch_name": "feature/QUIVER-52-03-v52-release-package-hygiene"
+  },
+  "files": [
+    "CHANGELOG.md",
+    ".npmignore",
+    "scripts/package-quiver.sh",
+    "scripts/release-quiver.sh",
+    "scripts/ci/**",
+    "package.json",
+    "package-lock.json",
+    ".github/workflows/ci.yml",
+    "CONTRIBUTING.md",
+    "specs/quiver-v52-schema-docs-release-hygiene/**"
+  ],
+  "expected_read_paths": [
+    "CHANGELOG.md",
+    ".npmignore",
+    "scripts/package-quiver.sh",
+    "scripts/release-quiver.sh",
+    "package.json",
+    "package-lock.json"
+  ],
+  "allowed_write_paths": [
+    "CHANGELOG.md",
+    ".npmignore",
+    "scripts/package-quiver.sh",
+    "scripts/release-quiver.sh",
+    "scripts/ci/**",
+    "package.json",
+    "package-lock.json",
+    ".github/workflows/ci.yml",
+    "CONTRIBUTING.md",
+    "specs/quiver-v52-schema-docs-release-hygiene/**"
+  ],
+  "depends_on": [
+    "slice-01-json-schema-for-slice-json",
+    "slice-02-generated-cli-reference"
+  ],
+  "parallel_safe": "no",
+  "parallel_safe_reason": "Release/package hygiene must include outputs from schema and docs generation slices.",
+  "must": [
+    "Formalize [Unreleased] changelog handling.",
+    "Validate npm pack tarball contents.",
+    "Install tarball in a temp project and execute installed CLI.",
+    "Update package safety for new public/repo-only files.",
+    "Keep npm publish automation out of scope unless prerequisites are explicit."
+  ],
+  "not_included": [
+    "Publishing to npm.",
+    "Adding secrets to CI.",
+    "Removing manual release safeguards."
+  ],
+  "acceptance": [
+    "Package smoke fails for forbidden local artifacts.",
+    "Package smoke fails if required public files are missing.",
+    "Installed tarball smoke runs --version, --help, and a safe dry-run command.",
+    "Changelog process is documented and coherent."
+  ],
+  "tests": [
+    "npm ci",
+    "node --test",
+    "npm run package:quiver",
+    "git diff --check"
+  ],
+  "validation_hints": [
+    "Explicitly reject audit files, PDFs, tests, worktrees, secrets, .DS_Store, and tool state from the package."
+  ],
+  "estimated_hours": 6,
+  "status": "planned",
+  "blocked_reason": null
+}

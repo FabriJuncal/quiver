@@ -1,0 +1,69 @@
+{
+  "slice_id": "slice-02-generated-cli-reference",
+  "ticket": "QUIVER-52-02",
+  "type": "automation",
+  "title": "Generated CLI reference",
+  "objective": "Generate or drift-check CLI command reference without overwriting curated documentation.",
+  "description": "Adds a safe generation/drift-check path for docs/reference/commands.md based on runtime help or registry metadata.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v52-generated-cli-reference",
+    "branch_name": "feature/QUIVER-52-02-v52-generated-cli-reference"
+  },
+  "files": [
+    "docs/reference/commands.md",
+    "scripts/**",
+    "package.json",
+    "package-lock.json",
+    "tests/**",
+    "specs/quiver-v52-schema-docs-release-hygiene/**"
+  ],
+  "expected_read_paths": [
+    "src/create-quiver/index.js",
+    "src/create-quiver/lib/cli/command-registry.js",
+    "docs/reference/commands.md",
+    "tests/commands/cli-contract.test.js"
+  ],
+  "allowed_write_paths": [
+    "docs/reference/commands.md",
+    "scripts/**",
+    "package.json",
+    "package-lock.json",
+    "tests/**",
+    "specs/quiver-v52-schema-docs-release-hygiene/**"
+  ],
+  "depends_on": [
+    "slice-00-schema-docs-release-baseline"
+  ],
+  "parallel_safe": "yes",
+  "parallel_safe_reason": "Generated reference work can run independently after baseline.",
+  "must": [
+    "Protect curated manual docs content.",
+    "Generate only delimited blocks or a separate generated file.",
+    "Add drift check against runtime help or registry.",
+    "Document the local generation/check command."
+  ],
+  "not_included": [
+    "Replacing all docs with generated output.",
+    "Changing command help semantics."
+  ],
+  "acceptance": [
+    "Manual content outside generated blocks remains untouched.",
+    "Generated content matches runtime help/registry.",
+    "CI or release can detect drift.",
+    "Script command is documented."
+  ],
+  "tests": [
+    "npm ci",
+    "node --test",
+    "node bin/create-quiver.js --help",
+    "git diff --check"
+  ],
+  "validation_hints": [
+    "Prefer a --check mode so CI can fail on drift without rewriting files."
+  ],
+  "estimated_hours": 6,
+  "status": "planned",
+  "blocked_reason": null
+}
