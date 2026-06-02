@@ -195,6 +195,12 @@ function formatHumanPlan(report, options = {}) {
     lines.push(row.map((value, index) => value.padEnd(widths[index])).join('  '));
   }
 
+  const missingEstimateCount = report.plan.filter((item) => Number(item.hours) <= 0).length;
+  if (missingEstimateCount > 0) {
+    lines.push('');
+    lines.push(translator.t('plan.missing_estimates_note', { count: missingEstimateCount }));
+  }
+
   return `${lines.join('\n')}\n`;
 }
 

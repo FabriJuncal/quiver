@@ -139,10 +139,10 @@ Reglas:
 | `npx --yes create-quiver@latest spec create --interactive` | Guía la selección de metodología `wdd-sdd`, input aprobado y modo de revisión antes de escribir. |
 | `npx --yes create-quiver@latest spec validate specs/<spec> --strict` | Valida el paquete de spec. |
 | `npx --yes create-quiver@latest spec start specs/<spec>` | Crea o reutiliza el worktree de una spec. |
-| `npx --yes create-quiver@latest plan --spec <spec>` | Muestra el orden de ejecución de slices. |
+| `npx --yes create-quiver@latest plan --spec <spec>` | Muestra el orden de ejecución de slices; la salida humana avisa si algun slice no tiene `estimated_hours` positivo y lo cuenta como `0h`. |
 | `npx --yes create-quiver@latest dashboard --spec <spec>` | Muestra estado consolidado read-only para una spec sin ocultar el progreso global. |
 | `npx --yes create-quiver@latest dashboard --section slices --spec <spec>` | Inspecciona solo slices de la spec seleccionada. |
-| `npx --yes create-quiver@latest graph --spec <spec>` | Muestra dependencias entre slices. |
+| `npx --yes create-quiver@latest graph --spec <spec>` | Muestra dependencias entre slices; `--level <n>` acota un nivel y muestra un estado vacio humano si no hay slices en ese nivel. |
 | `npx --yes create-quiver@latest next --all-ready --spec <spec>` | Lista slices listos para ejecutar. |
 | `npx --yes create-quiver@latest ai prompt-slice --slice <slice.json> --dry-run` | Imprime un prompt mínimo para el ejecutor. |
 | `npx --yes create-quiver@latest ai execute-slice --slice <slice.json> --commit` | Ejecuta un slice y commitea después de validar. |
@@ -184,6 +184,8 @@ Base branch policy: `--base <branch>` always wins. Without `--base`, slice readi
 | `--mode delegated` | Usa ejecución delegada con worktrees temporales cuando es seguro. |
 | `--ssh-host-alias <alias>` | Alias SSH de GitHub para validaciones de PR. |
 | `--identity-file <path>` | Ruta de la clave SSH para validaciones de PR. |
+
+`graph --json` mantiene precedencia sobre `--format <tree|mermaid|dot>` cuando ambos se pasan: la salida sigue siendo JSON parseable y no render Mermaid/DOT. Los formatos humanos siguen disponibles sin `--json`.
 
 ## Matriz de flags UX
 

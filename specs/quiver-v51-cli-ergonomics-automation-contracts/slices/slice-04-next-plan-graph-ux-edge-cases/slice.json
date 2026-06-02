@@ -15,12 +15,11 @@
     "src/create-quiver/commands/next.js",
     "src/create-quiver/commands/plan.js",
     "src/create-quiver/commands/graph.js",
-    "src/create-quiver/lib/cli/selectors.js",
     "src/create-quiver/lib/i18n/messages/en.js",
     "src/create-quiver/lib/i18n/messages/es.js",
+    "docs/COMMANDS.md.template",
     "docs/reference/commands.md",
     "docs/CLI_UX_GUIDE.md",
-    "tests/commands/next.test.js",
     "tests/commands/plan.test.js",
     "tests/commands/graph.test.js",
     "specs/quiver-v51-cli-ergonomics-automation-contracts/**"
@@ -29,15 +28,27 @@
     "src/create-quiver/commands/next.js",
     "src/create-quiver/commands/plan.js",
     "src/create-quiver/commands/graph.js",
-    "tests/commands/next.test.js",
     "tests/commands/plan.test.js",
-    "tests/commands/graph.test.js"
+    "tests/commands/graph.test.js",
+    "docs/reference/commands.md",
+    "docs/CLI_UX_GUIDE.md",
+    "docs/COMMANDS.md.template"
   ],
   "allowed_write_paths": [
-    "src/create-quiver/**",
-    "docs/**",
-    "tests/commands/**",
-    "specs/quiver-v51-cli-ergonomics-automation-contracts/**"
+    "src/create-quiver/commands/plan.js",
+    "src/create-quiver/commands/graph.js",
+    "src/create-quiver/lib/i18n/messages/en.js",
+    "src/create-quiver/lib/i18n/messages/es.js",
+    "tests/commands/plan.test.js",
+    "tests/commands/graph.test.js",
+    "docs/reference/commands.md",
+    "docs/CLI_UX_GUIDE.md",
+    "docs/COMMANDS.md.template",
+    "specs/quiver-v51-cli-ergonomics-automation-contracts/STATUS.md",
+    "specs/quiver-v51-cli-ergonomics-automation-contracts/EVIDENCE_REPORT.md",
+    "specs/quiver-v51-cli-ergonomics-automation-contracts/slices/slice-04-next-plan-graph-ux-edge-cases/CLOSURE_BRIEF.md",
+    "specs/quiver-v51-cli-ergonomics-automation-contracts/slices/slice-04-next-plan-graph-ux-edge-cases/slice.json",
+    "specs/quiver-v51-cli-ergonomics-automation-contracts/slices/slice-04-next-plan-graph-ux-edge-cases/pr.md"
   ],
   "depends_on": [
     "slice-00-cli-contract-baseline"
@@ -72,6 +83,9 @@
     "If plan/graph behavior already exists, do not refactor; record evidence and add missing docs/tests only."
   ],
   "estimated_hours": 5,
-  "status": "planned",
-  "blocked_reason": null
+  "status": "completed",
+  "blocked_reason": null,
+  "actual_hours": 4,
+  "started_at": "2026-06-02T16:30:00-0300",
+  "completed_at": "2026-06-02T16:46:10-0300"
 }

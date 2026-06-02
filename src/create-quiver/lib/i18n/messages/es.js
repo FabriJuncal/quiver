@@ -601,6 +601,7 @@ module.exports = {
     'flow.stage.technical-plan-stale': 'el plan tecnico necesita revision',
     'flow.suggested_sequence': 'Secuencia sugerida',
     'flow.title': 'Flujo guiado de Quiver',
+    'graph.empty.level': 'No se encontraron slices para el nivel de graph {level}.',
     'graph.empty.pending': 'No se encontraron slices pendientes.',
     'graph.error.unsupported_format': 'formato de graph no compatible: {format}',
     'graph.level': 'Nivel {level}',
@@ -634,6 +635,10 @@ module.exports = {
     'plan.header.status': 'ESTADO',
     'plan.header.ticket': 'TICKET',
     'plan.header.title': 'TITULO',
+    'plan.missing_estimates_note': {
+      one: 'Nota: {count} slice no tiene estimated_hours positivo y cuenta como 0h.',
+      other: 'Nota: {count} slices no tienen estimated_hours positivo y cuentan como 0h.',
+    },
     'plan.title': 'Plan de Quiver',
     'plan.title.including_completed': 'Plan de Quiver (incluye completados)',
     'plan.title.ready': 'Slices listos',

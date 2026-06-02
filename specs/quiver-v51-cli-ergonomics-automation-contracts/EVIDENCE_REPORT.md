@@ -90,3 +90,17 @@
 - `node bin/create-quiver.js check-slice specs/quiver-v51-cli-ergonomics-automation-contracts/slices/slice-03-base-branch-resolution-policy/slice.json --local --gate validation`: passed.
 - `node bin/create-quiver.js check-scope specs/quiver-v51-cli-ergonomics-automation-contracts/slices/slice-03-base-branch-resolution-policy/slice.json --base main --strict`: passed.
 - `node bin/create-quiver.js check-pr specs/quiver-v51-cli-ergonomics-automation-contracts/slices/slice-03-base-branch-resolution-policy/slice.json --base main`: passed.
+
+## slice-04-next-plan-graph-ux-edge-cases
+
+- `tests/commands/next.test.js`: existing coverage validates `next --auto-start` rejects no-TTY sessions and can start through an injected confirmation prompt.
+- `src/create-quiver/commands/plan.js`: adds a localized human-only note when pending slices have no positive `estimated_hours`; JSON output still contains numeric `hours` and no human prose.
+- `tests/commands/plan.test.js`: covers EN/ES missing-estimates notes, `total_hours`/`hours` as `0`, and JSON output without human notes.
+- `src/create-quiver/commands/graph.js`: adds a localized human empty state for `graph --level <n>` when that level has no slices.
+- `tests/commands/graph.test.js`: covers empty-level EN/ES output, JSON-safe empty `levels`/`conflicts`, and `--json` precedence over `--format mermaid`.
+- `src/create-quiver/lib/i18n/messages/en.js` and `src/create-quiver/lib/i18n/messages/es.js`: add localized plan missing-estimates and graph empty-level messages.
+- `docs/reference/commands.md`, `docs/CLI_UX_GUIDE.md`, and `docs/COMMANDS.md.template`: document plan missing estimates, graph empty-level behavior, `next --auto-start` TTY behavior, and `graph --json` precedence over human render formats.
+- `node --test tests/commands/next.test.js tests/commands/plan.test.js tests/commands/graph.test.js tests/lib/i18n-catalog.test.js`: passed, 37 tests.
+- `node --test`: passed, 632 tests.
+- `npm run docs:check`: passed.
+- `git diff --check`: passed.
