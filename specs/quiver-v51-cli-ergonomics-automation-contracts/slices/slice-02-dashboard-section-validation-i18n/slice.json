@@ -13,21 +13,29 @@
   },
   "files": [
     "src/create-quiver/commands/dashboard.js",
+    "src/create-quiver/index.js",
     "src/create-quiver/lib/i18n/messages/en.js",
     "src/create-quiver/lib/i18n/messages/es.js",
+    "docs/COMMANDS.md.template",
     "docs/reference/commands.md",
+    "tests/commands/cli-contract.test.js",
     "tests/commands/dashboard.test.js",
     "specs/quiver-v51-cli-ergonomics-automation-contracts/**"
   ],
   "expected_read_paths": [
     "src/create-quiver/commands/dashboard.js",
     "tests/commands/dashboard.test.js",
+    "tests/commands/cli-contract.test.js",
     "src/create-quiver/lib/i18n/messages/en.js",
-    "src/create-quiver/lib/i18n/messages/es.js"
+    "src/create-quiver/lib/i18n/messages/es.js",
+    "docs/reference/commands.md",
+    "docs/COMMANDS.md.template"
   ],
   "allowed_write_paths": [
     "src/create-quiver/**",
+    "docs/COMMANDS.md.template",
     "docs/reference/commands.md",
+    "tests/commands/cli-contract.test.js",
     "tests/commands/dashboard.test.js",
     "specs/quiver-v51-cli-ergonomics-automation-contracts/**"
   ],
@@ -54,6 +62,7 @@
   ],
   "tests": [
     "node --test tests/commands/dashboard.test.js",
+    "node --test tests/commands/cli-contract.test.js",
     "node --test tests/lib/i18n-catalog.test.js",
     "node --test",
     "git diff --check"
@@ -62,6 +71,9 @@
     "Validate both --lang en and --lang es failures."
   ],
   "estimated_hours": 3,
-  "status": "planned",
-  "blocked_reason": null
+  "status": "completed",
+  "blocked_reason": null,
+  "actual_hours": 3,
+  "started_at": "2026-06-02T13:00:00-0300",
+  "completed_at": "2026-06-02T13:23:01-0300"
 }

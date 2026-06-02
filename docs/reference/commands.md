@@ -45,7 +45,7 @@ Más detalle: [Instalación y uso con npx](../getting-started/installation.md).
 | `npx --yes create-quiver@latest flow --json` | Emite el próximo paso seguro como JSON parseable; incluye `nextCommand` y el alias compatible `next_command` con el mismo valor. |
 | `npx --yes create-quiver@latest dashboard` | Muestra un resumen compacto read-only del proyecto, specs, slices, runs, approvals y agentes. |
 | `npx --yes create-quiver@latest dashboard --details` | Muestra el reporte humano completo cuando se necesita auditoría sin perder el resumen por defecto. |
-| `npx --yes create-quiver@latest dashboard --section <name>` | Muestra una sección humana puntual como `specs`, `slices`, `blockers`, `warnings`, `agents`, `approvals`, `runs`, `active-slice` o `next-steps`. |
+| `npx --yes create-quiver@latest dashboard --section <name>` | Muestra una sección humana puntual como `overview`, `specs`, `slices`, `blockers`, `warnings`, `agents`, `approvals`, `runs`, `active-slice` o `next-steps`. |
 | `npx --yes create-quiver@latest dashboard --limit <n>` | Ajusta el límite de listas del dashboard compacto entre 1 y 100. |
 
 ## Idioma del CLI
@@ -173,7 +173,7 @@ Reglas:
 | `--lang en\|es` | Sobrescribe el idioma efectivo de la salida humana para una ejecución. |
 | `--global` | En `config language set`, escribe la configuración global de usuario en `~/.quiver/config.json`. |
 | `--details` | Expande el dashboard humano completo; no combina con `--json` ni `--section`. |
-| `--section <name>` | Muestra una sección humana del dashboard; no combina con `--json` ni `--details`. |
+| `--section <name>` | Muestra una sección humana del dashboard: `overview`, `specs`, `slices`, `blockers`, `warnings`, `agents`, `approvals`, `runs`, `active-slice` o `next-steps`; no combina con `--json` ni `--details`. |
 | `--limit <n>` | Limita listas del dashboard compacto entre 1 y 100; no combina con `--json`. |
 | `--provider codex\|claude\|gemini` | Selecciona CLI local de proveedor. |
 | `--model <model-id>` | Selecciona el identificador técnico del modelo para `ai agent set` o ejecución de proveedor. Quiver normaliza alias conocidos, pero no garantiza acceso en la cuenta del proveedor. |
