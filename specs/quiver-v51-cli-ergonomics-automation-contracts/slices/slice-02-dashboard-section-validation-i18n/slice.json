@@ -31,7 +31,9 @@
     "docs/COMMANDS.md.template"
   ],
   "allowed_write_paths": [
-    "src/create-quiver/**",
+    "src/create-quiver/commands/dashboard.js",
+    "src/create-quiver/lib/i18n/messages/en.js",
+    "src/create-quiver/lib/i18n/messages/es.js",
     "docs/COMMANDS.md.template",
     "docs/reference/commands.md",
     "tests/commands/cli-contract.test.js",
