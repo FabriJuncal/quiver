@@ -32,6 +32,8 @@ This document is the canonical command reference for the orchestration roadmap.
 | `quiver:doctor -- --fix --dry-run` | Previews safe non-destructive repairs without writing files | macOS, Linux, Windows | v0.11 | `npm run quiver:doctor -- --fix --dry-run` |
 | `quiver:doctor -- --fix` | Applies safe idempotent repairs after review | macOS, Linux, Windows | v0.11 | `npm run quiver:doctor -- --fix` |
 | `quiver:evidence -- run -- <command>` | Captures command validation evidence with exit code, duration, redacted/truncated output, and a local Markdown record | macOS, Linux, Windows | v0.11 | `npm run quiver:evidence -- run -- npm test` |
+| `quiver:evidence -- list --json` | Lists local evidence records as parseable JSON for automation | macOS, Linux, Windows | next | `npm run quiver:evidence -- list --json` |
+| `quiver:evidence -- show <path> --json` | Shows one local evidence record with content and metadata as parseable JSON | macOS, Linux, Windows | next | `npm run quiver:evidence -- show .quiver/evidence/evidence.md --json` |
 | `npx create-quiver ai run create --input <requirements.md>` | Creates a persistent AI lifecycle run under `.quiver/runs/` | macOS, Linux, Windows | v0.12 | `npx create-quiver ai run create --input requirements.md` |
 | `npx create-quiver ai status` | Shows the current AI lifecycle phase and next safe command | macOS, Linux, Windows | v0.12 | `npx create-quiver ai status` |
 | `npx create-quiver ai resume` | Resumes guidance from the last valid AI lifecycle phase | macOS, Linux, Windows | v0.12 | `npx create-quiver ai resume` |
@@ -101,7 +103,7 @@ This document is the canonical command reference for the orchestration roadmap.
 | `--output <file>` | `evidence run` | Write the evidence Markdown file to an explicit path instead of `.quiver/evidence/` |
 | `--max-output <n>` | `evidence run` | Limit captured stdout and stderr characters per section |
 | `--dir <target>` | `demo create spec-viewer` | Select the demo target directory; default is `./quiver-spec-viewer` |
-| `--json` | `dashboard`, `version`, `plan`, `graph`, `next` | Emit machine-readable JSON |
+| `--json` | `dashboard`, `version`, `plan`, `graph`, `next`, `evidence list`, `evidence show` | Emit machine-readable JSON |
 | `--details` | `dashboard` | Show the full human dashboard report instead of the compact default; incompatible with `--json` and `--section` |
 | `--section <name>` | `dashboard` | Show one human dashboard section: `overview`, `specs`, `slices`, `blockers`, `warnings`, `agents`, `approvals`, `runs`, `active-slice`, or `next-steps`; incompatible with `--json` and `--details` |
 | `--limit <n>` | `dashboard` | Limit compact dashboard lists between 1 and 100; incompatible with `--json` |
@@ -172,7 +174,9 @@ This document is the canonical command reference for the orchestration roadmap.
 - `quiver:ai:approvals`, `quiver:flow`, `quiver:ai:status`, `quiver:ai:resume`, and `quiver:spec:create -- --interactive` use the same approval-candidate data so next-step guidance stays consistent.
 - `quiver:ai:prompt-slice -- --dry-run` prints a paste-ready manual executor prompt and does not call a provider.
 - For commands pasted into another AI agent, prefer a non-interactive pinned form such as `npx --yes create-quiver@<version> ai prompt-slice --slice specs/<spec>/slices/<slice>/slice.json --dry-run`.
-- `quiver:evidence -- run -- <command>` preserves the wrapped command exit code. Redaction is best effort; avoid commands that intentionally print secrets.
+- `quiver:evidence -- run -- <command>` preserves the wrapped command exit code, writes failure evidence, records signal termination as `Signal`, and returns the standard `128 + signal` exit code for signaled processes.
+- Explicit `quiver:evidence -- run --output <file>` targets and `quiver:evidence -- show <path>` reads must stay inside the project root; Quiver rejects path traversal and symlink escapes before command execution or file reads.
+- Evidence output redaction/truncation is best effort; avoid commands that intentionally print secrets.
 - `demo create spec-viewer` is optional and static; it must stay outside default `init`.
 - `quiver:spec:start -- --dry-run specs/<spec>` previews the spec worktree path and branch without creating a worktree.
 - `quiver:ai:execute-slice -- --commit` creates exactly one commit only after provider, branch/worktree, scope, and validation commands pass. Commit mode refuses pre-existing dirty files even if `--allow-dirty` is set. Successful execution updates `CLOSURE_BRIEF.md`, `EVIDENCE_REPORT.md`, `COMMAND_LOG.md`, `STATUS.md`, and `slice.json`; likely secrets in captured stdout/stderr are redacted.

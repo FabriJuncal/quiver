@@ -6,8 +6,13 @@ const test = require('node:test');
 
 const {
   defaultEvidencePath,
+  listEvidenceFiles,
   redactSecrets,
+  resolveEvidenceOutputPath,
+  resolveEvidenceReadPath,
   runEvidenceCommand,
+  showEvidenceFile,
+  signalExitCode,
   truncateText,
 } = require('../../src/create-quiver/lib/evidence');
 
@@ -80,6 +85,107 @@ test('runEvidenceCommand records redacted and truncated output', () => {
     assert.match(content, /\[\.\.\. truncated /);
     assert.doesNotMatch(content, /very-secret-value/);
     assert.doesNotMatch(content, /bearer-secret/);
+  } finally {
+    cleanup();
+  }
+});
+
+test('runEvidenceCommand rejects traversal output before spawning child', () => {
+  const { dir, cleanup } = makeTmpDir();
+  try {
+    let spawned = false;
+    assert.throws(
+      () => runEvidenceCommand(dir, ['npm', 'test'], {
+        outputPath: '../escape.md',
+        spawnSync() {
+          spawned = true;
+          return { status: 0, stdout: '', stderr: '' };
+        },
+      }),
+      /evidence output path must stay inside the project root/,
+    );
+    assert.equal(spawned, false);
+  } finally {
+    cleanup();
+  }
+});
+
+test('evidence path policy rejects symlink output and read escapes', () => {
+  const { dir, cleanup } = makeTmpDir();
+  const outside = fs.mkdtempSync(path.join(os.tmpdir(), 'quiver-evidence-outside-'));
+  try {
+    const linkDir = path.join(dir, 'linked');
+    fs.symlinkSync(outside, linkDir, 'dir');
+    assert.throws(
+      () => resolveEvidenceOutputPath(dir, path.join('linked', 'escape.md')),
+      /must stay inside the project root/,
+    );
+
+    const outsideFile = path.join(outside, 'outside.md');
+    fs.writeFileSync(outsideFile, '# outside\n');
+    const linkFile = path.join(dir, 'linked-file.md');
+    fs.symlinkSync(outsideFile, linkFile);
+    assert.throws(
+      () => resolveEvidenceReadPath(dir, 'linked-file.md'),
+      /must stay inside the project root/,
+    );
+  } finally {
+    cleanup();
+    fs.rmSync(outside, { recursive: true, force: true });
+  }
+});
+
+test('runEvidenceCommand records signal metadata and signal exit code', () => {
+  const { dir, cleanup } = makeTmpDir();
+  try {
+    const result = runEvidenceCommand(dir, ['node', 'script.js'], {
+      outputPath: 'signal.md',
+      spawnSync() {
+        return {
+          signal: 'SIGTERM',
+          status: null,
+          stdout: 'partial output',
+          stderr: 'terminated',
+        };
+      },
+    });
+    const content = fs.readFileSync(path.join(dir, 'signal.md'), 'utf8');
+
+    assert.equal(signalExitCode('SIGTERM'), 143);
+    assert.equal(result.exitCode, 143);
+    assert.equal(result.record.signal, 'SIGTERM');
+    assert.match(content, /Signal: SIGTERM/);
+    assert.match(content, /Exit code: 143/);
+    assert.match(content, /partial output/);
+  } finally {
+    cleanup();
+  }
+});
+
+test('listEvidenceFiles and showEvidenceFile return parseable safe records', () => {
+  const { dir, cleanup } = makeTmpDir();
+  try {
+    runEvidenceCommand(dir, ['npm', 'test'], {
+      outputPath: path.join('.quiver', 'evidence', 'one.md'),
+      spawnSync() {
+        return {
+          status: 0,
+          stdout: 'ok',
+          stderr: '',
+        };
+      },
+    });
+
+    const list = listEvidenceFiles(dir);
+    const shown = showEvidenceFile(dir, '.quiver/evidence/one.md');
+
+    assert.equal(list.length, 1);
+    assert.equal(list[0].path, '.quiver/evidence/one.md');
+    assert.equal(list[0].command, 'npm test');
+    assert.equal(list[0].exit_code, 0);
+    assert.equal(shown.path, '.quiver/evidence/one.md');
+    assert.equal(shown.record.command, 'npm test');
+    assert.match(shown.content, /# Quiver Evidence/);
   } finally {
     cleanup();
   }

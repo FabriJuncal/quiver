@@ -209,6 +209,38 @@
         "tests/commands/dashboard.test.js"
       ]
     },
+    "evidence-run": {
+      "modes": {
+        "en_human": "pass",
+        "es_human": "pass",
+        "json": "not_supported",
+        "dry_run": "not_applicable",
+        "interactive": "not_supported",
+        "review": "not_supported",
+        "ci_no_tty": "pass",
+        "no_color": "pass"
+      },
+      "evidence": [
+        "tests/commands/evidence.test.js",
+        "tests/lib/evidence.test.js"
+      ]
+    },
+    "evidence-json": {
+      "modes": {
+        "en_human": "not_applicable",
+        "es_human": "not_applicable",
+        "json": "pass",
+        "dry_run": "not_applicable",
+        "interactive": "not_supported",
+        "review": "not_supported",
+        "ci_no_tty": "pass",
+        "no_color": "not_applicable"
+      },
+      "evidence": [
+        "tests/commands/evidence.test.js",
+        "tests/lib/evidence.test.js"
+      ]
+    },
     "ai-prepare-context": {
       "modes": {
         "en_human": "pass",
@@ -511,6 +543,10 @@
     { "command": "dashboard --details", "profile": "dashboard-human", "critical": "pass" },
     { "command": "dashboard --section <name>", "profile": "dashboard-human", "critical": "pass" },
     { "command": "dashboard --limit <n>", "profile": "dashboard-human", "critical": "pass" },
+    { "command": "evidence run -- <command>", "profile": "evidence-run", "critical": "pass" },
+    { "command": "evidence run --output .quiver/evidence/test.md -- <command>", "profile": "evidence-run", "critical": "pass" },
+    { "command": "evidence list --json", "profile": "evidence-json", "critical": "pass" },
+    { "command": "evidence show .quiver/evidence/test.md --json", "profile": "evidence-json", "critical": "pass" },
     { "command": "ai prepare-context --dry-run", "profile": "ai-prepare-context", "critical": "pass" },
     { "command": "ai prepare-context", "profile": "ai-prepare-context", "critical": "pass" },
     { "command": "ai prepare-context --with-planner --dry-run", "profile": "ai-prepare-context-planner", "critical": "pass" },

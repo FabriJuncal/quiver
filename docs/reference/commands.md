@@ -48,6 +48,19 @@ Más detalle: [Instalación y uso con npx](../getting-started/installation.md).
 | `npx --yes create-quiver@latest dashboard --section <name>` | Muestra una sección humana puntual como `overview`, `specs`, `slices`, `blockers`, `warnings`, `agents`, `approvals`, `runs`, `active-slice` o `next-steps`. |
 | `npx --yes create-quiver@latest dashboard --limit <n>` | Ajusta el límite de listas del dashboard compacto entre 1 y 100. |
 
+## Evidencia de validaciones
+
+| Comando | Para qué sirve |
+|---|---|
+| `npx --yes create-quiver@latest evidence run -- <command>` | Ejecuta un comando, preserva su exit code y escribe evidencia Markdown con duración, salida redactada y truncada. |
+| `npx --yes create-quiver@latest evidence run --output .quiver/evidence/test.md -- <command>` | Escribe la evidencia en una ruta explícita dentro del proyecto. |
+| `npx --yes create-quiver@latest evidence list --json` | Lista los archivos locales de evidencia como JSON parseable para automatización. |
+| `npx --yes create-quiver@latest evidence show .quiver/evidence/test.md --json` | Muestra un archivo de evidencia como JSON parseable con contenido y metadatos. |
+
+`evidence run` conserva el exit code del comando envuelto incluso cuando falla y escribe evidencia de la falla antes de salir. Si el proceso termina por señal, el registro incluye `Signal` y el CLI devuelve el exit code estándar `128 + signal`.
+
+Las rutas explícitas de `--output` y las rutas pasadas a `evidence show` deben permanecer dentro del root del proyecto. Quiver rechaza traversal (`..`) y escapes por symlink antes de ejecutar el comando o leer el archivo. La salida se redacta y trunca como defensa de seguridad, pero no reemplaza la revisión humana cuando un comando imprime secretos deliberadamente.
+
 ## Idioma del CLI
 
 Quiver resuelve el idioma de salida humana en este orden:

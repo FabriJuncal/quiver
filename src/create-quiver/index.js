@@ -294,6 +294,8 @@ const COMMAND_HELP_GROUPS = [
     title: 'Evidence and demos',
     commands: [
       ['evidence run', 'Run a command and record exit code, duration, redacted output, and Markdown evidence.'],
+      ['evidence list', 'List local evidence records; use --json for automation.'],
+      ['evidence show', 'Show one local evidence record; use --json for automation.'],
       ['demo create spec-viewer', 'Create or preview the optional static Quiver Spec Viewer demo scaffold.'],
     ],
   },
@@ -366,7 +368,7 @@ function printUsage(language = DEFAULT_LANGUAGE) {
   npx create-quiver spec status <spec-dir>
   npx create-quiver spec validate <spec-dir>
   npx create-quiver spec close <spec-dir>
-  npx create-quiver evidence run [options] -- <command>
+  npx create-quiver evidence <run|list|show> [options]
   npx create-quiver demo create spec-viewer [options]
 
 ${formatCommandHelpGroups(language)}
@@ -590,6 +592,7 @@ function parseArgs(argv, options = {}) {
     evidenceArgs: [],
     evidenceOutput: '',
     evidenceMaxOutput: null,
+    evidenceTarget: '',
   };
 
   const args = [...argv];
@@ -1274,13 +1277,25 @@ function parseArgs(argv, options = {}) {
       result.evidenceCommand = positional.shift();
     }
     if (!result.evidenceCommand) {
-      throw new Error(formatError('missing evidence subcommand. Use: npx create-quiver evidence run -- <command>'));
+      throw new Error(formatError('missing evidence subcommand. Use: npx create-quiver evidence <run|list|show>'));
     }
-    if (result.evidenceCommand !== 'run') {
-      throw new Error(formatError(`unsupported evidence subcommand: ${result.evidenceCommand}. Supported tasks: run`));
+    if (!['run', 'list', 'show'].includes(result.evidenceCommand)) {
+      throw new Error(formatError(`unsupported evidence subcommand: ${result.evidenceCommand}. Supported tasks: run, list, show`));
     }
-    if (positional.length > 0) {
+    if (result.evidenceCommand === 'run' && positional.length > 0) {
       throw new Error(formatError('evidence run does not accept positional arguments before --'));
+    }
+    if (result.evidenceCommand === 'list' && positional.length > 0) {
+      throw new Error(formatError('evidence list does not accept positional arguments'));
+    }
+    if (result.evidenceCommand === 'show') {
+      result.evidenceTarget = positional.shift() || '';
+      if (!result.evidenceTarget) {
+        throw new Error(formatError('evidence show requires an evidence file path'));
+      }
+      if (positional.length > 0) {
+        throw new Error(formatError('evidence show accepts exactly one evidence file path'));
+      }
     }
   } else if (result.mode === 'demo') {
     if (!result.demoCommand && positional.length > 0) {
@@ -3710,7 +3725,9 @@ async function run(argv) {
       language: args.language,
       maxOutput: args.evidenceMaxOutput || undefined,
       output: args.evidenceOutput || undefined,
+      json: args.json,
       subcommand: args.evidenceCommand,
+      target: args.evidenceTarget,
     });
     process.exitCode = result.exitCode;
     return;
