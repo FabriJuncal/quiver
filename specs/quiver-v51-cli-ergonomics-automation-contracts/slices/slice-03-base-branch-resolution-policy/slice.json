@@ -16,6 +16,8 @@
     "src/create-quiver/lib/spec-worktrees.js",
     "src/create-quiver/lib/readiness.js",
     "src/create-quiver/lib/ai/github.js",
+    "src/create-quiver/lib/lifecycle.js",
+    "src/create-quiver/index.js",
     "src/create-quiver/commands/spec.js",
     "src/create-quiver/commands/ai-core.js",
     "src/create-quiver/lib/i18n/messages/en.js",
@@ -24,6 +26,7 @@
     "tests/commands/ai-pr.test.js",
     "tests/lib/git.test.js",
     "tests/lib/check-slice.test.js",
+    "tests/lib/ai-github.test.js",
     "docs/COMMANDS.md.template",
     "docs/reference/commands.md",
     "specs/quiver-v51-cli-ergonomics-automation-contracts/**"
