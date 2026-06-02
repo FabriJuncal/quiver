@@ -89,7 +89,7 @@ module.exports = {
         'For config language set, write the global user config': 'En config language set, escribe la configuracion global del usuario',
         'Include completed slices in dashboard, plan, graph, or next history output': 'Incluye slices completados en dashboard, plan, graph o historial de next',
         'Show the full human dashboard report': 'Muestra el reporte humano completo de dashboard',
-        'Show one human dashboard section (overview, specs, slices, blockers, warnings, agents, approvals, runs, active-slice, next-steps)': 'Muestra una seccion humana de dashboard (overview, specs, slices, blockers, warnings, agents, approvals, runs, active-slice, next-steps)',
+        'Show one human dashboard section': 'Muestra una seccion humana de dashboard (overview, specs, slices, blockers, warnings, agents, approvals, runs, active-slice, next-steps)',
         'Limit dashboard human lists (1-100)': 'Limita listas humanas de dashboard (1-100)',
         'Show only slices with no pending dependencies': 'Muestra solo slices sin dependencias pendientes',
         'List every ready slice returned by next': 'Lista todos los slices listos devueltos por next',

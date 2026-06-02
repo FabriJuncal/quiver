@@ -31,13 +31,13 @@ Assisted auto-merge is not requested.
 
 - Add dashboard invalid-section tests for EN/ES human output.
 - Add dashboard invalid-section test for JSON-safe failure output.
-- Make CLI help list the runtime-supported dashboard sections.
+- Make CLI help list the supported dashboard sections through i18n help descriptions.
 - Update public and generated command docs so supported sections include `overview`.
 - Update v51 slice status, closure, and evidence.
 
 ## Files
 
-- `src/create-quiver/index.js`
+- `src/create-quiver/lib/i18n/messages/en.js`
 - `src/create-quiver/lib/i18n/messages/es.js`
 - `tests/commands/dashboard.test.js`
 - `tests/commands/cli-contract.test.js`

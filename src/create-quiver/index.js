@@ -37,7 +37,6 @@ const {
 } = require('./commands/ai');
 const { runConfig } = require('./commands/config');
 const { runDashboard } = require('./commands/dashboard');
-const { SUPPORTED_DASHBOARD_SECTIONS } = require('./lib/dashboard');
 const { runDemo } = require('./commands/demo');
 const { runPrepare } = require('./commands/prepare');
 const { runEvidence } = require('./commands/evidence');
@@ -131,10 +130,6 @@ function helpText(help, section, key, fallback) {
 
 function optionDescription(help, fallback) {
   return helpText(help, 'optionDescriptions', fallback, fallback);
-}
-
-function dashboardSectionHelpDescription() {
-  return `Show one human dashboard section (${SUPPORTED_DASHBOARD_SECTIONS.join(', ')})`;
 }
 
 function formatLanguageWarningForCli(warning, language = DEFAULT_LANGUAGE) {
@@ -388,7 +383,7 @@ ${helpText(help, 'headings', 'options', 'Options:')}
       --global                ${optionDescription(help, 'For config language set, write the global user config')}
       --include-completed     ${optionDescription(help, 'Include completed slices in dashboard, plan, graph, or next history output')}
       --details               ${optionDescription(help, 'Show the full human dashboard report')}
-      --section <name>        ${optionDescription(help, dashboardSectionHelpDescription())}
+      --section <name>        ${optionDescription(help, 'Show one human dashboard section')}
       --limit <n>             ${optionDescription(help, 'Limit dashboard human lists (1-100)')}
       --only-ready            ${optionDescription(help, 'Show only slices with no pending dependencies')}
       --all-ready             ${optionDescription(help, 'List every ready slice returned by next')}

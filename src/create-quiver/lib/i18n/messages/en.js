@@ -13,7 +13,9 @@ module.exports = {
       },
       groupTitles: {},
       commandDescriptions: {},
-      optionDescriptions: {},
+      optionDescriptions: {
+        'Show one human dashboard section': 'Show one human dashboard section (overview, specs, slices, blockers, warnings, agents, approvals, runs, active-slice, next-steps)',
+      },
     },
     'common.command.help': 'Run: npx create-quiver --help',
     'common.language.current': 'Language: {language}',

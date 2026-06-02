@@ -13,7 +13,6 @@
   },
   "files": [
     "src/create-quiver/commands/dashboard.js",
-    "src/create-quiver/index.js",
     "src/create-quiver/lib/i18n/messages/en.js",
     "src/create-quiver/lib/i18n/messages/es.js",
     "docs/COMMANDS.md.template",

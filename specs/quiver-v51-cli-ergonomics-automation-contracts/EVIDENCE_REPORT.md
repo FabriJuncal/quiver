@@ -52,7 +52,7 @@
 ## slice-02-dashboard-section-validation-i18n
 
 - `src/create-quiver/lib/dashboard.js`: existing invalid-section handling uses localized `dashboard.unsupported_section` for human output and English-only translation for JSON output.
-- `src/create-quiver/index.js`: CLI help now lists the runtime-supported dashboard sections from `SUPPORTED_DASHBOARD_SECTIONS`.
+- `src/create-quiver/lib/i18n/messages/en.js`: English help text now lists the supported dashboard sections.
 - `src/create-quiver/lib/i18n/messages/es.js`: Spanish help text now lists the supported dashboard sections.
 - `tests/commands/dashboard.test.js`: added EN/ES invalid-section assertions, supported-section list coverage, and JSON-safe invalid-section failure coverage.
 - `tests/commands/cli-contract.test.js`: updated help contract to require the supported section list.
