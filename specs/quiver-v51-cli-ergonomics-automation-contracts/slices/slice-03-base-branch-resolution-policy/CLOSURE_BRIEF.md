@@ -15,6 +15,10 @@ Base branch resolution is now centralized in `src/create-quiver/lib/git.js` and 
 - [x] `node --test`
 - [x] `npm run docs:check`
 - [x] `git diff --check`
+- [x] `node bin/create-quiver.js spec validate specs/quiver-v51-cli-ergonomics-automation-contracts`
+- [x] `node bin/create-quiver.js check-slice specs/quiver-v51-cli-ergonomics-automation-contracts/slices/slice-03-base-branch-resolution-policy/slice.json --local --gate validation`
+- [x] `node bin/create-quiver.js check-scope specs/quiver-v51-cli-ergonomics-automation-contracts/slices/slice-03-base-branch-resolution-policy/slice.json --base main --strict`
+- [x] `node bin/create-quiver.js check-pr specs/quiver-v51-cli-ergonomics-automation-contracts/slices/slice-03-base-branch-resolution-policy/slice.json --base main`
 
 ## Closure Conditions
 
@@ -25,4 +29,3 @@ Base branch resolution is now centralized in `src/create-quiver/lib/git.js` and 
 ## Open Items
 
 - No open implementation items for this slice.
-- `node bin/create-quiver.js check-pr ... --base main` must be run after committing, because PR readiness intentionally requires a clean worktree and committed branch-owned changes.

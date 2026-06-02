@@ -141,6 +141,10 @@ node bin/create-quiver.js check-pr specs/quiver-v51-cli-ergonomics-automation-co
 - `node --test`: passed, 629 tests.
 - `npm run docs:check`: passed.
 - `git diff --check`: passed.
+- `node bin/create-quiver.js spec validate specs/quiver-v51-cli-ergonomics-automation-contracts`: passed.
+- `node bin/create-quiver.js check-slice specs/quiver-v51-cli-ergonomics-automation-contracts/slices/slice-03-base-branch-resolution-policy/slice.json --local --gate validation`: passed.
+- `node bin/create-quiver.js check-scope specs/quiver-v51-cli-ergonomics-automation-contracts/slices/slice-03-base-branch-resolution-policy/slice.json --base main --strict`: passed.
+- `node bin/create-quiver.js check-pr specs/quiver-v51-cli-ergonomics-automation-contracts/slices/slice-03-base-branch-resolution-policy/slice.json --base main`: passed.
 
 ## Rollback
 
@@ -152,4 +156,4 @@ node bin/create-quiver.js check-pr specs/quiver-v51-cli-ergonomics-automation-co
 
 - This changes default base selection when Remote HEAD is available and `--base` is omitted; explicit overrides remain unchanged.
 - Legacy shell wrappers are not migrated in this slice; portable script and namespace compatibility are tracked by `slice-06-namespace-compatibility-windows-scripts`.
-- PR readiness must be verified after the branch is committed because the gate requires a clean worktree and branch-owned commits.
+- PR readiness was verified after committing because the gate requires a clean worktree and branch-owned commits.

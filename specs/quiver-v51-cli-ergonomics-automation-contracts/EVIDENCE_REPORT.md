@@ -86,3 +86,7 @@
 - `node --test`: passed, 629 tests.
 - `npm run docs:check`: passed.
 - `git diff --check`: passed.
+- `node bin/create-quiver.js spec validate specs/quiver-v51-cli-ergonomics-automation-contracts`: passed.
+- `node bin/create-quiver.js check-slice specs/quiver-v51-cli-ergonomics-automation-contracts/slices/slice-03-base-branch-resolution-policy/slice.json --local --gate validation`: passed.
+- `node bin/create-quiver.js check-scope specs/quiver-v51-cli-ergonomics-automation-contracts/slices/slice-03-base-branch-resolution-policy/slice.json --base main --strict`: passed.
+- `node bin/create-quiver.js check-pr specs/quiver-v51-cli-ergonomics-automation-contracts/slices/slice-03-base-branch-resolution-policy/slice.json --base main`: passed.
