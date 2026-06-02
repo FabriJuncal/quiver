@@ -15,17 +15,20 @@
     "src/create-quiver/commands/flow.js",
     "docs/reference/commands.md",
     "tests/commands/flow.test.js",
+    "specs/quiver-v43-cli-i18n-audit-release-readiness/command-language-mode-matrix.json",
     "specs/quiver-v51-cli-ergonomics-automation-contracts/**"
   ],
   "expected_read_paths": [
     "src/create-quiver/commands/flow.js",
     "tests/commands/flow.test.js",
-    "docs/reference/commands.md"
+    "docs/reference/commands.md",
+    "specs/quiver-v43-cli-i18n-audit-release-readiness/command-language-mode-matrix.json"
   ],
   "allowed_write_paths": [
     "src/create-quiver/commands/flow.js",
     "docs/reference/commands.md",
     "tests/commands/flow.test.js",
+    "specs/quiver-v43-cli-i18n-audit-release-readiness/command-language-mode-matrix.json",
     "specs/quiver-v51-cli-ergonomics-automation-contracts/**"
   ],
   "depends_on": [
@@ -58,6 +61,8 @@
     "If flow JSON has no schema_version, document this as an additive compatibility change."
   ],
   "estimated_hours": 3,
-  "status": "planned",
-  "blocked_reason": null
+  "status": "completed",
+  "blocked_reason": null,
+  "actual_hours": 3,
+  "completed_at": "2026-06-02T08:28:41-0300"
 }

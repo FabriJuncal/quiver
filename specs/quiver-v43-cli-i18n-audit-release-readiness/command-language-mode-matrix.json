@@ -148,6 +148,21 @@
         "tests/commands/flow.test.js"
       ]
     },
+    "flow-json": {
+      "modes": {
+        "en_human": "not_applicable",
+        "es_human": "not_applicable",
+        "json": "pass",
+        "dry_run": "not_applicable",
+        "interactive": "not_supported",
+        "review": "not_supported",
+        "ci_no_tty": "pass",
+        "no_color": "not_applicable"
+      },
+      "evidence": [
+        "tests/commands/flow.test.js"
+      ]
+    },
     "doctor-json": {
       "modes": {
         "en_human": "not_applicable",
@@ -491,6 +506,7 @@
     { "command": "doctor", "profile": "read-only-human", "critical": "pass" },
     { "command": "doctor --json", "profile": "doctor-json", "critical": "pass" },
     { "command": "flow", "profile": "read-only-human", "critical": "pass" },
+    { "command": "flow --json", "profile": "flow-json", "critical": "pass" },
     { "command": "dashboard", "profile": "dashboard-human", "critical": "pass" },
     { "command": "dashboard --details", "profile": "dashboard-human", "critical": "pass" },
     { "command": "dashboard --section <name>", "profile": "dashboard-human", "critical": "pass" },

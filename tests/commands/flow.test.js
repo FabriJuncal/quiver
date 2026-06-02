@@ -400,7 +400,44 @@ test('flow command supports machine-readable output', () => {
 
     assert.equal(parsed.stage, 'not-initialized');
     assert.equal(parsed.nextCommand, 'npx create-quiver init --name "Project Name"');
+    assert.equal(parsed.next_command, parsed.nextCommand);
     assert.equal(parsed.facts.contextSource.status, 'missing');
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('flow JSON preserves camelCase and snake_case next command fields for ready slices', () => {
+  const repo = makeRepo();
+
+  try {
+    seedInitializedContext(repo.root);
+    writeFile(repo.root, 'acceptance.md', '# Approved acceptance\n');
+    writeFile(repo.root, 'technical-plan.md', '# Approved plan\n');
+    savePlannerDraft(repo.root, 'acceptance', 'acceptance.md', '# Approved acceptance\n');
+    approvePlannerPhase(repo.root, 'acceptance', '', '', { version: 1 });
+    savePlannerDraft(repo.root, 'technical-plan', 'technical-plan.md', '# Approved plan\n');
+    approvePlannerPhase(repo.root, 'technical-plan', '', '', { version: 1 });
+    writeFile(repo.root, 'specs/my-spec/SPEC.md', '# Spec\n');
+    writeFile(repo.root, 'specs/my-spec/slices/slice-00/slice.json', JSON.stringify({
+      slice_id: 'slice-00',
+      status: 'completed',
+      files: ['specs/my-spec/SPEC.md'],
+      depends_on: [],
+    }, null, 2));
+    writeFile(repo.root, 'specs/my-spec/slices/slice-01/slice.json', JSON.stringify({
+      slice_id: 'slice-01',
+      status: 'draft',
+      files: ['src/index.js'],
+      depends_on: ['slice-00'],
+    }, null, 2));
+
+    const output = runFlow(repo.root, ['--json']);
+    const parsed = JSON.parse(output);
+
+    assert.equal(parsed.stage, 'slice-execution-ready');
+    assert.equal(parsed.nextCommand, 'npx create-quiver ai execute-slice --slice specs/my-spec/slices/slice-01/slice.json --dry-run --commit');
+    assert.equal(parsed.next_command, parsed.nextCommand);
   } finally {
     repo.cleanup();
   }

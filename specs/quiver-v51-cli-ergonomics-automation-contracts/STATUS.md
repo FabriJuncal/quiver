@@ -2,7 +2,7 @@
 
 **Overall status:** In Progress
 **Created:** 2026-06-01
-**Current slice:** slice-01-flow-json-compatibility
+**Current slice:** slice-02-dashboard-section-validation-i18n
 
 ## Summary
 
@@ -13,7 +13,7 @@ This spec hardens CLI contracts for automation, JSON consumers, human UX, eviden
 | Slice | Status | Notes |
 |---|---|---|
 | slice-00-cli-contract-baseline | Completed | Classified current CLI capabilities, froze implemented contracts, and routed partial gaps to later slices. |
-| slice-01-flow-json-compatibility | Planned | Add `next_command` without removing `nextCommand`. |
+| slice-01-flow-json-compatibility | Completed | Added additive `next_command`, preserved `nextCommand`, documented compatibility, and tested matching values in representative JSON states. |
 | slice-02-dashboard-section-validation-i18n | Planned | Localize and document dashboard section validation. |
 | slice-03-base-branch-resolution-policy | Planned | Centralize/audit base branch defaults. |
 | slice-04-next-plan-graph-ux-edge-cases | Planned | Close or validate secondary UX edge cases. |

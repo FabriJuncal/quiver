@@ -42,6 +42,7 @@ Más detalle: [Instalación y uso con npx](../getting-started/installation.md).
 | `npx --yes create-quiver@latest doctor` | Valida la salud de Quiver. |
 | `npx --yes create-quiver@latest doctor --json` | Emite el mismo diagnóstico de Doctor como JSON parseable para automatización. |
 | `npx --yes create-quiver@latest flow` | Muestra el próximo paso seguro. |
+| `npx --yes create-quiver@latest flow --json` | Emite el próximo paso seguro como JSON parseable; incluye `nextCommand` y el alias compatible `next_command` con el mismo valor. |
 | `npx --yes create-quiver@latest dashboard` | Muestra un resumen compacto read-only del proyecto, specs, slices, runs, approvals y agentes. |
 | `npx --yes create-quiver@latest dashboard --details` | Muestra el reporte humano completo cuando se necesita auditoría sin perder el resumen por defecto. |
 | `npx --yes create-quiver@latest dashboard --section <name>` | Muestra una sección humana puntual como `specs`, `slices`, `blockers`, `warnings`, `agents`, `approvals`, `runs`, `active-slice` o `next-steps`. |
