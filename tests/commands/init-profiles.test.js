@@ -1,11 +1,11 @@
 const assert = require('node:assert/strict');
-const { execFileSync } = require('node:child_process');
+const { execFileSync, spawnSync } = require('node:child_process');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const test = require('node:test');
 
-const { persistInitLanguage, resolveInteractiveInitOptions } = require('../../src/create-quiver');
+const { persistInitLanguage, resolveInteractiveInitOptions, runMigrate } = require('../../src/create-quiver');
 
 const cliPath = path.resolve(__dirname, '../../bin/create-quiver.js');
 
@@ -20,6 +20,37 @@ function runCli(args, options = {}) {
     encoding: 'utf8',
     stdio: ['ignore', 'pipe', 'pipe'],
   });
+}
+
+function runCliRaw(args, options = {}) {
+  return spawnSync(process.execPath, [cliPath, ...args], {
+    cwd: options.cwd || path.resolve(__dirname, '../..'),
+    encoding: 'utf8',
+    env: {
+      ...process.env,
+      ...(options.env || {}),
+    },
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
+}
+
+function snapshotTree(root) {
+  const snapshot = {};
+  function visit(current) {
+    for (const entry of fs.readdirSync(current, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
+      const absolute = path.join(current, entry.name);
+      const relative = path.relative(root, absolute).split(path.sep).join('/');
+      if (entry.isDirectory()) {
+        visit(absolute);
+      } else if (entry.isFile()) {
+        snapshot[relative] = fs.readFileSync(absolute, 'utf8');
+      }
+    }
+  }
+  if (fs.existsSync(root)) {
+    visit(root);
+  }
+  return snapshot;
 }
 
 test('init --dry-run prints the planned layout and does not write files', () => {
@@ -502,7 +533,7 @@ test('init merges root gitignore defaults without deleting existing entries', ()
   }
 });
 
-test('migrate reports legacy layout paths and preserves existing legacy files', () => {
+test('migrate --yes reports legacy layout paths and preserves existing legacy files', () => {
   const { dir, cleanup } = makeTmpDir();
   const target = path.join(dir, 'target');
   try {
@@ -511,7 +542,7 @@ test('migrate reports legacy layout paths and preserves existing legacy files', 
     fs.writeFileSync(path.join(target, 'docs', 'PROJECT_SCAN.json'), '{"legacy":true}\n');
     fs.writeFileSync(path.join(target, 'docs', 'SEARCH.md'), 'keep me\n');
 
-    const output = runCli(['migrate', '--dir', target, '--skip-install']);
+    const output = runCli(['migrate', '--dir', target, '--yes', '--skip-install']);
 
     assert.match(output, /Legacy layout detected and preserved:/);
     assert.match(output, /docs-template\//);
@@ -519,6 +550,67 @@ test('migrate reports legacy layout paths and preserves existing legacy files', 
     assert.match(output, /docs\/PROJECT_SCAN\.json/);
     assert.equal(fs.readFileSync(path.join(target, 'docs', 'SEARCH.md'), 'utf8'), 'keep me\n');
     assert.equal(fs.readFileSync(path.join(target, 'docs', 'PROJECT_SCAN.json'), 'utf8'), '{"legacy":true}\n');
+  } finally {
+    cleanup();
+  }
+});
+
+test('migrate without --yes is safe and actionable in no-TTY automation', async () => {
+  const { dir, cleanup } = makeTmpDir();
+  const target = path.join(dir, 'target');
+  try {
+    runCli(['init', '--name', 'Legacy Project', '--dir', target, '--full', '--skip-install']);
+    const before = snapshotTree(target);
+
+    const result = runCliRaw(['migrate', '--dir', target, '--skip-install']);
+
+    assert.equal(result.status, 1);
+    assert.equal(result.stdout, '');
+    assert.match(result.stderr, /migrate writes require confirmation/);
+    assert.match(result.stderr, /migrate --dry-run/);
+    assert.match(result.stderr, /--yes/);
+    assert.deepEqual(snapshotTree(target), before);
+
+    const jsonResult = runCliRaw(['migrate', '--dir', target, '--json', '--skip-install']);
+
+    assert.equal(jsonResult.status, 1);
+    assert.equal(jsonResult.stdout, '');
+    assert.match(jsonResult.stderr, /migrate writes require confirmation/);
+    assert.deepEqual(snapshotTree(target), before);
+
+    await assert.rejects(
+      () => runMigrate(target, {
+        language: 'es',
+        skipInstall: true,
+        stdinIsTTY: false,
+        stdoutIsTTY: false,
+      }),
+      /migrate requiere confirmacion antes de modificar archivos/,
+    );
+    assert.deepEqual(snapshotTree(target), before);
+  } finally {
+    cleanup();
+  }
+});
+
+test('migrate cancellation leaves the tree unchanged before side effects', async () => {
+  const { dir, cleanup } = makeTmpDir();
+  const target = path.join(dir, 'target');
+  try {
+    runCli(['init', '--name', 'Legacy Project', '--dir', target, '--full', '--skip-install']);
+    const before = snapshotTree(target);
+
+    await assert.rejects(
+      () => runMigrate(target, {
+        promptConfirm: () => false,
+        skipInstall: true,
+        stdinIsTTY: true,
+        stdoutIsTTY: true,
+      }),
+      /migrate canceled\. No files were written\./,
+    );
+
+    assert.deepEqual(snapshotTree(target), before);
   } finally {
     cleanup();
   }

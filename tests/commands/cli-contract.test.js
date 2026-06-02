@@ -141,6 +141,7 @@ test('help output documents important public commands', () => {
   assert.match(output, /--model <model-id>\s+Technical model id for AI agent profiles or provider-backed AI commands/);
   assert.match(output, /--lang <en\|es>\s+Override CLI human output language/);
   assert.match(output, /--global\s+For config language set, write the global user config/);
+  assert.match(output, /--yes\s+Skip prompts and confirm write prompts such as migrate/);
   assert.match(output, /ai agent set planner --provider codex --model gpt-5\.5 --dry-run/);
   assert.match(output, new RegExp(`npx --yes create-quiver@${packageJson.version.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')} ai prompt-slice`));
 });
@@ -172,6 +173,7 @@ test('global --lang before help is accepted', () => {
   assert.match(output, /Comandos:/);
   assert.match(output, /--lang <en\|es>/);
   assert.match(output, /Anula el idioma de la salida humana del CLI/);
+  assert.match(output, /--yes\s+Omite prompts y confirma escrituras como migrate/);
 });
 
 test('help uses configured project language without requiring --lang', () => {

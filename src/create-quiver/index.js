@@ -419,7 +419,7 @@ ${helpText(help, 'headings', 'options', 'Options:')}
       --output <file>         ${optionDescription(help, 'Output file for evidence run')}
       --max-output <n>        ${optionDescription(help, 'Maximum stdout/stderr chars per evidence section')}
       --title <text>          ${optionDescription(help, 'Override PR title for ai pr create')}
-  -y, --yes                   ${optionDescription(help, 'Skip prompts and use the provided inputs')}
+  -y, --yes                   ${optionDescription(help, 'Skip prompts and confirm write prompts such as migrate')}
   -V, --version               ${optionDescription(help, 'Show the installed create-quiver version')}
   -h, --help                  ${optionDescription(help, 'Show this help message')}
 
@@ -2369,7 +2369,39 @@ function runAnalyze(targetDir, options = {}) {
   };
 }
 
-function runMigrate(targetDir, options = {}) {
+async function confirmMigrateWrite(projectRoot, options, translator) {
+  if (options.force === true) {
+    return;
+  }
+
+  const ux = createUx({
+    env: options.env,
+    error: options.error,
+    input: options.input,
+    interactive: true,
+    json: options.json,
+    noColor: options.noColor,
+    output: options.output,
+    promptConfirm: options.promptConfirm,
+    stderrIsTTY: options.stderrIsTTY,
+    stdinIsTTY: options.stdinIsTTY,
+    stdoutIsTTY: options.stdoutIsTTY,
+    write: options.write,
+  });
+
+  if (!ux.mode.usePrompts) {
+    throw new Error(formatError(translator.t('migrate.confirm.required')));
+  }
+
+  const confirmed = await ux.promptConfirm(translator.t('migrate.confirm.prompt', { path: projectRoot }), {
+    initialValue: false,
+  });
+  if (!confirmed) {
+    throw new Error(formatError(translator.t('migrate.confirm.declined')));
+  }
+}
+
+async function runMigrate(targetDir, options = {}) {
   const projectRoot = resolveTargetRoot(process.cwd(), targetDir);
   const translator = createTranslator(options.language);
 
@@ -2409,6 +2441,8 @@ function runMigrate(targetDir, options = {}) {
     console.log(formatInitLayoutPlan(migrationPlan));
     return;
   }
+
+  await confirmMigrateWrite(projectRoot, options, translator);
 
   const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'quiver-migrate-'));
 
@@ -3639,10 +3673,16 @@ async function run(argv) {
   }
 
   if (args.mode === 'migrate') {
-    runMigrate(args.targetDir, {
+    await runMigrate(args.targetDir, {
       dryRun: args.dryRun,
+      force: args.force,
+      json: args.json,
       language: args.language,
+      noColor: args.noColor,
       skipInstall: args.skipInstall,
+      stderrIsTTY: Boolean(process.stderr.isTTY),
+      stdinIsTTY: Boolean(process.stdin.isTTY),
+      stdoutIsTTY: Boolean(process.stdout.isTTY),
     });
     return;
   }

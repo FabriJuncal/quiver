@@ -50,6 +50,23 @@
 - `git diff --check`: passed.
 - `node bin/create-quiver.js spec validate specs/quiver-v50-audit-trust-foundation`: passed.
 
+## slice-02-migrate-write-safety-contract
+
+- `src/create-quiver/index.js`: `runMigrate` is now async and calls `confirmMigrateWrite` before `packTemplate`, `mergeDirectoryTree`, `initializeProjectDocs`, `updateStateForMigrate`, or `installSelfAsDevDep`.
+- `migrate --dry-run`: remains prompt-free and write-free because it returns before confirmation.
+- `migrate --yes`: maps to the existing `force` parser flag and bypasses the prompt for automation.
+- no-TTY/CI without `--yes`: fails before writes with actionable guidance to run `migrate --dry-run` or pass `--yes`; JSON mode keeps stdout empty on that failure path.
+- TTY cancellation: covered through exported `runMigrate` with injected `promptConfirm: () => false`; snapshot comparison proves the project tree remains unchanged.
+- EN/ES messages: added `migrate.confirm.required`, `migrate.confirm.prompt`, and `migrate.confirm.declined`; Spanish no-TTY error and Spanish `--yes` help are covered in tests.
+- `docs/reference/commands.md` and `docs/CLI_UX_GUIDE.md`: document `migrate --dry-run`, `migrate`, and `migrate --yes` safety semantics.
+- `specs/quiver-v43-cli-i18n-audit-release-readiness/command-language-mode-matrix.json`: updated to include documented command `migrate --yes`; this file was added to the slice scope because `tests/commands/i18n-audit-matrix.test.js` enforces command-reference coverage.
+- `node --test tests/commands/cli-contract.test.js`: passed.
+- `node --test tests/commands/init-profiles.test.js`: passed.
+- `node --test tests/commands/i18n-audit-matrix.test.js`: passed after adding `migrate --yes` to the matrix.
+- `node --test`: passed, 614 tests, 0 failures.
+- `npx -y node@20.12.0 --test tests/commands/cli-contract.test.js tests/commands/init-profiles.test.js tests/commands/i18n-audit-matrix.test.js`: passed, 39 tests, 0 failures.
+- `git diff --check`: passed.
+
 ## slice-03-security-reporting-channel
 
 - `gh repo view FabriJuncal/quiver --json nameWithOwner,isPrivate,viewerPermission,url`: verified repository visibility, URL, and ADMIN permission for inspection.
