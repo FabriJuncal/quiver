@@ -1,0 +1,57 @@
+{
+  "slice_id": "slice-00-audit-baseline-and-resolved-findings",
+  "ticket": "QUIVER-50-00",
+  "type": "documentation",
+  "title": "Audit baseline and already-resolved findings",
+  "objective": "Classify audit findings against current repository behavior before implementation.",
+  "description": "Creates the v50 baseline so executors do not reimplement behavior already present in the current branch.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v50-audit-baseline",
+    "branch_name": "feature/QUIVER-50-00-v50-audit-baseline"
+  },
+  "files": [
+    "specs/quiver-v50-audit-trust-foundation/**"
+  ],
+  "expected_read_paths": [
+    "REQUERIMIENTOS_DERIVADOS_DE_AUDITORIA.md",
+    "package.json",
+    ".github/workflows/ci.yml",
+    "src/create-quiver/**",
+    "tests/**"
+  ],
+  "allowed_write_paths": [
+    "specs/quiver-v50-audit-trust-foundation/**"
+  ],
+  "depends_on": [],
+  "parallel_safe": "no",
+  "parallel_safe_reason": "Baseline defines finding state and constraints for every later v50 slice.",
+  "must": [
+    "Create a Finding | Current state | Action table.",
+    "Mark each finding as implemented, partial, missing, or not applicable.",
+    "Record current help, JSON, parser, CI, package, and command contracts.",
+    "Do not change runtime code."
+  ],
+  "not_included": [
+    "Implementing fixes.",
+    "Changing docs outside this spec."
+  ],
+  "acceptance": [
+    "Resolved findings are identified as evidence/test/docs only.",
+    "Missing and partial findings are mapped to later slices.",
+    "Contracts that must not regress are explicit."
+  ],
+  "tests": [
+    "git diff --check",
+    "node bin/create-quiver.js spec validate specs/quiver-v50-audit-trust-foundation"
+  ],
+  "validation_hints": [
+    "Use current CLI behavior as evidence, not assumptions from the audit file."
+  ],
+  "estimated_hours": 2,
+  "status": "completed",
+  "blocked_reason": null,
+  "actual_hours": 2,
+  "completed_at": "2026-06-01T21:37:54-0300"
+}

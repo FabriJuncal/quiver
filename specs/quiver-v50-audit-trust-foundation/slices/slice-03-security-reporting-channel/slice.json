@@ -1,0 +1,54 @@
+{
+  "slice_id": "slice-03-security-reporting-channel",
+  "ticket": "QUIVER-50-03",
+  "type": "documentation",
+  "title": "Security reporting channel",
+  "objective": "Make private vulnerability reporting concrete and verifiable.",
+  "description": "Updates SECURITY.md with a real private reporting path and records evidence or required owner confirmation.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v50-security-reporting",
+    "branch_name": "feature/QUIVER-50-03-v50-security-reporting"
+  },
+  "files": [
+    "SECURITY.md",
+    "specs/quiver-v50-audit-trust-foundation/**"
+  ],
+  "expected_read_paths": [
+    "SECURITY.md",
+    "docs/GITFLOW_PR_GUIDE.md"
+  ],
+  "allowed_write_paths": [
+    "SECURITY.md",
+    "specs/quiver-v50-audit-trust-foundation/**"
+  ],
+  "depends_on": [
+    "slice-00-audit-baseline-and-resolved-findings"
+  ],
+  "parallel_safe": "yes",
+  "parallel_safe_reason": "Security docs are independent from code changes.",
+  "must": [
+    "Replace vague private reporting guidance with a concrete channel.",
+    "Record whether GitHub Private Vulnerability Reporting is activated or use an email fallback.",
+    "Document any required manual owner action."
+  ],
+  "not_included": [
+    "Changing repository settings from code.",
+    "Creating public issue templates for vulnerabilities."
+  ],
+  "acceptance": [
+    "SECURITY.md contains a concrete private channel.",
+    "Closure records evidence or owner-confirmation requirement.",
+    "No vague 'contact privately' wording remains without a channel."
+  ],
+  "tests": [
+    "git diff --check"
+  ],
+  "validation_hints": [
+    "If GitHub settings cannot be verified locally, record the external action explicitly."
+  ],
+  "estimated_hours": 1,
+  "status": "planned",
+  "blocked_reason": null
+}

@@ -1,0 +1,69 @@
+{
+  "slice_id": "slice-01-runtime-minimum-and-package-metadata",
+  "ticket": "QUIVER-50-01",
+  "type": "quality",
+  "title": "Runtime minimum and package metadata",
+  "objective": "Verify and declare the real minimum supported Node.js version.",
+  "description": "Adds package runtime metadata only after evidence proves the minimum supported Node version.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v50-runtime-metadata",
+    "branch_name": "feature/QUIVER-50-01-v50-runtime-metadata"
+  },
+  "files": [
+    "package.json",
+    "package-lock.json",
+    "README.md",
+    "docs/getting-started/**",
+    ".github/workflows/ci.yml",
+    "specs/quiver-v50-audit-trust-foundation/**"
+  ],
+  "expected_read_paths": [
+    "package.json",
+    "package-lock.json",
+    ".github/workflows/ci.yml",
+    "scripts/ci/**",
+    "docs/getting-started/installation.md"
+  ],
+  "allowed_write_paths": [
+    "package.json",
+    "package-lock.json",
+    "README.md",
+    "docs/getting-started/**",
+    ".github/workflows/ci.yml",
+    "specs/quiver-v50-audit-trust-foundation/**"
+  ],
+  "depends_on": [
+    "slice-00-audit-baseline-and-resolved-findings"
+  ],
+  "parallel_safe": "yes",
+  "parallel_safe_reason": "Package metadata can be handled independently after baseline.",
+  "must": [
+    "Verify the real Node minimum before declaring engines.node.",
+    "Keep package-lock.json synchronized with package.json.",
+    "Document the Node minimum in installation docs.",
+    "Ensure CI tests the declared minimum or records a blocker."
+  ],
+  "not_included": [
+    "Adding unrelated dependencies.",
+    "Changing release automation."
+  ],
+  "acceptance": [
+    "package.json declares engines.node only with evidence.",
+    "npm ci passes with the synchronized lockfile.",
+    "Docs mention the supported Node version.",
+    "CI covers the minimum or the blocker is explicit."
+  ],
+  "tests": [
+    "npm ci",
+    "node --test",
+    "git diff --check"
+  ],
+  "validation_hints": [
+    "Do not infer Node minimum from current local Node version."
+  ],
+  "estimated_hours": 3,
+  "status": "planned",
+  "blocked_reason": null
+}

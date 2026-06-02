@@ -1,0 +1,77 @@
+{
+  "slice_id": "slice-07-ci-and-documentation-lint-baseline",
+  "ticket": "QUIVER-50-07",
+  "type": "automation",
+  "title": "CI and documentation lint baseline",
+  "objective": "Harden CI with portable tests, docs lint, link checks, and Windows PowerShell coverage.",
+  "description": "Improves CI without introducing flaky external link failures or broad documentation churn.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v50-ci-docs-lint-baseline",
+    "branch_name": "feature/QUIVER-50-07-v50-ci-docs-lint-baseline"
+  },
+  "files": [
+    ".github/workflows/ci.yml",
+    ".markdownlint.json",
+    ".markdown-link-check.json",
+    "package.json",
+    "package-lock.json",
+    "CONTRIBUTING.md",
+    "scripts/ci/**",
+    "specs/quiver-v50-audit-trust-foundation/**"
+  ],
+  "expected_read_paths": [
+    ".github/workflows/ci.yml",
+    "package.json",
+    "package-lock.json",
+    "scripts/ci/**",
+    "CONTRIBUTING.md"
+  ],
+  "allowed_write_paths": [
+    ".github/workflows/ci.yml",
+    ".markdownlint.json",
+    ".markdown-link-check.json",
+    "package.json",
+    "package-lock.json",
+    "CONTRIBUTING.md",
+    "scripts/ci/**",
+    "specs/quiver-v50-audit-trust-foundation/**"
+  ],
+  "depends_on": [
+    "slice-01-runtime-minimum-and-package-metadata",
+    "slice-06-contributor-and-architecture-docs"
+  ],
+  "parallel_safe": "no",
+  "parallel_safe_reason": "CI depends on package metadata and docs baseline.",
+  "must": [
+    "Run npm ci in CI.",
+    "Use portable test runner without shell glob expansion.",
+    "Add Windows pwsh coverage for portable commands.",
+    "Adopt docs lint/link checks with controlled scope.",
+    "Keep package-lock.json synchronized."
+  ],
+  "not_included": [
+    "npm publish automation.",
+    "Aggressive markdown reformatting.",
+    "Flaky blocking external link checks."
+  ],
+  "acceptance": [
+    "CI validates tests and smokes on supported OS matrix.",
+    "Windows pwsh runs at least one portable npm/CLI path.",
+    "Docs lint/link checks have explicit non-flaky scope.",
+    "Local equivalent commands are documented."
+  ],
+  "tests": [
+    "npm ci",
+    "node --test",
+    "npm run package:quiver",
+    "git diff --check"
+  ],
+  "validation_hints": [
+    "If external link checking is unstable, make external checks informational for this slice."
+  ],
+  "estimated_hours": 8,
+  "status": "planned",
+  "blocked_reason": null
+}
