@@ -49,3 +49,12 @@
 - `npx -y node@20.12.0 --test`: passed, 612 tests, 0 failures. Local npm emitted a compatibility warning because npm `11.12.1` does not support Node `20.12.0`, but the Node 20.12.0 runtime test suite completed successfully.
 - `git diff --check`: passed.
 - `node bin/create-quiver.js spec validate specs/quiver-v50-audit-trust-foundation`: passed.
+
+## slice-03-security-reporting-channel
+
+- `gh repo view FabriJuncal/quiver --json nameWithOwner,isPrivate,viewerPermission,url`: verified repository visibility, URL, and ADMIN permission for inspection.
+- `gh api repos/FabriJuncal/quiver/private-vulnerability-reporting --jq '.'`: returned `{"enabled":false}`; GitHub Private Vulnerability Reporting is not currently active.
+- `SECURITY.md`: replaced vague private reporting wording with the concrete email channel `juncalfabri@gmail.com`, required report details, and owner action to enable GitHub Private Vulnerability Reporting before making it the primary channel.
+- `git diff --check`: passed.
+- `node bin/create-quiver.js spec validate specs/quiver-v50-audit-trust-foundation`: passed.
+- `node bin/create-quiver.js check-slice specs/quiver-v50-audit-trust-foundation/slices/slice-03-security-reporting-channel/slice.json --local`: passed with the expected completed-slice warning after marking the slice completed.
