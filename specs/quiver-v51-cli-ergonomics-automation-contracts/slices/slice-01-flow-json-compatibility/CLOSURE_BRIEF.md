@@ -2,20 +2,20 @@
 
 ## Summary
 
-Pending execution.
+Implemented additive `flow --json` compatibility by emitting `next_command` with the same value as the existing `nextCommand` field. Human output semantics are unchanged.
 
 ## Validation
 
-- [ ] `node --test tests/commands/flow.test.js`
-- [ ] `node --test`
-- [ ] `git diff --check`
+- [x] `node --test tests/commands/flow.test.js`
+- [x] `node --test`
+- [x] `git diff --check`
 
 ## Closure Conditions
 
-- [ ] `next_command` added.
-- [ ] `nextCommand` preserved.
-- [ ] Compatibility documented and tested.
+- [x] `next_command` added.
+- [x] `nextCommand` preserved.
+- [x] Compatibility documented and tested.
 
 ## Open Items
 
-- Pending execution.
+- None.

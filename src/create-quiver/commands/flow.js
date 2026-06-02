@@ -258,6 +258,7 @@ function baseReport({ stage, label, blockers = [], nextCommand, suggestedCommand
     label,
     blockers,
     nextCommand,
+    next_command: nextCommand,
     suggestedCommands,
     facts,
   };

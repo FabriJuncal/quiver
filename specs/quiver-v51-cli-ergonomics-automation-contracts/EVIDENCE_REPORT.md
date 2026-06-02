@@ -34,3 +34,16 @@
 - Runtime code was not modified for this baseline slice.
 - `git diff --check`: passed.
 - `node bin/create-quiver.js spec validate specs/quiver-v51-cli-ergonomics-automation-contracts`: passed.
+
+## slice-01-flow-json-compatibility
+
+- `src/create-quiver/commands/flow.js`: `baseReport` now emits `next_command` as an additive snake_case alias of the existing `nextCommand` field.
+- `tests/commands/flow.test.js`: machine-readable tests cover both uninitialized and ready-slice states, asserting `next_command` and `nextCommand` remain equal.
+- `docs/reference/commands.md`: documents `flow --json` compatibility for both fields.
+- `specs/quiver-v43-cli-i18n-audit-release-readiness/command-language-mode-matrix.json`: records the newly documented `flow --json` command under a JSON coverage profile.
+- `node --test tests/commands/flow.test.js`: passed, 17 tests.
+- `node --test tests/commands/i18n-audit-matrix.test.js tests/commands/flow.test.js`: passed, 19 tests.
+- `node --test`: passed, 622 tests.
+- `npm run docs:check`: passed.
+- `git diff --check`: passed.
+- `node bin/create-quiver.js spec validate specs/quiver-v51-cli-ergonomics-automation-contracts`: passed.
