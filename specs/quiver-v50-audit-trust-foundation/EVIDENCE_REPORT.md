@@ -125,3 +125,27 @@
 - `git diff --check`: passed.
 - `node bin/create-quiver.js spec validate specs/quiver-v50-audit-trust-foundation`: passed.
 - `node bin/create-quiver.js check-slice specs/quiver-v50-audit-trust-foundation/slices/slice-06-contributor-and-architecture-docs/slice.json --local`: passed with the expected completed-slice warning after marking the slice completed.
+
+## slice-07-ci-and-documentation-lint-baseline
+
+- `.github/workflows/ci.yml`: added `tests` and `docs` jobs using Node 22, `npm ci`, `npm run test:ci`, `npm run package:quiver`, `npm run docs:lint`, and `npm run docs:links`.
+- `.github/workflows/ci.yml`: changed the minimum-node full-suite step to `npm run test:ci`, which invokes Node's native runner through a portable Node wrapper.
+- `.github/workflows/ci.yml`: added a Windows-only `pwsh` smoke that parses `node .\bin\create-quiver.js version --json` and runs `npm run test:ci -- tests\lib\paths.test.js`.
+- `scripts/ci/run-node-tests.js`: added a shell-free wrapper around `node --test`, preserving pass-through test file arguments without shell glob expansion.
+- `scripts/ci/docs-scope.js`, `scripts/ci/check-docs-markdown.js`, and `scripts/ci/check-doc-links.js`: added explicit public-docs scope and per-file local link checking.
+- `.markdownlint.json`: added the initial markdown lint baseline while disabling inherited noisy style rules (`MD012`, `MD013`, `MD033`, `MD041`, `MD060`) to avoid broad documentation churn.
+- `.markdown-link-check.json`: added a non-flaky local-link baseline by ignoring external `http(s)` and `mailto:` links plus same-page anchors.
+- `package.json` and `package-lock.json`: added `test`, `test:ci`, `docs:lint`, `docs:links`, `docs:check`, `markdownlint-cli2`, and `markdown-link-check`; lockfile synchronized by npm.
+- `CONTRIBUTING.md`: documented local equivalents for the new CI gates and clarified that docs link checks intentionally ignore external URLs in this baseline.
+- `npm install --save-dev markdownlint-cli2 markdown-link-check`: passed; added 153 packages, audited 161 packages, 0 vulnerabilities.
+- `npm ci`: passed; added 160 packages, audited 161 packages, 0 vulnerabilities.
+- `npm run docs:lint`: passed, 20 files, 0 markdownlint errors after baseline config.
+- `npm run docs:links`: passed, 20 files, local-link scope only.
+- `npm run docs:check`: passed.
+- `npm run test:ci -- tests/lib/paths.test.js`: passed, 10 tests, 0 failures.
+- `node --test`: passed, 621 tests, 0 failures.
+- `npm run package:quiver`: passed, produced package smoke `create-quiver-0.15.3.tgz`.
+- `git diff --check`: passed.
+- `node bin/create-quiver.js spec validate specs/quiver-v50-audit-trust-foundation`: passed.
+- `node bin/create-quiver.js check-slice specs/quiver-v50-audit-trust-foundation/slices/slice-07-ci-and-documentation-lint-baseline/slice.json --local`: passed with the expected completed-slice warning after marking the slice completed.
+- Local `pwsh` validation was not runnable because `pwsh` is not installed on this machine; Windows `pwsh` coverage is encoded in CI.

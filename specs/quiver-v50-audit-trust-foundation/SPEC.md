@@ -1,7 +1,7 @@
 # Quiver v50 - Audit Trust Foundation
 
 **Date:** 2026-06-01
-**Status:** Planned
+**Status:** Completed
 **Source:** User-approved plan v4 derived from `REQUERIMIENTOS_DERIVADOS_DE_AUDITORIA.md`.
 
 Slice numbering resets here. This spec intentionally starts at `slice-00`.
@@ -82,7 +82,7 @@ Establish a production-ready trust baseline for Quiver without broad rewrites:
 | slice-04 | User-facing i18n error coverage | completed | slice-00 |
 | slice-05 | Init/analyze progress and summaries | completed | slice-00, slice-04 |
 | slice-06 | Contributor and architecture docs | completed | slice-00 |
-| slice-07 | CI and documentation lint baseline | planned | slice-01, slice-06 |
+| slice-07 | CI and documentation lint baseline | completed | slice-01, slice-06 |
 
 ## Guardrails
 
@@ -105,9 +105,9 @@ Establish a production-ready trust baseline for Quiver without broad rewrites:
 - `git diff --check`
 - `node bin/create-quiver.js spec validate specs/quiver-v50-audit-trust-foundation`
 
-## Open Decisions
+## Resolved Decisions
 
-- Node minimum real version.
-- Final security channel: GitHub private vulnerability reporting or email fallback.
-- Initial blocking scope for markdown lint and link checks.
-- Whether external link checks block or only report in the first CI slice.
+- Node minimum real version: `>=20.12.0`.
+- Final security channel: private email fallback documented in `SECURITY.md`; GitHub Private Vulnerability Reporting remains an owner action before it becomes primary.
+- Initial markdown lint scope: public root docs, `.github/pull_request_template.md`, and public docs under `docs/getting-started`, `docs/reference`, and `docs/workflows`.
+- Link checks: local documentation links are blocking; external URLs are ignored in this first CI baseline to avoid flaky network gates.

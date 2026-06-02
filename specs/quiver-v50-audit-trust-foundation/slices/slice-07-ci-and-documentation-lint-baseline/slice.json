@@ -64,6 +64,8 @@
   ],
   "tests": [
     "npm ci",
+    "npm run docs:check",
+    "npm run test:ci -- tests/lib/paths.test.js",
     "node --test",
     "npm run package:quiver",
     "git diff --check"
@@ -72,6 +74,8 @@
     "If external link checking is unstable, make external checks informational for this slice."
   ],
   "estimated_hours": 8,
-  "status": "planned",
+  "actual_hours": 6,
+  "status": "completed",
+  "completed_at": "2026-06-01T23:07:41-0300",
   "blocked_reason": null
 }

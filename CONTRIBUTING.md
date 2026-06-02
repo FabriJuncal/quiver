@@ -68,7 +68,8 @@ node bin/create-quiver.js --help
 node bin/create-quiver.js spec validate specs/<spec-dir>
 node bin/create-quiver.js check-slice specs/<spec-dir>/slices/<slice-id>/slice.json --local
 node bin/create-quiver.js check-scope specs/<spec-dir>/slices/<slice-id>/slice.json --base origin/main --strict
-node --test
+npm run test:ci
+npm run docs:check
 npm run package:quiver
 bash scripts/ci/smoke-create-quiver.sh
 ```
@@ -90,10 +91,18 @@ Recommended validation by change type:
 | Change type | Minimum validation |
 |---|---|
 | Spec or slice docs only | `node bin/create-quiver.js spec validate specs/<spec-dir>` and `git diff --check` |
-| CLI behavior | Targeted `node --test tests/...`, then `node --test` when shared paths change |
-| Templates/generated docs | Init/analyze/doctor targeted tests plus docs link checks when available |
+| CLI behavior | Targeted `npm run test:ci -- tests/...`, then `npm run test:ci` when shared paths change |
+| Templates/generated docs | Init/analyze/doctor targeted tests plus `npm run docs:check` when docs links or public docs change |
 | Package boundary | `npm run package:quiver` and installed CLI smoke when package contents change |
 | Scripts | Relevant smoke script and ShellCheck for Bash scripts |
+
+CI uses the same local equivalents:
+
+- `npm ci` installs from the committed lockfile.
+- `npm run test:ci` runs Node's native test runner through `scripts/ci/run-node-tests.js` without shell glob expansion.
+- `npm run docs:lint` checks a controlled public-docs markdown scope.
+- `npm run docs:links` checks local documentation links and ignores external URLs to avoid flaky network gates.
+- `npm run package:quiver` validates the npm package boundary.
 
 Always record commands, exit codes, and meaningful output in the relevant
 `EVIDENCE_REPORT.md`.

@@ -17,6 +17,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: npm ci
+
       - name: Install shellcheck
         run: sudo apt-get update && sudo apt-get install -y shellcheck
 
@@ -27,6 +35,46 @@ jobs:
         run: |
           node -e "const fs=require('fs'); const {parseJsonWithComments}=require('./src/create-quiver/lib/json'); parseJsonWithComments(fs.readFileSync('specs/[project-name]/slices/slice-template/slice.json', 'utf8'))"
           node -e "const fs=require('fs'); const {parseJsonWithComments}=require('./src/create-quiver/lib/json'); parseJsonWithComments(fs.readFileSync('specs/quiver-v01/slices/slice-01-legal-integrity/slice.json', 'utf8'))"
+
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run portable test suite
+        run: npm run test:ci
+
+      - name: Run package smoke
+        run: npm run package:quiver
+
+  docs:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run docs lint
+        run: npm run docs:lint
+
+      - name: Run docs link check
+        run: npm run docs:links
 
   cross-platform-smoke:
     strategy:
@@ -52,6 +100,17 @@ jobs:
       - name: Run cross-platform smoke
         run: node scripts/ci/smoke-cross-platform.js
 
+      - name: Run Windows PowerShell portable path smoke
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $versionJson = node .\bin\create-quiver.js version --json
+          $version = $versionJson | ConvertFrom-Json
+          if (-not $version.version) {
+            throw "create-quiver version JSON did not include a version field"
+          }
+          npm run test:ci -- tests\lib\paths.test.js
+
       - name: Run tiered pack smoke
         shell: bash
         run: bash scripts/ci/smoke-tiered-pack.sh
@@ -71,4 +130,4 @@ jobs:
         run: npm ci
 
       - name: Run full test suite on minimum Node
-        run: node --test
+        run: npm run test:ci
