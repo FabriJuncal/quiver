@@ -388,7 +388,7 @@ function runSmoke() {
   assertContains(flagLanguage, 'Quiver Dashboard', '--lang override dashboard');
   assertContains(envLanguage, 'Quiver Dashboard', 'QUIVER_LANG override dashboard');
   assert(configuredLanguageJson.language === 'es', 'configured language JSON mismatch');
-  assert(configuredLanguageJson.source === '.quiver/config.json', 'configured language JSON source mismatch');
+  assert(String(configuredLanguageJson.source || '').replace(/\\/g, '/') === '.quiver/config.json', 'configured language JSON source mismatch');
   assert(envLanguageJson.language === 'en', 'QUIVER_LANG override JSON mismatch');
   assert(envLanguageJson.source === 'QUIVER_LANG', 'QUIVER_LANG override JSON source mismatch');
   assert(languageDashboardJson.dashboard_schema_version === 1, 'dashboard JSON schema mismatch in spaced path');
