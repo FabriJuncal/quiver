@@ -1,0 +1,62 @@
+{
+  "slice_id": "slice-00-schema-docs-release-baseline",
+  "ticket": "QUIVER-52-00",
+  "type": "documentation",
+  "title": "Schema/docs/release baseline",
+  "objective": "Identify source of truth and package boundaries before generating schema or docs.",
+  "description": "Creates the v52 baseline for schema generation, command docs generation, package contents, and release hygiene.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v52-schema-docs-release-baseline",
+    "branch_name": "feature/QUIVER-52-00-v52-schema-docs-release-baseline"
+  },
+  "files": [
+    "specs/quiver-v52-schema-docs-release-hygiene/**"
+  ],
+  "expected_read_paths": [
+    "src/create-quiver/lib/slice.js",
+    "src/create-quiver/lib/slice-graph.js",
+    "src/create-quiver/commands/spec.js",
+    "docs/reference/commands.md",
+    "scripts/package-quiver.sh",
+    "scripts/release-quiver.sh",
+    ".npmignore",
+    "package.json"
+  ],
+  "allowed_write_paths": [
+    "specs/quiver-v52-schema-docs-release-hygiene/**"
+  ],
+  "depends_on": [],
+  "parallel_safe": "no",
+  "parallel_safe_reason": "Baseline determines source of truth and package boundary for all v52 slices.",
+  "must": [
+    "Identify slice.json schema source of truth.",
+    "Classify files as published, repo-only, or generated.",
+    "Assess current package smoke and release script.",
+    "Define generated docs strategy."
+  ],
+  "not_included": [
+    "Generating schema.",
+    "Changing package scripts.",
+    "Changing docs reference."
+  ],
+  "acceptance": [
+    "Schema source decision is explicit.",
+    "Package boundary classification exists.",
+    "Generated docs strategy is chosen.",
+    "Runtime code remains unchanged."
+  ],
+  "tests": [
+    "git diff --check",
+    "node bin/create-quiver.js spec validate specs/quiver-v52-schema-docs-release-hygiene"
+  ],
+  "validation_hints": [
+    "Do not assume Zod is the source of truth unless runtime usage confirms it."
+  ],
+  "estimated_hours": 2,
+  "status": "completed",
+  "blocked_reason": null,
+  "actual_hours": 2,
+  "completed_at": "2026-06-01T21:37:54-0300"
+}
