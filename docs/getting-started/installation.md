@@ -2,6 +2,13 @@
 
 Esta guía explica por qué Quiver normalmente se ejecuta con `npx`, cuándo aparece en `node_modules` y cuándo conviene instalarlo como dependencia del proyecto.
 
+## Requisitos previos
+
+- Node.js `>=20.12.0`.
+- npm compatible con esa versión de Node.
+
+El mínimo está declarado en `package.json` y se valida en CI. También coincide con el requisito de dependencias del CLI como `@clack/prompts`.
+
 ## Uso recomendado
 
 Para usar la última versión publicada de Quiver, ejecutá:

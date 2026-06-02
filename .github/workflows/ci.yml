@@ -55,3 +55,20 @@ jobs:
       - name: Run tiered pack smoke
         shell: bash
         run: bash scripts/ci/smoke-tiered-pack.sh
+
+  minimum-node:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup minimum supported Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.12.0
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run full test suite on minimum Node
+        run: node --test

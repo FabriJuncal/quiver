@@ -64,6 +64,8 @@
     "Do not infer Node minimum from current local Node version."
   ],
   "estimated_hours": 3,
-  "status": "planned",
-  "blocked_reason": null
+  "status": "completed",
+  "blocked_reason": null,
+  "actual_hours": 2,
+  "completed_at": "2026-06-01T22:13:40-0300"
 }

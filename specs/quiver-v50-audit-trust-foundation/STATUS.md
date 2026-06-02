@@ -2,7 +2,7 @@
 
 **Overall status:** In Progress
 **Created:** 2026-06-01
-**Current slice:** slice-01-runtime-minimum-and-package-metadata
+**Current slice:** slice-02-migrate-write-safety-contract
 
 ## Summary
 
@@ -13,7 +13,7 @@ This spec converts audit-derived trust and contributor-readiness requirements in
 | Slice | Status | Notes |
 |---|---|---|
 | slice-00-audit-baseline-and-resolved-findings | Completed | Classified current findings, mapped implemented items to evidence-only closure, and froze command/package/docs/CI contracts before implementation. |
-| slice-01-runtime-minimum-and-package-metadata | Planned | Verify Node minimum, update package metadata and lockfile. |
+| slice-01-runtime-minimum-and-package-metadata | Completed | Declared Node >=20.12.0 with dependency/runtime evidence, synchronized lockfile, documented the minimum, and added minimum-node CI coverage. |
 | slice-02-migrate-write-safety-contract | Planned | Add safe confirmation and `--yes` contract for migrate. |
 | slice-03-security-reporting-channel | Planned | Make vulnerability reporting concrete and verifiable. |
 | slice-04-user-facing-i18n-error-coverage | Planned | Cover command and library user-facing errors in EN/ES. |

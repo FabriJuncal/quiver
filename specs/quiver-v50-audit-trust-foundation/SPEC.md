@@ -76,7 +76,7 @@ Establish a production-ready trust baseline for Quiver without broad rewrites:
 | Slice | Title | Status | Dependencies |
 |---|---|---|---|
 | slice-00 | Audit baseline and already-resolved findings | completed | none |
-| slice-01 | Runtime minimum and package metadata | planned | slice-00 |
+| slice-01 | Runtime minimum and package metadata | completed | slice-00 |
 | slice-02 | Migrate write-safety contract | planned | slice-00 |
 | slice-03 | Security reporting channel | planned | slice-00 |
 | slice-04 | User-facing i18n error coverage | planned | slice-00 |
