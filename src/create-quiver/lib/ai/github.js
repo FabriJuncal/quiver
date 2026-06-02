@@ -3,7 +3,7 @@ const os = require('node:os');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 
-const { currentBranch, hasRemote, isCleanWorktree } = require('../git');
+const { currentBranch, hasRemote, isCleanWorktree, resolveBaseBranchName } = require('../git');
 const { createTranslator } = require('../i18n/catalog');
 const { parseJsonWithComments } = require('../json');
 const { formatActionableError } = require('../actionable-error');
@@ -510,7 +510,10 @@ function buildPrCreateArgs(plan) {
 function buildPrCreatePlan(repoRoot, preflightReport, options = {}) {
   const prBody = readPrBody(repoRoot, options.prBodyPath || options.input);
   ensureNoOpenSlicesForPrBody(repoRoot, prBody.path);
-  const baseBranch = String(options.baseBranch || 'main').trim() || 'main';
+  const baseBranch = resolveBaseBranchName(repoRoot, {
+    explicitBaseBranch: options.baseBranch,
+    remote: preflightReport.remote || DEFAULT_REMOTE,
+  });
   const title = String(options.title || '').trim() || extractPrTitle(prBody.body, preflightReport.branchName);
   const plan = {
     baseBranch,

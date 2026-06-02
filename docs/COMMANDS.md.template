@@ -131,7 +131,7 @@ This document is the canonical command reference for the orchestration roadmap.
 | `--execute` | `ai execute-plan` | Execute the planned waves instead of printing commands |
 | `--mode <auto\|manual\|delegated>` | `ai execute-plan` | Choose compatible sequential execution, manual prompt output, or delegated worktree execution |
 | `--create` | `ai pr` | Create the GitHub PR after preflight and plan review |
-| `--base <branch>` | `ai pr`, `spec close` | Select PR base or cleanup base branch |
+| `--base <branch>` | `check-slice`, `check-scope`, `check-pr`, `ai pr`, `spec start`, `spec close` | Override base branch resolution; explicit values win before Remote HEAD and fallback branches |
 | `--allow-dirty` | `ai execute-slice`, `ai execute-plan` | Allow pre-existing dirty files and ignore them for scope diff |
 | `--ssh-host-alias <alias>` | `ai doctor`, `ai pr` | SSH host alias from the user's Git config, for example `github-work` |
 | `--identity-file <path>` | `ai doctor`, `ai pr` | SSH key path to validate separately from the host alias |

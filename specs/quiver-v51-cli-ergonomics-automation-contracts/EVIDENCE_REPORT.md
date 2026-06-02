@@ -65,3 +65,24 @@
 - `node bin/create-quiver.js check-slice specs/quiver-v51-cli-ergonomics-automation-contracts/slices/slice-02-dashboard-section-validation-i18n/slice.json --local --gate validation`: passed.
 - `node bin/create-quiver.js check-scope specs/quiver-v51-cli-ergonomics-automation-contracts/slices/slice-02-dashboard-section-validation-i18n/slice.json --base main --strict`: passed.
 - `node bin/create-quiver.js check-pr specs/quiver-v51-cli-ergonomics-automation-contracts/slices/slice-02-dashboard-section-validation-i18n/slice.json --base main`: passed spec, slice, overlap, validation gate, scope, branch, and clean-worktree checks; failed commit ownership because PR readiness still evaluates `origin/develop` even when the slice base is `main`. This is tracked by `slice-03-base-branch-resolution-policy`.
+
+## slice-03-base-branch-resolution-policy
+
+- `src/create-quiver/lib/git.js`: adds shared base branch resolution helpers with explicit override precedence, Remote HEAD discovery, and fallback candidates `main`, `master`, and `develop`.
+- `src/create-quiver/lib/readiness.js`: uses the shared resolver for slice readiness, scope checks, and PR readiness instead of hardcoded `origin/develop`.
+- `src/create-quiver/lib/spec-worktrees.js`: uses the shared resolver for spec worktree base selection while preserving explicit slice/spec base metadata.
+- `src/create-quiver/lib/lifecycle.js`: applies the shared resolver to slice cleanup and base freshness checks without changing slice branch fetch behavior.
+- `src/create-quiver/lib/ai/github.js`: resolves default `ai pr` base from Remote HEAD when `--base` is omitted, while preserving the `gh pr create --base <branch>` argument contract.
+- `src/create-quiver/index.js`: forwards `--base` only as an explicit override for `check-pr`, `ai pr`, `spec start`, and `spec close`.
+- `src/create-quiver/lib/i18n/messages/en.js` and `src/create-quiver/lib/i18n/messages/es.js`: remove stale hardcoded `origin/develop` readiness text and localize generic base/ref messages.
+- `docs/reference/commands.md` and `docs/COMMANDS.md.template`: document explicit `--base` precedence, Remote HEAD resolution, and fallback order.
+- `tests/lib/git.test.js`: covers explicit override precedence, Remote HEAD defaulting, and `main`/`master`/`develop` fallback order.
+- `tests/lib/check-slice.test.js`: covers `check-pr` using the slice base branch instead of hardcoded `origin/develop`.
+- `tests/lib/ai-github.test.js`: covers `ai pr` defaulting to Remote HEAD when `--base` is omitted.
+- `tests/lib/scope.test.js`: existing coverage verifies slice `git.base_branch` and explicit base override behavior for scope checks.
+- `tests/lib/lifecycle.test.js`: confirms lifecycle start/cleanup output remains valid after restoring remote slice branch detection.
+- `node --test tests/lib/git.test.js tests/commands/spec-close.test.js tests/commands/ai-pr.test.js tests/lib/check-slice.test.js tests/lib/scope.test.js tests/lib/ai-github.test.js tests/lib/i18n-catalog.test.js tests/commands/cli-contract.test.js`: passed, 77 tests.
+- `node --test tests/lib/lifecycle.test.js`: passed, 12 tests.
+- `node --test`: passed, 629 tests.
+- `npm run docs:check`: passed.
+- `git diff --check`: passed.

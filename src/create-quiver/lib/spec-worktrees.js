@@ -5,12 +5,11 @@ const {
   currentBranch,
   fetchRemote,
   hasLocalBranch,
-  hasRemoteBranch,
   isGitWorktree,
   isLinkedWorktree,
   isCleanWorktree,
-  lsRemoteHeads,
   mergeBaseIsAncestor,
+  resolveBaseRef: resolveGitBaseRef,
   runGit,
   statusPorcelain,
   worktreeAdd,
@@ -175,41 +174,24 @@ function formatDirtyCheckoutRecovery(repoRoot) {
   return lines.filter((line) => line !== '').join('\n');
 }
 
-function resolveBaseRef(repoRoot, preferred = '') {
-  const candidates = [preferred, 'main', 'develop'].filter(Boolean);
-  for (const candidate of candidates) {
-    if (hasLocalBranch(repoRoot, candidate)) {
-      return candidate;
-    }
-    if (hasRemoteBranch(repoRoot, candidate)) {
-      return `origin/${candidate}`;
-    }
-    if (lsRemoteHeads(repoRoot, candidate)) {
-      return `origin/${candidate}`;
-    }
-  }
-  throw new Error(formatError('missing base branch. Expected local or remote main/develop.'));
+function resolveBaseRef(repoRoot, preferred = '', remote = 'origin') {
+  const resolution = resolveGitBaseRef(repoRoot, {
+    explicitBaseBranch: preferred,
+    remote,
+  });
+  return resolution.baseRef;
 }
 
 function resolveMergedBaseRef(repoRoot, preferred = '', remote = 'origin') {
-  const candidates = [preferred, 'main', 'develop'].filter(Boolean);
-  for (const candidate of candidates) {
-    if (hasRemoteBranch(repoRoot, candidate, remote)) {
-      return {
-        baseBranch: candidate,
-        baseRef: `${remote}/${candidate}`,
-        remote,
-      };
-    }
-    if (hasLocalBranch(repoRoot, candidate)) {
-      return {
-        baseBranch: candidate,
-        baseRef: candidate,
-        remote: '',
-      };
-    }
-  }
-  throw new Error(formatError('missing merge base branch. Expected local or remote main/develop.'));
+  const resolution = resolveGitBaseRef(repoRoot, {
+    explicitBaseBranch: preferred,
+    remote,
+  });
+  return {
+    baseBranch: resolution.baseBranch,
+    baseRef: resolution.baseRef,
+    remote: resolution.remote,
+  };
 }
 
 function buildSpecStatus(repoRoot, specInput) {

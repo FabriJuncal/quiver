@@ -1,6 +1,6 @@
 const fs = require('fs');
 const path = require('path');
-const { catFileExists, currentBranch, hasLocalBranch, hasRemoteBranch, mergeBaseIsAncestor, revListCount, runGit, statusPorcelain, worktreeList } = require('./git');
+const { catFileExists, currentBranch, mergeBaseIsAncestor, resolveBaseRef, revListCount, runGit, statusPorcelain, worktreeList } = require('./git');
 const { parseJsonWithComments } = require('./json');
 const { createTranslator } = require('./i18n/catalog');
 const { buildGraph, normalizeDeclaredDependencies, readAllSlices, SliceGraphError, topoSort } = require('./slice-graph');
@@ -62,7 +62,7 @@ function parseWorktrees(text) {
   return entries;
 }
 
-function collectOverlapWarnings(repoRoot, currentBranchName, currentFiles, baseRef = 'origin/develop') {
+function collectOverlapWarnings(repoRoot, currentBranchName, currentFiles, baseRef) {
   const sliceMap = new Map();
   walkSlices(path.join(repoRoot, 'specs'), sliceMap, repoRoot);
   walkSlices(path.join(repoRoot, 'specs-fix'), sliceMap, repoRoot);
@@ -130,6 +130,15 @@ function baseRecoveryMessage(remote, baseBranch, translator) {
   return translator.t('readiness.base.recovery', { base: baseBranch, remote, remoteRef: `${remote}/${baseBranch}` });
 }
 
+function resolveReadinessBase(repoRoot, slice, options = {}) {
+  return resolveBaseRef(repoRoot, {
+    explicitBaseBranch: options.baseBranch,
+    missingOk: true,
+    preferredBaseBranch: slice.baseBranch,
+    remote: options.remote || 'origin',
+  });
+}
+
 function resolveReadinessRoot(localMode) {
   try {
     return runGit(['rev-parse', '--show-toplevel'], process.cwd());
@@ -145,23 +154,23 @@ function validateSliceDocumentedOnBase(repoRoot, slice, options = {}) {
   const translator = readinessTranslator(options);
   const gate = options.gate || 'execution';
   const remote = options.remote || 'origin';
-  const baseBranch = options.baseBranch || slice.baseBranch || 'develop';
-  const remoteRef = `${remote}/${baseBranch}`;
-  const hasRemoteBase = hasRemoteBranch(repoRoot, baseBranch, remote);
-  const hasLocalBase = hasLocalBranch(repoRoot, baseBranch);
+  const base = resolveReadinessBase(repoRoot, slice, {
+    baseBranch: options.baseBranch,
+    remote,
+  });
 
-  if (hasRemoteBase && catFileExists(repoRoot, `${remoteRef}:${slice.sliceRel}`)) {
-    console.log(translator.t('readiness.documented.remote.pass', { ref: remoteRef }));
-    return remoteRef;
+  if (base.baseRef && base.remote && catFileExists(repoRoot, `${base.baseRef}:${slice.sliceRel}`)) {
+    console.log(translator.t('readiness.documented.remote.pass', { ref: base.baseRef }));
+    return base.baseRef;
   }
 
-  if (hasLocalBase && catFileExists(repoRoot, `${baseBranch}:${slice.sliceRel}`)) {
-    console.log(translator.t('readiness.documented.local.pass', { branch: baseBranch }));
-    return baseBranch;
+  if (base.baseRef && !base.remote && catFileExists(repoRoot, `${base.baseRef}:${slice.sliceRel}`)) {
+    console.log(translator.t('readiness.documented.local.pass', { branch: base.baseRef }));
+    return base.baseRef;
   }
 
-  if (!hasRemoteBase && !hasLocalBase) {
-    const guidance = baseRecoveryMessage(remote, baseBranch, translator);
+  if (!base.baseRef) {
+    const guidance = baseRecoveryMessage(remote, base.baseBranch || base.candidates.map((candidate) => candidate.branch).join(', '), translator);
     if (gate === 'validation') {
       console.log(translator.t('readiness.warn', { message: guidance }));
       return null;
@@ -170,13 +179,12 @@ function validateSliceDocumentedOnBase(repoRoot, slice, options = {}) {
     throw new Error(`create-quiver: ${guidance}`);
   }
 
-  const expectedBase = hasRemoteBase ? remoteRef : baseBranch;
   if (gate === 'validation') {
-    console.log(translator.t('readiness.documented.missing_validation.warn', { ref: expectedBase }));
-    return expectedBase;
+    console.log(translator.t('readiness.documented.missing_validation.warn', { ref: base.baseRef }));
+    return base.baseRef;
   }
 
-  throw new Error(`create-quiver: ${translator.t('readiness.documented.missing.error', { ref: expectedBase })}`);
+  throw new Error(`create-quiver: ${translator.t('readiness.documented.missing.error', { ref: base.baseRef })}`);
 }
 
 function validateDeclaredDependencyContract(repoRoot, slice) {
@@ -246,7 +254,11 @@ function checkSliceReadiness(sliceInput, options = {}) {
   const remote = options.remote || 'origin';
   const repoRoot = resolveReadinessRoot(localMode);
   const slice = resolveSliceContext(repoRoot, sliceInput);
-  const baseBranch = options.baseBranch || slice.baseBranch || 'develop';
+  const base = resolveReadinessBase(repoRoot, slice, {
+    baseBranch: options.baseBranch,
+    remote,
+  });
+  const baseBranch = base.baseBranch || options.baseBranch || slice.baseBranch || 'main';
 
   for (const specFile of ['SPEC.md', 'STATUS.md', 'EVIDENCE_REPORT.md']) {
     ensureExists(path.join(repoRoot, slice.specDirRel, specFile), `create-quiver: falta '${slice.specDirRel}/${specFile}'.`);
@@ -268,7 +280,7 @@ function checkSliceReadiness(sliceInput, options = {}) {
   }
 
   if (!localMode) {
-    const overlapWarnings = collectOverlapWarnings(repoRoot, currentBranch(repoRoot), slice.files, baseRef || `${remote}/${baseBranch}`);
+    const overlapWarnings = collectOverlapWarnings(repoRoot, currentBranch(repoRoot), slice.files, baseRef || base.baseRef);
     if (overlapWarnings.length === 0) {
       console.log(translator.t('readiness.overlap.none.pass'));
     } else {
@@ -330,13 +342,31 @@ function checkSliceReadiness(sliceInput, options = {}) {
 function checkPrReadiness(sliceInput, options = {}) {
   const translator = readinessTranslator(options);
   const repoRoot = runGit(['rev-parse', '--show-toplevel'], process.cwd());
-  const scriptDir = path.dirname(__filename);
   const slice = resolveSliceContext(repoRoot, sliceInput);
   const current = currentBranch(repoRoot);
   const prPath = path.join(path.dirname(slice.sliceAbs), 'pr.md');
+  const remote = options.remote || 'origin';
+  const base = resolveReadinessBase(repoRoot, slice, {
+    baseBranch: options.baseBranch,
+    remote,
+  });
 
-  checkSliceReadiness(slice.sliceRel, { gate: 'validation', language: options.language });
-  checkScope(slice.sliceRel, { language: options.language, strict: true });
+  if (!base.baseRef) {
+    throw new Error(`create-quiver: ${baseRecoveryMessage(remote, base.baseBranch || base.candidates.map((candidate) => candidate.branch).join(', '), translator)}`);
+  }
+
+  checkSliceReadiness(slice.sliceRel, {
+    baseBranch: base.baseBranch,
+    gate: 'validation',
+    language: options.language,
+    remote,
+  });
+  checkScope(slice.sliceRel, {
+    baseBranch: base.baseBranch,
+    language: options.language,
+    remote,
+    strict: true,
+  });
 
   if (!slice.branchName) {
     throw new Error(`create-quiver: ${translator.t('readiness.pr.error.missing_branch')}`);
@@ -353,14 +383,14 @@ function checkPrReadiness(sliceInput, options = {}) {
   }
   console.log(translator.t('readiness.pr.clean.pass'));
 
-  const aheadCount = revListCount(repoRoot, 'origin/develop..HEAD');
+  const aheadCount = revListCount(repoRoot, `${base.baseRef}..HEAD`);
   if (aheadCount <= 0) {
-    if (mergeBaseIsAncestor(repoRoot, 'HEAD', 'origin/develop')) {
-      throw new Error(`create-quiver: ${translator.t('readiness.pr.error.absorbed')}`);
+    if (mergeBaseIsAncestor(repoRoot, 'HEAD', base.baseRef)) {
+      throw new Error(`create-quiver: ${translator.t('readiness.pr.error.absorbed', { ref: base.baseRef })}`);
     }
-    throw new Error(`create-quiver: ${translator.t('readiness.pr.error.no_commits')}`);
+    throw new Error(`create-quiver: ${translator.t('readiness.pr.error.no_commits', { ref: base.baseRef })}`);
   }
-  console.log(translator.t('readiness.pr.commits.pass'));
+  console.log(translator.t('readiness.pr.commits.pass', { ref: base.baseRef }));
 
   const prText = fs.readFileSync(prPath, 'utf8');
   for (const heading of ['## Title', '## Summary', '## Scope', '## Files', '## How to Test (DETAILED - REQUIRED)', '## Evidence', '## Rollback', '## Risks / Notes']) {
@@ -403,41 +433,22 @@ function checkScope(sliceInput, options = {}) {
   const declared = slice.files;
   validateProjectRelativePaths(declared, 'slice scope path');
 
-  const explicitBaseBranch = typeof options.baseBranch === 'string' ? options.baseBranch.trim() : '';
-  const candidateBaseBranches = Array.from(new Set([
-    explicitBaseBranch,
-    slice.baseBranch,
-    'main',
-    'develop',
-    'master',
-  ].filter(Boolean)));
-
-  let baseRef = '';
-  let baseSource = '';
-  for (const candidate of candidateBaseBranches) {
-    if (hasRemoteBranch(repoRoot, candidate, remote)) {
-      baseRef = `${remote}/${candidate}`;
-      baseSource = explicitBaseBranch === candidate ? '--base' : candidate === slice.baseBranch ? 'slice.git.base_branch' : 'fallback';
-      break;
-    }
-    if (hasLocalBranch(repoRoot, candidate)) {
-      baseRef = candidate;
-      baseSource = explicitBaseBranch === candidate ? '--base' : candidate === slice.baseBranch ? 'slice.git.base_branch' : 'fallback';
-      break;
-    }
-  }
+  const base = resolveReadinessBase(repoRoot, slice, {
+    baseBranch: options.baseBranch,
+    remote,
+  });
 
   let touchedRaw = '';
-  if (baseRef) {
-    touchedRaw = runGit(['diff', '--name-only', `${baseRef}...HEAD`], repoRoot);
-    console.log(translator.t('readiness.scope.base.info', { ref: baseRef, source: baseSource }));
+  if (base.baseRef) {
+    touchedRaw = runGit(['diff', '--name-only', `${base.baseRef}...HEAD`], repoRoot);
+    console.log(translator.t('readiness.scope.base.info', { ref: base.baseRef, source: base.source }));
   } else {
-    console.log(translator.t('readiness.scope.base.warn', { branches: candidateBaseBranches.join(', ') }));
+    console.log(translator.t('readiness.scope.base.warn', { branches: base.candidates.map((candidate) => candidate.branch).join(', ') }));
     return;
   }
 
   if (!touchedRaw) {
-    console.log(translator.t('readiness.scope.empty.warn', { ref: baseRef }));
+    console.log(translator.t('readiness.scope.empty.warn', { ref: base.baseRef }));
     return;
   }
 

@@ -2,6 +2,8 @@ const cp = require('child_process');
 const fs = require('fs');
 const path = require('path');
 
+const DEFAULT_BASE_BRANCH_CANDIDATES = ['main', 'master', 'develop'];
+
 function runGit(args, cwd, options = {}) {
   return cp.execFileSync('git', args, {
     cwd,
@@ -123,6 +125,98 @@ function hasRemote(repoRoot, remoteName = 'origin') {
   return remoteList(repoRoot).includes(remoteName);
 }
 
+function normalizeBranchName(value) {
+  return String(value || '').trim();
+}
+
+function remoteHeadBranch(repoRoot, remote = 'origin') {
+  const value = tryGit(['symbolic-ref', '--quiet', '--short', `refs/remotes/${remote}/HEAD`], repoRoot);
+  const prefix = `${remote}/`;
+  return value.startsWith(prefix) ? value.slice(prefix.length) : '';
+}
+
+function uniqueBaseCandidates(candidates) {
+  const seen = new Set();
+  return candidates.filter((candidate) => {
+    const branch = normalizeBranchName(candidate.branch);
+    if (!branch || seen.has(branch)) {
+      return false;
+    }
+    seen.add(branch);
+    candidate.branch = branch;
+    return true;
+  });
+}
+
+function buildBaseBranchCandidates(repoRoot, options = {}) {
+  const remote = options.remote || 'origin';
+  const explicitBaseBranch = normalizeBranchName(options.explicitBaseBranch);
+  const preferredBaseBranch = normalizeBranchName(options.preferredBaseBranch);
+  const defaults = Array.isArray(options.defaultBranches) && options.defaultBranches.length > 0
+    ? options.defaultBranches
+    : DEFAULT_BASE_BRANCH_CANDIDATES;
+
+  if (explicitBaseBranch) {
+    return [{ branch: explicitBaseBranch, source: '--base', explicit: true }];
+  }
+
+  return uniqueBaseCandidates([
+    preferredBaseBranch ? { branch: preferredBaseBranch, source: options.preferredSource || 'slice.git.base_branch', explicit: false } : null,
+    { branch: remoteHeadBranch(repoRoot, remote), source: 'remote HEAD', explicit: false },
+    ...defaults.map((branch) => ({ branch, source: 'fallback', explicit: false })),
+  ].filter(Boolean));
+}
+
+function resolveBaseRef(repoRoot, options = {}) {
+  const remote = options.remote || 'origin';
+  const candidates = buildBaseBranchCandidates(repoRoot, options);
+
+  for (const candidate of candidates) {
+    if (remote && hasRemoteBranch(repoRoot, candidate.branch, remote)) {
+      return {
+        baseBranch: candidate.branch,
+        baseRef: `${remote}/${candidate.branch}`,
+        candidates,
+        explicit: candidate.explicit,
+        remote,
+        source: candidate.source,
+      };
+    }
+    if (hasLocalBranch(repoRoot, candidate.branch)) {
+      return {
+        baseBranch: candidate.branch,
+        baseRef: candidate.branch,
+        candidates,
+        explicit: candidate.explicit,
+        remote: '',
+        source: candidate.source,
+      };
+    }
+  }
+
+  if (options.missingOk === true) {
+    const first = candidates[0] || { branch: '', source: 'fallback', explicit: false };
+    return {
+      baseBranch: first.branch,
+      baseRef: '',
+      candidates,
+      explicit: first.explicit,
+      remote: '',
+      source: first.source,
+    };
+  }
+
+  throw new Error(`create-quiver: missing base branch. Tried: ${candidates.map((candidate) => candidate.branch).join(', ') || '(none)'}.`);
+}
+
+function resolveBaseBranchName(repoRoot, options = {}) {
+  const resolution = resolveBaseRef(repoRoot, {
+    ...options,
+    missingOk: true,
+  });
+  return resolution.baseBranch || DEFAULT_BASE_BRANCH_CANDIDATES[0];
+}
+
 function isCleanWorktree(repoRoot) {
   return Boolean(repoRoot && fs.existsSync(repoRoot) && isGitWorktree(repoRoot) && statusPorcelain(repoRoot) === '');
 }
@@ -195,8 +289,10 @@ function catFileExists(repoRoot, specRef) {
 
 module.exports = {
   branchDelete,
+  buildBaseBranchCandidates,
   catFileExists,
   currentBranch,
+  DEFAULT_BASE_BRANCH_CANDIDATES,
   fetchBranch,
   fetchRemote,
   hasLocalBranch,
@@ -211,7 +307,10 @@ module.exports = {
   isGitWorktree,
   isLinkedWorktree,
   revListCount,
+  remoteHeadBranch,
   remoteList,
+  resolveBaseBranchName,
+  resolveBaseRef,
   runGit,
   statusPorcelain,
   tryGit,
