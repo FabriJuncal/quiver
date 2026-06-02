@@ -5,7 +5,7 @@ const path = require('node:path');
 const cp = require('node:child_process');
 const test = require('node:test');
 
-const { checkSliceReadiness } = require('../../src/create-quiver/lib/readiness');
+const { checkPrReadiness, checkSliceReadiness } = require('../../src/create-quiver/lib/readiness');
 
 function writeJson(filePath, data) {
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
@@ -112,6 +112,50 @@ function completedSlice(ref, extra = {}) {
     ...(extra.parallel_safe !== undefined ? { parallel_safe: extra.parallel_safe } : {}),
     ...(extra.parallel_safe_reason !== undefined ? { parallel_safe_reason: extra.parallel_safe_reason } : {}),
   };
+}
+
+function prBody() {
+  return [
+    '## Title',
+    'Demo PR',
+    '',
+    '## Summary',
+    'Body',
+    '',
+    '## Scope',
+    '- Demo',
+    '',
+    '## Files',
+    '- `src/app.js`',
+    '',
+    '## How to Test (DETAILED - REQUIRED)',
+    '',
+    '### Required Environment',
+    '- Node.js',
+    '',
+    '### Worktree Access',
+    '- `git switch feature/QUIVER-01-slice-01-alpha`',
+    '',
+    '### Run the Project',
+    '- No server required.',
+    '',
+    '### Use Cases',
+    '#### Case 1: demo',
+    '1. Run the command.',
+    '',
+    '### Technical Verification',
+    '- `node --test`',
+    '',
+    '## Evidence',
+    '- Pending',
+    '',
+    '## Rollback',
+    '- `git revert HEAD`',
+    '',
+    '## Risks / Notes',
+    '- None',
+    '',
+  ].join('\n');
 }
 
 function readySlice(ref, extra = {}) {
@@ -364,6 +408,42 @@ test('check-slice supports an explicit local base branch', () => {
 
     assert.match(output, /PASS: El slice ya existe en feature\/test-slice local/);
     assert.match(output, /PASS: Gate execution/);
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('check-pr uses slice base branch instead of hardcoded origin/develop', () => {
+  const repo = makeRepo({
+    'specs/spec-a/SPEC.md': '# spec-a\n',
+    'specs/spec-a/STATUS.md': '# status\n',
+    'specs/spec-a/EVIDENCE_REPORT.md': '# evidence\n',
+    'specs/spec-a/slices/slice-01-alpha/pr.md': prBody(),
+    'specs/spec-a/slices/slice-01-alpha/slice.json': completedSlice('spec-a/slice-01-alpha', {
+      git: {
+        branch_type: 'feature',
+        base_branch: 'main',
+        branch_slug: 'slice-01-alpha',
+        branch_name: 'feature/test-slice',
+      },
+      files: ['src/app.js'],
+    }),
+    'src/app.js': 'module.exports = 1;\n',
+  });
+
+  try {
+    commitAll(repo.root, 'base');
+    cp.execFileSync('git', ['update-ref', 'refs/remotes/origin/main', 'HEAD'], { cwd: repo.root });
+    writeText(path.join(repo.root, 'src/app.js'), 'module.exports = 2;\n');
+    commitAll(repo.root, 'feature change');
+
+    const output = withRepoCwd(repo.root, () => captureConsole(() => checkPrReadiness('specs/spec-a/slices/slice-01-alpha/slice.json', {
+      language: 'en',
+    })));
+
+    assert.match(output, /PASS: Branch has own commits against origin\/main/);
+    assert.doesNotMatch(output, /origin\/develop/);
+    assert.match(output, /PASS: Gate PR ready/);
   } finally {
     repo.cleanup();
   }

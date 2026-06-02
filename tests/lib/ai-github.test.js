@@ -305,6 +305,33 @@ test('buildPrCreatePlan reads pr.md title and builds safe gh args', () => {
   }
 });
 
+test('buildPrCreatePlan uses remote HEAD as default base when --base is omitted', () => {
+  const repo = createRepo({
+    [DEFAULT_GITFLOW_GUIDE_PATH]: '# GitFlow guide\n',
+    'specs/demo/pr.md': '## Title\nDemo PR\n\n## Summary\nBody\n',
+  });
+
+  try {
+    git(repo.root, ['update-ref', 'refs/remotes/origin/trunk', 'HEAD']);
+    git(repo.root, ['symbolic-ref', 'refs/remotes/origin/HEAD', 'refs/remotes/origin/trunk']);
+    const preflight = {
+      ok: true,
+      repoRoot: repo.root,
+      remote: 'origin',
+      branchName: 'feature/demo',
+      guidePath: path.join(repo.root, DEFAULT_GITFLOW_GUIDE_PATH),
+    };
+    const plan = buildPrCreatePlan(repo.root, preflight, {
+      input: 'specs/demo/pr.md',
+    });
+
+    assert.equal(plan.baseBranch, 'trunk');
+    assert.deepEqual(plan.args.slice(0, 6), ['pr', 'create', '--base', 'trunk', '--head', 'feature/demo']);
+  } finally {
+    repo.cleanup();
+  }
+});
+
 test('formatPrCreateReport prints shell-specific command examples for paths with spaces', () => {
   const repoRoot = path.join(os.tmpdir(), 'quiver repo with spaces');
   const preflight = {

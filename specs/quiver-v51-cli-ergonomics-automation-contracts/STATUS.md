@@ -2,7 +2,7 @@
 
 **Overall status:** In Progress
 **Created:** 2026-06-01
-**Current slice:** slice-03-base-branch-resolution-policy
+**Current slice:** slice-04-next-plan-graph-ux-edge-cases
 
 ## Summary
 
@@ -15,7 +15,7 @@ This spec hardens CLI contracts for automation, JSON consumers, human UX, eviden
 | slice-00-cli-contract-baseline | Completed | Classified current CLI capabilities, froze implemented contracts, and routed partial gaps to later slices. |
 | slice-01-flow-json-compatibility | Completed | Added additive `next_command`, preserved `nextCommand`, documented compatibility, and tested matching values in representative JSON states. |
 | slice-02-dashboard-section-validation-i18n | Completed | Localized and documented invalid dashboard section behavior with EN/ES tests, JSON-safe failure coverage, and supported section help/reference docs. |
-| slice-03-base-branch-resolution-policy | Planned | Centralize/audit base branch defaults. |
+| slice-03-base-branch-resolution-policy | Completed | Centralized base branch resolution across readiness, spec lifecycle, scope, and AI PR flows. |
 | slice-04-next-plan-graph-ux-edge-cases | Planned | Close or validate secondary UX edge cases. |
 | slice-05-evidence-robustness-path-safety | Planned | Harden evidence command contracts and paths. |
 | slice-06-namespace-compatibility-windows-scripts | Planned | Protect namespace aliases and portable script path. |

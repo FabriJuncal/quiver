@@ -1,6 +1,6 @@
 const fs = require('fs');
 const path = require('path');
-const { branchDelete, catFileExists, currentBranch, fetchBranch, fetchRemote, hasLocalBranch, hasRemoteBranch, isGitWorktree, isLinkedWorktree, lsRemoteHeads, mergeBaseIsAncestor, revListCount, runGit, statusPorcelain, worktreeAdd, worktreeList, worktreePrune, worktreeRemove } = require('./git');
+const { branchDelete, catFileExists, currentBranch, fetchBranch, fetchRemote, hasLocalBranch, isGitWorktree, isLinkedWorktree, lsRemoteHeads, mergeBaseIsAncestor, resolveBaseRef: resolveGitBaseRef, revListCount, runGit, statusPorcelain, worktreeAdd, worktreeList, worktreePrune, worktreeRemove } = require('./git');
 const { parseJsonWithComments } = require('./json');
 const { createTranslator } = require('./i18n/catalog');
 const { writeFrontMatter } = require('./init-docs');
@@ -273,21 +273,14 @@ function refreshActiveSlicesBoard(repoRoot) {
 }
 
 function resolveBaseRef(repoRoot, baseBranch, translator = lifecycleTranslator()) {
-  if (hasLocalBranch(repoRoot, baseBranch)) {
-    return baseBranch;
+  const resolution = resolveGitBaseRef(repoRoot, {
+    explicitBaseBranch: baseBranch,
+    missingOk: true,
+  });
+  if (resolution.baseRef) {
+    return resolution.baseRef;
   }
-  if (hasRemoteBranch(repoRoot, baseBranch)) {
-    return `origin/${baseBranch}`;
-  }
-  if (lsRemoteHeads(repoRoot, baseBranch)) {
-    try {
-      fetchBranch(repoRoot, baseBranch);
-      return `origin/${baseBranch}`;
-    } catch {
-      throw new Error(`create-quiver: ${translator.t('lifecycle.base_ref.fetch_failed', { base: baseBranch })}`);
-    }
-  }
-  throw new Error(`create-quiver: ${translator.t('lifecycle.base_ref.missing', { base: baseBranch, remoteRef: `origin/${baseBranch}` })}`);
+  throw new Error(`create-quiver: ${translator.t('lifecycle.base_ref.missing', { base: resolution.baseBranch || baseBranch, remoteRef: `origin/${resolution.baseBranch || baseBranch}` })}`);
 }
 
 function findExistingWorktreeForBranch(repoRoot, branchName) {
@@ -470,29 +463,34 @@ function cleanupSlice(sliceInput, options = {}) {
   }
 
   if (!discard) {
+    const base = resolveGitBaseRef(repoRoot, {
+      preferredBaseBranch: slice.baseBranch,
+    });
     const branch = currentBranch(repoRoot);
-    if (branch !== 'develop') {
-      throw new Error(`create-quiver: ${translator.t('lifecycle.cleanup.error.branch', { branch })}`);
+    if (branch !== base.baseBranch) {
+      throw new Error(`create-quiver: ${translator.t('lifecycle.cleanup.error.branch', { branch, base: base.baseBranch })}`);
     }
     if (statusPorcelain(repoRoot) !== '') {
       throw new Error(`create-quiver: ${translator.t('lifecycle.cleanup.error.dirty')}`);
     }
 
-    try {
-      fetchRemote(repoRoot, 'origin', ['develop']);
-    } catch {
-      // ignore
+    if (base.remote) {
+      try {
+        fetchRemote(repoRoot, base.remote, [base.baseBranch]);
+      } catch {
+        // Local-only test repos and offline environments can still validate against the current remote ref.
+      }
     }
 
     const localDevelopSha = runGit(['rev-parse', 'HEAD'], repoRoot);
-    const remoteDevelopSha = runGit(['rev-parse', 'origin/develop'], repoRoot);
-    if (localDevelopSha !== remoteDevelopSha) {
-      throw new Error(`create-quiver: ${translator.t('lifecycle.cleanup.error.develop_stale')}`);
+    const remoteDevelopSha = runGit(['rev-parse', base.baseRef], repoRoot);
+    if (base.remote && localDevelopSha !== remoteDevelopSha) {
+      throw new Error(`create-quiver: ${translator.t('lifecycle.cleanup.error.base_stale', { base: base.baseBranch, ref: base.baseRef })}`);
     }
 
     if (hasLocalBranch(repoRoot, slice.branchName)) {
-      if (!mergeBaseIsAncestor(repoRoot, slice.branchName, 'origin/develop')) {
-        throw new Error(`create-quiver: ${translator.t('lifecycle.cleanup.error.unmerged', { branch: slice.branchName })}`);
+      if (!mergeBaseIsAncestor(repoRoot, slice.branchName, base.baseRef)) {
+        throw new Error(`create-quiver: ${translator.t('lifecycle.cleanup.error.unmerged', { branch: slice.branchName, ref: base.baseRef })}`);
       }
     }
   }

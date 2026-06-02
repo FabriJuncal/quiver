@@ -415,7 +415,7 @@ ${helpText(help, 'headings', 'options', 'Options:')}
       --ssh-host-alias <name> ${optionDescription(help, 'SSH host alias to validate for prepare or AI commands')}
       --identity-file <path>  ${optionDescription(help, 'SSH identity file to validate for prepare or AI commands')}
       --remote <name>         ${optionDescription(help, 'Git remote name for check-slice or AI PR checks')}
-      --base <branch>         ${optionDescription(help, 'Base branch for check-slice, check-scope, ai pr, or spec close (default: main)')}
+      --base <branch>         ${optionDescription(help, 'Base branch override for check-slice, check-scope, check-pr, ai pr, spec start, or spec close')}
       --output <file>         ${optionDescription(help, 'Output file for evidence run')}
       --max-output <n>        ${optionDescription(help, 'Maximum stdout/stderr chars per evidence section')}
       --title <text>          ${optionDescription(help, 'Override PR title for ai pr create')}
@@ -3660,7 +3660,7 @@ async function run(argv) {
 
     if (args.aiCommand === 'pr') {
       await runAiPr(process.cwd(), {
-        baseBranch: args.aiBaseBranch,
+        baseBranch: args.baseBranchExplicit ? args.aiBaseBranch : '',
         create: args.aiCreate,
         dryRun: args.dryRun,
         input: args.aiInput || undefined,
@@ -3776,7 +3776,11 @@ async function run(argv) {
   }
 
   if (args.mode === 'check-pr') {
-    checkPrReadiness(args.targetDir, { language: args.language });
+    checkPrReadiness(args.targetDir, {
+      baseBranch: args.baseBranchExplicit ? args.aiBaseBranch : '',
+      language: args.language,
+      remote: args.aiRemote,
+    });
     return;
   }
 
@@ -3852,6 +3856,7 @@ async function run(argv) {
 
     if (args.specCommand === 'start') {
       const report = startSpecWorktree(process.cwd(), args.targetDir, {
+        baseBranch: args.baseBranchExplicit ? args.aiBaseBranch : '',
         dryRun: args.dryRun,
       });
       process.stdout.write(formatSpecStartResult(report, { language: args.language }));
@@ -3874,7 +3879,7 @@ async function run(argv) {
 
     if (args.specCommand === 'close') {
       const report = closeSpecWorktree(process.cwd(), args.targetDir, {
-        baseBranch: args.aiBaseBranch,
+        baseBranch: args.baseBranchExplicit ? args.aiBaseBranch : '',
         discard: args.discard,
         dryRun: args.dryRun,
         force: args.force,

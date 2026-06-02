@@ -158,6 +158,8 @@ Reglas:
 | `npx --yes create-quiver@latest spec close specs/<spec> --dry-run` | Previsualiza limpieza del worktree después del merge. |
 | `npx --yes create-quiver@latest spec close specs/<spec>` | Cierra el worktree de la spec mergeada. |
 
+Base branch policy: `--base <branch>` always wins. Without `--base`, slice readiness commands prefer `slice.json` `git.base_branch`, then Remote HEAD, then `main`, `master`, and `develop`. `ai pr`, `spec start`, and `spec close` use Remote HEAD before the same fallback list when no slice-specific base applies.
+
 ## Opciones útiles
 
 | Opción | Para qué sirve |
