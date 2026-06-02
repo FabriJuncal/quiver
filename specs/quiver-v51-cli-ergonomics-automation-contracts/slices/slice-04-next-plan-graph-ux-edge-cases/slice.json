@@ -1,0 +1,77 @@
+{
+  "slice_id": "slice-04-next-plan-graph-ux-edge-cases",
+  "ticket": "QUIVER-51-04",
+  "type": "quality",
+  "title": "Next/plan/graph UX edge cases",
+  "objective": "Close or validate secondary CLI UX edge cases without reimplementing completed behavior.",
+  "description": "Covers next auto-start prompt reuse, plan missing estimates, graph empty levels, and graph JSON/format documentation.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v51-next-plan-graph-ux",
+    "branch_name": "feature/QUIVER-51-04-v51-next-plan-graph-ux"
+  },
+  "files": [
+    "src/create-quiver/commands/next.js",
+    "src/create-quiver/commands/plan.js",
+    "src/create-quiver/commands/graph.js",
+    "src/create-quiver/lib/cli/selectors.js",
+    "src/create-quiver/lib/i18n/messages/en.js",
+    "src/create-quiver/lib/i18n/messages/es.js",
+    "docs/reference/commands.md",
+    "docs/CLI_UX_GUIDE.md",
+    "tests/commands/next.test.js",
+    "tests/commands/plan.test.js",
+    "tests/commands/graph.test.js",
+    "specs/quiver-v51-cli-ergonomics-automation-contracts/**"
+  ],
+  "expected_read_paths": [
+    "src/create-quiver/commands/next.js",
+    "src/create-quiver/commands/plan.js",
+    "src/create-quiver/commands/graph.js",
+    "tests/commands/next.test.js",
+    "tests/commands/plan.test.js",
+    "tests/commands/graph.test.js"
+  ],
+  "allowed_write_paths": [
+    "src/create-quiver/**",
+    "docs/**",
+    "tests/commands/**",
+    "specs/quiver-v51-cli-ergonomics-automation-contracts/**"
+  ],
+  "depends_on": [
+    "slice-00-cli-contract-baseline"
+  ],
+  "parallel_safe": "yes",
+  "parallel_safe_reason": "These read-only command UX cases are mostly independent.",
+  "must": [
+    "Close already-implemented cases by evidence/tests only.",
+    "Use common selector/prompt behavior for next --auto-start if missing.",
+    "Keep plan missing-estimates note out of JSON.",
+    "Keep graph empty-level message out of JSON.",
+    "Document graph --json precedence over --format."
+  ],
+  "not_included": [
+    "Changing graph algorithms.",
+    "Changing plan scheduling semantics."
+  ],
+  "acceptance": [
+    "next --auto-start respects common prompt/i18n behavior.",
+    "plan missing-estimates behavior is tested and JSON-safe.",
+    "graph --level empty state is tested and JSON-safe.",
+    "Docs match real behavior."
+  ],
+  "tests": [
+    "node --test tests/commands/next.test.js",
+    "node --test tests/commands/plan.test.js",
+    "node --test tests/commands/graph.test.js",
+    "node --test",
+    "git diff --check"
+  ],
+  "validation_hints": [
+    "If plan/graph behavior already exists, do not refactor; record evidence and add missing docs/tests only."
+  ],
+  "estimated_hours": 5,
+  "status": "planned",
+  "blocked_reason": null
+}

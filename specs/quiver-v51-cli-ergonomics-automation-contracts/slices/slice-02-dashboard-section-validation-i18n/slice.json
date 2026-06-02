@@ -1,0 +1,67 @@
+{
+  "slice_id": "slice-02-dashboard-section-validation-i18n",
+  "ticket": "QUIVER-51-02",
+  "type": "quality",
+  "title": "Dashboard section validation and i18n",
+  "objective": "Make dashboard section validation localized, actionable, and documented.",
+  "description": "Ensures invalid dashboard sections list real valid sections in EN/ES without polluting machine output.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v51-dashboard-section-i18n",
+    "branch_name": "feature/QUIVER-51-02-v51-dashboard-section-i18n"
+  },
+  "files": [
+    "src/create-quiver/commands/dashboard.js",
+    "src/create-quiver/lib/i18n/messages/en.js",
+    "src/create-quiver/lib/i18n/messages/es.js",
+    "docs/reference/commands.md",
+    "tests/commands/dashboard.test.js",
+    "specs/quiver-v51-cli-ergonomics-automation-contracts/**"
+  ],
+  "expected_read_paths": [
+    "src/create-quiver/commands/dashboard.js",
+    "tests/commands/dashboard.test.js",
+    "src/create-quiver/lib/i18n/messages/en.js",
+    "src/create-quiver/lib/i18n/messages/es.js"
+  ],
+  "allowed_write_paths": [
+    "src/create-quiver/**",
+    "docs/reference/commands.md",
+    "tests/commands/dashboard.test.js",
+    "specs/quiver-v51-cli-ergonomics-automation-contracts/**"
+  ],
+  "depends_on": [
+    "slice-00-cli-contract-baseline"
+  ],
+  "parallel_safe": "yes",
+  "parallel_safe_reason": "Dashboard validation is isolated.",
+  "must": [
+    "Localize invalid section errors.",
+    "List the real supported sections.",
+    "Update help/docs with valid section names.",
+    "Keep JSON output clean."
+  ],
+  "not_included": [
+    "Changing dashboard sections.",
+    "Changing dashboard JSON schema."
+  ],
+  "acceptance": [
+    "dashboard --section invalid returns localized actionable error.",
+    "Supported section list is accurate.",
+    "Help documents valid values.",
+    "stdout remains clean on failure where required."
+  ],
+  "tests": [
+    "node --test tests/commands/dashboard.test.js",
+    "node --test tests/lib/i18n-catalog.test.js",
+    "node --test",
+    "git diff --check"
+  ],
+  "validation_hints": [
+    "Validate both --lang en and --lang es failures."
+  ],
+  "estimated_hours": 3,
+  "status": "planned",
+  "blocked_reason": null
+}

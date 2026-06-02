@@ -1,0 +1,56 @@
+{
+  "slice_id": "slice-00-cli-contract-baseline",
+  "ticket": "QUIVER-51-00",
+  "type": "documentation",
+  "title": "CLI contract baseline",
+  "objective": "Validate current CLI capabilities and classify v51 findings before implementation.",
+  "description": "Records which CLI findings are already implemented, partial, missing, or not applicable so later slices avoid duplicate refactors.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v51-cli-contract-baseline",
+    "branch_name": "feature/QUIVER-51-00-v51-cli-contract-baseline"
+  },
+  "files": [
+    "specs/quiver-v51-cli-ergonomics-automation-contracts/**"
+  ],
+  "expected_read_paths": [
+    "REQUERIMIENTOS_DERIVADOS_DE_AUDITORIA.md",
+    "src/create-quiver/index.js",
+    "src/create-quiver/commands/**",
+    "tests/commands/**",
+    "package.json"
+  ],
+  "allowed_write_paths": [
+    "specs/quiver-v51-cli-ergonomics-automation-contracts/**"
+  ],
+  "depends_on": [],
+  "parallel_safe": "no",
+  "parallel_safe_reason": "Baseline defines implementation vs validation-only actions for all v51 slices.",
+  "must": [
+    "Create a Finding | Current state | Action table.",
+    "Validate current status, namespaces, evidence list/show, demo spec-viewer, and AI fragmentation.",
+    "Freeze relevant JSON and stdout/stderr contracts.",
+    "Do not modify runtime code."
+  ],
+  "not_included": [
+    "Implementing CLI changes."
+  ],
+  "acceptance": [
+    "Already-implemented findings are marked evidence/test/docs only.",
+    "Missing and partial findings are routed to later slices.",
+    "Runtime code remains unchanged."
+  ],
+  "tests": [
+    "git diff --check",
+    "node bin/create-quiver.js spec validate specs/quiver-v51-cli-ergonomics-automation-contracts"
+  ],
+  "validation_hints": [
+    "Use command outputs as evidence, not assumptions from the audit."
+  ],
+  "estimated_hours": 2,
+  "status": "completed",
+  "blocked_reason": null,
+  "actual_hours": 2,
+  "completed_at": "2026-06-01T21:37:54-0300"
+}

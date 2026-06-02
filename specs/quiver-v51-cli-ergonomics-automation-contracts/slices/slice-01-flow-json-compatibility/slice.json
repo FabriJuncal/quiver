@@ -1,0 +1,63 @@
+{
+  "slice_id": "slice-01-flow-json-compatibility",
+  "ticket": "QUIVER-51-01",
+  "type": "feature",
+  "title": "Flow JSON compatibility",
+  "objective": "Add snake_case next_command to flow JSON without breaking existing nextCommand consumers.",
+  "description": "Makes flow JSON easier for agents while preserving the existing camelCase field as a compatibility contract.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v51-flow-json-compatibility",
+    "branch_name": "feature/QUIVER-51-01-v51-flow-json-compatibility"
+  },
+  "files": [
+    "src/create-quiver/commands/flow.js",
+    "docs/reference/commands.md",
+    "tests/commands/flow.test.js",
+    "specs/quiver-v51-cli-ergonomics-automation-contracts/**"
+  ],
+  "expected_read_paths": [
+    "src/create-quiver/commands/flow.js",
+    "tests/commands/flow.test.js",
+    "docs/reference/commands.md"
+  ],
+  "allowed_write_paths": [
+    "src/create-quiver/commands/flow.js",
+    "docs/reference/commands.md",
+    "tests/commands/flow.test.js",
+    "specs/quiver-v51-cli-ergonomics-automation-contracts/**"
+  ],
+  "depends_on": [
+    "slice-00-cli-contract-baseline"
+  ],
+  "parallel_safe": "yes",
+  "parallel_safe_reason": "Additive JSON change isolated to flow.",
+  "must": [
+    "Add next_command as an additive JSON field.",
+    "Preserve nextCommand.",
+    "Ensure both fields match in all applicable states.",
+    "Document compatibility."
+  ],
+  "not_included": [
+    "Removing nextCommand.",
+    "Changing human flow output semantics."
+  ],
+  "acceptance": [
+    "flow --json includes next_command.",
+    "flow --json preserves nextCommand.",
+    "Both fields match or null consistently.",
+    "Tests cover representative workflow states."
+  ],
+  "tests": [
+    "node --test tests/commands/flow.test.js",
+    "node --test",
+    "git diff --check"
+  ],
+  "validation_hints": [
+    "If flow JSON has no schema_version, document this as an additive compatibility change."
+  ],
+  "estimated_hours": 3,
+  "status": "planned",
+  "blocked_reason": null
+}
