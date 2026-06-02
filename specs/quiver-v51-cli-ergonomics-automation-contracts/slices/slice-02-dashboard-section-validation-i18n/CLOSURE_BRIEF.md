@@ -12,6 +12,7 @@ Dashboard invalid-section errors are now contract-tested for EN/ES human output 
 - [x] `git diff --check`
 - [x] `node bin/create-quiver.js spec validate specs/quiver-v51-cli-ergonomics-automation-contracts`
 - [x] `node bin/create-quiver.js check-slice specs/quiver-v51-cli-ergonomics-automation-contracts/slices/slice-02-dashboard-section-validation-i18n/slice.json --local --gate validation`
+- [x] `node bin/create-quiver.js check-scope specs/quiver-v51-cli-ergonomics-automation-contracts/slices/slice-02-dashboard-section-validation-i18n/slice.json --base main --strict`
 
 ## Closure Conditions
 
@@ -21,4 +22,4 @@ Dashboard invalid-section errors are now contract-tested for EN/ES human output 
 
 ## Open Items
 
-- None.
+- `node bin/create-quiver.js check-pr specs/quiver-v51-cli-ergonomics-automation-contracts/slices/slice-02-dashboard-section-validation-i18n/slice.json --base main` passes scope/branch/worktree gates but fails commit ownership against `origin/develop`. The base-branch readiness bug is outside this slice and is tracked by `slice-03-base-branch-resolution-policy`.

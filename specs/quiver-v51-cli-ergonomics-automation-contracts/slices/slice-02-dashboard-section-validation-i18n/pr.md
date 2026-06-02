@@ -106,6 +106,8 @@ node --test
 npm run docs:check
 git diff --check
 node bin/create-quiver.js spec validate specs/quiver-v51-cli-ergonomics-automation-contracts
+node bin/create-quiver.js check-slice specs/quiver-v51-cli-ergonomics-automation-contracts/slices/slice-02-dashboard-section-validation-i18n/slice.json --local --gate validation
+node bin/create-quiver.js check-scope specs/quiver-v51-cli-ergonomics-automation-contracts/slices/slice-02-dashboard-section-validation-i18n/slice.json --base main --strict
 ```
 
 ## Evidence
@@ -115,6 +117,9 @@ node bin/create-quiver.js spec validate specs/quiver-v51-cli-ergonomics-automati
 - `npm run docs:check`: passed.
 - `git diff --check`: passed.
 - `node bin/create-quiver.js spec validate specs/quiver-v51-cli-ergonomics-automation-contracts`: passed.
+- `node bin/create-quiver.js check-slice specs/quiver-v51-cli-ergonomics-automation-contracts/slices/slice-02-dashboard-section-validation-i18n/slice.json --local --gate validation`: passed.
+- `node bin/create-quiver.js check-scope specs/quiver-v51-cli-ergonomics-automation-contracts/slices/slice-02-dashboard-section-validation-i18n/slice.json --base main --strict`: passed.
+- `node bin/create-quiver.js check-pr specs/quiver-v51-cli-ergonomics-automation-contracts/slices/slice-02-dashboard-section-validation-i18n/slice.json --base main`: partial pass; scope, branch, and clean-worktree checks pass, then commit ownership fails against `origin/develop`. This is a known base-branch readiness gap assigned to `QUIVER-51-03`.
 
 ## Rollback
 
@@ -126,3 +131,4 @@ node bin/create-quiver.js spec validate specs/quiver-v51-cli-ergonomics-automati
 
 - Runtime invalid-section localization already existed in `src/create-quiver/lib/dashboard.js`; this slice closes the gap with contract tests and docs/help alignment.
 - Section ids remain untranslated by design because they are CLI input values.
+- Full PR readiness remains blocked by the existing `origin/develop` assumption in readiness commit checks. Continue with `QUIVER-51-03` after this PR is merged.

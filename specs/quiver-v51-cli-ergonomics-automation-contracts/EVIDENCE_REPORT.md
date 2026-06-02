@@ -47,7 +47,6 @@
 - `npm run docs:check`: passed.
 - `git diff --check`: passed.
 - `node bin/create-quiver.js spec validate specs/quiver-v51-cli-ergonomics-automation-contracts`: passed.
-- `node bin/create-quiver.js check-slice specs/quiver-v51-cli-ergonomics-automation-contracts/slices/slice-02-dashboard-section-validation-i18n/slice.json --local --gate validation`: passed.
 
 ## slice-02-dashboard-section-validation-i18n
 
@@ -63,3 +62,6 @@
 - `npm run docs:check`: passed.
 - `git diff --check`: passed.
 - `node bin/create-quiver.js spec validate specs/quiver-v51-cli-ergonomics-automation-contracts`: passed.
+- `node bin/create-quiver.js check-slice specs/quiver-v51-cli-ergonomics-automation-contracts/slices/slice-02-dashboard-section-validation-i18n/slice.json --local --gate validation`: passed.
+- `node bin/create-quiver.js check-scope specs/quiver-v51-cli-ergonomics-automation-contracts/slices/slice-02-dashboard-section-validation-i18n/slice.json --base main --strict`: passed.
+- `node bin/create-quiver.js check-pr specs/quiver-v51-cli-ergonomics-automation-contracts/slices/slice-02-dashboard-section-validation-i18n/slice.json --base main`: passed spec, slice, overlap, validation gate, scope, branch, and clean-worktree checks; failed commit ownership because PR readiness still evaluates `origin/develop` even when the slice base is `main`. This is tracked by `slice-03-base-branch-resolution-policy`.
