@@ -1,0 +1,71 @@
+{
+  "slice_id": "slice-05-evidence-robustness-path-safety",
+  "ticket": "QUIVER-51-05",
+  "type": "feature",
+  "title": "Evidence robustness and path safety",
+  "objective": "Make evidence run/list/show robust for failures, signals, output limits, redaction, JSON, and safe paths.",
+  "description": "Hardens evidence commands while preserving existing output and exit-code contracts.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v51-evidence-robustness",
+    "branch_name": "feature/QUIVER-51-05-v51-evidence-robustness"
+  },
+  "files": [
+    "src/create-quiver/commands/evidence.js",
+    "src/create-quiver/lib/evidence.js",
+    "src/create-quiver/lib/i18n/messages/en.js",
+    "src/create-quiver/lib/i18n/messages/es.js",
+    "tests/commands/evidence.test.js",
+    "tests/lib/evidence.test.js",
+    "docs/reference/commands.md",
+    "specs/quiver-v51-cli-ergonomics-automation-contracts/**"
+  ],
+  "expected_read_paths": [
+    "src/create-quiver/commands/evidence.js",
+    "src/create-quiver/lib/evidence.js",
+    "tests/commands/evidence.test.js",
+    "tests/lib/evidence.test.js"
+  ],
+  "allowed_write_paths": [
+    "src/create-quiver/**",
+    "tests/**",
+    "docs/reference/commands.md",
+    "specs/quiver-v51-cli-ergonomics-automation-contracts/**"
+  ],
+  "depends_on": [
+    "slice-00-cli-contract-baseline"
+  ],
+  "parallel_safe": "no",
+  "parallel_safe_reason": "Evidence run async/signal/path behavior is sensitive and should be isolated.",
+  "must": [
+    "Preserve child exit code behavior.",
+    "Document and test signal behavior.",
+    "Keep evidence writing on command failure.",
+    "Preserve redaction and truncation.",
+    "Define and enforce safe output/read path policy."
+  ],
+  "not_included": [
+    "Changing evidence storage format unless compatible and documented.",
+    "Dashboard integration."
+  ],
+  "acceptance": [
+    "Failing commands preserve exit codes and write evidence.",
+    "Signals do not leave orphan child processes.",
+    "Path traversal and symlink escape are covered.",
+    "JSON list/show remain parseable.",
+    "Secrets stay redacted."
+  ],
+  "tests": [
+    "node --test tests/commands/evidence.test.js",
+    "node --test tests/lib/evidence.test.js",
+    "node --test",
+    "git diff --check"
+  ],
+  "validation_hints": [
+    "If replacing spawnSync with spawn, preserve existing CLI exit-code behavior."
+  ],
+  "estimated_hours": 8,
+  "status": "planned",
+  "blocked_reason": null
+}

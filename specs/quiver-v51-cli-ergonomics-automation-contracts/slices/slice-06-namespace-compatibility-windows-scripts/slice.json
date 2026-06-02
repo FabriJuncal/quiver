@@ -1,0 +1,82 @@
+{
+  "slice_id": "slice-06-namespace-compatibility-windows-scripts",
+  "ticket": "QUIVER-51-06",
+  "type": "quality",
+  "title": "Namespace compatibility and Windows npm scripts",
+  "objective": "Preserve canonical/legacy namespace compatibility and make recommended npm scripts portable.",
+  "description": "Protects slice/handoff aliases and replaces or documents Bash-only npm scripts so Windows PowerShell users have a supported path.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v51-namespace-windows-scripts",
+    "branch_name": "feature/QUIVER-51-06-v51-namespace-windows-scripts"
+  },
+  "files": [
+    "package.json",
+    "package-lock.json",
+    "src/create-quiver/index.js",
+    "src/create-quiver/commands/slice.js",
+    "src/create-quiver/commands/handoff.js",
+    "tests/commands/slice-namespace.test.js",
+    "tests/commands/handoff-namespace.test.js",
+    "tests/commands/parser-contract.test.js",
+    ".github/workflows/ci.yml",
+    "README.md",
+    "CONTRIBUTING.md",
+    "specs/quiver-v51-cli-ergonomics-automation-contracts/**"
+  ],
+  "expected_read_paths": [
+    "package.json",
+    "src/create-quiver/index.js",
+    "src/create-quiver/commands/slice.js",
+    "src/create-quiver/commands/handoff.js",
+    "tests/commands/slice-namespace.test.js",
+    "tests/commands/handoff-namespace.test.js"
+  ],
+  "allowed_write_paths": [
+    "package.json",
+    "package-lock.json",
+    "src/create-quiver/**",
+    "tests/**",
+    ".github/workflows/ci.yml",
+    "README.md",
+    "CONTRIBUTING.md",
+    "specs/quiver-v51-cli-ergonomics-automation-contracts/**"
+  ],
+  "depends_on": [
+    "slice-00-cli-contract-baseline"
+  ],
+  "parallel_safe": "no",
+  "parallel_safe_reason": "Touches package scripts and compatibility aliases; should be isolated with CI evidence.",
+  "must": [
+    "Preserve slice and handoff canonical namespaces.",
+    "Preserve legacy aliases with stderr-only warnings.",
+    "Keep JSON stdout clean.",
+    "Replace, wrap, or document Bash-only scripts as legacy.",
+    "Validate recommended commands under Windows pwsh."
+  ],
+  "not_included": [
+    "Removing legacy aliases.",
+    "Removing Bash scripts without compatibility plan."
+  ],
+  "acceptance": [
+    "Canonical and legacy commands remain behaviorally equivalent.",
+    "Deprecation warnings are stderr-only and suppressed for JSON as required.",
+    "Recommended npm/CLI paths work in Windows pwsh.",
+    "package-lock.json is synchronized if package.json changes."
+  ],
+  "tests": [
+    "node --test tests/commands/slice-namespace.test.js",
+    "node --test tests/commands/handoff-namespace.test.js",
+    "node --test tests/commands/parser-contract.test.js",
+    "npm ci",
+    "node --test",
+    "git diff --check"
+  ],
+  "validation_hints": [
+    "Do not remove old Bash scripts unless the compatibility story is explicit."
+  ],
+  "estimated_hours": 6,
+  "status": "planned",
+  "blocked_reason": null
+}

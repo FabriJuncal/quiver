@@ -1,0 +1,79 @@
+{
+  "slice_id": "slice-03-base-branch-resolution-policy",
+  "ticket": "QUIVER-51-03",
+  "type": "feature",
+  "title": "Base branch resolution policy",
+  "objective": "Define and apply a consistent base branch resolution policy across commands.",
+  "description": "Audits and aligns commands that use --base or default base branches to prevent contradictory behavior.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v51-base-branch-policy",
+    "branch_name": "feature/QUIVER-51-03-v51-base-branch-policy"
+  },
+  "files": [
+    "src/create-quiver/lib/git.js",
+    "src/create-quiver/lib/spec-worktrees.js",
+    "src/create-quiver/lib/readiness.js",
+    "src/create-quiver/lib/ai/github.js",
+    "src/create-quiver/commands/spec.js",
+    "src/create-quiver/commands/ai-core.js",
+    "src/create-quiver/lib/i18n/messages/en.js",
+    "src/create-quiver/lib/i18n/messages/es.js",
+    "tests/commands/spec-close.test.js",
+    "tests/commands/ai-pr.test.js",
+    "tests/lib/git.test.js",
+    "tests/lib/check-slice.test.js",
+    "docs/reference/commands.md",
+    "specs/quiver-v51-cli-ergonomics-automation-contracts/**"
+  ],
+  "expected_read_paths": [
+    "src/create-quiver/lib/git.js",
+    "src/create-quiver/lib/spec-worktrees.js",
+    "src/create-quiver/lib/readiness.js",
+    "src/create-quiver/lib/ai/github.js",
+    "tests/commands/spec-close.test.js",
+    "tests/commands/ai-pr.test.js"
+  ],
+  "allowed_write_paths": [
+    "src/create-quiver/**",
+    "tests/**",
+    "docs/reference/commands.md",
+    "specs/quiver-v51-cli-ergonomics-automation-contracts/**"
+  ],
+  "depends_on": [
+    "slice-00-cli-contract-baseline"
+  ],
+  "parallel_safe": "no",
+  "parallel_safe_reason": "Base branch behavior is shared across Git, spec, slice, readiness, and PR commands.",
+  "must": [
+    "Define one base branch resolution policy.",
+    "Ensure --base explicit override always wins.",
+    "Audit spec close, ai pr, slice check, slice scope, and readiness behavior.",
+    "Cover main, master, develop, no remote, fetch fail, and explicit override."
+  ],
+  "not_included": [
+    "Changing branch naming conventions.",
+    "Changing GitFlow PR policy beyond base resolution."
+  ],
+  "acceptance": [
+    "Commands do not contradict each other on default base branch.",
+    "Remote HEAD detection works when available.",
+    "Fallback behavior is localized and documented.",
+    "ai pr preserves gh pr create contract."
+  ],
+  "tests": [
+    "node --test tests/lib/git.test.js",
+    "node --test tests/commands/spec-close.test.js",
+    "node --test tests/commands/ai-pr.test.js",
+    "node --test tests/lib/check-slice.test.js",
+    "node --test",
+    "git diff --check"
+  ],
+  "validation_hints": [
+    "Do not fix only spec close; audit every --base consumer."
+  ],
+  "estimated_hours": 8,
+  "status": "planned",
+  "blocked_reason": null
+}
