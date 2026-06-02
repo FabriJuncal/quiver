@@ -2,7 +2,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
-const { execFileSync } = require('node:child_process');
+const { execFileSync, spawnSync } = require('node:child_process');
 const test = require('node:test');
 
 const { collectGraph } = require('../../src/create-quiver/commands/graph');
@@ -77,6 +77,15 @@ function execGraph(repoRoot, args = [], env = {}) {
     cwd: repoRoot,
     encoding: 'utf8',
     env: { ...process.env, ...env },
+  });
+}
+
+function spawnGraph(repoRoot, args = [], env = {}) {
+  return spawnSync(process.execPath, [BIN_PATH, 'graph', ...args], {
+    cwd: repoRoot,
+    encoding: 'utf8',
+    env: { ...process.env, ...env },
+    stdio: ['ignore', 'pipe', 'pipe'],
   });
 }
 
@@ -197,6 +206,19 @@ test('graph CLI renders Mermaid and DOT formats', () => {
     assert.ok(mermaid.includes('docs/shared.md'));
     assert.ok(dot.startsWith('digraph QuiverGraph {'));
     assert.ok(dot.includes('rankdir=TB;'));
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('graph unsupported format error localizes and keeps JSON stdout clean', () => {
+  const repo = graphFixture();
+  try {
+    const result = spawnGraph(repo.root, ['--lang', 'es', '--json', '--format', 'yaml']);
+
+    assert.equal(result.status, 1);
+    assert.equal(result.stdout, '');
+    assert.match(result.stderr, /create-quiver: formato de graph no compatible: yaml/);
   } finally {
     repo.cleanup();
   }

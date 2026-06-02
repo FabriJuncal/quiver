@@ -24,18 +24,22 @@ function toRelativePosix(root, filePath) {
   return path.relative(root, filePath).split(path.sep).join('/');
 }
 
-function readInputText(repoRoot, inputPath) {
+function readInputText(repoRoot, inputPath, options = {}) {
+  const translator = createTranslator(options.language);
   const resolved = path.resolve(repoRoot, inputPath || '');
   if (!inputPath || !fs.existsSync(resolved)) {
-    throw new Error(formatError(`missing reviewed and approved plan input: ${inputPath || '<default>'}`));
+    throw new Error(formatError(translator.t('spec.error.missing_approved_plan_input', {
+      path: inputPath || '<default>',
+    })));
   }
   return fs.readFileSync(resolved, 'utf8');
 }
 
-function resolveSpecDir(repoRoot, specInput) {
+function resolveSpecDir(repoRoot, specInput, options = {}) {
+  const translator = createTranslator(options.language);
   const value = String(specInput || '').trim();
   if (!value) {
-    throw new Error(formatError('missing spec directory. Use: npx create-quiver spec validate specs/<spec-slug>'));
+    throw new Error(formatError(translator.t('spec.error.missing_directory_validate')));
   }
 
   const candidates = [
@@ -51,7 +55,7 @@ function resolveSpecDir(repoRoot, specInput) {
     }
   }
 
-  throw new Error(formatError(`spec directory not found: ${value}`));
+  throw new Error(formatError(translator.t('spec.error.directory_not_found', { path: value })));
 }
 
 function findSliceJsonFiles(specDir) {
@@ -142,7 +146,7 @@ function missingGitFields(git) {
 
 function buildSpecValidationReport(repoRoot, specInput, options = {}) {
   const strict = options.strict === true;
-  const specDir = resolveSpecDir(repoRoot, specInput);
+  const specDir = resolveSpecDir(repoRoot, specInput, options);
   const relativeSpecDir = toRelativePosix(repoRoot, specDir);
   const specSlug = path.basename(specDir);
   const errors = [];
@@ -310,7 +314,10 @@ function runValidateSpec(repoRoot, specInput, options = {}) {
   process.stdout.write(formatSpecValidationReport(report, options));
 
   if (!report.ok) {
-    const error = new Error(formatError(`spec validate failed for ${report.specDir}`));
+    const translator = createTranslator(options.language);
+    const error = new Error(formatError(translator.t('spec.error.validate_failed', {
+      path: report.specDir,
+    })));
     error.code = 'SPEC_VALIDATE_FAILED';
     error.details = report;
     throw error;
@@ -322,7 +329,7 @@ function runValidateSpec(repoRoot, specInput, options = {}) {
 function buildSpecCreatePreview(repoRoot, options = {}) {
   const resolved = resolveReviewedTechnicalPlanInput(repoRoot, options.input || undefined);
   const inputPath = resolved.inputPath;
-  const inputText = readInputText(repoRoot, inputPath);
+  const inputText = readInputText(repoRoot, inputPath, options);
   const manifest = buildSpecGenerationManifest({
     inputPath,
     inputText,
@@ -333,7 +340,9 @@ function buildSpecCreatePreview(repoRoot, options = {}) {
   const relativeSpecDir = toRelativePosix(repoRoot, preview.specDir);
 
   if (fs.existsSync(preview.specDir)) {
-    throw new Error(formatError(`spec directory already exists: ${relativeSpecDir}`));
+    throw new Error(formatError(createTranslator(options.language).t('spec.error.directory_already_exists', {
+      path: relativeSpecDir,
+    })));
   }
 
   return {
@@ -433,7 +442,7 @@ async function resolveInteractiveSpecCreateOptions(repoRoot, preview, options = 
   });
 
   if (!ux.mode.usePrompts) {
-    throw new Error(formatError('spec create --interactive requires an interactive TTY. Use --input, --spec, --review, and --dry-run for non-interactive automation.'));
+    throw new Error(formatError(translator.t('spec_create.error.interactive_tty_required')));
   }
 
   const selectorOptions = {
@@ -528,7 +537,7 @@ async function confirmSpecCreate(message, options = {}) {
   });
   const confirmed = await ux.promptConfirm(message, { initialValue: false });
   if (!confirmed) {
-    throw new Error(formatError('spec create interactive approval declined. No files were written.'));
+    throw new Error(formatError(createTranslator(options.language).t('spec_create.error.approval_declined')));
   }
 }
 
@@ -542,7 +551,9 @@ async function reviewSpecCreatePreview(repoRoot, preview, options = {}) {
   const canOpenEditor = hasEditorRunner || options.stdinIsTTY === true || (options.stdinIsTTY !== false && Boolean(process.stdin.isTTY));
 
   if (!canOpenEditor) {
-    throw new Error(formatError(`spec create --review requires an interactive terminal or an injected editor runner.\nReview artifact: ${reviewPath}`));
+    throw new Error(formatError(createTranslator(options.language).t('spec_create.error.review_tty_required', {
+      path: reviewPath,
+    })));
   }
 
   const editorResult = hasEditorRunner
@@ -550,7 +561,11 @@ async function reviewSpecCreatePreview(repoRoot, preview, options = {}) {
     : openEditor(reviewPath, { cwd: repoRoot, env: options.env || process.env });
 
   if (!editorResult || editorResult.ok !== true) {
-    throw new Error(formatError(`${editorResult?.reason || 'spec create review was canceled.'}\nReview artifact: ${reviewPath}`));
+    const translator = createTranslator(options.language);
+    throw new Error(formatError(translator.t('spec_create.error.review_canceled', {
+      path: reviewPath,
+      reason: editorResult?.reason || translator.t('spec_create.error.review_canceled.default_reason'),
+    })));
   }
 
   return reviewPath;

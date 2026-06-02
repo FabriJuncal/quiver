@@ -4,11 +4,19 @@
   "private": false,
   "description": "Quiver CLI for scaffolding projects from the packaged template",
   "license": "MIT",
+  "engines": {
+    "node": ">=20.12.0"
+  },
   "bin": {
     "create-quiver": "bin/create-quiver.js",
     "quiver": "bin/create-quiver.js"
   },
   "scripts": {
+    "test": "node scripts/ci/run-node-tests.js",
+    "test:ci": "node scripts/ci/run-node-tests.js",
+    "docs:lint": "node scripts/ci/check-docs-markdown.js",
+    "docs:links": "node scripts/ci/check-doc-links.js",
+    "docs:check": "npm run docs:lint && npm run docs:links",
     "check:slice": "bash tools/scripts/check-slice-readiness.sh",
     "check:pr": "bash tools/scripts/check-pr-readiness.sh",
     "start:slice": "bash tools/scripts/start-slice.sh",
@@ -55,5 +63,9 @@
   "dependencies": {
     "@clack/prompts": "^1.4.0",
     "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "markdown-link-check": "^3.14.2",
+    "markdownlint-cli2": "^0.22.1"
   }
 }

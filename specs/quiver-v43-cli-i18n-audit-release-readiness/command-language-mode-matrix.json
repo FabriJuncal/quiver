@@ -486,6 +486,7 @@
     { "command": "init --interactive", "profile": "init-interactive", "critical": "pass" },
     { "command": "migrate --dry-run", "profile": "migrate", "critical": "pass" },
     { "command": "migrate", "profile": "migrate", "critical": "pass" },
+    { "command": "migrate --yes", "profile": "migrate", "critical": "pass" },
     { "command": "analyze", "profile": "read-only-human", "critical": "pass" },
     { "command": "doctor", "profile": "read-only-human", "critical": "pass" },
     { "command": "doctor --json", "profile": "doctor-json", "critical": "pass" },

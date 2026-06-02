@@ -35,8 +35,9 @@ Más detalle: [Instalación y uso con npx](../getting-started/installation.md).
 | `npx --yes create-quiver@latest config language set en --global` | Guarda `en` como idioma global en `~/.quiver/config.json`. |
 | `npx --yes create-quiver@latest init --name "Proyecto"` | Inicializa Quiver en un proyecto. |
 | `npx --yes create-quiver@latest init --interactive` | Abre una guía interactiva para elegir idioma del proyecto, modo de proyecto, metodología `wdd-sdd`, perfil inicial y próximos pasos de agentes. |
-| `npx --yes create-quiver@latest migrate --dry-run` | Previsualiza migración de un proyecto Quiver anterior. |
-| `npx --yes create-quiver@latest migrate` | Aplica la migración. |
+| `npx --yes create-quiver@latest migrate --dry-run` | Previsualiza migración de un proyecto Quiver anterior sin pedir confirmación ni escribir archivos. |
+| `npx --yes create-quiver@latest migrate` | En TTY pide confirmación antes de escribir; en no-TTY falla con guía para usar `--dry-run` o `--yes`. |
+| `npx --yes create-quiver@latest migrate --yes` | Aplica la migración sin prompt para automatización. |
 | `npx --yes create-quiver@latest analyze` | Genera mapa del proyecto y datos de escaneo. |
 | `npx --yes create-quiver@latest doctor` | Valida la salud de Quiver. |
 | `npx --yes create-quiver@latest doctor --json` | Emite el mismo diagnóstico de Doctor como JSON parseable para automatización. |

@@ -2,20 +2,23 @@
 
 ## Summary
 
-Pending execution.
+Added a migrate write-safety gate before side effects, with TTY confirmation, no-TTY/JSON-safe refusal without `--yes`, explicit `migrate --yes` automation, dry-run preservation, localized messages, command docs, and tests.
 
 ## Validation
 
-- [ ] `node --test tests/commands/parser-contract.test.js`
-- [ ] `node --test`
-- [ ] `git diff --check`
+- [x] `node --test tests/commands/cli-contract.test.js`
+- [x] `node --test tests/commands/init-profiles.test.js`
+- [x] `node --test tests/commands/i18n-audit-matrix.test.js`
+- [x] `node --test`
+- [x] `npx -y node@20.12.0 --test tests/commands/cli-contract.test.js tests/commands/init-profiles.test.js tests/commands/i18n-audit-matrix.test.js`
+- [x] `git diff --check`
 
 ## Closure Conditions
 
-- [ ] Confirmation occurs before side effects.
-- [ ] Cancellation/no-TTY paths are safe.
-- [ ] `--yes` and `--dry-run` contracts are tested.
+- [x] Confirmation occurs before side effects.
+- [x] Cancellation/no-TTY paths are safe.
+- [x] `--yes` and `--dry-run` contracts are tested.
 
 ## Open Items
 
-- Pending execution.
+- None.

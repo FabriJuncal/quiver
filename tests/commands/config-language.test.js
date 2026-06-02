@@ -2,7 +2,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
-const { execFileSync } = require('node:child_process');
+const { execFileSync, spawnSync } = require('node:child_process');
 const test = require('node:test');
 
 const BIN_PATH = path.resolve(__dirname, '../../bin/create-quiver.js');
@@ -36,6 +36,15 @@ function cleanEnv(home, extra = {}) {
 
 function runCli(repoRoot, args, env = {}) {
   return execFileSync(process.execPath, [BIN_PATH, ...args], {
+    cwd: repoRoot,
+    encoding: 'utf8',
+    env,
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
+}
+
+function runCliRaw(repoRoot, args, env = {}) {
+  return spawnSync(process.execPath, [BIN_PATH, ...args], {
     cwd: repoRoot,
     encoding: 'utf8',
     env,
@@ -159,6 +168,29 @@ test('config language rejects invalid values and unsupported --global usage', ()
       () => runCli(project.root, ['version', '--global'], cleanEnv(project.home)),
       /create-quiver: --global is only supported by config language set/,
     );
+  } finally {
+    project.cleanup();
+  }
+});
+
+test('config language errors localize and keep JSON stdout clean', () => {
+  const project = makeProject();
+  try {
+    const invalidLanguage = runCliRaw(project.root, ['--lang', 'es', 'config', 'language', 'set', 'fr', '--json'], cleanEnv(project.home));
+    const invalidSection = runCliRaw(project.root, ['--lang', 'es', 'config', 'profile', 'show'], cleanEnv(project.home));
+    const invalidCommand = runCliRaw(project.root, ['--lang', 'es', 'config', 'language', 'delete'], cleanEnv(project.home));
+
+    assert.equal(invalidLanguage.status, 1);
+    assert.equal(invalidLanguage.stdout, '');
+    assert.match(invalidLanguage.stderr, /create-quiver: idioma no compatible: fr/);
+    assert.match(invalidLanguage.stderr, /Idiomas soportados: en, es/);
+    assert.match(invalidLanguage.stderr, /npx create-quiver config language set en/);
+
+    assert.equal(invalidSection.status, 1);
+    assert.match(invalidSection.stderr, /create-quiver: seccion de config no compatible: profile/);
+
+    assert.equal(invalidCommand.status, 1);
+    assert.match(invalidCommand.stderr, /create-quiver: comando de idioma de config no compatible: delete/);
   } finally {
     project.cleanup();
   }

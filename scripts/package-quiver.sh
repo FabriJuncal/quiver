@@ -21,7 +21,7 @@ pack_json="$(
 )"
 
 tarball_name="$(
-  node -e 'const data = JSON.parse(process.argv[1]); process.stdout.write(data[0].filename);' "$pack_json"
+  printf '%s\n' "$pack_json" | node -e 'const fs = require("node:fs"); const data = JSON.parse(fs.readFileSync(0, "utf8")); process.stdout.write(data[0].filename);'
 )"
 tarball_path="$pack_dir/$tarball_name"
 

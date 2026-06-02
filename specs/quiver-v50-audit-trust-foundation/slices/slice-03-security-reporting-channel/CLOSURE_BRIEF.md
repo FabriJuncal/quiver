@@ -2,17 +2,21 @@
 
 ## Summary
 
-Pending execution.
+Documented a concrete private email channel for vulnerability reports and recorded that GitHub Private Vulnerability Reporting is disabled until repository owners enable it.
 
 ## Validation
 
-- [ ] `git diff --check`
+- [x] `gh repo view FabriJuncal/quiver --json nameWithOwner,isPrivate,viewerPermission,url`
+- [x] `gh api repos/FabriJuncal/quiver/private-vulnerability-reporting --jq '.'`
+- [x] `git diff --check`
+- [x] `node bin/create-quiver.js spec validate specs/quiver-v50-audit-trust-foundation`
+- [x] `node bin/create-quiver.js check-slice specs/quiver-v50-audit-trust-foundation/slices/slice-03-security-reporting-channel/slice.json --local`
 
 ## Closure Conditions
 
-- [ ] Concrete private security channel documented.
-- [ ] Evidence or external owner action recorded.
+- [x] Concrete private security channel documented.
+- [x] Evidence or external owner action recorded.
 
 ## Open Items
 
-- Pending execution.
+- Repository owners should enable GitHub Private Vulnerability Reporting in GitHub settings before replacing the email fallback.

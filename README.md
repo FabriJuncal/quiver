@@ -90,6 +90,8 @@ flowchart TD
 
 ## Primeros pasos
 
+Requisito runtime: Node.js `>=20.12.0`. Ese mínimo está declarado en `package.json` y coincide con las dependencias publicadas que usa el CLI.
+
 Ejecutá Quiver desde la raíz del proyecto que querés preparar.
 
 ```bash

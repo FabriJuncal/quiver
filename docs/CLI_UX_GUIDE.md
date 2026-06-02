@@ -7,7 +7,7 @@ Este documento define el estandar de experiencia para los comandos de Quiver. La
 - Los comandos deben explicar que modo estan usando: deterministico, planner-assisted, dry-run, review, interactive, JSON o CI.
 - `--dry-run` debe ser el primer paso recomendado antes de escrituras, proveedores externos, worktrees, PRs o reparaciones.
 - La salida humana puede usar jerarquia visual, loaders y color; la salida JSON debe permanecer limpia y parseable.
-- Los prompts interactivos son opt-in. Ningun comando debe bloquear automatizaciones si `--interactive` no fue pedido.
+- Los prompts interactivos son opt-in, salvo confirmaciones de seguridad para comandos destructivos como `migrate`. Ningun comando debe quedar esperando input en CI/no-TTY; debe fallar con guia accionable o aceptar un bypass explicito como `--yes`.
 - Las revisiones humanas ocurren antes de escrituras persistentes siempre que el comando soporte `--review`.
 - Las credenciales viven en los CLIs de proveedor, `gh`, Git o el sistema operativo. Quiver no debe guardarlas.
 
@@ -93,6 +93,7 @@ Reglas:
 | Comando | `--with-planner` | `--interactive` | `--review` | Notas |
 |---|---:|---:|---:|---|
 | `init` | no | si | no | Interactive guia modo de proyecto, metodologia `wdd-sdd`, perfil inicial y proximo paso de perfiles de agentes. |
+| `migrate` | no | no | no | En TTY confirma antes de escribir; en CI/no-TTY requiere `--yes`. `--dry-run` no pide confirmacion ni escribe. |
 | `ai prepare-context` | si | si | si | Modo deterministico por defecto; planner opcional con contrato docs-only. |
 | `ai plan` | si | si | si | El planner ya es implicito; `--with-planner` se acepta por consistencia. |
 | `spec create` | si | si | si | Consume un plan tecnico aprobado del planner; no vuelve a ejecutar proveedor. Review previsualiza el paquete antes de escribir. |

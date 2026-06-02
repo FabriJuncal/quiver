@@ -813,7 +813,7 @@ if [[ "$doctor_before_migrate_output" == *'Run init first: npx create-quiver --n
   exit 1
 fi
 
-migrate_output="$(cd "$legacy_target" && node "$cli" migrate --skip-install)"
+migrate_output="$(cd "$legacy_target" && node "$cli" migrate --yes --skip-install)"
 
 if [[ "$migrate_output" != *"Quiver migration completed for"* ]]; then
   echo "Migrate output did not report completion" >&2
@@ -1008,7 +1008,7 @@ printf 'keep me\n' >> "$release_target/docs/SEARCH.md"
 rm "$release_target/docs/AI_ONBOARDING_PROMPT.md"
 rm "$release_target/tools/scripts/migrate-project.sh"
 
-release_migrate_output="$(cd "$release_target" && node "$installer_root/node_modules/create-quiver/bin/create-quiver.js" migrate --skip-install)"
+release_migrate_output="$(cd "$release_target" && node "$installer_root/node_modules/create-quiver/bin/create-quiver.js" migrate --yes --skip-install)"
 
 if [[ "$release_migrate_output" != *"Quiver migration completed for"* ]]; then
   echo "Packaged migrate output did not report completion" >&2

@@ -66,7 +66,7 @@ ${record.stderr || ''}
 
 function runEvidenceCommand(repoRoot, commandArgs, options = {}) {
   if (!Array.isArray(commandArgs) || commandArgs.length === 0) {
-    throw new Error('create-quiver: evidence run requires a command after --');
+    throw new Error(options.missingCommandMessage || 'create-quiver: evidence run requires a command after --');
   }
 
   const startedAtDate = new Date();

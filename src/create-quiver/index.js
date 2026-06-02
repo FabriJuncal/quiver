@@ -419,7 +419,7 @@ ${helpText(help, 'headings', 'options', 'Options:')}
       --output <file>         ${optionDescription(help, 'Output file for evidence run')}
       --max-output <n>        ${optionDescription(help, 'Maximum stdout/stderr chars per evidence section')}
       --title <text>          ${optionDescription(help, 'Override PR title for ai pr create')}
-  -y, --yes                   ${optionDescription(help, 'Skip prompts and use the provided inputs')}
+  -y, --yes                   ${optionDescription(help, 'Skip prompts and confirm write prompts such as migrate')}
   -V, --version               ${optionDescription(help, 'Show the installed create-quiver version')}
   -h, --help                  ${optionDescription(help, 'Show this help message')}
 
@@ -1197,13 +1197,17 @@ function parseArgs(argv, options = {}) {
       result.configSection = positional.shift();
     }
     if (!SUPPORTED_CONFIG_SECTIONS.has(result.configSection)) {
-      throw new Error(formatError(`unsupported config section: ${result.configSection || '(missing)'}. Supported sections: language`));
+      throw new Error(formatError(translate(currentErrorLanguage, 'config.error.unsupported_section', {
+        section: result.configSection || '(missing)',
+      })));
     }
     if (!result.configCommand && positional.length > 0) {
       result.configCommand = positional.shift();
     }
     if (!SUPPORTED_CONFIG_LANGUAGE_COMMANDS.has(result.configCommand)) {
-      throw new Error(formatError(`unsupported config language command: ${result.configCommand || '(missing)'}. Supported commands: show, set`));
+      throw new Error(formatError(translate(currentErrorLanguage, 'config.error.unsupported_language_command', {
+        command: result.configCommand || '(missing)',
+      })));
     }
     if (result.configCommand === 'set') {
       if (positional.length === 0) {
@@ -2321,15 +2325,46 @@ function writeProjectScanArtifacts(projectRoot, scan) {
   return { jsonPath, mdPath: scanPaths.projectMapPath };
 }
 
-function runAnalyze(targetDir, options = {}) {
+function createCommandProgressUx(options = {}) {
+  return createUx({
+    env: options.env || process.env,
+    error: options.error,
+    input: options.input,
+    interactive: false,
+    json: options.json,
+    noColor: options.noColor,
+    output: options.output,
+    prompts: options.prompts,
+    spinner: options.noColor === true ? false : options.spinner,
+    stderrIsTTY: options.stderrIsTTY,
+    stdinIsTTY: options.stdinIsTTY,
+    stdoutIsTTY: options.stdoutIsTTY,
+    write: options.write,
+  });
+}
+
+async function runProgress(ux, message, task, successMessage = message) {
+  return ux.withSpinner(message, task, {
+    echo: false,
+    successMessage,
+  });
+}
+
+async function runAnalyze(targetDir, options = {}) {
   const projectRoot = resolveTargetRoot(process.cwd(), targetDir);
   const translator = createTranslator(options.language);
+  const progress = createCommandProgressUx(options);
 
   if (!fs.existsSync(projectRoot)) {
     throw new Error(formatError(`target directory does not exist: ${projectRoot}`));
   }
 
-  const scan = buildProjectScan(projectRoot);
+  const scan = await runProgress(
+    progress,
+    translator.t('analyze.progress.scanning'),
+    () => buildProjectScan(projectRoot),
+    translator.t('analyze.progress.scanned'),
+  );
 
   if (options.dryRun) {
     console.log(translator.t('analyze.dry_run_for', { path: projectRoot }));
@@ -2350,9 +2385,24 @@ function runAnalyze(targetDir, options = {}) {
     };
   }
 
-  const artifacts = writeProjectScanArtifacts(projectRoot, scan);
-  const aiContextPath = refreshAiContextDoc(projectRoot, scan);
-  updateStateForAnalyze(projectRoot, CLI_VERSION);
+  const artifacts = await runProgress(
+    progress,
+    translator.t('analyze.progress.writing_artifacts'),
+    () => writeProjectScanArtifacts(projectRoot, scan),
+    translator.t('analyze.progress.artifacts_written'),
+  );
+  const aiContextPath = await runProgress(
+    progress,
+    translator.t('analyze.progress.refreshing_context'),
+    () => refreshAiContextDoc(projectRoot, scan),
+    translator.t('analyze.progress.context_refreshed'),
+  );
+  await runProgress(
+    progress,
+    translator.t('analyze.progress.updating_state'),
+    () => updateStateForAnalyze(projectRoot, CLI_VERSION),
+    translator.t('analyze.progress.state_updated'),
+  );
 
   console.log(translator.t('analyze.completed_for', { path: projectRoot }));
   console.log(translator.t('analyze.wrote', { path: relativePosixPath(projectRoot, artifacts.jsonPath) }));
@@ -2369,7 +2419,39 @@ function runAnalyze(targetDir, options = {}) {
   };
 }
 
-function runMigrate(targetDir, options = {}) {
+async function confirmMigrateWrite(projectRoot, options, translator) {
+  if (options.force === true) {
+    return;
+  }
+
+  const ux = createUx({
+    env: options.env,
+    error: options.error,
+    input: options.input,
+    interactive: true,
+    json: options.json,
+    noColor: options.noColor,
+    output: options.output,
+    promptConfirm: options.promptConfirm,
+    stderrIsTTY: options.stderrIsTTY,
+    stdinIsTTY: options.stdinIsTTY,
+    stdoutIsTTY: options.stdoutIsTTY,
+    write: options.write,
+  });
+
+  if (!ux.mode.usePrompts) {
+    throw new Error(formatError(translator.t('migrate.confirm.required')));
+  }
+
+  const confirmed = await ux.promptConfirm(translator.t('migrate.confirm.prompt', { path: projectRoot }), {
+    initialValue: false,
+  });
+  if (!confirmed) {
+    throw new Error(formatError(translator.t('migrate.confirm.declined')));
+  }
+}
+
+async function runMigrate(targetDir, options = {}) {
   const projectRoot = resolveTargetRoot(process.cwd(), targetDir);
   const translator = createTranslator(options.language);
 
@@ -2409,6 +2491,8 @@ function runMigrate(targetDir, options = {}) {
     console.log(formatInitLayoutPlan(migrationPlan));
     return;
   }
+
+  await confirmMigrateWrite(projectRoot, options, translator);
 
   const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'quiver-migrate-'));
 
@@ -3183,9 +3267,14 @@ async function run(argv) {
   }
 
   if (args.mode === 'analyze') {
-    runAnalyze(args.targetDir, {
+    await runAnalyze(args.targetDir, {
       dryRun: args.dryRun,
+      json: args.json,
       language: args.language,
+      noColor: args.noColor,
+      stderrIsTTY: Boolean(process.stderr.isTTY),
+      stdinIsTTY: Boolean(process.stdin.isTTY),
+      stdoutIsTTY: Boolean(process.stdout.isTTY),
     });
     return;
   }
@@ -3236,6 +3325,7 @@ async function run(argv) {
       command: args.configCommand,
       global: args.configGlobal,
       json: args.json,
+      language: args.language,
       languageResolution: args.languageResolution,
       section: args.configSection,
       value: args.configValue,
@@ -3639,10 +3729,16 @@ async function run(argv) {
   }
 
   if (args.mode === 'migrate') {
-    runMigrate(args.targetDir, {
+    await runMigrate(args.targetDir, {
       dryRun: args.dryRun,
+      force: args.force,
+      json: args.json,
       language: args.language,
+      noColor: args.noColor,
       skipInstall: args.skipInstall,
+      stderrIsTTY: Boolean(process.stderr.isTTY),
+      stdinIsTTY: Boolean(process.stdin.isTTY),
+      stdoutIsTTY: Boolean(process.stdout.isTTY),
     });
     return;
   }
@@ -3751,7 +3847,7 @@ async function run(argv) {
     }
 
     if (!args.targetDir || args.targetDir === '.') {
-      throw new Error(formatError('missing spec directory. Use: npx create-quiver spec <start|status|validate|close> <spec-dir>'));
+      throw new Error(formatError(createTranslator(args.language).t('spec.error.missing_directory_command')));
     }
 
     if (args.specCommand === 'start') {
@@ -3824,25 +3920,60 @@ async function run(argv) {
   }
 
   const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'quiver-create-'));
+  const translator = createTranslator(args.language);
+  const progress = createCommandProgressUx({
+    json: args.json,
+    noColor: args.noColor,
+    stderrIsTTY: Boolean(process.stderr.isTTY),
+    stdinIsTTY: Boolean(process.stdin.isTTY),
+    stdoutIsTTY: Boolean(process.stdout.isTTY),
+  });
 
   try {
-    ensureDir(targetDir);
-
-    const templateRoot = packTemplate(packageRoot, tempRoot);
+    let templateRoot = '';
+    await runProgress(
+      progress,
+      translator.t('init.progress.preparing_templates'),
+      () => {
+        ensureDir(targetDir);
+        templateRoot = packTemplate(packageRoot, tempRoot);
+        return templateRoot;
+      },
+      translator.t('init.progress.templates_ready'),
+    );
     if (initLayout.profile === 'full') {
-      exportTemplatesToLegacyRoot(templateRoot, targetDir);
+      await runProgress(
+        progress,
+        translator.t('init.progress.exporting_templates'),
+        () => exportTemplatesToLegacyRoot(templateRoot, targetDir),
+        translator.t('init.progress.templates_exported'),
+      );
     }
-    runInitDocs(targetDir, initOptions.projectName, {
-      includeTemplates: initOptions.includeTemplates,
-      language: initLanguage.docsLanguage,
-      legacyScripts: initOptions.legacyScripts,
-      profile: initLayout.profile,
-      templateRoot,
-    });
-    const languageWrite = persistInitLanguage(targetDir, { language: initLanguage.configLanguage });
+    let languageWrite = null;
+    await runProgress(
+      progress,
+      translator.t('init.progress.writing_docs'),
+      () => {
+        runInitDocs(targetDir, initOptions.projectName, {
+          includeTemplates: initOptions.includeTemplates,
+          language: initLanguage.docsLanguage,
+          legacyScripts: initOptions.legacyScripts,
+          profile: initLayout.profile,
+          templateRoot,
+        });
+        languageWrite = persistInitLanguage(targetDir, { language: initLanguage.configLanguage });
+        return languageWrite;
+      },
+      translator.t('init.progress.docs_written'),
+    );
 
     if (!args.skipInstall) {
-      const installResult = installSelfAsDevDep(targetDir, CLI_VERSION);
+      const installResult = await runProgress(
+        progress,
+        translator.t('init.progress.installing_package'),
+        () => installSelfAsDevDep(targetDir, CLI_VERSION),
+        translator.t('init.progress.install_checked'),
+      );
       if (installResult === 'installed') {
         console.log(`Added create-quiver@${CLI_VERSION} as dev dependency`);
       } else if (installResult === 'failed') {
@@ -3850,7 +3981,6 @@ async function run(argv) {
       }
     }
 
-    const translator = createTranslator(args.language);
     console.log(translator.t('init.installed', { path: targetDir }));
     if (languageWrite) {
       console.log(translator.t('init.language.saved', { language: languageWrite.language }));
