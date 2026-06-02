@@ -39,7 +39,7 @@ En lugar de pedirle a un agente "hacé esto y vemos qué pasa", Quiver propone u
 4. generar specs y slices;
 5. ejecutar un slice por vez;
 6. validar con evidencia;
-7. abrir un PR por spec.
+7. abrir un PR por slice por defecto.
 
 ## ¿Qué problema resuelve?
 

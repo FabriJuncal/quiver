@@ -8,7 +8,9 @@ This document is the canonical implementation workflow for the project.
 
 - Do not implement without a slice.
 - One slice maps to one commit.
-- One spec maps to one PR.
+- One slice maps to one PR by default.
+- One spec can produce multiple PRs.
+- Grouped PRs are exceptions and must follow `docs/GITFLOW_PR_GUIDE.md`.
 - Slice numbering is local to each spec. Every spec starts with mandatory `slice-00` as the documentary foundation; `slice-01` is the first implementation slice.
 - The spec defines the plan; the slice defines the execution.
 - No slice should enter execution until it is `ready`.
@@ -63,9 +65,9 @@ Use maps, metadata, diffs, and summaries first. Open full files only when the sm
    - `ai execute-slice` updates `CLOSURE_BRIEF.md`, `EVIDENCE_REPORT.md`, `COMMAND_LOG.md`, `STATUS.md`, and `slice.json` only after the provider changes in-scope files and validation passes.
 9. Validate with `npx create-quiver check-slice <slice.json>` or `npm run quiver:check-slice -- <slice.json>`.
 10. Write evidence. Prefer `npx create-quiver evidence run -- <command>` when you need a compact local Markdown record of validation output.
-11. Repeat for the next slice until the spec is complete.
-12. Open one PR for the spec. Use `npx create-quiver ai pr --dry-run --input specs/<spec-slug>/pr.md --ssh-host-alias <alias> ...` first, then add `--create` only after review. Quiver blocks PR creation while slices in that spec remain open.
-13. After the PR is merged and the spec worktree is clean, close it with `npx create-quiver spec close specs/<spec-slug>`.
+11. Open one PR for the completed slice by default. Use `npx create-quiver ai pr --dry-run --input specs/<spec-slug>/pr.md --ssh-host-alias <alias> ...` first when the generated spec PR body is the intended body, then add `--create` only after review. For slice-level PR bodies, keep the PR aligned with the slice `pr.md` and validate the slice evidence before creating the PR.
+12. Repeat for the next slice until the spec is complete.
+13. After the final PR for the spec is merged and the spec worktree is clean, close it with `npx create-quiver spec close specs/<spec-slug>`.
 
 ## Support Contract
 

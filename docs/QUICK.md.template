@@ -15,7 +15,8 @@ Use `docs/PROJECT_MAP.md` for the package manager, project stack, test commands,
 ## Hard Rules
 
 - One slice = one commit.
-- One spec = one PR.
+- One slice = one PR by default.
+- Grouped PRs are exceptions and must follow `docs/GITFLOW_PR_GUIDE.md`.
 - Read `./STANDARD.md` for workflow details.
 - Read `./DEEP.md` for history and context.
 - Do not edit files outside the active slice.

@@ -236,6 +236,7 @@ Qué hace:
 ## 14. Validar antes del PR
 
 ```bash
+npx --yes create-quiver@latest check-pr specs/<spec-slug>/slices/<slice-id>/slice.json
 npx --yes create-quiver@latest spec validate specs/<spec-slug> --strict
 npx --yes create-quiver@latest next --all-ready --spec <spec-slug>
 git diff --check
@@ -243,8 +244,9 @@ git diff --check
 
 Qué hace:
 
+- valida que el slice tenga cuerpo de PR y secciones requeridas;
 - confirma que el paquete de spec esté completo;
-- confirma que no queden slices listos sin ejecutar;
+- confirma el estado de los slices de la spec;
 - revisa whitespace.
 
 También corré validaciones propias del proyecto:
@@ -257,7 +259,26 @@ npm run lint
 
 Usá solo los scripts que existan en el proyecto.
 
-## 15. Previsualizar creación del PR
+## 15. Preparar el PR
+
+Regla de política:
+
+- un slice equivale a un PR por defecto;
+- un PR agrupado sólo aplica a 2-3 slices docs-only, research-only o limpieza mecánica de bajo riesgo;
+- no agrupes cambios de comportamiento, UI, backend, refactor, performance, Supabase, Edge Functions, auth, storage, preview, tests o CI que afecten gates.
+
+Para PR individual de slice, usá el `pr.md` del slice como cuerpo del PR y mantené evidencia separada:
+
+```bash
+gh pr create \
+  --draft \
+  --title "<slice title>" \
+  --body-file specs/<spec-slug>/slices/<slice-id>/pr.md \
+  --base <base-branch> \
+  --head <current-branch>
+```
+
+Para PRs agrupados permitidos o PRs documentales que usan el cuerpo generado de spec, primero previsualizá con Quiver:
 
 ```bash
 npx --yes create-quiver@latest ai pr \
@@ -280,6 +301,18 @@ Adaptá `--identity-file` a la ruta real de tu máquina, por ejemplo `~/ssh/gith
 
 ## 16. Crear el pull request
 
+Para PR individual de slice, crealo con `gh` usando el cuerpo del slice:
+
+```bash
+gh pr create \
+  --title "<slice title>" \
+  --body-file specs/<spec-slug>/slices/<slice-id>/pr.md \
+  --base <base-branch> \
+  --head <current-branch>
+```
+
+Para PRs agrupados permitidos o documentales que usan `specs/<spec-slug>/pr.md`, podés usar Quiver:
+
 ```bash
 npx --yes create-quiver@latest ai pr \
   --create \
@@ -293,9 +326,19 @@ Qué hace:
 
 - abre el PR usando `gh`;
 - usa el cuerpo generado en `pr.md`;
-- bloquea la creación si todavía quedan slices abiertos.
+- aplica preflight antes de crear el PR.
+
+Merge:
+
+- el merge humano es el default;
+- el agente puede crear el PR, corregir CI, monitorear checks y marcarlo como listo;
+- no uses auto-merge asistido salvo autorización explícita para ese PR o para una categoría documentada;
+- el auto-merge asistido sólo aplica a docs-only o chore-only de bajo riesgo, sin runtime, sin configuración productiva, con checks verdes y sin comentarios pendientes;
+- el auto-merge asistido está prohibido para UI, Supabase, Edge Functions, auth, storage, preview, performance, refactors y cambios con rollback dudoso.
 
 ## 17. Después del merge
+
+Usá este cierre sólo después de que el último PR de la spec haya sido mergeado.
 
 ```bash
 npx --yes create-quiver@latest spec close specs/<spec-slug> --dry-run

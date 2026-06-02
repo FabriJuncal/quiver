@@ -19,7 +19,8 @@ This is the default context pack for everyday AI work.
 - Use maps, metadata, and diffs before opening full source files.
 - Keep scope inside the active slice.
 - Make one commit per slice.
-- Open one PR per spec.
+- Open one PR per slice by default.
+- Group slices in one PR only when `docs/GITFLOW_PR_GUIDE.md` allows it.
 - Record durable decisions in `docs/DECISIONS.md`.
 - Treat `docs/PROJECT_MAP.md` as the single source of truth for stack, package manager, and command references.
 

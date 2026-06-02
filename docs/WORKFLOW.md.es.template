@@ -8,7 +8,9 @@ Este documento define el workflow canonico de implementacion del proyecto.
 
 - No implementar sin slice.
 - Un slice equivale a un commit.
-- Un spec equivale a un PR.
+- Un slice equivale a un PR por defecto.
+- Un spec puede generar multiples PRs.
+- Los PRs agrupados son excepciones y deben cumplir `docs/GITFLOW_PR_GUIDE.md`.
 - El spec define el plan; el slice define la ejecucion.
 - Ningun slice debe ejecutarse hasta estar listo.
 - La salida JSON y los artefactos machine-readable no se traducen.
