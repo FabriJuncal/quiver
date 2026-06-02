@@ -5,6 +5,8 @@ const os = require('node:os');
 const path = require('node:path');
 const test = require('node:test');
 
+const { runAnalyze } = require('../../src/create-quiver');
+
 const cliPath = path.resolve(__dirname, '../../bin/create-quiver.js');
 
 function makeTmpDir() {
@@ -18,6 +20,18 @@ function runCli(args, options = {}) {
     encoding: 'utf8',
     stdio: ['ignore', 'pipe', 'pipe'],
   });
+}
+
+async function captureConsoleLog(fn) {
+  const originalLog = console.log;
+  const lines = [];
+  console.log = (...args) => lines.push(args.join(' '));
+  try {
+    const result = await fn();
+    return { lines, result };
+  } finally {
+    console.log = originalLog;
+  }
 }
 
 test('analyze writes raw scan under .quiver and keeps project map visible', () => {
@@ -63,6 +77,93 @@ test('analyze writes raw scan under .quiver and keeps project map visible', () =
     assert.doesNotMatch(aiContext, /node_modules/);
     assert.doesNotMatch(aiContext, /\.quiver\/state\.json/);
     assert.doesNotMatch(aiContext, /stale context/);
+  } finally {
+    cleanup();
+  }
+});
+
+test('analyze shows transient progress only in safe TTY mode', async () => {
+  const { dir, cleanup } = makeTmpDir();
+  try {
+    const projectRoot = path.join(dir, 'project');
+    const events = [];
+    fs.mkdirSync(path.join(projectRoot, 'src'), { recursive: true });
+    fs.writeFileSync(path.join(projectRoot, 'package.json'), JSON.stringify({
+      name: 'progress-project',
+      scripts: { test: 'node --test' },
+    }, null, 2));
+    fs.writeFileSync(path.join(projectRoot, 'src', 'index.js'), 'console.log("ok");\n');
+
+    const { lines } = await captureConsoleLog(() => runAnalyze(projectRoot, {
+      language: 'en',
+      prompts: {
+        spinner() {
+          return {
+            start(message) {
+              events.push(['start', message]);
+            },
+            stop(message, code) {
+              events.push(['stop', message, code]);
+            },
+          };
+        },
+      },
+      stderrIsTTY: true,
+      stdinIsTTY: true,
+      stdoutIsTTY: true,
+    }));
+
+    assert.deepEqual(events, [
+      ['start', 'Scanning project...'],
+      ['stop', 'Project scan completed', undefined],
+      ['start', 'Writing analysis artifacts...'],
+      ['stop', 'Analysis artifacts written', undefined],
+      ['start', 'Refreshing AI context...'],
+      ['stop', 'AI context refreshed', undefined],
+      ['start', 'Updating Quiver state...'],
+      ['stop', 'Analysis state updated', undefined],
+    ]);
+    assert.match(lines.join('\n'), /Project analysis completed/);
+    assert.match(lines.join('\n'), /Wrote \.quiver\/scans\/PROJECT_SCAN\.json/);
+  } finally {
+    cleanup();
+  }
+});
+
+test('analyze suppresses transient progress when no-color opts out', async () => {
+  const { dir, cleanup } = makeTmpDir();
+  try {
+    const projectRoot = path.join(dir, 'project');
+    const events = [];
+    fs.mkdirSync(projectRoot, { recursive: true });
+    fs.writeFileSync(path.join(projectRoot, 'package.json'), JSON.stringify({
+      name: 'no-color-progress-project',
+    }, null, 2));
+
+    const { lines } = await captureConsoleLog(() => runAnalyze(projectRoot, {
+      dryRun: true,
+      language: 'en',
+      noColor: true,
+      prompts: {
+        spinner() {
+          return {
+            start(message) {
+              events.push(['start', message]);
+            },
+            stop(message, code) {
+              events.push(['stop', message, code]);
+            },
+          };
+        },
+      },
+      stderrIsTTY: true,
+      stdinIsTTY: true,
+      stdoutIsTTY: true,
+    }));
+
+    assert.deepEqual(events, []);
+    assert.match(lines.join('\n'), /Project analysis dry-run/);
+    assert.doesNotMatch(lines.join('\n'), /Scanning project/);
   } finally {
     cleanup();
   }

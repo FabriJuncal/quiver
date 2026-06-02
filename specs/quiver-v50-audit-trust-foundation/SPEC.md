@@ -80,7 +80,7 @@ Establish a production-ready trust baseline for Quiver without broad rewrites:
 | slice-02 | Migrate write-safety contract | completed | slice-00 |
 | slice-03 | Security reporting channel | completed | slice-00 |
 | slice-04 | User-facing i18n error coverage | completed | slice-00 |
-| slice-05 | Init/analyze progress and summaries | planned | slice-00, slice-04 |
+| slice-05 | Init/analyze progress and summaries | completed | slice-00, slice-04 |
 | slice-06 | Contributor and architecture docs | completed | slice-00 |
 | slice-07 | CI and documentation lint baseline | planned | slice-01, slice-06 |
 

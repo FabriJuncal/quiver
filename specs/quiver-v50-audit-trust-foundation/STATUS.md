@@ -2,7 +2,7 @@
 
 **Overall status:** In Progress
 **Created:** 2026-06-01
-**Current slice:** slice-05-init-analyze-progress-and-summaries
+**Current slice:** slice-07-ci-and-documentation-lint-baseline
 
 ## Summary
 
@@ -17,7 +17,7 @@ This spec converts audit-derived trust and contributor-readiness requirements in
 | slice-02-migrate-write-safety-contract | Completed | Added pre-write migrate confirmation, no-TTY/JSON-safe refusal without `--yes`, `migrate --yes` automation, and updated help/docs/i18n coverage. |
 | slice-03-security-reporting-channel | Completed | Documented a concrete private email channel and recorded that GitHub Private Vulnerability Reporting is disabled pending owner action. |
 | slice-04-user-facing-i18n-error-coverage | Completed | Localized covered `config`, `evidence`, `graph`, and `spec` error wrappers plus parser/wiring paths; documented technical allowlist and preserved JSON stdout cleanliness. |
-| slice-05-init-analyze-progress-and-summaries | Planned | Add safe progress and stable summaries for onboarding commands. |
+| slice-05-init-analyze-progress-and-summaries | Completed | Added TTY-only transient progress for `init` and `analyze`, suppressed progress in automation/no-color paths, and preserved final summaries. |
 | slice-06-contributor-and-architecture-docs | Completed | Expanded contributor workflow docs and added architecture/package-boundary documentation based on the current CLI and repo structure. |
 | slice-07-ci-and-documentation-lint-baseline | Planned | Harden CI, docs lint, lockfile and portable test baseline. |
 

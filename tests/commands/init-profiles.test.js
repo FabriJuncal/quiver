@@ -328,7 +328,7 @@ test('init command without dry-run writes the default clean AI-first layout', ()
   const { dir, cleanup } = makeTmpDir();
   const target = path.join(dir, 'target');
   try {
-    runCli(['init', '--name', 'Real Project', '--dir', target, '--skip-install']);
+    const output = runCli(['init', '--name', 'Real Project', '--dir', target, '--skip-install']);
 
     assert.equal(fs.existsSync(path.join(target, 'README.md')), true);
     assert.equal(fs.existsSync(path.join(target, 'AGENTS.md')), true);
@@ -362,6 +362,9 @@ test('init command without dry-run writes the default clean AI-first layout', ()
     assert.doesNotMatch(index, /\.\.\/specs\/real-project/);
     assert.doesNotMatch(index, /\.\/tools\//);
     assert.doesNotMatch(index, /\.\/archive\//);
+    assert.doesNotMatch(output, /Preparing packaged templates/);
+    assert.doesNotMatch(output, /Writing init docs/);
+    assert.doesNotMatch(output, /Checking create-quiver package install/);
   } finally {
     cleanup();
   }

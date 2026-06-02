@@ -12,8 +12,6 @@
     "branch_name": "feature/QUIVER-50-05-v50-init-analyze-progress"
   },
   "files": [
-    "src/create-quiver/commands/init.js",
-    "src/create-quiver/commands/analyze.js",
     "src/create-quiver/index.js",
     "src/create-quiver/lib/cli/ux.js",
     "src/create-quiver/lib/i18n/messages/en.js",
@@ -24,8 +22,7 @@
     "specs/quiver-v50-audit-trust-foundation/**"
   ],
   "expected_read_paths": [
-    "src/create-quiver/commands/init.js",
-    "src/create-quiver/commands/analyze.js",
+    "src/create-quiver/index.js",
     "src/create-quiver/lib/cli/ux.js",
     "tests/commands/analyze.test.js",
     "tests/commands/init-profiles.test.js"
@@ -60,7 +57,7 @@
   "tests": [
     "node --test tests/commands/analyze.test.js",
     "node --test tests/commands/init-profiles.test.js",
-    "node --test tests/lib/cli-ux.test.js",
+    "node --test tests/lib/cli-ux.test.js tests/lib/i18n-catalog.test.js",
     "node --test",
     "git diff --check"
   ],
@@ -68,6 +65,8 @@
     "If using createUx.withSpinner, ensure fallback echo does not create progress noise in CI."
   ],
   "estimated_hours": 5,
-  "status": "planned",
-  "blocked_reason": null
+  "status": "completed",
+  "blocked_reason": null,
+  "actual_hours": 5,
+  "completed_at": "2026-06-01T22:59:17-0300"
 }

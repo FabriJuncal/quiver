@@ -97,6 +97,25 @@
 - `node bin/create-quiver.js check-slice specs/quiver-v50-audit-trust-foundation/slices/slice-04-user-facing-i18n-error-coverage/slice.json --local`: passed with the expected completed-slice warning after marking the slice completed.
 - Manual dirty-scope check against `slice-04` `allowed_write_paths`: passed, 18 files within scope.
 
+## slice-05-init-analyze-progress-and-summaries
+
+- `src/create-quiver/index.js`: added an internal command-progress helper using `createUx.withSpinner(..., { echo: false })` so disabled spinner paths do not emit fallback progress lines.
+- `analyze`: now wraps scan, artifact write, AI context refresh, and state update phases in transient progress; final human summary lines are unchanged.
+- `init`: now wraps template preparation, optional compatibility-template export, docs/language writes, and optional package-install check in transient progress; final install/next-step summary lines are unchanged.
+- Progress safety: progress can run only when `createUx` considers the output a safe human TTY and is additionally disabled for `--no-color`; JSON, CI, and no-TTY paths do not receive progress fallback text.
+- Current layout note: `src/create-quiver/commands/init.js` and `src/create-quiver/commands/analyze.js` from the original expected path list do not exist in this repo; both command flows live in `src/create-quiver/index.js`.
+- `src/create-quiver/lib/i18n/messages/{en,es}.js`: added localized progress messages for `init` and `analyze`.
+- `tests/commands/analyze.test.js`: covers safe TTY spinner events separately from final summary output and verifies `--no-color` suppresses transient progress.
+- `tests/commands/init-profiles.test.js`: verifies non-TTY `init` output does not contain transient progress messages while existing generated layout assertions still pass.
+- `node --test tests/commands/analyze.test.js`: passed, 7 tests, 0 failures.
+- `node --test tests/commands/init-profiles.test.js`: passed, 23 tests, 0 failures.
+- `node --test tests/lib/cli-ux.test.js tests/lib/i18n-catalog.test.js`: passed, 17 tests, 0 failures.
+- `node --test`: passed, 621 tests, 0 failures.
+- `git diff --check`: passed.
+- `node bin/create-quiver.js spec validate specs/quiver-v50-audit-trust-foundation`: passed.
+- `node bin/create-quiver.js check-slice specs/quiver-v50-audit-trust-foundation/slices/slice-05-init-analyze-progress-and-summaries/slice.json --local`: passed with the expected completed-slice warning after marking the slice completed.
+- Manual dirty-scope check against `slice-05` `allowed_write_paths`: passed, 10 files within scope.
+
 ## slice-06-contributor-and-architecture-docs
 
 - `node bin/create-quiver.js --help`: current command surface captured; docs use existing commands such as `start-slice`, `check-slice`, `check-pr`, `check-handoff`, `new-handoff`, `cleanup-slice`, `check-scope`, and `refresh-active-slices`.
