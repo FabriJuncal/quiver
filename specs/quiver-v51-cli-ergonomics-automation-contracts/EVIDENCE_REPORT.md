@@ -47,3 +47,21 @@
 - `npm run docs:check`: passed.
 - `git diff --check`: passed.
 - `node bin/create-quiver.js spec validate specs/quiver-v51-cli-ergonomics-automation-contracts`: passed.
+
+## slice-02-dashboard-section-validation-i18n
+
+- `src/create-quiver/lib/dashboard.js`: existing invalid-section handling uses localized `dashboard.unsupported_section` for human output and English-only translation for JSON output.
+- `src/create-quiver/lib/i18n/messages/en.js`: English help text now lists the supported dashboard sections.
+- `src/create-quiver/lib/i18n/messages/es.js`: Spanish help text now lists the supported dashboard sections.
+- `tests/commands/dashboard.test.js`: added EN/ES invalid-section assertions, supported-section list coverage, and JSON-safe invalid-section failure coverage.
+- `tests/commands/cli-contract.test.js`: updated help contract to require the supported section list.
+- `docs/reference/commands.md`: documents every supported dashboard section, including `overview`.
+- `docs/COMMANDS.md.template`: keeps generated command docs aligned with the public reference.
+- `npm run test:ci -- tests/commands/dashboard.test.js tests/commands/cli-contract.test.js tests/lib/i18n-catalog.test.js`: passed, 35 tests.
+- `node --test`: passed, 624 tests.
+- `npm run docs:check`: passed.
+- `git diff --check`: passed.
+- `node bin/create-quiver.js spec validate specs/quiver-v51-cli-ergonomics-automation-contracts`: passed.
+- `node bin/create-quiver.js check-slice specs/quiver-v51-cli-ergonomics-automation-contracts/slices/slice-02-dashboard-section-validation-i18n/slice.json --local --gate validation`: passed.
+- `node bin/create-quiver.js check-scope specs/quiver-v51-cli-ergonomics-automation-contracts/slices/slice-02-dashboard-section-validation-i18n/slice.json --base main --strict`: passed.
+- `node bin/create-quiver.js check-pr specs/quiver-v51-cli-ergonomics-automation-contracts/slices/slice-02-dashboard-section-validation-i18n/slice.json --base main`: passed spec, slice, overlap, validation gate, scope, branch, and clean-worktree checks; failed commit ownership because PR readiness still evaluates `origin/develop` even when the slice base is `main`. This is tracked by `slice-03-base-branch-resolution-policy`.

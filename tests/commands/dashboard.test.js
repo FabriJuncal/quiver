@@ -246,6 +246,25 @@ test('dashboard rejects ambiguous and invalid human flags', () => {
   }
 });
 
+test('dashboard invalid section errors are localized and list supported sections', () => {
+  const repo = makeRepo();
+  const supportedSections = 'overview, specs, slices, blockers, warnings, agents, approvals, runs, active-slice, next-steps';
+  try {
+    const english = spawnDashboard(repo.root, ['--section', 'nope', '--lang', 'en'], cleanEnv(repo.home));
+    const spanish = spawnDashboard(repo.root, ['--section', 'nope', '--lang', 'es'], cleanEnv(repo.home));
+
+    assert.notEqual(english.status, 0);
+    assert.equal(english.stdout, '');
+    assert.match(english.stderr, new RegExp(`unsupported dashboard section: nope\\. Supported sections: ${supportedSections.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`));
+
+    assert.notEqual(spanish.status, 0);
+    assert.equal(spanish.stdout, '');
+    assert.match(spanish.stderr, new RegExp(`seccion de dashboard no compatible: nope\\. Secciones soportadas: ${supportedSections.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`));
+  } finally {
+    repo.cleanup();
+  }
+});
+
 test('dashboard human-only flags keep JSON failures parseable', () => {
   const repo = makeRepo();
   try {
@@ -256,6 +275,23 @@ test('dashboard human-only flags keep JSON failures parseable', () => {
     assert.equal(result.stderr, '');
     assert.equal(payload.error.code, 'INVALID_DASHBOARD_OPTIONS');
     assert.match(payload.error.message, /dashboard --json cannot be combined/);
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('dashboard invalid section keeps JSON error payload parseable and English', () => {
+  const repo = makeRepo();
+  try {
+    const result = spawnDashboard(repo.root, ['--json', '--section', 'nope', '--lang', 'es'], cleanEnv(repo.home));
+    const payload = JSON.parse(result.stdout);
+
+    assert.notEqual(result.status, 0);
+    assert.equal(result.stderr, '');
+    assert.equal(payload.error.code, 'INVALID_DASHBOARD_OPTIONS');
+    assert.match(payload.error.message, /unsupported dashboard section: nope/);
+    assert.match(payload.error.message, /Supported sections: overview, specs, slices, blockers, warnings, agents, approvals, runs, active-slice, next-steps/);
+    assert.doesNotMatch(payload.error.message, /seccion de dashboard/);
   } finally {
     repo.cleanup();
   }

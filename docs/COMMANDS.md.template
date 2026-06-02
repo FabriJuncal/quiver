@@ -21,7 +21,7 @@ This document is the canonical command reference for the orchestration roadmap.
 | `npx create-quiver flow` | Shows the read-only guided flow entrypoint, context source/freshness, package-manager-aware script guidance, and next safe command | macOS, Linux, Windows | v0.11 | `npx create-quiver flow` |
 | `npx create-quiver dashboard` | Shows a compact read-only summary of project, spec, slice, run, approval, and agent status | macOS, Linux, Windows | next | `npx create-quiver dashboard --spec <spec>` |
 | `npx create-quiver dashboard --details` | Shows the full human dashboard report for audit/debug sessions | macOS, Linux, Windows | next | `npx create-quiver dashboard --details` |
-| `npx create-quiver dashboard --section <name>` | Shows one human dashboard section such as `specs`, `slices`, `blockers`, `warnings`, `agents`, `approvals`, `runs`, `active-slice`, or `next-steps` | macOS, Linux, Windows | next | `npx create-quiver dashboard --section slices --limit 10` |
+| `npx create-quiver dashboard --section <name>` | Shows one human dashboard section such as `overview`, `specs`, `slices`, `blockers`, `warnings`, `agents`, `approvals`, `runs`, `active-slice`, or `next-steps` | macOS, Linux, Windows | next | `npx create-quiver dashboard --section slices --limit 10` |
 | `npx create-quiver analyze --dry-run` | Previews scan, project-map, and AI context writes without creating files | macOS, Linux, Windows | v0.13 | `npx create-quiver analyze --dry-run` |
 | `quiver:analyze` | Writes raw analyzer data to `.quiver/scans/PROJECT_SCAN.json`, the visible project map to `docs/PROJECT_MAP.md`, and refreshed AI context | macOS, Linux, Windows | v0.8 | `npm run quiver:analyze` |
 | `quiver:flow` | Runs the guided flow entrypoint through the generated npm script | macOS, Linux, Windows | v0.11 | `npm run quiver:flow` |
@@ -103,7 +103,7 @@ This document is the canonical command reference for the orchestration roadmap.
 | `--dir <target>` | `demo create spec-viewer` | Select the demo target directory; default is `./quiver-spec-viewer` |
 | `--json` | `dashboard`, `version`, `plan`, `graph`, `next` | Emit machine-readable JSON |
 | `--details` | `dashboard` | Show the full human dashboard report instead of the compact default; incompatible with `--json` and `--section` |
-| `--section <name>` | `dashboard` | Show one human dashboard section; incompatible with `--json` and `--details` |
+| `--section <name>` | `dashboard` | Show one human dashboard section: `overview`, `specs`, `slices`, `blockers`, `warnings`, `agents`, `approvals`, `runs`, `active-slice`, or `next-steps`; incompatible with `--json` and `--details` |
 | `--limit <n>` | `dashboard` | Limit compact dashboard lists between 1 and 100; incompatible with `--json` |
 | `--all-ready` | `next` | List all ready slices instead of just the next one |
 | `--only-ready` | `plan` | Show only slices with no pending dependencies |
