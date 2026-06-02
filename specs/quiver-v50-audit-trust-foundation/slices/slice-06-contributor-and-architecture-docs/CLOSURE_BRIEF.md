@@ -2,19 +2,21 @@
 
 ## Summary
 
-Pending execution.
+Expanded contributor documentation and added a real architecture guide aligned to the current CLI, package scripts, templates, specs, tests, CI, and npm package boundary.
 
 ## Validation
 
-- [ ] `node bin/create-quiver.js --help`
-- [ ] `git diff --check`
+- [x] `node bin/create-quiver.js --help`
+- [x] `git diff --check`
+- [x] `node bin/create-quiver.js spec validate specs/quiver-v50-audit-trust-foundation`
+- [x] `node bin/create-quiver.js check-slice specs/quiver-v50-audit-trust-foundation/slices/slice-06-contributor-and-architecture-docs/slice.json --local`
 
 ## Closure Conditions
 
-- [ ] CONTRIBUTING expanded.
-- [ ] ARCHITECTURE created.
-- [ ] Public docs aligned with real commands and spec structure.
+- [x] CONTRIBUTING expanded.
+- [x] ARCHITECTURE created.
+- [x] Public docs aligned with real commands and spec structure.
 
 ## Open Items
 
-- Pending execution.
+- None.

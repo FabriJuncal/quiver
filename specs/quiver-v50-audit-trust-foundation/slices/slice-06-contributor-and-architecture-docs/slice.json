@@ -67,6 +67,8 @@
     "Do not document docs/specs as canonical; this repo uses specs/quiver-vNN-*."
   ],
   "estimated_hours": 5,
-  "status": "planned",
-  "blocked_reason": null
+  "status": "completed",
+  "blocked_reason": null,
+  "actual_hours": 3,
+  "completed_at": "2026-06-01T22:13:40-0300"
 }

@@ -58,3 +58,13 @@
 - `git diff --check`: passed.
 - `node bin/create-quiver.js spec validate specs/quiver-v50-audit-trust-foundation`: passed.
 - `node bin/create-quiver.js check-slice specs/quiver-v50-audit-trust-foundation/slices/slice-03-security-reporting-channel/slice.json --local`: passed with the expected completed-slice warning after marking the slice completed.
+
+## slice-06-contributor-and-architecture-docs
+
+- `node bin/create-quiver.js --help`: current command surface captured; docs use existing commands such as `start-slice`, `check-slice`, `check-pr`, `check-handoff`, `new-handoff`, `cleanup-slice`, `check-scope`, and `refresh-active-slices`.
+- `CONTRIBUTING.md`: expanded setup, workflow, spec/slice convention, validation, PR headings, templates/examples, and package boundary guidance.
+- `ARCHITECTURE.md`: created real architecture guide covering entrypoints, command layer, library layer, spec/slice structure, generated project contract, templates/localization, package boundary, tests, CI, and design constraints.
+- `ROADMAP.md`: added a note explaining that `vNN` labels are internal spec identifiers unless a section explicitly states an npm release.
+- `git diff --check`: passed.
+- `node bin/create-quiver.js spec validate specs/quiver-v50-audit-trust-foundation`: passed.
+- `node bin/create-quiver.js check-slice specs/quiver-v50-audit-trust-foundation/slices/slice-06-contributor-and-architecture-docs/slice.json --local`: passed with the expected completed-slice warning after marking the slice completed.

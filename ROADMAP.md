@@ -1,5 +1,9 @@
 # Roadmap
 
+Note: `vNN` labels in this file refer to Quiver's internal dogfooding specs
+under `specs/quiver-vNN-*`. They are not npm semver releases unless the section
+explicitly says a package version was published.
+
 ## v0.1
 
 - Publish the OSS foundation
