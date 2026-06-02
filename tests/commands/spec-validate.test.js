@@ -205,3 +205,19 @@ test('spec validate strict mode renders Spanish failure wrapper while preserving
     project.cleanup();
   }
 });
+
+test('spec validate missing directory error localizes', () => {
+  const project = makeProject();
+  try {
+    assert.throws(
+      () => execCli(project.root, ['--lang', 'es', 'spec', 'validate', 'missing-spec']),
+      (error) => {
+        const output = `${error.stdout || ''}${error.stderr || ''}`;
+        assert.match(output, /create-quiver: directorio de spec no encontrado: missing-spec/);
+        return true;
+      },
+    );
+  } finally {
+    project.cleanup();
+  }
+});

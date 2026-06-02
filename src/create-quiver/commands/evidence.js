@@ -15,10 +15,11 @@ function runEvidence(repoRoot, options = {}) {
   const translator = createTranslator(options.language);
   const command = options.command || '';
   if (options.subcommand !== 'run') {
-    throw new Error('create-quiver: missing evidence subcommand. Use: npx create-quiver evidence run -- <command>');
+    throw new Error(`create-quiver: ${translator.t('evidence.error.missing_subcommand')}`);
   }
 
   const result = runEvidenceCommand(repoRoot, command, {
+    missingCommandMessage: `create-quiver: ${translator.t('evidence.error.missing_command')}`,
     maxOutput: options.maxOutput,
     outputPath: options.output,
     spawnSync: options.spawnSync,

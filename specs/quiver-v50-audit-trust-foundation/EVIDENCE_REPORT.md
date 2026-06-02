@@ -76,6 +76,27 @@
 - `node bin/create-quiver.js spec validate specs/quiver-v50-audit-trust-foundation`: passed.
 - `node bin/create-quiver.js check-slice specs/quiver-v50-audit-trust-foundation/slices/slice-03-security-reporting-channel/slice.json --local`: passed with the expected completed-slice warning after marking the slice completed.
 
+## slice-04-user-facing-i18n-error-coverage
+
+- `src/create-quiver/commands/config.js`: localized unsupported language, unsupported section, and unsupported language-command errors through EN/ES catalog keys.
+- `src/create-quiver/index.js`: passed resolved language into `runConfig` and localized parser-level `config` section/command errors plus the `spec` missing-directory wrapper.
+- `src/create-quiver/commands/evidence.js` and `src/create-quiver/lib/evidence.js`: localized missing evidence subcommand and missing command-after-`--` errors while preserving the direct library fallback for existing callers.
+- `src/create-quiver/commands/graph.js`: localized unsupported graph format errors before JSON output is emitted.
+- `src/create-quiver/commands/spec.js`: localized missing/unknown spec directory, spec validation failure wrapper, spec-create collision, interactive TTY requirement, declined approval, and review terminal/cancellation wrappers.
+- `src/create-quiver/lib/i18n/messages/{en,es}.js`: added matching EN/ES keys; catalog completeness remains enforced by `tests/lib/i18n-catalog.test.js`.
+- Covered hardcoded error audit: no `throw new Error` user-facing wrapper remains hardcoded in `commands/{config,evidence,graph,spec}.js` or `lib/evidence.js` outside catalog-backed messages.
+- Allowlist: `spec validate` internal diagnostics remain technical validator strings because they include field names, file paths, JSON parser messages, strict-warning labels, and schema terminology that tests already treat as stable developer diagnostics; machine-readable JSON keys and command/path snippets are intentionally not localized.
+- `src/create-quiver/commands/prepare.js`: inspected; no direct user-facing throw path was changed in this slice.
+- `src/create-quiver/commands/ai-core.js`: expected-read path from the brief does not exist in the current repo; AI command/provider dynamic errors remain outside this covered wrapper set and were not modified in this slice.
+- `node --test tests/commands/config-language.test.js tests/commands/evidence.test.js tests/commands/graph.test.js tests/commands/spec-validate.test.js tests/commands/spec-create.test.js tests/lib/i18n-catalog.test.js tests/commands/i18n-audit-matrix.test.js`: passed, 51 tests, 0 failures.
+- `node --test tests/lib/i18n-catalog.test.js`: passed, 7 tests, 0 failures.
+- `node --test tests/commands/i18n-audit-matrix.test.js`: passed, 2 tests, 0 failures.
+- `node --test`: passed, 619 tests, 0 failures.
+- `git diff --check`: passed.
+- `node bin/create-quiver.js spec validate specs/quiver-v50-audit-trust-foundation`: passed.
+- `node bin/create-quiver.js check-slice specs/quiver-v50-audit-trust-foundation/slices/slice-04-user-facing-i18n-error-coverage/slice.json --local`: passed with the expected completed-slice warning after marking the slice completed.
+- Manual dirty-scope check against `slice-04` `allowed_write_paths`: passed, 18 files within scope.
+
 ## slice-06-contributor-and-architecture-docs
 
 - `node bin/create-quiver.js --help`: current command surface captured; docs use existing commands such as `start-slice`, `check-slice`, `check-pr`, `check-handoff`, `new-handoff`, `cleanup-slice`, `check-scope`, and `refresh-active-slices`.

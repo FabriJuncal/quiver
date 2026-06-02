@@ -1197,13 +1197,17 @@ function parseArgs(argv, options = {}) {
       result.configSection = positional.shift();
     }
     if (!SUPPORTED_CONFIG_SECTIONS.has(result.configSection)) {
-      throw new Error(formatError(`unsupported config section: ${result.configSection || '(missing)'}. Supported sections: language`));
+      throw new Error(formatError(translate(currentErrorLanguage, 'config.error.unsupported_section', {
+        section: result.configSection || '(missing)',
+      })));
     }
     if (!result.configCommand && positional.length > 0) {
       result.configCommand = positional.shift();
     }
     if (!SUPPORTED_CONFIG_LANGUAGE_COMMANDS.has(result.configCommand)) {
-      throw new Error(formatError(`unsupported config language command: ${result.configCommand || '(missing)'}. Supported commands: show, set`));
+      throw new Error(formatError(translate(currentErrorLanguage, 'config.error.unsupported_language_command', {
+        command: result.configCommand || '(missing)',
+      })));
     }
     if (result.configCommand === 'set') {
       if (positional.length === 0) {
@@ -3270,6 +3274,7 @@ async function run(argv) {
       command: args.configCommand,
       global: args.configGlobal,
       json: args.json,
+      language: args.language,
       languageResolution: args.languageResolution,
       section: args.configSection,
       value: args.configValue,
@@ -3791,7 +3796,7 @@ async function run(argv) {
     }
 
     if (!args.targetDir || args.targetDir === '.') {
-      throw new Error(formatError('missing spec directory. Use: npx create-quiver spec <start|status|validate|close> <spec-dir>'));
+      throw new Error(formatError(createTranslator(args.language).t('spec.error.missing_directory_command')));
     }
 
     if (args.specCommand === 'start') {

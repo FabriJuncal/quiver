@@ -3,6 +3,7 @@ const { computeLevels, detectFileConflicts } = require('../lib/slice-graph');
 const { renderDotGraph } = require('../lib/renderers/dot');
 const { renderMermaidGraph } = require('../lib/renderers/mermaid');
 const { renderTreeGraph, isUnicodeEnabled } = require('../lib/renderers/tree');
+const { createTranslator } = require('../lib/i18n/catalog');
 
 function toGraphNode(node) {
   return {
@@ -69,6 +70,7 @@ function collectGraph(repoRoot, options = {}) {
 }
 
 function formatHumanGraph(report, options = {}) {
+  const translator = createTranslator(options.language);
   const format = options.format || 'tree';
   const sharedOptions = {
     showConflicts: options.showConflicts === true,
@@ -88,12 +90,13 @@ function formatHumanGraph(report, options = {}) {
     return renderDotGraph(report, sharedOptions);
   }
 
-  throw new Error(`create-quiver: unsupported graph format: ${format}`);
+  throw new Error(`create-quiver: ${translator.t('graph.error.unsupported_format', { format })}`);
 }
 
 function runGraph(repoRoot, options = {}) {
+  const translator = createTranslator(options.language);
   if (options.format && !['tree', 'mermaid', 'dot'].includes(options.format)) {
-    throw new Error(`create-quiver: unsupported graph format: ${options.format}`);
+    throw new Error(`create-quiver: ${translator.t('graph.error.unsupported_format', { format: options.format })}`);
   }
 
   const report = collectGraph(repoRoot, options);

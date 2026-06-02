@@ -199,7 +199,7 @@ test('spec create --interactive can decline writes', async () => {
         stderrIsTTY: true,
         write: () => {},
       }),
-      /spec create interactive approval declined/,
+      /aprobacion interactiva de spec create rechazada/,
     );
     assert.deepEqual(selections, [
       'Que metodologia aplica esta spec?',
@@ -271,6 +271,26 @@ test('spec create writes the generated spec tree and refuses collisions', () => 
     assert.throws(
       () => execCli(repo.root, ['spec', 'create']),
       (error) => error.stderr.includes('spec directory already exists: specs/quiver-v23-created-spec'),
+    );
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('spec create collision error localizes', () => {
+  const repo = makeRepo();
+
+  try {
+    seedReviewedApprovedPlan(repo.root);
+    execCli(repo.root, ['spec', 'create']);
+
+    assert.throws(
+      () => execCli(repo.root, ['--lang', 'es', 'spec', 'create']),
+      (error) => {
+        const output = `${error.stdout || ''}${error.stderr || ''}`;
+        assert.match(output, /create-quiver: el directorio de spec ya existe: specs\/quiver-v23-created-spec/);
+        return true;
+      },
     );
   } finally {
     repo.cleanup();

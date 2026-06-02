@@ -2,21 +2,22 @@
 
 ## Summary
 
-Pending execution.
+Localized covered user-facing error wrappers for `config`, `evidence`, `graph`, and `spec` command paths, including parser/wiring paths in `index.js`, command-to-library evidence errors, graph format errors, and spec create/validate wrappers. Documented technical allowlist and confirmed `commands/ai-core.js` does not exist in the current repo.
 
 ## Validation
 
-- [ ] `node --test tests/commands/i18n-audit-matrix.test.js`
-- [ ] `node --test tests/lib/i18n-catalog.test.js`
-- [ ] `node --test`
-- [ ] `git diff --check`
+- [x] `node --test tests/commands/i18n-audit-matrix.test.js`
+- [x] `node --test tests/lib/i18n-catalog.test.js`
+- [x] `node --test tests/commands/config-language.test.js tests/commands/evidence.test.js tests/commands/graph.test.js tests/commands/spec-validate.test.js tests/commands/spec-create.test.js tests/lib/i18n-catalog.test.js tests/commands/i18n-audit-matrix.test.js`
+- [x] `node --test`
+- [x] `git diff --check`
 
 ## Closure Conditions
 
-- [ ] User-facing errors localized.
-- [ ] Allowlist documented.
-- [ ] JSON contracts preserved.
+- [x] User-facing errors localized in covered paths.
+- [x] Allowlist documented in `EVIDENCE_REPORT.md`.
+- [x] JSON stdout contracts preserved for covered error tests.
 
 ## Open Items
 
-- Pending execution.
+- None.

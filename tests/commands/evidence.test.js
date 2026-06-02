@@ -1,5 +1,5 @@
 const assert = require('node:assert/strict');
-const { execFileSync } = require('node:child_process');
+const { execFileSync, spawnSync } = require('node:child_process');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
@@ -29,6 +29,14 @@ function runCliFailure(args, options = {}) {
   }
 
   throw new Error('Expected CLI command to fail');
+}
+
+function runCliRaw(args, options = {}) {
+  return spawnSync(process.execPath, [cliPath, ...args], {
+    cwd: options.cwd || path.resolve(__dirname, '../..'),
+    encoding: 'utf8',
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
 }
 
 test('evidence run records successful command output', () => {
@@ -141,6 +149,19 @@ test('evidence run requires a command after separator', () => {
 
     assert.equal(error.status, 1);
     assert.match(String(error.stderr), /evidence run requires a command after --/);
+  } finally {
+    cleanup();
+  }
+});
+
+test('evidence run missing command error localizes without stdout noise', () => {
+  const { dir, cleanup } = makeTmpDir();
+  try {
+    const result = runCliRaw(['--lang', 'es', 'evidence', 'run'], { cwd: dir });
+
+    assert.equal(result.status, 1);
+    assert.equal(result.stdout, '');
+    assert.match(result.stderr, /create-quiver: evidence run requiere un comando despues de --/);
   } finally {
     cleanup();
   }

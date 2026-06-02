@@ -13,7 +13,13 @@
   },
   "files": [
     "src/create-quiver/commands/**",
+    "src/create-quiver/index.js",
     "src/create-quiver/lib/**",
+    "tests/commands/config-language.test.js",
+    "tests/commands/evidence.test.js",
+    "tests/commands/graph.test.js",
+    "tests/commands/spec-create.test.js",
+    "tests/commands/spec-validate.test.js",
     "tests/commands/i18n-audit-matrix.test.js",
     "tests/lib/i18n-catalog.test.js",
     "specs/quiver-v50-audit-trust-foundation/**"
@@ -24,13 +30,16 @@
     "src/create-quiver/commands/spec.js",
     "src/create-quiver/commands/graph.js",
     "src/create-quiver/commands/prepare.js",
-    "src/create-quiver/commands/ai-core.js",
+    "src/create-quiver/commands/ai.js",
+    "src/create-quiver/index.js",
+    "src/create-quiver/lib/evidence.js",
     "src/create-quiver/lib/i18n/catalog.js",
     "src/create-quiver/lib/i18n/messages/en.js",
     "src/create-quiver/lib/i18n/messages/es.js"
   ],
   "allowed_write_paths": [
     "src/create-quiver/commands/**",
+    "src/create-quiver/index.js",
     "src/create-quiver/lib/**",
     "tests/commands/**",
     "tests/lib/**",
@@ -60,6 +69,7 @@
   "tests": [
     "node --test tests/commands/i18n-audit-matrix.test.js",
     "node --test tests/lib/i18n-catalog.test.js",
+    "node --test tests/commands/config-language.test.js tests/commands/evidence.test.js tests/commands/graph.test.js tests/commands/spec-validate.test.js tests/commands/spec-create.test.js tests/lib/i18n-catalog.test.js tests/commands/i18n-audit-matrix.test.js",
     "node --test",
     "git diff --check"
   ],
@@ -67,6 +77,8 @@
     "Validate behavior by executing commands, not only by grep."
   ],
   "estimated_hours": 6,
-  "status": "planned",
-  "blocked_reason": null
+  "status": "completed",
+  "blocked_reason": null,
+  "actual_hours": 6,
+  "completed_at": "2026-06-01T22:51:25-0300"
 }

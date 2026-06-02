@@ -10,6 +10,7 @@ const {
   writeGlobalLanguageConfig,
   writeProjectLanguageConfig,
 } = require('../lib/i18n/language');
+const { createTranslator } = require('../lib/i18n/catalog');
 
 function formatError(message) {
   return `create-quiver: ${message}`;
@@ -29,10 +30,14 @@ function formatProjectRelativePath(repoRoot, filePath) {
   return path.relative(repoRoot, filePath).split(path.sep).join('/') || '.';
 }
 
-function validateLanguageForSet(language) {
+function validateLanguageForSet(language, translator = createTranslator()) {
   const normalized = normalizeLanguage(language);
   if (!normalized || normalized !== String(language || '').trim().toLowerCase()) {
-    throw new Error(formatError(`unsupported language: ${language || '<missing>'}. Supported languages: ${SUPPORTED_LANGUAGES.join(', ')}. Run: npx create-quiver config language set ${DEFAULT_LANGUAGE}`));
+    throw new Error(formatError(translator.t('config.error.unsupported_language', {
+      fallback: DEFAULT_LANGUAGE,
+      language: language || '<missing>',
+      supported: SUPPORTED_LANGUAGES.join(', '),
+    })));
   }
   return normalized;
 }
@@ -69,7 +74,8 @@ function runLanguageShow(repoRoot, options = {}) {
 }
 
 function runLanguageSet(repoRoot, options = {}) {
-  const language = validateLanguageForSet(options.value);
+  const translator = createTranslator(options.language);
+  const language = validateLanguageForSet(options.value, translator);
   const global = options.global === true;
   const configPath = global ? globalLanguageConfigPath() : projectLanguageConfigPath(repoRoot);
 
@@ -102,8 +108,11 @@ function runLanguageSet(repoRoot, options = {}) {
 }
 
 function runConfig(repoRoot, options = {}) {
+  const translator = createTranslator(options.language);
   if (options.section !== 'language') {
-    throw new Error(formatError(`unsupported config section: ${options.section || '(missing)'}. Supported sections: language`));
+    throw new Error(formatError(translator.t('config.error.unsupported_section', {
+      section: options.section || '(missing)',
+    })));
   }
 
   if (options.command === 'show') {
@@ -116,7 +125,9 @@ function runConfig(repoRoot, options = {}) {
     return;
   }
 
-  throw new Error(formatError(`unsupported config language command: ${options.command || '(missing)'}. Supported commands: show, set`));
+  throw new Error(formatError(translator.t('config.error.unsupported_language_command', {
+    command: options.command || '(missing)',
+  })));
 }
 
 module.exports = {
