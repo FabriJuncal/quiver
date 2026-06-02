@@ -543,7 +543,7 @@ function runSmoke() {
     migrateBefore = String(error.stderr || error.stdout || error.message || '');
   }
   assertContains(migrateBefore, 'Run migration first: npx create-quiver migrate', 'doctor before migrate');
-  runNodeCli(legacyProject, ['migrate', '--skip-install']);
+  runNodeCli(legacyProject, ['migrate', '--yes', '--skip-install']);
   assertPackageScripts(legacyPackage, 'legacy project after migrate', [
     'quiver:migrate',
     'quiver:version',
