@@ -121,3 +121,25 @@
 - `node --test`: passed, 638 tests.
 - `npm run docs:check`: passed.
 - `git diff --check`: passed.
+
+## slice-06-namespace-compatibility-windows-scripts
+
+- `src/create-quiver/index.js`: adds canonical `slice start|check|pr|scope|cleanup|refresh-active` and `handoff check|new` namespace parsing while mapping to existing handlers.
+- `src/create-quiver/index.js`: preserves legacy top-level aliases and emits deprecation guidance to stderr only; warnings are suppressed for `--json` output.
+- `package.json`: adds PowerShell-safe `quiver:*` scripts that call the Node CLI directly and keeps existing Bash scripts as legacy compatibility paths.
+- `src/create-quiver/lib/init-layout.js`: generated project scripts now use canonical namespaces for slice and handoff commands.
+- `.github/workflows/ci.yml`: extends the Windows PowerShell smoke with canonical namespace commands and the portable `quiver:check-handoff` npm script.
+- `README.md`, `CONTRIBUTING.md`, `docs/reference/commands.md`, and `docs/COMMANDS.md.template`: document canonical namespaces, legacy alias policy, portable script guidance, and Windows-safe command paths.
+- `src/create-quiver/lib/i18n/messages/es.js`: adds Spanish help descriptions for the new canonical namespace entries.
+- `specs/quiver-v43-cli-i18n-audit-release-readiness/command-language-mode-matrix.json`: records canonical namespace command coverage for the i18n audit matrix.
+- `tests/commands/slice-namespace.test.js`: validates canonical/legacy slice parity, stderr-only legacy warnings, JSON warning suppression, and unsupported subcommand rejection.
+- `tests/commands/handoff-namespace.test.js`: validates canonical/legacy handoff parity, `handoff new` compatibility, and unsupported subcommand rejection.
+- `tests/commands/parser-contract.test.js`: validates help coverage and package script portability contracts.
+- `tests/commands/cli-contract.test.js` and `tests/lib/init-layout.test.js`: align public help and generated script contracts with canonical namespaces.
+- `node --test tests/commands/slice-namespace.test.js tests/commands/handoff-namespace.test.js tests/commands/parser-contract.test.js tests/commands/cli-contract.test.js tests/lib/init-layout.test.js tests/commands/i18n-audit-matrix.test.js tests/lib/i18n-catalog.test.js`: passed, 40 tests.
+- `npm ci`: passed; `package-lock.json` did not require changes because root package scripts are not represented in lockfile metadata.
+- `node bin/create-quiver.js slice check --local specs/quiver-v51-cli-ergonomics-automation-contracts/slices/slice-00-cli-contract-baseline/slice.json && node bin/create-quiver.js handoff check specs/quiver-v51-cli-ergonomics-automation-contracts/slices/slice-06-namespace-compatibility-windows-scripts/EXECUTION_BRIEF.md && npm run quiver:check-handoff -- specs/quiver-v51-cli-ergonomics-automation-contracts/slices/slice-06-namespace-compatibility-windows-scripts/EXECUTION_BRIEF.md`: passed after dependency installation.
+- `npm run docs:check`: passed.
+- `git diff --check`: passed.
+- `node --test`: passed, 646 tests.
+- Windows PowerShell validation is configured in CI; local execution was performed on macOS using the same Node CLI entrypoints and package script contracts.

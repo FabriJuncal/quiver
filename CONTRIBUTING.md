@@ -76,10 +76,13 @@ npm run package:quiver
 bash scripts/ci/smoke-create-quiver.sh
 ```
 
-Current public CLI commands include legacy workflow names such as
-`start-slice`, `check-slice`, `check-pr`, `check-handoff`, `new-handoff`,
-`cleanup-slice`, `check-scope`, and `refresh-active-slices`. Do not document
-newer namespace aliases unless they appear in `node bin/create-quiver.js --help`
+Current public CLI commands include canonical namespaces such as
+`slice start`, `slice check`, `slice pr`, `slice scope`, `slice cleanup`,
+`slice refresh-active`, `handoff check`, and `handoff new`. Legacy workflow
+aliases such as `start-slice`, `check-slice`, `check-pr`, `check-handoff`,
+`new-handoff`, `cleanup-slice`, `check-scope`, and `refresh-active-slices`
+remain available for backward compatibility and warn on stderr. Do not document
+unsupported command aliases unless they appear in `node bin/create-quiver.js --help`
 on the branch you are changing.
 
 ## Validation Expectations

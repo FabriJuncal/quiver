@@ -214,14 +214,15 @@ function resolveInitPackageScripts(profile, options = {}) {
     'quiver:spec:status': 'npx create-quiver spec status',
     'quiver:spec:validate': 'npx create-quiver spec validate',
     'quiver:spec:close': 'npx create-quiver spec close',
-    'quiver:start-slice': 'npx create-quiver start-slice',
-    'quiver:check-slice': 'npx create-quiver check-slice',
-    'quiver:check-pr': 'npx create-quiver check-pr',
-    'quiver:check-handoff': 'npx create-quiver check-handoff',
-    'check-handoff': 'npx create-quiver check-handoff',
-    'quiver:cleanup-slice': 'npx create-quiver cleanup-slice',
-    'quiver:check-scope': 'npx create-quiver check-scope',
-    'quiver:refresh-active-slices': 'npx create-quiver refresh-active-slices',
+    'quiver:start-slice': 'npx create-quiver slice start',
+    'quiver:check-slice': 'npx create-quiver slice check',
+    'quiver:check-pr': 'npx create-quiver slice pr',
+    'quiver:check-handoff': 'npx create-quiver handoff check',
+    'check-handoff': 'npx create-quiver handoff check',
+    'quiver:new-handoff': 'npx create-quiver handoff new',
+    'quiver:cleanup-slice': 'npx create-quiver slice cleanup',
+    'quiver:check-scope': 'npx create-quiver slice scope',
+    'quiver:refresh-active-slices': 'npx create-quiver slice refresh-active',
   };
 
   if (profile === 'full' || options.legacyScripts === true) {

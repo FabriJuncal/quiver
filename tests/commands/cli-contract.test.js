@@ -116,6 +116,8 @@ test('help output documents important public commands', () => {
     'spec status',
     'spec validate',
     'spec close',
+    'slice start|check|pr|scope|cleanup|refresh-active',
+    'handoff check|new',
     'start-slice',
     'check-slice',
     'check-pr',

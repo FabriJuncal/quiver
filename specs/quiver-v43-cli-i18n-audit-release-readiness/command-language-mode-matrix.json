@@ -241,6 +241,38 @@
         "tests/lib/evidence.test.js"
       ]
     },
+    "slice-namespace": {
+      "modes": {
+        "en_human": "pass",
+        "es_human": "pass",
+        "json": "not_supported",
+        "dry_run": "not_applicable",
+        "interactive": "not_supported",
+        "review": "not_supported",
+        "ci_no_tty": "pass",
+        "no_color": "pass"
+      },
+      "evidence": [
+        "tests/commands/slice-namespace.test.js",
+        "tests/commands/parser-contract.test.js"
+      ]
+    },
+    "handoff-namespace": {
+      "modes": {
+        "en_human": "pass",
+        "es_human": "pass",
+        "json": "not_supported",
+        "dry_run": "not_applicable",
+        "interactive": "not_supported",
+        "review": "not_supported",
+        "ci_no_tty": "pass",
+        "no_color": "pass"
+      },
+      "evidence": [
+        "tests/commands/handoff-namespace.test.js",
+        "tests/commands/parser-contract.test.js"
+      ]
+    },
     "ai-prepare-context": {
       "modes": {
         "en_human": "pass",
@@ -581,6 +613,12 @@
     { "command": "spec create --interactive", "profile": "spec-create", "critical": "pass" },
     { "command": "spec validate specs/<spec> --strict", "profile": "spec-workflow", "critical": "pass" },
     { "command": "spec start specs/<spec>", "profile": "spec-workflow", "critical": "pass" },
+    { "command": "slice start specs/<spec>/slices/<slice>/slice.json", "profile": "slice-namespace", "critical": "pass" },
+    { "command": "slice check --local specs/<spec>/slices/<slice>/slice.json", "profile": "slice-namespace", "critical": "pass" },
+    { "command": "slice pr specs/<spec>/slices/<slice>/slice.json", "profile": "slice-namespace", "critical": "pass" },
+    { "command": "slice scope specs/<spec>/slices/<slice>/slice.json", "profile": "slice-namespace", "critical": "pass" },
+    { "command": "handoff check specs/<spec>/slices/<slice>/EXECUTION_BRIEF.md", "profile": "handoff-namespace", "critical": "pass" },
+    { "command": "handoff new <spec-slug>", "profile": "handoff-namespace", "critical": "pass" },
     { "command": "plan --spec <spec>", "profile": "plan-graph-next", "critical": "pass" },
     { "command": "dashboard --spec <spec>", "profile": "dashboard-human", "critical": "pass" },
     { "command": "dashboard --section slices --spec <spec>", "profile": "dashboard-human", "critical": "pass" },

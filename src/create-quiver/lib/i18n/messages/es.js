@@ -62,6 +62,8 @@ module.exports = {
         'spec status': 'Muestra worktree, branch, estado de slice-00 y slices pendientes de una spec.',
         'spec validate': 'Valida docs de spec, slices, briefs, evidencia, estado, dependencias y rutas seguras.',
         'spec close': 'Cierra un worktree de spec mergeado y limpio, y guia la sincronizacion local.',
+        'slice start|check|pr|scope|cleanup|refresh-active': 'Namespace canonico para ciclo de vida, validacion, scope y tableros de slices.',
+        'handoff check|new': 'Namespace canonico para validar o crear artefactos de handoff.',
         'start-slice': 'Inicia trabajo en un slice y lo marca activo.',
         'check-slice': 'Valida estructura, dependencias, scope y preparacion de un slice.',
         'check-pr': 'Valida preparacion de PR para un workflow de slice/spec.',

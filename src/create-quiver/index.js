@@ -157,6 +157,8 @@ const SUPPORTED_COMMAND_MODES = new Set([
   'prepare',
   'analyze',
   'migrate',
+  'slice',
+  'handoff',
   'start-slice',
   'check-slice',
   'check-pr',
@@ -171,6 +173,39 @@ const SUPPORTED_COMMAND_MODES = new Set([
   'demo',
   'ai',
 ]);
+
+const SLICE_NAMESPACE_COMMANDS = Object.freeze({
+  start: 'start-slice',
+  check: 'check-slice',
+  pr: 'check-pr',
+  scope: 'check-scope',
+  cleanup: 'cleanup-slice',
+  'refresh-active': 'refresh-active-slices',
+});
+
+const HANDOFF_NAMESPACE_COMMANDS = Object.freeze({
+  check: 'check-handoff',
+  new: 'new-handoff',
+});
+
+const LEGACY_NAMESPACE_ALIASES = Object.freeze({
+  'start-slice': 'slice start',
+  'check-slice': 'slice check',
+  'check-pr': 'slice pr',
+  'check-scope': 'slice scope',
+  'cleanup-slice': 'slice cleanup',
+  'refresh-active-slices': 'slice refresh-active',
+  'check-handoff': 'handoff check',
+  'new-handoff': 'handoff new',
+});
+
+function legacyNamespaceAliasFor(mode) {
+  return LEGACY_NAMESPACE_ALIASES[mode] || '';
+}
+
+function formatLegacyNamespaceWarning(mode, canonicalCommand) {
+  return `create-quiver: ${mode} is a legacy alias; use npx create-quiver ${canonicalCommand}.`;
+}
 
 const SUPPORTED_AI_COMMANDS = new Set([
   'active-slice',
@@ -280,6 +315,8 @@ const COMMAND_HELP_GROUPS = [
       ['spec status', 'Show spec worktree, branch, slice-00 state, and pending slices.'],
       ['spec validate', 'Validate spec docs, slices, briefs, evidence, status, dependencies, and safe paths.'],
       ['spec close', 'Close a merged clean spec worktree and guide local sync.'],
+      ['slice start|check|pr|scope|cleanup|refresh-active', 'Canonical namespace for slice lifecycle, validation, scope, and board commands.'],
+      ['handoff check|new', 'Canonical namespace for validating or scaffolding handoff artifacts.'],
       ['start-slice', 'Start work on one slice and mark it active.'],
       ['check-slice', 'Validate slice structure, dependencies, scope, and readiness.'],
       ['check-pr', 'Validate PR readiness for a slice/spec workflow.'],
@@ -368,6 +405,8 @@ function printUsage(language = DEFAULT_LANGUAGE) {
   npx create-quiver spec status <spec-dir>
   npx create-quiver spec validate <spec-dir>
   npx create-quiver spec close <spec-dir>
+  npx create-quiver slice <start|check|pr|scope|cleanup|refresh-active> [options]
+  npx create-quiver handoff <check|new> [options]
   npx create-quiver evidence <run|list|show> [options]
   npx create-quiver demo create spec-viewer [options]
 
@@ -501,6 +540,8 @@ ${helpText(help, 'headings', 'examples', 'Examples:')}
   cd ./my-project && npx create-quiver spec status specs/my-project
   cd ./my-project && npx create-quiver spec validate specs/my-project
   cd ./my-project && npx create-quiver spec close specs/my-project --dry-run
+  cd ./my-project && npx create-quiver slice check --local specs/my-project/slices/slice-01/slice.json
+  cd ./my-project && npx create-quiver handoff check specs/my-project/slices/slice-01/EXECUTION_BRIEF.md
   cd ./my-project && npx create-quiver evidence run -- npm test
   cd ./my-project && npx create-quiver demo create spec-viewer --dry-run
   node bin/create-quiver.js doctor --dir ./my-project
@@ -586,6 +627,9 @@ function parseArgs(argv, options = {}) {
     initLegacyScripts: false,
     initMinimal: false,
     specCommand: '',
+    sliceCommand: '',
+    handoffCommand: '',
+    legacyAliasCommand: '',
     demoCommand: '',
     demoName: '',
     evidenceCommand: '',
@@ -598,10 +642,17 @@ function parseArgs(argv, options = {}) {
   const args = [...argv];
   if (SUPPORTED_COMMAND_MODES.has(args[0])) {
     result.mode = args[0];
+    result.legacyAliasCommand = legacyNamespaceAliasFor(result.mode);
     result.explicitInit = args[0] === 'init';
     args.shift();
     if (result.mode === 'spec') {
       result.specCommand = args.shift() || '';
+    }
+    if (result.mode === 'slice') {
+      result.sliceCommand = args.shift() || '';
+    }
+    if (result.mode === 'handoff') {
+      result.handoffCommand = args.shift() || '';
     }
     if (result.mode === 'evidence') {
       result.evidenceCommand = args.shift() || '';
@@ -621,9 +672,11 @@ function parseArgs(argv, options = {}) {
     args.shift();
   } else if (args[0] === '--check-handoff') {
     result.mode = 'check-handoff';
+    result.legacyAliasCommand = legacyNamespaceAliasFor(result.mode);
     args.shift();
   } else if (args[0] === '--new-handoff') {
     result.mode = 'new-handoff';
+    result.legacyAliasCommand = legacyNamespaceAliasFor(result.mode);
     args.shift();
   } else if (args[0] && !args[0].startsWith('-')) {
     throw new Error(formatError(unsupportedCommandMessage(args[0])));
@@ -674,11 +727,13 @@ function parseArgs(argv, options = {}) {
 
     if (arg === '--check-handoff') {
       result.mode = 'check-handoff';
+      result.legacyAliasCommand = legacyNamespaceAliasFor(result.mode);
       continue;
     }
 
     if (arg === '--new-handoff') {
       result.mode = 'new-handoff';
+      result.legacyAliasCommand = legacyNamespaceAliasFor(result.mode);
       continue;
     }
 
@@ -1258,6 +1313,38 @@ function parseArgs(argv, options = {}) {
   } else if (result.mode === 'refresh-active-slices') {
     if (positional.length > 0) {
       throw new Error(formatError('refresh-active-slices does not accept positional arguments'));
+    }
+  } else if (result.mode === 'slice') {
+    if (!result.sliceCommand && positional.length > 0) {
+      result.sliceCommand = positional.shift();
+    }
+    const mappedMode = SLICE_NAMESPACE_COMMANDS[result.sliceCommand];
+    if (!mappedMode) {
+      throw new Error(formatError(`unsupported slice subcommand: ${result.sliceCommand || '(missing)'}. Supported tasks: start, check, pr, scope, cleanup, refresh-active`));
+    }
+    result.mode = mappedMode;
+    if (mappedMode === 'refresh-active-slices') {
+      if (positional.length > 0) {
+        throw new Error(formatError('slice refresh-active does not accept positional arguments'));
+      }
+    } else {
+      result.targetDir = positional.shift() || '';
+      if (!result.targetDir) {
+        throw new Error(formatError(`slice ${result.sliceCommand} requires a slice.json path`));
+      }
+    }
+  } else if (result.mode === 'handoff') {
+    if (!result.handoffCommand && positional.length > 0) {
+      result.handoffCommand = positional.shift();
+    }
+    const mappedMode = HANDOFF_NAMESPACE_COMMANDS[result.handoffCommand];
+    if (!mappedMode) {
+      throw new Error(formatError(`unsupported handoff subcommand: ${result.handoffCommand || '(missing)'}. Supported tasks: check, new`));
+    }
+    result.mode = mappedMode;
+    result.targetDir = positional.shift() || '';
+    if (!result.targetDir) {
+      throw new Error(formatError(`handoff ${result.handoffCommand} requires ${result.handoffCommand === 'new' ? 'a spec slug' : 'a handoff or brief path'}`));
     }
   } else if (result.mode === 'spec') {
     if (!result.specCommand && positional.length > 0) {
@@ -3278,6 +3365,9 @@ async function run(argv) {
   if (!args.json) {
     for (const warning of args.languageResolution.warnings || []) {
       process.stderr.write(`${formatLanguageWarningForCli(warning, args.language)}\n`);
+    }
+    if (args.legacyAliasCommand) {
+      process.stderr.write(`${formatLegacyNamespaceWarning(args.mode, args.legacyAliasCommand)}\n`);
     }
   }
 

@@ -109,6 +109,9 @@ jobs:
           if (-not $version.version_schema_version -or -not $version.cli.version) {
             throw "create-quiver version JSON did not include version schema metadata"
           }
+          node .\bin\create-quiver.js slice check --local specs\quiver-v51-cli-ergonomics-automation-contracts\slices\slice-00-cli-contract-baseline\slice.json
+          node .\bin\create-quiver.js handoff check specs\quiver-v51-cli-ergonomics-automation-contracts\slices\slice-06-namespace-compatibility-windows-scripts\EXECUTION_BRIEF.md
+          npm run quiver:check-handoff -- specs\quiver-v51-cli-ergonomics-automation-contracts\slices\slice-06-namespace-compatibility-windows-scripts\EXECUTION_BRIEF.md
           npm run test:ci -- tests\lib\paths.test.js
 
       - name: Run tiered pack smoke
