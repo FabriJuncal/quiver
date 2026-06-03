@@ -13,11 +13,16 @@
   },
   "files": [
     "docs/reference/commands.md",
-    "scripts/**",
+    "scripts/ci/check-command-reference.js",
     "package.json",
-    "package-lock.json",
-    "tests/**",
-    "specs/quiver-v52-schema-docs-release-hygiene/**"
+    "tests/docs/command-reference.test.js",
+    "specs/quiver-v52-schema-docs-release-hygiene/SPEC.md",
+    "specs/quiver-v52-schema-docs-release-hygiene/spec.md",
+    "specs/quiver-v52-schema-docs-release-hygiene/STATUS.md",
+    "specs/quiver-v52-schema-docs-release-hygiene/EVIDENCE_REPORT.md",
+    "specs/quiver-v52-schema-docs-release-hygiene/slices/slice-02-generated-cli-reference/CLOSURE_BRIEF.md",
+    "specs/quiver-v52-schema-docs-release-hygiene/slices/slice-02-generated-cli-reference/slice.json",
+    "specs/quiver-v52-schema-docs-release-hygiene/slices/slice-02-generated-cli-reference/pr.md"
   ],
   "expected_read_paths": [
     "src/create-quiver/index.js",
@@ -27,11 +32,16 @@
   ],
   "allowed_write_paths": [
     "docs/reference/commands.md",
-    "scripts/**",
+    "scripts/ci/check-command-reference.js",
     "package.json",
-    "package-lock.json",
-    "tests/**",
-    "specs/quiver-v52-schema-docs-release-hygiene/**"
+    "tests/docs/command-reference.test.js",
+    "specs/quiver-v52-schema-docs-release-hygiene/SPEC.md",
+    "specs/quiver-v52-schema-docs-release-hygiene/spec.md",
+    "specs/quiver-v52-schema-docs-release-hygiene/STATUS.md",
+    "specs/quiver-v52-schema-docs-release-hygiene/EVIDENCE_REPORT.md",
+    "specs/quiver-v52-schema-docs-release-hygiene/slices/slice-02-generated-cli-reference/CLOSURE_BRIEF.md",
+    "specs/quiver-v52-schema-docs-release-hygiene/slices/slice-02-generated-cli-reference/slice.json",
+    "specs/quiver-v52-schema-docs-release-hygiene/slices/slice-02-generated-cli-reference/pr.md"
   ],
   "depends_on": [
     "slice-00-schema-docs-release-baseline"
@@ -56,6 +66,10 @@
   ],
   "tests": [
     "npm ci",
+    "npm run docs:commands:write",
+    "npm run docs:commands:check",
+    "node --test tests/docs/command-reference.test.js",
+    "npm run docs:check",
     "node --test",
     "node bin/create-quiver.js --help",
     "git diff --check"
@@ -64,6 +78,9 @@
     "Prefer a --check mode so CI can fail on drift without rewriting files."
   ],
   "estimated_hours": 6,
-  "status": "planned",
-  "blocked_reason": null
+  "status": "completed",
+  "blocked_reason": null,
+  "actual_hours": 4,
+  "started_at": "2026-06-03T00:45:00-0300",
+  "completed_at": "2026-06-03T01:00:00-0300"
 }
