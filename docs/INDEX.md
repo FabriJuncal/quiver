@@ -10,6 +10,7 @@ Use this file as the first documentation map before planning, implementing, revi
 - **AI guide:** [`../README_FOR_AI.md`](../README_FOR_AI.md)
 - **CLI UX standards:** [`./CLI_UX_GUIDE.md`](./CLI_UX_GUIDE.md)
 - **Command reference:** [`./reference/commands.md`](./reference/commands.md)
+- **Slice JSON schema:** [`./reference/slice-schema.md`](./reference/slice-schema.md)
 - **Troubleshooting:** [`./TROUBLESHOOTING.md`](./TROUBLESHOOTING.md)
 - **Git and PR workflow:** [`./GITFLOW_PR_GUIDE.md`](./GITFLOW_PR_GUIDE.md)
 

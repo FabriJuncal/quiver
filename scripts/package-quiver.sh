@@ -93,6 +93,8 @@ required_paths=(
   "package/.github/ISSUE_TEMPLATE/feature_request.md"
   "package/.github/workflows/ci.yml"
   "package/docs/INDEX.md.template"
+  "package/docs/schema/slice.schema.json"
+  "package/docs/reference/slice-schema.md"
   "package/docs/DOCUMENTATION_GUIDE.md.template"
   "package/docs/WORKFLOW.md.template"
   "package/docs/SUPPORT_MATRIX.md.template"

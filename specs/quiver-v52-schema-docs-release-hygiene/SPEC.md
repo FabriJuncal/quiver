@@ -100,7 +100,7 @@ Reduce documentation and release drift without over-automating risky publish ste
 
 ## Open Decisions
 
-- Exact source of truth for `slice.json` schema.
+- Exact source of truth for `slice.json` schema: resolved in `slice-01`. The published schema is maintained manually from current runtime validation and generation behavior in `src/create-quiver/commands/spec.js`, `src/create-quiver/lib/slice.js`, `src/create-quiver/lib/readiness.js`, and `src/create-quiver/lib/ai/spec-generator.js`, then checked with `npm run schema:slice:check`.
 - Name and implementation of docs generation script.
 - Whether generated command reference lives in blocks or a separate file.
 - Changelog process details.

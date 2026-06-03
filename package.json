@@ -17,6 +17,7 @@
     "docs:lint": "node scripts/ci/check-docs-markdown.js",
     "docs:links": "node scripts/ci/check-doc-links.js",
     "docs:check": "npm run docs:lint && npm run docs:links",
+    "schema:slice:check": "node scripts/ci/check-slice-schema.js",
     "check:slice": "bash tools/scripts/check-slice-readiness.sh",
     "check:pr": "bash tools/scripts/check-pr-readiness.sh",
     "start:slice": "bash tools/scripts/start-slice.sh",
@@ -74,6 +75,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "ajv": "^8.18.0",
     "markdown-link-check": "^3.14.2",
     "markdownlint-cli2": "^0.22.1"
   }

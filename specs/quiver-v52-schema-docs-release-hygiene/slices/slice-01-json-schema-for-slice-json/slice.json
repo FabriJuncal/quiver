@@ -12,29 +12,55 @@
     "branch_name": "feature/QUIVER-52-01-v52-slice-json-schema"
   },
   "files": [
+    "docs/INDEX.md",
+    "docs/reference/slice-schema.md",
     "docs/schema/slice.schema.json",
     "package.json",
     "package-lock.json",
-    "scripts/**",
-    "tests/**",
-    "docs/**",
-    "specs/quiver-v52-schema-docs-release-hygiene/**"
+    "scripts/ci/check-slice-schema.js",
+    "scripts/package-quiver.sh",
+    "tests/fixtures/slice-schema/invalid/empty-files.json",
+    "tests/fixtures/slice-schema/invalid/missing-git-field.json",
+    "tests/fixtures/slice-schema/invalid/missing-slice-id.json",
+    "tests/fixtures/slice-schema/invalid/unsafe-allowed-write-path.json",
+    "tests/schema/slice-schema.test.js",
+    "specs/quiver-v52-schema-docs-release-hygiene/SPEC.md",
+    "specs/quiver-v52-schema-docs-release-hygiene/STATUS.md",
+    "specs/quiver-v52-schema-docs-release-hygiene/EVIDENCE_REPORT.md",
+    "specs/quiver-v52-schema-docs-release-hygiene/slices/slice-01-json-schema-for-slice-json/CLOSURE_BRIEF.md",
+    "specs/quiver-v52-schema-docs-release-hygiene/slices/slice-01-json-schema-for-slice-json/slice.json",
+    "specs/quiver-v52-schema-docs-release-hygiene/slices/slice-01-json-schema-for-slice-json/pr.md"
   ],
   "expected_read_paths": [
+    "package.json",
+    "scripts/package-quiver.sh",
     "src/create-quiver/lib/slice.js",
     "src/create-quiver/lib/slice-graph.js",
     "src/create-quiver/commands/spec.js",
+    "src/create-quiver/lib/readiness.js",
+    "src/create-quiver/lib/ai/spec-generator.js",
     "specs/**/slices/**/slice.json",
     "tests/**"
   ],
   "allowed_write_paths": [
+    "docs/INDEX.md",
+    "docs/reference/slice-schema.md",
     "docs/schema/**",
     "package.json",
     "package-lock.json",
-    "scripts/**",
-    "tests/**",
-    "docs/**",
-    "specs/quiver-v52-schema-docs-release-hygiene/**"
+    "scripts/ci/check-slice-schema.js",
+    "scripts/package-quiver.sh",
+    "tests/fixtures/slice-schema/invalid/empty-files.json",
+    "tests/fixtures/slice-schema/invalid/missing-git-field.json",
+    "tests/fixtures/slice-schema/invalid/missing-slice-id.json",
+    "tests/fixtures/slice-schema/invalid/unsafe-allowed-write-path.json",
+    "tests/schema/slice-schema.test.js",
+    "specs/quiver-v52-schema-docs-release-hygiene/SPEC.md",
+    "specs/quiver-v52-schema-docs-release-hygiene/STATUS.md",
+    "specs/quiver-v52-schema-docs-release-hygiene/EVIDENCE_REPORT.md",
+    "specs/quiver-v52-schema-docs-release-hygiene/slices/slice-01-json-schema-for-slice-json/CLOSURE_BRIEF.md",
+    "specs/quiver-v52-schema-docs-release-hygiene/slices/slice-01-json-schema-for-slice-json/slice.json",
+    "specs/quiver-v52-schema-docs-release-hygiene/slices/slice-01-json-schema-for-slice-json/pr.md"
   ],
   "depends_on": [
     "slice-00-schema-docs-release-baseline"
@@ -61,6 +87,9 @@
   ],
   "tests": [
     "npm ci",
+    "npm run schema:slice:check",
+    "node --test tests/schema/slice-schema.test.js",
+    "npm run docs:check",
     "node --test",
     "npm run package:quiver",
     "git diff --check"
@@ -69,6 +98,9 @@
     "If adding schema tooling dependencies, commit package-lock changes."
   ],
   "estimated_hours": 6,
-  "status": "planned",
-  "blocked_reason": null
+  "status": "completed",
+  "blocked_reason": null,
+  "actual_hours": 5,
+  "started_at": "2026-06-03T00:00:00-0300",
+  "completed_at": "2026-06-03T00:25:00-0300"
 }

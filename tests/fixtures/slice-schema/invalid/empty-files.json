@@ -1,0 +1,29 @@
+{
+  "slice_id": "slice-01-empty-files",
+  "ticket": "TEST-01",
+  "type": "feature",
+  "title": "Empty files",
+  "objective": "Exercise invalid empty files.",
+  "description": "Files cannot be empty for executable slice validation.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "empty-files",
+    "branch_name": "feature/TEST-01-empty-files"
+  },
+  "must": [
+    "Have files"
+  ],
+  "not_included": [
+    "Runtime change"
+  ],
+  "acceptance": [
+    "Rejected by schema"
+  ],
+  "files": [],
+  "tests": [
+    "node --test"
+  ],
+  "estimated_hours": 1,
+  "status": "planned"
+}

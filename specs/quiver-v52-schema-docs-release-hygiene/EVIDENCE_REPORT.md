@@ -34,3 +34,20 @@
 - Runtime code was not modified for this baseline slice.
 - `git diff --check`: passed.
 - `node bin/create-quiver.js spec validate specs/quiver-v52-schema-docs-release-hygiene`: passed.
+
+## slice-01-json-schema-for-slice-json
+
+- `docs/schema/slice.schema.json`: adds a public JSON Schema Draft-07 contract for executable `slice.json` files.
+- Source-of-truth decision: schema is maintained manually from current runtime validation and generation behavior in `src/create-quiver/commands/spec.js`, `src/create-quiver/lib/slice.js`, `src/create-quiver/lib/readiness.js`, and `src/create-quiver/lib/ai/spec-generator.js`.
+- `scripts/ci/check-slice-schema.js`: adds an AJV-backed validation script that compiles the schema, validates runtime-valid real fixtures, skips placeholder templates and one historical non-runtime fixture, and asserts representative invalid fixtures fail.
+- `tests/schema/slice-schema.test.js` and `tests/fixtures/slice-schema/invalid/*.json`: cover schema declaration, real fixture validation, and invalid fixture rejection.
+- `docs/reference/slice-schema.md` and `docs/INDEX.md`: document schema usage, source-of-truth boundaries, and the local check command.
+- `package.json` and `package-lock.json`: add `schema:slice:check` and direct dev dependency `ajv`.
+- `scripts/package-quiver.sh`: requires the public schema and schema reference doc in package smoke.
+- `npm run schema:slice:check`: passed; 266 runtime-valid fixtures validated, 1 historical/non-runtime fixture skipped, 4 invalid fixtures rejected.
+- `node --test tests/schema/slice-schema.test.js`: passed, 2 tests.
+- `npm run docs:check`: passed, 21 files in docs scope.
+- `npm run package:quiver`: passed and required `package/docs/schema/slice.schema.json` plus `package/docs/reference/slice-schema.md`.
+- `npm ci`: passed on a clean dependency install.
+- `node --test`: passed, 648 tests.
+- `git diff --check`: passed.

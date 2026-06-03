@@ -1,0 +1,221 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://quiver.dev/schemas/slice.schema.json",
+  "title": "Quiver slice.json",
+  "description": "Schema for executable Quiver slice contracts. It is derived from current runtime validation in src/create-quiver/commands/spec.js, src/create-quiver/lib/slice.js, src/create-quiver/lib/readiness.js, and generated slice output in src/create-quiver/lib/ai/spec-generator.js.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "slice_id",
+    "ticket",
+    "type",
+    "title",
+    "objective",
+    "description",
+    "git",
+    "must",
+    "not_included",
+    "acceptance",
+    "files",
+    "tests",
+    "estimated_hours",
+    "status"
+  ],
+  "properties": {
+    "slice_id": {
+      "type": "string",
+      "pattern": "^slice-[A-Za-z0-9][A-Za-z0-9._-]*$",
+      "description": "Directory-local slice id. Runtime spec validation also requires this value to match the parent slice directory name."
+    },
+    "ticket": {
+      "$ref": "#/definitions/nonEmptyString"
+    },
+    "type": {
+      "$ref": "#/definitions/nonEmptyString"
+    },
+    "title": {
+      "$ref": "#/definitions/nonEmptyString"
+    },
+    "objective": {
+      "$ref": "#/definitions/nonEmptyString"
+    },
+    "description": {
+      "$ref": "#/definitions/nonEmptyString"
+    },
+    "git": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "branch_type",
+        "base_branch",
+        "branch_slug",
+        "branch_name"
+      ],
+      "properties": {
+        "branch_type": {
+          "$ref": "#/definitions/gitRefPart",
+          "description": "Current slice start runtime supports feature, bugfix, and hotfix; historical slices may use other non-empty types."
+        },
+        "base_branch": {
+          "$ref": "#/definitions/gitRefPart"
+        },
+        "branch_slug": {
+          "$ref": "#/definitions/gitRefPart"
+        },
+        "branch_name": {
+          "$ref": "#/definitions/gitRef"
+        }
+      }
+    },
+    "ui_scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "routes": {
+          "$ref": "#/definitions/stringList"
+        },
+        "components": {
+          "$ref": "#/definitions/stringList"
+        },
+        "layouts": {
+          "$ref": "#/definitions/stringList"
+        }
+      }
+    },
+    "must": {
+      "$ref": "#/definitions/stringList"
+    },
+    "not_included": {
+      "$ref": "#/definitions/stringList"
+    },
+    "acceptance": {
+      "$ref": "#/definitions/stringList"
+    },
+    "files": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/pathList"
+        },
+        {
+          "type": "array",
+          "minItems": 1
+        }
+      ],
+      "description": "Legacy and still-required write scope. Current check-slice local validation requires this array to exist."
+    },
+    "expected_read_paths": {
+      "$ref": "#/definitions/pathList"
+    },
+    "allowed_write_paths": {
+      "$ref": "#/definitions/pathList",
+      "description": "Preferred write scope for graph and executor tooling. When present and non-empty, runtime scope logic prefers this over files."
+    },
+    "tests": {
+      "$ref": "#/definitions/stringList"
+    },
+    "documentation": {
+      "$ref": "#/definitions/pathList"
+    },
+    "dependencies": {
+      "$ref": "#/definitions/stringList",
+      "description": "Legacy dependency field used by older slice graph input."
+    },
+    "depends_on": {
+      "$ref": "#/definitions/stringList",
+      "description": "Preferred dependency field. Runtime graph validation normalizes bare slice ids and full spec/slice refs."
+    },
+    "parallel_safe": {
+      "type": "string",
+      "enum": [
+        "after_dependencies",
+        "conditional",
+        "maybe",
+        "never",
+        "no",
+        "yes"
+      ]
+    },
+    "parallel_safe_reason": {
+      "$ref": "#/definitions/nonEmptyString"
+    },
+    "validation_hints": {
+      "$ref": "#/definitions/stringList"
+    },
+    "assumptions": {
+      "$ref": "#/definitions/stringList"
+    },
+    "estimated_hours": {
+      "type": "number",
+      "minimum": 0
+    },
+    "actual_hours": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "minimum": 0
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "blocked",
+        "cancelled",
+        "completed",
+        "draft",
+        "planned",
+        "ready"
+      ]
+    },
+    "blocked_reason": {
+      "$ref": "#/definitions/nullableString"
+    },
+    "ready_at": {
+      "$ref": "#/definitions/nullableString"
+    },
+    "started_at": {
+      "$ref": "#/definitions/nullableString"
+    },
+    "completed_at": {
+      "$ref": "#/definitions/nullableString"
+    }
+  },
+  "definitions": {
+    "nonEmptyString": {
+      "type": "string",
+      "pattern": "\\S"
+    },
+    "nullableString": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "stringList": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/nonEmptyString"
+      },
+      "uniqueItems": true
+    },
+    "projectRelativePath": {
+      "type": "string",
+      "pattern": "^(?!file:)(?!/)(?![A-Za-z]:[\\\\/])(?!.*(?:^|[\\\\/])\\.\\.(?:[\\\\/]|$)).*\\S.*$",
+      "description": "Project-relative path without file URLs, absolute paths, drive roots, or traversal segments. Runtime normalizes Windows separators to POSIX."
+    },
+    "pathList": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/projectRelativePath"
+      },
+      "uniqueItems": true
+    },
+    "gitRefPart": {
+      "type": "string",
+      "pattern": "^(?!/)(?!.*\\.\\.)(?!.*\\\\)(?!.*//)(?!.*\\/$)[A-Za-z0-9._/-]+$"
+    },
+    "gitRef": {
+      "type": "string",
+      "pattern": "^(?!/)(?!.*\\.\\.)(?!.*\\\\)(?!.*//)(?!.*\\/$)[A-Za-z0-9._/-]+$"
+    }
+  }
+}
