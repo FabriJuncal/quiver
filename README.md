@@ -281,6 +281,9 @@ npm run package:quiver
 Validación de release:
 
 ```bash
+npm run changelog:check
+npm run docs:check
+npm run schema:slice:check
 npm run smoke:create-quiver
 npm run smoke:doctor-fixtures
 npm run smoke:guided-workflow

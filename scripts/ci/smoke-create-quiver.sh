@@ -469,9 +469,9 @@ assert_file "$demo_target/specs/quiver-spec-viewer/slices/slice-01-static-spec-v
 (
   cd "$demo_target"
   npm run validate >/dev/null
-  node "$cli" evidence run --output "$temp_root/spec-viewer-demo-evidence.md" -- npm run validate >/dev/null
+  node "$cli" evidence run --output ".quiver/evidence/spec-viewer-demo-evidence.md" -- npm run validate >/dev/null
 )
-assert_file "$temp_root/spec-viewer-demo-evidence.md"
+assert_file "$demo_target/.quiver/evidence/spec-viewer-demo-evidence.md"
 
 printf 'Build AI orchestration dry-run smoke.\n' > "$new_target/requirements.md"
 ai_onboard_dry_run="$(cd "$new_target" && node "$cli" ai onboard --dry-run)"

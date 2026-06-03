@@ -158,5 +158,23 @@ scripts. It excludes tests, examples, old historical specs, CI-only scripts,
 local PDFs, local AI state, worktrees, env files, npm credentials, and other
 developer-only artifacts.
 
+`npm run package:quiver` also installs the generated tarball in a temporary
+project and verifies the installed CLI with `--version`, `--help`, and
+`init --dry-run`. This catches package-boundary drift that local source tests
+cannot catch.
+
 If a contribution changes what should be published, update the package smoke and
 package-safety expectations in the same slice.
+
+## Changelog and Release Hygiene
+
+- Every release-impacting slice must update `CHANGELOG.md` under
+  `[Unreleased]`.
+- Keep entries categorized with headings such as `Added`, `Changed`, or `Fixed`.
+- Run `npm run changelog:check` before opening a release or package-boundary PR.
+- Run `npm run release:quiver` as a dry-run gate before release. It validates
+  changelog, docs, schema, installer smoke, package contents, and installed CLI
+  behavior.
+- Publishing remains manual by default. The release script only honors
+  `--publish` or `--publish-current` when the release is explicitly authorized
+  with `QUIVER_ALLOW_NPM_PUBLISH=1`.

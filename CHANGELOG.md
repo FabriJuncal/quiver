@@ -6,6 +6,10 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- v52 schema/docs/release hygiene under `specs/quiver-v52-schema-docs-release-hygiene/`.
+- Public `slice.json` JSON Schema docs and schema validation with `npm run schema:slice:check`.
+- Generated CLI command reference drift checks with `npm run docs:commands:write` and `npm run docs:commands:check`.
+- Changelog validation with `npm run changelog:check`.
 - Implemented v31 AI model catalog and guided agent setup under `specs/quiver-v31-ai-model-catalog-agent-selection/`.
 - Local known-model catalog for Codex, Claude, and Gemini, with role metadata, alias normalization, and `ai models list`.
 - Guided provider/model selection for `ai agent set <role>`, plus `ai agent doctor` and `ai agent repair --dry-run` for legacy or invalid profiles.
@@ -17,6 +21,10 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
+- `npm run docs:check` now includes generated CLI command reference drift detection.
+- Package smoke now installs the generated tarball and verifies the installed CLI with `--version`, `--help`, and `init --dry-run`.
+- Release dry-runs now require changelog, docs, schema, installer, package, and installed CLI smoke gates before publishing guidance.
+- Release publishing remains explicitly guarded and requires `QUIVER_ALLOW_NPM_PUBLISH=1` when using publish flags.
 - Agent profiles now distinguish the technical `model` id passed to provider CLIs from the human `displayName` shown in Quiver output.
 - Live AI commands now normalize safe CLI model aliases, block persisted display aliases before provider execution, and surface invalid-model provider failures more clearly.
 - Public docs, generated templates, CLI help, and smoke checks now describe model catalog entries as known by Quiver, not guaranteed account availability.

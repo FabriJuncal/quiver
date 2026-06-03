@@ -76,7 +76,7 @@ Reduce documentation and release drift without over-automating risky publish ste
 | slice-00 | Schema/docs/release baseline | completed | none |
 | slice-01 | JSON Schema for slice.json | completed | slice-00 |
 | slice-02 | Generated CLI reference | completed | slice-00 |
-| slice-03 | Changelog, package, and release smoke hygiene | planned | slice-01, slice-02 |
+| slice-03 | Changelog, package, and release smoke hygiene | completed | slice-01, slice-02 |
 
 ## Guardrails
 
@@ -103,5 +103,5 @@ Reduce documentation and release drift without over-automating risky publish ste
 - Exact source of truth for `slice.json` schema: resolved in `slice-01`. The published schema is maintained manually from current runtime validation and generation behavior in `src/create-quiver/commands/spec.js`, `src/create-quiver/lib/slice.js`, `src/create-quiver/lib/readiness.js`, and `src/create-quiver/lib/ai/spec-generator.js`, then checked with `npm run schema:slice:check`.
 - Command reference generation script: resolved in `slice-02` with `scripts/ci/check-command-reference.js`, `npm run docs:commands:write`, and `npm run docs:commands:check`.
 - Generated command reference location: resolved in `slice-02` with a protected block inside `docs/reference/commands.md`, preserving curated content outside markers.
-- Changelog process details.
-- Which new files must be published to npm.
+- Changelog process details: resolved in `slice-03` with `[Unreleased]` guidance in `CONTRIBUTING.md`, entries in `CHANGELOG.md`, and `npm run changelog:check`.
+- Package publication boundary for new files: resolved in `slice-03`; public docs/schema/command reference stay packaged, CI/test/local audit/tool-state files stay excluded, and `npm run package:quiver` validates installed tarball behavior.

@@ -69,3 +69,27 @@
 - `git diff --check`: passed.
 - `node bin/create-quiver.js spec validate specs/quiver-v52-schema-docs-release-hygiene`: passed.
 - `node bin/create-quiver.js check-slice specs/quiver-v52-schema-docs-release-hygiene/slices/slice-02-generated-cli-reference/slice.json --local --gate validation`: passed.
+
+## slice-03-changelog-package-release-smoke-hygiene
+
+- `CHANGELOG.md`: documents v52 schema/docs/release hygiene work under `[Unreleased]`.
+- `scripts/ci/check-changelog.js`: adds a no-dependency changelog gate requiring a categorized `[Unreleased]` entry.
+- `tests/ci/changelog.test.js`: covers `[Unreleased]` extraction, categorized entries, and failure cases.
+- `scripts/package-quiver.sh`: now requires `docs/reference/commands.md`, rejects local audit files, PDFs, tests, examples, worktree/tool state, credentials, key-like files, and CI-only scripts, installs the generated tarball, and verifies installed `--version`, `--help`, and `init --dry-run`.
+- `.npmignore`: explicitly excludes local audit inputs, generated PDFs, key-like files, SSH folders, and local noise.
+- `scripts/release-quiver.sh`: dry-run now runs changelog, docs, schema, installer, package, and installed CLI gates; publish flags require `QUIVER_ALLOW_NPM_PUBLISH=1`.
+- `.github/workflows/ci.yml`: docs job now runs `npm run docs:check`, including generated command-reference drift detection.
+- `CONTRIBUTING.md` and `README.md`: document package boundary, changelog, release dry-run, and publish guard expectations.
+- `npm run changelog:check`: passed; 22 `[Unreleased]` entries detected.
+- `node --test tests/ci/changelog.test.js`: passed, 3 tests.
+- `bash -n scripts/package-quiver.sh scripts/release-quiver.sh`: passed.
+- `shellcheck scripts/package-quiver.sh scripts/release-quiver.sh`: passed.
+- `npm run package:quiver`: passed; generated `create-quiver-0.15.3.tgz` and installed CLI smoke passed.
+- `npm run docs:check`: passed, including generated CLI reference drift check.
+- `npm run schema:slice:check`: passed; 266 runtime-valid fixtures validated, 1 historical/non-runtime fixture skipped, 4 invalid fixtures rejected.
+- `npm ci`: passed; 165 packages installed/audited, 0 vulnerabilities reported.
+- `node --test`: passed, 654 tests.
+- `git diff --check`: passed.
+- `node bin/create-quiver.js spec validate specs/quiver-v52-schema-docs-release-hygiene`: passed.
+- `node bin/create-quiver.js check-slice specs/quiver-v52-schema-docs-release-hygiene/slices/slice-03-changelog-package-release-smoke-hygiene/slice.json --local --gate validation`: passed.
+- `npm run release:quiver`: passed; changelog, docs, schema, installer smoke, package smoke, and installed CLI smoke passed before printing manual publish guidance.

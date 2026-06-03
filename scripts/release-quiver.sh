@@ -11,12 +11,15 @@ usage() {
 Usage: scripts/release-quiver.sh [patch|minor|major|x.y.z] [--publish | --publish-current]
 
 By default the script performs a release dry run:
+  - validates changelog, docs, and schema gates
   - validates the installer smoke
-  - validates the package artifact
+  - validates the package artifact and installed CLI smoke
   - prints the versioning and publish commands to run next
 
-Pass --publish to run npm version and npm publish after the smoke checks pass.
-Pass --publish-current to publish the current package version without forcing a patch bump.
+Publishing remains manually guarded. Pass --publish only with
+QUIVER_ALLOW_NPM_PUBLISH=1 to run npm version and npm publish after the smoke
+checks pass. Pass --publish-current with the same environment guard to publish
+the current package version without forcing a patch bump.
 EOF
 }
 
@@ -50,6 +53,14 @@ if [[ -n "$(git status --porcelain)" ]]; then
   exit 1
 fi
 
+if [[ "$publish" == "true" && "${QUIVER_ALLOW_NPM_PUBLISH:-}" != "1" ]]; then
+  echo "FAIL: publishing requires QUIVER_ALLOW_NPM_PUBLISH=1. Run the dry-run first and publish manually unless this release is explicitly authorized." >&2
+  exit 1
+fi
+
+npm run changelog:check
+npm run docs:check
+npm run schema:slice:check
 bash scripts/ci/smoke-create-quiver.sh
 bash scripts/package-quiver.sh
 
