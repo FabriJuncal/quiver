@@ -6,10 +6,17 @@
 .env
 .env.*
 .npmrc
+.ssh
+ssh
 .DS_Store
 WORKTREE_CONTEXT.md
 npm-debug.log*
+*.pem
+*.key
 *.pdf
+CLI_ANALYSIS.md
+REQUERIMIENTOS_DERIVADOS_DE_AUDITORIA.md
+Documentation_Report.pdf
 tests
 examples
 quiver-spec-viewer

@@ -6,6 +6,9 @@ repo_root="$(git rev-parse --show-toplevel)"
 temp_root="$(mktemp -d "${TMPDIR:-/tmp}/quiver-pack.XXXXXX")"
 pack_dir="$temp_root/pack"
 npm_cache="$temp_root/npm-cache"
+install_root="$temp_root/install-root"
+dry_run_target="$temp_root/dry-run-project"
+cli_version="$(node -p 'require(process.argv[1]).version' "$repo_root/package.json")"
 
 cleanup() {
   rm -rf "$temp_root"
@@ -15,6 +18,7 @@ trap cleanup EXIT
 
 mkdir -p "$pack_dir"
 mkdir -p "$npm_cache"
+mkdir -p "$install_root"
 
 pack_json="$(
   cd "$repo_root" && npm_config_cache="$npm_cache" npm pack --json --pack-destination "$pack_dir"
@@ -68,6 +72,41 @@ require_absent() {
   fi
 }
 
+reject_forbidden_content_patterns() {
+  local path
+
+  while IFS= read -r path; do
+    case "$path" in
+      package/package-lock.json|\
+      package/CLI_ANALYSIS.md|\
+      package/REQUERIMIENTOS_DERIVADOS_DE_AUDITORIA.md|\
+      package/Documentation_Report.pdf|\
+      package/WORKTREE_CONTEXT.md|\
+      package/.DS_Store|\
+      package/*/.DS_Store|\
+      package/*.pdf|\
+      package/.env|\
+      package/.env.*|\
+      package/.npmrc|\
+      package/.npm/*|\
+      package/.ssh/*|\
+      package/ssh/*|\
+      package/*.pem|\
+      package/*.key|\
+      package/.claude/*|\
+      package/.codex/*|\
+      package/.quiver/*|\
+      package/.worktrees/*|\
+      package/tests/*|\
+      package/examples/*|\
+      package/scripts/ci/*)
+        echo "FAIL: el paquete incluye contenido fuera del contrato: $path" >&2
+        exit 1
+        ;;
+    esac
+  done <<<"$contents"
+}
+
 required_paths=(
   "package/package.json"
   "package/bin/create-quiver.js"
@@ -93,6 +132,7 @@ required_paths=(
   "package/.github/ISSUE_TEMPLATE/feature_request.md"
   "package/.github/workflows/ci.yml"
   "package/docs/INDEX.md.template"
+  "package/docs/reference/commands.md"
   "package/docs/schema/slice.schema.json"
   "package/docs/reference/slice-schema.md"
   "package/docs/DOCUMENTATION_GUIDE.md.template"
@@ -129,8 +169,16 @@ done
 
 excluded_paths=(
   "package/package-lock.json"
+  "package/CLI_ANALYSIS.md"
+  "package/REQUERIMIENTOS_DERIVADOS_DE_AUDITORIA.md"
+  "package/Documentation_Report.pdf"
+  "package/.DS_Store"
+  "package/WORKTREE_CONTEXT.md"
   "package/tests/"
   "package/examples/"
+  "package/.claude/"
+  "package/.codex/"
+  "package/.quiver/"
   "package/.worktrees/"
   "package/specs/quiver-v01/"
   "package/specs/quiver-v02-bootstrap-hardening/"
@@ -146,4 +194,34 @@ for path in "${excluded_paths[@]}"; do
   fi
 done
 
-printf 'Package smoke passed: %s\n' "$tarball_name"
+reject_forbidden_content_patterns
+
+npm_config_cache="$npm_cache" npm install --prefix "$install_root" "$tarball_path" --ignore-scripts --no-audit --no-fund >/dev/null
+installed_cli="$install_root/node_modules/create-quiver/bin/create-quiver.js"
+
+if [[ ! -f "$installed_cli" ]]; then
+  echo "FAIL: no se encontró el CLI instalado en $installed_cli" >&2
+  exit 1
+fi
+
+installed_semver="$(node "$installed_cli" --version)"
+if [[ "$installed_semver" != "$cli_version" ]]; then
+  echo "FAIL: el CLI instalado devolvió versión '$installed_semver', esperada '$cli_version'" >&2
+  exit 1
+fi
+
+installed_help="$(node "$installed_cli" --help)"
+if [[ "$installed_help" != *"version [--json]"* ]] \
+  || [[ "$installed_help" != *"spec create"* ]] \
+  || [[ "$installed_help" != *"slice start|check|pr|scope|cleanup|refresh-active"* ]]; then
+  echo "FAIL: la ayuda del CLI instalado no expone comandos públicos esperados" >&2
+  exit 1
+fi
+
+node "$installed_cli" init --dry-run --name "Package Smoke" --dir "$dry_run_target" --skip-install >/dev/null
+if [[ -e "$dry_run_target" ]]; then
+  echo "FAIL: init --dry-run del CLI instalado escribió en $dry_run_target" >&2
+  exit 1
+fi
+
+printf 'Package smoke passed: %s (installed CLI smoke passed)\n' "$tarball_name"

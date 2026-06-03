@@ -70,11 +70,8 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Run docs lint
-        run: npm run docs:lint
-
-      - name: Run docs link check
-        run: npm run docs:links
+      - name: Run docs checks
+        run: npm run docs:check
 
   cross-platform-smoke:
     strategy:

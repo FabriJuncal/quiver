@@ -12,16 +12,23 @@
     "branch_name": "feature/QUIVER-52-03-v52-release-package-hygiene"
   },
   "files": [
-    "CHANGELOG.md",
+    ".github/workflows/ci.yml",
     ".npmignore",
+    "CHANGELOG.md",
+    "CONTRIBUTING.md",
+    "README.md",
+    "package.json",
     "scripts/package-quiver.sh",
     "scripts/release-quiver.sh",
-    "scripts/ci/**",
-    "package.json",
-    "package-lock.json",
-    ".github/workflows/ci.yml",
-    "CONTRIBUTING.md",
-    "specs/quiver-v52-schema-docs-release-hygiene/**"
+    "scripts/ci/check-changelog.js",
+    "scripts/ci/smoke-create-quiver.sh",
+    "tests/ci/changelog.test.js",
+    "specs/quiver-v52-schema-docs-release-hygiene/SPEC.md",
+    "specs/quiver-v52-schema-docs-release-hygiene/STATUS.md",
+    "specs/quiver-v52-schema-docs-release-hygiene/EVIDENCE_REPORT.md",
+    "specs/quiver-v52-schema-docs-release-hygiene/slices/slice-03-changelog-package-release-smoke-hygiene/CLOSURE_BRIEF.md",
+    "specs/quiver-v52-schema-docs-release-hygiene/slices/slice-03-changelog-package-release-smoke-hygiene/slice.json",
+    "specs/quiver-v52-schema-docs-release-hygiene/slices/slice-03-changelog-package-release-smoke-hygiene/pr.md"
   ],
   "expected_read_paths": [
     "CHANGELOG.md",
@@ -32,16 +39,23 @@
     "package-lock.json"
   ],
   "allowed_write_paths": [
-    "CHANGELOG.md",
+    ".github/workflows/ci.yml",
     ".npmignore",
+    "CHANGELOG.md",
+    "CONTRIBUTING.md",
+    "README.md",
+    "package.json",
     "scripts/package-quiver.sh",
     "scripts/release-quiver.sh",
-    "scripts/ci/**",
-    "package.json",
-    "package-lock.json",
-    ".github/workflows/ci.yml",
-    "CONTRIBUTING.md",
-    "specs/quiver-v52-schema-docs-release-hygiene/**"
+    "scripts/ci/check-changelog.js",
+    "scripts/ci/smoke-create-quiver.sh",
+    "tests/ci/changelog.test.js",
+    "specs/quiver-v52-schema-docs-release-hygiene/SPEC.md",
+    "specs/quiver-v52-schema-docs-release-hygiene/STATUS.md",
+    "specs/quiver-v52-schema-docs-release-hygiene/EVIDENCE_REPORT.md",
+    "specs/quiver-v52-schema-docs-release-hygiene/slices/slice-03-changelog-package-release-smoke-hygiene/CLOSURE_BRIEF.md",
+    "specs/quiver-v52-schema-docs-release-hygiene/slices/slice-03-changelog-package-release-smoke-hygiene/slice.json",
+    "specs/quiver-v52-schema-docs-release-hygiene/slices/slice-03-changelog-package-release-smoke-hygiene/pr.md"
   ],
   "depends_on": [
     "slice-01-json-schema-for-slice-json",
@@ -69,14 +83,23 @@
   ],
   "tests": [
     "npm ci",
+    "npm run changelog:check",
+    "node --test tests/ci/changelog.test.js",
+    "bash -n scripts/package-quiver.sh scripts/release-quiver.sh",
+    "shellcheck scripts/package-quiver.sh scripts/release-quiver.sh",
+    "npm run docs:check",
     "node --test",
     "npm run package:quiver",
+    "npm run release:quiver",
     "git diff --check"
   ],
   "validation_hints": [
     "Explicitly reject audit files, PDFs, tests, worktrees, secrets, .DS_Store, and tool state from the package."
   ],
   "estimated_hours": 6,
-  "status": "planned",
-  "blocked_reason": null
+  "status": "completed",
+  "blocked_reason": null,
+  "actual_hours": 5,
+  "started_at": "2026-06-03T01:05:00-0300",
+  "completed_at": "2026-06-03T01:13:00-0300"
 }
