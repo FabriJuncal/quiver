@@ -262,6 +262,10 @@ Los perfiles de agentes separan dos datos:
 - Un CLI local de proveedor si querés que Quiver invoque IA directamente.
 
 El CLI está pensado para macOS, Linux, Windows PowerShell, Git Bash y WSL.
+En Windows PowerShell usá el CLI Node o los scripts `quiver:*` generados, por
+ejemplo `npm run quiver:check-slice -- --local specs/<spec>/slices/<slice>/slice.json`.
+Los scripts Bash legacy, como `start:slice` o `check:slice`, se conservan solo
+para compatibilidad en shells con Bash.
 
 ## Desarrollar Quiver
 

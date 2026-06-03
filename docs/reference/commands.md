@@ -152,6 +152,12 @@ Reglas:
 | `npx --yes create-quiver@latest spec create --interactive` | Guía la selección de metodología `wdd-sdd`, input aprobado y modo de revisión antes de escribir. |
 | `npx --yes create-quiver@latest spec validate specs/<spec> --strict` | Valida el paquete de spec. |
 | `npx --yes create-quiver@latest spec start specs/<spec>` | Crea o reutiliza el worktree de una spec. |
+| `npx --yes create-quiver@latest slice start specs/<spec>/slices/<slice>/slice.json` | Inicia trabajo sobre un slice usando el namespace canónico. |
+| `npx --yes create-quiver@latest slice check --local specs/<spec>/slices/<slice>/slice.json` | Valida estructura local de un slice usando el namespace canónico. |
+| `npx --yes create-quiver@latest slice pr specs/<spec>/slices/<slice>/slice.json` | Valida preparación de PR de un slice usando el namespace canónico. |
+| `npx --yes create-quiver@latest slice scope specs/<spec>/slices/<slice>/slice.json` | Compara archivos modificados contra el scope declarado usando el namespace canónico. |
+| `npx --yes create-quiver@latest handoff check specs/<spec>/slices/<slice>/EXECUTION_BRIEF.md` | Valida un handoff o brief usando el namespace canónico. |
+| `npx --yes create-quiver@latest handoff new <spec-slug>` | Crea un handoff excepcional usando el namespace canónico. |
 | `npx --yes create-quiver@latest plan --spec <spec>` | Muestra el orden de ejecución de slices; la salida humana avisa si algun slice no tiene `estimated_hours` positivo y lo cuenta como `0h`. |
 | `npx --yes create-quiver@latest dashboard --spec <spec>` | Muestra estado consolidado read-only para una spec sin ocultar el progreso global. |
 | `npx --yes create-quiver@latest dashboard --section slices --spec <spec>` | Inspecciona solo slices de la spec seleccionada. |

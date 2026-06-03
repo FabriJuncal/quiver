@@ -12,36 +12,62 @@
     "branch_name": "feature/QUIVER-51-06-v51-namespace-windows-scripts"
   },
   "files": [
+    ".github/workflows/ci.yml",
+    "CONTRIBUTING.md",
+    "README.md",
+    "docs/COMMANDS.md.template",
+    "docs/reference/commands.md",
     "package.json",
-    "package-lock.json",
     "src/create-quiver/index.js",
-    "src/create-quiver/commands/slice.js",
-    "src/create-quiver/commands/handoff.js",
-    "tests/commands/slice-namespace.test.js",
+    "src/create-quiver/lib/i18n/messages/es.js",
+    "src/create-quiver/lib/init-layout.js",
+    "tests/commands/cli-contract.test.js",
     "tests/commands/handoff-namespace.test.js",
     "tests/commands/parser-contract.test.js",
-    ".github/workflows/ci.yml",
-    "README.md",
-    "CONTRIBUTING.md",
-    "specs/quiver-v51-cli-ergonomics-automation-contracts/**"
+    "tests/commands/slice-namespace.test.js",
+    "tests/lib/init-layout.test.js",
+    "specs/quiver-v43-cli-i18n-audit-release-readiness/command-language-mode-matrix.json",
+    "specs/quiver-v51-cli-ergonomics-automation-contracts/STATUS.md",
+    "specs/quiver-v51-cli-ergonomics-automation-contracts/EVIDENCE_REPORT.md",
+    "specs/quiver-v51-cli-ergonomics-automation-contracts/slices/slice-06-namespace-compatibility-windows-scripts/CLOSURE_BRIEF.md",
+    "specs/quiver-v51-cli-ergonomics-automation-contracts/slices/slice-06-namespace-compatibility-windows-scripts/slice.json",
+    "specs/quiver-v51-cli-ergonomics-automation-contracts/slices/slice-06-namespace-compatibility-windows-scripts/pr.md"
   ],
   "expected_read_paths": [
+    ".github/workflows/ci.yml",
+    "CONTRIBUTING.md",
+    "README.md",
+    "docs/COMMANDS.md.template",
+    "docs/reference/commands.md",
     "package.json",
     "src/create-quiver/index.js",
-    "src/create-quiver/commands/slice.js",
-    "src/create-quiver/commands/handoff.js",
-    "tests/commands/slice-namespace.test.js",
-    "tests/commands/handoff-namespace.test.js"
+    "src/create-quiver/lib/i18n/messages/es.js",
+    "src/create-quiver/lib/init-layout.js",
+    "tests/commands/cli-contract.test.js",
+    "tests/lib/init-layout.test.js",
+    "specs/quiver-v43-cli-i18n-audit-release-readiness/command-language-mode-matrix.json"
   ],
   "allowed_write_paths": [
-    "package.json",
-    "package-lock.json",
-    "src/create-quiver/**",
-    "tests/**",
     ".github/workflows/ci.yml",
-    "README.md",
     "CONTRIBUTING.md",
-    "specs/quiver-v51-cli-ergonomics-automation-contracts/**"
+    "README.md",
+    "docs/COMMANDS.md.template",
+    "docs/reference/commands.md",
+    "package.json",
+    "src/create-quiver/index.js",
+    "src/create-quiver/lib/i18n/messages/es.js",
+    "src/create-quiver/lib/init-layout.js",
+    "tests/commands/cli-contract.test.js",
+    "tests/commands/handoff-namespace.test.js",
+    "tests/commands/parser-contract.test.js",
+    "tests/commands/slice-namespace.test.js",
+    "tests/lib/init-layout.test.js",
+    "specs/quiver-v43-cli-i18n-audit-release-readiness/command-language-mode-matrix.json",
+    "specs/quiver-v51-cli-ergonomics-automation-contracts/STATUS.md",
+    "specs/quiver-v51-cli-ergonomics-automation-contracts/EVIDENCE_REPORT.md",
+    "specs/quiver-v51-cli-ergonomics-automation-contracts/slices/slice-06-namespace-compatibility-windows-scripts/CLOSURE_BRIEF.md",
+    "specs/quiver-v51-cli-ergonomics-automation-contracts/slices/slice-06-namespace-compatibility-windows-scripts/slice.json",
+    "specs/quiver-v51-cli-ergonomics-automation-contracts/slices/slice-06-namespace-compatibility-windows-scripts/pr.md"
   ],
   "depends_on": [
     "slice-00-cli-contract-baseline"
@@ -77,6 +103,9 @@
     "Do not remove old Bash scripts unless the compatibility story is explicit."
   ],
   "estimated_hours": 6,
-  "status": "planned",
-  "blocked_reason": null
+  "status": "completed",
+  "blocked_reason": null,
+  "actual_hours": 5,
+  "started_at": "2026-06-02T21:35:00-0300",
+  "completed_at": "2026-06-02T22:26:31-0300"
 }

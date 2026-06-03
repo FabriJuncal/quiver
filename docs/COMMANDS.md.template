@@ -87,8 +87,13 @@ This document is the canonical command reference for the orchestration roadmap.
 | `quiver:spec:status` | Shows spec worktree, branch, `slice-00`, and pending slices | macOS, Linux, Windows | v0.10 | `npm run quiver:spec:status -- specs/<spec>` |
 | `quiver:spec:validate` | Validates spec docs, slices, briefs, evidence, status, dependencies, and safe paths | macOS, Linux, Windows | v0.13 | `npm run quiver:spec:validate -- specs/<spec>` |
 | `quiver:spec:close` | Closes a merged clean spec worktree and pulls the main checkout | macOS, Linux, Windows | v0.10 | `npm run quiver:spec:close -- specs/<spec> --dry-run` |
+| `quiver:start-slice` | Starts one slice through the canonical `slice start` namespace without requiring Bash | macOS, Linux, Windows | next | `npm run quiver:start-slice -- specs/<spec>/slices/<slice>/slice.json` |
 | `quiver:check-slice -- --local <slice.json>` | Runs local structural slice validation without remote/base checks | macOS, Linux, Windows | v0.11 | `npm run quiver:check-slice -- --local specs/<spec>/slices/<slice>/slice.json` |
+| `quiver:check-pr` | Validates PR readiness through the canonical `slice pr` namespace without requiring Bash | macOS, Linux, Windows | next | `npm run quiver:check-pr -- specs/<spec>/slices/<slice>/slice.json` |
+| `quiver:check-scope` | Compares changed files with the declared slice scope without requiring Bash | macOS, Linux, Windows | next | `npm run quiver:check-scope -- specs/<spec>/slices/<slice>/slice.json --base main` |
+| `quiver:cleanup-slice` | Cleans active-slice state through the canonical `slice cleanup` namespace without requiring Bash | macOS, Linux, Windows | next | `npm run quiver:cleanup-slice -- specs/<spec>/slices/<slice>/slice.json --dry-run` |
 | `quiver:check-handoff -- <handoff-or-brief.md>` | Validates legacy `HANDOFF.md` files and per-slice `EXECUTION_BRIEF.md` / `CLOSURE_BRIEF.md` files | macOS, Linux, Windows | v0.12.1 | `npm run quiver:check-handoff -- specs/<spec>/slices/<slice>/EXECUTION_BRIEF.md` |
+| `quiver:new-handoff` | Creates an exceptional handoff through the canonical `handoff new` namespace without requiring Bash | macOS, Linux, Windows | next | `npm run quiver:new-handoff -- <spec-slug>` |
 
 ## CLI Flags
 
@@ -152,6 +157,8 @@ This document is the canonical command reference for the orchestration roadmap.
 - `quiver:next` prints the next ready slice and can auto-start it behind a confirmation prompt in interactive TTY sessions only.
 - `check-slice` validates `depends_on` targets and requires `parallel_safe_reason` when `parallel_safe` is `never`.
 - `check-handoff` validates both exceptional `HANDOFF.md` transfers and current slice-local `EXECUTION_BRIEF.md` / `CLOSURE_BRIEF.md` contracts.
+- Prefer canonical namespaces for new usage: `slice start|check|pr|scope|cleanup|refresh-active` and `handoff check|new`. Legacy aliases such as `start-slice`, `check-slice`, and `check-handoff` remain available and warn only on stderr.
+- On Windows PowerShell, use `npx create-quiver ...` directly or generated `quiver:*` npm scripts. Bash-only scripts such as `start:slice` and `check:slice` are legacy compatibility paths for Bash-capable shells.
 - `quiver:ai:onboard`, `quiver:ai:plan`, `quiver:ai:revise`, `quiver:ai:review-plan`, and `quiver:ai:execute-slice` support `codex`, `claude`, and `gemini` through local CLIs. Use `--dry-run` first to inspect the invocation without requiring provider auth, or `--print-prompt` to print the exact planner/reviewer prompt without executing a provider.
 - `quiver:ai:prepare-context -- --dry-run` previews deterministic docs-only context drafts, diff snippets, assumptions, risks, contradictions, and omitted paths. Write mode stores snapshots under `.quiver/runs/<run-id>/snapshots/` and preserves human-authored content by appending or refreshing a Quiver-managed block.
 - `quiver:ai:prepare-context -- --with-planner` invokes a planner provider and only accepts a validated docs-only proposal. Use `--print-prompt` for external planners, `--review` to inspect the proposal before writing, and `--interactive` to require confirmation.
