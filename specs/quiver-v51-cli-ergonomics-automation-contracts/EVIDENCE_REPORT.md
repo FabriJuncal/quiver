@@ -104,3 +104,20 @@
 - `node --test`: passed, 632 tests.
 - `npm run docs:check`: passed.
 - `git diff --check`: passed.
+
+## slice-05-evidence-robustness-path-safety
+
+- `src/create-quiver/lib/evidence.js`: now resolves explicit output/read paths through project-root and realpath checks, rejects traversal and symlink escapes, preserves failure evidence, records signal metadata, and exposes safe `list`/`show` helpers.
+- `src/create-quiver/commands/evidence.js`: supports `evidence list` and `evidence show` with human output and parseable `--json` output.
+- `src/create-quiver/index.js`: parses `evidence run|list|show`, validates positional arguments, and documents the expanded help surface.
+- `src/create-quiver/lib/i18n/messages/en.js` and `src/create-quiver/lib/i18n/messages/es.js`: keep evidence list/show human messages and missing-subcommand guidance aligned.
+- `tests/commands/evidence.test.js`: covers parseable JSON list/show and rejects traversal output before command execution.
+- `tests/lib/evidence.test.js`: covers redaction, truncation, failure evidence, signal exit code metadata, symlink escape rejection, safe listing, and safe show behavior.
+- `tests/commands/cli-contract.test.js`: covers the expanded help contract for `evidence list` and `evidence show`.
+- `docs/reference/commands.md` and `docs/COMMANDS.md.template`: document evidence run/list/show, safe path policy, JSON usage, redaction/truncation, and signal exit-code behavior.
+- `specs/quiver-v43-cli-i18n-audit-release-readiness/command-language-mode-matrix.json`: records evidence run/list/show coverage for the documented command reference.
+- `node --test tests/commands/evidence.test.js tests/lib/evidence.test.js tests/lib/i18n-catalog.test.js tests/commands/cli-contract.test.js`: passed, 38 tests.
+- `node --test tests/commands/i18n-audit-matrix.test.js tests/commands/evidence.test.js tests/lib/evidence.test.js tests/lib/i18n-catalog.test.js tests/commands/cli-contract.test.js`: passed, 40 tests.
+- `node --test`: passed, 638 tests.
+- `npm run docs:check`: passed.
+- `git diff --check`: passed.

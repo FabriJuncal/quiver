@@ -2,7 +2,7 @@
 
 **Overall status:** In Progress
 **Created:** 2026-06-01
-**Current slice:** slice-05-evidence-robustness-path-safety
+**Current slice:** slice-06-namespace-compatibility-windows-scripts
 
 ## Summary
 
@@ -17,7 +17,7 @@ This spec hardens CLI contracts for automation, JSON consumers, human UX, eviden
 | slice-02-dashboard-section-validation-i18n | Completed | Localized and documented invalid dashboard section behavior with EN/ES tests, JSON-safe failure coverage, and supported section help/reference docs. |
 | slice-03-base-branch-resolution-policy | Completed | Centralized base branch resolution across readiness, spec lifecycle, scope, and AI PR flows. |
 | slice-04-next-plan-graph-ux-edge-cases | Completed | Closed next/plan/graph secondary UX gaps with localized human notes, JSON-safe tests, and docs alignment. |
-| slice-05-evidence-robustness-path-safety | Planned | Harden evidence command contracts and paths. |
+| slice-05-evidence-robustness-path-safety | Completed | Hardened evidence command contracts, safe paths, signal metadata, JSON list/show, docs, and i18n matrix coverage. |
 | slice-06-namespace-compatibility-windows-scripts | Planned | Protect namespace aliases and portable script path. |
 
 ## Current Blockers

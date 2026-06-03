@@ -125,6 +125,8 @@ test('help output documents important public commands', () => {
     'check-handoff',
     'new-handoff',
     'evidence run',
+    'evidence list',
+    'evidence show',
     'demo create spec-viewer',
     '--version / -V',
     '--help / help',

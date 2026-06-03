@@ -14,24 +14,47 @@
   "files": [
     "src/create-quiver/commands/evidence.js",
     "src/create-quiver/lib/evidence.js",
+    "src/create-quiver/index.js",
     "src/create-quiver/lib/i18n/messages/en.js",
     "src/create-quiver/lib/i18n/messages/es.js",
+    "tests/commands/cli-contract.test.js",
     "tests/commands/evidence.test.js",
     "tests/lib/evidence.test.js",
+    "docs/COMMANDS.md.template",
     "docs/reference/commands.md",
+    "specs/quiver-v43-cli-i18n-audit-release-readiness/command-language-mode-matrix.json",
     "specs/quiver-v51-cli-ergonomics-automation-contracts/**"
   ],
   "expected_read_paths": [
     "src/create-quiver/commands/evidence.js",
     "src/create-quiver/lib/evidence.js",
+    "src/create-quiver/index.js",
+    "src/create-quiver/lib/i18n/messages/en.js",
+    "src/create-quiver/lib/i18n/messages/es.js",
+    "tests/commands/cli-contract.test.js",
     "tests/commands/evidence.test.js",
-    "tests/lib/evidence.test.js"
+    "tests/lib/evidence.test.js",
+    "docs/reference/commands.md",
+    "docs/COMMANDS.md.template",
+    "specs/quiver-v43-cli-i18n-audit-release-readiness/command-language-mode-matrix.json"
   ],
   "allowed_write_paths": [
-    "src/create-quiver/**",
-    "tests/**",
+    "src/create-quiver/commands/evidence.js",
+    "src/create-quiver/lib/evidence.js",
+    "src/create-quiver/index.js",
+    "src/create-quiver/lib/i18n/messages/en.js",
+    "src/create-quiver/lib/i18n/messages/es.js",
+    "tests/commands/cli-contract.test.js",
+    "tests/commands/evidence.test.js",
+    "tests/lib/evidence.test.js",
+    "docs/COMMANDS.md.template",
     "docs/reference/commands.md",
-    "specs/quiver-v51-cli-ergonomics-automation-contracts/**"
+    "specs/quiver-v43-cli-i18n-audit-release-readiness/command-language-mode-matrix.json",
+    "specs/quiver-v51-cli-ergonomics-automation-contracts/STATUS.md",
+    "specs/quiver-v51-cli-ergonomics-automation-contracts/EVIDENCE_REPORT.md",
+    "specs/quiver-v51-cli-ergonomics-automation-contracts/slices/slice-05-evidence-robustness-path-safety/CLOSURE_BRIEF.md",
+    "specs/quiver-v51-cli-ergonomics-automation-contracts/slices/slice-05-evidence-robustness-path-safety/slice.json",
+    "specs/quiver-v51-cli-ergonomics-automation-contracts/slices/slice-05-evidence-robustness-path-safety/pr.md"
   ],
   "depends_on": [
     "slice-00-cli-contract-baseline"
@@ -59,6 +82,9 @@
   "tests": [
     "node --test tests/commands/evidence.test.js",
     "node --test tests/lib/evidence.test.js",
+    "node --test tests/commands/i18n-audit-matrix.test.js",
+    "node --test tests/commands/cli-contract.test.js",
+    "npm run docs:check",
     "node --test",
     "git diff --check"
   ],
@@ -66,6 +92,9 @@
     "If replacing spawnSync with spawn, preserve existing CLI exit-code behavior."
   ],
   "estimated_hours": 8,
-  "status": "planned",
-  "blocked_reason": null
+  "status": "completed",
+  "blocked_reason": null,
+  "actual_hours": 4,
+  "started_at": "2026-06-02T17:05:00-0300",
+  "completed_at": "2026-06-02T17:24:19-0300"
 }

@@ -142,6 +142,60 @@ test('evidence run truncates long output', () => {
   }
 });
 
+test('evidence list and show emit parseable JSON', () => {
+  const { dir, cleanup } = makeTmpDir();
+  try {
+    runCli([
+      'evidence',
+      'run',
+      '--',
+      process.execPath,
+      '-e',
+      'console.log("json evidence")',
+    ], { cwd: dir });
+
+    const listJson = runCli(['evidence', 'list', '--json'], { cwd: dir });
+    const list = JSON.parse(listJson);
+    assert.equal(Array.isArray(list.evidence), true);
+    assert.equal(list.evidence.length, 1);
+    assert.match(list.evidence[0].path, /^\.quiver\/evidence\/evidence-/);
+    assert.equal(list.evidence[0].exit_code, 0);
+
+    const showJson = runCli(['evidence', 'show', list.evidence[0].path, '--json'], { cwd: dir });
+    const shown = JSON.parse(showJson);
+    assert.equal(shown.path, list.evidence[0].path);
+    assert.equal(shown.record.exit_code, 0);
+    assert.match(shown.content, /json evidence/);
+  } finally {
+    cleanup();
+  }
+});
+
+test('evidence run rejects traversal output before running child command', () => {
+  const { dir, cleanup } = makeTmpDir();
+  try {
+    const marker = path.join(dir, 'marker.txt');
+    const result = runCliRaw([
+      'evidence',
+      'run',
+      '--output',
+      '../escape.md',
+      '--',
+      process.execPath,
+      '-e',
+      `require('fs').writeFileSync(${JSON.stringify(marker)}, 'ran')`,
+    ], { cwd: dir });
+
+    assert.equal(result.status, 1);
+    assert.equal(result.stdout, '');
+    assert.match(result.stderr, /evidence output path must stay inside the project root/);
+    assert.equal(fs.existsSync(marker), false);
+    assert.equal(fs.existsSync(path.join(path.dirname(dir), 'escape.md')), false);
+  } finally {
+    cleanup();
+  }
+});
+
 test('evidence run requires a command after separator', () => {
   const { dir, cleanup } = makeTmpDir();
   try {
