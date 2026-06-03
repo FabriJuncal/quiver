@@ -1,0 +1,34 @@
+{
+  "slice_id": "slice-01-unsafe-allowed-write-path",
+  "ticket": "TEST-04",
+  "type": "feature",
+  "title": "Unsafe allowed write path",
+  "objective": "Exercise path safety.",
+  "description": "Project-relative paths cannot traverse out of the project.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "unsafe-allowed-write-path",
+    "branch_name": "feature/TEST-04-unsafe-allowed-write-path"
+  },
+  "must": [
+    "Use safe paths"
+  ],
+  "not_included": [
+    "Runtime change"
+  ],
+  "acceptance": [
+    "Rejected by schema"
+  ],
+  "files": [
+    "docs/example.md"
+  ],
+  "allowed_write_paths": [
+    "../secret.txt"
+  ],
+  "tests": [
+    "node --test"
+  ],
+  "estimated_hours": 1,
+  "status": "planned"
+}

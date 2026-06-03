@@ -1,0 +1,30 @@
+{
+  "slice_id": "slice-01-missing-git-field",
+  "ticket": "TEST-02",
+  "type": "feature",
+  "title": "Missing git field",
+  "objective": "Exercise missing git metadata.",
+  "description": "Local execution requires complete git metadata.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "missing-git-field"
+  },
+  "must": [
+    "Have complete git metadata"
+  ],
+  "not_included": [
+    "Runtime change"
+  ],
+  "acceptance": [
+    "Rejected by schema"
+  ],
+  "files": [
+    "docs/example.md"
+  ],
+  "tests": [
+    "node --test"
+  ],
+  "estimated_hours": 1,
+  "status": "planned"
+}

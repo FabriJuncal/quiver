@@ -1,0 +1,30 @@
+{
+  "ticket": "TEST-03",
+  "type": "feature",
+  "title": "Missing slice id",
+  "objective": "Exercise missing slice id.",
+  "description": "Slice id is required.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "missing-slice-id",
+    "branch_name": "feature/TEST-03-missing-slice-id"
+  },
+  "must": [
+    "Have a slice id"
+  ],
+  "not_included": [
+    "Runtime change"
+  ],
+  "acceptance": [
+    "Rejected by schema"
+  ],
+  "files": [
+    "docs/example.md"
+  ],
+  "tests": [
+    "node --test"
+  ],
+  "estimated_hours": 1,
+  "status": "planned"
+}
