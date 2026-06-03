@@ -1,7 +1,7 @@
 # Quiver v52 - Schema, Docs, and Release Hygiene
 
 **Date:** 2026-06-01
-**Status:** Planned
+**Status:** In Progress
 **Source:** User-approved plan v4 derived from `REQUERIMIENTOS_DERIVADOS_DE_AUDITORIA.md`.
 
 Slice numbering resets here. This spec intentionally starts at `slice-00`.
@@ -74,8 +74,8 @@ Reduce documentation and release drift without over-automating risky publish ste
 | Slice | Title | Status | Dependencies |
 |---|---|---|---|
 | slice-00 | Schema/docs/release baseline | completed | none |
-| slice-01 | JSON Schema for slice.json | planned | slice-00 |
-| slice-02 | Generated CLI reference | planned | slice-00 |
+| slice-01 | JSON Schema for slice.json | completed | slice-00 |
+| slice-02 | Generated CLI reference | completed | slice-00 |
 | slice-03 | Changelog, package, and release smoke hygiene | planned | slice-01, slice-02 |
 
 ## Guardrails
@@ -101,7 +101,7 @@ Reduce documentation and release drift without over-automating risky publish ste
 ## Open Decisions
 
 - Exact source of truth for `slice.json` schema: resolved in `slice-01`. The published schema is maintained manually from current runtime validation and generation behavior in `src/create-quiver/commands/spec.js`, `src/create-quiver/lib/slice.js`, `src/create-quiver/lib/readiness.js`, and `src/create-quiver/lib/ai/spec-generator.js`, then checked with `npm run schema:slice:check`.
-- Name and implementation of docs generation script.
-- Whether generated command reference lives in blocks or a separate file.
+- Command reference generation script: resolved in `slice-02` with `scripts/ci/check-command-reference.js`, `npm run docs:commands:write`, and `npm run docs:commands:check`.
+- Generated command reference location: resolved in `slice-02` with a protected block inside `docs/reference/commands.md`, preserving curated content outside markers.
 - Changelog process details.
 - Which new files must be published to npm.

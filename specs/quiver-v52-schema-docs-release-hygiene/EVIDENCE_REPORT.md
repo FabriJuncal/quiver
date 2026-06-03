@@ -51,3 +51,21 @@
 - `npm ci`: passed on a clean dependency install.
 - `node --test`: passed, 648 tests.
 - `git diff --check`: passed.
+
+## slice-02-generated-cli-reference
+
+- `scripts/ci/check-command-reference.js`: adds deterministic CLI command reference generation and drift checking without new dependencies.
+- Source-of-truth decision: generated command rows are read from `COMMAND_HELP_GROUPS` in `src/create-quiver/index.js` and checked against `node bin/create-quiver.js --lang en --help --no-color`.
+- `docs/reference/commands.md`: adds a protected generated block inside `<!-- quiver:generated-cli-reference:start -->` / `<!-- quiver:generated-cli-reference:end -->`; curated documentation outside markers remains manual.
+- `package.json`: adds `docs:commands:write`, `docs:commands:check`, and wires `docs:commands:check` into `docs:check` so docs drift can fail CI/release checks without rewriting files.
+- `tests/docs/command-reference.test.js`: covers runtime-help consistency, current docs synchronization, and preservation of manual content outside generated markers.
+- `npm run docs:commands:write`: passed; generated 7 groups and 59 commands.
+- `npm run docs:commands:check`: passed; generated block is synchronized.
+- `node --test tests/docs/command-reference.test.js`: passed, 3 tests.
+- `node bin/create-quiver.js --help`: passed.
+- `npm run docs:check`: passed, including markdown lint, link check, and generated CLI reference drift check.
+- `npm ci`: passed; 165 packages installed/audited, 0 vulnerabilities reported.
+- `node --test`: passed, 651 tests.
+- `git diff --check`: passed.
+- `node bin/create-quiver.js spec validate specs/quiver-v52-schema-docs-release-hygiene`: passed.
+- `node bin/create-quiver.js check-slice specs/quiver-v52-schema-docs-release-hygiene/slices/slice-02-generated-cli-reference/slice.json --local --gate validation`: passed.
