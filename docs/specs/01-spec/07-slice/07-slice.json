@@ -1,0 +1,36 @@
+{
+  "slice_id": "07-slice",
+  "slice_number": "07",
+  "title": "Docs, tests y evidencia",
+  "objective": "Planificar como validar y documentar cambios futuros para que CLI, docs y tests no diverjan.",
+  "problem": "Evita que tests nuevos den falsa seguridad o que docs generadas no coincidan con la CLI real.",
+  "value_outcome": "Contrato de evidencia para futuras implementaciones: pruebas minimas, docs afectadas y criterios de cierre.",
+  "scope": {
+    "includes": ["Mapa de cobertura", "Regla de cobertura equivalente", "Gate CLI/docs", "Evidencia minima", "Validaciones pendientes"],
+    "excludes": ["Ejecutar tests", "Modificar tests", "Regenerar docs", "Cambiar codigo"]
+  },
+  "actors": ["Reviewer", "Implementador futuro", "Maintainer", "Usuarios CLI"],
+  "preconditions": ["Contrato aprobado", "Planes de extraccion definidos"],
+  "inputs": ["Baseline", "Matriz de comandos", "Tests existentes", "Docs actuales"],
+  "outputs": ["Checklist de validacion", "Contrato de evidencia"],
+  "workflow": [
+    {"step": 1, "name": "Mapear cobertura", "description": "Relacionar tests actuales con comportamiento."},
+    {"step": 2, "name": "Mapear docs", "description": "Identificar docs que describen comandos."},
+    {"step": 3, "name": "Definir evidencia", "description": "Crear checklist por tipo de cambio."},
+    {"step": 4, "name": "Definir cierre", "description": "Definir riesgos residuales y validaciones pendientes."}
+  ],
+  "business_rules": ["No eliminar cobertura sin reemplazo", "Docs reflejan CLI real", "Pendiente no es exito", "JSON/exit code requiere prueba especifica"],
+  "validations": ["Evidencia minima por cambio", "Gate CLI/docs", "Cobertura equivalente", "Formato de riesgos"],
+  "error_cases": ["Validacion no ejecutable", "Docs generadas sin proceso", "Test viejo borrado"],
+  "acceptance_criteria": ["Checklist de evidencia", "Gate CLI/docs", "Regla de cobertura", "Pendientes separados de exitos", "Riesgos residuales explicitos"],
+  "dependencies": {
+    "functional": ["Baseline", "Contrato", "Planes de extraccion"],
+    "technical": [],
+    "external": [],
+    "depends_on_slices": ["03-slice", "05-slice", "06-slice"]
+  },
+  "implementation_order": 7,
+  "slicing_rationale": "La evidencia evita que extracciones parciales se cierren sin pruebas suficientes.",
+  "risks": ["Proceso de docs generadas no documentado"],
+  "open_questions": ["Evidencia minima manual, automatizada o ambas?"]
+}

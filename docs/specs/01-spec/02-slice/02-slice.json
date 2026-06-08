@@ -1,0 +1,36 @@
+{
+  "slice_id": "02-slice",
+  "slice_number": "02",
+  "title": "Baseline de comportamiento actual",
+  "objective": "Documentar el comportamiento actual que no debe romperse antes de cualquier extraccion o refactor.",
+  "problem": "Sin baseline, la regla de no quitar funcionalidad no es verificable.",
+  "value_outcome": "Matriz de comportamiento actual para comandos, flags, aliases, outputs, JSON, exit codes, side effects, exports, scripts, templates y docs generadas.",
+  "scope": {
+    "includes": ["Comandos", "Aliases", "Flags", "Help", "JSON", "Exit codes", "Stdout/stderr", "Archivos generados", "Scripts", "Exports", "Templates", "Docs generadas"],
+    "excludes": ["Cambios de parser", "Cambios de comandos", "Bumps de version", "Reemplazo de tests"]
+  },
+  "actors": ["Tech Lead", "Reviewer", "Usuarios CLI", "Automatizaciones"],
+  "preconditions": ["01-slice completado o snapshot aprobado"],
+  "inputs": ["CLI actual", "Documentacion actual", "Tests existentes"],
+  "outputs": ["Matriz baseline", "Lista de gaps"],
+  "workflow": [
+    {"step": 1, "name": "Enumerar comandos", "description": "Listar comandos y aliases actuales."},
+    {"step": 2, "name": "Registrar contratos", "description": "Registrar flags, help, JSON, exit codes y streams."},
+    {"step": 3, "name": "Registrar side effects", "description": "Documentar archivos generados, scripts, exports y templates."},
+    {"step": 4, "name": "Marcar gaps", "description": "Listar areas sin evidencia suficiente."}
+  ],
+  "business_rules": ["Ningun slice tecnico avanza sin baseline", "JSON y exit codes son contrato", "Falta de evidencia se marca como riesgo"],
+  "validations": ["Cada comando critico tiene entrada", "Cada gap esta marcado", "La matriz permite comparacion futura"],
+  "error_cases": ["Comandos con side effects", "Outputs variables", "JSON no soportado"],
+  "acceptance_criteria": ["Existe matriz baseline", "Cubre comandos/flags/aliases/help/JSON/exit codes/side effects", "Gaps listados", "Cambios futuros comparan contra baseline"],
+  "dependencies": {
+    "functional": ["Snapshot aprobado"],
+    "technical": ["CLI actual"],
+    "external": [],
+    "depends_on_slices": ["01-slice"]
+  },
+  "implementation_order": 2,
+  "slicing_rationale": "El baseline transforma no regresion en criterio verificable.",
+  "risks": ["Cobertura incompleta de comandos"],
+  "open_questions": ["Cuales son comandos criticos minimos si se prioriza?"]
+}

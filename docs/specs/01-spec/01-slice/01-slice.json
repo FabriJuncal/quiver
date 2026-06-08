@@ -1,0 +1,36 @@
+{
+  "slice_id": "01-slice",
+  "slice_number": "01",
+  "title": "Snapshot verificable de ramas",
+  "objective": "Crear un inventario auditable de ramas locales y remotas con base, SHA, fecha, ahead/behind, frescura del dato y clasificacion inicial.",
+  "problem": "Evita tomar decisiones sobre ramas usando informacion incompleta, stale o ambigua.",
+  "value_outcome": "Reporte de ramas que permite decidir que revisar, extraer, cerrar o conservar sin modificar el repo.",
+  "scope": {
+    "includes": ["Analisis read-only de refs", "Clasificacion documental", "Registro de frescura del snapshot"],
+    "excludes": ["Fetch sin aprobacion", "Merge", "Rebase", "Push", "Eliminacion de ramas", "Implementacion de codigo"]
+  },
+  "actors": ["Tech Lead", "Maintainer", "Reviewer", "Implementador futuro"],
+  "preconditions": ["Repositorio Git disponible", "Refs locales/remotos presentes en snapshot local"],
+  "inputs": ["Refs de Git", "origin/HEAD", "origin/main", "Logs", "Metadatos de commits"],
+  "outputs": ["Inventario de ramas", "Clasificacion inicial", "Riesgos por rama"],
+  "workflow": [
+    {"step": 1, "name": "Detectar base", "description": "Detectar rama base desde origin/HEAD o convenciones conocidas."},
+    {"step": 2, "name": "Listar refs", "description": "Listar ramas locales y remotas."},
+    {"step": 3, "name": "Calcular metadata", "description": "Calcular SHA, fecha, ahead/behind y merge-base."},
+    {"step": 4, "name": "Clasificar", "description": "Asignar estado no destructivo a cada rama."}
+  ],
+  "business_rules": ["ahead=0 no autoriza eliminacion", "main local divergida no es base segura", "Toda eliminacion requiere aprobacion"],
+  "validations": ["Cada rama tiene SHA", "Cada rama tiene fecha", "Local/remota diferenciado", "Frescura registrada"],
+  "error_cases": ["Sin origin/HEAD", "Sin merge-base", "Refs remotos stale"],
+  "acceptance_criteria": ["Todas las ramas abiertas aparecen", "Ninguna rama se marca eliminable sin aprobacion", "Se registra fecha y SHA del snapshot", "ahead=0 queda como sin delta"],
+  "dependencies": {
+    "functional": [],
+    "technical": ["Git"],
+    "external": [],
+    "depends_on_slices": []
+  },
+  "implementation_order": 1,
+  "slicing_rationale": "Un snapshot confiable reduce riesgo antes de cualquier decision tecnica.",
+  "risks": ["Snapshot remoto stale"],
+  "open_questions": ["Se autorizara fetch antes de acciones finales?"]
+}

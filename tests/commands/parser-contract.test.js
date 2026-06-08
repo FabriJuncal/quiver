@@ -3,55 +3,88 @@ const { spawnSync } = require('node:child_process');
 const path = require('node:path');
 const test = require('node:test');
 
-const packageJson = require('../../package.json');
+const {
+  SUPPORTED_AI_COMMANDS,
+  SUPPORTED_COMMAND_MODES,
+  SUPPORTED_CONFIG_LANGUAGE_COMMANDS,
+  SUPPORTED_CONFIG_SECTIONS,
+  SUPPORTED_DEMO_COMMANDS,
+  SUPPORTED_SPEC_COMMANDS,
+} = require('../../src/create-quiver/lib/cli/command-registry');
+const { parseCliArgs } = require('../../src/create-quiver/lib/cli/parser');
 
 const BIN_PATH = path.resolve(__dirname, '../../bin/create-quiver.js');
+const REPO_ROOT = path.resolve(__dirname, '../..');
 
 function runCli(args) {
   return spawnSync(process.execPath, [BIN_PATH, ...args], {
-    cwd: path.resolve(__dirname, '../..'),
+    cwd: REPO_ROOT,
     encoding: 'utf8',
-    env: { ...process.env, QUIVER_LANG: 'en' },
     stdio: ['ignore', 'pipe', 'pipe'],
   });
 }
 
-test('help documents canonical slice and handoff namespaces plus legacy aliases', () => {
-  const result = runCli(['--help', '--no-color']);
+test('parser adapter requires and delegates to legacy parser', () => {
+  assert.throws(
+    () => parseCliArgs(['version']),
+    /parseCliArgs requires a legacyParseArgs adapter/,
+  );
 
-  assert.equal(result.status, 0);
-  assert.match(result.stdout, /slice start\|check\|pr\|scope\|cleanup\|refresh-active\s+Canonical namespace/);
-  assert.match(result.stdout, /handoff check\|new\s+Canonical namespace/);
-  assert.match(result.stdout, /start-slice\s+Start work on one slice/);
-  assert.match(result.stdout, /check-handoff\s+Validate a transfer handoff/);
+  const parsed = parseCliArgs(['version', '--json'], {
+    language: 'es',
+    legacyParseArgs(argv, options) {
+      return {
+        argv,
+        language: options.language,
+      };
+    },
+  });
+
+  assert.deepEqual(parsed, {
+    argv: ['version', '--json'],
+    language: 'es',
+  });
 });
 
-test('root package exposes PowerShell-safe quiver workflow scripts and preserves Bash legacy scripts', () => {
-  const scripts = packageJson.scripts || {};
-
-  assert.equal(scripts['quiver:start-slice'], 'node bin/create-quiver.js slice start');
-  assert.equal(scripts['quiver:check-slice'], 'node bin/create-quiver.js slice check');
-  assert.equal(scripts['quiver:check-pr'], 'node bin/create-quiver.js slice pr');
-  assert.equal(scripts['quiver:check-scope'], 'node bin/create-quiver.js slice scope');
-  assert.equal(scripts['quiver:cleanup-slice'], 'node bin/create-quiver.js slice cleanup');
-  assert.equal(scripts['quiver:refresh-active-slices'], 'node bin/create-quiver.js slice refresh-active');
-  assert.equal(scripts['quiver:check-handoff'], 'node bin/create-quiver.js handoff check');
-  assert.equal(scripts['quiver:new-handoff'], 'node bin/create-quiver.js handoff new');
-
-  for (const scriptName of [
-    'quiver:start-slice',
-    'quiver:check-slice',
-    'quiver:check-pr',
-    'quiver:check-scope',
-    'quiver:cleanup-slice',
-    'quiver:refresh-active-slices',
-    'quiver:check-handoff',
-    'quiver:new-handoff',
-  ]) {
-    assert.doesNotMatch(scripts[scriptName], /\bbash\b/, `${scriptName} must not require Bash`);
+test('command registry reflects origin/main command surface without new top-level commands', () => {
+  for (const command of ['init', 'version', 'slice', 'handoff', 'evidence', 'ai']) {
+    assert.equal(SUPPORTED_COMMAND_MODES.has(command), true, command);
   }
 
-  assert.match(scripts['start:slice'], /^bash /);
-  assert.match(scripts['check:slice'], /^bash /);
-  assert.match(scripts['cleanup:slice'], /^bash /);
+  for (const command of ['status', 'changelog']) {
+    assert.equal(SUPPORTED_COMMAND_MODES.has(command), false, command);
+  }
+
+  assert.equal(SUPPORTED_AI_COMMANDS.has('status'), true);
+  assert.equal(SUPPORTED_AI_COMMANDS.has('run'), true);
+  assert.equal(SUPPORTED_SPEC_COMMANDS.has('status'), true);
+  assert.equal(SUPPORTED_DEMO_COMMANDS.has('create'), true);
+  assert.equal(SUPPORTED_CONFIG_SECTIONS.has('language'), true);
+  assert.equal(SUPPORTED_CONFIG_LANGUAGE_COMMANDS.has('show'), true);
+  assert.equal(SUPPORTED_CONFIG_LANGUAGE_COMMANDS.has('set'), true);
+});
+
+test('baseline parser contracts stay stable for high-risk entry points', () => {
+  const help = runCli(['help']);
+  assert.equal(help.status, 0);
+  assert.match(help.stdout, /Usage:/);
+  assert.match(help.stdout, /slice start\|check\|pr\|scope\|cleanup\|refresh-active/);
+  assert.match(help.stdout, /handoff check\|new/);
+
+  const versionJson = runCli(['version', '--json']);
+  assert.equal(versionJson.status, 0);
+  assert.equal(JSON.parse(versionJson.stdout).version_schema_version, 1);
+
+  const unknown = runCli(['__unknown__']);
+  assert.equal(unknown.status, 1);
+  assert.equal(unknown.stdout, '');
+  assert.match(unknown.stderr, /unsupported command: __unknown__/);
+
+  const status = runCli(['status', '--json']);
+  assert.equal(status.status, 1);
+  assert.match(status.stderr, /unsupported command: status/);
+
+  const changelog = runCli(['changelog']);
+  assert.equal(changelog.status, 1);
+  assert.match(changelog.stderr, /unsupported command: changelog/);
 });

@@ -1,0 +1,70 @@
+const SUPPORTED_COMMAND_MODES = new Set([
+  'init',
+  'version',
+  'flow',
+  'dashboard',
+  'plan',
+  'graph',
+  'next',
+  'doctor',
+  'prepare',
+  'analyze',
+  'migrate',
+  'slice',
+  'handoff',
+  'start-slice',
+  'check-slice',
+  'check-pr',
+  'check-handoff',
+  'new-handoff',
+  'cleanup-slice',
+  'check-scope',
+  'config',
+  'refresh-active-slices',
+  'spec',
+  'evidence',
+  'demo',
+  'ai',
+]);
+
+const SUPPORTED_AI_COMMANDS = new Set([
+  'active-slice',
+  'agent',
+  'approve',
+  'approval-status',
+  'approvals',
+  'doctor',
+  'execute-plan',
+  'execute-slice',
+  'executor-prompt',
+  'export',
+  'inspect',
+  'onboard',
+  'plan',
+  'prepare-context',
+  'pr',
+  'prompt-slice',
+  'repair-plan',
+  'review-plan',
+  'revise',
+  'resume',
+  'run',
+  'slices',
+  'specs',
+  'status',
+  'trace',
+]);
+
+const SUPPORTED_SPEC_COMMANDS = new Set(['close', 'create', 'start', 'status', 'validate']);
+const SUPPORTED_DEMO_COMMANDS = new Set(['create']);
+const SUPPORTED_CONFIG_SECTIONS = new Set(['language']);
+const SUPPORTED_CONFIG_LANGUAGE_COMMANDS = new Set(['show', 'set']);
+
+module.exports = {
+  SUPPORTED_AI_COMMANDS,
+  SUPPORTED_COMMAND_MODES,
+  SUPPORTED_CONFIG_LANGUAGE_COMMANDS,
+  SUPPORTED_CONFIG_SECTIONS,
+  SUPPORTED_DEMO_COMMANDS,
+  SUPPORTED_SPEC_COMMANDS,
+};

@@ -1,0 +1,36 @@
+{
+  "slice_id": "03-slice",
+  "slice_number": "03",
+  "title": "Contrato de no regresion",
+  "objective": "Definir reglas verificables para modificar o extraer funcionalidad sin quitar comportamiento existente.",
+  "problem": "Evita que cambios futuros se aprueben por intencion general en vez de evidencia contra baseline.",
+  "value_outcome": "Contrato que obliga matriz antes/despues, aprobacion explicita de cambios incompatibles y rollback por slice.",
+  "scope": {
+    "includes": ["Definicion de funcionalidad", "Matriz antes/despues", "Categorias de compatibilidad", "Reglas JSON/exit codes/streams/aliases/side effects", "Rollback"],
+    "excludes": ["Cambios de comandos", "Ejecucion de tests", "Implementacion de parser"]
+  },
+  "actors": ["Tech Lead", "Reviewer", "Maintainer", "Implementador futuro"],
+  "preconditions": ["02-slice aprobado como baseline suficiente"],
+  "inputs": ["Baseline", "Criterios aprobados", "Riesgos del plan"],
+  "outputs": ["Contrato de no regresion"],
+  "workflow": [
+    {"step": 1, "name": "Definir funcionalidad", "description": "Formalizar que comportamientos cuentan como existentes."},
+    {"step": 2, "name": "Definir matriz", "description": "Crear formato antes/despues obligatorio."},
+    {"step": 3, "name": "Definir compatibilidad", "description": "Separar cambios compatibles, incompatibles y aprobados."},
+    {"step": 4, "name": "Definir rollback", "description": "Exigir rollback y evidencia minima."}
+  ],
+  "business_rules": ["Nada inventariado desaparece sin aprobacion", "Todo cambio de comando explica antes/despues", "JSON/exit codes/side effects requieren validacion", "No mezclar refactor con bump de version"],
+  "validations": ["Contrato cubre comandos/API/scripts/docs/tests", "Criterios de cierre definidos", "Reglas verificables"],
+  "error_cases": ["Mejora no verificable", "Regresion intencional sin aprobacion", "Falta baseline"],
+  "acceptance_criteria": ["Definicion formal de funcionalidad", "Formato de matriz antes/despues", "Regla anti-fix parcial", "Rollback requerido", "Cambios incompatibles requieren aprobacion"],
+  "dependencies": {
+    "functional": ["Baseline"],
+    "technical": [],
+    "external": [],
+    "depends_on_slices": ["02-slice"]
+  },
+  "implementation_order": 3,
+  "slicing_rationale": "El contrato permite que slices tecnicos sean revisables y no regresivos.",
+  "risks": ["Contrato demasiado laxo"],
+  "open_questions": ["Cambios menores de texto humano requieren aprobacion explicita?"]
+}

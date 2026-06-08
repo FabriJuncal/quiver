@@ -1,0 +1,36 @@
+{
+  "slice_id": "06-slice",
+  "slice_number": "06",
+  "title": "Extraccion de comandos y wrappers",
+  "objective": "Planificar extracciones futuras de comandos/wrappers sin perder comportamiento existente.",
+  "problem": "Evita incorporar wrappers desde ramas viejas sin explicar que comando cambian y por que mejora.",
+  "value_outcome": "Plan por comando con matriz antes/despues, archivos candidatos, exclusiones y validaciones.",
+  "scope": {
+    "includes": ["Comandos candidatos", "Estado actual", "Cambio propuesto", "Motivo", "Mejora verificable", "Validacion", "Rollback"],
+    "excludes": ["Implementar comandos", "Eliminar aliases", "Cambiar parser global sin 05-slice", "Modificar package/version"]
+  },
+  "actors": ["Tech Lead", "Usuarios CLI", "Reviewer", "Implementador futuro"],
+  "preconditions": ["Baseline aprobado", "Contrato aprobado", "Matriz de extraccion aprobada"],
+  "inputs": ["Matriz de extraccion", "Baseline de comandos", "Diffs de ramas fuente"],
+  "outputs": ["Backlog de comandos con planes independientes"],
+  "workflow": [
+    {"step": 1, "name": "Seleccionar comando", "description": "Elegir un comando candidato."},
+    {"step": 2, "name": "Registrar antes/despues", "description": "Documentar comportamiento actual y cambio propuesto."},
+    {"step": 3, "name": "Definir validacion", "description": "Definir evidencia esperada y rollback."},
+    {"step": 4, "name": "Repetir", "description": "Repetir por comando sin mezclar responsabilidades."}
+  ],
+  "business_rules": ["Comando no cambia sin antes/despues", "Mejora verificable", "JSON/exit code/side effect requiere aprobacion", "No eliminar aliases/flags sin aprobacion"],
+  "validations": ["Matriz completa por comando", "Motivo y mejora", "Rollback", "Sin scope creep"],
+  "error_cases": ["Comando nuevo colisiona", "Comando existente con otro comportamiento", "Dependencia de parser"],
+  "acceptance_criteria": ["Plan individual por comando", "Sin perdida funcional sin aprobacion", "Salidas justificadas", "Package/version fuera", "Rollback definido"],
+  "dependencies": {
+    "functional": ["Baseline", "Matriz de extraccion"],
+    "technical": [],
+    "external": [],
+    "depends_on_slices": ["04-slice"]
+  },
+  "implementation_order": 6,
+  "slicing_rationale": "Separar comandos evita fixes parciales y reduce blast radius.",
+  "risks": ["Wrappers duplican comandos existentes o cambian UX"],
+  "open_questions": ["Orden exacto de comandos segun valor y riesgo"]
+}

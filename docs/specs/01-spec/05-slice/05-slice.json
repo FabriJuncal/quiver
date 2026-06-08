@@ -1,0 +1,36 @@
+{
+  "slice_id": "05-slice",
+  "slice_number": "05",
+  "title": "Parser y command registry",
+  "objective": "Planificar la recuperacion segura de parser y command registry como cambio transversal de alto riesgo.",
+  "problem": "Evita tratar parser/registry como refactor pequeno cuando afecta la entrada de toda la CLI.",
+  "value_outcome": "Plan tecnico futuro con compatibilidad total contra baseline, archivos candidatos/excluidos y rollback.",
+  "scope": {
+    "includes": ["Archivos candidatos", "Matriz de comandos afectados", "Gates de compatibilidad", "Aliases/flags/outputs", "Rollback"],
+    "excludes": ["Implementar parser", "Cambiar dispatch CLI", "Modificar package/version", "Eliminar comportamiento existente"]
+  },
+  "actors": ["Tech Lead", "Implementador futuro", "Reviewer", "Usuarios CLI"],
+  "preconditions": ["04-slice identifica parser/registry como candidato aprobado"],
+  "inputs": ["Matriz de extraccion", "Baseline", "Contrato de no regresion", "Diffs de rama fuente"],
+  "outputs": ["Plan tecnico para rama futura desde origin/main"],
+  "workflow": [
+    {"step": 1, "name": "Confirmar decision", "description": "Definir extraer codigo, concepto o rehacer."},
+    {"step": 2, "name": "Mapear comandos", "description": "Listar comandos afectados por parser."},
+    {"step": 3, "name": "Definir gates", "description": "Definir compatibilidad y validaciones."},
+    {"step": 4, "name": "Preparar rollback", "description": "Definir como revertir si falla."}
+  ],
+  "business_rules": ["Parser/registry es alto riesgo", "Aliases/flags/exit codes no desaparecen sin aprobacion", "JSON requiere contrato", "No mezclar con bump de version"],
+  "validations": ["Todos los comandos baseline mapeados", "Diferencias con motivo y mejora", "Rollback definido", "Package/version fuera"],
+  "error_cases": ["Comando sin baseline", "Alias no preservable", "Codigo viejo no encaja"],
+  "acceptance_criteria": ["No permite merge/cherry-pick amplio", "Cambio transversal reconocido", "Matriz por comando", "Package/version fuera", "Rollback definido"],
+  "dependencies": {
+    "functional": ["Baseline", "Contrato", "Matriz de extraccion"],
+    "technical": [],
+    "external": [],
+    "depends_on_slices": ["04-slice"]
+  },
+  "implementation_order": 5,
+  "slicing_rationale": "Parser/registry requiere plan dedicado porque su blast radius es toda la CLI.",
+  "risks": ["Compatibilidad total puede requerir tests adicionales"],
+  "open_questions": ["Extraer codigo exacto o reimplementar concepto?"]
+}
