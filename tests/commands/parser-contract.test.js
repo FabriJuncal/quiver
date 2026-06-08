@@ -46,14 +46,12 @@ test('parser adapter requires and delegates to legacy parser', () => {
   });
 });
 
-test('command registry reflects origin/main command surface without new top-level commands', () => {
-  for (const command of ['init', 'version', 'slice', 'handoff', 'evidence', 'ai']) {
+test('command registry reflects supported command surface with explicit changelog wrapper', () => {
+  for (const command of ['init', 'version', 'changelog', 'slice', 'handoff', 'evidence', 'ai']) {
     assert.equal(SUPPORTED_COMMAND_MODES.has(command), true, command);
   }
 
-  for (const command of ['status', 'changelog']) {
-    assert.equal(SUPPORTED_COMMAND_MODES.has(command), false, command);
-  }
+  assert.equal(SUPPORTED_COMMAND_MODES.has('status'), false, 'status');
 
   assert.equal(SUPPORTED_AI_COMMANDS.has('status'), true);
   assert.equal(SUPPORTED_AI_COMMANDS.has('run'), true);
@@ -85,6 +83,16 @@ test('baseline parser contracts stay stable for high-risk entry points', () => {
   assert.match(status.stderr, /unsupported command: status/);
 
   const changelog = runCli(['changelog']);
-  assert.equal(changelog.status, 1);
-  assert.match(changelog.stderr, /unsupported command: changelog/);
+  assert.equal(changelog.status, 0);
+  assert.equal(changelog.stderr, '');
+  assert.match(changelog.stdout, /Quiver changelog/);
+
+  const changelogJson = runCli(['changelog', '--json']);
+  assert.equal(changelogJson.status, 0);
+  assert.equal(changelogJson.stderr, '');
+  const changelogPayload = JSON.parse(changelogJson.stdout);
+  assert.equal(changelogPayload.schema_version, 1);
+  assert.equal(typeof changelogPayload.source, 'string');
+  assert.equal(typeof changelogPayload.missing, 'boolean');
+  assert.equal(Array.isArray(changelogPayload.entries), true);
 });

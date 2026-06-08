@@ -38,6 +38,7 @@ El contenido curado fuera de los marcadores se mantiene manual y no debe ser ree
 | Bootstrap and project context | `flow` | Show the read-only guided workflow stage, blockers, and next safe command. |
 | Bootstrap and project context | `dashboard` | Show compact read-only project, spec, slice, run, approval, and agent status. |
 | Bootstrap and project context | `version` | Show a Quiver-branded version report; use --json for metadata. |
+| Bootstrap and project context | `changelog` | Show recent local CHANGELOG.md release entries; use --json for metadata. |
 | Bootstrap and project context | `config language show\|set` | Inspect or update the effective Quiver language without editing JSON by hand. |
 | Bootstrap and project context | `prepare` | Run setup diagnostics for providers, GitHub, SSH, and project readiness. |
 | Bootstrap and project context | `migrate` | Upgrade an already initialized Quiver project to the current contract. |

@@ -1,6 +1,7 @@
 const SUPPORTED_COMMAND_MODES = new Set([
   'init',
   'version',
+  'changelog',
   'flow',
   'dashboard',
   'plan',

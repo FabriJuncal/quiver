@@ -69,6 +69,7 @@ test('top-level help command prints grouped command descriptions', () => {
   assert.match(output, /check-slice\s+Validate slice structure/);
   assert.match(output, /dashboard\s+Show compact read-only project, spec, slice, run, approval, and agent status\./);
   assert.match(output, /version\s+Show a Quiver-branded version report/);
+  assert.match(output, /changelog\s+Show recent local CHANGELOG\.md release entries/);
   assert.match(output, /demo create spec-viewer\s+Create or preview the optional static Quiver Spec Viewer demo scaffold/);
 });
 
@@ -77,6 +78,7 @@ test('help output documents important public commands', () => {
   const expectedCommands = [
     'init',
     'version',
+    'changelog',
     'config language show|set',
     'analyze',
     'doctor',
