@@ -1,0 +1,36 @@
+{
+  "slice_id": "04-slice",
+  "slice_number": "04",
+  "title": "Matriz de extraccion por rama",
+  "objective": "Determinar que partes de ramas conflictivas se deben extraer como codigo, concepto, rehacer o descartar.",
+  "problem": "Evita merges parciales improvisados y cherry-picks grandes desde ramas viejas.",
+  "value_outcome": "Matriz de decisiones por rama, archivo, comando o concepto con riesgo y proxima accion.",
+  "scope": {
+    "includes": ["Ramas candidatas", "Cambios por modulo", "Clasificacion de hallazgos", "Riesgo textual/semantico/contrato", "Dependencias", "Exclusiones"],
+    "excludes": ["Aplicar cambios", "Resolver conflictos", "Cherry-pick", "Modificar package/version"]
+  },
+  "actors": ["Tech Lead", "Reviewer", "Implementador futuro"],
+  "preconditions": ["03-slice aprobado", "Baseline disponible"],
+  "inputs": ["Diffs", "Logs", "merge-tree", "Baseline", "Contrato de no regresion"],
+  "outputs": ["Matriz de extraccion", "Backlog de slices tecnicos"],
+  "workflow": [
+    {"step": 1, "name": "Seleccionar ramas", "description": "Elegir ramas candidatas para extraccion."},
+    {"step": 2, "name": "Agrupar cambios", "description": "Agrupar por modulo o comportamiento."},
+    {"step": 3, "name": "Clasificar hallazgos", "description": "Marcar codigo, concepto, rehacer o descartar."},
+    {"step": 4, "name": "Ordenar extraccion", "description": "Proponer orden con riesgos y dependencias."}
+  ],
+  "business_rules": ["No mergear rama completa si mezcla riesgos", "No cherry-pick grande sin separar", "Codigo viejo puede ser concepto", "Sin mejora verificable se descarta"],
+  "validations": ["Cada hallazgo clasificado", "Riesgo tipificado", "Exclusiones justificadas", "Referencia a baseline"],
+  "error_cases": ["Valor historico con codigo obsoleto", "Archivo duplicado en origin/main", "Evidencia faltante"],
+  "acceptance_criteria": ["QUIVER-46-49 no queda como merge completo", "Cada candidato tiene decision", "Package/version fuera", "No hay utilidad sin evidencia", "Matriz habilita slices pequenos"],
+  "dependencies": {
+    "functional": ["Contrato de no regresion"],
+    "technical": ["Git read-only"],
+    "external": [],
+    "depends_on_slices": ["03-slice"]
+  },
+  "implementation_order": 4,
+  "slicing_rationale": "La matriz evita extraccion oportunista y reduce riesgo de fixes parciales.",
+  "risks": ["Clasificacion requiere conocimiento funcional"],
+  "open_questions": ["Revisar todas las ramas conflictivas o empezar por QUIVER-46-49?"]
+}

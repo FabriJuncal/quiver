@@ -58,6 +58,15 @@ const { cleanupSlice, refreshActiveSlicesBoard, startSlice } = require('./lib/li
 const { buildSpecStatus, closeSpecWorktree, formatSpecCloseResult, formatSpecStartResult, formatSpecStatus, startSpecWorktree } = require('./lib/spec-worktrees');
 const { getContextPathExclusionReason } = require('./lib/ai/safety');
 const { selectOption } = require('./lib/cli/selectors');
+const {
+  SUPPORTED_AI_COMMANDS,
+  SUPPORTED_COMMAND_MODES,
+  SUPPORTED_CONFIG_LANGUAGE_COMMANDS,
+  SUPPORTED_CONFIG_SECTIONS,
+  SUPPORTED_DEMO_COMMANDS,
+  SUPPORTED_SPEC_COMMANDS,
+} = require('./lib/cli/command-registry');
+const { parseCliArgs } = require('./lib/cli/parser');
 const { createUx } = require('./lib/cli/ux');
 const { validateUxFlags } = require('./lib/cli/ux-flags');
 const {
@@ -145,35 +154,6 @@ function formatLanguageWarningForCli(warning, language = DEFAULT_LANGUAGE) {
   }));
 }
 
-const SUPPORTED_COMMAND_MODES = new Set([
-  'init',
-  'version',
-  'flow',
-  'dashboard',
-  'plan',
-  'graph',
-  'next',
-  'doctor',
-  'prepare',
-  'analyze',
-  'migrate',
-  'slice',
-  'handoff',
-  'start-slice',
-  'check-slice',
-  'check-pr',
-  'check-handoff',
-  'new-handoff',
-  'cleanup-slice',
-  'check-scope',
-  'config',
-  'refresh-active-slices',
-  'spec',
-  'evidence',
-  'demo',
-  'ai',
-]);
-
 const SLICE_NAMESPACE_COMMANDS = Object.freeze({
   start: 'start-slice',
   check: 'check-slice',
@@ -206,39 +186,6 @@ function legacyNamespaceAliasFor(mode) {
 function formatLegacyNamespaceWarning(mode, canonicalCommand) {
   return `create-quiver: ${mode} is a legacy alias; use npx create-quiver ${canonicalCommand}.`;
 }
-
-const SUPPORTED_AI_COMMANDS = new Set([
-  'active-slice',
-  'agent',
-  'approve',
-  'approval-status',
-  'approvals',
-  'doctor',
-  'execute-plan',
-  'execute-slice',
-  'executor-prompt',
-  'export',
-  'inspect',
-  'onboard',
-  'plan',
-  'prepare-context',
-  'pr',
-  'prompt-slice',
-  'repair-plan',
-  'review-plan',
-  'revise',
-  'resume',
-  'run',
-  'slices',
-  'specs',
-  'status',
-  'trace',
-]);
-
-const SUPPORTED_SPEC_COMMANDS = new Set(['close', 'create', 'start', 'status', 'validate']);
-const SUPPORTED_DEMO_COMMANDS = new Set(['create']);
-const SUPPORTED_CONFIG_SECTIONS = new Set(['language']);
-const SUPPORTED_CONFIG_LANGUAGE_COMMANDS = new Set(['show', 'set']);
 
 function unsupportedCommandMessage(commandName) {
   const translator = createTranslator(currentErrorLanguage);
@@ -3344,8 +3291,9 @@ async function run(argv) {
     return;
   }
 
-  const args = parseArgs(normalizedArgv, {
+  const args = parseCliArgs(normalizedArgv, {
     language: languageArgs.language,
+    legacyParseArgs: parseArgs,
   });
   args.languageResolution = languageResolution;
   args.language = args.languageResolution.language;

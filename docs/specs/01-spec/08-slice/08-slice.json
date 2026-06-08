@@ -1,0 +1,36 @@
+{
+  "slice_id": "08-slice",
+  "slice_number": "08",
+  "title": "Limpieza controlada de ramas",
+  "objective": "Proponer cierre o eliminacion de ramas solo cuando exista evidencia y aprobacion explicita.",
+  "problem": "Evita borrar ramas utiles, protegidas, historicas o con PRs abiertos por una clasificacion incompleta.",
+  "value_outcome": "Lista final de acciones sugeridas por rama, con aprobacion requerida y sin ejecutar ninguna accion.",
+  "scope": {
+    "includes": ["Clasificacion final", "Local/remota/protegida/historica", "Dependencias", "Recomendaciones", "Comandos seguros sugeridos"],
+    "excludes": ["Delete local/remoto", "Cerrar PRs", "Push", "Cambiar protecciones"]
+  },
+  "actors": ["Maintainer", "Tech Lead", "Usuario aprobador"],
+  "preconditions": ["Extracciones completadas o decision de no extraer mas valor"],
+  "inputs": ["Inventario de ramas", "Matriz de extraccion", "Decisiones de cierre", "Aprobaciones"],
+  "outputs": ["Plan de limpieza pendiente de aprobacion"],
+  "workflow": [
+    {"step": 1, "name": "Revisar ramas", "description": "Revisar ramas sin delta y fuentes de extraccion."},
+    {"step": 2, "name": "Marcar protecciones", "description": "Distinguir historicas, protegidas y no tocar."},
+    {"step": 3, "name": "Verificar frescura", "description": "Verificar estado remoto antes de accion final."},
+    {"step": 4, "name": "Pedir aprobacion", "description": "Solicitar aprobacion explicita antes de eliminar."}
+  ],
+  "business_rules": ["No eliminar sin aprobacion", "Cerrar y eliminar son distintos", "Historicas/protegidas se conservan", "Fuentes se conservan hasta cerrar extracciones"],
+  "validations": ["Accion y motivo por rama", "Eliminacion requiere aprobacion", "Estados diferenciados", "Sin extracciones pendientes"],
+  "error_cases": ["PR abierto", "Ref remota stale", "Backup historico"],
+  "acceptance_criteria": ["No se ejecuta eliminacion", "Destructivo pendiente de aprobacion", "Fuentes no eliminadas prematuramente", "Estados no mezclados", "Comandos seguros sugeridos"],
+  "dependencies": {
+    "functional": ["Inventario", "Decisiones de extraccion"],
+    "technical": ["Git"],
+    "external": ["Politica de proteccion de ramas si existe"],
+    "depends_on_slices": ["01-slice", "04-slice"]
+  },
+  "implementation_order": 8,
+  "slicing_rationale": "La limpieza se deja al final para no perder fuentes antes de extraer valor.",
+  "risks": ["Requiere verificacion remota o politica externa"],
+  "open_questions": ["Aprobacion por rama o por grupo claramente listado?"]
+}
