@@ -35,6 +35,7 @@ const {
   runSpecsList: runAiSpecsList,
   runTraceReport: runAiTraceReport,
 } = require('./commands/ai');
+const { runChangelog } = require('./commands/changelog');
 const { runConfig } = require('./commands/config');
 const { runDashboard } = require('./commands/dashboard');
 const { runDemo } = require('./commands/demo');
@@ -207,6 +208,7 @@ const COMMAND_HELP_GROUPS = [
       ['flow', 'Show the read-only guided workflow stage, blockers, and next safe command.'],
       ['dashboard', 'Show compact read-only project, spec, slice, run, approval, and agent status.'],
       ['version', 'Show a Quiver-branded version report; use --json for metadata.'],
+      ['changelog', 'Show recent local CHANGELOG.md release entries; use --json for metadata.'],
       ['config language show|set', 'Inspect or update the effective Quiver language without editing JSON by hand.'],
       ['prepare', 'Run setup diagnostics for providers, GitHub, SSH, and project readiness.'],
       ['migrate', 'Upgrade an already initialized Quiver project to the current contract.'],
@@ -315,6 +317,7 @@ function printUsage(language = DEFAULT_LANGUAGE) {
   npx create-quiver flow [options]
   npx create-quiver dashboard [options]
   npx create-quiver version [--json]
+  npx create-quiver changelog [--json]
   npx create-quiver config language show [--json]
   npx create-quiver config language set <en|es> [--global]
   npx create-quiver plan [options]
@@ -423,6 +426,8 @@ ${helpText(help, 'headings', 'examples', 'Examples:')}
   cd ./my-project && npx create-quiver dashboard --json
   cd ./my-project && npx create-quiver version
   cd ./my-project && npx create-quiver version --json
+  cd ./my-project && npx create-quiver changelog
+  cd ./my-project && npx create-quiver changelog --json
   cd ./my-project && npx create-quiver config language show
   cd ./my-project && npx create-quiver config language set es
   npx create-quiver config language set en --global
@@ -3370,6 +3375,11 @@ async function run(argv) {
         stdoutIsTTY: Boolean(process.stdout.isTTY),
       }));
     }
+    return;
+  }
+
+  if (args.mode === 'changelog') {
+    runChangelog({ json: args.json });
     return;
   }
 
