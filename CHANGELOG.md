@@ -6,6 +6,8 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- Top-level read-only `changelog` command with human and JSON output for inspecting packaged release notes.
+- Spec 01 branch-recovery closure package under `docs/specs/01-spec/`, including controlled branch-cleanup guidance and release-readiness evidence.
 - v52 schema/docs/release hygiene under `specs/quiver-v52-schema-docs-release-hygiene/`.
 - Public `slice.json` JSON Schema docs and schema validation with `npm run schema:slice:check`.
 - Generated CLI command reference drift checks with `npm run docs:commands:write` and `npm run docs:commands:check`.
@@ -21,6 +23,8 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
+- CLI parser and command registry are now split into explicit modules while preserving existing command behavior and legacy aliases.
+- Release-readiness evidence now includes a command-role audit that explains what each public command is for and how it was safely validated.
 - `npm run docs:check` now includes generated CLI command reference drift detection.
 - Package smoke now installs the generated tarball and verifies the installed CLI with `--version`, `--help`, and `init --dry-run`.
 - Release dry-runs now require changelog, docs, schema, installer, package, and installed CLI smoke gates before publishing guidance.
