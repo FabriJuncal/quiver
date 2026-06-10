@@ -1,6 +1,6 @@
 # Quiver Documentation Index
 
-**Last updated:** 2026-05-29
+**Last updated:** 2026-06-10
 
 Use this file as the first documentation map before planning, implementing, reviewing, or opening PRs in this repository. Prefer the smallest set of linked documents that fits the task.
 
@@ -40,6 +40,10 @@ Canonical specs live outside `docs/` in [`../specs/`](../specs/).
 
 Recent specs:
 
+- [`../specs/quiver-v52-schema-docs-release-hygiene/SPEC.md`](../specs/quiver-v52-schema-docs-release-hygiene/SPEC.md)
+- [`../specs/quiver-v51-cli-ergonomics-automation-contracts/SPEC.md`](../specs/quiver-v51-cli-ergonomics-automation-contracts/SPEC.md)
+- [`../specs/quiver-v50-audit-trust-foundation/SPEC.md`](../specs/quiver-v50-audit-trust-foundation/SPEC.md)
+- [`../specs/quiver-v46-deep-project-analysis/SPEC.md`](../specs/quiver-v46-deep-project-analysis/SPEC.md)
 - [`../specs/quiver-v45-ci-actions-node24-readiness/SPEC.md`](../specs/quiver-v45-ci-actions-node24-readiness/SPEC.md)
 - [`../specs/quiver-v44-provider-live-output-tui-lite/SPEC.md`](../specs/quiver-v44-provider-live-output-tui-lite/SPEC.md)
 - [`../specs/quiver-v43-cli-i18n-audit-release-readiness/SPEC.md`](../specs/quiver-v43-cli-i18n-audit-release-readiness/SPEC.md)
