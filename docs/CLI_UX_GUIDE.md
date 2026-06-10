@@ -94,6 +94,7 @@ Reglas:
 |---|---:|---:|---:|---|
 | `init` | no | si | no | Interactive guia modo de proyecto, metodologia `wdd-sdd`, perfil inicial y proximo paso de perfiles de agentes. |
 | `migrate` | no | no | no | En TTY confirma antes de escribir; en CI/no-TTY requiere `--yes`. `--dry-run` no pide confirmacion ni escribe. |
+| `ai analyze-project` | no | no | si | `--dry-run` es read-only y no ejecuta proveedor; `--review` exige JSON con evidencia, diff final, confirmacion, snapshot y validacion post-write. |
 | `ai prepare-context` | si | si | si | Modo deterministico por defecto; planner opcional con contrato docs-only. |
 | `ai plan` | si | si | si | El planner ya es implicito; `--with-planner` se acepta por consistencia. |
 | `spec create` | si | si | si | Consume un plan tecnico aprobado del planner; no vuelve a ejecutar proveedor. Review previsualiza el paquete antes de escribir. |
@@ -117,6 +118,16 @@ Reglas:
 - `graph --json` tiene precedencia sobre `--format tree|mermaid|dot`; con ambos flags, la salida sigue siendo JSON parseable.
 
 ## Flujo recomendado para contexto de IA
+
+Analisis profundo de un proyecto existente:
+
+```bash
+npx create-quiver ai analyze-project --deep --dry-run
+npx create-quiver ai analyze-project --deep --dry-run --json
+npx create-quiver ai analyze-project --deep --review
+```
+
+`ai analyze-project` debe mantener estas garantias: en `--dry-run` no escribe ni ejecuta proveedor; con proveedor no lee `.env`, dependencias, caches, binarios ni outputs generados; toda conclusion importante cita evidencia o queda como `unknown`; las escrituras se limitan a docs aprobados, usan bloques gestionados por Quiver, muestran diff y crean snapshot previo.
 
 Modo deterministico:
 

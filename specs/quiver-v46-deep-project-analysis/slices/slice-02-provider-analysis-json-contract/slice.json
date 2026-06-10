@@ -1,0 +1,79 @@
+{
+  "slice_id": "slice-02-provider-analysis-json-contract",
+  "ticket": "QUIVER-46-02",
+  "type": "feature",
+  "title": "Provider analysis JSON contract",
+  "objective": "Add privacy-gated provider execution and validated JSON analysis output with confidence and evidence rules.",
+  "description": "Builds the provider prompt, schema, parser, evidence validation, confidence enforcement, truncation rules, and invalid-output no-write behavior for ai analyze-project.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v46-provider-analysis-json",
+    "branch_name": "feature/QUIVER-46-02-v46-provider-analysis-json"
+  },
+  "files": [
+    "src/create-quiver/commands/ai.js",
+    "src/create-quiver/lib/ai/analyze-project-schema.js",
+    "src/create-quiver/lib/ai/analyze-project-prompts.js",
+    "src/create-quiver/lib/ai/analyze-project-parser.js",
+    "src/create-quiver/lib/ai/artifacts.js",
+    "tests/**"
+  ],
+  "expected_read_paths": [
+    "src/create-quiver/lib/ai/providers.js",
+    "src/create-quiver/lib/ai/preflight.js",
+    "src/create-quiver/lib/ai/artifacts.js",
+    "src/create-quiver/commands/ai.js",
+    "src/create-quiver/lib/ai/context-proposal.schema.js"
+  ],
+  "allowed_write_paths": [
+    "src/create-quiver/commands/ai.js",
+    "src/create-quiver/lib/ai/analyze-project-schema.js",
+    "src/create-quiver/lib/ai/analyze-project-prompts.js",
+    "src/create-quiver/lib/ai/analyze-project-parser.js",
+    "src/create-quiver/lib/ai/artifacts.js",
+    "tests/**",
+    "specs/quiver-v46-deep-project-analysis/**"
+  ],
+  "depends_on": [
+    "slice-01-stack-agnostic-discovery-sampling"
+  ],
+  "parallel_safe": "no",
+  "parallel_safe_reason": "Provider execution depends on deterministic sampling and privacy preflight from slice-01.",
+  "must": [
+    "Add privacy preflight before any provider execution.",
+    "Build a prompt that requires JSON only, evidence-backed claims, and no unsupported assertions.",
+    "Validate provider JSON against schema before any write or proposal conversion.",
+    "Validate evidence paths against selected sampled files.",
+    "Enforce confidence rules, including that truncated-file claims cannot be confirmed.",
+    "Fail without writes on invalid JSON, invalid paths, unsupported model, provider failure, timeout, or privacy failure.",
+    "Redact sensitive content before prompt construction and artifact persistence."
+  ],
+  "not_included": [
+    "Writing docs updates.",
+    "Editor review flow.",
+    "Post-write validation."
+  ],
+  "acceptance": [
+    "Provider execution cannot start until the privacy preflight passes.",
+    "Invalid provider JSON fails with no filesystem writes.",
+    "Evidence paths are validated and missing paths are rejected or downgraded according to schema rules.",
+    "Claims include confidence and evidence where required.",
+    "Truncated inputs prevent confirmed confidence.",
+    "Provider output artifacts are redacted and size-limited."
+  ],
+  "tests": [
+    "node --test tests/commands/ai-analyze-project-provider.test.js",
+    "node --test tests/lib/ai-analyze-project-schema.test.js",
+    "node --test tests/lib/ai-analyze-project-parser.test.js",
+    "git diff --check"
+  ],
+  "validation_hints": [
+    "Use fake provider output for valid JSON, invalid JSON, invented evidence, conflict claims, and truncated evidence.",
+    "Assert no docs are written by this slice."
+  ],
+  "estimated_hours": 10,
+  "status": "completed",
+  "completed_at": "2026-06-10",
+  "blocked_reason": null
+}

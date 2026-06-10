@@ -1,0 +1,85 @@
+{
+  "slice_id": "slice-04-validation-docs-release-readiness",
+  "ticket": "QUIVER-46-04",
+  "type": "release-readiness",
+  "title": "Validation, docs, fixtures, and release readiness",
+  "objective": "Complete post-write validation, public documentation, fixtures, smokes, and release evidence for ai analyze-project.",
+  "description": "Adds consistency validation, placeholder checks, docs updates, command reference updates, fixture coverage, smoke tests, and final package readiness evidence.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v46-validation-docs-readiness",
+    "branch_name": "feature/QUIVER-46-04-v46-validation-docs-readiness"
+  },
+  "files": [
+    "src/create-quiver/commands/ai.js",
+    "src/create-quiver/lib/ai/analyze-project-validation.js",
+    ".npmignore",
+    "docs/**",
+    "README.md",
+    "README_FOR_AI.md",
+    "tests/**",
+    "scripts/ci/**",
+    "specs/quiver-v46-deep-project-analysis/**"
+  ],
+  "expected_read_paths": [
+    "docs/CLI_UX_GUIDE.md",
+    "docs/reference/commands.md",
+    "README.md",
+    "README_FOR_AI.md",
+    "scripts/ci",
+    "tests"
+  ],
+  "allowed_write_paths": [
+    "src/create-quiver/commands/ai.js",
+    "src/create-quiver/lib/ai/analyze-project-validation.js",
+    ".npmignore",
+    "docs/**",
+    "README.md",
+    "README_FOR_AI.md",
+    "tests/**",
+    "scripts/ci/**",
+    "specs/quiver-v46-deep-project-analysis/**"
+  ],
+  "depends_on": [
+    "slice-03-doc-proposal-review-safe-writes"
+  ],
+  "parallel_safe": "no",
+  "parallel_safe_reason": "Final validation and docs depend on the completed runtime behavior.",
+  "must": [
+    "Validate post-write schema and evidence paths.",
+    "Check placeholders and doc conflicts, with --strict converting important conflicts to errors.",
+    "Document command usage, safe defaults, privacy preflight, review flow, JSON output, budgets, scope, and limitations.",
+    "Add fixture coverage for Next/Supabase, unknown stack, monorepo, secrets, binary files, large repo, no package manager, symlinks, truncation, and invalid provider JSON.",
+    "Update command reference and AI guidance.",
+    "Capture final validation evidence."
+  ],
+  "not_included": [
+    "New product feature implementation in target projects.",
+    "Full language-specific AST indexing.",
+    "Provider-specific account setup docs beyond existing Quiver provider guidance."
+  ],
+  "acceptance": [
+    "Post-write validation reports schema, placeholders, evidence path issues, and doc conflicts.",
+    "--strict turns important conflicts into failures.",
+    "Public docs describe default read-only behavior and explicit write gates.",
+    "Fixtures cover production-risk edge cases.",
+    "Package and smoke validation pass.",
+    "Spec status and evidence report are updated with final commands."
+  ],
+  "tests": [
+    "node --test tests/**/*.test.js",
+    "npm run smoke:create-quiver",
+    "npm run package:quiver",
+    "node bin/create-quiver.js spec validate specs/quiver-v46-deep-project-analysis --strict",
+    "git diff --check"
+  ],
+  "validation_hints": [
+    "Run docs command reference checks if available.",
+    "Verify --json output remains clean in every tested mode."
+  ],
+  "estimated_hours": 8,
+  "status": "completed",
+  "completed_at": "2026-06-10",
+  "blocked_reason": null
+}

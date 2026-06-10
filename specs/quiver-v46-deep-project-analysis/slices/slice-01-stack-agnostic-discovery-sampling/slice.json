@@ -1,0 +1,80 @@
+{
+  "slice_id": "slice-01-stack-agnostic-discovery-sampling",
+  "ticket": "QUIVER-46-01",
+  "type": "feature",
+  "title": "Stack-agnostic discovery and sampling",
+  "objective": "Add the read-only ai analyze-project command shell plus deterministic discovery and semantic sampling without provider execution or writes.",
+  "description": "Introduces the safe default command behavior, dry-run reports, stack-agnostic source discovery, scope support, budgets, safety exclusions, and selected/omitted file explanations.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v46-discovery-sampling",
+    "branch_name": "feature/QUIVER-46-01-v46-discovery-sampling"
+  },
+  "files": [
+    "src/create-quiver/index.js",
+    "src/create-quiver/commands/ai.js",
+    "src/create-quiver/lib/ai/analyze-project-discovery.js",
+    "src/create-quiver/lib/ai/analyze-project-sampling.js",
+    "src/create-quiver/lib/ai/safety.js",
+    "tests/**"
+  ],
+  "expected_read_paths": [
+    "src/create-quiver/index.js",
+    "src/create-quiver/commands/ai.js",
+    "src/create-quiver/lib/ai/safety.js",
+    "src/create-quiver/lib/project-scan.js",
+    "src/create-quiver/lib/project-state-resolver.js",
+    "tests/commands"
+  ],
+  "allowed_write_paths": [
+    "src/create-quiver/index.js",
+    "src/create-quiver/commands/ai.js",
+    "src/create-quiver/lib/ai/analyze-project-discovery.js",
+    "src/create-quiver/lib/ai/analyze-project-sampling.js",
+    "src/create-quiver/lib/ai/safety.js",
+    "tests/**",
+    "specs/quiver-v46-deep-project-analysis/**"
+  ],
+  "depends_on": [
+    "slice-00-analysis-contract-foundation"
+  ],
+  "parallel_safe": "no",
+  "parallel_safe_reason": "This slice establishes command shape and discovery contracts used by all later slices.",
+  "must": [
+    "Add ai analyze-project parser and read-only default behavior.",
+    "Implement --dry-run and --json output without provider execution or writes.",
+    "Implement --max-files, --max-bytes, --include-source, --include-tests, --include-db, and --scope planning behavior.",
+    "Select representative files using stack-agnostic semantic signals.",
+    "Report selected files, omitted files, budgets, safety exclusions, symlink handling, and analyzed roots.",
+    "Never include secrets, .git, node_modules, caches, build outputs, binary files, or outside-repo symlinks."
+  ],
+  "not_included": [
+    "Provider prompt execution.",
+    "AI JSON schema parsing.",
+    "Doc update writes.",
+    "Review/editor flow."
+  ],
+  "acceptance": [
+    "Running ai analyze-project with no write flags is read-only.",
+    "Running ai analyze-project --dry-run writes no files and runs no provider.",
+    "Dry-run human output explains selected files and omitted files with reasons.",
+    "Dry-run JSON output is machine-readable and not contaminated by human UI.",
+    "Budgets and include flags change the sampling plan predictably.",
+    "Monorepo/workspace roots are reported and --scope restricts analysis.",
+    "Symlinks are not followed by default and outside-repo symlinks are omitted."
+  ],
+  "tests": [
+    "node --test tests/commands/ai-analyze-project.test.js",
+    "node --test tests/lib/ai-analyze-project-discovery.test.js",
+    "git diff --check"
+  ],
+  "validation_hints": [
+    "Use fixtures for Next/Supabase, unknown stack, monorepo, symlink, binary, and secret paths.",
+    "Assert no .quiver/runs directory is created by dry-run."
+  ],
+  "estimated_hours": 8,
+  "status": "completed",
+  "completed_at": "2026-06-10",
+  "blocked_reason": null
+}
