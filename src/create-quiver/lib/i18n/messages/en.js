@@ -272,6 +272,7 @@ module.exports = {
     'ai.plan.with_planner_already_active': 'Planner mode: already active for ai plan; --with-planner is accepted for UX consistency.',
     'ai.planner.progress.agent_failed': 'Agent failed',
     'ai.planner.progress.agent_finished': 'Agent finished',
+    'ai.planner.progress.analyze_project': 'Analyzing project',
     'ai.planner.progress.detecting_structure': 'Detecting structure',
     'ai.planner.progress.onboarding': 'Running onboarding',
     'ai.planner.progress.plan': 'Running plan {phase}',

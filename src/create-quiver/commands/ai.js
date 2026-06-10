@@ -165,6 +165,46 @@ function limitList(items, maxItems = 30) {
   };
 }
 
+function formatAnalyzeProjectIssues(issues = [], maxIssues = 8) {
+  const list = Array.isArray(issues) ? issues : [];
+  const visible = list.slice(0, maxIssues);
+  const lines = visible.map((issue) => {
+    const location = issue.path || 'analysis';
+    const code = issue.issue || 'invalid';
+    const message = issue.message || 'Invalid provider analysis output.';
+    return `- ${location}: ${code} - ${message}`;
+  });
+  const hidden = list.length - visible.length;
+  if (hidden > 0) {
+    lines.push(`- ... ${hidden} more issue${hidden === 1 ? '' : 's'}`);
+  }
+  return lines;
+}
+
+function enhanceAnalyzeProjectAnalysisError(error) {
+  if (!error || error.code !== 'AI_ANALYZE_PROJECT_INVALID') {
+    return error;
+  }
+
+  const issueLines = formatAnalyzeProjectIssues(error.issues);
+  if (issueLines.length === 0) {
+    return error;
+  }
+
+  const wrapped = new Error([
+    error.message,
+    'Issues:',
+    ...issueLines,
+    'Next safe step: inspect the selected evidence with `npx create-quiver ai analyze-project --deep --dry-run --json`, then rerun live. If provider drift repeats, reduce --max-files or --max-bytes.',
+  ].join('\n'));
+  wrapped.name = error.name;
+  wrapped.code = error.code;
+  wrapped.cause = error;
+  wrapped.issues = error.issues;
+  wrapped.details = error.issues;
+  return wrapped;
+}
+
 function formatAnalyzeProjectFileLine(file) {
   const details = [];
   if (Array.isArray(file.signals) && file.signals.length > 0) {
@@ -1883,6 +1923,9 @@ async function runAnalyzeProject(repoRoot, options = {}) {
   const runtimeProfile = resolveRuntimeAgentProfile(repoRoot, role, options, DEFAULT_PLAN_PROVIDER);
   const provider = runtimeProfile.provider;
   const timeoutMs = normalizeTimeout(options.timeout);
+  const ux = createCommandUx(options);
+  const showProgress = shouldShowHumanProgress(ux, options);
+  const progressTranslator = createTranslator(options.language);
   const promptPackage = buildAnalyzeProjectPrompt({
     analysisPlan: report,
     repoRoot,
@@ -1892,6 +1935,17 @@ async function runAnalyzeProject(repoRoot, options = {}) {
   const prompt = promptPackage.prompt;
   const promptLimit = assertProviderPromptWithinLimit(prompt, options.promptLimitOptions || {});
   const privacyPreflight = promptPackage.privacyPreflight;
+
+  writeProgressChecks(
+    ux,
+    showProgress,
+    plannerProgressTitle(progressTranslator.t('ai.planner.progress.analyze_project'), runtimeProfile, options),
+    [
+      progressTranslator.t('ai.planner.progress.reading_base_docs'),
+      progressTranslator.t('ai.planner.progress.detecting_structure'),
+      progressTranslator.t('ai.planner.progress.preparing_prompt'),
+    ],
+  );
 
   if (!privacyPreflight.ok) {
     const error = new Error(formatError('ai analyze-project privacy preflight failed; provider execution was blocked before sending repository content.'));
@@ -1931,18 +1985,25 @@ async function runAnalyzeProject(repoRoot, options = {}) {
 
   let result;
   try {
-    result = await (options.runProviderFn || runProvider)(provider, {
-      prompt,
-      cwd: repoRoot,
-      timeoutMs,
-      dryRun: false,
-      probe: options.probe,
-      spawn: options.spawn,
-      tempRoot: options.tempRoot,
-      tempFileName: options.tempFileName,
-      tempFilePrefix: options.tempFilePrefix,
-      ...runtimeModelExecutionOptions(runtimeProfile, options),
-      enforceModelSelection: false,
+    result = await runProviderWithProgress({
+      ux,
+      enabled: showProgress,
+      message: progressTranslator.t('ai.planner.progress.running_agent'),
+      successMessage: progressTranslator.t('ai.planner.progress.agent_finished'),
+      failureMessage: progressTranslator.t('ai.planner.progress.agent_failed'),
+      run: () => (options.runProviderFn || runProvider)(provider, {
+        prompt,
+        cwd: repoRoot,
+        timeoutMs,
+        dryRun: false,
+        probe: options.probe,
+        spawn: options.spawn,
+        tempRoot: options.tempRoot,
+        tempFileName: options.tempFileName,
+        tempFilePrefix: options.tempFilePrefix,
+        ...runtimeModelExecutionOptions(runtimeProfile, options),
+        enforceModelSelection: false,
+      }),
     });
   } catch (error) {
     throw annotateProviderError(error, 'analyze-project');
@@ -1953,10 +2014,15 @@ async function runAnalyzeProject(repoRoot, options = {}) {
   }
 
   const clean = extractCleanProviderOutput(result, { prompt, projectRoot: repoRoot });
-  const parsed = parseAnalyzeProjectOutput(clean.cleanOutput, {
-    selectedFiles: report.selected_files,
-    promptFiles: promptPackage.files,
-  });
+  let parsed;
+  try {
+    parsed = parseAnalyzeProjectOutput(clean.cleanOutput, {
+      selectedFiles: report.selected_files,
+      promptFiles: promptPackage.files,
+    });
+  } catch (error) {
+    throw enhanceAnalyzeProjectAnalysisError(error);
+  }
   const completedReport = {
     ...report,
     provider,
