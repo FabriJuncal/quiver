@@ -40,6 +40,10 @@ All notable changes to this project will be documented in this file.
 - CLI output now follows the shared Quiver palette and hierarchy while keeping `--json`, CI, no-TTY, and `--no-color` output clean.
 - Command docs now cover human-vs-machine output, selectors, Doctor output, and cross-platform usage.
 
+### Fixed
+
+- `ai analyze-project` now shows human TTY progress while provider analysis runs and reports schema validation issues with actionable detail.
+
 ## [0.14.1] - 2026-05-26
 
 ### Added
