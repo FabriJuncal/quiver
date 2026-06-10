@@ -6,6 +6,8 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- v46 deep project analysis under `specs/quiver-v46-deep-project-analysis/`.
+- `ai analyze-project` for bounded, evidence-backed repository analysis with read-only `--dry-run`, JSON automation output, provider-backed `--review`, safe doc writes, snapshots, and post-write validation.
 - Top-level read-only `changelog` command with human and JSON output for inspecting packaged release notes.
 - Spec 01 branch-recovery closure package under `docs/specs/01-spec/`, including controlled branch-cleanup guidance and release-readiness evidence.
 - v52 schema/docs/release hygiene under `specs/quiver-v52-schema-docs-release-hygiene/`.
@@ -23,6 +25,8 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
+- Existing-project AI onboarding now recommends `ai analyze-project --deep --dry-run` before context preparation so agents can see the intended read set, omissions, budgets, and privacy exclusions before any provider-backed docs update.
+- npm package hygiene now excludes local `.quiver/` run state from published tarballs.
 - CLI parser and command registry are now split into explicit modules while preserving existing command behavior and legacy aliases.
 - Release-readiness evidence now includes a command-role audit that explains what each public command is for and how it was safely validated.
 - `npm run docs:check` now includes generated CLI command reference drift detection.
