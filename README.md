@@ -104,16 +104,20 @@ npx --yes create-quiver@latest doctor
 Después prepará el contexto para IA:
 
 ```bash
+npx --yes create-quiver@latest ai analyze-project --deep --dry-run
 npx --yes create-quiver@latest ai prepare-context --dry-run
 npx --yes create-quiver@latest ai prepare-context
 ```
 
-Ese flujo usa el modo determinístico de Quiver: analiza el proyecto y actualiza solo documentación de contexto sin llamar a un proveedor de IA. Si querés que un agente planificador proponga el contexto, usá el modo asistido:
+`ai analyze-project --deep --dry-run` arma una muestra representativa del repo sin escribir archivos ni ejecutar proveedor. El flujo de `prepare-context` usa el modo determinístico de Quiver: analiza el proyecto y actualiza solo documentación de contexto sin llamar a un proveedor de IA. Si querés que un agente planificador proponga el contexto, usá el modo asistido:
 
 ```bash
+npx --yes create-quiver@latest ai analyze-project --deep --review
 npx --yes create-quiver@latest ai prepare-context --with-planner --dry-run
 npx --yes create-quiver@latest ai prepare-context --with-planner --review --interactive
 ```
+
+`ai analyze-project --deep --review` ejecuta el proveedor configurado, valida JSON con evidencia, abre revisión humana y solo escribe docs permitidos después de confirmación. No lee `.env`, dependencias, caches, binarios ni outputs generados; tampoco afirma comprensión perfecta cuando la evidencia no alcanza.
 
 La inicialización crea un contrato visible para humanos y agentes, más estado interno de Quiver:
 
@@ -178,6 +182,8 @@ Usá la guía que corresponda al estado de tu proyecto:
 | `npx --yes create-quiver@latest doctor --json` | Devuelve el diagnóstico como JSON para automatizaciones. |
 | `npx --yes create-quiver@latest flow` | Indica el próximo paso seguro. |
 | `npx --yes create-quiver@latest dashboard` | Muestra estado consolidado de specs, slices, runs, approvals y agentes sin escribir archivos. |
+| `npx --yes create-quiver@latest ai analyze-project --deep --dry-run` | Muestra qué archivos leería para inferir producto, arquitectura, funcionalidades y riesgos, sin escribir ni ejecutar proveedor. |
+| `npx --yes create-quiver@latest ai analyze-project --deep --review` | Ejecuta análisis IA con evidencia, abre revisión humana y actualiza solo docs permitidos con snapshot previo. |
 | `npx --yes create-quiver@latest ai prepare-context --dry-run` | Previsualiza contexto de onboarding para IA sin tocar código de producto. |
 | `npx --yes create-quiver@latest ai prepare-context --with-planner --dry-run` | Previsualiza una propuesta de contexto generada por el planner. |
 | `npx --yes create-quiver@latest ai models list` | Lista proveedores y modelos conocidos por Quiver para configurar agentes. |

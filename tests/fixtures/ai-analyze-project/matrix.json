@@ -1,0 +1,56 @@
+{
+  "schema_version": 1,
+  "kind": "quiver-ai-analyze-project-fixture-matrix",
+  "cases": [
+    {
+      "name": "next-supabase",
+      "purpose": "Detect Next/React/Supabase signals and safe exclusions.",
+      "covered_by": ["tests/lib/ai-analyze-project-discovery.test.js"]
+    },
+    {
+      "name": "unknown-stack-no-package-manager",
+      "purpose": "Keep discovery useful when no known framework or package manager exists.",
+      "covered_by": ["tests/lib/ai-analyze-project-discovery.test.js"]
+    },
+    {
+      "name": "monorepo-workspaces",
+      "purpose": "Detect workspace roots and support scoped analysis.",
+      "covered_by": ["tests/lib/ai-analyze-project-discovery.test.js"]
+    },
+    {
+      "name": "secrets-env-files",
+      "purpose": "Exclude .env files and redact accidental secret-like values before provider prompts.",
+      "covered_by": ["tests/lib/ai-analyze-project-discovery.test.js", "tests/commands/ai-analyze-project-provider.test.js"]
+    },
+    {
+      "name": "binaries",
+      "purpose": "Skip binary assets before sampling or provider prompt construction.",
+      "covered_by": ["tests/lib/ai-analyze-project-discovery.test.js"]
+    },
+    {
+      "name": "large-repo-budget",
+      "purpose": "Respect max file and byte budgets in representative sampling.",
+      "covered_by": ["tests/lib/ai-analyze-project-discovery.test.js"]
+    },
+    {
+      "name": "symlinks",
+      "purpose": "Avoid following symlinks during repository analysis.",
+      "covered_by": ["tests/lib/ai-analyze-project-discovery.test.js"]
+    },
+    {
+      "name": "truncation",
+      "purpose": "Downgrade confirmed confidence when cited prompt evidence was truncated.",
+      "covered_by": ["tests/lib/ai-analyze-project-parser.test.js"]
+    },
+    {
+      "name": "invalid-provider-json",
+      "purpose": "Fail closed without writing files when provider output is not valid JSON.",
+      "covered_by": ["tests/commands/ai-analyze-project-provider.test.js"]
+    },
+    {
+      "name": "post-write-validation",
+      "purpose": "Detect schema/evidence/placeholders/deterministic-doc conflicts after safe writes.",
+      "covered_by": ["tests/lib/ai-analyze-project-validation.test.js", "tests/commands/ai-analyze-project-review.test.js"]
+    }
+  ]
+}

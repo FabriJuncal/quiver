@@ -1,0 +1,61 @@
+{
+  "slice_id": "slice-00-analysis-contract-foundation",
+  "ticket": "QUIVER-46-00",
+  "type": "documentation",
+  "title": "Analysis contract foundation",
+  "objective": "Create the approved v46 spec package and implementation handoffs for deep project analysis without implementing runtime code.",
+  "description": "Documents the user-approved acceptance criteria, production review additions, technical plan, slice roadmap, and handoffs for the new ai analyze-project workflow.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v46-analysis-contract-foundation",
+    "branch_name": "feature/QUIVER-46-00-v46-analysis-contract-foundation"
+  },
+  "files": [
+    "specs/quiver-v46-deep-project-analysis/**"
+  ],
+  "expected_read_paths": [
+    "README_FOR_AI.md",
+    "docs/reference/commands.md",
+    "specs/quiver-v44-provider-live-output-tui-lite/SPEC.md",
+    "src/create-quiver/commands/ai.js",
+    "src/create-quiver/lib/ai/onboarding-template.js"
+  ],
+  "allowed_write_paths": [
+    "specs/quiver-v46-deep-project-analysis/**"
+  ],
+  "depends_on": [],
+  "parallel_safe": "no",
+  "parallel_safe_reason": "Foundation defines the contract for all later v46 slices.",
+  "must": [
+    "Create SPEC.md, STATUS.md, EXECUTION_PLAN.md, EVIDENCE_REPORT.md, pr.md, and all slice handoffs.",
+    "Capture approved acceptance criteria and production review additions.",
+    "Keep runtime implementation code untouched.",
+    "Make default read-only, privacy preflight, evidence validation, and safe writes explicit guardrails."
+  ],
+  "not_included": [
+    "Runtime CLI parser implementation.",
+    "Discovery or sampling implementation.",
+    "Provider execution.",
+    "Doc write implementation."
+  ],
+  "acceptance": [
+    "Spec package exists under specs/quiver-v46-deep-project-analysis.",
+    "Every slice directory includes slice.json, EXECUTION_BRIEF.md, and CLOSURE_BRIEF.md.",
+    "The package records that runtime implementation has not started.",
+    "No source code implementation files are modified by this slice."
+  ],
+  "tests": [
+    "node -e \"const fs=require('fs'); for (const f of fs.globSync('specs/quiver-v46-deep-project-analysis/slices/*/slice.json')) JSON.parse(fs.readFileSync(f,'utf8')); console.log('slice json ok')\"",
+    "git diff --check"
+  ],
+  "validation_hints": [
+    "Validate JSON parseability for every slice file.",
+    "Inspect git diff to confirm only v46 spec files changed for this slice."
+  ],
+  "estimated_hours": 1,
+  "status": "completed",
+  "blocked_reason": null,
+  "actual_hours": 1,
+  "completed_at": "2026-06-10"
+}

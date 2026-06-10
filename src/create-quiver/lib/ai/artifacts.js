@@ -33,7 +33,10 @@ function escapeRegExp(value) {
 }
 
 function redactSensitiveLocalValues(text, options = {}) {
-  let result = redactSecrets(text);
+  let result = redactSecrets(text)
+    .replace(/\bsk-[A-Za-z0-9_-]{16,}\b/g, '[REDACTED]')
+    .replace(/\bghp_[A-Za-z0-9_]{16,}\b/g, '[REDACTED]')
+    .replace(/\bgithub_pat_[A-Za-z0-9_]{16,}\b/g, '[REDACTED]');
   const replacements = [];
 
   if (options.projectRoot) {

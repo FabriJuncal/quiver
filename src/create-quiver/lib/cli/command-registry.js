@@ -31,6 +31,7 @@ const SUPPORTED_COMMAND_MODES = new Set([
 const SUPPORTED_AI_COMMANDS = new Set([
   'active-slice',
   'agent',
+  'analyze-project',
   'approve',
   'approval-status',
   'approvals',

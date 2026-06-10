@@ -1,0 +1,79 @@
+{
+  "slice_id": "slice-03-doc-proposal-review-safe-writes",
+  "ticket": "QUIVER-46-03",
+  "type": "feature",
+  "title": "Doc proposal review and safe writes",
+  "objective": "Convert validated analysis into reviewable doc updates and write only approved docs with snapshots and manifests.",
+  "description": "Adds doc update proposal generation, review/edit/final-diff/confirm flow, managed blocks or safe merge behavior, safe writes, snapshot manifests, hashes, and restore guidance.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v46-doc-review-safe-writes",
+    "branch_name": "feature/QUIVER-46-03-v46-doc-review-safe-writes"
+  },
+  "files": [
+    "src/create-quiver/commands/ai.js",
+    "src/create-quiver/lib/ai/analyze-project-docs.js",
+    "src/create-quiver/lib/ai/analyze-project-review.js",
+    "src/create-quiver/lib/ai/run-state.js",
+    "src/create-quiver/lib/ai/artifacts.js",
+    "tests/**"
+  ],
+  "expected_read_paths": [
+    "src/create-quiver/commands/ai.js",
+    "src/create-quiver/lib/ai/run-state.js",
+    "src/create-quiver/lib/ai/artifacts.js",
+    "src/create-quiver/lib/cli/editor.js",
+    "src/create-quiver/lib/approvals.js"
+  ],
+  "allowed_write_paths": [
+    "src/create-quiver/commands/ai.js",
+    "src/create-quiver/lib/ai/analyze-project-docs.js",
+    "src/create-quiver/lib/ai/analyze-project-review.js",
+    "src/create-quiver/lib/ai/run-state.js",
+    "src/create-quiver/lib/ai/artifacts.js",
+    "tests/**",
+    "specs/quiver-v46-deep-project-analysis/**"
+  ],
+  "depends_on": [
+    "slice-02-provider-analysis-json-contract"
+  ],
+  "parallel_safe": "no",
+  "parallel_safe_reason": "Safe writes depend on validated provider analysis and must define the user-visible mutation contract.",
+  "must": [
+    "Convert validated analysis into doc updates for approved paths only.",
+    "Keep docs/PROJECT_MAP.md deterministic or constrain AI content to a managed block.",
+    "Preserve human-authored content using stable managed blocks or safe merge rules.",
+    "Implement --review editor flow with schema revalidation after edit.",
+    "Show final diff and require explicit confirmation before writing.",
+    "Cancel cleanly without writes.",
+    "Create .quiver/runs snapshots, manifests, before/after hashes, redacted raw artifacts, and restore guidance.",
+    "Handle no-TTY review attempts with actionable errors."
+  ],
+  "not_included": [
+    "Final public docs polish.",
+    "Release readiness smokes.",
+    "Post-write placeholder/conflict validation beyond write-time safety checks."
+  ],
+  "acceptance": [
+    "Doc updates target only whitelisted Markdown paths.",
+    "Review edit is revalidated before final diff.",
+    "Canceling review leaves the repo unchanged.",
+    "Approved writes create snapshots and manifest entries for every changed file.",
+    "Dirty target docs are reported before writing and require explicit confirmation or a documented flag.",
+    ".quiver/runs artifacts are redacted and ignored from git."
+  ],
+  "tests": [
+    "node --test tests/commands/ai-analyze-project-review.test.js",
+    "node --test tests/lib/ai-analyze-project-docs.test.js",
+    "git diff --check"
+  ],
+  "validation_hints": [
+    "Test review cancel, invalid edited JSON, no-TTY review, dirty target docs, path traversal, oversized doc updates, and snapshot manifests.",
+    "Confirm product code paths cannot be written."
+  ],
+  "estimated_hours": 10,
+  "status": "completed",
+  "completed_at": "2026-06-10",
+  "blocked_reason": null
+}

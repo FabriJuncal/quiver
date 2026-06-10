@@ -12,6 +12,7 @@ const {
 const {
   runActiveSlice: runAiActiveSlice,
   runAgent: runAiAgent,
+  runAnalyzeProject: runAiAnalyzeProject,
   runApprovalStatus: runAiApprovalStatus,
   runApprove: runAiApprove,
   runDoctor: runAiDoctor,
@@ -229,6 +230,7 @@ const COMMAND_HELP_GROUPS = [
       ['ai active-slice status|reconcile', 'Inspect or dry-run reconcile local active-slice state from every supported source.'],
       ['ai status', 'Show current AI lifecycle phase, approved versions, blockers, and next command.'],
       ['ai resume', 'Resume guidance from the last valid lifecycle phase without chat memory.'],
+      ['ai analyze-project', 'Read and explain a bounded project sample without provider execution or writes.'],
       ['ai onboard', 'Run or print the planner onboarding prompt with a token-aware context pack.'],
       ['ai prepare-context', 'Preview or write docs-only AI context updates with assumptions and risks.'],
       ['ai agent set|list|show|doctor|repair', 'Manage, diagnose, and dry-run repair planner, executor, reviewer, and doctor provider profiles without secrets.'],
@@ -327,6 +329,7 @@ function printUsage(language = DEFAULT_LANGUAGE) {
   npx create-quiver ai active-slice reconcile --dry-run
   npx create-quiver ai status [options]
   npx create-quiver ai resume [options]
+  npx create-quiver ai analyze-project [--deep] [--dry-run] [--json]
   npx create-quiver ai inspect [options]
   npx create-quiver ai export [--format json|markdown]
   npx create-quiver ai specs list [--json]
@@ -386,7 +389,14 @@ ${helpText(help, 'headings', 'options', 'Options:')}
       --full                  ${optionDescription(help, 'Plan or run the full compatibility init profile')}
       --legacy-scripts        ${optionDescription(help, 'Include legacy Bash wrappers in init profile')}
       --include-templates     ${optionDescription(help, 'Export packaged templates in init profile')}
-      --dry-run               ${optionDescription(help, 'Preview init, analyze, migrate, prepare, spec create/start/close, demo, ai agent set, or AI work without executing writes/providers')}
+      --dry-run               ${optionDescription(help, 'Preview init, analyze, migrate, prepare, spec create/start/close, demo, ai agent set, ai analyze-project, or AI work without executing writes/providers')}
+      --deep                  ${optionDescription(help, 'For ai analyze-project, include source and DB files in the read-only sample')}
+      --max-files <n>         ${optionDescription(help, 'For ai analyze-project, maximum files in the semantic sample')}
+      --max-bytes <n>         ${optionDescription(help, 'For ai analyze-project, maximum selected bytes in the semantic sample')}
+      --include-source        ${optionDescription(help, 'For ai analyze-project, include source files without requiring --deep')}
+      --include-tests         ${optionDescription(help, 'For ai analyze-project, include test files in the sample')}
+      --include-db            ${optionDescription(help, 'For ai analyze-project, include schema, migration, and DB files in the sample')}
+      --scope <path|name>     ${optionDescription(help, 'For ai analyze-project, restrict discovery to a repo path or workspace name')}
       --print-prompt          ${optionDescription(help, 'Print the exact AI prompt and exit without executing provider CLIs')}
       --with-planner          ${optionDescription(help, 'Enable planner-assisted behavior on commands that explicitly support it')}
       --interactive           ${optionDescription(help, 'Enable prompts on commands that explicitly support interactive choices')}
@@ -435,6 +445,8 @@ ${helpText(help, 'headings', 'examples', 'Examples:')}
   cd ./my-project && npx create-quiver plan --json
   cd ./my-project && npx create-quiver ai onboard --dry-run
   cd ./my-project && npx create-quiver ai onboard --print-prompt
+  cd ./my-project && npx create-quiver ai analyze-project --deep --dry-run
+  cd ./my-project && npx create-quiver ai analyze-project --deep --json
   cd ./my-project && npx create-quiver ai prepare-context --dry-run
   cd ./my-project && npx create-quiver ai run create --input requirements.md
   cd ./my-project && npx create-quiver ai active-slice reconcile --dry-run
@@ -563,6 +575,14 @@ function parseArgs(argv, options = {}) {
     aiInput: '',
     aiSlice: '',
     aiTimeout: null,
+    aiAnalyzeDeep: false,
+    aiAnalyzeIncludeDb: false,
+    aiAnalyzeIncludeSource: false,
+    aiAnalyzeIncludeTests: false,
+    aiAnalyzeMaxBytes: null,
+    aiAnalyzeMaxFiles: null,
+    aiAnalyzeScope: '',
+    aiAnalyzeOptionUsed: false,
     aiCommit: false,
     aiAllowDirty: false,
     aiExecute: false,
@@ -716,6 +736,68 @@ function parseArgs(argv, options = {}) {
 
     if (arg === '--dry-run') {
       result.dryRun = true;
+      continue;
+    }
+
+    if (arg === '--deep') {
+      result.aiAnalyzeDeep = true;
+      result.aiAnalyzeOptionUsed = true;
+      continue;
+    }
+
+    if (arg === '--include-source') {
+      result.aiAnalyzeIncludeSource = true;
+      result.aiAnalyzeOptionUsed = true;
+      continue;
+    }
+
+    if (arg === '--include-tests') {
+      result.aiAnalyzeIncludeTests = true;
+      result.aiAnalyzeOptionUsed = true;
+      continue;
+    }
+
+    if (arg === '--include-db') {
+      result.aiAnalyzeIncludeDb = true;
+      result.aiAnalyzeOptionUsed = true;
+      continue;
+    }
+
+    if (arg === '--max-files') {
+      const value = args[++index];
+      if (typeof value === 'undefined') {
+        throw new Error(formatError('missing value for --max-files'));
+      }
+      const parsed = Number.parseInt(value, 10);
+      if (!Number.isInteger(parsed) || parsed <= 0) {
+        throw new Error(formatError('invalid value for --max-files'));
+      }
+      result.aiAnalyzeMaxFiles = parsed;
+      result.aiAnalyzeOptionUsed = true;
+      continue;
+    }
+
+    if (arg === '--max-bytes') {
+      const value = args[++index];
+      if (typeof value === 'undefined') {
+        throw new Error(formatError('missing value for --max-bytes'));
+      }
+      const parsed = Number.parseInt(value, 10);
+      if (!Number.isInteger(parsed) || parsed <= 0) {
+        throw new Error(formatError('invalid value for --max-bytes'));
+      }
+      result.aiAnalyzeMaxBytes = parsed;
+      result.aiAnalyzeOptionUsed = true;
+      continue;
+    }
+
+    if (arg === '--scope') {
+      const value = args[++index];
+      if (!value || String(value).startsWith('--')) {
+        throw new Error(formatError('missing value for --scope'));
+      }
+      result.aiAnalyzeScope = value;
+      result.aiAnalyzeOptionUsed = true;
       continue;
     }
 
@@ -1178,6 +1260,10 @@ function parseArgs(argv, options = {}) {
     positional.push(arg);
   }
 
+  if (result.aiAnalyzeOptionUsed && result.mode !== 'ai') {
+    throw new Error(formatError('analysis flags are only supported by ai analyze-project'));
+  }
+
   if (result.mode === 'init') {
     if (!result.projectName && positional.length > 0) {
       result.projectName = positional.shift();
@@ -1231,6 +1317,9 @@ function parseArgs(argv, options = {}) {
   } else if (result.mode === 'ai') {
     if (!result.aiCommand && positional.length > 0) {
       result.aiCommand = positional.shift();
+    }
+    if (result.aiAnalyzeOptionUsed && result.aiCommand !== 'analyze-project') {
+      throw new Error(formatError('analysis flags are only supported by ai analyze-project'));
     }
     if (result.aiCommand === 'agent') {
       if (!result.aiAgentCommand && positional.length > 0) {
@@ -3420,7 +3509,28 @@ async function run(argv) {
 
   if (args.mode === 'ai') {
     if (!args.aiCommand) {
-      throw new Error(formatError('missing ai subcommand. Use: npx create-quiver ai onboard | prepare-context | run | active-slice | status | resume | inspect | export | specs | slices | models | trace | plan | revise | repair-plan | review-plan | approve | approvals | agent | prompt-slice | execute-slice | execute-plan | doctor | pr'));
+      throw new Error(formatError('missing ai subcommand. Use: npx create-quiver ai analyze-project | onboard | prepare-context | run | active-slice | status | resume | inspect | export | specs | slices | models | trace | plan | revise | repair-plan | review-plan | approve | approvals | agent | prompt-slice | execute-slice | execute-plan | doctor | pr'));
+    }
+
+    if (args.aiCommand === 'analyze-project') {
+      await runAiAnalyzeProject(process.cwd(), {
+        deep: args.aiAnalyzeDeep,
+        dryRun: args.dryRun,
+        force: args.force,
+        includeDb: args.aiAnalyzeIncludeDb,
+        includeSource: args.aiAnalyzeIncludeSource,
+        includeTests: args.aiAnalyzeIncludeTests,
+        interactive: args.interactive,
+        json: args.json,
+        language: args.language,
+        maxBytes: args.aiAnalyzeMaxBytes || undefined,
+        maxFiles: args.aiAnalyzeMaxFiles || undefined,
+        printPrompt: args.aiPrintPrompt,
+        review: args.review,
+        scope: args.aiAnalyzeScope || undefined,
+        strict: args.strict,
+      });
+      return;
     }
 
     if (args.aiCommand === 'run') {
@@ -3738,7 +3848,7 @@ async function run(argv) {
       return;
     }
 
-    throw new Error(formatError(`unsupported ai subcommand: ${args.aiCommand}. Supported tasks: onboard, prepare-context, run, active-slice, status, resume, inspect, export, specs, slices, models, trace, plan, revise, repair-plan, review-plan, approve, approvals, agent, prompt-slice, execute-slice, execute-plan, doctor, pr`));
+    throw new Error(formatError(`unsupported ai subcommand: ${args.aiCommand}. Supported tasks: analyze-project, onboard, prepare-context, run, active-slice, status, resume, inspect, export, specs, slices, models, trace, plan, revise, repair-plan, review-plan, approve, approvals, agent, prompt-slice, execute-slice, execute-plan, doctor, pr`));
   }
 
   if (args.mode === 'graph') {

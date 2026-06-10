@@ -38,7 +38,7 @@
     "version-json": {
       "modes": {
         "en_human": "not_applicable",
-        "es_human": "not_applicable",
+        "es_human": "accepted_exception",
         "json": "pass",
         "dry_run": "not_applicable",
         "interactive": "not_applicable",
@@ -271,6 +271,25 @@
       "evidence": [
         "tests/commands/handoff-namespace.test.js",
         "tests/commands/parser-contract.test.js"
+      ]
+    },
+    "ai-analyze-project": {
+      "modes": {
+        "en_human": "pass",
+        "es_human": "accepted_exception",
+        "json": "pass",
+        "dry_run": "pass",
+        "interactive": "not_supported",
+        "review": "pass",
+        "ci_no_tty": "pass",
+        "no_color": "pass",
+        "live_provider": "accepted_exception"
+      },
+      "evidence": [
+        "tests/commands/ai-analyze-project.test.js",
+        "tests/commands/ai-analyze-project-provider.test.js",
+        "tests/commands/ai-analyze-project-review.test.js",
+        "tests/lib/ai-analyze-project-validation.test.js"
       ]
     },
     "ai-prepare-context": {
@@ -550,6 +569,13 @@
       "reason": "`ai pr --create` has external GitHub side effects; preflight, body handling, and create command construction are covered locally.",
       "follow_up": "Use real `gh pr create` during PR opening with the documented SSH identity.",
       "status": "accepted"
+    },
+    {
+      "id": "ai-analyze-project-human-i18n",
+      "owner": "release-readiness",
+      "reason": "`ai analyze-project` currently has English human output while JSON output remains stable; the v46 release prioritizes safety, privacy, review, validation, and machine-readable contracts.",
+      "follow_up": "Localize `ai analyze-project` human report strings in a dedicated CLI i18n slice.",
+      "status": "accepted"
     }
   ],
   "commands": [
@@ -579,6 +605,10 @@
     { "command": "evidence run --output .quiver/evidence/test.md -- <command>", "profile": "evidence-run", "critical": "pass" },
     { "command": "evidence list --json", "profile": "evidence-json", "critical": "pass" },
     { "command": "evidence show .quiver/evidence/test.md --json", "profile": "evidence-json", "critical": "pass" },
+    { "command": "ai analyze-project --deep --dry-run", "profile": "ai-analyze-project", "critical": "pass" },
+    { "command": "ai analyze-project --deep --dry-run --json", "profile": "ai-analyze-project", "critical": "pass" },
+    { "command": "ai analyze-project --deep --review", "profile": "ai-analyze-project", "critical": "pass" },
+    { "command": "ai analyze-project --scope apps/web --max-files 80 --max-bytes 300000 --include-tests --dry-run", "profile": "ai-analyze-project", "critical": "pass" },
     { "command": "ai prepare-context --dry-run", "profile": "ai-prepare-context", "critical": "pass" },
     { "command": "ai prepare-context", "profile": "ai-prepare-context", "critical": "pass" },
     { "command": "ai prepare-context --with-planner --dry-run", "profile": "ai-prepare-context-planner", "critical": "pass" },

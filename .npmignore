@@ -1,6 +1,7 @@
 # Repo-only files and local development noise
 .git
 .worktrees
+.quiver
 .claude
 .codex
 .env

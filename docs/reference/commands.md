@@ -49,6 +49,7 @@ El contenido curado fuera de los marcadores se mantiene manual y no debe ser ree
 | AI lifecycle | `ai active-slice status\|reconcile` | Inspect or dry-run reconcile local active-slice state from every supported source. |
 | AI lifecycle | `ai status` | Show current AI lifecycle phase, approved versions, blockers, and next command. |
 | AI lifecycle | `ai resume` | Resume guidance from the last valid lifecycle phase without chat memory. |
+| AI lifecycle | `ai analyze-project` | Read and explain a bounded project sample without provider execution or writes. |
 | AI lifecycle | `ai onboard` | Run or print the planner onboarding prompt with a token-aware context pack. |
 | AI lifecycle | `ai prepare-context` | Preview or write docs-only AI context updates with assumptions and risks. |
 | AI lifecycle | `ai agent set\|list\|show\|doctor\|repair` | Manage, diagnose, and dry-run repair planner, executor, reviewer, and doctor provider profiles without secrets. |
@@ -184,8 +185,32 @@ Reglas:
 
 ## Planificación con IA
 
+### Análisis profundo de proyecto existente
+
+`ai analyze-project` transforma una muestra acotada del repo en contexto operativo para IA. El modo seguro es read-only:
+
+```bash
+npx --yes create-quiver@latest ai analyze-project --deep --dry-run
+npx --yes create-quiver@latest ai analyze-project --deep --dry-run --json
+```
+
+En `--dry-run`, Quiver no escribe archivos, no ejecuta proveedor y muestra qué seleccionó u omitió y por qué. Siempre excluye secretos, `.env`, `.git`, `.quiver`, dependencias, caches, binarios y outputs generados.
+
+Para generar docs desde IA:
+
+```bash
+npx --yes create-quiver@latest ai analyze-project --deep --review
+npx --yes create-quiver@latest ai analyze-project --deep --review --strict
+```
+
+El modo con proveedor exige JSON validado por schema, evidencia por conclusión, niveles `confirmed`, `inferred`, `unknown` o `conflict`, revisión editable, diff final, confirmación humana, snapshot previo en `.quiver/runs`, artefactos redactados y validación post-write. `--strict` convierte conflictos importantes de docs en error. El resultado puede quedar como `unknown` o `needs_confirmation` cuando el código no prueba una conclusión.
+
 | Comando | Para qué sirve |
 |---|---|
+| `npx --yes create-quiver@latest ai analyze-project --deep --dry-run` | Previsualiza descubrimiento y muestreo del repo sin escribir ni ejecutar proveedor. |
+| `npx --yes create-quiver@latest ai analyze-project --deep --dry-run --json` | Emite el plan de análisis como JSON parseable para automatización. |
+| `npx --yes create-quiver@latest ai analyze-project --deep --review` | Ejecuta proveedor, valida análisis JSON con evidencia, abre revisión humana y escribe solo docs permitidos tras confirmación. |
+| `npx --yes create-quiver@latest ai analyze-project --scope apps/web --max-files 80 --max-bytes 300000 --include-tests --dry-run` | Acota el análisis por workspace/ruta y presupuesto de muestra. |
 | `npx --yes create-quiver@latest ai prepare-context --dry-run` | Previsualiza actualizaciones documentales de contexto para IA. |
 | `npx --yes create-quiver@latest ai prepare-context` | Escribe actualizaciones documentales de contexto para IA. |
 | `npx --yes create-quiver@latest ai prepare-context --with-planner --dry-run` | Previsualiza una propuesta docs-only generada por el planner sin escribir archivos. |
@@ -258,6 +283,14 @@ Base branch policy: `--base <branch>` always wins. Without `--base`, slice readi
 |---|---|
 | `--dry-run` | Previsualiza sin escribir archivos ni ejecutar proveedores. |
 | `--print-prompt` | Imprime el prompt del proveedor sin ejecutarlo. |
+| `--deep` | En `ai analyze-project`, incluye fuente y DB en la muestra representativa. |
+| `--max-files <n>` | En `ai analyze-project`, limita la cantidad de archivos seleccionados. |
+| `--max-bytes <n>` | En `ai analyze-project`, limita los bytes seleccionados para la muestra. |
+| `--include-source` | En `ai analyze-project`, incluye código fuente sin requerir `--deep`. |
+| `--include-tests` | En `ai analyze-project`, incluye tests en la muestra. |
+| `--include-db` | En `ai analyze-project`, incluye schemas, migraciones y archivos DB. |
+| `--scope <path|name>` | En `ai analyze-project`, restringe el análisis a una ruta o workspace. |
+| `--strict` | En validaciones soportadas, convierte conflictos importantes en errores. |
 | `--with-planner` | Activa comportamiento asistido por planner solo en comandos que lo soportan. |
 | `--interactive` | Habilita prompts humanos de confirmación o elección. |
 | `--review` | Abre o prepara revisión humana antes de escrituras persistentes. |
@@ -283,6 +316,7 @@ Base branch policy: `--base <branch>` always wins. Without `--base`, slice readi
 
 | Comando | `--with-planner` | `--interactive` | `--review` |
 |---|---:|---:|---:|
+| `ai analyze-project` | no | no | sí |
 | `ai prepare-context` | sí | sí | sí |
 | `ai plan` | sí | sí | sí |
 | `spec create` | sí | sí | sí |

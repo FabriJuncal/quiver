@@ -6,12 +6,34 @@ const { redactSecrets } = require('../lib/evidence');
 const { formatActionableError } = require('../lib/actionable-error');
 const {
   assertProviderPromptWithinLimit,
+  byteLength,
   compactRevisionInput,
   extractCleanProviderOutput,
+  redactSensitiveLocalValues,
   writeRawProviderArtifact,
 } = require('../lib/ai/artifacts');
 const { buildContextPackMetadata, normalizeRole } = require('../lib/ai/context-packs');
 const { parseContextProposalOutput } = require('../lib/ai/context-proposal');
+const { discoverProjectFiles } = require('../lib/ai/analyze-project-discovery');
+const {
+  buildAnalyzeProjectDocProposal,
+  buildAnalyzeProjectWritePlan,
+  createAnalyzeProjectSnapshot,
+  formatAnalyzeProjectDiffPreview,
+  writeAnalyzeProjectDocs,
+} = require('../lib/ai/analyze-project-docs');
+const { parseAnalyzeProjectOutput } = require('../lib/ai/analyze-project-parser');
+const { buildAnalyzeProjectPrompt } = require('../lib/ai/analyze-project-prompts');
+const {
+  confirmAnalyzeProjectWrites,
+  reviewAnalyzeProjectDocProposal,
+} = require('../lib/ai/analyze-project-review');
+const {
+  DEFAULT_MAX_BYTES: DEFAULT_ANALYZE_MAX_BYTES,
+  DEFAULT_MAX_FILES: DEFAULT_ANALYZE_MAX_FILES,
+  sampleProjectFiles,
+} = require('../lib/ai/analyze-project-sampling');
+const { validateAnalyzeProjectPostWrite } = require('../lib/ai/analyze-project-validation');
 const { openEditor } = require('../lib/cli/editor');
 const { selectOption, promptText } = require('../lib/cli/selectors');
 const { createUx } = require('../lib/cli/ux');
@@ -103,9 +125,314 @@ const DEFAULT_PLAN_CONTEXT = 'planning';
 const DEFAULT_PLAN_PHASE = 'acceptance';
 const CONTEXT_PREP_START = '<!-- quiver:context-prep:start -->';
 const CONTEXT_PREP_END = '<!-- quiver:context-prep:end -->';
+const ANALYZE_PROJECT_KIND = 'quiver-project-analysis-plan';
 
 function formatError(message) {
   return `create-quiver: ${message}`;
+}
+
+function normalizeAnalyzeBudget(value, fallback, flagName) {
+  if (typeof value === 'undefined' || value === null || value === '') {
+    return fallback;
+  }
+  const parsed = Number.parseInt(value, 10);
+  if (!Number.isInteger(parsed) || parsed <= 0) {
+    throw new Error(formatError(`invalid value for ${flagName}`));
+  }
+  return parsed;
+}
+
+function mergeReasonSummaries(...summaries) {
+  const merged = {};
+  for (const summary of summaries) {
+    for (const [reason, count] of Object.entries(summary || {})) {
+      merged[reason] = (merged[reason] || 0) + count;
+    }
+  }
+  return Object.keys(merged)
+    .sort()
+    .reduce((acc, reason) => {
+      acc[reason] = merged[reason];
+      return acc;
+    }, {});
+}
+
+function limitList(items, maxItems = 30) {
+  const list = Array.isArray(items) ? items : [];
+  return {
+    items: list.slice(0, maxItems),
+    hidden: Math.max(0, list.length - maxItems),
+  };
+}
+
+function formatAnalyzeProjectFileLine(file) {
+  const details = [];
+  if (Array.isArray(file.signals) && file.signals.length > 0) {
+    details.push(file.signals.join(', '));
+  }
+  if (typeof file.bytes === 'number') {
+    details.push(`${file.bytes} bytes`);
+  }
+  if (file.reason) {
+    details.push(file.reason);
+  }
+  return `- ${file.path}${details.length > 0 ? ` (${details.join('; ')})` : ''}`;
+}
+
+function formatAnalyzeProjectReport(report) {
+  const selected = limitList(report.selected_files, 80);
+  const omitted = limitList(report.omitted_files, 30);
+  const safety = limitList(report.safety_exclusions, 30);
+  const workspaces = limitList(report.roots.workspaces, 20);
+  const lines = [
+    'AI analyze-project read-only analysis',
+    `Mode: ${report.mode}`,
+    `Dry-run: ${report.dry_run ? 'yes' : 'no'} (dry-run never writes)`,
+    `Provider execution: ${report.provider_execution}`,
+    `Writes: ${report.writes.length === 0 ? 'none' : report.writes.join(', ')}`,
+    `Project: ${report.project.name}`,
+    `Scope: ${report.options.scope}`,
+    `Budgets: ${report.budgets.selected_files}/${report.budgets.max_files} files, ${report.budgets.selected_bytes}/${report.budgets.max_bytes} bytes`,
+    `Selected files: ${report.selected_files.length}`,
+    `Omitted files: ${report.omitted_files.length}`,
+    `Safety exclusions: ${report.safety_exclusions.length}`,
+    '',
+    'Workspace roots:',
+  ];
+
+  for (const workspace of workspaces.items) {
+    lines.push(`- ${workspace.path} (${workspace.name}; ${workspace.source})`);
+  }
+  if (workspaces.hidden > 0) {
+    lines.push(`- ... ${workspaces.hidden} more`);
+  }
+
+  lines.push('', `Detected stack: ${report.detected.stack.length > 0 ? report.detected.stack.join(', ') : 'unknown'}`);
+  lines.push(`Source roots: ${report.detected.source_roots.length > 0 ? report.detected.source_roots.join(', ') : 'none'}`);
+  lines.push(`Entrypoints: ${report.detected.entrypoints.length > 0 ? report.detected.entrypoints.join(', ') : 'none'}`);
+  lines.push(`Configs: ${report.detected.configs.length > 0 ? report.detected.configs.join(', ') : 'none'}`);
+
+  lines.push('', 'Selected files:');
+  for (const file of selected.items) {
+    lines.push(formatAnalyzeProjectFileLine(file));
+  }
+  if (selected.hidden > 0) {
+    lines.push(`- ... ${selected.hidden} more`);
+  }
+  if (selected.items.length === 0) {
+    lines.push('- none');
+  }
+
+  lines.push('', 'Omitted files:');
+  for (const file of omitted.items) {
+    lines.push(formatAnalyzeProjectFileLine(file));
+  }
+  if (omitted.hidden > 0) {
+    lines.push(`- ... ${omitted.hidden} more`);
+  }
+  if (omitted.items.length === 0) {
+    lines.push('- none');
+  }
+
+  lines.push('', 'Safety exclusions:');
+  for (const file of safety.items) {
+    lines.push(`- ${file.path} (${file.reason})`);
+  }
+  if (safety.hidden > 0) {
+    lines.push(`- ... ${safety.hidden} more`);
+  }
+  if (safety.items.length === 0) {
+    lines.push('- none');
+  }
+
+  lines.push('', 'Next commands:');
+  for (const command of report.next_commands) {
+    lines.push(`- ${command}`);
+  }
+
+  return `${lines.join('\n')}\n`;
+}
+
+function buildAnalyzeProjectReport(repoRoot, options = {}) {
+  const deep = options.deep === true;
+  const includeSource = options.includeSource === true || deep;
+  const includeDb = options.includeDb === true || deep;
+  const includeTests = options.includeTests === true;
+  const maxFiles = normalizeAnalyzeBudget(options.maxFiles, DEFAULT_ANALYZE_MAX_FILES, '--max-files');
+  const maxBytes = normalizeAnalyzeBudget(options.maxBytes, DEFAULT_ANALYZE_MAX_BYTES, '--max-bytes');
+  const discovery = discoverProjectFiles(repoRoot, { scope: options.scope || '' });
+  const sample = sampleProjectFiles(discovery.files, {
+    includeDb,
+    includeSource,
+    includeTests,
+    maxBytes,
+    maxFiles,
+  });
+  const omittedFiles = [
+    ...sample.omittedFiles,
+    ...discovery.skippedFiles.map((file) => ({
+      path: file.path,
+      reason: file.reason,
+    })),
+  ].sort((a, b) => a.path.localeCompare(b.path));
+  const omittedSummary = mergeReasonSummaries(
+    sample.omittedSummary,
+    discovery.skippedSummary,
+  );
+
+  return {
+    schema_version: 1,
+    kind: ANALYZE_PROJECT_KIND,
+    command: 'ai analyze-project',
+    mode: 'read-only',
+    dry_run: options.dryRun === true,
+    read_only: true,
+    provider_execution: 'skipped',
+    writes: [],
+    project: discovery.project,
+    options: {
+      deep,
+      scope: discovery.roots.analysis_root,
+      max_files: maxFiles,
+      max_bytes: maxBytes,
+      include_source: includeSource,
+      include_tests: includeTests,
+      include_db: includeDb,
+    },
+    roots: discovery.roots,
+    detected: discovery.detected,
+    budgets: sample.budgets,
+    selected_files: sample.selectedFiles,
+    omitted_files: omittedFiles,
+    omitted_summary: omittedSummary,
+    safety_exclusions: discovery.safetyExclusions,
+    safety_summary: discovery.safetySummary,
+    next_commands: [
+      'npx create-quiver ai analyze-project --deep --dry-run --json',
+      'npx create-quiver ai analyze-project --deep --review',
+    ],
+  };
+}
+
+function limitProviderArtifactText(text, maxBytes = 12_000) {
+  let value = String(text || '');
+  const redacted = value;
+  if (byteLength(redacted) <= maxBytes) {
+    return {
+      text: redacted,
+      truncated: false,
+      bytes: byteLength(redacted),
+    };
+  }
+
+  value = redacted;
+  while (byteLength(value) > maxBytes && value.length > 0) {
+    value = value.slice(0, Math.max(0, value.length - Math.ceil((byteLength(value) - maxBytes) / 2) - 16));
+  }
+
+  return {
+    text: `${value.trimEnd()}\n[TRUNCATED BY QUIVER]\n`,
+    truncated: true,
+    bytes: byteLength(redacted),
+  };
+}
+
+function buildAnalyzeProjectProviderArtifact(result, clean, repoRoot, options = {}) {
+  const rawOutput = clean?.cleanOutput || result?.stdout || result?.stderr || '';
+  const redactedOutput = redactSensitiveLocalValues(rawOutput, { projectRoot: repoRoot });
+  const limited = limitProviderArtifactText(redactedOutput, options.maxBytes || 12_000);
+  return {
+    schema_version: 1,
+    kind: 'quiver-analyze-project-provider-artifact',
+    persisted: false,
+    redacted: true,
+    size_limited: true,
+    provider: result?.provider || null,
+    command: result?.command || null,
+    exit_code: typeof result?.exitCode === 'number' ? result.exitCode : null,
+    output_source: clean?.source || 'unknown',
+    output_bytes: limited.bytes,
+    output_truncated: limited.truncated,
+    output: limited.text,
+  };
+}
+
+function formatAnalyzeProjectLiveReport(report) {
+  const warningCount = report.analysis_validation?.warnings?.length || 0;
+  const docUpdatePaths = report.analysis_validation?.doc_update_paths || [];
+  const lines = [
+    'AI analyze-project provider analysis',
+    `Mode: ${report.mode}`,
+    `Provider: ${report.provider}`,
+    `Provider execution: ${report.provider_execution}`,
+    `Writes: ${report.writes.length === 0 ? 'none' : report.writes.join(', ')}`,
+    `Privacy preflight: ${report.privacy_preflight.ok ? 'passed' : 'failed'}`,
+    `Prompt bytes: ${report.prompt.bytes}/${report.prompt.max_provider_prompt_bytes}`,
+    `Selected files: ${report.selected_files.length}`,
+    `Omitted files: ${report.omitted_files.length}`,
+    `Safety exclusions: ${report.safety_exclusions.length}`,
+    `Analysis validation: passed (${warningCount} warning${warningCount === 1 ? '' : 's'})`,
+    `Doc update proposals: ${docUpdatePaths.length > 0 ? docUpdatePaths.join(', ') : 'none'}`,
+  ];
+
+  if (warningCount > 0) {
+    lines.push('', 'Warnings:');
+    for (const warning of report.analysis_validation.warnings.slice(0, 20)) {
+      lines.push(`- ${warning.path}: ${warning.issue}`);
+    }
+  }
+
+  lines.push('', 'Next commands:');
+  lines.push('- npx create-quiver ai analyze-project --deep --review');
+  lines.push('- npx create-quiver ai analyze-project --deep --json');
+
+  return `${lines.join('\n')}\n`;
+}
+
+function formatAnalyzeProjectPostWriteValidation(validation) {
+  if (!validation) {
+    return [];
+  }
+  const warningCount = validation.warnings?.length || 0;
+  const errorCount = validation.errors?.length || 0;
+  const lines = [
+    `Post-write validation: ${validation.ok ? 'passed' : 'failed'} (${errorCount} error${errorCount === 1 ? '' : 's'}, ${warningCount} warning${warningCount === 1 ? '' : 's'})`,
+  ];
+  for (const issue of [...(validation.errors || []), ...(validation.warnings || [])].slice(0, 20)) {
+    lines.push(`- ${issue.path || 'analysis'}: ${issue.issue} - ${issue.message}`);
+  }
+  return lines;
+}
+
+function formatAnalyzeProjectReviewPlan({ writePlan, reviewPath, snapshot, writtenDocs, completed = false, validation = null } = {}) {
+  const changed = (writePlan || []).filter((item) => item.action !== 'skip');
+  const dirty = changed.filter((item) => item.dirty);
+  const lines = [
+    completed ? 'AI analyze-project docs written' : 'AI analyze-project review write plan',
+    `Review artifact: ${reviewPath || 'none'}`,
+    `Writes: ${changed.length > 0 ? changed.map((item) => item.path).join(', ') : 'none'}`,
+    `Dirty target docs: ${dirty.length > 0 ? dirty.map((item) => item.path).join(', ') : 'none'}`,
+  ];
+
+  if (snapshot) {
+    lines.push(`Snapshot: ${snapshot.root}`);
+    lines.push(`Manifest: ${snapshot.manifestPath}`);
+  }
+  if (completed) {
+    lines.push(`Written docs: ${writtenDocs && writtenDocs.length > 0 ? writtenDocs.join(', ') : 'none'}`);
+    lines.push(...formatAnalyzeProjectPostWriteValidation(validation));
+    return `${lines.join('\n')}\n`;
+  }
+
+  lines.push('', 'Proposed changes:');
+  for (const item of writePlan || []) {
+    lines.push(`- ${item.path}: ${item.action}${item.reason ? ` (${item.reason})` : ''}`);
+  }
+  lines.push('', 'Final diff:');
+  lines.push(...formatAnalyzeProjectDiffPreview(writePlan || []));
+  lines.push('', 'Confirmation required before writing.');
+
+  return `${lines.join('\n')}\n`;
 }
 
 function formatLocalizedActionableError({ failure, impact, fix, nextCommand } = {}, options = {}) {
@@ -1539,6 +1866,199 @@ async function runPrepareContext(repoRoot, options = {}) {
     snapshot,
     writtenDocs,
   };
+}
+
+async function runAnalyzeProject(repoRoot, options = {}) {
+  const report = buildAnalyzeProjectReport(repoRoot, options);
+  if (options.dryRun === true) {
+    if (options.json === true) {
+      process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
+      return report;
+    }
+    process.stdout.write(formatAnalyzeProjectReport(report));
+    return report;
+  }
+
+  const role = normalizeRole(options.role || DEFAULT_PLAN_ROLE);
+  const runtimeProfile = resolveRuntimeAgentProfile(repoRoot, role, options, DEFAULT_PLAN_PROVIDER);
+  const provider = runtimeProfile.provider;
+  const timeoutMs = normalizeTimeout(options.timeout);
+  const promptPackage = buildAnalyzeProjectPrompt({
+    analysisPlan: report,
+    repoRoot,
+    maxFileBytes: options.maxPromptFileBytes,
+    maxTotalFileBytes: options.maxPromptTotalBytes,
+  });
+  const prompt = promptPackage.prompt;
+  const promptLimit = assertProviderPromptWithinLimit(prompt, options.promptLimitOptions || {});
+  const privacyPreflight = promptPackage.privacyPreflight;
+
+  if (!privacyPreflight.ok) {
+    const error = new Error(formatError('ai analyze-project privacy preflight failed; provider execution was blocked before sending repository content.'));
+    error.code = 'AI_ANALYZE_PROJECT_PRIVACY_PREFLIGHT_FAILED';
+    error.details = privacyPreflight;
+    throw error;
+  }
+
+  let invocation;
+  try {
+    invocation = buildProviderInvocation(provider, {
+      prompt,
+      cwd: repoRoot,
+      timeoutMs,
+      ...runtimeModelExecutionOptions(runtimeProfile, options),
+      enforceModelSelection: false,
+    });
+  } catch (error) {
+    throw annotateProviderError(error, 'analyze-project');
+  }
+
+  if (options.printPrompt) {
+    process.stdout.write(prompt.endsWith('\n') ? prompt : `${prompt}\n`);
+    return {
+      ...report,
+      provider,
+      role,
+      invocation,
+      privacy_preflight: privacyPreflight,
+      prompt: {
+        bytes: promptLimit.bytes,
+        max_provider_prompt_bytes: promptLimit.maxProviderPromptBytes,
+        files: promptPackage.files,
+      },
+    };
+  }
+
+  let result;
+  try {
+    result = await (options.runProviderFn || runProvider)(provider, {
+      prompt,
+      cwd: repoRoot,
+      timeoutMs,
+      dryRun: false,
+      probe: options.probe,
+      spawn: options.spawn,
+      tempRoot: options.tempRoot,
+      tempFileName: options.tempFileName,
+      tempFilePrefix: options.tempFilePrefix,
+      ...runtimeModelExecutionOptions(runtimeProfile, options),
+      enforceModelSelection: false,
+    });
+  } catch (error) {
+    throw annotateProviderError(error, 'analyze-project');
+  }
+
+  if (!result.ok) {
+    throw annotateProviderError(result.error || new Error('provider run failed'), 'analyze-project');
+  }
+
+  const clean = extractCleanProviderOutput(result, { prompt, projectRoot: repoRoot });
+  const parsed = parseAnalyzeProjectOutput(clean.cleanOutput, {
+    selectedFiles: report.selected_files,
+    promptFiles: promptPackage.files,
+  });
+  const completedReport = {
+    ...report,
+    provider,
+    role,
+    provider_execution: 'completed',
+    invocation,
+    privacy_preflight: privacyPreflight,
+    prompt: {
+      bytes: promptLimit.bytes,
+      max_provider_prompt_bytes: promptLimit.maxProviderPromptBytes,
+      files: promptPackage.files,
+    },
+    analysis: parsed.analysis,
+    analysis_validation: {
+      parse_source: parsed.parseSource,
+      warnings: parsed.warnings,
+      doc_update_paths: parsed.docUpdatePaths,
+    },
+    provider_artifact: buildAnalyzeProjectProviderArtifact(result, clean, repoRoot),
+  };
+
+  if (options.review === true) {
+    const initialProposal = buildAnalyzeProjectDocProposal(parsed.analysis);
+    const reviewed = await reviewAnalyzeProjectDocProposal(repoRoot, initialProposal, options);
+    const writePlan = buildAnalyzeProjectWritePlan(repoRoot, reviewed.proposal);
+    process.stdout.write(formatAnalyzeProjectReviewPlan({
+      writePlan,
+      reviewPath: reviewed.reviewPath,
+    }));
+    await confirmAnalyzeProjectWrites(writePlan, options);
+    const lifecycleRun = ensureAiRun(repoRoot, {
+      command: 'ai analyze-project',
+      input: reviewed.reviewPath,
+      runId: options.runId,
+      phase: 'created',
+    });
+    const snapshot = createAnalyzeProjectSnapshot(repoRoot, lifecycleRun, writePlan, {
+      providerArtifact: completedReport.provider_artifact,
+      proposal: reviewed.proposal,
+      now: options.now || new Date(),
+    });
+    const writtenDocs = writeAnalyzeProjectDocs(writePlan);
+    let writeReport = {
+      ...completedReport,
+      review: true,
+      review_path: reviewed.reviewPath,
+      doc_proposal: reviewed.proposal,
+      write_plan: writePlan.map((item) => ({
+        path: item.path,
+        action: item.action,
+        dirty: item.dirty,
+        before_sha256: item.before_sha256,
+        after_sha256: item.after_sha256,
+        reason: item.reason,
+      })),
+      snapshot,
+      written_docs: writtenDocs,
+      run_id: lifecycleRun.run_id,
+    };
+    const postWriteValidation = validateAnalyzeProjectPostWrite(repoRoot, writeReport, {
+      strict: options.strict === true,
+    });
+    writeReport = {
+      ...writeReport,
+      post_write_validation: postWriteValidation,
+    };
+
+    if (options.json === true) {
+      process.stdout.write(`${JSON.stringify(writeReport, null, 2)}\n`);
+      if (!postWriteValidation.ok) {
+        const error = new Error(formatError('ai analyze-project post-write validation failed.'));
+        error.code = 'AI_ANALYZE_PROJECT_POST_WRITE_VALIDATION_FAILED';
+        error.validation = postWriteValidation;
+        throw error;
+      }
+      return writeReport;
+    }
+
+    process.stdout.write(formatAnalyzeProjectReviewPlan({
+      writePlan,
+      reviewPath: reviewed.reviewPath,
+      snapshot,
+      writtenDocs,
+      validation: postWriteValidation,
+      completed: true,
+    }));
+    if (!postWriteValidation.ok) {
+      const error = new Error(formatError('ai analyze-project post-write validation failed.'));
+      error.code = 'AI_ANALYZE_PROJECT_POST_WRITE_VALIDATION_FAILED';
+      error.validation = postWriteValidation;
+      throw error;
+    }
+    return writeReport;
+  }
+
+  if (options.json === true) {
+    process.stdout.write(`${JSON.stringify(completedReport, null, 2)}\n`);
+    return completedReport;
+  }
+
+  process.stdout.write(formatAnalyzeProjectLiveReport(completedReport));
+  return completedReport;
 }
 
 async function runPrepareContextWithPlanner(repoRoot, options = {}) {
@@ -3412,6 +3932,7 @@ module.exports = {
   resolveInteractiveAgentSetOptions,
   runAgent,
   runActiveSlice,
+  runAnalyzeProject,
   runDoctor,
   runExecutePlan,
   runExecuteSlice,
