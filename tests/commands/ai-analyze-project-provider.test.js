@@ -99,6 +99,26 @@ async function captureStdout(fn) {
   }
 }
 
+function createProgressRecorder() {
+  const events = [];
+  return {
+    events,
+    write: (text) => events.push(['write', text]),
+    prompts: {
+      spinner() {
+        return {
+          start(message) {
+            events.push(['start', message]);
+          },
+          stop(message, code) {
+            events.push(['stop', message, code]);
+          },
+        };
+      },
+    },
+  };
+}
+
 test('runAnalyzeProject executes provider after redacted privacy preflight and writes no files', async () => {
   const repo = makeRepo({
     'README.md': '# Provider Demo\n',
@@ -132,6 +152,43 @@ test('runAnalyzeProject executes provider after redacted privacy preflight and w
     assert.equal(result.provider_artifact.output.includes('sk-12345678901234567890'), false);
     assert.equal(fs.existsSync(path.join(repo.root, '.quiver')), false);
     assert.equal(fs.existsSync(path.join(repo.root, 'docs')), false);
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('runAnalyzeProject shows human TTY progress during live provider execution', async () => {
+  const repo = makeRepo({
+    'README.md': '# Progress Demo\n',
+    'package.json': JSON.stringify({ name: 'progress-demo' }, null, 2),
+    'src/routes/users.ts': 'export const users = [];\n',
+  });
+  const progress = createProgressRecorder();
+
+  try {
+    await captureStdout(() => runAnalyzeProject(repo.root, {
+      includeSource: true,
+      provider: 'codex',
+      providerExplicit: true,
+      language: 'es',
+      stdoutIsTTY: true,
+      stdinIsTTY: true,
+      stderrIsTTY: true,
+      noColor: true,
+      env: { LANG: 'es_AR.UTF-8' },
+      write: progress.write,
+      prompts: progress.prompts,
+      runProviderFn: async () => providerResult(validAnalysis(), { cwd: repo.root }),
+    }));
+
+    assert.deepEqual(progress.events, [
+      ['write', '◇ Analizando proyecto con codex\n'],
+      ['write', '✓ Leyendo docs base\n'],
+      ['write', '✓ Detectando estructura\n'],
+      ['write', '✓ Preparando prompt\n'],
+      ['start', 'Ejecutando agente...'],
+      ['stop', 'Agente finalizado', undefined],
+    ]);
   } finally {
     repo.cleanup();
   }
@@ -176,6 +233,56 @@ test('runAnalyzeProject rejects invalid provider JSON without writing files', as
         runProviderFn: async () => providerResult('not json', { cwd: repo.root }),
       })),
       /provider analysis output is not valid JSON/,
+    );
+    assert.equal(fs.existsSync(path.join(repo.root, '.quiver')), false);
+    assert.equal(fs.existsSync(path.join(repo.root, 'docs')), false);
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('runAnalyzeProject reports provider schema issues with actionable detail', async () => {
+  const repo = makeRepo({
+    'README.md': '# Invalid Schema\n',
+    'package.json': JSON.stringify({ name: 'invalid-schema' }, null, 2),
+    'src/routes/users.ts': 'export const users = [];\n',
+  });
+  const invalidAnalysis = JSON.stringify({
+    schema_version: 1,
+    kind: 'quiver-project-analysis',
+    product: {
+      name: {
+        name: 'Invalid Schema',
+        confidence: 'certain',
+        evidence: ['README.md'],
+      },
+    },
+    domain: {},
+    architecture: {},
+    features: [],
+    risks: [],
+    questions: [],
+    claims: [],
+    doc_updates: {},
+  });
+
+  try {
+    await assert.rejects(
+      captureStdout(() => runAnalyzeProject(repo.root, {
+        includeSource: true,
+        provider: 'codex',
+        providerExplicit: true,
+        runProviderFn: async () => providerResult(invalidAnalysis, { cwd: repo.root }),
+      })),
+      (error) => {
+        assert.equal(error.code, 'AI_ANALYZE_PROJECT_INVALID');
+        assert.match(error.message, /provider analysis JSON does not match the required schema/);
+        assert.match(error.message, /Issues:/);
+        assert.match(error.message, /product\.name\.confidence/);
+        assert.match(error.message, /Next safe step:/);
+        assert.ok(Array.isArray(error.details));
+        return true;
+      },
     );
     assert.equal(fs.existsSync(path.join(repo.root, '.quiver')), false);
     assert.equal(fs.existsSync(path.join(repo.root, 'docs')), false);
