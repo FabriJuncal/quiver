@@ -289,7 +289,7 @@ Base branch policy: `--base <branch>` always wins. Without `--base`, slice readi
 | `--include-source` | En `ai analyze-project`, incluye código fuente sin requerir `--deep`. |
 | `--include-tests` | En `ai analyze-project`, incluye tests en la muestra. |
 | `--include-db` | En `ai analyze-project`, incluye schemas, migraciones y archivos DB. |
-| `--scope <path|name>` | En `ai analyze-project`, restringe el análisis a una ruta o workspace. |
+| `--scope <path\|name>` | En `ai analyze-project`, restringe el análisis a una ruta o workspace. |
 | `--strict` | En validaciones soportadas, convierte conflictos importantes en errores. |
 | `--with-planner` | Activa comportamiento asistido por planner solo en comandos que lo soportan. |
 | `--interactive` | Habilita prompts humanos de confirmación o elección. |
