@@ -6,6 +6,7 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- v53 reliable deep project analysis and v54 deep analysis hardening specs under `specs/quiver-v53-reliable-deep-project-analysis/` and `specs/quiver-v54-deep-project-analysis-hardening/`.
 - v46 deep project analysis under `specs/quiver-v46-deep-project-analysis/`.
 - `ai analyze-project` for bounded, evidence-backed repository analysis with read-only `--dry-run`, JSON automation output, provider-backed `--review`, safe doc writes, snapshots, and post-write validation.
 - Top-level read-only `changelog` command with human and JSON output for inspecting packaged release notes.
@@ -25,6 +26,7 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
+- `ai analyze-project --deep` now builds safer provider context by summarizing lockfiles as metadata, excluding generated/runtime directories, and prioritizing product source over Quiver-generated docs.
 - Existing-project AI onboarding now recommends `ai analyze-project --deep --dry-run` before context preparation so agents can see the intended read set, omissions, budgets, and privacy exclusions before any provider-backed docs update.
 - npm package hygiene now excludes local `.quiver/` run state from published tarballs.
 - CLI parser and command registry are now split into explicit modules while preserving existing command behavior and legacy aliases.
@@ -42,6 +44,8 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 
+- `ai analyze-project --deep` now repairs common safe provider schema drift, retries with compact schema feedback, records redacted raw artifacts, and fails closed without final doc writes when JSON remains invalid.
+- `doctor --fix` now gives an actionable repair path for existing `AGENTS.md` files that are missing Quiver contract sections while preserving manual content.
 - `ai analyze-project` now shows human TTY progress while provider analysis runs and reports schema validation issues with actionable detail.
 
 ## [0.14.1] - 2026-05-26
