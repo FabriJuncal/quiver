@@ -205,11 +205,53 @@ npx --yes create-quiver@latest ai analyze-project --deep --review --strict
 
 El modo con proveedor exige JSON validado por schema, evidencia por conclusión, niveles `confirmed`, `inferred`, `unknown` o `conflict`, revisión editable, diff final, confirmación humana, snapshot previo en `.quiver/runs`, artefactos redactados y validación post-write. `--strict` convierte conflictos importantes de docs en error. El resultado puede quedar como `unknown` o `needs_confirmation` cuando el código no prueba una conclusión.
 
+Garantías del flujo con proveedor:
+
+- `--dry-run` no escribe archivos ni ejecuta proveedor.
+- El contexto enviado al proveedor se redacta, se acota por presupuesto y se guarda como manifest sin contenido crudo.
+- Los lockfiles no consumen el presupuesto principal por defecto; Quiver los resume como metadata de package manager, cantidad estimada de dependencias y dependencias principales.
+- Los docs generados por Quiver se priorizan por debajo de entrypoints, componentes, contexts/state, lib/data layer, auth, DB/integraciones y documentación humana del producto.
+- En TTY muestra loader; en no-TTY imprime progreso lineal para lectura, estructura, muestra, provider, schema, repair/retry y artifacts.
+- Si el proveedor devuelve JSON con drift seguro como `notes`, `claim` usado como `name` faltante, o `confidence` en paths no permitidos, Quiver lo repara, registra el repair y revalida.
+- Si el JSON sigue inválido pero el error es retryable, Quiver hace 1 retry por defecto, con cap duro de 2 retries.
+- Si el JSON final es inválido, Quiver falla sin escribir docs finales y deja manifests de validación/retry/repair en `.quiver/runs`.
+- `--review` abre una propuesta editable, revalida el JSON editado, muestra diff final y pide confirmación antes de escribir docs permitidos.
+- Las escrituras aprobadas crean snapshot con hashes y se escriben con rename atómico.
+
+Benchmark recomendado:
+
+- CI debe usar fixtures determinísticas: JSON válido, `notes` extra, fences, texto alrededor del JSON, JSON truncado, campos faltantes, confianza inválida, contenido tipo secreto, retry exitoso y retry agotado.
+- El smoke live contra un repo real, por ejemplo `nika-erp`, es evidencia de release opcional. No debe ser gate obligatorio de CI porque depende del proveedor, credenciales, red y modelo disponible.
+
+Smoke de release recomendado:
+
+```bash
+cd "/Users/fabrijk/Documents/Work/Proyectos Personales/nika/nika-erp/nika-erp"
+npx --yes create-quiver@latest ai analyze-project --deep --dry-run --json
+npx --yes create-quiver@latest ai analyze-project --deep --provider codex --model gpt-5.5
+npx --yes create-quiver@latest ai analyze-project --deep --review --provider codex --model gpt-5.5
+```
+
+Evidencia esperada:
+
+- `--dry-run --json` parsea como JSON, `provider_execution` queda `skipped`, `writes` queda vacío y no crea docs finales.
+- `package-lock.json` aparece en `detected.lockfiles` y en omitidos con `sampling:lockfile-metadata`, no en contenido enviado al provider.
+- El modo provider escribe artifacts auditados en `.quiver/runs`, redactados y con tamaño controlado, pero no escribe docs finales sin `--review`.
+- Si el provider devuelve drift no reparable, el comando falla con path/tipo/causa probable y próximo comando seguro, sin escribir docs finales.
+- `--review` debe mostrar propuesta editable, diff final y confirmación antes de escribir docs permitidos.
+
+Rollback de release:
+
+- Si el smoke live escribe docs inesperadamente sin `--review`, filtra secretos, omite artifacts críticos o falla con ruido masivo de schema, no publiques `latest`.
+- Publicá una corrección como canary o revertí la versión npm afectada según el proceso de release vigente.
+- Para usuarios impactados, indicar `npx create-quiver ai analyze-project --deep --dry-run --json` como siguiente comando seguro y pedir `.quiver/runs/run-.../validation/analyze-project-validation.json` redactado como evidencia.
+
 | Comando | Para qué sirve |
 |---|---|
 | `npx --yes create-quiver@latest ai analyze-project --deep --dry-run` | Previsualiza descubrimiento y muestreo del repo sin escribir ni ejecutar proveedor. |
 | `npx --yes create-quiver@latest ai analyze-project --deep --dry-run --json` | Emite el plan de análisis como JSON parseable para automatización. |
 | `npx --yes create-quiver@latest ai analyze-project --deep --review` | Ejecuta proveedor, valida análisis JSON con evidencia, abre revisión humana y escribe solo docs permitidos tras confirmación. |
+| `npx --yes create-quiver@latest ai analyze-project --deep --provider codex --model gpt-5.5` | Ejecuta proveedor y genera propuesta auditada en `.quiver/runs`; no escribe docs finales sin `--review`. |
 | `npx --yes create-quiver@latest ai analyze-project --scope apps/web --max-files 80 --max-bytes 300000 --include-tests --dry-run` | Acota el análisis por workspace/ruta y presupuesto de muestra. |
 | `npx --yes create-quiver@latest ai prepare-context --dry-run` | Previsualiza actualizaciones documentales de contexto para IA. |
 | `npx --yes create-quiver@latest ai prepare-context` | Escribe actualizaciones documentales de contexto para IA. |

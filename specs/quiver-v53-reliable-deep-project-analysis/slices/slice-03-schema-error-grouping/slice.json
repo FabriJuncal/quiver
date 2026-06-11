@@ -1,0 +1,80 @@
+{
+  "slice_id": "slice-03-schema-error-grouping",
+  "ticket": "QUIVER-53-03",
+  "type": "cli-ux",
+  "title": "Schema error grouping",
+  "objective": "Make provider schema failures compact, actionable, and fully auditable.",
+  "description": "Groups schema validation failures by type and path family in console output while writing complete validation details to a manifest for debugging.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v53-schema-error-grouping",
+    "branch_name": "feature/QUIVER-53-03-v53-schema-error-grouping"
+  },
+  "files": [
+    "src/create-quiver/commands/ai.js",
+    "src/create-quiver/lib/ai/analyze-project-validation.js",
+    "src/create-quiver/lib/i18n/messages/en.js",
+    "src/create-quiver/lib/i18n/messages/es.js",
+    "tests/commands/ai-analyze-project-provider.test.js",
+    "specs/quiver-v53-reliable-deep-project-analysis/STATUS.md",
+    "specs/quiver-v53-reliable-deep-project-analysis/EVIDENCE_REPORT.md",
+    "specs/quiver-v53-reliable-deep-project-analysis/slices/slice-03-schema-error-grouping/CLOSURE_BRIEF.md",
+    "specs/quiver-v53-reliable-deep-project-analysis/slices/slice-03-schema-error-grouping/slice.json"
+  ],
+  "expected_read_paths": [
+    "src/create-quiver/commands/ai.js",
+    "src/create-quiver/lib/ai/analyze-project-validation.js",
+    "src/create-quiver/lib/ai/analyze-project-schema.js",
+    "tests/commands/ai-analyze-project-provider.test.js"
+  ],
+  "allowed_write_paths": [
+    "src/create-quiver/commands/ai.js",
+    "src/create-quiver/lib/ai/analyze-project-validation.js",
+    "src/create-quiver/lib/i18n/messages/en.js",
+    "src/create-quiver/lib/i18n/messages/es.js",
+    "tests/commands/ai-analyze-project-provider.test.js",
+    "tests/fixtures/analyze-project/**",
+    "specs/quiver-v53-reliable-deep-project-analysis/STATUS.md",
+    "specs/quiver-v53-reliable-deep-project-analysis/EVIDENCE_REPORT.md",
+    "specs/quiver-v53-reliable-deep-project-analysis/slices/slice-03-schema-error-grouping/CLOSURE_BRIEF.md",
+    "specs/quiver-v53-reliable-deep-project-analysis/slices/slice-03-schema-error-grouping/slice.json"
+  ],
+  "depends_on": [
+    "slice-01-provider-fixture-harness"
+  ],
+  "parallel_safe": "conditional",
+  "parallel_safe_reason": "Can run beside context-boundary work if command and validation files are coordinated.",
+  "must": [
+    "Group schema errors by issue type and path family.",
+    "Limit console examples to a small fixed number per failure.",
+    "Include path, type, cause hint, count, and next safe command.",
+    "Write complete validation issues to a manifest when provider execution creates a run."
+  ],
+  "not_included": [
+    "Repairing invalid JSON.",
+    "Retrying provider calls.",
+    "Changing the schema to accept extra keys."
+  ],
+  "acceptance": [
+    "The notes drift fixture produces compact console output instead of massive schema noise.",
+    "The complete validation issue list is available in a manifest.",
+    "The error message includes the next safe command.",
+    "--json output remains parseable."
+  ],
+  "tests": [
+    "node --test tests/commands/ai-analyze-project-provider.test.js",
+    "node --test tests/commands/ai-analyze-project.test.js",
+    "npm run docs:check",
+    "git diff --check"
+  ],
+  "validation_hints": [
+    "Assert an upper bound on console issue examples."
+  ],
+  "estimated_hours": 4,
+  "actual_hours": 3,
+  "status": "completed",
+  "started_at": "2026-06-11T12:03:20Z",
+  "completed_at": "2026-06-11T12:07:05Z",
+  "blocked_reason": null
+}

@@ -1,0 +1,86 @@
+{
+  "slice_id": "slice-07-semantic-validation-docs",
+  "ticket": "QUIVER-53-07",
+  "type": "validation-docs",
+  "title": "Semantic validation, docs, and benchmark",
+  "objective": "Ensure schema-valid analysis is also evidence-backed and documented for users.",
+  "description": "Adds semantic validation for confidence/evidence quality, updates command documentation, and documents deterministic/live benchmark expectations for reliable analyze-project behavior.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v53-semantic-validation-docs",
+    "branch_name": "feature/QUIVER-53-07-v53-semantic-validation-docs"
+  },
+  "files": [
+    "src/create-quiver/lib/ai/analyze-project-validation.js",
+    "src/create-quiver/lib/i18n/messages/en.js",
+    "src/create-quiver/lib/i18n/messages/es.js",
+    "docs/reference/commands.md",
+    "docs/workflows/existing-project.md",
+    "docs/TROUBLESHOOTING.md",
+    "tests/commands/ai-analyze-project-provider.test.js",
+    "specs/quiver-v53-reliable-deep-project-analysis/STATUS.md",
+    "specs/quiver-v53-reliable-deep-project-analysis/EVIDENCE_REPORT.md",
+    "specs/quiver-v53-reliable-deep-project-analysis/slices/slice-07-semantic-validation-docs/CLOSURE_BRIEF.md",
+    "specs/quiver-v53-reliable-deep-project-analysis/slices/slice-07-semantic-validation-docs/slice.json"
+  ],
+  "expected_read_paths": [
+    "src/create-quiver/lib/ai/analyze-project-validation.js",
+    "docs/reference/commands.md",
+    "docs/workflows/existing-project.md",
+    "docs/TROUBLESHOOTING.md",
+    "tests/commands/ai-analyze-project-provider.test.js"
+  ],
+  "allowed_write_paths": [
+    "src/create-quiver/lib/ai/analyze-project-validation.js",
+    "src/create-quiver/lib/i18n/messages/en.js",
+    "src/create-quiver/lib/i18n/messages/es.js",
+    "docs/reference/commands.md",
+    "docs/workflows/existing-project.md",
+    "docs/TROUBLESHOOTING.md",
+    "tests/commands/ai-analyze-project-provider.test.js",
+    "tests/fixtures/analyze-project/**",
+    "specs/quiver-v53-reliable-deep-project-analysis/STATUS.md",
+    "specs/quiver-v53-reliable-deep-project-analysis/EVIDENCE_REPORT.md",
+    "specs/quiver-v53-reliable-deep-project-analysis/slices/slice-07-semantic-validation-docs/CLOSURE_BRIEF.md",
+    "specs/quiver-v53-reliable-deep-project-analysis/slices/slice-07-semantic-validation-docs/slice.json"
+  ],
+  "depends_on": [
+    "slice-06-audit-review-transaction"
+  ],
+  "parallel_safe": "after_dependencies",
+  "parallel_safe_reason": "Requires the final reliability kernel behavior to document accurately.",
+  "must": [
+    "Validate that meaningful claims have confidence and evidence.",
+    "Prevent confirmed claims without explicit evidence.",
+    "Warn or error on semantic validation issues according to strict mode.",
+    "Document repair, retry, audit, and review behavior.",
+    "Document deterministic benchmark and optional live nika-erp smoke."
+  ],
+  "not_included": [
+    "Structural symbol map implementation.",
+    "Guaranteeing perfect domain inference.",
+    "Making live provider benchmark mandatory in CI."
+  ],
+  "acceptance": [
+    "Schema-valid but evidence-poor fixture produces semantic warnings or strict errors.",
+    "Docs explain mode behavior and safe next steps.",
+    "Benchmark expectations are documented and reproducible with provider fake.",
+    "Command reference remains synchronized."
+  ],
+  "tests": [
+    "node --test tests/commands/ai-analyze-project-provider.test.js",
+    "npm run docs:check",
+    "npm run smoke:create-quiver",
+    "git diff --check"
+  ],
+  "validation_hints": [
+    "Keep live provider benchmark optional and documented as release evidence."
+  ],
+  "estimated_hours": 6,
+  "actual_hours": 3,
+  "status": "completed",
+  "started_at": "2026-06-11T12:23:45Z",
+  "completed_at": "2026-06-11T12:26:24Z",
+  "blocked_reason": null
+}

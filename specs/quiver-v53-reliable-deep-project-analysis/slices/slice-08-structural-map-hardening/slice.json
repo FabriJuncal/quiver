@@ -1,0 +1,81 @@
+{
+  "slice_id": "slice-08-structural-map-hardening",
+  "ticket": "QUIVER-53-08",
+  "type": "context-quality",
+  "title": "Structural map hardening",
+  "objective": "Improve provider context quality after the reliability kernel is stable.",
+  "description": "Adds a deterministic structural map for analyze-project using low-risk stack-agnostic signals such as imports, exports, components, contexts, routes, configs, and scripts.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v53-structural-map-hardening",
+    "branch_name": "feature/QUIVER-53-08-v53-structural-map-hardening"
+  },
+  "files": [
+    "src/create-quiver/lib/ai/analyze-project-discovery.js",
+    "src/create-quiver/lib/ai/analyze-project-sampling.js",
+    "src/create-quiver/lib/ai/analyze-project-prompts.js",
+    "tests/commands/ai-analyze-project.test.js",
+    "tests/commands/ai-analyze-project-provider.test.js",
+    "specs/quiver-v53-reliable-deep-project-analysis/STATUS.md",
+    "specs/quiver-v53-reliable-deep-project-analysis/EVIDENCE_REPORT.md",
+    "specs/quiver-v53-reliable-deep-project-analysis/slices/slice-08-structural-map-hardening/CLOSURE_BRIEF.md",
+    "specs/quiver-v53-reliable-deep-project-analysis/slices/slice-08-structural-map-hardening/slice.json"
+  ],
+  "expected_read_paths": [
+    "src/create-quiver/lib/ai/analyze-project-discovery.js",
+    "src/create-quiver/lib/ai/analyze-project-sampling.js",
+    "src/create-quiver/lib/ai/analyze-project-prompts.js",
+    "tests/commands/ai-analyze-project.test.js"
+  ],
+  "allowed_write_paths": [
+    "src/create-quiver/lib/ai/analyze-project-discovery.js",
+    "src/create-quiver/lib/ai/analyze-project-sampling.js",
+    "src/create-quiver/lib/ai/analyze-project-prompts.js",
+    "tests/commands/ai-analyze-project.test.js",
+    "tests/commands/ai-analyze-project-provider.test.js",
+    "tests/fixtures/analyze-project/**",
+    "specs/quiver-v53-reliable-deep-project-analysis/STATUS.md",
+    "specs/quiver-v53-reliable-deep-project-analysis/EVIDENCE_REPORT.md",
+    "specs/quiver-v53-reliable-deep-project-analysis/slices/slice-08-structural-map-hardening/CLOSURE_BRIEF.md",
+    "specs/quiver-v53-reliable-deep-project-analysis/slices/slice-08-structural-map-hardening/slice.json"
+  ],
+  "depends_on": [
+    "slice-07-semantic-validation-docs"
+  ],
+  "parallel_safe": "after_dependencies",
+  "parallel_safe_reason": "Context quality changes should happen after reliability behavior is stable and documented.",
+  "must": [
+    "Generate a deterministic structural map from low-risk generic signals.",
+    "Include imports, exports, route files, components, contexts, configs, and scripts where discoverable.",
+    "Keep unknown-stack fallback behavior.",
+    "Respect existing file and byte budgets.",
+    "Do not block analysis if structural extraction fails for a file."
+  ],
+  "not_included": [
+    "Full AST support for every language.",
+    "Replacing semantic sampling.",
+    "Changing repair or retry behavior."
+  ],
+  "acceptance": [
+    "Dry-run JSON includes structural map metadata without reading unsafe paths.",
+    "Provider prompt receives a compact structural map.",
+    "Unknown stack projects still analyze with generic fallback.",
+    "Structural extraction errors are warnings, not fatal analysis failures."
+  ],
+  "tests": [
+    "node --test tests/commands/ai-analyze-project.test.js",
+    "node --test tests/commands/ai-analyze-project-provider.test.js",
+    "npm run smoke:create-quiver",
+    "git diff --check"
+  ],
+  "validation_hints": [
+    "Keep parser heuristics conservative and bounded."
+  ],
+  "estimated_hours": 8,
+  "actual_hours": 4,
+  "status": "completed",
+  "started_at": "2026-06-11T12:26:30Z",
+  "completed_at": "2026-06-11T12:29:09Z",
+  "blocked_reason": null
+}

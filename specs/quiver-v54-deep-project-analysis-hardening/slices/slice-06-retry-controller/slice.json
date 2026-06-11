@@ -1,0 +1,70 @@
+{
+  "slice_id": "slice-06-retry-controller",
+  "ticket": "QUIVER-54-06",
+  "type": "runtime-hardening",
+  "title": "Retry Controller",
+  "objective": "Make provider retries bounded, cheap, actionable, and able to stop early on repeated drift.",
+  "description": "Adds compact retry prompts, per-attempt and total timeouts, drift signatures, retry manifests, and fail-fast behavior.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v54-retry-controller",
+    "branch_name": "feature/QUIVER-54-06-v54-retry-controller"
+  },
+  "files": [
+    "src/create-quiver/commands/ai.js",
+    "src/create-quiver/lib/ai/analyze-project-prompts.js",
+    "src/create-quiver/lib/ai/analyze-project-validation.js",
+    "tests/commands/ai-analyze-project-provider.test.js",
+    "specs/quiver-v54-deep-project-analysis-hardening/**"
+  ],
+  "expected_read_paths": [
+    "src/create-quiver/commands/ai.js",
+    "src/create-quiver/lib/ai/analyze-project-prompts.js",
+    "src/create-quiver/lib/ai/analyze-project-validation.js",
+    "tests/commands/ai-analyze-project-provider.test.js"
+  ],
+  "allowed_write_paths": [
+    "src/create-quiver/commands/ai.js",
+    "src/create-quiver/lib/ai/analyze-project-prompts.js",
+    "src/create-quiver/lib/ai/analyze-project-validation.js",
+    "tests/commands/ai-analyze-project-provider.test.js",
+    "specs/quiver-v54-deep-project-analysis-hardening/STATUS.md",
+    "specs/quiver-v54-deep-project-analysis-hardening/EVIDENCE_REPORT.md",
+    "specs/quiver-v54-deep-project-analysis-hardening/slices/slice-06-retry-controller/CLOSURE_BRIEF.md",
+    "specs/quiver-v54-deep-project-analysis-hardening/slices/slice-06-retry-controller/slice.json"
+  ],
+  "depends_on": [
+    "slice-03-run-lifecycle-cli-io",
+    "slice-05-path-aware-repair-engine"
+  ],
+  "parallel_safe": "never",
+  "parallel_safe_reason": "Retry depends on lifecycle and repair contracts and can affect provider execution globally.",
+  "must": [
+    "Avoid resending full context on retry.",
+    "Add per-attempt and total timeout behavior.",
+    "Compute drift signatures.",
+    "Fail early on repeated dominant drift."
+  ],
+  "not_included": [
+    "Sampling changes.",
+    "Artifact redaction implementation.",
+    "Review write gate."
+  ],
+  "acceptance": [
+    "Retry exhausted output is compact and actionable.",
+    "Timeout is covered by tests.",
+    "Repeated drift does not loop unnecessarily.",
+    "Retry manifest captures attempts and drift signatures."
+  ],
+  "tests": [
+    "node --test tests/commands/ai-analyze-project-provider.test.js",
+    "git diff --check"
+  ],
+  "estimated_hours": 5,
+  "actual_hours": 2,
+  "status": "completed",
+  "started_at": "2026-06-11",
+  "completed_at": "2026-06-11",
+  "blocked_reason": null
+}

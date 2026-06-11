@@ -5,6 +5,9 @@ const path = require('node:path');
 const test = require('node:test');
 
 const { runAnalyzeProject } = require('../../src/create-quiver/commands/ai');
+const { parseAnalyzeProjectOutput } = require('../../src/create-quiver/lib/ai/analyze-project-parser');
+
+const providerFixtures = require('../fixtures/analyze-project/provider-output-cases.json');
 
 function writeFile(filePath, contents) {
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
@@ -41,6 +44,43 @@ function providerResult(stdout, overrides = {}) {
     preflight: { ok: true },
     ...overrides,
   };
+}
+
+function fixtureCase(name) {
+  const found = providerFixtures.cases.find((item) => item.name === name);
+  assert.ok(found, `missing provider fixture case: ${name}`);
+  return found;
+}
+
+function fixtureOutput(item) {
+  const fixture = typeof item === 'string' ? fixtureCase(item) : item;
+  if (fixture.output_ref) {
+    return fixtureOutput(fixture.output_ref);
+  }
+  if (Object.hasOwn(fixture, 'output_text')) {
+    return fixture.output_text;
+  }
+
+  const json = JSON.stringify(fixture.output);
+  if (fixture.wrapper === 'fenced-json') {
+    return `\`\`\`json\n${json}\n\`\`\`\n`;
+  }
+  return `${fixture.prefix || ''}${json}${fixture.suffix || ''}`;
+}
+
+function providerFixtureParserOptions() {
+  return {
+    selectedFiles: providerFixtures.selected_files,
+    promptFiles: providerFixtures.prompt_files,
+  };
+}
+
+function makeProviderFixtureRepo() {
+  return makeRepo({
+    'README.md': '# Provider Fixture\n',
+    'package.json': JSON.stringify({ name: 'provider-fixture' }, null, 2),
+    'src/routes/users.ts': 'export const users = [];\n',
+  });
 }
 
 function validAnalysis() {
@@ -119,7 +159,85 @@ function createProgressRecorder() {
   };
 }
 
-test('runAnalyzeProject executes provider after redacted privacy preflight and writes no files', async () => {
+function assertValidationManifest(repoRoot, error) {
+  assert.ok(error.validation_manifest, 'expected validation manifest metadata');
+  assert.match(error.validation_manifest.path, /^\.quiver\/runs\/run-[^/]+\/validation\/analyze-project-validation\.json$/);
+  const manifestPath = path.join(repoRoot, error.validation_manifest.path);
+  assert.equal(fs.existsSync(manifestPath), true);
+  const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+  assert.equal(manifest.kind, 'quiver-analyze-project-validation-manifest');
+  assert.equal(manifest.status, 'invalid');
+  assert.equal(manifest.issue_count, error.issues.length);
+  const normalizeIssue = (issue) => ({
+    path: issue.path,
+    issue: issue.issue,
+    message: issue.message,
+    ...(Array.isArray(issue.keys) ? { keys: issue.keys } : {}),
+  });
+  assert.deepEqual(manifest.issues.map(normalizeIssue), error.issues.map(normalizeIssue));
+  assert.ok(Array.isArray(manifest.groups));
+  assert.ok(manifest.groups.length > 0);
+  return manifest;
+}
+
+function assertSelectedContextManifest(repoRoot, manifestRef) {
+  const relativePath = typeof manifestRef === 'string' ? manifestRef : manifestRef?.path;
+  assert.match(relativePath || '', /^\.quiver\/runs\/run-[^/]+\/context\/selected-context\.json$/);
+  const manifestPath = path.join(repoRoot, relativePath);
+  assert.equal(fs.existsSync(manifestPath), true);
+  const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+  assert.equal(manifest.kind, 'quiver-analyze-project-selected-context-manifest');
+  assert.equal(manifest.safety_boundary.repository_content_is_untrusted, true);
+  assert.equal(manifest.safety_boundary.file_contents_are_data_not_instructions, true);
+  assert.equal(manifest.safety_boundary.content_redacted_before_provider, true);
+  assert.ok(Array.isArray(manifest.selected_files));
+  assert.ok(manifest.selected_files.some((file) => file.path === 'README.md'));
+  assert.equal(JSON.stringify(manifest).includes('sk-12345678901234567890'), false);
+  assert.equal(JSON.stringify(manifest).includes('fixture-secret-token'), false);
+  return manifest;
+}
+
+function assertRepairManifest(repoRoot, manifestRef) {
+  assert.ok(manifestRef, 'expected repair manifest metadata');
+  assert.match(manifestRef.path || '', /^\.quiver\/runs\/run-[^/]+\/repair\/analyze-project-repair\.json$/);
+  const manifestPath = path.join(repoRoot, manifestRef.path);
+  assert.equal(fs.existsSync(manifestPath), true);
+  const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+  assert.equal(manifest.kind, 'quiver-analyze-project-repair-manifest');
+  assert.equal(manifest.status, manifestRef.status);
+  assert.equal(manifest.entry_count, manifestRef.entry_count);
+  return manifest;
+}
+
+function assertRetryManifest(repoRoot, manifestRef) {
+  assert.ok(manifestRef, 'expected retry manifest metadata');
+  assert.match(manifestRef.path || '', /^\.quiver\/runs\/run-[^/]+\/retry\/analyze-project-retry\.json$/);
+  const manifestPath = path.join(repoRoot, manifestRef.path);
+  assert.equal(fs.existsSync(manifestPath), true);
+  const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+  assert.equal(manifest.kind, 'quiver-analyze-project-retry-manifest');
+  assert.equal(manifest.retry_count, manifestRef.retry_count);
+  assert.equal(manifest.max_retries, manifestRef.max_retries);
+  assert.equal(manifest.final_status, manifestRef.final_status);
+  assert.ok(Array.isArray(manifest.attempts));
+  return manifest;
+}
+
+function assertOnlySelectedContextAudit(repoRoot) {
+  const runsRoot = path.join(repoRoot, '.quiver', 'runs');
+  assert.equal(fs.existsSync(runsRoot), true);
+  const manifestPaths = [];
+  for (const runId of fs.readdirSync(runsRoot)) {
+    const manifestPath = path.join(runsRoot, runId, 'context', 'selected-context.json');
+    if (fs.existsSync(manifestPath)) {
+      manifestPaths.push(path.join('.quiver', 'runs', runId, 'context', 'selected-context.json').split(path.sep).join('/'));
+    }
+  }
+  assert.equal(manifestPaths.length, 1);
+  return assertSelectedContextManifest(repoRoot, manifestPaths[0]);
+}
+
+test('runAnalyzeProject executes provider after redacted privacy preflight and writes only audit manifest', async () => {
   const repo = makeRepo({
     'README.md': '# Provider Demo\n',
     'package.json': JSON.stringify({ name: 'provider-demo' }, null, 2),
@@ -136,6 +254,7 @@ test('runAnalyzeProject executes provider after redacted privacy preflight and w
         providerCalled = true;
         assert.equal(provider, 'codex');
         assert.ok(options.prompt.includes('Return only one valid JSON object'));
+        assert.ok(options.prompt.includes('Compact structural map JSON:'));
         assert.equal(options.prompt.includes('sk-12345678901234567890'), false);
         assert.ok(options.prompt.includes('[REDACTED]'));
         return providerResult(validAnalysis(), { cwd: repo.root });
@@ -150,7 +269,9 @@ test('runAnalyzeProject executes provider after redacted privacy preflight and w
     assert.equal(result.provider_artifact.redacted, true);
     assert.equal(result.provider_artifact.persisted, false);
     assert.equal(result.provider_artifact.output.includes('sk-12345678901234567890'), false);
-    assert.equal(fs.existsSync(path.join(repo.root, '.quiver')), false);
+    assertSelectedContextManifest(repo.root, result.selected_context_manifest);
+    assert.ok(result.raw_provider_artifacts.every((artifactPath) => fs.existsSync(path.join(repo.root, artifactPath))));
+    assert.equal(fs.existsSync(path.join(repo.root, result.run_status_path)), true);
     assert.equal(fs.existsSync(path.join(repo.root, 'docs')), false);
   } finally {
     repo.cleanup();
@@ -185,10 +306,44 @@ test('runAnalyzeProject shows human TTY progress during live provider execution'
       ['write', '◇ Analizando proyecto con codex\n'],
       ['write', '✓ Leyendo docs base\n'],
       ['write', '✓ Detectando estructura\n'],
+      ['write', '✓ Seleccionando muestra\n'],
       ['write', '✓ Preparando prompt\n'],
       ['start', 'Ejecutando agente...'],
       ['stop', 'Agente finalizado', undefined],
+      ['write', '✓ Escribiendo artifacts\n'],
+      ['write', '✓ Validando schema\n'],
     ]);
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('runAnalyzeProject shows linear progress without TTY during live provider execution', async () => {
+  const repo = makeRepo({
+    'README.md': '# Linear Progress Demo\n',
+    'package.json': JSON.stringify({ name: 'linear-progress-demo' }, null, 2),
+    'src/routes/users.ts': 'export const users = [];\n',
+  });
+
+  try {
+    const { output } = await captureStdout(() => runAnalyzeProject(repo.root, {
+      includeSource: true,
+      provider: 'codex',
+      providerExplicit: true,
+      stdoutIsTTY: false,
+      stdinIsTTY: false,
+      stderrIsTTY: false,
+      runProviderFn: async () => providerResult(validAnalysis(), { cwd: repo.root }),
+    }));
+
+    assert.match(output, /Analyzing project with codex/);
+    assert.match(output, /Reading base docs/);
+    assert.match(output, /Detecting structure/);
+    assert.match(output, /Selecting sample/);
+    assert.match(output, /Preparing prompt/);
+    assert.match(output, /Running agent\.\.\./);
+    assert.match(output, /Writing artifacts/);
+    assert.match(output, /Validating schema/);
   } finally {
     repo.cleanup();
   }
@@ -217,7 +372,7 @@ test('runAnalyzeProject --dry-run does not call provider', async () => {
   }
 });
 
-test('runAnalyzeProject rejects invalid provider JSON without writing files', async () => {
+test('runAnalyzeProject rejects invalid provider JSON without writing final docs', async () => {
   const repo = makeRepo({
     'README.md': '# Invalid Provider\n',
     'package.json': JSON.stringify({ name: 'invalid-provider' }, null, 2),
@@ -225,6 +380,7 @@ test('runAnalyzeProject rejects invalid provider JSON without writing files', as
   });
 
   try {
+    let capturedError;
     await assert.rejects(
       captureStdout(() => runAnalyzeProject(repo.root, {
         includeSource: true,
@@ -232,9 +388,290 @@ test('runAnalyzeProject rejects invalid provider JSON without writing files', as
         providerExplicit: true,
         runProviderFn: async () => providerResult('not json', { cwd: repo.root }),
       })),
-      /provider analysis output is not valid JSON/,
+      (error) => {
+        capturedError = error;
+        assert.match(error.message, /provider analysis output is not valid JSON/);
+        return true;
+      },
     );
-    assert.equal(fs.existsSync(path.join(repo.root, '.quiver')), false);
+    const validationManifest = assertValidationManifest(repo.root, capturedError);
+    assertSelectedContextManifest(repo.root, `.quiver/runs/${validationManifest.run_id}/context/selected-context.json`);
+    assert.equal(fs.existsSync(path.join(repo.root, 'docs')), false);
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('runAnalyzeProject repairs nika-erp notes drift fixture without writing final docs', async () => {
+  const repo = makeProviderFixtureRepo();
+
+  try {
+    const { result } = await captureStdout(() => runAnalyzeProject(repo.root, {
+      includeSource: true,
+      provider: 'codex',
+      providerExplicit: true,
+      runProviderFn: async () => providerResult(fixtureOutput('nika-erp-notes-drift'), { cwd: repo.root }),
+    }));
+
+    assert.equal(result.provider_execution, 'completed');
+    assert.equal(result.analysis_validation.repaired, true);
+    assert.equal(Object.hasOwn(result.analysis.domain.roles[0], 'notes'), false);
+    assert.equal(Object.hasOwn(result.analysis.domain.entities[0], 'notes'), false);
+    assert.equal(Object.hasOwn(result.analysis.domain.actions[0], 'notes'), false);
+    const repair = assertRepairManifest(repo.root, result.analysis_validation.repair_manifest);
+    assert.equal(repair.entry_count, 3);
+    assert.deepEqual(
+      repair.entries.map((entry) => `${entry.path}:${entry.key}:${entry.action}`).sort(),
+      [
+        'domain.actions.0:notes:removed',
+        'domain.entities.0:notes:removed',
+        'domain.roles.0:notes:removed',
+      ],
+    );
+    assertSelectedContextManifest(repo.root, result.selected_context_manifest);
+    assert.equal(fs.existsSync(path.join(repo.root, 'docs')), false);
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('runAnalyzeProject repairs claim-name and question confidence drift fixtures without writing final docs', async () => {
+  for (const [fixtureName, expectedEntry] of [
+    ['claim-name-drift', 'domain.entities.0:claim:name:mapped'],
+    ['question-confidence-drift', 'questions.0:confidence::removed'],
+  ]) {
+    const repo = makeProviderFixtureRepo();
+
+    try {
+      const { result } = await captureStdout(() => runAnalyzeProject(repo.root, {
+        includeSource: true,
+        provider: 'codex',
+        providerExplicit: true,
+        runProviderFn: async () => providerResult(fixtureOutput(fixtureName), { cwd: repo.root }),
+      }));
+
+      assert.equal(result.provider_execution, 'completed');
+      assert.equal(result.analysis_validation.repaired, true);
+      const repair = assertRepairManifest(repo.root, result.analysis_validation.repair_manifest);
+      const entries = repair.entries.map((entry) => [
+        entry.path,
+        entry.key || entry.source_key,
+        entry.target_key || '',
+        entry.action,
+      ].join(':'));
+      assert.ok(entries.includes(expectedEntry), `expected repair entry ${expectedEntry}`);
+      assertSelectedContextManifest(repo.root, result.selected_context_manifest);
+      assert.equal(fs.existsSync(path.join(repo.root, 'docs')), false);
+    } finally {
+      repo.cleanup();
+    }
+  }
+});
+
+for (const [name, parseSource] of [
+  ['fenced-json', 'fenced-json'],
+  ['surrounding-text', 'embedded-json'],
+]) {
+  test(`runAnalyzeProject accepts ${name} provider fixture output without live provider`, async () => {
+    const repo = makeProviderFixtureRepo();
+
+    try {
+      const { result } = await captureStdout(() => runAnalyzeProject(repo.root, {
+        includeSource: true,
+        provider: 'codex',
+        providerExplicit: true,
+        runProviderFn: async () => providerResult(fixtureOutput(name), { cwd: repo.root }),
+      }));
+
+      assert.equal(result.provider_execution, 'completed');
+      assert.equal(result.analysis.kind, 'quiver-project-analysis');
+      assert.equal(result.analysis_validation.parse_source, parseSource);
+      assertSelectedContextManifest(repo.root, result.selected_context_manifest);
+      assert.equal(fs.existsSync(path.join(repo.root, 'docs')), false);
+    } finally {
+      repo.cleanup();
+    }
+  });
+}
+
+for (const [name, expectedMessage] of [
+  ['truncated-json', /provider analysis output is not valid JSON/],
+  ['missing-required-fields', /domain\.entities\.0\.name/],
+  ['invalid-confidence', /product\.name\.confidence/],
+]) {
+  test(`runAnalyzeProject rejects ${name} provider fixture without writing final docs`, async () => {
+    const repo = makeProviderFixtureRepo();
+
+    try {
+      let capturedError;
+      await assert.rejects(
+        captureStdout(() => runAnalyzeProject(repo.root, {
+          includeSource: true,
+          provider: 'codex',
+          providerExplicit: true,
+          runProviderFn: async () => providerResult(fixtureOutput(name), { cwd: repo.root }),
+        })),
+        (error) => {
+          capturedError = error;
+          assert.equal(error.code, 'AI_ANALYZE_PROJECT_INVALID');
+          assert.match(error.message, expectedMessage);
+          return true;
+        },
+      );
+      const validationManifest = assertValidationManifest(repo.root, capturedError);
+      assertSelectedContextManifest(repo.root, `.quiver/runs/${validationManifest.run_id}/context/selected-context.json`);
+      assert.equal(fs.existsSync(path.join(repo.root, 'docs')), false);
+    } finally {
+      repo.cleanup();
+    }
+  });
+}
+
+test('runAnalyzeProject redacts secret-like provider output fixture before artifact exposure', async () => {
+  const repo = makeProviderFixtureRepo();
+
+  try {
+    const { result } = await captureStdout(() => runAnalyzeProject(repo.root, {
+      includeSource: true,
+      provider: 'codex',
+      providerExplicit: true,
+      runProviderFn: async () => providerResult(fixtureOutput('secret-like-output'), { cwd: repo.root }),
+    }));
+
+    assert.equal(result.provider_execution, 'completed');
+    assert.equal(result.analysis.kind, 'quiver-project-analysis');
+    assert.equal(result.provider_artifact.redacted, true);
+    assert.equal(result.provider_artifact.output.includes('fixture-secret-token'), false);
+    assert.match(result.provider_artifact.output, /\[REDACTED\]/);
+    assertSelectedContextManifest(repo.root, result.selected_context_manifest);
+    assert.equal(fs.existsSync(path.join(repo.root, 'docs')), false);
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('provider retry fixtures define recoverable and exhausted attempt sequences', () => {
+  const retrySuccess = fixtureCase('retry-success');
+  const retryExhausted = fixtureCase('retry-exhausted');
+
+  assert.equal(retrySuccess.attempts.length, 2);
+  assert.equal(retryExhausted.attempts.length, 2);
+
+  assert.throws(
+    () => parseAnalyzeProjectOutput(fixtureOutput(retrySuccess.attempts[0]), providerFixtureParserOptions()),
+    /provider analysis JSON does not match the required schema/,
+  );
+  assert.doesNotThrow(
+    () => parseAnalyzeProjectOutput(fixtureOutput(retrySuccess.attempts[1]), providerFixtureParserOptions()),
+  );
+
+  for (const attempt of retryExhausted.attempts) {
+    assert.throws(
+      () => parseAnalyzeProjectOutput(fixtureOutput(attempt), providerFixtureParserOptions()),
+      /provider analysis JSON does not match the required schema/,
+    );
+  }
+});
+
+test('runAnalyzeProject retries retryable schema drift once and succeeds', async () => {
+  const repo = makeProviderFixtureRepo();
+  const retrySuccess = fixtureCase('retry-success');
+  const prompts = [];
+
+  try {
+    const { result } = await captureStdout(() => runAnalyzeProject(repo.root, {
+      includeSource: true,
+      provider: 'codex',
+      providerExplicit: true,
+      runProviderFn: async (provider, options) => {
+        prompts.push(options.prompt);
+        return providerResult(fixtureOutput(retrySuccess.attempts[prompts.length - 1]), { cwd: repo.root });
+      },
+    }));
+
+    assert.equal(result.provider_execution, 'completed');
+    assert.equal(result.analysis_validation.retry_count, 1);
+    assert.equal(result.provider_attempts.length, 2);
+    assert.equal(prompts.length, 2);
+    assert.match(prompts[1], /Schema feedback:/);
+    assert.doesNotMatch(prompts[1], /Selected file contents:/);
+    const retry = assertRetryManifest(repo.root, result.analysis_validation.retry_manifest);
+    assert.equal(retry.final_status, 'valid');
+    assert.equal(retry.attempts[0].status, 'invalid');
+    assert.equal(retry.attempts[1].status, 'valid');
+    assert.equal(fs.existsSync(path.join(repo.root, 'docs')), false);
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('runAnalyzeProject fails safely after default retry exhaustion', async () => {
+  const repo = makeProviderFixtureRepo();
+  const retryExhausted = fixtureCase('retry-exhausted');
+  let calls = 0;
+
+  try {
+    let capturedError;
+    await assert.rejects(
+      captureStdout(() => runAnalyzeProject(repo.root, {
+        includeSource: true,
+        provider: 'codex',
+        providerExplicit: true,
+        runProviderFn: async () => {
+          const attempt = retryExhausted.attempts[Math.min(calls, retryExhausted.attempts.length - 1)];
+          calls += 1;
+          return providerResult(fixtureOutput(attempt), { cwd: repo.root });
+        },
+      })),
+      (error) => {
+        capturedError = error;
+        assert.equal(error.code, 'AI_ANALYZE_PROJECT_INVALID');
+        assert.match(error.message, /Retry manifest: \.quiver\/runs\/run-/);
+        assert.match(error.message, /Validation manifest: \.quiver\/runs\/run-/);
+        return true;
+      },
+    );
+
+    assert.equal(calls, 2);
+    const retry = assertRetryManifest(repo.root, capturedError.retry_manifest);
+    assert.equal(retry.final_status, 'invalid');
+    assert.equal(retry.retry_count, 1);
+    assert.equal(retry.max_retries, 1);
+    assertValidationManifest(repo.root, capturedError);
+    assert.equal(fs.existsSync(path.join(repo.root, 'docs')), false);
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('runAnalyzeProject caps retries at two even when configured higher', async () => {
+  const repo = makeProviderFixtureRepo();
+  let calls = 0;
+
+  try {
+    let capturedError;
+    await assert.rejects(
+      captureStdout(() => runAnalyzeProject(repo.root, {
+        includeSource: true,
+        provider: 'codex',
+        providerExplicit: true,
+        maxAnalyzeProjectRetries: 99,
+        runProviderFn: async () => {
+          calls += 1;
+          return providerResult(fixtureOutput('invalid-confidence'), { cwd: repo.root });
+        },
+      })),
+      (error) => {
+        capturedError = error;
+        assert.equal(error.code, 'AI_ANALYZE_PROJECT_INVALID');
+        return true;
+      },
+    );
+
+    assert.equal(calls, 3);
+    const retry = assertRetryManifest(repo.root, capturedError.retry_manifest);
+    assert.equal(retry.max_retries, 2);
+    assert.equal(retry.retry_count, 2);
     assert.equal(fs.existsSync(path.join(repo.root, 'docs')), false);
   } finally {
     repo.cleanup();
@@ -267,6 +704,7 @@ test('runAnalyzeProject reports provider schema issues with actionable detail', 
   });
 
   try {
+    let capturedError;
     await assert.rejects(
       captureStdout(() => runAnalyzeProject(repo.root, {
         includeSource: true,
@@ -275,33 +713,41 @@ test('runAnalyzeProject reports provider schema issues with actionable detail', 
         runProviderFn: async () => providerResult(invalidAnalysis, { cwd: repo.root }),
       })),
       (error) => {
+        capturedError = error;
         assert.equal(error.code, 'AI_ANALYZE_PROJECT_INVALID');
         assert.match(error.message, /provider analysis JSON does not match the required schema/);
         assert.match(error.message, /Issues:/);
         assert.match(error.message, /product\.name\.confidence/);
+        assert.match(error.message, /Cause:/);
+        assert.match(error.message, /Validation manifest: \.quiver\/runs\/run-/);
         assert.match(error.message, /Next safe step:/);
         assert.ok(Array.isArray(error.details));
         return true;
       },
     );
-    assert.equal(fs.existsSync(path.join(repo.root, '.quiver')), false);
+    const validationManifest = assertValidationManifest(repo.root, capturedError);
+    assertSelectedContextManifest(repo.root, `.quiver/runs/${validationManifest.run_id}/context/selected-context.json`);
     assert.equal(fs.existsSync(path.join(repo.root, 'docs')), false);
   } finally {
     repo.cleanup();
   }
 });
 
-test('runAnalyzeProject rejects provider failure without writing files', async () => {
+test('runAnalyzeProject rejects provider failure without writing final docs', async () => {
   const repo = makeRepo({
     'README.md': '# Provider Failure\n',
     'package.json': JSON.stringify({ name: 'provider-failure' }, null, 2),
   });
 
   try {
+    let output = '';
     await assert.rejects(
-      captureStdout(() => runAnalyzeProject(repo.root, {
+      () => runAnalyzeProject(repo.root, {
         provider: 'codex',
         providerExplicit: true,
+        write: (text) => {
+          output += String(text);
+        },
         runProviderFn: async () => ({
           ok: false,
           dryRun: false,
@@ -317,10 +763,18 @@ test('runAnalyzeProject rejects provider failure without writing files', async (
           error: new Error('provider failed'),
           preflight: { ok: true },
         }),
-      })),
+      }),
       /ai analyze-project failed: provider failed/,
     );
-    assert.equal(fs.existsSync(path.join(repo.root, '.quiver')), false);
+    assert.match(output, /Agent failed/);
+    const contextManifest = assertOnlySelectedContextAudit(repo.root);
+    const runRoot = path.join(repo.root, '.quiver', 'runs', contextManifest.run_id);
+    const rawDir = path.join(runRoot, 'raw');
+    assert.equal(fs.existsSync(rawDir), true);
+    assert.equal(fs.readdirSync(rawDir).length, 1);
+    const status = JSON.parse(fs.readFileSync(path.join(runRoot, 'status.json'), 'utf8'));
+    assert.equal(status.status, 'failed');
+    assert.equal(status.artifacts.raw_provider.length, 1);
     assert.equal(fs.existsSync(path.join(repo.root, 'docs')), false);
   } finally {
     repo.cleanup();

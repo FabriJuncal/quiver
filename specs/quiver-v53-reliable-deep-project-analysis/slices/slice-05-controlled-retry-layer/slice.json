@@ -1,0 +1,81 @@
+{
+  "slice_id": "slice-05-controlled-retry-layer",
+  "ticket": "QUIVER-53-05",
+  "type": "reliability",
+  "title": "Controlled retry layer",
+  "objective": "Retry provider analysis only when invalid output is retryable and bounded.",
+  "description": "Adds retry classification, compact retry prompts, retry count limits, timeout/error handling, and guarantees that exhausted retries do not write final docs.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v53-controlled-retry-layer",
+    "branch_name": "feature/QUIVER-53-05-v53-controlled-retry-layer"
+  },
+  "files": [
+    "src/create-quiver/commands/ai.js",
+    "src/create-quiver/lib/ai/analyze-project-prompts.js",
+    "src/create-quiver/lib/ai/analyze-project-validation.js",
+    "src/create-quiver/lib/ai/providers.js",
+    "tests/commands/ai-analyze-project-provider.test.js",
+    "specs/quiver-v53-reliable-deep-project-analysis/STATUS.md",
+    "specs/quiver-v53-reliable-deep-project-analysis/EVIDENCE_REPORT.md",
+    "specs/quiver-v53-reliable-deep-project-analysis/slices/slice-05-controlled-retry-layer/CLOSURE_BRIEF.md",
+    "specs/quiver-v53-reliable-deep-project-analysis/slices/slice-05-controlled-retry-layer/slice.json"
+  ],
+  "expected_read_paths": [
+    "src/create-quiver/commands/ai.js",
+    "src/create-quiver/lib/ai/analyze-project-prompts.js",
+    "src/create-quiver/lib/ai/providers.js",
+    "tests/commands/ai-analyze-project-provider.test.js"
+  ],
+  "allowed_write_paths": [
+    "src/create-quiver/commands/ai.js",
+    "src/create-quiver/lib/ai/analyze-project-prompts.js",
+    "src/create-quiver/lib/ai/analyze-project-validation.js",
+    "src/create-quiver/lib/ai/providers.js",
+    "tests/commands/ai-analyze-project-provider.test.js",
+    "tests/fixtures/analyze-project/**",
+    "specs/quiver-v53-reliable-deep-project-analysis/STATUS.md",
+    "specs/quiver-v53-reliable-deep-project-analysis/EVIDENCE_REPORT.md",
+    "specs/quiver-v53-reliable-deep-project-analysis/slices/slice-05-controlled-retry-layer/CLOSURE_BRIEF.md",
+    "specs/quiver-v53-reliable-deep-project-analysis/slices/slice-05-controlled-retry-layer/slice.json"
+  ],
+  "depends_on": [
+    "slice-03-schema-error-grouping",
+    "slice-04-safe-repair-layer"
+  ],
+  "parallel_safe": "never",
+  "parallel_safe_reason": "Retry changes provider execution flow and depends on repair outcomes.",
+  "must": [
+    "Retry only retryable errors.",
+    "Use default max retries of 1 and hard cap of 2 unless the contract changes.",
+    "Send compact schema feedback in retry prompts.",
+    "Avoid resending full context when not necessary.",
+    "Fail with 0 final docs writes after retry exhaustion."
+  ],
+  "not_included": [
+    "Unlimited retries.",
+    "Automatic fallback to another provider.",
+    "Cost accounting beyond available provider metadata."
+  ],
+  "acceptance": [
+    "Retry-success fixture succeeds after one retry.",
+    "Retry-exhausted fixture fails with compact output.",
+    "Fatal errors do not retry.",
+    "Retry count is visible in human output and manifests."
+  ],
+  "tests": [
+    "node --test tests/commands/ai-analyze-project-provider.test.js",
+    "node --test tests/commands/ai-analyze-project.test.js",
+    "git diff --check"
+  ],
+  "validation_hints": [
+    "Assert retry cap behavior exactly."
+  ],
+  "estimated_hours": 6,
+  "actual_hours": 4,
+  "status": "completed",
+  "started_at": "2026-06-11T12:16:20Z",
+  "completed_at": "2026-06-11T12:20:16Z",
+  "blocked_reason": null
+}

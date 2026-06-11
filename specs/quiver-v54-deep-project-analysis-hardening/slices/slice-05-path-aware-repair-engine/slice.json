@@ -1,0 +1,72 @@
+{
+  "slice_id": "slice-05-path-aware-repair-engine",
+  "ticket": "QUIVER-54-05",
+  "type": "runtime-hardening",
+  "title": "Path-Aware Repair Engine",
+  "objective": "Repair only explicitly allowed provider schema drift using a closed path-aware contract.",
+  "description": "Extends analyze-project repair to remove safe unsupported fields and rename claim to name only under strict path and value constraints.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v54-path-aware-repair-engine",
+    "branch_name": "feature/QUIVER-54-05-v54-path-aware-repair-engine"
+  },
+  "files": [
+    "src/create-quiver/lib/ai/analyze-project-repair.js",
+    "src/create-quiver/lib/ai/analyze-project-parser.js",
+    "src/create-quiver/lib/ai/analyze-project-validation.js",
+    "tests/lib/ai/analyze-project-repair.test.js",
+    "tests/commands/ai-analyze-project-provider.test.js",
+    "specs/quiver-v54-deep-project-analysis-hardening/**"
+  ],
+  "expected_read_paths": [
+    "src/create-quiver/lib/ai/analyze-project-repair.js",
+    "src/create-quiver/lib/ai/analyze-project-parser.js",
+    "src/create-quiver/lib/ai/analyze-project-schema.js",
+    "tests/lib/ai/analyze-project-repair.test.js"
+  ],
+  "allowed_write_paths": [
+    "src/create-quiver/lib/ai/analyze-project-repair.js",
+    "src/create-quiver/lib/ai/analyze-project-parser.js",
+    "src/create-quiver/lib/ai/analyze-project-validation.js",
+    "tests/lib/ai/analyze-project-repair.test.js",
+    "tests/commands/ai-analyze-project-provider.test.js",
+    "specs/quiver-v54-deep-project-analysis-hardening/STATUS.md",
+    "specs/quiver-v54-deep-project-analysis-hardening/EVIDENCE_REPORT.md",
+    "specs/quiver-v54-deep-project-analysis-hardening/slices/slice-05-path-aware-repair-engine/CLOSURE_BRIEF.md",
+    "specs/quiver-v54-deep-project-analysis-hardening/slices/slice-05-path-aware-repair-engine/slice.json"
+  ],
+  "depends_on": [
+    "slice-01-contract-regression-harness"
+  ],
+  "parallel_safe": "after_dependencies",
+  "parallel_safe_reason": "Can run after fixtures exist and before retry controller.",
+  "must": [
+    "Use a closed allowlist of repair actions.",
+    "Fail closed on conflicts and threshold overflow.",
+    "Record every repair in manifest.",
+    "Revalidate after repair."
+  ],
+  "not_included": [
+    "Retry controller.",
+    "Sampling rules.",
+    "Final docs writes."
+  ],
+  "acceptance": [
+    "notes removal is path-aware and audited.",
+    "confidence removal is path-aware and audited.",
+    "claim to name rename is only applied under strict conditions.",
+    "Unsafe repairs fail without final docs writes."
+  ],
+  "tests": [
+    "node --test tests/lib/ai/analyze-project-repair.test.js",
+    "node --test tests/commands/ai-analyze-project-provider.test.js",
+    "git diff --check"
+  ],
+  "estimated_hours": 6,
+  "actual_hours": 4,
+  "status": "completed",
+  "started_at": "2026-06-11",
+  "completed_at": "2026-06-11",
+  "blocked_reason": null
+}

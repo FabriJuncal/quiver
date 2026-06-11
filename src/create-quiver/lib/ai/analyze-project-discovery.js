@@ -2,7 +2,11 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const { getContextPathExclusionReason } = require('./safety');
-const { classifyProjectFile, summarizeByReason } = require('./analyze-project-sampling');
+const {
+  classifyProjectFile,
+  isLockfilePath,
+  summarizeByReason,
+} = require('./analyze-project-sampling');
 
 const BINARY_EXTENSIONS = new Set([
   '.7z',
@@ -38,6 +42,20 @@ const BINARY_EXTENSIONS = new Set([
   '.woff2',
   '.zip',
 ]);
+const STRUCTURAL_TEXT_EXTENSIONS = new Set([
+  '.cjs',
+  '.cts',
+  '.js',
+  '.jsx',
+  '.mjs',
+  '.mts',
+  '.ts',
+  '.tsx',
+  '.vue',
+  '.svelte',
+]);
+const MAX_STRUCTURAL_FILES = 80;
+const MAX_STRUCTURAL_FILE_BYTES = 20_000;
 
 function toPosix(filePath) {
   return String(filePath || '').replace(/\\/g, '/');
@@ -80,10 +98,93 @@ function detectPackageManager(repoRoot) {
   return 'unknown';
 }
 
+function packageManagerFromLockfile(filePath) {
+  const base = path.posix.basename(toPosix(filePath)).toLowerCase();
+  if (base === 'package-lock.json') return 'npm';
+  if (base === 'pnpm-lock.yaml') return 'pnpm';
+  if (base === 'yarn.lock') return 'yarn';
+  if (base === 'bun.lockb') return 'bun';
+  if (base === 'cargo.lock') return 'cargo';
+  if (base === 'gemfile.lock') return 'bundler';
+  if (base === 'composer.lock') return 'composer';
+  if (base === 'poetry.lock') return 'poetry';
+  if (base === 'go.sum') return 'go';
+  return 'unknown';
+}
+
 function readPackageJson(repoRoot, relativeDir = '.') {
   const packagePath = path.join(repoRoot, relativeDir, 'package.json');
   const pkg = fs.existsSync(packagePath) ? safeReadJson(packagePath) : null;
   return pkg && typeof pkg === 'object' ? pkg : null;
+}
+
+function dependencyNamesFromPackageJson(packageJson) {
+  const names = [
+    ...Object.keys(packageJson?.dependencies || {}),
+    ...Object.keys(packageJson?.devDependencies || {}),
+    ...Object.keys(packageJson?.peerDependencies || {}),
+    ...Object.keys(packageJson?.optionalDependencies || {}),
+  ];
+  return uniqueSorted(names);
+}
+
+function summarizeNpmLockfile(lockfilePath) {
+  const lock = safeReadJson(lockfilePath);
+  if (!lock || typeof lock !== 'object') {
+    return {
+      dependency_count: null,
+      dependency_count_source: 'unreadable-package-lock',
+    };
+  }
+
+  if (lock.packages && typeof lock.packages === 'object') {
+    return {
+      dependency_count: Object.keys(lock.packages).filter(Boolean).length,
+      dependency_count_source: 'package-lock.packages',
+    };
+  }
+
+  if (lock.dependencies && typeof lock.dependencies === 'object') {
+    return {
+      dependency_count: Object.keys(lock.dependencies).length,
+      dependency_count_source: 'package-lock.dependencies',
+    };
+  }
+
+  return {
+    dependency_count: 0,
+    dependency_count_source: 'package-lock.empty',
+  };
+}
+
+function summarizeLockfiles(repoRoot, files) {
+  const packageJson = readPackageJson(repoRoot);
+  const topDependencies = dependencyNamesFromPackageJson(packageJson).slice(0, 30);
+
+  return files
+    .filter((file) => isLockfilePath(file.path))
+    .sort((a, b) => a.path.localeCompare(b.path))
+    .map((file) => {
+      const manager = packageManagerFromLockfile(file.path);
+      const lockfilePath = path.join(repoRoot, file.path);
+      const details = manager === 'npm'
+        ? summarizeNpmLockfile(lockfilePath)
+        : {
+            dependency_count: null,
+            dependency_count_source: 'not-estimated',
+          };
+
+      return {
+        path: file.path,
+        package_manager: manager,
+        bytes: file.bytes || 0,
+        content_included: false,
+        dependency_count: details.dependency_count,
+        dependency_count_source: details.dependency_count_source,
+        top_dependencies: topDependencies,
+        reason: 'lockfile summarized as metadata; full content excluded from provider sample by default',
+      };
+    });
 }
 
 function expandWorkspacePattern(repoRoot, pattern) {
@@ -352,12 +453,122 @@ function detectStack(repoRoot, files) {
   };
 }
 
+function uniqueSorted(values) {
+  return [...new Set(values.filter(Boolean))].sort();
+}
+
+function extractImportSpecifiers(content) {
+  const imports = [];
+  const patterns = [
+    /\bimport\s+[^'"]*from\s+['"]([^'"]+)['"]/g,
+    /\bimport\s*\(\s*['"]([^'"]+)['"]\s*\)/g,
+    /\brequire\s*\(\s*['"]([^'"]+)['"]\s*\)/g,
+  ];
+  for (const pattern of patterns) {
+    for (const match of content.matchAll(pattern)) {
+      imports.push(match[1]);
+    }
+  }
+  return uniqueSorted(imports).slice(0, 12);
+}
+
+function extractExportNames(content) {
+  const exports = [];
+  const patterns = [
+    /\bexport\s+(?:async\s+)?function\s+([A-Za-z0-9_$]+)/g,
+    /\bexport\s+(?:const|let|var|class)\s+([A-Za-z0-9_$]+)/g,
+    /\bexport\s+default\s+(?:function\s+)?([A-Za-z0-9_$]+)?/g,
+  ];
+  for (const pattern of patterns) {
+    for (const match of content.matchAll(pattern)) {
+      exports.push(match[1] || 'default');
+    }
+  }
+  return uniqueSorted(exports).slice(0, 12);
+}
+
+function isRoutePath(filePath) {
+  return /(^|\/)(routes?|controllers?|pages\/api|app\/api)(\/|$)/i.test(filePath)
+    || /(^|\/)app\/.+\/(page|route)\.[jt]sx?$/i.test(filePath)
+    || /(^|\/)pages\/.+\.[jt]sx?$/i.test(filePath);
+}
+
+function isComponentPath(filePath) {
+  const basename = path.posix.basename(filePath).replace(/\.[^.]+$/, '');
+  return /(^|\/)components?\//i.test(filePath) || /^[A-Z][A-Za-z0-9]+$/.test(basename);
+}
+
+function isContextPath(filePath) {
+  return /(^|\/)(contexts?|providers?)\//i.test(filePath) || /(?:context|provider)\.[jt]sx?$/i.test(filePath);
+}
+
+function buildStructuralMap(repoRoot, files, detected) {
+  const warnings = [];
+  const routeFiles = [];
+  const componentFiles = [];
+  const contextFiles = [];
+  const importEntries = [];
+  const exportEntries = [];
+  let scannedFiles = 0;
+
+  for (const file of files.slice().sort((a, b) => a.path.localeCompare(b.path))) {
+    if (isRoutePath(file.path)) routeFiles.push(file.path);
+    if (isComponentPath(file.path)) componentFiles.push(file.path);
+    if (isContextPath(file.path)) contextFiles.push(file.path);
+
+    const extension = path.extname(file.path).toLowerCase();
+    if (!STRUCTURAL_TEXT_EXTENSIONS.has(extension)) {
+      continue;
+    }
+    if (scannedFiles >= MAX_STRUCTURAL_FILES) {
+      warnings.push({ path: file.path, issue: 'structural-file-budget-exhausted' });
+      continue;
+    }
+    if (file.bytes > MAX_STRUCTURAL_FILE_BYTES) {
+      warnings.push({ path: file.path, issue: 'structural-file-too-large' });
+      continue;
+    }
+
+    try {
+      const content = fs.readFileSync(path.join(repoRoot, file.path), 'utf8');
+      const imports = extractImportSpecifiers(content);
+      const exports = extractExportNames(content);
+      if (imports.length > 0) {
+        importEntries.push({ path: file.path, imports });
+      }
+      if (exports.length > 0) {
+        exportEntries.push({ path: file.path, exports });
+      }
+      scannedFiles += 1;
+    } catch (error) {
+      warnings.push({ path: file.path, issue: error.code || 'structural-read-failed' });
+    }
+  }
+
+  return {
+    schema_version: 1,
+    files_scanned: scannedFiles,
+    files_considered: files.length,
+    warnings: warnings.slice(0, 40),
+    routes: uniqueSorted(routeFiles).slice(0, 80),
+    components: uniqueSorted(componentFiles).slice(0, 80),
+    contexts: uniqueSorted(contextFiles).slice(0, 40),
+    configs: (detected.configs || []).slice(0, 80),
+    scripts: Object.keys(detected.scripts || {}).sort(),
+    imports: importEntries.slice(0, 80),
+    exports: exportEntries.slice(0, 80),
+  };
+}
+
 function discoverProjectFiles(repoRoot, options = {}) {
   const resolvedRepoRoot = path.resolve(repoRoot);
   const workspaceRoots = discoverWorkspaceRoots(resolvedRepoRoot);
   const analysisRoot = resolveAnalysisRoot(resolvedRepoRoot, options.scope, workspaceRoots);
   const walked = walkFiles(resolvedRepoRoot, analysisRoot.absolutePath);
   const packageJson = readPackageJson(resolvedRepoRoot);
+  const detected = detectStack(resolvedRepoRoot, walked.files);
+  detected.lockfiles = summarizeLockfiles(resolvedRepoRoot, walked.files);
+  detected.structural_map = buildStructuralMap(resolvedRepoRoot, walked.files, detected);
 
   return {
     project: {
@@ -376,7 +587,7 @@ function discoverProjectFiles(repoRoot, options = {}) {
     skippedSummary: summarizeByReason(walked.skipped),
     safetyExclusions: walked.safetyExclusions,
     safetySummary: summarizeByReason(walked.safetyExclusions),
-    detected: detectStack(resolvedRepoRoot, walked.files),
+    detected,
   };
 }
 

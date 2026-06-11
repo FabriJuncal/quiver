@@ -39,6 +39,75 @@ const ROOT_GITIGNORE_DEFAULTS = [
   'coverage/',
 ];
 
+const AGENTS_SECTION_DEFAULTS = [
+  {
+    label: 'Purpose',
+    pattern: /^Purpose$/m,
+    lines: [
+      'Purpose',
+      '',
+      'This file routes AI agents in this repository. Read it before loading broader project context.',
+    ],
+  },
+  {
+    label: 'Reading Budget',
+    pattern: /^## Reading Budget$/m,
+    lines: [
+      '## Reading Budget',
+      '',
+      '- Planning: load only the docs needed for the current requirement.',
+      '- Execution: start from the active slice context before reading broad docs.',
+      '- Debug: gather the smallest reproducible evidence before proposing fixes.',
+    ],
+  },
+  {
+    label: 'Reading Order',
+    pattern: /^## Reading Order$/m,
+    lines: [
+      '## Reading Order',
+      '',
+      '1. README.md',
+      '2. docs/AI_CONTEXT.md',
+      '3. docs/PROJECT_MAP.md when architecture or structure facts are needed',
+      '4. Active spec/slice docs only when working on an approved slice',
+    ],
+  },
+  {
+    label: 'Output Policy',
+    pattern: /^## Output Policy$/m,
+    lines: [
+      '## Output Policy',
+      '',
+      '- Keep responses concise and actionable.',
+      '- Cite files or commands when reporting evidence.',
+      '- Do not claim unsupported project facts as confirmed.',
+    ],
+  },
+  {
+    label: 'Slice Execution Rules',
+    pattern: /^## Slice Execution Rules$/m,
+    lines: [
+      '## Slice Execution Rules',
+      '',
+      '- Do not implement code before acceptance criteria and technical plan approval.',
+      '- Execute one approved slice at a time.',
+      '- Keep changes inside the slice scope unless the handoff explicitly allows expansion.',
+    ],
+  },
+  {
+    label: 'Links',
+    pattern: /^## Links$/m,
+    lines: [
+      '## Links',
+      '',
+      '- AI Context: `./docs/AI_CONTEXT.md`',
+      '- Project Map: `./docs/PROJECT_MAP.md`',
+      '- Decisions: `./docs/DECISIONS.md`',
+      '- Workflow: `./docs/WORKFLOW.md`',
+    ],
+  },
+];
+
 function readTextIfExists(filePath) {
   if (!fs.existsSync(filePath)) {
     return null;
@@ -152,19 +221,28 @@ function countAgentsSections(projectRoot) {
     return ['AGENTS.md'];
   }
 
-  const requiredSections = [
-    [/^Purpose$/m, 'Purpose'],
-    [/^## Reading Budget$/m, 'Reading Budget'],
-    [/^## Reading Order$/m, 'Reading Order'],
-    [/^## Output Policy$/m, 'Output Policy'],
-    [/^## Slice Execution Rules$/m, 'Slice Execution Rules'],
-    [/^## Links$/m, 'Links'],
-  ];
-
-  const missing = requiredSections
-    .filter(([pattern]) => !pattern.test(text))
-    .map(([, label]) => label);
+  const missing = AGENTS_SECTION_DEFAULTS
+    .filter((section) => !section.pattern.test(text))
+    .map((section) => section.label);
   return missing;
+}
+
+function buildAgentsContractText(sectionLabels = null) {
+  const labels = Array.isArray(sectionLabels) && sectionLabels.length > 0
+    ? new Set(sectionLabels)
+    : null;
+  const selectedSections = AGENTS_SECTION_DEFAULTS.filter((section) => !labels || labels.has(section.label));
+  const lines = labels ? [] : ['# AGENTS Router', ''];
+  for (const [index, section] of selectedSections.entries()) {
+    if (lines.length > 0 && lines[lines.length - 1] !== '') {
+      lines.push('');
+    }
+    if (index > 0 && lines[lines.length - 1] !== '') {
+      lines.push('');
+    }
+    lines.push(...section.lines);
+  }
+  return `${lines.join('\n').replace(/\n{3,}/g, '\n\n')}\n`;
 }
 
 function countTieredPackSizeWarnings(projectRoot) {
@@ -519,6 +597,23 @@ function buildDoctorFixPlan(projectRoot) {
       path: '.quiver/config.json',
       description: 'Create missing Quiver config metadata.',
       content: `${JSON.stringify(buildQuiverConfig(), null, 2)}\n`,
+    });
+  }
+
+  const agentsMissing = countAgentsSections(projectRoot);
+  if (agentsMissing.includes('AGENTS.md')) {
+    fixes.push({
+      type: 'write-json-or-text',
+      path: 'AGENTS.md',
+      description: 'Create missing AGENTS.md AI routing contract.',
+      content: buildAgentsContractText(),
+    });
+  } else if (agentsMissing.length > 0) {
+    fixes.push({
+      type: 'append-lines',
+      path: 'AGENTS.md',
+      description: `Append missing AGENTS.md contract sections: ${agentsMissing.join(', ')}.`,
+      lines: buildAgentsContractText(agentsMissing).trimEnd().split('\n'),
     });
   }
 

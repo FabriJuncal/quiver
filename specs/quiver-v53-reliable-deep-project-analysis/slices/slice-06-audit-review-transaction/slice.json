@@ -1,0 +1,88 @@
+{
+  "slice_id": "slice-06-audit-review-transaction",
+  "ticket": "QUIVER-53-06",
+  "type": "workflow",
+  "title": "Audit and review transaction",
+  "objective": "Persist provider execution evidence and make docs writes reviewable, atomic, and recoverable.",
+  "description": "Adds redacted run artifacts, validation/repair/retry manifests, review proposal handling, edited JSON revalidation, final diff, confirmation, snapshots, hashes, and atomic final docs writes.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v53-audit-review-transaction",
+    "branch_name": "feature/QUIVER-53-06-v53-audit-review-transaction"
+  },
+  "files": [
+    "src/create-quiver/commands/ai.js",
+    "src/create-quiver/lib/ai/analyze-project-review.js",
+    "src/create-quiver/lib/ai/artifacts.js",
+    "src/create-quiver/lib/ai/run-state.js",
+    "tests/commands/ai-analyze-project-provider.test.js",
+    "tests/commands/ai-analyze-project-review.test.js",
+    "specs/quiver-v53-reliable-deep-project-analysis/STATUS.md",
+    "specs/quiver-v53-reliable-deep-project-analysis/EVIDENCE_REPORT.md",
+    "specs/quiver-v53-reliable-deep-project-analysis/slices/slice-06-audit-review-transaction/CLOSURE_BRIEF.md",
+    "specs/quiver-v53-reliable-deep-project-analysis/slices/slice-06-audit-review-transaction/slice.json"
+  ],
+  "expected_read_paths": [
+    "src/create-quiver/commands/ai.js",
+    "src/create-quiver/lib/ai/analyze-project-review.js",
+    "src/create-quiver/lib/ai/artifacts.js",
+    "src/create-quiver/lib/ai/run-state.js",
+    "tests/commands/ai-analyze-project-review.test.js"
+  ],
+  "allowed_write_paths": [
+    "src/create-quiver/commands/ai.js",
+    "src/create-quiver/lib/ai/analyze-project-review.js",
+    "src/create-quiver/lib/ai/artifacts.js",
+    "src/create-quiver/lib/ai/run-state.js",
+    "tests/commands/ai-analyze-project-provider.test.js",
+    "tests/commands/ai-analyze-project-review.test.js",
+    "tests/fixtures/analyze-project/**",
+    "specs/quiver-v53-reliable-deep-project-analysis/STATUS.md",
+    "specs/quiver-v53-reliable-deep-project-analysis/EVIDENCE_REPORT.md",
+    "specs/quiver-v53-reliable-deep-project-analysis/slices/slice-06-audit-review-transaction/CLOSURE_BRIEF.md",
+    "specs/quiver-v53-reliable-deep-project-analysis/slices/slice-06-audit-review-transaction/slice.json"
+  ],
+  "depends_on": [
+    "slice-02-safe-context-boundary",
+    "slice-04-safe-repair-layer",
+    "slice-05-controlled-retry-layer"
+  ],
+  "parallel_safe": "never",
+  "parallel_safe_reason": "Audit and review transaction integrates safety, repair, retry, and final write behavior.",
+  "must": [
+    "Persist redacted raw output, repaired output when present, selected context, validation manifest, repair manifest, retry manifest, and final status.",
+    "Use versioned manifests with size bounds and truncation markers.",
+    "Ensure --review revalidates edited JSON before final diff.",
+    "Create snapshots and hashes before docs writes.",
+    "Write final docs atomically only after explicit approval."
+  ],
+  "not_included": [
+    "Implementing a restore command.",
+    "Writing docs without review approval.",
+    "Persisting unredacted provider secrets."
+  ],
+  "acceptance": [
+    "Provider execution creates redacted audit artifacts under .quiver/runs.",
+    "--dry-run creates no run artifacts.",
+    "Review cancel leaves final docs unchanged.",
+    "Approved review writes snapshots and final docs atomically.",
+    "Invalid edited JSON blocks writes."
+  ],
+  "tests": [
+    "node --test tests/commands/ai-analyze-project-provider.test.js",
+    "node --test tests/commands/ai-analyze-project-review.test.js",
+    "node --test tests/commands/ai-analyze-project.test.js",
+    "npm run smoke:create-quiver",
+    "git diff --check"
+  ],
+  "validation_hints": [
+    "Assert exact write counts for dry-run, provider-only, review-cancel, and review-approve flows."
+  ],
+  "estimated_hours": 8,
+  "actual_hours": 4,
+  "status": "completed",
+  "started_at": "2026-06-11T12:20:20Z",
+  "completed_at": "2026-06-11T12:23:37Z",
+  "blocked_reason": null
+}

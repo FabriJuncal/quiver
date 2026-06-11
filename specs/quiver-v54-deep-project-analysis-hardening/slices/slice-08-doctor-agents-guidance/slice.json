@@ -1,0 +1,66 @@
+{
+  "slice_id": "slice-08-doctor-agents-guidance",
+  "ticket": "QUIVER-54-08",
+  "type": "ux-hardening",
+  "title": "Doctor AGENTS.md Guidance",
+  "objective": "Give users a safe next action when an existing AGENTS.md does not meet Quiver's contract.",
+  "description": "Improves doctor output and tests for incomplete preserved AGENTS.md files without overwriting human-authored content.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v54-doctor-agents-guidance",
+    "branch_name": "feature/QUIVER-54-08-v54-doctor-agents-guidance"
+  },
+  "files": [
+    "src/create-quiver/commands/doctor.js",
+    "tests/commands/doctor.test.js",
+    "docs/TROUBLESHOOTING.md",
+    "specs/quiver-v54-deep-project-analysis-hardening/**"
+  ],
+  "expected_read_paths": [
+    "src/create-quiver/commands/doctor.js",
+    "tests/commands/doctor.test.js",
+    "docs/TROUBLESHOOTING.md"
+  ],
+  "allowed_write_paths": [
+    "src/create-quiver/commands/doctor.js",
+    "tests/commands/doctor.test.js",
+    "docs/TROUBLESHOOTING.md",
+    "specs/quiver-v54-deep-project-analysis-hardening/STATUS.md",
+    "specs/quiver-v54-deep-project-analysis-hardening/EVIDENCE_REPORT.md",
+    "specs/quiver-v54-deep-project-analysis-hardening/slices/slice-08-doctor-agents-guidance/CLOSURE_BRIEF.md",
+    "specs/quiver-v54-deep-project-analysis-hardening/slices/slice-08-doctor-agents-guidance/slice.json"
+  ],
+  "depends_on": [
+    "slice-01-contract-regression-harness"
+  ],
+  "parallel_safe": "after_dependencies",
+  "parallel_safe_reason": "This is an onboarding UX improvement and does not block provider hardening.",
+  "must": [
+    "Detect missing AGENTS.md sections clearly.",
+    "Show an actionable next step.",
+    "Preserve human content by default.",
+    "Use review/managed-block guidance for any repair."
+  ],
+  "not_included": [
+    "Provider repair/retry behavior.",
+    "Deep analysis sampling.",
+    "Final docs write gate."
+  ],
+  "acceptance": [
+    "Doctor output is actionable for incomplete AGENTS.md.",
+    "Existing AGENTS.md content is preserved by default.",
+    "Docs explain the safe path if command guidance changes."
+  ],
+  "tests": [
+    "node --test tests/commands/doctor.test.js",
+    "npm run docs:check",
+    "git diff --check"
+  ],
+  "estimated_hours": 3,
+  "actual_hours": 3,
+  "status": "completed",
+  "started_at": "2026-06-11",
+  "completed_at": "2026-06-11",
+  "blocked_reason": null
+}

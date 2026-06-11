@@ -81,6 +81,27 @@ Qué hace:
 
 ## 7. Preparar contexto de onboarding para IA
 
+Si querés que Quiver infiera producto, arquitectura, funcionalidades y riesgos desde una muestra segura del código, ejecutá primero el análisis profundo:
+
+```bash
+npx --yes create-quiver@latest ai analyze-project --deep --dry-run
+npx --yes create-quiver@latest ai analyze-project --deep --provider codex --model gpt-5.5
+npx --yes create-quiver@latest ai analyze-project --deep --review --provider codex --model gpt-5.5
+```
+
+Qué hace:
+
+- `--dry-run` muestra qué leería y qué excluiría, sin proveedor ni escrituras;
+- el modo con proveedor guarda auditoría en `.quiver/runs` y valida JSON con evidencia;
+- resume lockfiles como metadata para no consumir el presupuesto principal con `package-lock.json`, `pnpm-lock.yaml` o equivalentes;
+- prioriza entrypoints, componentes, contexts/state, lib/data layer, auth, DB/integraciones y documentación humana del producto por encima de docs generados por Quiver;
+- muestra loader en TTY y progreso lineal en no-TTY;
+- si hay drift seguro de schema, como `notes` extra, `claim` usado como `name` faltante o `confidence` donde no está permitido, lo repara de forma auditada;
+- si el error es retryable, hace un retry acotado con feedback compacto;
+- `--review` abre propuesta editable y solo escribe docs permitidos después de confirmar.
+
+No envía `.env`, `.git`, `.quiver`, dependencias, caches, binarios ni outputs generados. Si no puede probar una conclusión, debe quedar como `unknown` o `needs_confirmation`.
+
 ```bash
 npx --yes create-quiver@latest ai prepare-context --dry-run
 npx --yes create-quiver@latest ai prepare-context

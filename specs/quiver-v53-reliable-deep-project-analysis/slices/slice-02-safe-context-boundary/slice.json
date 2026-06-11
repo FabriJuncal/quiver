@@ -1,0 +1,85 @@
+{
+  "slice_id": "slice-02-safe-context-boundary",
+  "ticket": "QUIVER-53-02",
+  "type": "security",
+  "title": "Safe context boundary",
+  "objective": "Ensure analyze-project redacts and bounds context before provider execution.",
+  "description": "Adds the pre-provider safety boundary for selected context, including prompt-injection guardrails, secret redaction before sending, size limits, selected-context manifests, and safety exclusions.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v53-safe-context-boundary",
+    "branch_name": "feature/QUIVER-53-02-v53-safe-context-boundary"
+  },
+  "files": [
+    "src/create-quiver/lib/ai/analyze-project-discovery.js",
+    "src/create-quiver/lib/ai/analyze-project-sampling.js",
+    "src/create-quiver/lib/ai/analyze-project-prompts.js",
+    "src/create-quiver/lib/ai/safety.js",
+    "tests/commands/ai-analyze-project.test.js",
+    "tests/commands/ai-analyze-project-provider.test.js",
+    "specs/quiver-v53-reliable-deep-project-analysis/STATUS.md",
+    "specs/quiver-v53-reliable-deep-project-analysis/EVIDENCE_REPORT.md",
+    "specs/quiver-v53-reliable-deep-project-analysis/slices/slice-02-safe-context-boundary/CLOSURE_BRIEF.md",
+    "specs/quiver-v53-reliable-deep-project-analysis/slices/slice-02-safe-context-boundary/slice.json"
+  ],
+  "expected_read_paths": [
+    "src/create-quiver/lib/ai/analyze-project-discovery.js",
+    "src/create-quiver/lib/ai/analyze-project-sampling.js",
+    "src/create-quiver/lib/ai/analyze-project-prompts.js",
+    "src/create-quiver/lib/ai/safety.js",
+    "src/create-quiver/commands/ai.js"
+  ],
+  "allowed_write_paths": [
+    "src/create-quiver/lib/ai/analyze-project-discovery.js",
+    "src/create-quiver/lib/ai/analyze-project-sampling.js",
+    "src/create-quiver/lib/ai/analyze-project-prompts.js",
+    "src/create-quiver/lib/ai/safety.js",
+    "tests/commands/ai-analyze-project.test.js",
+    "tests/commands/ai-analyze-project-provider.test.js",
+    "tests/fixtures/analyze-project/**",
+    "specs/quiver-v53-reliable-deep-project-analysis/STATUS.md",
+    "specs/quiver-v53-reliable-deep-project-analysis/EVIDENCE_REPORT.md",
+    "specs/quiver-v53-reliable-deep-project-analysis/slices/slice-02-safe-context-boundary/CLOSURE_BRIEF.md",
+    "specs/quiver-v53-reliable-deep-project-analysis/slices/slice-02-safe-context-boundary/slice.json"
+  ],
+  "depends_on": [
+    "slice-00-analysis-run-contract",
+    "slice-01-provider-fixture-harness"
+  ],
+  "parallel_safe": "conditional",
+  "parallel_safe_reason": "Can run beside schema grouping only if files do not overlap.",
+  "must": [
+    "Redact secret-like content before provider execution.",
+    "Treat repository content as untrusted data in prompts.",
+    "Keep existing unsafe path exclusions.",
+    "Write a selected-context manifest during provider runs.",
+    "Ensure --dry-run still writes 0 files."
+  ],
+  "not_included": [
+    "Schema repair.",
+    "Retry behavior.",
+    "Final docs writes."
+  ],
+  "acceptance": [
+    "Secret-like fixture content is not sent to the provider fake unredacted.",
+    "Prompt text clearly separates instructions from repository data.",
+    "Selected context manifest records files, bytes, truncation, and exclusions.",
+    "--dry-run remains no-write and no-provider."
+  ],
+  "tests": [
+    "node --test tests/commands/ai-analyze-project.test.js",
+    "node --test tests/commands/ai-analyze-project-provider.test.js",
+    "npm run smoke:create-quiver",
+    "git diff --check"
+  ],
+  "validation_hints": [
+    "Test redaction before provider execution, not only before artifact persistence."
+  ],
+  "estimated_hours": 6,
+  "actual_hours": 4,
+  "status": "completed",
+  "started_at": "2026-06-11T12:07:10Z",
+  "completed_at": "2026-06-11T12:11:24Z",
+  "blocked_reason": null
+}

@@ -1,0 +1,69 @@
+{
+  "slice_id": "slice-02-safe-discovery-sampling",
+  "ticket": "QUIVER-54-02",
+  "type": "runtime-hardening",
+  "title": "Safe Discovery & Sampling",
+  "objective": "Ensure ai analyze-project selects a safe, representative, source-prioritized sample without dependency dumps or secrets.",
+  "description": "Adds quotas, lockfile summaries, symlink safety, denylist expansion, and product-source priority to deep project discovery.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v54-safe-discovery-sampling",
+    "branch_name": "feature/QUIVER-54-02-v54-safe-discovery-sampling"
+  },
+  "files": [
+    "src/create-quiver/lib/ai/analyze-project-discovery.js",
+    "src/create-quiver/lib/ai/analyze-project-prompts.js",
+    "tests/lib/ai-analyze-project-discovery.test.js",
+    "tests/commands/ai-analyze-project.test.js",
+    "specs/quiver-v54-deep-project-analysis-hardening/**"
+  ],
+  "expected_read_paths": [
+    "src/create-quiver/lib/ai/analyze-project-discovery.js",
+    "src/create-quiver/lib/ai/analyze-project-prompts.js",
+    "tests/lib/ai-analyze-project-discovery.test.js"
+  ],
+  "allowed_write_paths": [
+    "src/create-quiver/lib/ai/analyze-project-discovery.js",
+    "src/create-quiver/lib/ai/analyze-project-prompts.js",
+    "tests/lib/ai-analyze-project-discovery.test.js",
+    "tests/commands/ai-analyze-project.test.js",
+    "specs/quiver-v54-deep-project-analysis-hardening/STATUS.md",
+    "specs/quiver-v54-deep-project-analysis-hardening/EVIDENCE_REPORT.md",
+    "specs/quiver-v54-deep-project-analysis-hardening/slices/slice-02-safe-discovery-sampling/CLOSURE_BRIEF.md",
+    "specs/quiver-v54-deep-project-analysis-hardening/slices/slice-02-safe-discovery-sampling/slice.json"
+  ],
+  "depends_on": [
+    "slice-01-contract-regression-harness"
+  ],
+  "parallel_safe": "after_dependencies",
+  "parallel_safe_reason": "Can run alongside lifecycle and doctor work once regression contract exists.",
+  "must": [
+    "Summarize lockfiles instead of sending full content by default.",
+    "Reserve context budget for product source.",
+    "Cap generated Quiver docs in the sample.",
+    "Never follow unsafe symlinks."
+  ],
+  "not_included": [
+    "Provider retry behavior.",
+    "Repair engine changes.",
+    "Final docs writes."
+  ],
+  "acceptance": [
+    "Dry-run JSON reports safe sample metadata and lock summaries.",
+    "Known secret/cache/generated paths are omitted.",
+    "Product source is prioritized over Quiver-generated docs.",
+    "Tests cover lockfiles and symlinks."
+  ],
+  "tests": [
+    "node --test tests/lib/ai-analyze-project-discovery.test.js",
+    "node --test tests/commands/ai-analyze-project.test.js",
+    "git diff --check"
+  ],
+  "estimated_hours": 6,
+  "actual_hours": 4,
+  "status": "completed",
+  "started_at": "2026-06-11",
+  "completed_at": "2026-06-11",
+  "blocked_reason": null
+}

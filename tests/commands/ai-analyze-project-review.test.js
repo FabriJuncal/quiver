@@ -98,6 +98,18 @@ async function captureStdout(fn) {
   }
 }
 
+function assertAnalyzeProjectAuditRun(repoRoot) {
+  const runsRoot = path.join(repoRoot, '.quiver', 'runs');
+  assert.equal(fs.existsSync(runsRoot), true);
+  const runIds = fs.readdirSync(runsRoot).filter((entry) => fs.statSync(path.join(runsRoot, entry)).isDirectory());
+  assert.equal(runIds.length, 1);
+  const runRoot = path.join(runsRoot, runIds[0]);
+  assert.equal(fs.existsSync(path.join(runRoot, 'context', 'selected-context.json')), true);
+  assert.equal(fs.existsSync(path.join(runRoot, 'raw')), true);
+  assert.equal(fs.existsSync(path.join(runRoot, 'status.json')), true);
+  return runRoot;
+}
+
 test('ai analyze-project --review writes approved docs with snapshot manifest', async () => {
   const repo = makeRepo({
     'README.md': '# Review Demo\n',
@@ -143,6 +155,9 @@ test('ai analyze-project --review writes approved docs with snapshot manifest', 
     assert.equal(typeof manifest.entries[0].before_sha256, 'string');
     assert.equal(typeof manifest.entries[0].after_sha256, 'string');
     assert.ok(fs.existsSync(path.join(repo.root, result.snapshot.providerArtifactPath)));
+    assert.ok(fs.existsSync(path.join(repo.root, result.run_status_path)));
+    assert.ok(result.raw_provider_artifacts.every((artifactPath) => fs.existsSync(path.join(repo.root, artifactPath))));
+    assert.equal(fs.readdirSync(path.join(repo.root, 'docs')).some((file) => file.includes('.quiver-tmp-')), false);
   } finally {
     fs.rmSync(reviewDir, { recursive: true, force: true });
     repo.cleanup();
@@ -169,7 +184,7 @@ test('ai analyze-project review cancellation writes nothing', async () => {
       /review canceled/,
     );
     assert.equal(fs.existsSync(path.join(repo.root, 'docs')), false);
-    assert.equal(fs.existsSync(path.join(repo.root, '.quiver')), false);
+    assertAnalyzeProjectAuditRun(repo.root);
   } finally {
     repo.cleanup();
   }
@@ -197,7 +212,7 @@ test('ai analyze-project review confirmation decline writes nothing', async () =
       /confirmation declined/,
     );
     assert.equal(fs.existsSync(path.join(repo.root, 'docs')), false);
-    assert.equal(fs.existsSync(path.join(repo.root, '.quiver')), false);
+    assertAnalyzeProjectAuditRun(repo.root);
   } finally {
     repo.cleanup();
   }
@@ -223,7 +238,7 @@ test('ai analyze-project --review rejects no-TTY review without writing', async 
       /requires an interactive terminal/,
     );
     assert.equal(fs.existsSync(path.join(repo.root, 'docs')), false);
-    assert.equal(fs.existsSync(path.join(repo.root, '.quiver')), false);
+    assertAnalyzeProjectAuditRun(repo.root);
   } finally {
     repo.cleanup();
   }
@@ -252,7 +267,7 @@ test('ai analyze-project --review rejects invalid edited proposal without writin
       /edited analyze-project doc proposal is invalid after review/,
     );
     assert.equal(fs.existsSync(path.join(repo.root, 'docs')), false);
-    assert.equal(fs.existsSync(path.join(repo.root, '.quiver')), false);
+    assertAnalyzeProjectAuditRun(repo.root);
   } finally {
     repo.cleanup();
   }

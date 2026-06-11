@@ -96,6 +96,15 @@ const DOC_BASENAMES = new Set([
   'readme.md',
 ]);
 
+const QUIVER_GENERATED_DOC_PATHS = new Set([
+  'docs/AI_CONTEXT.md',
+  'docs/ARCHITECTURE.md',
+  'docs/CONTEXTO.md',
+  'docs/DECISIONS.md',
+  'docs/PROJECT_MAP.md',
+  'docs/STATUS.md',
+]);
+
 function toPosix(filePath) {
   return String(filePath || '').replace(/\\/g, '/');
 }
@@ -109,8 +118,14 @@ function basename(filePath) {
   return path.posix.basename(toPosix(filePath));
 }
 
-function dirname(filePath) {
-  return path.posix.dirname(toPosix(filePath));
+function isLockfilePath(filePath) {
+  const base = basename(filePath);
+  const baseLower = base.toLowerCase();
+  return LOCKFILE_BASENAMES.has(base) || LOCKFILE_BASENAMES.has(baseLower);
+}
+
+function isQuiverGeneratedDocPath(filePath) {
+  return QUIVER_GENERATED_DOC_PATHS.has(toPosix(filePath));
 }
 
 function hasPathSegment(filePath, segments) {
@@ -210,7 +225,7 @@ function classifyProjectFile(filePath) {
     score += 95;
   }
 
-  if (LOCKFILE_BASENAMES.has(base) || LOCKFILE_BASENAMES.has(baseLower)) {
+  if (isLockfilePath(normalized)) {
     signals.push('lockfile');
     score += 20;
   }
@@ -218,6 +233,11 @@ function classifyProjectFile(filePath) {
   if (DOC_BASENAMES.has(base) || normalized.startsWith('docs/')) {
     signals.push('docs');
     score += 45;
+  }
+
+  if (isQuiverGeneratedDocPath(normalized)) {
+    signals.push('quiver-doc');
+    score -= 35;
   }
 
   if (matchesEntrypoint(normalized)) {
@@ -269,7 +289,11 @@ function classifyProjectFile(filePath) {
 
 function isAllowedByOptions(classification, options) {
   const signals = classification.signals;
-  if (signals.includes('config') || signals.includes('docs') || signals.includes('lockfile')) {
+  if (signals.includes('lockfile') && options.includeLockfiles !== true) {
+    return { allowed: false, reason: 'sampling:lockfile-metadata' };
+  }
+
+  if (signals.includes('config') || signals.includes('docs')) {
     return { allowed: true, reason: '' };
   }
 
@@ -319,6 +343,7 @@ function sampleProjectFiles(files, options = {}) {
   const maxBytes = normalizePositiveInteger(options.maxBytes, DEFAULT_MAX_BYTES);
   const normalizedOptions = {
     includeDb: options.includeDb === true,
+    includeLockfiles: options.includeLockfiles === true,
     includeSource: options.includeSource === true,
     includeTests: options.includeTests === true,
     maxBytes,
@@ -397,6 +422,8 @@ module.exports = {
   DEFAULT_MAX_BYTES,
   DEFAULT_MAX_FILES,
   classifyProjectFile,
+  isLockfilePath,
+  isQuiverGeneratedDocPath,
   sampleProjectFiles,
   summarizeByReason,
 };

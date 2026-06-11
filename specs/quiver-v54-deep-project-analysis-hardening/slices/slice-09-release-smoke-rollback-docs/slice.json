@@ -1,0 +1,69 @@
+{
+  "slice_id": "slice-09-release-smoke-rollback-docs",
+  "ticket": "QUIVER-54-09",
+  "type": "documentation",
+  "title": "Release Smoke & Rollback Docs",
+  "objective": "Document deterministic gates, optional nika-erp live smoke, and rollback guidance for deep analysis hardening.",
+  "description": "Closes the spec by documenting release evidence, live smoke expectations, and rollback actions without making provider execution a CI dependency.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v54-release-smoke-rollback-docs",
+    "branch_name": "feature/QUIVER-54-09-v54-release-smoke-rollback-docs"
+  },
+  "files": [
+    "docs/reference/commands.md",
+    "docs/workflows/existing-project.md",
+    "docs/TROUBLESHOOTING.md",
+    "specs/quiver-v54-deep-project-analysis-hardening/**"
+  ],
+  "expected_read_paths": [
+    "docs/reference/commands.md",
+    "docs/workflows/existing-project.md",
+    "docs/TROUBLESHOOTING.md",
+    "specs/quiver-v54-deep-project-analysis-hardening/SPEC.md",
+    "specs/quiver-v54-deep-project-analysis-hardening/EXECUTION_PLAN.md"
+  ],
+  "allowed_write_paths": [
+    "docs/reference/commands.md",
+    "docs/workflows/existing-project.md",
+    "docs/TROUBLESHOOTING.md",
+    "specs/quiver-v54-deep-project-analysis-hardening/STATUS.md",
+    "specs/quiver-v54-deep-project-analysis-hardening/EVIDENCE_REPORT.md",
+    "specs/quiver-v54-deep-project-analysis-hardening/slices/slice-09-release-smoke-rollback-docs/CLOSURE_BRIEF.md",
+    "specs/quiver-v54-deep-project-analysis-hardening/slices/slice-09-release-smoke-rollback-docs/slice.json"
+  ],
+  "depends_on": [
+    "slice-07-final-validation-review-write-gate"
+  ],
+  "parallel_safe": "never",
+  "parallel_safe_reason": "Release docs must reflect completed production gates.",
+  "must": [
+    "Separate deterministic CI gates from optional live smoke.",
+    "Document nika-erp smoke commands and expected evidence.",
+    "Document rollback trigger and action.",
+    "Keep review requirement explicit for docs writes."
+  ],
+  "not_included": [
+    "Runtime implementation.",
+    "npm publish execution.",
+    "Live provider smoke as a CI gate."
+  ],
+  "acceptance": [
+    "Docs clearly explain live smoke status.",
+    "Rollback guidance is actionable.",
+    "Docs validation passes.",
+    "Spec validation passes."
+  ],
+  "tests": [
+    "npm run docs:check",
+    "node bin/create-quiver.js spec validate specs/quiver-v54-deep-project-analysis-hardening --strict",
+    "git diff --check"
+  ],
+  "estimated_hours": 3,
+  "actual_hours": 2,
+  "status": "completed",
+  "started_at": "2026-06-11",
+  "completed_at": "2026-06-11",
+  "blocked_reason": null
+}
