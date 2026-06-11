@@ -329,7 +329,9 @@ function writeAnalyzeProjectDocs(writePlan) {
       continue;
     }
     fs.mkdirSync(path.dirname(item.destinationPath), { recursive: true });
-    fs.writeFileSync(item.destinationPath, item.proposedContent);
+    const tempPath = `${item.destinationPath}.quiver-tmp-${process.pid}-${Date.now()}`;
+    fs.writeFileSync(tempPath, item.proposedContent);
+    fs.renameSync(tempPath, item.destinationPath);
     writtenDocs.push(item.path);
   }
   return writtenDocs;

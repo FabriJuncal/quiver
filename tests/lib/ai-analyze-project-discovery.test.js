@@ -45,6 +45,9 @@ test('project discovery reports workspace roots and safety exclusions without re
     'dist/bundle.js': 'console.log("built")\n',
     'apps/web/package.json': JSON.stringify({ name: 'web-app' }, null, 2),
     'apps/web/app/page.tsx': 'export default function Page() { return null }\n',
+    'apps/web/src/components/UserCard.tsx': 'import React from "react"; export function UserCard() { return null }\n',
+    'apps/web/src/context/AuthContext.tsx': 'export const AuthContext = null;\n',
+    'apps/web/src/routes/users.ts': 'export async function GET() { return Response.json([]) }\n',
     'apps/web/prisma/schema.prisma': 'model User { id String @id }\n',
     'apps/web/__tests__/page.test.tsx': 'test("page", () => {})\n',
     'assets/logo.png': Buffer.from([0, 1, 2, 3]),
@@ -59,11 +62,67 @@ test('project discovery reports workspace roots and safety exclusions without re
     assert.ok(discovery.detected.stack.includes('nextjs'));
     assert.ok(discovery.detected.stack.includes('react'));
     assert.ok(discovery.detected.stack.includes('supabase'));
+    assert.deepEqual(discovery.detected.lockfiles.map((file) => file.path), ['pnpm-lock.yaml']);
+    assert.equal(discovery.detected.lockfiles[0].content_included, false);
+    assert.equal(discovery.detected.lockfiles[0].package_manager, 'pnpm');
     assert.ok(discovery.safetyExclusions.some((item) => item.path === '.env' && item.reason === 'env-file'));
     assert.ok(discovery.safetyExclusions.some((item) => item.path === 'node_modules' && item.reason === 'unsafe-segment:node_modules'));
     assert.ok(discovery.safetyExclusions.some((item) => item.path === 'dist' && item.reason === 'unsafe-segment:dist'));
     assert.ok(discovery.skippedFiles.some((item) => item.path === 'assets/logo.png' && item.reason === 'binary-file'));
     assert.ok(discovery.files.some((file) => file.path === 'apps/web/app/page.tsx'));
+    assert.ok(discovery.detected.structural_map.routes.includes('apps/web/src/routes/users.ts'));
+    assert.ok(discovery.detected.structural_map.components.includes('apps/web/src/components/UserCard.tsx'));
+    assert.ok(discovery.detected.structural_map.contexts.includes('apps/web/src/context/AuthContext.tsx'));
+    assert.ok(discovery.detected.structural_map.imports.some((entry) => entry.path === 'apps/web/src/components/UserCard.tsx' && entry.imports.includes('react')));
+    assert.ok(discovery.detected.structural_map.exports.some((entry) => entry.path === 'apps/web/src/routes/users.ts' && entry.exports.includes('GET')));
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('semantic sampling summarizes lockfiles as metadata and keeps product code ahead of Quiver docs', () => {
+  const repo = makeRepo({
+    'package.json': JSON.stringify({
+      name: 'lock-sample-app',
+      dependencies: {
+        next: '^15.0.0',
+        react: '^19.0.0',
+      },
+    }, null, 2),
+    'package-lock.json': JSON.stringify({
+      name: 'lock-sample-app',
+      lockfileVersion: 3,
+      packages: {
+        '': {},
+        'node_modules/next': {},
+        'node_modules/react': {},
+      },
+    }, null, 2),
+    'docs/AI_CONTEXT.md': '# Generated Quiver context\n',
+    'docs/PROJECT_MAP.md': '# Generated Quiver map\n',
+    'README.md': '# Human product overview\n',
+    'src/routes/users.ts': 'export const users = []\n',
+    'src/components/UserCard.tsx': 'export function UserCard() { return null }\n',
+  });
+
+  try {
+    const discovery = discoverProjectFiles(repo.root);
+    const sample = sampleProjectFiles(discovery.files, {
+      includeSource: true,
+      includeDb: true,
+      includeTests: false,
+      maxFiles: 4,
+      maxBytes: 100000,
+    });
+
+    assert.equal(discovery.detected.lockfiles[0].path, 'package-lock.json');
+    assert.equal(discovery.detected.lockfiles[0].dependency_count, 2);
+    assert.deepEqual(discovery.detected.lockfiles[0].top_dependencies, ['next', 'react']);
+    assert.equal(sample.selectedFiles.some((file) => file.path === 'package-lock.json'), false);
+    assert.ok(sample.omittedFiles.some((file) => file.path === 'package-lock.json' && file.reason === 'sampling:lockfile-metadata'));
+    assert.ok(sample.selectedFiles.some((file) => file.path === 'src/routes/users.ts'));
+    assert.ok(sample.selectedFiles.some((file) => file.path === 'src/components/UserCard.tsx'));
+    assert.ok(sample.omittedFiles.some((file) => file.signals.includes('quiver-doc')));
   } finally {
     repo.cleanup();
   }

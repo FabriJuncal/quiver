@@ -1,0 +1,74 @@
+{
+  "slice_id": "slice-01-provider-fixture-harness",
+  "ticket": "QUIVER-53-01",
+  "type": "test-infrastructure",
+  "title": "Provider fixture harness",
+  "objective": "Create deterministic provider-output fixtures that reproduce analyze-project drift without live provider dependency.",
+  "description": "Adds tests and fixtures for provider JSON drift cases including extra keys, markdown fences, truncation, missing fields, invalid confidence, secret-like content, retry success, and retry exhaustion.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v53-provider-fixture-harness",
+    "branch_name": "feature/QUIVER-53-01-v53-provider-fixture-harness"
+  },
+  "files": [
+    "tests/commands/ai-analyze-project-provider.test.js",
+    "tests/fixtures/analyze-project/**",
+    "specs/quiver-v53-reliable-deep-project-analysis/STATUS.md",
+    "specs/quiver-v53-reliable-deep-project-analysis/EVIDENCE_REPORT.md",
+    "specs/quiver-v53-reliable-deep-project-analysis/slices/slice-01-provider-fixture-harness/CLOSURE_BRIEF.md",
+    "specs/quiver-v53-reliable-deep-project-analysis/slices/slice-01-provider-fixture-harness/slice.json"
+  ],
+  "expected_read_paths": [
+    "tests/commands/ai-analyze-project-provider.test.js",
+    "tests/commands/ai-analyze-project.test.js",
+    "src/create-quiver/commands/ai.js",
+    "src/create-quiver/lib/ai/providers.js",
+    "src/create-quiver/lib/ai/analyze-project-parser.js",
+    "src/create-quiver/lib/ai/analyze-project-schema.js"
+  ],
+  "allowed_write_paths": [
+    "tests/commands/ai-analyze-project-provider.test.js",
+    "tests/fixtures/analyze-project/**",
+    "specs/quiver-v53-reliable-deep-project-analysis/STATUS.md",
+    "specs/quiver-v53-reliable-deep-project-analysis/EVIDENCE_REPORT.md",
+    "specs/quiver-v53-reliable-deep-project-analysis/slices/slice-01-provider-fixture-harness/CLOSURE_BRIEF.md",
+    "specs/quiver-v53-reliable-deep-project-analysis/slices/slice-01-provider-fixture-harness/slice.json"
+  ],
+  "depends_on": [
+    "slice-00-analysis-run-contract"
+  ],
+  "parallel_safe": "never",
+  "parallel_safe_reason": "The fixture harness defines deterministic reproduction used by repair and retry slices.",
+  "must": [
+    "Add provider fake fixtures for the observed nika-erp notes drift.",
+    "Add fixtures for fences, surrounding text, truncation, missing required fields, invalid confidence, and secret-like output.",
+    "Make tests deterministic and independent from live Codex.",
+    "Ensure fixtures assert no final docs writes on invalid output."
+  ],
+  "not_included": [
+    "Live provider benchmarking as a required CI gate.",
+    "Runtime repair implementation beyond test scaffolding.",
+    "Structural map implementation."
+  ],
+  "acceptance": [
+    "A fixture reproduces unsupported notes keys under domain roles/entities/actions.",
+    "Provider fake tests fail before reliability implementation and pass after later slices.",
+    "Tests can run without network or provider credentials.",
+    "No live nika-erp checkout is required for CI."
+  ],
+  "tests": [
+    "node --test tests/commands/ai-analyze-project-provider.test.js",
+    "node --test tests/commands/ai-analyze-project.test.js",
+    "git diff --check"
+  ],
+  "validation_hints": [
+    "Keep live provider execution out of deterministic tests."
+  ],
+  "estimated_hours": 4,
+  "actual_hours": 2,
+  "status": "completed",
+  "started_at": "2026-06-11T12:00:00Z",
+  "completed_at": "2026-06-11T12:03:13Z",
+  "blocked_reason": null
+}

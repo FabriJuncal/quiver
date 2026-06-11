@@ -1,4 +1,5 @@
 const fs = require('node:fs');
+const crypto = require('node:crypto');
 const os = require('node:os');
 const path = require('node:path');
 
@@ -7,6 +8,7 @@ const { quiverInternalPaths } = require('../init-layout');
 
 const RAW_ARTIFACT_SCHEMA_VERSION = 1;
 const DEFAULT_MAX_PROVIDER_PROMPT_BYTES = 1024 * 1024;
+const DEFAULT_MAX_RAW_PROVIDER_STREAM_BYTES = 64 * 1024;
 const DEFAULT_MAX_REVISION_INPUT_BYTES = 400 * 1024;
 const DEFAULT_COMPACTED_REVISION_INPUT_BYTES = 120 * 1024;
 
@@ -72,6 +74,71 @@ function normalizePositiveInteger(value, fallback) {
     return fallback;
   }
   return Math.floor(parsed);
+}
+
+function sha256(value) {
+  return crypto.createHash('sha256').update(String(value || ''), 'utf8').digest('hex');
+}
+
+function sliceStartToByteLimit(text, maxBytes) {
+  let value = String(text || '');
+  while (byteLength(value) > maxBytes && value.length > 0) {
+    value = value.slice(0, Math.max(0, value.length - Math.ceil((byteLength(value) - maxBytes) / 2) - 8));
+  }
+  return value;
+}
+
+function sliceEndToByteLimit(text, maxBytes) {
+  let value = String(text || '');
+  while (byteLength(value) > maxBytes && value.length > 0) {
+    value = value.slice(Math.min(value.length, Math.ceil((byteLength(value) - maxBytes) / 2) + 8));
+  }
+  return value;
+}
+
+function limitRawProviderStream(text, options = {}) {
+  const maxBytes = normalizePositiveInteger(
+    options.maxBytes ?? process.env.QUIVER_AI_MAX_RAW_PROVIDER_STREAM_BYTES,
+    DEFAULT_MAX_RAW_PROVIDER_STREAM_BYTES,
+  );
+  const value = normalizeText(text);
+  const originalBytes = byteLength(value);
+  const digest = sha256(value);
+
+  if (originalBytes <= maxBytes) {
+    return {
+      text: value,
+      metadata: {
+        bytes: originalBytes,
+        stored_bytes: originalBytes,
+        max_bytes: maxBytes,
+        truncated: false,
+        sha256: digest,
+      },
+    };
+  }
+
+  const marker = `\n[... Quiver truncated provider stream; original_bytes=${originalBytes}; sha256=${digest} ...]\n`;
+  const markerBytes = byteLength(marker);
+  const contentBudget = Math.max(0, maxBytes - markerBytes);
+  const headBudget = Math.floor(contentBudget * 0.6);
+  const tailBudget = contentBudget - headBudget;
+  const head = sliceStartToByteLimit(value, headBudget);
+  const tail = sliceEndToByteLimit(value, tailBudget);
+  const stored = `${head}${marker}${tail}`;
+
+  return {
+    text: stored,
+    metadata: {
+      bytes: originalBytes,
+      stored_bytes: byteLength(stored),
+      max_bytes: maxBytes,
+      truncated: true,
+      sha256: digest,
+      head_bytes: byteLength(head),
+      tail_bytes: byteLength(tail),
+    },
+  };
 }
 
 function resolveAiArtifactLimits(options = {}) {
@@ -185,6 +252,14 @@ function writeRawProviderArtifact(projectRoot, runId, scope, result, options = {
         command: result.error.command || null,
       }
     : null;
+  const stdout = limitRawProviderStream(
+    redactSensitiveLocalValues(result?.stdout || '', { projectRoot }),
+    { maxBytes: options.maxRawProviderStreamBytes },
+  );
+  const stderr = limitRawProviderStream(
+    redactSensitiveLocalValues(result?.stderr || '', { projectRoot }),
+    { maxBytes: options.maxRawProviderStreamBytes },
+  );
   const artifact = {
     schema_version: RAW_ARTIFACT_SCHEMA_VERSION,
     kind: 'provider-output',
@@ -200,8 +275,12 @@ function writeRawProviderArtifact(projectRoot, runId, scope, result, options = {
     signal: result?.signal || null,
     timeout_ms: typeof result?.timeoutMs === 'number' ? result.timeoutMs : null,
     prompt_transport: result?.promptTransport || null,
-    stdout: redactSensitiveLocalValues(result?.stdout || '', { projectRoot }),
-    stderr: redactSensitiveLocalValues(result?.stderr || '', { projectRoot }),
+    stdout: stdout.text,
+    stderr: stderr.text,
+    streams: {
+      stdout: stdout.metadata,
+      stderr: stderr.metadata,
+    },
     error: serializedError ? JSON.parse(redactSensitiveLocalValues(JSON.stringify(serializedError), { projectRoot })) : null,
     metadata: options.metadata || {},
   };
@@ -309,12 +388,14 @@ function assertProviderPromptWithinLimit(prompt, options = {}) {
 module.exports = {
   DEFAULT_COMPACTED_REVISION_INPUT_BYTES,
   DEFAULT_MAX_PROVIDER_PROMPT_BYTES,
+  DEFAULT_MAX_RAW_PROVIDER_STREAM_BYTES,
   DEFAULT_MAX_REVISION_INPUT_BYTES,
   RAW_ARTIFACT_SCHEMA_VERSION,
   assertProviderPromptWithinLimit,
   byteLength,
   compactRevisionInput,
   extractCleanProviderOutput,
+  limitRawProviderStream,
   redactSensitiveLocalValues,
   resolveAiArtifactLimits,
   writeRawProviderArtifact,

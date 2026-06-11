@@ -96,6 +96,7 @@ function mapZodIssues(error) {
     path: issue.path.length > 0 ? issue.path.join('.') : null,
     issue: issue.code,
     message: issue.message,
+    keys: Array.isArray(issue.keys) ? issue.keys.slice() : undefined,
   }));
 }
 

@@ -1,0 +1,477 @@
+{
+  "schema_version": 1,
+  "kind": "quiver-ai-analyze-project-provider-output-cases",
+  "selected_files": [
+    { "path": "README.md" },
+    { "path": "package.json" },
+    { "path": "src/routes/users.ts" }
+  ],
+  "prompt_files": [
+    { "path": "README.md", "truncated": false },
+    { "path": "package.json", "truncated": false },
+    { "path": "src/routes/users.ts", "truncated": false }
+  ],
+  "cases": [
+    {
+      "name": "valid-json",
+      "expectation": "valid",
+      "output": {
+        "schema_version": 1,
+        "kind": "quiver-project-analysis",
+        "product": {
+          "name": { "name": "Provider Fixture", "confidence": "confirmed", "evidence": ["README.md"] },
+          "type": { "name": "API", "confidence": "confirmed", "evidence": ["package.json"] },
+          "summary": "Fixture project for provider output tests.",
+          "claims": []
+        },
+        "domain": {
+          "roles": [],
+          "entities": [{ "name": "users", "confidence": "confirmed", "evidence": ["src/routes/users.ts"] }],
+          "actions": [{ "name": "list users", "confidence": "confirmed", "evidence": ["src/routes/users.ts"] }],
+          "flows": [],
+          "incomplete_or_suspicious": [],
+          "claims": []
+        },
+        "architecture": {
+          "frontend": [],
+          "backend": [{ "name": "routes", "confidence": "confirmed", "evidence": ["src/routes/users.ts"] }],
+          "auth": [],
+          "persistence": [],
+          "integrations": [],
+          "state": [],
+          "api": [{ "name": "users route", "confidence": "confirmed", "evidence": ["src/routes/users.ts"] }],
+          "testing": [],
+          "deploy": [],
+          "risks": [],
+          "claims": []
+        },
+        "features": [{ "name": "User route", "confidence": "confirmed", "evidence": ["src/routes/users.ts"] }],
+        "risks": [],
+        "questions": [],
+        "claims": [{ "claim": "The project exposes a users route.", "confidence": "confirmed", "evidence": ["src/routes/users.ts"] }],
+        "doc_updates": {
+          "docs/CONTEXTO.md": "# Context\nProvider fixture proposal.\n"
+        }
+      }
+    },
+    {
+      "name": "nika-erp-notes-drift",
+      "expectation": "schema-invalid",
+      "required_issue_paths": ["domain.roles.0", "domain.entities.0", "domain.actions.0"],
+      "output": {
+        "schema_version": 1,
+        "kind": "quiver-project-analysis",
+        "product": {
+          "name": { "name": "Provider Fixture", "confidence": "confirmed", "evidence": ["README.md"] },
+          "type": { "name": "API", "confidence": "confirmed", "evidence": ["package.json"] },
+          "summary": "Fixture project for provider output tests.",
+          "claims": []
+        },
+        "domain": {
+          "roles": [{ "name": "admin", "confidence": "inferred", "evidence": ["README.md"], "notes": "Provider drift field." }],
+          "entities": [{ "name": "users", "confidence": "confirmed", "evidence": ["src/routes/users.ts"], "notes": "Provider drift field." }],
+          "actions": [{ "name": "list users", "confidence": "confirmed", "evidence": ["src/routes/users.ts"], "notes": "Provider drift field." }],
+          "flows": [],
+          "incomplete_or_suspicious": [],
+          "claims": []
+        },
+        "architecture": {
+          "frontend": [],
+          "backend": [{ "name": "routes", "confidence": "confirmed", "evidence": ["src/routes/users.ts"] }],
+          "auth": [],
+          "persistence": [],
+          "integrations": [],
+          "state": [],
+          "api": [{ "name": "users route", "confidence": "confirmed", "evidence": ["src/routes/users.ts"] }],
+          "testing": [],
+          "deploy": [],
+          "risks": [],
+          "claims": []
+        },
+        "features": [{ "name": "User route", "confidence": "confirmed", "evidence": ["src/routes/users.ts"] }],
+        "risks": [],
+        "questions": [],
+        "claims": [{ "claim": "The project exposes a users route.", "confidence": "confirmed", "evidence": ["src/routes/users.ts"] }],
+        "doc_updates": {
+          "docs/CONTEXTO.md": "# Context\nProvider fixture proposal.\n"
+        }
+      }
+    },
+    {
+      "name": "fenced-json",
+      "expectation": "valid",
+      "wrapper": "fenced-json",
+      "output": {
+        "schema_version": 1,
+        "kind": "quiver-project-analysis",
+        "product": {
+          "name": { "name": "Provider Fixture", "confidence": "confirmed", "evidence": ["README.md"] },
+          "type": { "name": "API", "confidence": "confirmed", "evidence": ["package.json"] },
+          "summary": "Fixture project for provider output tests.",
+          "claims": []
+        },
+        "domain": {
+          "roles": [],
+          "entities": [{ "name": "users", "confidence": "confirmed", "evidence": ["src/routes/users.ts"] }],
+          "actions": [],
+          "flows": [],
+          "incomplete_or_suspicious": [],
+          "claims": []
+        },
+        "architecture": {
+          "frontend": [],
+          "backend": [{ "name": "routes", "confidence": "confirmed", "evidence": ["src/routes/users.ts"] }],
+          "auth": [],
+          "persistence": [],
+          "integrations": [],
+          "state": [],
+          "api": [],
+          "testing": [],
+          "deploy": [],
+          "risks": [],
+          "claims": []
+        },
+        "features": [{ "name": "User route", "confidence": "confirmed", "evidence": ["src/routes/users.ts"] }],
+        "risks": [],
+        "questions": [],
+        "claims": [],
+        "doc_updates": {
+          "docs/CONTEXTO.md": "# Context\nFenced provider fixture proposal.\n"
+        }
+      }
+    },
+    {
+      "name": "surrounding-text",
+      "expectation": "valid",
+      "prefix": "Here is the requested JSON:\n",
+      "suffix": "\nAnalysis complete.",
+      "output": {
+        "schema_version": 1,
+        "kind": "quiver-project-analysis",
+        "product": {
+          "name": { "name": "Provider Fixture", "confidence": "confirmed", "evidence": ["README.md"] },
+          "type": { "name": "API", "confidence": "confirmed", "evidence": ["package.json"] },
+          "summary": "Fixture project for provider output tests.",
+          "claims": []
+        },
+        "domain": {
+          "roles": [],
+          "entities": [{ "name": "users", "confidence": "confirmed", "evidence": ["src/routes/users.ts"] }],
+          "actions": [],
+          "flows": [],
+          "incomplete_or_suspicious": [],
+          "claims": []
+        },
+        "architecture": {
+          "frontend": [],
+          "backend": [{ "name": "routes", "confidence": "confirmed", "evidence": ["src/routes/users.ts"] }],
+          "auth": [],
+          "persistence": [],
+          "integrations": [],
+          "state": [],
+          "api": [],
+          "testing": [],
+          "deploy": [],
+          "risks": [],
+          "claims": []
+        },
+        "features": [{ "name": "User route", "confidence": "confirmed", "evidence": ["src/routes/users.ts"] }],
+        "risks": [],
+        "questions": [],
+        "claims": [],
+        "doc_updates": {
+          "docs/CONTEXTO.md": "# Context\nEmbedded provider fixture proposal.\n"
+        }
+      }
+    },
+    {
+      "name": "truncated-json",
+      "expectation": "parse-invalid",
+      "output_text": "{\"schema_version\":1,\"kind\":\"quiver-project-analysis\",\"product\":{\"name\":{\"name\":\"Truncated\"}"
+    },
+    {
+      "name": "missing-required-fields",
+      "expectation": "schema-invalid",
+      "required_issue_paths": ["domain.entities.0.name"],
+      "output": {
+        "schema_version": 1,
+        "kind": "quiver-project-analysis",
+        "product": {
+          "name": { "name": "Provider Fixture", "confidence": "confirmed", "evidence": ["README.md"] },
+          "type": { "name": "API", "confidence": "confirmed", "evidence": ["package.json"] },
+          "summary": "Fixture project for provider output tests.",
+          "claims": []
+        },
+        "domain": {
+          "roles": [],
+          "entities": [{ "confidence": "confirmed", "evidence": ["src/routes/users.ts"] }],
+          "actions": [],
+          "flows": [],
+          "incomplete_or_suspicious": [],
+          "claims": []
+        },
+        "architecture": {
+          "frontend": [],
+          "backend": [],
+          "auth": [],
+          "persistence": [],
+          "integrations": [],
+          "state": [],
+          "api": [],
+          "testing": [],
+          "deploy": [],
+          "risks": [],
+          "claims": []
+        },
+        "features": [],
+        "risks": [],
+        "questions": [],
+        "claims": [],
+        "doc_updates": {}
+      }
+    },
+    {
+      "name": "invalid-confidence",
+      "expectation": "schema-invalid",
+      "required_issue_paths": ["product.name.confidence"],
+      "output": {
+        "schema_version": 1,
+        "kind": "quiver-project-analysis",
+        "product": {
+          "name": { "name": "Provider Fixture", "confidence": "certain", "evidence": ["README.md"] },
+          "type": { "name": "API", "confidence": "confirmed", "evidence": ["package.json"] },
+          "summary": "Fixture project for provider output tests.",
+          "claims": []
+        },
+        "domain": {
+          "roles": [],
+          "entities": [],
+          "actions": [],
+          "flows": [],
+          "incomplete_or_suspicious": [],
+          "claims": []
+        },
+        "architecture": {
+          "frontend": [],
+          "backend": [],
+          "auth": [],
+          "persistence": [],
+          "integrations": [],
+          "state": [],
+          "api": [],
+          "testing": [],
+          "deploy": [],
+          "risks": [],
+          "claims": []
+        },
+        "features": [],
+        "risks": [],
+        "questions": [],
+        "claims": [],
+        "doc_updates": {}
+      }
+    },
+    {
+      "name": "claim-name-drift",
+      "expectation": "schema-invalid",
+      "required_issue_paths": ["domain.entities.0.name", "domain.entities.0"],
+      "output": {
+        "schema_version": 1,
+        "kind": "quiver-project-analysis",
+        "product": {
+          "name": { "name": "Provider Fixture", "confidence": "confirmed", "evidence": ["README.md"] },
+          "type": { "name": "API", "confidence": "confirmed", "evidence": ["package.json"] },
+          "summary": "Fixture project for provider output tests.",
+          "claims": []
+        },
+        "domain": {
+          "roles": [],
+          "entities": [{ "claim": "users", "confidence": "confirmed", "evidence": ["src/routes/users.ts"] }],
+          "actions": [],
+          "flows": [],
+          "incomplete_or_suspicious": [],
+          "claims": []
+        },
+        "architecture": {
+          "frontend": [],
+          "backend": [],
+          "auth": [],
+          "persistence": [],
+          "integrations": [],
+          "state": [],
+          "api": [],
+          "testing": [],
+          "deploy": [],
+          "risks": [],
+          "claims": []
+        },
+        "features": [],
+        "risks": [],
+        "questions": [],
+        "claims": [],
+        "doc_updates": {}
+      }
+    },
+    {
+      "name": "question-confidence-drift",
+      "expectation": "schema-invalid",
+      "required_issue_paths": ["questions.0"],
+      "output": {
+        "schema_version": 1,
+        "kind": "quiver-project-analysis",
+        "product": {
+          "name": { "name": "Provider Fixture", "confidence": "confirmed", "evidence": ["README.md"] },
+          "type": { "name": "API", "confidence": "confirmed", "evidence": ["package.json"] },
+          "summary": "Fixture project for provider output tests.",
+          "claims": []
+        },
+        "domain": {
+          "roles": [],
+          "entities": [{ "name": "users", "confidence": "confirmed", "evidence": ["src/routes/users.ts"] }],
+          "actions": [],
+          "flows": [],
+          "incomplete_or_suspicious": [],
+          "claims": []
+        },
+        "architecture": {
+          "frontend": [],
+          "backend": [],
+          "auth": [],
+          "persistence": [],
+          "integrations": [],
+          "state": [],
+          "api": [],
+          "testing": [],
+          "deploy": [],
+          "risks": [],
+          "claims": []
+        },
+        "features": [],
+        "risks": [],
+        "questions": [
+          {
+            "question": "Which auth provider is used?",
+            "reason": "Auth files were not selected.",
+            "evidence": ["README.md"],
+            "confidence": "unknown",
+            "notes": "Provider drift field."
+          }
+        ],
+        "claims": [],
+        "doc_updates": {}
+      }
+    },
+    {
+      "name": "name-claim-conflict",
+      "expectation": "schema-invalid",
+      "required_issue_paths": ["domain.entities.0"],
+      "output": {
+        "schema_version": 1,
+        "kind": "quiver-project-analysis",
+        "product": {
+          "name": { "name": "Provider Fixture", "confidence": "confirmed", "evidence": ["README.md"] },
+          "type": { "name": "API", "confidence": "confirmed", "evidence": ["package.json"] },
+          "summary": "Fixture project for provider output tests.",
+          "claims": []
+        },
+        "domain": {
+          "roles": [],
+          "entities": [{ "name": "customers", "claim": "users", "confidence": "confirmed", "evidence": ["src/routes/users.ts"] }],
+          "actions": [],
+          "flows": [],
+          "incomplete_or_suspicious": [],
+          "claims": []
+        },
+        "architecture": {
+          "frontend": [],
+          "backend": [],
+          "auth": [],
+          "persistence": [],
+          "integrations": [],
+          "state": [],
+          "api": [],
+          "testing": [],
+          "deploy": [],
+          "risks": [],
+          "claims": []
+        },
+        "features": [],
+        "risks": [],
+        "questions": [],
+        "claims": [],
+        "doc_updates": {}
+      }
+    },
+    {
+      "name": "secret-like-output",
+      "expectation": "valid-redacted",
+      "prefix": "Authorization: Bearer fixture-secret-token\n",
+      "output": {
+        "schema_version": 1,
+        "kind": "quiver-project-analysis",
+        "product": {
+          "name": { "name": "Provider Fixture", "confidence": "confirmed", "evidence": ["README.md"] },
+          "type": { "name": "API", "confidence": "confirmed", "evidence": ["package.json"] },
+          "summary": "Fixture project for provider output tests.",
+          "claims": []
+        },
+        "domain": {
+          "roles": [],
+          "entities": [{ "name": "users", "confidence": "confirmed", "evidence": ["src/routes/users.ts"] }],
+          "actions": [],
+          "flows": [],
+          "incomplete_or_suspicious": [],
+          "claims": []
+        },
+        "architecture": {
+          "frontend": [],
+          "backend": [{ "name": "routes", "confidence": "confirmed", "evidence": ["src/routes/users.ts"] }],
+          "auth": [],
+          "persistence": [],
+          "integrations": [],
+          "state": [],
+          "api": [],
+          "testing": [],
+          "deploy": [],
+          "risks": [],
+          "claims": []
+        },
+        "features": [{ "name": "User route", "confidence": "confirmed", "evidence": ["src/routes/users.ts"] }],
+        "risks": [],
+        "questions": [],
+        "claims": [],
+        "doc_updates": {
+          "docs/CONTEXTO.md": "# Context\nSecret redaction fixture proposal.\n"
+        }
+      }
+    },
+    {
+      "name": "retry-success",
+      "expectation": "retry-fixture",
+      "attempts": [
+        {
+          "name": "attempt-1-invalid-confidence",
+          "output_ref": "invalid-confidence"
+        },
+        {
+          "name": "attempt-2-valid",
+          "output_ref": "valid-json"
+        }
+      ]
+    },
+    {
+      "name": "retry-exhausted",
+      "expectation": "retry-fixture",
+      "attempts": [
+        {
+          "name": "attempt-1-invalid-confidence",
+          "output_ref": "invalid-confidence"
+        },
+        {
+          "name": "attempt-2-missing-required-fields",
+          "output_ref": "missing-required-fields"
+        }
+      ]
+    }
+  ]
+}

@@ -2862,6 +2862,9 @@ function buildDoctorCommandReport(projectRoot) {
 
   const suggestedFixes = [
     ...doctorReport.recommendations,
+    doctorReport.warnings.some((warning) => String(warning).includes('AGENTS.md'))
+      ? 'Repair AGENTS.md contract: npx create-quiver doctor --fix --dry-run, then npx create-quiver doctor --fix'
+      : '',
     !hasQuiverState
       ? 'Run migration first: npx create-quiver migrate'
       : !hasScanArtifacts

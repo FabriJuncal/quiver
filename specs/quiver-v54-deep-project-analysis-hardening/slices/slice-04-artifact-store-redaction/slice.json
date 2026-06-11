@@ -1,0 +1,73 @@
+{
+  "slice_id": "slice-04-artifact-store-redaction",
+  "ticket": "QUIVER-54-04",
+  "type": "security-hardening",
+  "title": "Artifact Store & Redaction",
+  "objective": "Persist provider-run artifacts in a redacted, bounded, versioned, auditable format.",
+  "description": "Adds artifact storage rules for provider stdout/stderr and manifests so sensitive or huge outputs cannot leak into .quiver/runs.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v54-artifact-store-redaction",
+    "branch_name": "feature/QUIVER-54-04-v54-artifact-store-redaction"
+  },
+  "files": [
+    "src/create-quiver/commands/ai.js",
+    "src/create-quiver/lib/ai/analyze-project-artifacts.js",
+    "src/create-quiver/lib/ai/analyze-project-validation.js",
+    "tests/commands/ai-analyze-project-provider.test.js",
+    "tests/lib/ai-safety.test.js",
+    "specs/quiver-v54-deep-project-analysis-hardening/**"
+  ],
+  "expected_read_paths": [
+    "src/create-quiver/commands/ai.js",
+    "src/create-quiver/lib/ai/analyze-project-validation.js",
+    "src/create-quiver/lib/ai/safety.js",
+    "tests/lib/ai-safety.test.js"
+  ],
+  "allowed_write_paths": [
+    "src/create-quiver/commands/ai.js",
+    "src/create-quiver/lib/ai/analyze-project-artifacts.js",
+    "src/create-quiver/lib/ai/analyze-project-validation.js",
+    "tests/commands/ai-analyze-project-provider.test.js",
+    "tests/lib/ai-safety.test.js",
+    "specs/quiver-v54-deep-project-analysis-hardening/STATUS.md",
+    "specs/quiver-v54-deep-project-analysis-hardening/EVIDENCE_REPORT.md",
+    "specs/quiver-v54-deep-project-analysis-hardening/slices/slice-04-artifact-store-redaction/CLOSURE_BRIEF.md",
+    "specs/quiver-v54-deep-project-analysis-hardening/slices/slice-04-artifact-store-redaction/slice.json"
+  ],
+  "depends_on": [
+    "slice-01-contract-regression-harness",
+    "slice-03-run-lifecycle-cli-io"
+  ],
+  "parallel_safe": "after_dependencies",
+  "parallel_safe_reason": "Can run alongside repair once run lifecycle is defined.",
+  "must": [
+    "Redact before persistence.",
+    "Store head/tail plus hash for truncated raw output.",
+    "Include schema_version, kind, run_id, timestamps, command/options, sizes, and truncation flag.",
+    "Keep provider stderr separate from schema validation."
+  ],
+  "not_included": [
+    "Sampling changes.",
+    "Retry controller.",
+    "Final docs writes."
+  ],
+  "acceptance": [
+    "Secret-like content is not persisted raw.",
+    "Oversized provider output is bounded.",
+    "Artifact manifests are versioned and auditable.",
+    "Invalid JSON still writes no final docs."
+  ],
+  "tests": [
+    "node --test tests/commands/ai-analyze-project-provider.test.js",
+    "node --test tests/lib/ai-safety.test.js",
+    "git diff --check"
+  ],
+  "estimated_hours": 5,
+  "actual_hours": 3,
+  "status": "completed",
+  "started_at": "2026-06-11",
+  "completed_at": "2026-06-11",
+  "blocked_reason": null
+}

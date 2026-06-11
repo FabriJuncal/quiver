@@ -205,6 +205,49 @@ test('doctor fix applies safe repairs idempotently', () => {
   }
 });
 
+test('doctor gives actionable AGENTS.md repair guidance', () => {
+  const { dir, cleanup } = makeTmpDir();
+  const target = path.join(dir, 'target');
+  try {
+    runCli(['init', '--name', 'Agents Guidance Project', '--dir', target, '--skip-install']);
+    fs.writeFileSync(path.join(target, 'AGENTS.md'), '# Custom Agents\n\nManual project note.\n');
+
+    const output = runCli(['doctor'], { cwd: target });
+
+    assert.match(output, /Warning: AGENTS\.md is missing required sections:/);
+    assert.match(output, /Repair AGENTS\.md contract: npx create-quiver doctor --fix --dry-run, then npx create-quiver doctor --fix/);
+  } finally {
+    cleanup();
+  }
+});
+
+test('doctor fix repairs AGENTS.md contract without replacing manual content', () => {
+  const { dir, cleanup } = makeTmpDir();
+  const target = path.join(dir, 'target');
+  try {
+    runCli(['init', '--name', 'Agents Fix Project', '--dir', target, '--skip-install']);
+    fs.writeFileSync(path.join(target, 'AGENTS.md'), '# Custom Agents\n\nManual project note.\n');
+
+    const dryRun = runCli(['doctor', '--fix', '--dry-run'], { cwd: target });
+    const firstOutput = runCli(['doctor', '--fix'], { cwd: target });
+    const secondOutput = runCli(['doctor', '--fix'], { cwd: target });
+    const agents = fs.readFileSync(path.join(target, 'AGENTS.md'), 'utf8');
+
+    assert.match(dryRun, /Would update AGENTS\.md: Append missing AGENTS\.md contract sections/);
+    assert.match(firstOutput, /Updated AGENTS\.md: Append missing AGENTS\.md contract sections/);
+    assert.match(secondOutput, /No safe fixes to apply/);
+    assert.match(agents, /Manual project note/);
+    assert.match(agents, /^Purpose$/m);
+    assert.match(agents, /^## Reading Budget$/m);
+    assert.match(agents, /^## Reading Order$/m);
+    assert.match(agents, /^## Output Policy$/m);
+    assert.match(agents, /^## Slice Execution Rules$/m);
+    assert.match(agents, /^## Links$/m);
+  } finally {
+    cleanup();
+  }
+});
+
 test('doctor warns about missing local markdown links in generated docs', () => {
   const { dir, cleanup } = makeTmpDir();
   const target = path.join(dir, 'target');

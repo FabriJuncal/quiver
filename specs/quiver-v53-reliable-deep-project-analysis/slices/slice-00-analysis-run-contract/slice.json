@@ -1,0 +1,70 @@
+{
+  "slice_id": "slice-00-analysis-run-contract",
+  "ticket": "QUIVER-53-00",
+  "type": "docs-contract",
+  "title": "Analysis run contract",
+  "objective": "Define the reliable analyze-project run contract before runtime changes begin.",
+  "description": "Documents mode behavior, run states, manifest schemas, error taxonomy, and write boundaries for reliable provider-backed project analysis.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v53-analysis-run-contract",
+    "branch_name": "feature/QUIVER-53-00-v53-analysis-run-contract"
+  },
+  "files": [
+    "specs/quiver-v53-reliable-deep-project-analysis/SPEC.md",
+    "specs/quiver-v53-reliable-deep-project-analysis/EXECUTION_PLAN.md",
+    "specs/quiver-v53-reliable-deep-project-analysis/STATUS.md",
+    "specs/quiver-v53-reliable-deep-project-analysis/EVIDENCE_REPORT.md",
+    "specs/quiver-v53-reliable-deep-project-analysis/slices/slice-00-analysis-run-contract/CLOSURE_BRIEF.md",
+    "specs/quiver-v53-reliable-deep-project-analysis/slices/slice-00-analysis-run-contract/slice.json"
+  ],
+  "expected_read_paths": [
+    "specs/quiver-v46-deep-project-analysis/SPEC.md",
+    "src/create-quiver/commands/ai.js",
+    "src/create-quiver/lib/ai/analyze-project-schema.js",
+    "src/create-quiver/lib/ai/analyze-project-validation.js"
+  ],
+  "allowed_write_paths": [
+    "specs/quiver-v53-reliable-deep-project-analysis/SPEC.md",
+    "specs/quiver-v53-reliable-deep-project-analysis/EXECUTION_PLAN.md",
+    "specs/quiver-v53-reliable-deep-project-analysis/STATUS.md",
+    "specs/quiver-v53-reliable-deep-project-analysis/EVIDENCE_REPORT.md",
+    "specs/quiver-v53-reliable-deep-project-analysis/slices/slice-00-analysis-run-contract/CLOSURE_BRIEF.md",
+    "specs/quiver-v53-reliable-deep-project-analysis/slices/slice-00-analysis-run-contract/slice.json"
+  ],
+  "depends_on": [],
+  "parallel_safe": "never",
+  "parallel_safe_reason": "The contract defines boundaries used by all later slices.",
+  "must": [
+    "Define exact behavior for --dry-run, provider execution, --json, --review, non-TTY, and write paths.",
+    "Define versioned run manifest states and artifact names.",
+    "Define repairable, retryable, and fatal error classes.",
+    "Define zero-final-write guarantees for invalid final JSON."
+  ],
+  "not_included": [
+    "Runtime implementation.",
+    "Provider calls.",
+    "Schema repair logic."
+  ],
+  "acceptance": [
+    "The spec documents mode behavior without ambiguity.",
+    "The spec documents run manifest fields and state transitions.",
+    "The spec documents error taxonomy and write boundaries.",
+    "Later slices can reference this slice as the source of truth."
+  ],
+  "tests": [
+    "node bin/create-quiver.js spec validate specs/quiver-v53-reliable-deep-project-analysis --strict",
+    "npm run schema:slice:check",
+    "git diff --check"
+  ],
+  "validation_hints": [
+    "No runtime code should be changed in this slice."
+  ],
+  "estimated_hours": 2,
+  "actual_hours": 1,
+  "status": "completed",
+  "started_at": "2026-06-11T11:59:11Z",
+  "completed_at": "2026-06-11T11:59:11Z",
+  "blocked_reason": null
+}

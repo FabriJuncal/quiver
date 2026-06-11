@@ -7,8 +7,14 @@ const {
   normalizeAnalyzeProjectDocProposal,
 } = require('./analyze-project-docs');
 const { normalizeAnalyzeProjectAnalysis } = require('./analyze-project-parser');
+const {
+  buildQuiverInternalGitignore,
+  quiverInternalPaths,
+} = require('../init-layout');
 
 const VALIDATION_KIND = 'quiver-analyze-project-post-write-validation';
+const ANALYZE_PROJECT_VALIDATION_MANIFEST_KIND = 'quiver-analyze-project-validation-manifest';
+const ANALYZE_PROJECT_RETRY_MANIFEST_KIND = 'quiver-analyze-project-retry-manifest';
 
 const PLACEHOLDER_PATTERNS = [
   { issue: 'placeholder-todo', pattern: /\bTODO\b/i },
@@ -47,6 +53,163 @@ function makeIssue(pathName, issue, message, extra = {}) {
     issue,
     message,
     ...extra,
+  };
+}
+
+function normalizeManifestRunId(value, now = new Date()) {
+  const raw = value || `run-${now.toISOString()
+    .replace(/\.\d{3}Z$/, 'z')
+    .replace(/[^0-9a-z]+/gi, '-')
+    .toLowerCase()
+    .replace(/^-+|-+$/g, '')}`;
+  return String(raw)
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9._-]+/g, '-')
+    .replace(/^-+|-+$/g, '') || 'run-analyze-project-validation';
+}
+
+function issuePathFamily(pathName) {
+  const normalized = String(pathName || 'analysis').replace(/\\/g, '/');
+  return normalized
+    .replace(/(?:^|\.)\d+(?=\.|$)/g, (segment) => segment.startsWith('.') ? '.*' : '*')
+    .replace(/\[\d+\]/g, '[*]');
+}
+
+function issueCauseHint(issue) {
+  switch (issue) {
+    case 'unrecognized_keys':
+      return 'Provider returned fields that are not allowed by the schema.';
+    case 'invalid_type':
+      return 'Provider omitted a required value or returned the wrong type.';
+    case 'invalid_value':
+      return 'Provider returned a value outside the allowed schema values.';
+    case 'malformed-json':
+      return 'Provider did not return one parseable JSON object.';
+    case 'empty-output':
+      return 'Provider returned no analysis JSON.';
+    case 'missing-evidence':
+      return 'Provider made a non-unknown claim without evidence.';
+    case 'evidence-not-selected':
+      return 'Provider cited a path outside the selected context sample.';
+    case 'unapproved-doc-update-path':
+      return 'Provider proposed writing outside the approved docs allowlist.';
+    default:
+      return 'Provider output drifted from the required analysis contract.';
+  }
+}
+
+function groupAnalyzeProjectIssues(issues = [], options = {}) {
+  const maxExamplesPerGroup = Number.isInteger(options.maxExamplesPerGroup)
+    ? Math.max(1, options.maxExamplesPerGroup)
+    : 2;
+  const grouped = new Map();
+
+  for (const issue of Array.isArray(issues) ? issues : []) {
+    const type = issue.issue || issue.code || 'invalid';
+    const pathFamily = issuePathFamily(issue.path);
+    const key = `${type}\0${pathFamily}`;
+    if (!grouped.has(key)) {
+      grouped.set(key, {
+        type,
+        path_family: pathFamily,
+        count: 0,
+        cause_hint: issueCauseHint(type),
+        examples: [],
+      });
+    }
+    const group = grouped.get(key);
+    group.count += 1;
+    if (group.examples.length < maxExamplesPerGroup) {
+      group.examples.push({
+        path: issue.path || null,
+        type,
+        message: issue.message || 'Invalid provider analysis output.',
+      });
+    }
+  }
+
+  return Array.from(grouped.values())
+    .sort((a, b) => {
+      const byType = a.type.localeCompare(b.type);
+      return byType || a.path_family.localeCompare(b.path_family);
+    });
+}
+
+function ensureQuiverRunsIgnored(repoRoot) {
+  const internalPaths = quiverInternalPaths(repoRoot);
+  if (!fs.existsSync(internalPaths.root)) {
+    fs.mkdirSync(internalPaths.root, { recursive: true });
+  }
+  if (!fs.existsSync(internalPaths.gitignorePath)) {
+    fs.writeFileSync(internalPaths.gitignorePath, buildQuiverInternalGitignore());
+  }
+}
+
+function writeAnalyzeProjectValidationManifest(repoRoot, options = {}) {
+  const now = options.now instanceof Date ? options.now : new Date(options.now || Date.now());
+  const runId = normalizeManifestRunId(options.runId, now);
+  const internalPaths = quiverInternalPaths(repoRoot);
+  const manifestPath = path.join(internalPaths.runsDir, runId, 'validation', 'analyze-project-validation.json');
+  const issues = Array.isArray(options.error?.issues) ? options.error.issues : [];
+  const manifest = {
+    schema_version: 1,
+    kind: ANALYZE_PROJECT_VALIDATION_MANIFEST_KIND,
+    created_at: now.toISOString(),
+    run_id: runId,
+    command: options.command || 'ai analyze-project',
+    provider: options.provider || null,
+    status: 'invalid',
+    error: {
+      code: options.error?.code || null,
+      message: options.error?.message || 'provider analysis validation failed',
+    },
+    issue_count: issues.length,
+    groups: groupAnalyzeProjectIssues(issues, { maxExamplesPerGroup: 5 }),
+    retry: options.retry || null,
+    issues,
+  };
+
+  ensureQuiverRunsIgnored(repoRoot);
+  fs.mkdirSync(path.dirname(manifestPath), { recursive: true });
+  fs.writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
+
+  return {
+    run_id: runId,
+    path: toPosix(path.relative(repoRoot, manifestPath)),
+    issue_count: issues.length,
+  };
+}
+
+function writeAnalyzeProjectRetryManifest(repoRoot, options = {}) {
+  const now = options.now instanceof Date ? options.now : new Date(options.now || Date.now());
+  const runId = normalizeManifestRunId(options.runId, now);
+  const internalPaths = quiverInternalPaths(repoRoot);
+  const manifestPath = path.join(internalPaths.runsDir, runId, 'retry', 'analyze-project-retry.json');
+  const attempts = Array.isArray(options.attempts) ? options.attempts : [];
+  const manifest = {
+    schema_version: 1,
+    kind: ANALYZE_PROJECT_RETRY_MANIFEST_KIND,
+    created_at: now.toISOString(),
+    run_id: runId,
+    command: options.command || 'ai analyze-project',
+    provider: options.provider || null,
+    retry_count: Math.max(0, attempts.length - 1),
+    max_retries: options.maxRetries || 0,
+    final_status: options.finalStatus || 'unknown',
+    attempts,
+  };
+
+  ensureQuiverRunsIgnored(repoRoot);
+  fs.mkdirSync(path.dirname(manifestPath), { recursive: true });
+  fs.writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
+
+  return {
+    run_id: runId,
+    path: toPosix(path.relative(repoRoot, manifestPath)),
+    retry_count: manifest.retry_count,
+    max_retries: manifest.max_retries,
+    final_status: manifest.final_status,
   };
 }
 
@@ -302,8 +465,13 @@ function validateAnalyzeProjectPostWrite(repoRoot, report, options = {}) {
 }
 
 module.exports = {
+  ANALYZE_PROJECT_RETRY_MANIFEST_KIND,
+  ANALYZE_PROJECT_VALIDATION_MANIFEST_KIND,
   VALIDATION_KIND,
   extractFactEntries,
   extractManagedBlock,
+  groupAnalyzeProjectIssues,
   validateAnalyzeProjectPostWrite,
+  writeAnalyzeProjectRetryManifest,
+  writeAnalyzeProjectValidationManifest,
 };

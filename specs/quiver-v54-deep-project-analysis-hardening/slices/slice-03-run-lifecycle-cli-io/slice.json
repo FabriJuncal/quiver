@@ -1,0 +1,69 @@
+{
+  "slice_id": "slice-03-run-lifecycle-cli-io",
+  "ticket": "QUIVER-54-03",
+  "type": "runtime-hardening",
+  "title": "Run Lifecycle & CLI IO",
+  "objective": "Make analyze-project run state, progress, stdout/stderr behavior, timeouts, and cancellation predictable.",
+  "description": "Adds a state machine and CLI IO contract so TTY and no-TTY users get visible progress without breaking JSON automation.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v54-run-lifecycle-cli-io",
+    "branch_name": "feature/QUIVER-54-03-v54-run-lifecycle-cli-io"
+  },
+  "files": [
+    "src/create-quiver/commands/ai.js",
+    "src/create-quiver/lib/ai/providers.js",
+    "tests/commands/ai-analyze-project-provider.test.js",
+    "tests/commands/ai-analyze-project.test.js",
+    "specs/quiver-v54-deep-project-analysis-hardening/**"
+  ],
+  "expected_read_paths": [
+    "src/create-quiver/commands/ai.js",
+    "src/create-quiver/lib/ai/providers.js",
+    "tests/commands/ai-analyze-project-provider.test.js"
+  ],
+  "allowed_write_paths": [
+    "src/create-quiver/commands/ai.js",
+    "src/create-quiver/lib/ai/providers.js",
+    "tests/commands/ai-analyze-project-provider.test.js",
+    "tests/commands/ai-analyze-project.test.js",
+    "specs/quiver-v54-deep-project-analysis-hardening/STATUS.md",
+    "specs/quiver-v54-deep-project-analysis-hardening/EVIDENCE_REPORT.md",
+    "specs/quiver-v54-deep-project-analysis-hardening/slices/slice-03-run-lifecycle-cli-io/CLOSURE_BRIEF.md",
+    "specs/quiver-v54-deep-project-analysis-hardening/slices/slice-03-run-lifecycle-cli-io/slice.json"
+  ],
+  "depends_on": [
+    "slice-01-contract-regression-harness"
+  ],
+  "parallel_safe": "after_dependencies",
+  "parallel_safe_reason": "Can run alongside sampling after the regression contract exists.",
+  "must": [
+    "Persist run lifecycle states.",
+    "Keep --json stdout clean.",
+    "Emit no-TTY progress to stderr.",
+    "Handle cancellation and child-process cleanup."
+  ],
+  "not_included": [
+    "Artifact redaction details.",
+    "Repair engine rules.",
+    "Final docs write gate."
+  ],
+  "acceptance": [
+    "TTY and no-TTY progress are both covered.",
+    "Cancellation leaves status canceled.",
+    "No provider child process remains after cancellation.",
+    "--json output is parseable."
+  ],
+  "tests": [
+    "node --test tests/commands/ai-analyze-project-provider.test.js",
+    "node --test tests/commands/ai-analyze-project.test.js",
+    "git diff --check"
+  ],
+  "estimated_hours": 6,
+  "actual_hours": 3,
+  "status": "completed",
+  "started_at": "2026-06-11",
+  "completed_at": "2026-06-11",
+  "blocked_reason": null
+}

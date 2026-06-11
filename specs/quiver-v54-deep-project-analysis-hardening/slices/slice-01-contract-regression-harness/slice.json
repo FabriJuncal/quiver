@@ -1,0 +1,72 @@
+{
+  "slice_id": "slice-01-contract-regression-harness",
+  "ticket": "QUIVER-54-01",
+  "type": "test-infrastructure",
+  "title": "Contract & Regression Harness",
+  "objective": "Freeze deterministic regression expectations for hardening ai analyze-project before runtime changes.",
+  "description": "Adds sanitized fixtures and tests for the nika-erp schema drift, no-write guarantees, stdout/stderr contract, compact errors, and provider-mode write boundaries.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v54-contract-regression-harness",
+    "branch_name": "feature/QUIVER-54-01-v54-contract-regression-harness"
+  },
+  "files": [
+    "tests/fixtures/analyze-project/**",
+    "tests/commands/ai-analyze-project-provider.test.js",
+    "tests/commands/ai-analyze-project.test.js",
+    "tests/commands/ai-analyze-project-review.test.js",
+    "tests/lib/ai/analyze-project-repair.test.js",
+    "specs/quiver-v54-deep-project-analysis-hardening/**"
+  ],
+  "expected_read_paths": [
+    "src/create-quiver/commands/ai.js",
+    "src/create-quiver/lib/ai/analyze-project-parser.js",
+    "src/create-quiver/lib/ai/analyze-project-validation.js",
+    "src/create-quiver/lib/ai/analyze-project-repair.js",
+    "tests/fixtures/analyze-project/**"
+  ],
+  "allowed_write_paths": [
+    "tests/fixtures/analyze-project/**",
+    "tests/commands/ai-analyze-project-provider.test.js",
+    "tests/commands/ai-analyze-project.test.js",
+    "tests/commands/ai-analyze-project-review.test.js",
+    "tests/lib/ai/analyze-project-repair.test.js",
+    "specs/quiver-v54-deep-project-analysis-hardening/STATUS.md",
+    "specs/quiver-v54-deep-project-analysis-hardening/EVIDENCE_REPORT.md",
+    "specs/quiver-v54-deep-project-analysis-hardening/slices/slice-01-contract-regression-harness/CLOSURE_BRIEF.md",
+    "specs/quiver-v54-deep-project-analysis-hardening/slices/slice-01-contract-regression-harness/slice.json"
+  ],
+  "depends_on": [],
+  "parallel_safe": "never",
+  "parallel_safe_reason": "This slice defines the contract used by every later slice.",
+  "must": [
+    "Use sanitized deterministic fixtures instead of live provider calls.",
+    "Assert no final docs writes for invalid final JSON.",
+    "Assert dry-run creates no .quiver/runs.",
+    "Assert --json stdout remains parseable."
+  ],
+  "not_included": [
+    "Runtime repair implementation.",
+    "Sampling changes.",
+    "Retry implementation."
+  ],
+  "acceptance": [
+    "nika-erp drift is reproducible offline.",
+    "No-write guarantees are covered by tests.",
+    "Schema-noise output is bounded by tests.",
+    "Spec validation passes."
+  ],
+  "tests": [
+    "node --test tests/commands/ai-analyze-project-provider.test.js",
+    "node --test tests/commands/ai-analyze-project.test.js",
+    "node bin/create-quiver.js spec validate specs/quiver-v54-deep-project-analysis-hardening --strict",
+    "git diff --check"
+  ],
+  "estimated_hours": 4,
+  "actual_hours": 4,
+  "status": "completed",
+  "started_at": "2026-06-11",
+  "completed_at": "2026-06-11",
+  "blocked_reason": null
+}

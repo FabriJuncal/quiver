@@ -68,3 +68,56 @@ Para usar la versión fijada por el proyecto:
 ```bash
 npx create-quiver --version
 ```
+
+## `ai analyze-project` falla con JSON inválido del proveedor
+
+### Síntoma
+
+El comando:
+
+```bash
+npx --yes create-quiver@latest ai analyze-project --deep --provider codex --model gpt-5.5
+```
+
+termina con un error como:
+
+```text
+provider analysis JSON does not match the required schema
+```
+
+### Explicación
+
+Quiver trata la salida del proveedor como dato no confiable. Primero intenta validar el JSON, luego repara solo drift estructural seguro, como claves `notes` no permitidas, `claim` usado como `name` faltante o `confidence` en paths donde el schema no lo permite. Después reintenta como máximo de forma acotada cuando el error puede corregirse con feedback de schema.
+
+Si el JSON final sigue inválido, Quiver falla sin escribir docs finales. Los detalles quedan bajo `.quiver/runs/run-.../`:
+
+- `context/selected-context.json`: muestra qué contexto se envió y qué se excluyó.
+- `raw/`: guarda salida del proveedor redactada, truncada con head/tail y hash para auditoría.
+- `repair/analyze-project-repair.json`: registra claves removidas si hubo repair.
+- `retry/analyze-project-retry.json`: registra intentos cuando hubo retry.
+- `validation/analyze-project-validation.json`: guarda todos los errores de validación.
+- `status.json`: resume el estado final del run.
+
+### Qué hacer
+
+Inspeccioná primero el contexto seleccionado:
+
+```bash
+npx --yes create-quiver@latest ai analyze-project --deep --dry-run --json
+```
+
+Después podés reducir el presupuesto si el provider se desvía por exceso de contexto:
+
+```bash
+npx --yes create-quiver@latest ai analyze-project --deep --max-files 40 --max-bytes 150000 --provider codex --model gpt-5.5
+```
+
+Si `package-lock.json` aparece como problema, no deberías incluirlo completo. En versiones actuales debe aparecer resumido en `detected.lockfiles` y omitido como `sampling:lockfile-metadata`.
+
+Cuando el análisis sea válido y quieras escribir documentación:
+
+```bash
+npx --yes create-quiver@latest ai analyze-project --deep --review --provider codex --model gpt-5.5
+```
+
+`--review` abre una propuesta editable, revalida el JSON editado, muestra diff final, pide confirmación, crea snapshot y recién después escribe docs permitidos.

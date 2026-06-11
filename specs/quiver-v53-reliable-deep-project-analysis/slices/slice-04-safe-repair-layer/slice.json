@@ -1,0 +1,80 @@
+{
+  "slice_id": "slice-04-safe-repair-layer",
+  "ticket": "QUIVER-53-04",
+  "type": "reliability",
+  "title": "Safe repair layer",
+  "objective": "Repair safe provider schema drift without changing analysis semantics.",
+  "description": "Adds a minimal repair layer that removes unsupported additional properties such as notes, records every repair, and revalidates the analysis proposal before proceeding.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v53-safe-repair-layer",
+    "branch_name": "feature/QUIVER-53-04-v53-safe-repair-layer"
+  },
+  "files": [
+    "src/create-quiver/lib/ai/analyze-project-repair.js",
+    "src/create-quiver/lib/ai/analyze-project-validation.js",
+    "src/create-quiver/commands/ai.js",
+    "tests/lib/ai/analyze-project-repair.test.js",
+    "tests/commands/ai-analyze-project-provider.test.js",
+    "specs/quiver-v53-reliable-deep-project-analysis/STATUS.md",
+    "specs/quiver-v53-reliable-deep-project-analysis/EVIDENCE_REPORT.md",
+    "specs/quiver-v53-reliable-deep-project-analysis/slices/slice-04-safe-repair-layer/CLOSURE_BRIEF.md",
+    "specs/quiver-v53-reliable-deep-project-analysis/slices/slice-04-safe-repair-layer/slice.json"
+  ],
+  "expected_read_paths": [
+    "src/create-quiver/lib/ai/analyze-project-schema.js",
+    "src/create-quiver/lib/ai/analyze-project-validation.js",
+    "tests/commands/ai-analyze-project-provider.test.js"
+  ],
+  "allowed_write_paths": [
+    "src/create-quiver/lib/ai/analyze-project-repair.js",
+    "src/create-quiver/lib/ai/analyze-project-validation.js",
+    "src/create-quiver/commands/ai.js",
+    "tests/lib/ai/analyze-project-repair.test.js",
+    "tests/commands/ai-analyze-project-provider.test.js",
+    "tests/fixtures/analyze-project/**",
+    "specs/quiver-v53-reliable-deep-project-analysis/STATUS.md",
+    "specs/quiver-v53-reliable-deep-project-analysis/EVIDENCE_REPORT.md",
+    "specs/quiver-v53-reliable-deep-project-analysis/slices/slice-04-safe-repair-layer/CLOSURE_BRIEF.md",
+    "specs/quiver-v53-reliable-deep-project-analysis/slices/slice-04-safe-repair-layer/slice.json"
+  ],
+  "depends_on": [
+    "slice-03-schema-error-grouping"
+  ],
+  "parallel_safe": "never",
+  "parallel_safe_reason": "Repair depends on validation classification and directly affects provider result flow.",
+  "must": [
+    "Repair only unsupported additionalProperties.",
+    "Remove extra keys such as notes without moving semantic content.",
+    "Record repair manifest entries with path, key, action, and reason.",
+    "Revalidate after repair.",
+    "Fail without final docs writes if repaired output remains invalid."
+  ],
+  "not_included": [
+    "Retry behavior.",
+    "Semantic rewriting.",
+    "Schema relaxation."
+  ],
+  "acceptance": [
+    "The notes drift fixture validates after safe repair.",
+    "Repair never changes confidence, evidence, claims, or business meaning.",
+    "Repair manifest records every removed key.",
+    "Unrepairable errors still fail without final docs writes."
+  ],
+  "tests": [
+    "node --test tests/lib/ai/analyze-project-repair.test.js",
+    "node --test tests/commands/ai-analyze-project-provider.test.js",
+    "npm run schema:slice:check",
+    "git diff --check"
+  ],
+  "validation_hints": [
+    "Assert that repair handles additionalProperties only."
+  ],
+  "estimated_hours": 6,
+  "actual_hours": 4,
+  "status": "completed",
+  "started_at": "2026-06-11T12:11:30Z",
+  "completed_at": "2026-06-11T12:16:13Z",
+  "blocked_reason": null
+}

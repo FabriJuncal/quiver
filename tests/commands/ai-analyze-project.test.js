@@ -89,6 +89,8 @@ test('ai analyze-project --json emits clean machine-readable output', () => {
     assert.equal(parsed.project.name, 'json-demo');
     assert.ok(parsed.selected_files.some((file) => file.path === 'src/routes/users.ts'));
     assert.ok(parsed.selected_files.some((file) => file.path === 'src/routes/users.test.ts'));
+    assert.ok(parsed.detected.structural_map.routes.includes('src/routes/users.ts'));
+    assert.ok(parsed.detected.structural_map.exports.some((entry) => entry.path === 'src/routes/users.ts' && entry.exports.includes('users')));
     assert.equal(fs.existsSync(path.join(repo.root, '.quiver')), false);
   } finally {
     repo.cleanup();

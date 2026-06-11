@@ -22,8 +22,16 @@ const {
   formatAnalyzeProjectDiffPreview,
   writeAnalyzeProjectDocs,
 } = require('../lib/ai/analyze-project-docs');
-const { parseAnalyzeProjectOutput } = require('../lib/ai/analyze-project-parser');
-const { buildAnalyzeProjectPrompt } = require('../lib/ai/analyze-project-prompts');
+const {
+  buildAnalyzeProjectPrompt,
+  buildAnalyzeProjectRetryPrompt,
+  buildSelectedContextManifest,
+  writeSelectedContextManifest,
+} = require('../lib/ai/analyze-project-prompts');
+const {
+  parseAnalyzeProjectOutputWithRepair,
+  writeAnalyzeProjectRepairManifest,
+} = require('../lib/ai/analyze-project-repair');
 const {
   confirmAnalyzeProjectWrites,
   reviewAnalyzeProjectDocProposal,
@@ -33,7 +41,12 @@ const {
   DEFAULT_MAX_FILES: DEFAULT_ANALYZE_MAX_FILES,
   sampleProjectFiles,
 } = require('../lib/ai/analyze-project-sampling');
-const { validateAnalyzeProjectPostWrite } = require('../lib/ai/analyze-project-validation');
+const {
+  groupAnalyzeProjectIssues,
+  validateAnalyzeProjectPostWrite,
+  writeAnalyzeProjectRetryManifest,
+  writeAnalyzeProjectValidationManifest,
+} = require('../lib/ai/analyze-project-validation');
 const { openEditor } = require('../lib/cli/editor');
 const { selectOption, promptText } = require('../lib/cli/selectors');
 const { createUx } = require('../lib/cli/ux');
@@ -166,22 +179,23 @@ function limitList(items, maxItems = 30) {
 }
 
 function formatAnalyzeProjectIssues(issues = [], maxIssues = 8) {
-  const list = Array.isArray(issues) ? issues : [];
-  const visible = list.slice(0, maxIssues);
-  const lines = visible.map((issue) => {
-    const location = issue.path || 'analysis';
-    const code = issue.issue || 'invalid';
-    const message = issue.message || 'Invalid provider analysis output.';
-    return `- ${location}: ${code} - ${message}`;
+  const groups = groupAnalyzeProjectIssues(issues, { maxExamplesPerGroup: 1 });
+  const visible = groups.slice(0, maxIssues);
+  const lines = visible.map((group) => {
+    const example = group.examples[0];
+    const exampleText = example
+      ? ` Example: ${example.path || 'analysis'} - ${example.message}`
+      : '';
+    return `- ${group.path_family}: ${group.type} (${group.count} issue${group.count === 1 ? '' : 's'}). Cause: ${group.cause_hint}${exampleText}`;
   });
-  const hidden = list.length - visible.length;
+  const hidden = groups.length - visible.length;
   if (hidden > 0) {
-    lines.push(`- ... ${hidden} more issue${hidden === 1 ? '' : 's'}`);
+    lines.push(`- ... ${hidden} more issue group${hidden === 1 ? '' : 's'}`);
   }
   return lines;
 }
 
-function enhanceAnalyzeProjectAnalysisError(error) {
+function enhanceAnalyzeProjectAnalysisError(error, options = {}) {
   if (!error || error.code !== 'AI_ANALYZE_PROJECT_INVALID') {
     return error;
   }
@@ -195,13 +209,19 @@ function enhanceAnalyzeProjectAnalysisError(error) {
     error.message,
     'Issues:',
     ...issueLines,
+    options.repairManifest?.path ? `Repair manifest: ${options.repairManifest.path}` : '',
+    options.retryManifest?.path ? `Retry manifest: ${options.retryManifest.path}` : '',
+    options.validationManifest?.path ? `Validation manifest: ${options.validationManifest.path}` : '',
     'Next safe step: inspect the selected evidence with `npx create-quiver ai analyze-project --deep --dry-run --json`, then rerun live. If provider drift repeats, reduce --max-files or --max-bytes.',
-  ].join('\n'));
+  ].filter(Boolean).join('\n'));
   wrapped.name = error.name;
   wrapped.code = error.code;
   wrapped.cause = error;
   wrapped.issues = error.issues;
   wrapped.details = error.issues;
+  wrapped.repair_manifest = options.repairManifest || null;
+  wrapped.retry_manifest = options.retryManifest || null;
+  wrapped.validation_manifest = options.validationManifest || null;
   return wrapped;
 }
 
@@ -251,6 +271,9 @@ function formatAnalyzeProjectReport(report) {
   lines.push(`Source roots: ${report.detected.source_roots.length > 0 ? report.detected.source_roots.join(', ') : 'none'}`);
   lines.push(`Entrypoints: ${report.detected.entrypoints.length > 0 ? report.detected.entrypoints.join(', ') : 'none'}`);
   lines.push(`Configs: ${report.detected.configs.length > 0 ? report.detected.configs.join(', ') : 'none'}`);
+  lines.push(`Lockfiles: ${(report.detected.lockfiles || []).length > 0
+    ? report.detected.lockfiles.map((file) => `${file.path} (${file.package_manager}; metadata only)`).join(', ')
+    : 'none'}`);
 
   lines.push('', 'Selected files:');
   for (const file of selected.items) {
@@ -397,6 +420,60 @@ function buildAnalyzeProjectProviderArtifact(result, clean, repoRoot, options = 
   };
 }
 
+function createAnalyzeProjectAuditRunId(now = new Date()) {
+  const date = now instanceof Date ? now : new Date(now || Date.now());
+  return `run-${date.toISOString()
+    .replace(/\.\d{3}Z$/, 'z')
+    .replace(/[^0-9a-z]+/gi, '-')
+    .toLowerCase()
+    .replace(/^-+|-+$/g, '')}`;
+}
+
+function writeAnalyzeProjectRunStatus(repoRoot, runId, status, details = {}) {
+  const statusPath = path.join(repoRoot, '.quiver', 'runs', runId, 'status.json');
+  fs.mkdirSync(path.dirname(statusPath), { recursive: true });
+  fs.writeFileSync(statusPath, `${JSON.stringify({
+    schema_version: 1,
+    kind: 'quiver-analyze-project-run-status',
+    run_id: runId,
+    status,
+    updated_at: (details.now instanceof Date ? details.now : new Date(details.now || Date.now())).toISOString(),
+    provider: details.provider || null,
+    attempts: details.attempts || [],
+    artifacts: details.artifacts || {},
+  }, null, 2)}\n`);
+  return path.relative(repoRoot, statusPath).split(path.sep).join('/');
+}
+
+function normalizeAnalyzeProjectMaxRetries(value) {
+  if (value === undefined || value === null || value === '') {
+    return 1;
+  }
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed < 0) {
+    return 1;
+  }
+  return Math.min(2, Math.floor(parsed));
+}
+
+function isAnalyzeProjectRetryableError(error) {
+  if (!error || error.code !== 'AI_ANALYZE_PROJECT_INVALID') {
+    return false;
+  }
+  const retryableIssues = new Set([
+    'empty-output',
+    'malformed-json',
+    'invalid_type',
+    'invalid_value',
+    'unrecognized_keys',
+    'missing-evidence',
+    'evidence-not-selected',
+    'unapproved-doc-update-path',
+  ]);
+  const issues = Array.isArray(error.issues) ? error.issues : [];
+  return issues.length > 0 && issues.every((issue) => retryableIssues.has(issue.issue || ''));
+}
+
 function formatAnalyzeProjectLiveReport(report) {
   const warningCount = report.analysis_validation?.warnings?.length || 0;
   const docUpdatePaths = report.analysis_validation?.doc_update_paths || [];
@@ -405,6 +482,7 @@ function formatAnalyzeProjectLiveReport(report) {
     `Mode: ${report.mode}`,
     `Provider: ${report.provider}`,
     `Provider execution: ${report.provider_execution}`,
+    `Provider attempts: ${report.provider_attempts?.length || 1}`,
     `Writes: ${report.writes.length === 0 ? 'none' : report.writes.join(', ')}`,
     `Privacy preflight: ${report.privacy_preflight.ok ? 'passed' : 'failed'}`,
     `Prompt bytes: ${report.prompt.bytes}/${report.prompt.max_provider_prompt_bytes}`,
@@ -609,7 +687,8 @@ function shouldShowHumanProgress(ux, options = {}) {
   return options.progress !== false
     && options.dryRun !== true
     && options.printPrompt !== true
-    && ux?.mode?.decoration === true;
+    && ux?.mode?.json !== true
+    && (ux?.mode?.decoration === true || options.linearProgress === true);
 }
 
 function plannerProgressTitle(action, runtimeProfile, options = {}) {
@@ -630,10 +709,32 @@ function writeProgressChecks(ux, enabled, title, checks = []) {
   }
 }
 
-async function runProviderWithProgress({ ux, enabled, message = 'Running agent...', successMessage = 'Agent finished', failureMessage = 'Agent failed', run }) {
+function writeProgressCheck(ux, enabled, check) {
+  if (!enabled || !check) {
+    return;
+  }
+  ux.check(check);
+}
+
+function writeProgressInfo(ux, enabled, message) {
+  if (!enabled || !message) {
+    return;
+  }
+  ux.info(message);
+}
+
+async function runProviderWithProgress({
+  ux,
+  enabled,
+  message = 'Running agent...',
+  successMessage = 'Agent finished',
+  failureMessage = 'Agent failed',
+  failOnProviderResult = true,
+  run,
+}) {
   async function runAndFailOnProviderResult() {
     const result = await run();
-    if (result && result.ok === false) {
+    if (failOnProviderResult && result && result.ok === false) {
       const error = new Error(result.error?.message || 'provider run failed');
       error.code = result.error?.code || 'AI_PROVIDER_RUN_FAILED';
       error.providerResult = result;
@@ -1909,6 +2010,22 @@ async function runPrepareContext(repoRoot, options = {}) {
 }
 
 async function runAnalyzeProject(repoRoot, options = {}) {
+  const role = normalizeRole(options.role || DEFAULT_PLAN_ROLE);
+  const runtimeProfile = resolveRuntimeAgentProfile(repoRoot, role, options, DEFAULT_PLAN_PROVIDER);
+  const provider = runtimeProfile.provider;
+  const ux = createCommandUx(options);
+  const showProgress = shouldShowHumanProgress(ux, { ...options, linearProgress: true });
+  const progressTranslator = createTranslator(options.language);
+  const progressTitle = plannerProgressTitle(
+    progressTranslator.t('ai.planner.progress.analyze_project'),
+    runtimeProfile,
+    options,
+  );
+
+  if (showProgress) {
+    ux.heading(progressTitle);
+  }
+
   const report = buildAnalyzeProjectReport(repoRoot, options);
   if (options.dryRun === true) {
     if (options.json === true) {
@@ -1919,13 +2036,10 @@ async function runAnalyzeProject(repoRoot, options = {}) {
     return report;
   }
 
-  const role = normalizeRole(options.role || DEFAULT_PLAN_ROLE);
-  const runtimeProfile = resolveRuntimeAgentProfile(repoRoot, role, options, DEFAULT_PLAN_PROVIDER);
-  const provider = runtimeProfile.provider;
   const timeoutMs = normalizeTimeout(options.timeout);
-  const ux = createCommandUx(options);
-  const showProgress = shouldShowHumanProgress(ux, options);
-  const progressTranslator = createTranslator(options.language);
+  writeProgressCheck(ux, showProgress, progressTranslator.t('ai.planner.progress.reading_base_docs'));
+  writeProgressCheck(ux, showProgress, progressTranslator.t('ai.planner.progress.detecting_structure'));
+  writeProgressCheck(ux, showProgress, progressTranslator.t('ai.planner.progress.selecting_sample'));
   const promptPackage = buildAnalyzeProjectPrompt({
     analysisPlan: report,
     repoRoot,
@@ -1935,17 +2049,8 @@ async function runAnalyzeProject(repoRoot, options = {}) {
   const prompt = promptPackage.prompt;
   const promptLimit = assertProviderPromptWithinLimit(prompt, options.promptLimitOptions || {});
   const privacyPreflight = promptPackage.privacyPreflight;
-
-  writeProgressChecks(
-    ux,
-    showProgress,
-    plannerProgressTitle(progressTranslator.t('ai.planner.progress.analyze_project'), runtimeProfile, options),
-    [
-      progressTranslator.t('ai.planner.progress.reading_base_docs'),
-      progressTranslator.t('ai.planner.progress.detecting_structure'),
-      progressTranslator.t('ai.planner.progress.preparing_prompt'),
-    ],
-  );
+  const auditRunId = options.runId || createAnalyzeProjectAuditRunId(options.now || new Date());
+  writeProgressCheck(ux, showProgress, progressTranslator.t('ai.planner.progress.preparing_prompt'));
 
   if (!privacyPreflight.ok) {
     const error = new Error(formatError('ai analyze-project privacy preflight failed; provider execution was blocked before sending repository content.'));
@@ -1983,45 +2088,215 @@ async function runAnalyzeProject(repoRoot, options = {}) {
     };
   }
 
+  const selectedContextManifest = writeSelectedContextManifest(
+    repoRoot,
+    buildSelectedContextManifest({
+      analysisPlan: report,
+      promptPackage,
+      promptLimit,
+      provider,
+      runId: auditRunId,
+      now: options.now,
+    }),
+    {
+      runId: auditRunId,
+      now: options.now,
+    },
+  );
+
+  const maxRetries = normalizeAnalyzeProjectMaxRetries(options.maxAnalyzeProjectRetries);
+  const providerAttempts = [];
   let result;
-  try {
-    result = await runProviderWithProgress({
-      ux,
-      enabled: showProgress,
-      message: progressTranslator.t('ai.planner.progress.running_agent'),
-      successMessage: progressTranslator.t('ai.planner.progress.agent_finished'),
-      failureMessage: progressTranslator.t('ai.planner.progress.agent_failed'),
-      run: () => (options.runProviderFn || runProvider)(provider, {
-        prompt,
-        cwd: repoRoot,
-        timeoutMs,
-        dryRun: false,
-        probe: options.probe,
-        spawn: options.spawn,
-        tempRoot: options.tempRoot,
-        tempFileName: options.tempFileName,
-        tempFilePrefix: options.tempFilePrefix,
-        ...runtimeModelExecutionOptions(runtimeProfile, options),
-        enforceModelSelection: false,
-      }),
-    });
-  } catch (error) {
-    throw annotateProviderError(error, 'analyze-project');
-  }
-
-  if (!result.ok) {
-    throw annotateProviderError(result.error || new Error('provider run failed'), 'analyze-project');
-  }
-
-  const clean = extractCleanProviderOutput(result, { prompt, projectRoot: repoRoot });
+  let clean;
   let parsed;
-  try {
-    parsed = parseAnalyzeProjectOutput(clean.cleanOutput, {
-      selectedFiles: report.selected_files,
-      promptFiles: promptPackage.files,
-    });
-  } catch (error) {
-    throw enhanceAnalyzeProjectAnalysisError(error);
+  let repairManifest = null;
+  let retryManifest = null;
+  let currentPrompt = prompt;
+  const rawProviderArtifacts = [];
+
+  for (let attemptIndex = 0; attemptIndex <= maxRetries; attemptIndex += 1) {
+    try {
+      result = await runProviderWithProgress({
+        ux,
+        enabled: showProgress,
+        message: attemptIndex === 0
+          ? progressTranslator.t('ai.planner.progress.running_agent')
+          : `Retrying agent (${attemptIndex}/${maxRetries})...`,
+        successMessage: progressTranslator.t('ai.planner.progress.agent_finished'),
+        failureMessage: progressTranslator.t('ai.planner.progress.agent_failed'),
+        failOnProviderResult: false,
+        run: () => (options.runProviderFn || runProvider)(provider, {
+          prompt: currentPrompt,
+          cwd: repoRoot,
+          timeoutMs,
+          dryRun: false,
+          probe: options.probe,
+          spawn: options.spawn,
+          tempRoot: options.tempRoot,
+          tempFileName: options.tempFileName,
+          tempFilePrefix: options.tempFilePrefix,
+          ...runtimeModelExecutionOptions(runtimeProfile, options),
+          enforceModelSelection: false,
+        }),
+      });
+    } catch (error) {
+      throw annotateProviderError(error, 'analyze-project');
+    }
+
+    rawProviderArtifacts.push(writeRawProviderArtifact(repoRoot, auditRunId, `analyze-project-provider-attempt-${attemptIndex + 1}`, result, {
+      now: options.now,
+      metadata: {
+        attempt: attemptIndex + 1,
+        retry: attemptIndex > 0,
+      },
+    }));
+    writeProgressCheck(ux, showProgress, progressTranslator.t('ai.planner.progress.writing_artifacts'));
+    if (!result.ok) {
+      writeProgressInfo(ux, showProgress, progressTranslator.t('ai.planner.progress.agent_failed'));
+      writeAnalyzeProjectRunStatus(repoRoot, auditRunId, 'failed', {
+        now: options.now,
+        provider,
+        attempts: [{
+          attempt: attemptIndex + 1,
+          status: 'provider-failed',
+          retry: attemptIndex > 0,
+        }],
+        artifacts: {
+          selected_context: selectedContextManifest,
+          raw_provider: rawProviderArtifacts.map((artifact) => artifact.path),
+        },
+      });
+      throw annotateProviderError(result.error || new Error('provider run failed'), 'analyze-project');
+    }
+
+    clean = extractCleanProviderOutput(result, { prompt: currentPrompt, projectRoot: repoRoot });
+    try {
+      parsed = parseAnalyzeProjectOutputWithRepair(clean.cleanOutput, {
+        selectedFiles: report.selected_files,
+        promptFiles: promptPackage.files,
+      });
+      writeProgressCheck(ux, showProgress, progressTranslator.t('ai.planner.progress.validating_schema'));
+      if (parsed.repairManifest) {
+        repairManifest = writeAnalyzeProjectRepairManifest(repoRoot, parsed.repairManifest, {
+          runId: auditRunId,
+          now: options.now,
+        });
+        writeProgressCheck(ux, showProgress, progressTranslator.t('ai.planner.progress.repairing_schema'));
+      }
+      providerAttempts.push({
+        attempt: attemptIndex + 1,
+        status: 'valid',
+        retry: attemptIndex > 0,
+        parse_source: parsed.parseSource,
+        repaired: parsed.repaired === true,
+        repair_manifest: repairManifest,
+      });
+      if (providerAttempts.length > 1) {
+        retryManifest = writeAnalyzeProjectRetryManifest(repoRoot, {
+          provider,
+          command: 'ai analyze-project',
+          runId: auditRunId,
+          now: options.now,
+          maxRetries,
+          finalStatus: 'valid',
+          attempts: providerAttempts,
+        });
+      }
+      writeAnalyzeProjectRunStatus(repoRoot, auditRunId, 'completed', {
+        now: options.now,
+        provider,
+        attempts: providerAttempts,
+        artifacts: {
+          selected_context: selectedContextManifest,
+          raw_provider: rawProviderArtifacts.map((artifact) => artifact.path),
+          repair: repairManifest,
+          retry: retryManifest,
+        },
+      });
+      break;
+    } catch (error) {
+      let attemptRepairManifest = null;
+      if (error.repair_manifest) {
+        try {
+          attemptRepairManifest = writeAnalyzeProjectRepairManifest(repoRoot, error.repair_manifest, {
+            runId: auditRunId,
+            now: options.now,
+          });
+        } catch {
+          attemptRepairManifest = null;
+        }
+      }
+      const retryable = isAnalyzeProjectRetryableError(error);
+      providerAttempts.push({
+        attempt: attemptIndex + 1,
+        status: 'invalid',
+        retry: attemptIndex > 0,
+        retryable,
+        issue_count: Array.isArray(error.issues) ? error.issues.length : 0,
+        groups: groupAnalyzeProjectIssues(error.issues, { maxExamplesPerGroup: 2 }),
+        repair_manifest: attemptRepairManifest,
+      });
+
+      if (retryable && attemptIndex < maxRetries) {
+        writeProgressInfo(ux, showProgress, progressTranslator.t('ai.planner.progress.retrying_agent'));
+        currentPrompt = buildAnalyzeProjectRetryPrompt({
+          previousOutput: clean.cleanOutput,
+          issueLines: formatAnalyzeProjectIssues(error.issues, 6),
+          attempt: attemptIndex + 1,
+          maxRetries,
+        });
+        continue;
+      }
+
+      if (providerAttempts.length > 1) {
+        retryManifest = writeAnalyzeProjectRetryManifest(repoRoot, {
+          provider,
+          command: 'ai analyze-project',
+          runId: auditRunId,
+          now: options.now,
+          maxRetries,
+          finalStatus: 'invalid',
+          attempts: providerAttempts,
+        });
+      }
+
+      let validationManifest = null;
+      try {
+        validationManifest = writeAnalyzeProjectValidationManifest(repoRoot, {
+          error,
+          provider,
+          command: 'ai analyze-project',
+          runId: auditRunId,
+          now: options.now,
+          retry: {
+            attempts: providerAttempts.length,
+            max_retries: maxRetries,
+            retryable,
+            exhausted: retryable && attemptIndex >= maxRetries,
+            manifest: retryManifest,
+          },
+        });
+      } catch {
+        validationManifest = null;
+      }
+      writeAnalyzeProjectRunStatus(repoRoot, auditRunId, 'failed', {
+        now: options.now,
+        provider,
+        attempts: providerAttempts,
+        artifacts: {
+          selected_context: selectedContextManifest,
+          raw_provider: rawProviderArtifacts.map((artifact) => artifact.path),
+          repair: attemptRepairManifest,
+          retry: retryManifest,
+          validation: validationManifest,
+        },
+      });
+      throw enhanceAnalyzeProjectAnalysisError(error, {
+        validationManifest,
+        repairManifest: attemptRepairManifest,
+        retryManifest,
+      });
+    }
   }
   const completedReport = {
     ...report,
@@ -2040,8 +2315,16 @@ async function runAnalyzeProject(repoRoot, options = {}) {
       parse_source: parsed.parseSource,
       warnings: parsed.warnings,
       doc_update_paths: parsed.docUpdatePaths,
+      repaired: parsed.repaired === true,
+      repair_manifest: repairManifest,
+      retry_count: Math.max(0, providerAttempts.length - 1),
+      retry_manifest: retryManifest,
     },
     provider_artifact: buildAnalyzeProjectProviderArtifact(result, clean, repoRoot),
+    raw_provider_artifacts: rawProviderArtifacts.map((artifact) => artifact.path),
+    provider_attempts: providerAttempts,
+    run_status_path: path.join('.quiver', 'runs', auditRunId, 'status.json').split(path.sep).join('/'),
+    selected_context_manifest: selectedContextManifest,
   };
 
   if (options.review === true) {
