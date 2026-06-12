@@ -7,6 +7,8 @@ const {
   writeAnalyzeProjectDocs,
 } = require('./analyze-project-docs');
 const {
+  buildAnalyzeProjectProposalArtifactPaths,
+  normalizeAnalyzeProjectProposalManifest,
   writeAnalyzeProjectProposalArtifacts,
   writeAnalyzeProjectWriteManifest,
 } = require('./analyze-project-proposal');
@@ -110,22 +112,49 @@ function validationFromWriteError(error, options = {}) {
   };
 }
 
+function normalizeLoadedProposalArtifacts(runId, proposalArtifacts = {}, proposalManifest = null) {
+  const paths = buildAnalyzeProjectProposalArtifactPaths(runId);
+  const manifestData = normalizeAnalyzeProjectProposalManifest(proposalManifest || proposalArtifacts.manifest_data || {});
+  return {
+    root: proposalArtifacts.root || paths.root,
+    proposal_json: proposalArtifacts.proposal_json || manifestData.proposal_json,
+    proposal_markdown: proposalArtifacts.proposal_markdown || manifestData.proposal_markdown,
+    proposal_diff: proposalArtifacts.proposal_diff || manifestData.proposal_diff,
+    manifest: proposalArtifacts.manifest || paths.manifest,
+    proposal_sha256: proposalArtifacts.proposal_sha256 || manifestData.proposal_sha256,
+    doc_paths: proposalArtifacts.doc_paths || manifestData.doc_paths || [],
+    changed_docs: proposalArtifacts.changed_docs || manifestData.doc_paths || [],
+    manifest_data: manifestData,
+    files: Array.isArray(proposalArtifacts.files)
+      ? proposalArtifacts.files
+      : [
+        manifestData.proposal_json,
+        manifestData.proposal_markdown,
+        manifestData.proposal_diff,
+        paths.manifest,
+      ],
+  };
+}
+
 function applyAnalyzeProjectDocProposal(repoRoot, options = {}) {
   const runId = String(options.runId || '').trim();
   const proposal = options.proposal;
   const now = options.now instanceof Date ? options.now : new Date(options.now || Date.now());
   const writePlan = buildAnalyzeProjectWritePlan(repoRoot, proposal);
-  const proposalArtifacts = writeAnalyzeProjectProposalArtifacts(repoRoot, {
-    runId,
-    now,
-    provider: options.provider,
-    language: options.language,
-    proposal,
-    writePlan,
-    selectedContextManifest: options.selectedContextManifest,
-    repairManifest: options.repairManifest,
-    events: [{ type: 'proposal-saved-before-apply', at: now.toISOString() }],
-  });
+  const applyEvents = Array.isArray(options.events) ? options.events : [];
+  const proposalArtifacts = options.proposalArtifacts
+    ? normalizeLoadedProposalArtifacts(runId, options.proposalArtifacts, options.proposalManifest)
+    : writeAnalyzeProjectProposalArtifacts(repoRoot, {
+      runId,
+      now,
+      provider: options.provider,
+      language: options.language,
+      proposal,
+      writePlan,
+      selectedContextManifest: options.selectedContextManifest,
+      repairManifest: options.repairManifest,
+      events: [{ type: 'proposal-saved-before-apply', at: now.toISOString() }],
+    });
 
   try {
     assertAnalyzeProjectApplyPreflight(writePlan, proposalArtifacts.manifest_data, {
@@ -150,7 +179,10 @@ function applyAnalyzeProjectDocProposal(repoRoot, options = {}) {
     writePlan,
     strict: options.strict === true,
     status: 'planned',
-    events: [{ type: 'write-planned', at: now.toISOString() }],
+    events: [
+      ...applyEvents,
+      { type: 'write-planned', at: now.toISOString() },
+    ],
   });
 
   let writtenDocs = [];
@@ -169,6 +201,7 @@ function applyAnalyzeProjectDocProposal(repoRoot, options = {}) {
       partialWrite: partialDocs.length > 0,
       status: 'completed',
       events: [
+        ...applyEvents,
         { type: 'write-planned', at: now.toISOString() },
         { type: 'write-failed', at: new Date().toISOString(), message: error?.message || 'write failed' },
       ],
@@ -196,6 +229,7 @@ function applyAnalyzeProjectDocProposal(repoRoot, options = {}) {
       proposal_diff: proposalArtifacts.proposal_diff,
       manifest: proposalArtifacts.manifest,
       proposal_sha256: proposalArtifacts.proposal_sha256,
+      proposal_edited: options.proposalEdited === true,
     },
     write_manifest: {
       path: plannedManifest.path,
@@ -215,6 +249,7 @@ function applyAnalyzeProjectDocProposal(repoRoot, options = {}) {
     partialWrite: false,
     status: 'completed',
     events: [
+      ...applyEvents,
       { type: 'write-planned', at: now.toISOString() },
       { type: 'write-completed', at: new Date().toISOString(), written_docs: writtenDocs },
     ],

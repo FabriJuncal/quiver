@@ -1525,6 +1525,15 @@ function parseArgs(argv, options = {}) {
     if (result.dryRun && result.aiSecondaryCommand === 'apply') {
       throw new Error(formatError('ai analyze-project apply --run cannot be combined with --dry-run'));
     }
+    if (result.aiSecondaryCommand === 'apply' && (result.aiAnalyzeApplyDocs || result.aiAnalyzeSaveProposal || result.review)) {
+      throw new Error(formatError('ai analyze-project apply --run cannot be combined with --apply-docs, --save-proposal, or --review'));
+    }
+    if (result.aiSecondaryCommand === 'apply' && result.aiRunId === 'latest' && result.force) {
+      throw new Error(formatError('ai analyze-project apply --run latest cannot be combined with --yes'));
+    }
+    if (result.aiSecondaryCommand === 'apply' && result.aiRunId === 'latest' && result.json) {
+      throw new Error(formatError('ai analyze-project apply --run latest cannot be combined with --json'));
+    }
     if (result.json && result.aiAnalyzeApplyDocs && !result.force) {
       throw new Error(formatError('ai analyze-project --json with --apply-docs requires --yes'));
     }

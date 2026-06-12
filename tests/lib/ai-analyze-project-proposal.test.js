@@ -8,7 +8,9 @@ const {
   ANALYZE_PROJECT_PROPOSAL_MANIFEST_KIND,
   ANALYZE_PROJECT_WRITE_MANIFEST_KIND,
   buildAnalyzeProjectProposalArtifactPaths,
+  readAnalyzeProjectSavedProposal,
   normalizeAnalyzeProjectProposalManifest,
+  normalizeAnalyzeProjectProposalRunId,
   normalizeAnalyzeProjectWriteManifest,
   writeAnalyzeProjectProposalArtifacts,
   writeAnalyzeProjectWriteManifest,
@@ -37,6 +39,12 @@ test('analyze-project proposal artifact paths follow the v55 contract', () => {
   assert.equal(paths.proposal_diff, '.quiver/runs/run-2026-06-12t12-00-00z/proposal/analyze-project-doc-proposal.diff');
   assert.equal(paths.manifest, '.quiver/runs/run-2026-06-12t12-00-00z/proposal/manifest.json');
   assert.equal(paths.write_manifest, '.quiver/runs/run-2026-06-12t12-00-00z/writes/analyze-project-doc-writes.json');
+});
+
+test('analyze-project proposal run ids reject unsafe path segments', () => {
+  assert.equal(normalizeAnalyzeProjectProposalRunId('run-123'), 'run-123');
+  assert.throws(() => normalizeAnalyzeProjectProposalRunId('../run-123'), /run id is not safe/);
+  assert.throws(() => normalizeAnalyzeProjectProposalRunId('run/123'), /run id is not safe/);
 });
 
 test('proposal and write manifests validate strict safe paths', () => {
@@ -172,6 +180,60 @@ test('writeAnalyzeProjectProposalArtifacts writes normalized proposal, compact s
     assert.equal(manifest.doc_before_hashes['docs/CONTEXTO.md'], null);
     assert.equal(manifest.proposal_sha256, artifacts.proposal_sha256);
     assert.equal(manifest.events[0].type, 'proposal-saved');
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('readAnalyzeProjectSavedProposal validates saved artifacts and detects manual proposal edits', () => {
+  const repo = makeRepo();
+  const proposal = {
+    schema_version: 1,
+    kind: 'quiver-analyze-project-doc-proposal',
+    summary: 'Docs proposed from analysis.',
+    docs: [{
+      path: 'docs/CONTEXTO.md',
+      action: 'update',
+      content: '# Context\nOriginal proposal.\n',
+      reason: 'AI analyze-project proposed a managed documentation update.',
+    }],
+  };
+  const writePlan = [{
+    path: 'docs/CONTEXTO.md',
+    action: 'create',
+    dirty: false,
+    before_sha256: null,
+    after_sha256: 'after-hash',
+    reason: 'AI analyze-project proposed a managed documentation update.',
+    currentContent: '',
+    proposedContent: '<!-- quiver:analyze-project:start -->\n# Context\nOriginal proposal.\n<!-- quiver:analyze-project:end -->\n',
+  }];
+
+  try {
+    const artifacts = writeAnalyzeProjectProposalArtifacts(repo.root, {
+      runId: 'run-saved-proposal',
+      now: new Date('2026-06-12T12:20:00.000Z'),
+      provider: 'codex',
+      language: 'en',
+      proposal,
+      writePlan,
+      selectedContextManifest: '.quiver/runs/run-saved-proposal/context/selected-context.json',
+      repairManifest: null,
+    });
+
+    const loaded = readAnalyzeProjectSavedProposal(repo.root, 'run-saved-proposal');
+    assert.equal(loaded.run_id, 'run-saved-proposal');
+    assert.equal(loaded.proposal_edited, false);
+    assert.equal(loaded.manifest.proposal_json, artifacts.proposal_json);
+    assert.deepEqual(loaded.proposal.docs.map((doc) => doc.path), ['docs/CONTEXTO.md']);
+
+    const edited = readJson(path.join(repo.root, artifacts.proposal_json));
+    edited.docs[0].content = '# Context\nEdited proposal.\n';
+    fs.writeFileSync(path.join(repo.root, artifacts.proposal_json), `${JSON.stringify(edited, null, 2)}\n`);
+
+    const editedLoaded = readAnalyzeProjectSavedProposal(repo.root, 'run-saved-proposal');
+    assert.equal(editedLoaded.proposal_edited, true);
+    assert.equal(editedLoaded.proposal.docs[0].content, '# Context\nEdited proposal.\n');
   } finally {
     repo.cleanup();
   }
