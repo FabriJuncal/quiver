@@ -43,6 +43,10 @@ const {
   applyAnalyzeProjectDocProposal,
 } = require('../lib/ai/analyze-project-apply');
 const {
+  canUseAnalyzeProjectInteractiveSelector,
+  runAnalyzeProjectInteractiveApplySelector,
+} = require('../lib/ai/analyze-project-interactive');
+const {
   DEFAULT_MAX_BYTES: DEFAULT_ANALYZE_MAX_BYTES,
   DEFAULT_MAX_FILES: DEFAULT_ANALYZE_MAX_FILES,
   sampleProjectFiles,
@@ -635,6 +639,255 @@ function formatAnalyzeProjectApplyPreflightError(error) {
   wrapped.cause = error;
   wrapped.issues = error.issues;
   return wrapped;
+}
+
+function analyzeProjectRawProviderArtifactPaths(rawProviderArtifacts = []) {
+  return (Array.isArray(rawProviderArtifacts) ? rawProviderArtifacts : [])
+    .map((artifact) => (typeof artifact === 'string' ? artifact : artifact?.path))
+    .filter(Boolean);
+}
+
+function summarizeAnalyzeProjectProposalArtifacts(proposalArtifacts = {}) {
+  return {
+    root: proposalArtifacts.root,
+    proposal_json: proposalArtifacts.proposal_json,
+    proposal_markdown: proposalArtifacts.proposal_markdown,
+    proposal_diff: proposalArtifacts.proposal_diff,
+    manifest: proposalArtifacts.manifest,
+    proposal_sha256: proposalArtifacts.proposal_sha256,
+  };
+}
+
+function listAnalyzeProjectProposalArtifactFiles(proposalArtifacts = {}) {
+  if (Array.isArray(proposalArtifacts.files)) {
+    return proposalArtifacts.files.filter(Boolean);
+  }
+  return [
+    proposalArtifacts.proposal_json,
+    proposalArtifacts.proposal_markdown,
+    proposalArtifacts.proposal_diff,
+    proposalArtifacts.manifest,
+  ].filter(Boolean);
+}
+
+function saveAnalyzeProjectDocProposalReport(repoRoot, options = {}) {
+  const proposalArtifacts = writeAnalyzeProjectProposalArtifacts(repoRoot, {
+    runId: options.auditRunId,
+    now: options.commandOptions?.now || new Date(),
+    provider: options.provider,
+    language: options.commandOptions?.language,
+    proposal: options.proposal,
+    writePlan: options.writePlan,
+    selectedContextManifest: options.selectedContextManifest,
+    repairManifest: options.repairManifest,
+    events: options.interactiveAction ? [{
+      type: 'interactive-action',
+      action: options.interactiveAction,
+      at: (options.commandOptions?.now instanceof Date
+        ? options.commandOptions.now
+        : new Date(options.commandOptions?.now || Date.now())).toISOString(),
+    }] : [],
+  });
+  const saveReport = {
+    ...options.completedReport,
+    save_proposal: true,
+    interactive_action: options.interactiveAction || undefined,
+    doc_proposal: options.proposal,
+    doc_paths: proposalArtifacts.doc_paths,
+    proposal_artifacts: summarizeAnalyzeProjectProposalArtifacts(proposalArtifacts),
+    write_plan: summarizeAnalyzeProjectWritePlan(options.writePlan),
+  };
+  writeAnalyzeProjectRunStatus(repoRoot, options.auditRunId, 'proposal-saved', {
+    now: options.commandOptions?.now,
+    provider: options.provider,
+    attempts: options.providerAttempts,
+    artifacts: {
+      selected_context: options.selectedContextManifest,
+      raw_provider: analyzeProjectRawProviderArtifactPaths(options.rawProviderArtifacts),
+      repair: options.repairManifest,
+      retry: options.retryManifest,
+      proposal_manifest: proposalArtifacts.manifest,
+      proposal_files: proposalArtifacts.files,
+    },
+  });
+  return saveReport;
+}
+
+function applyAnalyzeProjectDocProposalReport(repoRoot, options = {}) {
+  let applyReport;
+  try {
+    applyReport = applyAnalyzeProjectDocProposal(repoRoot, {
+      report: options.completedReport,
+      runId: options.auditRunId,
+      now: options.commandOptions?.now || new Date(),
+      provider: options.provider,
+      language: options.commandOptions?.language,
+      proposal: options.proposal,
+      providerArtifact: options.completedReport.provider_artifact,
+      selectedContextManifest: options.selectedContextManifest,
+      repairManifest: options.repairManifest,
+      strict: options.commandOptions?.strict === true,
+      allowDirtyDocs: options.allowDirtyDocs === true,
+      summarizeWritePlan: summarizeAnalyzeProjectWritePlan,
+    });
+  } catch (error) {
+    const proposalArtifacts = error.proposal_artifacts || {};
+    writeAnalyzeProjectRunStatus(repoRoot, options.auditRunId, error.code === 'AI_ANALYZE_PROJECT_APPLY_BLOCKED' ? 'apply-blocked' : 'apply-failed', {
+      now: options.commandOptions?.now,
+      provider: options.provider,
+      attempts: options.providerAttempts,
+      artifacts: {
+        selected_context: options.selectedContextManifest,
+        raw_provider: analyzeProjectRawProviderArtifactPaths(options.rawProviderArtifacts),
+        repair: options.repairManifest,
+        retry: options.retryManifest,
+        proposal_manifest: proposalArtifacts.manifest || null,
+        proposal_files: listAnalyzeProjectProposalArtifactFiles(proposalArtifacts),
+        write_manifest: error.write_manifest?.path || null,
+        snapshot_manifest: error.snapshot?.manifestPath || null,
+      },
+    });
+    throw formatAnalyzeProjectApplyPreflightError(error);
+  }
+
+  applyReport = {
+    ...applyReport,
+    interactive_action: options.interactiveAction || applyReport.interactive_action,
+  };
+  writeAnalyzeProjectRunStatus(repoRoot, options.auditRunId, applyReport.post_write_validation?.ok ? 'docs-applied' : 'apply-validation-failed', {
+    now: options.commandOptions?.now,
+    provider: options.provider,
+    attempts: options.providerAttempts,
+    artifacts: {
+      selected_context: options.selectedContextManifest,
+      raw_provider: analyzeProjectRawProviderArtifactPaths(options.rawProviderArtifacts),
+      repair: options.repairManifest,
+      retry: options.retryManifest,
+      proposal_manifest: applyReport.proposal_artifacts?.manifest,
+      proposal_files: listAnalyzeProjectProposalArtifactFiles(applyReport.proposal_artifacts),
+      write_manifest: applyReport.write_manifest?.path,
+      snapshot_manifest: applyReport.snapshot?.manifestPath,
+    },
+  });
+  return applyReport;
+}
+
+function emitAnalyzeProjectApplyReport(applyReport, options = {}) {
+  if (options.json === true) {
+    process.stdout.write(`${JSON.stringify(applyReport, null, 2)}\n`);
+  } else {
+    process.stdout.write(formatAnalyzeProjectApplyReport(applyReport));
+  }
+  if (!applyReport.post_write_validation?.ok) {
+    const error = new Error(formatError('ai analyze-project post-write validation failed.'));
+    error.code = 'AI_ANALYZE_PROJECT_POST_WRITE_VALIDATION_FAILED';
+    error.validation = applyReport.post_write_validation;
+    throw error;
+  }
+  return applyReport;
+}
+
+async function reviewAndWriteAnalyzeProjectDocs(repoRoot, options = {}) {
+  const commandOptions = options.commandOptions || {};
+  const reviewed = await reviewAnalyzeProjectDocProposal(repoRoot, options.initialProposal, commandOptions);
+  const writePlan = buildAnalyzeProjectWritePlan(repoRoot, reviewed.proposal);
+  process.stdout.write(formatAnalyzeProjectReviewPlan({
+    writePlan,
+    reviewPath: reviewed.reviewPath,
+  }));
+  await confirmAnalyzeProjectWrites(writePlan, commandOptions);
+  const lifecycleRun = ensureAiRun(repoRoot, {
+    command: 'ai analyze-project',
+    input: reviewed.reviewPath,
+    runId: commandOptions.runId,
+    phase: 'created',
+  });
+  const snapshot = createAnalyzeProjectSnapshot(repoRoot, lifecycleRun, writePlan, {
+    providerArtifact: options.completedReport.provider_artifact,
+    proposal: reviewed.proposal,
+    now: commandOptions.now || new Date(),
+  });
+  const writtenDocs = writeAnalyzeProjectDocs(writePlan);
+  let writeReport = {
+    ...options.completedReport,
+    review: true,
+    interactive_action: options.interactiveAction || undefined,
+    review_path: reviewed.reviewPath,
+    doc_proposal: reviewed.proposal,
+    write_plan: summarizeAnalyzeProjectWritePlan(writePlan),
+    snapshot,
+    written_docs: writtenDocs,
+    run_id: lifecycleRun.run_id,
+  };
+  const postWriteValidation = validateAnalyzeProjectPostWrite(repoRoot, writeReport, {
+    strict: commandOptions.strict === true,
+  });
+  writeReport = {
+    ...writeReport,
+    post_write_validation: postWriteValidation,
+  };
+
+  if (commandOptions.json === true) {
+    process.stdout.write(`${JSON.stringify(writeReport, null, 2)}\n`);
+    if (!postWriteValidation.ok) {
+      const error = new Error(formatError('ai analyze-project post-write validation failed.'));
+      error.code = 'AI_ANALYZE_PROJECT_POST_WRITE_VALIDATION_FAILED';
+      error.validation = postWriteValidation;
+      throw error;
+    }
+    return writeReport;
+  }
+
+  process.stdout.write(formatAnalyzeProjectReviewPlan({
+    writePlan,
+    reviewPath: reviewed.reviewPath,
+    snapshot,
+    writtenDocs,
+    validation: postWriteValidation,
+    completed: true,
+  }));
+  if (!postWriteValidation.ok) {
+    const error = new Error(formatError('ai analyze-project post-write validation failed.'));
+    error.code = 'AI_ANALYZE_PROJECT_POST_WRITE_VALIDATION_FAILED';
+    error.validation = postWriteValidation;
+    throw error;
+  }
+  return writeReport;
+}
+
+function cancelAnalyzeProjectInteractiveApplyReport(repoRoot, options = {}) {
+  const translator = createTranslator(options.commandOptions?.language);
+  const savedArtifacts = options.savedReport?.proposal_artifacts || null;
+  const cancelReport = {
+    ...options.completedReport,
+    apply_docs: true,
+    interactive_action: options.interactiveAction || 'cancel',
+    cancelled: true,
+    writes: [],
+    written_docs: [],
+    doc_proposal: options.proposal,
+    proposal_artifacts: savedArtifacts || undefined,
+    write_plan: summarizeAnalyzeProjectWritePlan(options.writePlan),
+  };
+  writeAnalyzeProjectRunStatus(repoRoot, options.auditRunId, 'apply-canceled', {
+    now: options.commandOptions?.now,
+    provider: options.provider,
+    attempts: options.providerAttempts,
+    artifacts: {
+      selected_context: options.selectedContextManifest,
+      raw_provider: analyzeProjectRawProviderArtifactPaths(options.rawProviderArtifacts),
+      repair: options.repairManifest,
+      retry: options.retryManifest,
+      proposal_manifest: savedArtifacts?.manifest || null,
+      proposal_files: savedArtifacts ? listAnalyzeProjectProposalArtifactFiles(savedArtifacts) : [],
+    },
+  });
+  process.stdout.write([
+    translator.t('ai.analyze_project.apply.cancelled'),
+    translator.t('ai.analyze_project.apply.cancelled_writes'),
+    '',
+  ].join('\n'));
+  return cancelReport;
 }
 
 function formatLocalizedActionableError({ failure, impact, fix, nextCommand } = {}, options = {}) {
@@ -2154,10 +2407,10 @@ async function runAnalyzeProject(repoRoot, options = {}) {
       'Use `npx create-quiver ai analyze-project --deep --review` until apply --run is available.',
     );
   }
-  if (options.applyDocs === true && options.force !== true) {
+  if (options.applyDocs === true && options.force !== true && !canUseAnalyzeProjectInteractiveSelector(options)) {
     throw analyzeProjectContractError(
-      'ai analyze-project --apply-docs interactive selector is implemented in a later v55 slice. No provider was run and no files were written.',
-      'Use `npx create-quiver ai analyze-project --deep --apply-docs --yes --provider <provider> --model <model>` for non-interactive apply, or `--review` for advanced edit mode.',
+      'ai analyze-project --apply-docs requires an interactive TTY unless --yes is passed. No provider was run and no files were written.',
+      'Use `npx create-quiver ai analyze-project --deep --apply-docs --yes --provider <provider> --model <model>` for automation, or rerun from an interactive terminal.',
     );
   }
 
@@ -2478,128 +2731,73 @@ async function runAnalyzeProject(repoRoot, options = {}) {
     run_status_path: path.join('.quiver', 'runs', auditRunId, 'status.json').split(path.sep).join('/'),
     selected_context_manifest: selectedContextManifest,
   };
+  const needsDocProposal = options.applyDocs === true || options.saveProposal === true || options.review === true;
+  const docProposal = needsDocProposal ? buildAnalyzeProjectDocProposal(parsed.analysis) : null;
+  const docWritePlan = docProposal ? buildAnalyzeProjectWritePlan(repoRoot, docProposal) : [];
+  const docActionContext = {
+    auditRunId,
+    commandOptions: options,
+    completedReport,
+    proposal: docProposal,
+    writePlan: docWritePlan,
+    provider,
+    providerAttempts,
+    rawProviderArtifacts,
+    selectedContextManifest,
+    repairManifest,
+    retryManifest,
+  };
 
   if (options.applyDocs === true && options.force === true) {
-    const proposal = buildAnalyzeProjectDocProposal(parsed.analysis);
-    let applyReport;
-    try {
-      applyReport = applyAnalyzeProjectDocProposal(repoRoot, {
-        report: completedReport,
-        runId: auditRunId,
-        now: options.now || new Date(),
-        provider,
-        language: options.language,
-        proposal,
-        providerArtifact: completedReport.provider_artifact,
-        selectedContextManifest,
-        repairManifest,
-        strict: options.strict === true,
-        allowDirtyDocs: options.allowDirtyDocs === true,
-        summarizeWritePlan: summarizeAnalyzeProjectWritePlan,
-      });
-    } catch (error) {
-      const proposalArtifacts = error.proposal_artifacts || {};
-      writeAnalyzeProjectRunStatus(repoRoot, auditRunId, error.code === 'AI_ANALYZE_PROJECT_APPLY_BLOCKED' ? 'apply-blocked' : 'apply-failed', {
-        now: options.now,
-        provider,
-        attempts: providerAttempts,
-        artifacts: {
-          selected_context: selectedContextManifest,
-          raw_provider: rawProviderArtifacts.map((artifact) => artifact.path),
-          repair: repairManifest,
-          retry: retryManifest,
-          proposal_manifest: proposalArtifacts.manifest || null,
-          proposal_files: proposalArtifacts.files || [],
-          write_manifest: error.write_manifest?.path || null,
-          snapshot_manifest: error.snapshot?.manifestPath || null,
-        },
-      });
-      throw formatAnalyzeProjectApplyPreflightError(error);
-    }
+    const applyReport = applyAnalyzeProjectDocProposalReport(repoRoot, {
+      ...docActionContext,
+      allowDirtyDocs: options.allowDirtyDocs === true,
+    });
+    return emitAnalyzeProjectApplyReport(applyReport, options);
+  }
 
-    writeAnalyzeProjectRunStatus(repoRoot, auditRunId, applyReport.post_write_validation?.ok ? 'docs-applied' : 'apply-validation-failed', {
-      now: options.now,
-      provider,
-      attempts: providerAttempts,
-      artifacts: {
-        selected_context: selectedContextManifest,
-        raw_provider: rawProviderArtifacts.map((artifact) => artifact.path),
-        repair: repairManifest,
-        retry: retryManifest,
-        proposal_manifest: applyReport.proposal_artifacts?.manifest,
-        proposal_files: [
-          applyReport.proposal_artifacts?.proposal_json,
-          applyReport.proposal_artifacts?.proposal_markdown,
-          applyReport.proposal_artifacts?.proposal_diff,
-          applyReport.proposal_artifacts?.manifest,
-        ].filter(Boolean),
-        write_manifest: applyReport.write_manifest?.path,
-        snapshot_manifest: applyReport.snapshot?.manifestPath,
+  if (options.applyDocs === true) {
+    return runAnalyzeProjectInteractiveApplySelector({
+      report: completedReport,
+      proposal: docProposal,
+      writePlan: docWritePlan,
+      options,
+      actions: {
+        apply: ({ allowDirtyDocs, interactiveAction }) => {
+          const applyReport = applyAnalyzeProjectDocProposalReport(repoRoot, {
+            ...docActionContext,
+            allowDirtyDocs,
+            interactiveAction,
+          });
+          return emitAnalyzeProjectApplyReport(applyReport, options);
+        },
+        save: ({ interactiveAction, silent, savedReport } = {}) => {
+          const saveReport = savedReport || saveAnalyzeProjectDocProposalReport(repoRoot, {
+            ...docActionContext,
+            interactiveAction,
+          });
+          if (silent !== true) {
+            process.stdout.write(formatAnalyzeProjectSavedProposalReport(saveReport));
+          }
+          return saveReport;
+        },
+        edit: ({ interactiveAction } = {}) => reviewAndWriteAnalyzeProjectDocs(repoRoot, {
+          commandOptions: options,
+          completedReport,
+          initialProposal: docProposal,
+          interactiveAction,
+        }),
+        cancel: ({ interactiveAction, savedReport } = {}) => cancelAnalyzeProjectInteractiveApplyReport(repoRoot, {
+          ...docActionContext,
+          interactiveAction,
+          savedReport,
+        }),
       },
     });
-
-    if (options.json === true) {
-      process.stdout.write(`${JSON.stringify(applyReport, null, 2)}\n`);
-      if (!applyReport.post_write_validation?.ok) {
-        const error = new Error(formatError('ai analyze-project post-write validation failed.'));
-        error.code = 'AI_ANALYZE_PROJECT_POST_WRITE_VALIDATION_FAILED';
-        error.validation = applyReport.post_write_validation;
-        throw error;
-      }
-      return applyReport;
-    }
-
-    process.stdout.write(formatAnalyzeProjectApplyReport(applyReport));
-    if (!applyReport.post_write_validation?.ok) {
-      const error = new Error(formatError('ai analyze-project post-write validation failed.'));
-      error.code = 'AI_ANALYZE_PROJECT_POST_WRITE_VALIDATION_FAILED';
-      error.validation = applyReport.post_write_validation;
-      throw error;
-    }
-    return applyReport;
   }
 
   if (options.saveProposal === true) {
-    const proposal = buildAnalyzeProjectDocProposal(parsed.analysis);
-    const writePlan = buildAnalyzeProjectWritePlan(repoRoot, proposal);
-    const proposalArtifacts = writeAnalyzeProjectProposalArtifacts(repoRoot, {
-      runId: auditRunId,
-      now: options.now || new Date(),
-      provider,
-      language: options.language,
-      proposal,
-      writePlan,
-      selectedContextManifest,
-      repairManifest,
-    });
-    const saveReport = {
-      ...completedReport,
-      save_proposal: true,
-      doc_proposal: proposal,
-      doc_paths: proposalArtifacts.doc_paths,
-      proposal_artifacts: {
-        root: proposalArtifacts.root,
-        proposal_json: proposalArtifacts.proposal_json,
-        proposal_markdown: proposalArtifacts.proposal_markdown,
-        proposal_diff: proposalArtifacts.proposal_diff,
-        manifest: proposalArtifacts.manifest,
-        proposal_sha256: proposalArtifacts.proposal_sha256,
-      },
-      write_plan: summarizeAnalyzeProjectWritePlan(writePlan),
-    };
-    writeAnalyzeProjectRunStatus(repoRoot, auditRunId, 'proposal-saved', {
-      now: options.now,
-      provider,
-      attempts: providerAttempts,
-      artifacts: {
-        selected_context: selectedContextManifest,
-        raw_provider: rawProviderArtifacts.map((artifact) => artifact.path),
-        repair: repairManifest,
-        retry: retryManifest,
-        proposal_manifest: proposalArtifacts.manifest,
-        proposal_files: proposalArtifacts.files,
-      },
-    });
+    const saveReport = saveAnalyzeProjectDocProposalReport(repoRoot, docActionContext);
 
     if (options.json === true) {
       process.stdout.write(`${JSON.stringify(saveReport, null, 2)}\n`);
@@ -2611,70 +2809,11 @@ async function runAnalyzeProject(repoRoot, options = {}) {
   }
 
   if (options.review === true) {
-    const initialProposal = buildAnalyzeProjectDocProposal(parsed.analysis);
-    const reviewed = await reviewAnalyzeProjectDocProposal(repoRoot, initialProposal, options);
-    const writePlan = buildAnalyzeProjectWritePlan(repoRoot, reviewed.proposal);
-    process.stdout.write(formatAnalyzeProjectReviewPlan({
-      writePlan,
-      reviewPath: reviewed.reviewPath,
-    }));
-    await confirmAnalyzeProjectWrites(writePlan, options);
-    const lifecycleRun = ensureAiRun(repoRoot, {
-      command: 'ai analyze-project',
-      input: reviewed.reviewPath,
-      runId: options.runId,
-      phase: 'created',
+    return reviewAndWriteAnalyzeProjectDocs(repoRoot, {
+      commandOptions: options,
+      completedReport,
+      initialProposal: docProposal,
     });
-    const snapshot = createAnalyzeProjectSnapshot(repoRoot, lifecycleRun, writePlan, {
-      providerArtifact: completedReport.provider_artifact,
-      proposal: reviewed.proposal,
-      now: options.now || new Date(),
-    });
-    const writtenDocs = writeAnalyzeProjectDocs(writePlan);
-    let writeReport = {
-      ...completedReport,
-      review: true,
-      review_path: reviewed.reviewPath,
-      doc_proposal: reviewed.proposal,
-      write_plan: summarizeAnalyzeProjectWritePlan(writePlan),
-      snapshot,
-      written_docs: writtenDocs,
-      run_id: lifecycleRun.run_id,
-    };
-    const postWriteValidation = validateAnalyzeProjectPostWrite(repoRoot, writeReport, {
-      strict: options.strict === true,
-    });
-    writeReport = {
-      ...writeReport,
-      post_write_validation: postWriteValidation,
-    };
-
-    if (options.json === true) {
-      process.stdout.write(`${JSON.stringify(writeReport, null, 2)}\n`);
-      if (!postWriteValidation.ok) {
-        const error = new Error(formatError('ai analyze-project post-write validation failed.'));
-        error.code = 'AI_ANALYZE_PROJECT_POST_WRITE_VALIDATION_FAILED';
-        error.validation = postWriteValidation;
-        throw error;
-      }
-      return writeReport;
-    }
-
-    process.stdout.write(formatAnalyzeProjectReviewPlan({
-      writePlan,
-      reviewPath: reviewed.reviewPath,
-      snapshot,
-      writtenDocs,
-      validation: postWriteValidation,
-      completed: true,
-    }));
-    if (!postWriteValidation.ok) {
-      const error = new Error(formatError('ai analyze-project post-write validation failed.'));
-      error.code = 'AI_ANALYZE_PROJECT_POST_WRITE_VALIDATION_FAILED';
-      error.validation = postWriteValidation;
-      throw error;
-    }
-    return writeReport;
   }
 
   if (options.json === true) {
