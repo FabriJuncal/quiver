@@ -184,7 +184,12 @@ test('global --lang before help is accepted', () => {
   const output = runCli(['--lang', 'es', '--help']);
 
   assert.match(output, /Comandos:/);
+  assert.match(output, /ai analyze-project apply --run <run-id>/);
   assert.match(output, /--lang <en\|es>/);
+  assert.match(output, /--apply-docs\s+En ai analyze-project, aplica propuestas de documentacion validadas/);
+  assert.match(output, /--save-proposal\s+En ai analyze-project, guarda una propuesta de documentacion validada/);
+  assert.match(output, /--diff\s+En ai analyze-project, muestra o guarda el diff de documentacion propuesto/);
+  assert.match(output, /--allow-dirty-docs\s+En ai analyze-project, permite checks de docs destino con cambios/);
   assert.match(output, /Anula el idioma de la salida humana del CLI/);
   assert.match(output, /--yes\s+Omite prompts y confirma escrituras como migrate/);
 });

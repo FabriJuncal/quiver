@@ -94,7 +94,7 @@ Reglas:
 |---|---:|---:|---:|---|
 | `init` | no | si | no | Interactive guia modo de proyecto, metodologia `wdd-sdd`, perfil inicial y proximo paso de perfiles de agentes. |
 | `migrate` | no | no | no | En TTY confirma antes de escribir; en CI/no-TTY requiere `--yes`. `--dry-run` no pide confirmacion ni escribe. |
-| `ai analyze-project` | no | no | si | `--dry-run` es read-only y no ejecuta proveedor; `--review` exige JSON con evidencia, diff final, confirmacion, snapshot y validacion post-write. |
+| `ai analyze-project` | no | no | si | `--dry-run` es read-only y no ejecuta proveedor; `--apply-docs` muestra selector en TTY; `--review` queda como modo avanzado de edicion JSON. |
 | `ai prepare-context` | si | si | si | Modo deterministico por defecto; planner opcional con contrato docs-only. |
 | `ai plan` | si | si | si | El planner ya es implicito; `--with-planner` se acepta por consistencia. |
 | `spec create` | si | si | si | Consume un plan tecnico aprobado del planner; no vuelve a ejecutar proveedor. Review previsualiza el paquete antes de escribir. |
@@ -124,10 +124,20 @@ Analisis profundo de un proyecto existente:
 ```bash
 npx create-quiver ai analyze-project --deep --dry-run
 npx create-quiver ai analyze-project --deep --dry-run --json
-npx create-quiver ai analyze-project --deep --review
+npx create-quiver ai analyze-project --deep --save-proposal --provider codex --model gpt-5.5
+npx create-quiver ai analyze-project --deep --apply-docs --provider codex --model gpt-5.5
+npx create-quiver ai analyze-project apply --run <run-id>
 ```
 
-`ai analyze-project` debe mantener estas garantias: en `--dry-run` no escribe ni ejecuta proveedor; con proveedor no lee `.env`, dependencias, caches, binarios ni outputs generados; toda conclusion importante cita evidencia o queda como `unknown`; las escrituras se limitan a docs aprobados, usan bloques gestionados por Quiver, muestran diff y crean snapshot previo.
+`ai analyze-project` debe mantener estas garantias: en `--dry-run` no escribe ni ejecuta proveedor; el modo provider normal genera auditoria y propuesta pero no escribe docs finales; con proveedor no lee `.env`, dependencias, caches, binarios ni outputs generados; toda conclusion importante cita evidencia o queda como `unknown`; las escrituras se limitan a docs aprobados, usan bloques gestionados por Quiver, muestran diff y crean snapshot previo.
+
+Opciones de aplicacion:
+
+- `--apply-docs` en TTY muestra opciones explicadas: aplicar, ver diff, guardar propuesta, editar propuesta o cancelar.
+- `--apply-docs --yes` aplica en automatizacion despues de validar propuesta, hashes, snapshot y post-write.
+- `--save-proposal` guarda `.quiver/runs/<run-id>/proposal/*` sin escribir docs finales.
+- `ai analyze-project apply --run <run-id>` aplica una propuesta guardada sin ejecutar proveedor ni requerir `--provider` o `--model`.
+- `--review` se mantiene como modo avanzado: abre la propuesta JSON en editor, revalida el JSON editado, muestra diff final y pide confirmacion.
 
 Modo deterministico:
 

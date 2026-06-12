@@ -181,3 +181,29 @@ Covered behavior:
 - Stale target docs block before any final docs write.
 - Manual proposal edits are accepted after revalidation and recorded in the write manifest.
 - `--run latest --yes` and `--run latest --json` are rejected to keep automation deterministic.
+
+## Slice-06 Evidence - slice-06-i18n-docs-release-smoke
+
+Executed:
+
+```bash
+node --test tests/commands/cli-contract.test.js
+node --test tests/lib/i18n-catalog.test.js
+node --test tests/commands/ai-analyze-project-review.test.js
+npm run docs:check
+npm run schema:slice:check
+node bin/create-quiver.js spec validate specs/quiver-v55-analyze-project-doc-apply-ux --strict
+git diff --check
+npm test
+```
+
+Result: all passed. Full `npm test` passed with 747 tests.
+
+Covered behavior:
+
+- English and Spanish help coverage includes the new analyze-project doc-apply flags.
+- Commands, flags, providers, models, and paths remain untranslated in localized output.
+- Command reference explains `--apply-docs`, `--save-proposal`, `--review`, `--yes`, `--diff`, and `apply --run`.
+- Existing-project workflow documents the recommended `--apply-docs` path and save/apply separation.
+- Troubleshooting explains why normal provider mode does not write final docs.
+- Release smoke guidance uses a temporary copy or disposable branch of `nika-erp`, not the main checkout.

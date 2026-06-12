@@ -86,19 +86,34 @@ Si querés que Quiver infiera producto, arquitectura, funcionalidades y riesgos 
 ```bash
 npx --yes create-quiver@latest ai analyze-project --deep --dry-run
 npx --yes create-quiver@latest ai analyze-project --deep --provider codex --model gpt-5.5
-npx --yes create-quiver@latest ai analyze-project --deep --review --provider codex --model gpt-5.5
+npx --yes create-quiver@latest ai analyze-project --deep --apply-docs --provider codex --model gpt-5.5
 ```
 
 Qué hace:
 
 - `--dry-run` muestra qué leería y qué excluiría, sin proveedor ni escrituras;
-- el modo con proveedor guarda auditoría en `.quiver/runs` y valida JSON con evidencia;
+- el modo con proveedor guarda auditoría en `.quiver/runs`, valida JSON con evidencia y no escribe docs finales por defecto;
 - resume lockfiles como metadata para no consumir el presupuesto principal con `package-lock.json`, `pnpm-lock.yaml` o equivalentes;
 - prioriza entrypoints, componentes, contexts/state, lib/data layer, auth, DB/integraciones y documentación humana del producto por encima de docs generados por Quiver;
 - muestra loader en TTY y progreso lineal en no-TTY;
 - si hay drift seguro de schema, como `notes` extra, `claim` usado como `name` faltante o `confidence` donde no está permitido, lo repara de forma auditada;
 - si el error es retryable, hace un retry acotado con feedback compacto;
-- `--review` abre propuesta editable y solo escribe docs permitidos después de confirmar.
+- `--apply-docs` muestra un selector simple en TTY para aplicar, ver diff, guardar, editar o cancelar.
+
+Si preferís separar generación y aplicación:
+
+```bash
+npx --yes create-quiver@latest ai analyze-project --deep --save-proposal --provider codex --model gpt-5.5
+npx --yes create-quiver@latest ai analyze-project apply --run <run-id>
+```
+
+Para automatización sin selector:
+
+```bash
+npx --yes create-quiver@latest ai analyze-project --deep --apply-docs --yes --provider codex --model gpt-5.5
+```
+
+`--review` sigue disponible como modo avanzado: abre la propuesta JSON en editor, revalida el JSON editado y pide confirmación antes de escribir docs permitidos.
 
 No envía `.env`, `.git`, `.quiver`, dependencias, caches, binarios ni outputs generados. Si no puede probar una conclusión, debe quedar como `unknown` o `needs_confirmation`.
 

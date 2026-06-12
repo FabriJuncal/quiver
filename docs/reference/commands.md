@@ -199,11 +199,12 @@ En `--dry-run`, Quiver no escribe archivos, no ejecuta proveedor y muestra qué 
 Para generar docs desde IA:
 
 ```bash
-npx --yes create-quiver@latest ai analyze-project --deep --review
-npx --yes create-quiver@latest ai analyze-project --deep --review --strict
+npx --yes create-quiver@latest ai analyze-project --deep --save-proposal --provider codex --model gpt-5.5
+npx --yes create-quiver@latest ai analyze-project --deep --apply-docs --provider codex --model gpt-5.5
+npx --yes create-quiver@latest ai analyze-project apply --run <run-id>
 ```
 
-El modo con proveedor exige JSON validado por schema, evidencia por conclusión, niveles `confirmed`, `inferred`, `unknown` o `conflict`, revisión editable, diff final, confirmación humana, snapshot previo en `.quiver/runs`, artefactos redactados y validación post-write. `--strict` convierte conflictos importantes de docs en error. El resultado puede quedar como `unknown` o `needs_confirmation` cuando el código no prueba una conclusión.
+El modo con proveedor exige JSON validado por schema, evidencia por conclusión, niveles `confirmed`, `inferred`, `unknown` o `conflict`, artifacts auditados en `.quiver/runs`, diff, snapshot previo cuando se escribe y validación post-write. `--strict` convierte conflictos importantes de docs en error. El resultado puede quedar como `unknown` o `needs_confirmation` cuando el código no prueba una conclusión.
 
 Garantías del flujo con proveedor:
 
@@ -215,7 +216,12 @@ Garantías del flujo con proveedor:
 - Si el proveedor devuelve JSON con drift seguro como `notes`, `claim` usado como `name` faltante, o `confidence` en paths no permitidos, Quiver lo repara, registra el repair y revalida.
 - Si el JSON sigue inválido pero el error es retryable, Quiver hace 1 retry por defecto, con cap duro de 2 retries.
 - Si el JSON final es inválido, Quiver falla sin escribir docs finales y deja manifests de validación/retry/repair en `.quiver/runs`.
-- `--review` abre una propuesta editable, revalida el JSON editado, muestra diff final y pide confirmación antes de escribir docs permitidos.
+- El modo provider normal no escribe docs finales por defecto; usá `--apply-docs`, `--save-proposal` o `--review` para decidir qué hacer con la propuesta validada.
+- `--apply-docs` en TTY muestra opciones explicadas para aplicar, ver diff, guardar propuesta, editar propuesta o cancelar.
+- `--apply-docs --yes` aplica en automatización después de validar propuesta, paths permitidos, hashes, snapshot y post-write.
+- `--save-proposal` guarda `.quiver/runs/<run-id>/proposal/*` sin escribir docs finales.
+- `ai analyze-project apply --run <run-id>` aplica una propuesta guardada sin ejecutar proveedor ni requerir `--provider` o `--model`.
+- `--review` abre una propuesta JSON editable, revalida el JSON editado, muestra diff final y pide confirmación antes de escribir docs permitidos.
 - Las escrituras aprobadas crean snapshot con hashes y se escriben con rename atómico.
 
 Benchmark recomendado:
@@ -226,19 +232,27 @@ Benchmark recomendado:
 Smoke de release recomendado:
 
 ```bash
-cd "/Users/fabrijk/Documents/Work/Proyectos Personales/nika/nika-erp/nika-erp"
+mkdir -p /tmp/quiver-smoke
+rsync -a --delete --exclude .git --exclude node_modules --exclude .next --exclude .quiver "/Users/fabrijk/Documents/Work/Proyectos Personales/nika/nika-erp/nika-erp/" /tmp/quiver-smoke/nika-erp/
+cd /tmp/quiver-smoke/nika-erp
 npx --yes create-quiver@latest ai analyze-project --deep --dry-run --json
 npx --yes create-quiver@latest ai analyze-project --deep --provider codex --model gpt-5.5
-npx --yes create-quiver@latest ai analyze-project --deep --review --provider codex --model gpt-5.5
+npx --yes create-quiver@latest ai analyze-project --deep --save-proposal --provider codex --model gpt-5.5
+npx --yes create-quiver@latest ai analyze-project --deep --apply-docs --provider codex --model gpt-5.5
+npx --yes create-quiver@latest ai analyze-project apply --run <run-id>
 ```
+
+También podés usar una rama descartable en el repo real. No ejecutes el smoke de aplicación sobre el checkout principal de `nika-erp`.
 
 Evidencia esperada:
 
 - `--dry-run --json` parsea como JSON, `provider_execution` queda `skipped`, `writes` queda vacío y no crea docs finales.
 - `package-lock.json` aparece en `detected.lockfiles` y en omitidos con `sampling:lockfile-metadata`, no en contenido enviado al provider.
-- El modo provider escribe artifacts auditados en `.quiver/runs`, redactados y con tamaño controlado, pero no escribe docs finales sin `--review`.
+- El modo provider escribe artifacts auditados en `.quiver/runs`, redactados y con tamaño controlado, pero no escribe docs finales sin `--apply-docs`, `--review` o `apply --run`.
 - Si el provider devuelve drift no reparable, el comando falla con path/tipo/causa probable y próximo comando seguro, sin escribir docs finales.
-- `--review` debe mostrar propuesta editable, diff final y confirmación antes de escribir docs permitidos.
+- `--save-proposal` debe crear `.quiver/runs/<run-id>/proposal/*` sin modificar docs finales.
+- `--apply-docs` debe mostrar selector explicado en TTY o requerir `--yes` en automatización.
+- `apply --run <run-id>` debe aplicar la propuesta guardada sin volver a ejecutar proveedor.
 
 Rollback de release:
 
