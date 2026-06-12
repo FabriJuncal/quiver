@@ -69,3 +69,26 @@ npm run schema:slice:check
 ```
 
 Result: all passed.
+
+## Slice-02 Evidence - slice-02-save-proposal-flow
+
+Executed:
+
+```bash
+node --test tests/lib/ai-analyze-project-proposal.test.js
+node --test tests/commands/ai-analyze-project-provider.test.js
+node --test tests/commands/ai-analyze-project.test.js tests/commands/cli-contract.test.js tests/commands/ux-flags.test.js
+node --test tests/commands/ai-analyze-project-review.test.js tests/lib/ai-analyze-project-validation.test.js tests/lib/ai-analyze-project-docs.test.js
+node bin/create-quiver.js spec validate specs/quiver-v55-analyze-project-doc-apply-ux --strict
+git diff --check
+```
+
+Result: all passed.
+
+Covered behavior:
+
+- `--save-proposal` persists proposal JSON, compact Markdown summary, full diff, and manifest.
+- `--save-proposal --json` emits clean parseable JSON.
+- Final docs remain unchanged.
+- Save-only flows do not create snapshots.
+- Invalid final provider JSON does not create usable proposal artifacts.

@@ -6,6 +6,9 @@ const test = require('node:test');
 
 const { runAnalyzeProject } = require('../../src/create-quiver/commands/ai');
 const { parseAnalyzeProjectOutput } = require('../../src/create-quiver/lib/ai/analyze-project-parser');
+const {
+  normalizeAnalyzeProjectProposalManifest,
+} = require('../../src/create-quiver/lib/ai/analyze-project-proposal');
 
 const providerFixtures = require('../fixtures/analyze-project/provider-output-cases.json');
 
@@ -44,6 +47,10 @@ function providerResult(stdout, overrides = {}) {
     preflight: { ok: true },
     ...overrides,
   };
+}
+
+function readJson(filePath) {
+  return JSON.parse(fs.readFileSync(filePath, 'utf8'));
 }
 
 function fixtureCase(name) {
@@ -223,6 +230,44 @@ function assertRetryManifest(repoRoot, manifestRef) {
   return manifest;
 }
 
+function assertNoProposalArtifacts(repoRoot) {
+  const runsRoot = path.join(repoRoot, '.quiver', 'runs');
+  if (!fs.existsSync(runsRoot)) {
+    return;
+  }
+  for (const runId of fs.readdirSync(runsRoot)) {
+    assert.equal(fs.existsSync(path.join(runsRoot, runId, 'proposal')), false, `unexpected proposal artifacts in ${runId}`);
+  }
+}
+
+function assertSavedProposalArtifacts(repoRoot, result) {
+  assert.ok(result.proposal_artifacts, 'expected proposal artifacts in result');
+  const artifacts = result.proposal_artifacts;
+  const proposalPath = path.join(repoRoot, artifacts.proposal_json);
+  const summaryPath = path.join(repoRoot, artifacts.proposal_markdown);
+  const diffPath = path.join(repoRoot, artifacts.proposal_diff);
+  const manifestPath = path.join(repoRoot, artifacts.manifest);
+
+  assert.equal(fs.existsSync(proposalPath), true);
+  assert.equal(fs.existsSync(summaryPath), true);
+  assert.equal(fs.existsSync(diffPath), true);
+  assert.equal(fs.existsSync(manifestPath), true);
+
+  const proposal = readJson(proposalPath);
+  assert.equal(proposal.kind, 'quiver-analyze-project-doc-proposal');
+  assert.ok(proposal.docs.some((doc) => doc.path === 'docs/CONTEXTO.md'));
+  assert.match(fs.readFileSync(summaryPath, 'utf8'), /docs\/CONTEXTO\.md/);
+  assert.doesNotMatch(fs.readFileSync(summaryPath, 'utf8'), /Provider proposal/);
+  assert.match(fs.readFileSync(diffPath, 'utf8'), /Provider proposal/);
+
+  const manifest = normalizeAnalyzeProjectProposalManifest(readJson(manifestPath));
+  assert.equal(manifest.run_id, result.run_id);
+  assert.equal(manifest.provider, 'codex');
+  assert.ok(manifest.doc_paths.includes('docs/CONTEXTO.md'));
+  assert.equal(manifest.proposal_sha256, artifacts.proposal_sha256);
+  return manifest;
+}
+
 function assertOnlySelectedContextAudit(repoRoot) {
   const runsRoot = path.join(repoRoot, '.quiver', 'runs');
   assert.equal(fs.existsSync(runsRoot), true);
@@ -273,6 +318,69 @@ test('runAnalyzeProject executes provider after redacted privacy preflight and w
     assert.ok(result.raw_provider_artifacts.every((artifactPath) => fs.existsSync(path.join(repo.root, artifactPath))));
     assert.equal(fs.existsSync(path.join(repo.root, result.run_status_path)), true);
     assert.equal(fs.existsSync(path.join(repo.root, 'docs')), false);
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('runAnalyzeProject --save-proposal persists proposal artifacts without writing final docs', async () => {
+  const repo = makeRepo({
+    'README.md': '# Save Proposal Demo\n',
+    'package.json': JSON.stringify({ name: 'save-proposal-demo' }, null, 2),
+    'src/routes/users.ts': 'export const users = [];\n',
+  });
+
+  try {
+    const { output, result } = await captureStdout(() => runAnalyzeProject(repo.root, {
+      includeSource: true,
+      saveProposal: true,
+      provider: 'codex',
+      providerExplicit: true,
+      now: new Date('2026-06-12T12:34:56.000Z'),
+      runProviderFn: async () => providerResult(validAnalysis(), { cwd: repo.root }),
+    }));
+
+    assert.match(output, /AI analyze-project proposal saved/);
+    assert.equal(result.save_proposal, true);
+    assert.equal(result.writes.length, 0);
+    assert.equal(result.run_id, 'run-2026-06-12t12-34-56z');
+    const manifest = assertSavedProposalArtifacts(repo.root, result);
+    assert.equal(manifest.selected_context_manifest, '.quiver/runs/run-2026-06-12t12-34-56z/context/selected-context.json');
+    assert.equal(fs.existsSync(path.join(repo.root, 'docs', 'CONTEXTO.md')), false);
+    assert.equal(fs.existsSync(path.join(repo.root, '.quiver', 'runs', result.run_id, 'snapshots')), false);
+
+    const status = readJson(path.join(repo.root, result.run_status_path));
+    assert.equal(status.status, 'proposal-saved');
+    assert.equal(status.artifacts.proposal_manifest, result.proposal_artifacts.manifest);
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('runAnalyzeProject --save-proposal --json emits clean parseable proposal result', async () => {
+  const repo = makeRepo({
+    'README.md': '# Save Proposal JSON Demo\n',
+    'package.json': JSON.stringify({ name: 'save-proposal-json-demo' }, null, 2),
+    'src/routes/users.ts': 'export const users = [];\n',
+  });
+
+  try {
+    const { output, result } = await captureStdout(() => runAnalyzeProject(repo.root, {
+      includeSource: true,
+      saveProposal: true,
+      json: true,
+      provider: 'codex',
+      providerExplicit: true,
+      now: new Date('2026-06-12T12:35:00.000Z'),
+      runProviderFn: async () => providerResult(validAnalysis(), { cwd: repo.root }),
+    }));
+
+    const parsed = JSON.parse(output);
+    assert.equal(parsed.save_proposal, true);
+    assert.equal(parsed.run_id, result.run_id);
+    assert.equal(parsed.proposal_artifacts.manifest, result.proposal_artifacts.manifest);
+    assertSavedProposalArtifacts(repo.root, parsed);
+    assert.equal(fs.existsSync(path.join(repo.root, 'docs', 'CONTEXTO.md')), false);
   } finally {
     repo.cleanup();
   }
@@ -396,6 +504,32 @@ test('runAnalyzeProject rejects invalid provider JSON without writing final docs
     );
     const validationManifest = assertValidationManifest(repo.root, capturedError);
     assertSelectedContextManifest(repo.root, `.quiver/runs/${validationManifest.run_id}/context/selected-context.json`);
+    assert.equal(fs.existsSync(path.join(repo.root, 'docs')), false);
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('runAnalyzeProject --save-proposal rejects invalid final JSON without usable proposal artifacts', async () => {
+  const repo = makeRepo({
+    'README.md': '# Invalid Save Proposal\n',
+    'package.json': JSON.stringify({ name: 'invalid-save-proposal' }, null, 2),
+    'src/routes/users.ts': 'export const users = [];\n',
+  });
+
+  try {
+    await assert.rejects(
+      captureStdout(() => runAnalyzeProject(repo.root, {
+        includeSource: true,
+        saveProposal: true,
+        provider: 'codex',
+        providerExplicit: true,
+        now: new Date('2026-06-12T12:36:00.000Z'),
+        runProviderFn: async () => providerResult('not json', { cwd: repo.root }),
+      })),
+      /provider analysis output is not valid JSON/,
+    );
+    assertNoProposalArtifacts(repo.root);
     assert.equal(fs.existsSync(path.join(repo.root, 'docs')), false);
   } finally {
     repo.cleanup();

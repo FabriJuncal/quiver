@@ -1,3 +1,7 @@
+const crypto = require('node:crypto');
+const fs = require('node:fs');
+const path = require('node:path');
+
 const { z } = require('zod');
 
 const { validateProjectRelativePath } = require('../paths');
@@ -35,6 +39,38 @@ function normalizeArtifactPath(value, fieldName = 'artifact path') {
       { path: fieldName, issue: 'invalid-project-relative-path', message: error.message },
     ]);
   }
+}
+
+function toPosix(filePath) {
+  return String(filePath || '').replace(/\\/g, '/');
+}
+
+function toRelativePosix(root, filePath) {
+  return toPosix(path.relative(root, filePath));
+}
+
+function sha256(contents) {
+  return crypto.createHash('sha256').update(String(contents || ''), 'utf8').digest('hex');
+}
+
+function writeJsonFile(filePath, value) {
+  fs.mkdirSync(path.dirname(filePath), { recursive: true });
+  fs.writeFileSync(filePath, `${JSON.stringify(value, null, 2)}\n`);
+}
+
+function writeTextFile(filePath, value) {
+  fs.mkdirSync(path.dirname(filePath), { recursive: true });
+  fs.writeFileSync(filePath, String(value || ''));
+}
+
+function artifactPathFromRef(ref) {
+  if (typeof ref === 'string') {
+    return normalizeArtifactPath(ref, 'artifact ref');
+  }
+  if (ref && typeof ref.path === 'string') {
+    return normalizeArtifactPath(ref.path, 'artifact ref');
+  }
+  return null;
 }
 
 function relativePathSchema(fieldName) {
@@ -130,6 +166,149 @@ function buildAnalyzeProjectProposalArtifactPaths(runId) {
   };
 }
 
+function formatAnalyzeProjectFullDiff(writePlan = []) {
+  const lines = [];
+  for (const item of writePlan) {
+    if (item.action === 'skip') {
+      continue;
+    }
+    lines.push(`--- ${item.path} (current)`);
+    lines.push(`+++ ${item.path} (proposed)`);
+    const currentLines = String(item.currentContent || '').split('\n');
+    const proposedLines = String(item.proposedContent || '').split('\n');
+    for (const line of currentLines) {
+      lines.push(`- ${line}`);
+    }
+    for (const line of proposedLines) {
+      lines.push(`+ ${line}`);
+    }
+  }
+  return `${(lines.length > 0 ? lines : ['- no changes']).join('\n')}\n`;
+}
+
+function formatAnalyzeProjectProposalSummary({ runId, provider, proposal, writePlan, artifacts } = {}) {
+  const changed = (writePlan || []).filter((item) => item.action !== 'skip');
+  const dirty = changed.filter((item) => item.dirty);
+  const docs = Array.isArray(proposal?.docs) ? proposal.docs : [];
+  const lines = [
+    '# Analyze Project Documentation Proposal',
+    '',
+    `Run: ${runId}`,
+    `Provider: ${provider || 'unknown'}`,
+    `Proposed docs: ${docs.length}`,
+    `Docs with changes: ${changed.length}`,
+    `Dirty existing docs: ${dirty.length}`,
+    '',
+    '## Files',
+  ];
+
+  for (const item of writePlan || []) {
+    lines.push(`- ${item.path}: ${item.action}${item.dirty ? ' (dirty existing doc)' : ''}`);
+  }
+  if (!Array.isArray(writePlan) || writePlan.length === 0) {
+    lines.push('- none');
+  }
+
+  lines.push('', '## Artifacts');
+  lines.push(`- Proposal JSON: ${artifacts.proposal_json}`);
+  lines.push(`- Diff: ${artifacts.proposal_diff}`);
+  lines.push(`- Manifest: ${artifacts.manifest}`);
+  lines.push('', 'This summary intentionally omits full proposed document contents. Use the JSON or diff artifact for details.');
+
+  return `${lines.join('\n')}\n`;
+}
+
+function writeAnalyzeProjectProposalArtifacts(repoRoot, options = {}) {
+  const runId = String(options.runId || '').trim();
+  if (!runId) {
+    throw new AnalyzeProjectProposalContractError('analyze-project proposal artifacts require a run id', [
+      { path: 'run_id', issue: 'missing-run-id', message: 'run_id is required' },
+    ]);
+  }
+
+  const now = options.now instanceof Date ? options.now : new Date(options.now || Date.now());
+  const provider = options.provider ? String(options.provider) : null;
+  const language = options.language === 'es' ? 'es' : 'en';
+  const proposal = options.proposal || { schema_version: 1, kind: 'quiver-analyze-project-doc-proposal', summary: '', docs: [] };
+  const writePlan = Array.isArray(options.writePlan) ? options.writePlan : [];
+  const paths = buildAnalyzeProjectProposalArtifactPaths(runId);
+  const proposalJson = `${JSON.stringify(proposal, null, 2)}\n`;
+  const proposalHash = sha256(proposalJson);
+  const docBeforeHashes = {};
+
+  for (const item of writePlan) {
+    docBeforeHashes[item.path] = item.before_sha256 || null;
+  }
+
+  const selectedContextPath = artifactPathFromRef(options.selectedContextManifest)
+    || `.quiver/runs/${runId}/context/selected-context.json`;
+  const repairPath = artifactPathFromRef(options.repairManifest);
+  const manifest = normalizeAnalyzeProjectProposalManifest({
+    schema_version: ANALYZE_PROJECT_PROPOSAL_MANIFEST_SCHEMA_VERSION,
+    kind: ANALYZE_PROJECT_PROPOSAL_MANIFEST_KIND,
+    run_id: runId,
+    created_at: now.toISOString(),
+    language,
+    provider,
+    proposal_json: paths.proposal_json,
+    proposal_markdown: paths.proposal_markdown,
+    proposal_diff: paths.proposal_diff,
+    selected_context_manifest: selectedContextPath,
+    repair_manifest: repairPath,
+    doc_paths: writePlan.map((item) => item.path),
+    doc_before_hashes: docBeforeHashes,
+    proposal_sha256: proposalHash,
+    events: [
+      {
+        type: 'proposal-saved',
+        at: now.toISOString(),
+        doc_count: writePlan.length,
+        changed_count: writePlan.filter((item) => item.action !== 'skip').length,
+      },
+      ...(Array.isArray(options.events) ? options.events : []),
+    ],
+  });
+
+  const absolutePaths = {
+    proposalJson: path.join(repoRoot, paths.proposal_json),
+    proposalMarkdown: path.join(repoRoot, paths.proposal_markdown),
+    proposalDiff: path.join(repoRoot, paths.proposal_diff),
+    manifest: path.join(repoRoot, paths.manifest),
+  };
+  const diff = formatAnalyzeProjectFullDiff(writePlan);
+  const summary = formatAnalyzeProjectProposalSummary({
+    runId,
+    provider,
+    proposal,
+    writePlan,
+    artifacts: paths,
+  });
+
+  writeTextFile(absolutePaths.proposalJson, proposalJson);
+  writeTextFile(absolutePaths.proposalMarkdown, summary);
+  writeTextFile(absolutePaths.proposalDiff, diff);
+  writeJsonFile(absolutePaths.manifest, manifest);
+
+  return {
+    root: paths.root,
+    proposal_json: paths.proposal_json,
+    proposal_markdown: paths.proposal_markdown,
+    proposal_diff: paths.proposal_diff,
+    manifest: paths.manifest,
+    proposal_sha256: proposalHash,
+    doc_paths: manifest.doc_paths,
+    changed_docs: writePlan.filter((item) => item.action !== 'skip').map((item) => item.path),
+    manifest_data: manifest,
+    files: [
+      paths.proposal_json,
+      paths.proposal_markdown,
+      paths.proposal_diff,
+      paths.manifest,
+    ],
+    absolute_files: Object.values(absolutePaths).map((filePath) => toRelativePosix(repoRoot, filePath)),
+  };
+}
+
 module.exports = {
   ANALYZE_PROJECT_PROPOSAL_MANIFEST_KIND,
   ANALYZE_PROJECT_PROPOSAL_MANIFEST_SCHEMA_VERSION,
@@ -138,8 +317,11 @@ module.exports = {
   AnalyzeProjectProposalContractError,
   PROPOSAL_ARTIFACT_FILENAMES,
   buildAnalyzeProjectProposalArtifactPaths,
+  formatAnalyzeProjectFullDiff,
+  formatAnalyzeProjectProposalSummary,
   normalizeAnalyzeProjectProposalManifest,
   normalizeAnalyzeProjectWriteManifest,
   proposalManifestSchema,
+  writeAnalyzeProjectProposalArtifacts,
   writeManifestSchema,
 };

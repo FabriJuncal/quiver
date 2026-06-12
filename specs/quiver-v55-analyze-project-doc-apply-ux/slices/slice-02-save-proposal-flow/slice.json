@@ -55,10 +55,15 @@
   "tests": [
     "node --test tests/commands/ai-analyze-project-provider.test.js",
     "node --test tests/lib/ai-analyze-project-proposal.test.js",
+    "node --test tests/commands/ai-analyze-project.test.js tests/commands/cli-contract.test.js tests/commands/ux-flags.test.js",
+    "node --test tests/commands/ai-analyze-project-review.test.js tests/lib/ai-analyze-project-validation.test.js tests/lib/ai-analyze-project-docs.test.js",
     "node bin/create-quiver.js spec validate specs/quiver-v55-analyze-project-doc-apply-ux --strict",
     "git diff --check"
   ],
   "estimated_hours": 5,
-  "status": "planned",
-  "blocked_reason": null
+  "actual_hours": 5,
+  "status": "completed",
+  "blocked_reason": null,
+  "started_at": "2026-06-12T00:00:00.000Z",
+  "completed_at": "2026-06-12T00:00:00.000Z"
 }
