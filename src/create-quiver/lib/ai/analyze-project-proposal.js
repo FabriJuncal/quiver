@@ -309,6 +309,73 @@ function writeAnalyzeProjectProposalArtifacts(repoRoot, options = {}) {
   };
 }
 
+function writeAnalyzeProjectWriteManifest(repoRoot, options = {}) {
+  const runId = String(options.runId || '').trim();
+  if (!runId) {
+    throw new AnalyzeProjectProposalContractError('analyze-project write manifest requires a run id', [
+      { path: 'run_id', issue: 'missing-run-id', message: 'run_id is required' },
+    ]);
+  }
+
+  const now = options.now instanceof Date ? options.now : new Date(options.now || Date.now());
+  const paths = buildAnalyzeProjectProposalArtifactPaths(runId);
+  const writePlan = Array.isArray(options.writePlan) ? options.writePlan : [];
+  const writtenDocs = new Set(Array.isArray(options.writtenDocs) ? options.writtenDocs : []);
+  const snapshotEntries = new Map(
+    (options.snapshot?.entries || []).map((entry) => [entry.path, entry]),
+  );
+  const actionStatus = options.status || 'planned';
+  const actions = writePlan.map((item) => {
+    const snapshotEntry = snapshotEntries.get(item.path);
+    let status = item.action === 'skip' ? 'skipped' : actionStatus;
+    if (actionStatus === 'completed') {
+      status = item.action === 'skip' ? 'skipped' : writtenDocs.has(item.path) ? 'written' : 'failed';
+    }
+
+    return {
+      path: item.path,
+      action: item.action,
+      before_sha256: item.before_sha256 || null,
+      after_sha256: item.after_sha256 || null,
+      snapshot_path: snapshotEntry?.snapshot_path || null,
+      dirty: item.dirty === true,
+      status,
+    };
+  });
+  const validation = options.validation || {
+    ok: false,
+    strict: options.strict === true,
+    errors: [],
+    warnings: [],
+  };
+  const manifest = normalizeAnalyzeProjectWriteManifest({
+    schema_version: ANALYZE_PROJECT_WRITE_MANIFEST_SCHEMA_VERSION,
+    kind: ANALYZE_PROJECT_WRITE_MANIFEST_KIND,
+    run_id: runId,
+    created_at: now.toISOString(),
+    proposal_manifest: options.proposalManifest || paths.manifest,
+    snapshot_root: options.snapshot?.root || null,
+    actions,
+    validation: {
+      ok: validation.ok === true,
+      strict: validation.strict === true,
+      errors: Array.isArray(validation.errors) ? validation.errors : [],
+      warnings: Array.isArray(validation.warnings) ? validation.warnings : [],
+    },
+    partial_write: options.partialWrite === true,
+    events: Array.isArray(options.events) ? options.events : [],
+  });
+
+  const manifestPath = path.join(repoRoot, paths.write_manifest);
+  writeJsonFile(manifestPath, manifest);
+
+  return {
+    path: paths.write_manifest,
+    root: path.dirname(paths.write_manifest).split(path.sep).join('/'),
+    manifest_data: manifest,
+  };
+}
+
 module.exports = {
   ANALYZE_PROJECT_PROPOSAL_MANIFEST_KIND,
   ANALYZE_PROJECT_PROPOSAL_MANIFEST_SCHEMA_VERSION,
@@ -323,5 +390,6 @@ module.exports = {
   normalizeAnalyzeProjectWriteManifest,
   proposalManifestSchema,
   writeAnalyzeProjectProposalArtifacts,
+  writeAnalyzeProjectWriteManifest,
   writeManifestSchema,
 };
