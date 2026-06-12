@@ -6,6 +6,8 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- v55 analyze-project doc apply UX under `specs/quiver-v55-analyze-project-doc-apply-ux/`.
+- `ai analyze-project --apply-docs`, `--save-proposal`, `--diff`, `--allow-dirty-docs`, and `ai analyze-project apply --run <run-id>` for a safer reviewed docs-apply workflow.
 - v53 reliable deep project analysis and v54 deep analysis hardening specs under `specs/quiver-v53-reliable-deep-project-analysis/` and `specs/quiver-v54-deep-project-analysis-hardening/`.
 - v46 deep project analysis under `specs/quiver-v46-deep-project-analysis/`.
 - `ai analyze-project` for bounded, evidence-backed repository analysis with read-only `--dry-run`, JSON automation output, provider-backed `--review`, safe doc writes, snapshots, and post-write validation.
@@ -26,6 +28,8 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
+- Existing-project docs now recommend the simple `--apply-docs` flow instead of forcing users into the advanced `--review` editor path.
+- English and Spanish CLI help now explain analyze-project docs apply options while preserving commands, flags, paths, providers, and model ids exactly.
 - `ai analyze-project --deep` now builds safer provider context by summarizing lockfiles as metadata, excluding generated/runtime directories, and prioritizing product source over Quiver-generated docs.
 - Existing-project AI onboarding now recommends `ai analyze-project --deep --dry-run` before context preparation so agents can see the intended read set, omissions, budgets, and privacy exclusions before any provider-backed docs update.
 - npm package hygiene now excludes local `.quiver/` run state from published tarballs.
