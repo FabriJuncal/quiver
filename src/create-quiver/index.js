@@ -230,7 +230,7 @@ const COMMAND_HELP_GROUPS = [
       ['ai active-slice status|reconcile', 'Inspect or dry-run reconcile local active-slice state from every supported source.'],
       ['ai status', 'Show current AI lifecycle phase, approved versions, blockers, and next command.'],
       ['ai resume', 'Resume guidance from the last valid lifecycle phase without chat memory.'],
-      ['ai analyze-project', 'Read and explain a bounded project sample without provider execution or writes.'],
+      ['ai analyze-project', 'Analyze a bounded project sample and generate audited documentation proposals.'],
       ['ai onboard', 'Run or print the planner onboarding prompt with a token-aware context pack.'],
       ['ai prepare-context', 'Preview or write docs-only AI context updates with assumptions and risks.'],
       ['ai agent set|list|show|doctor|repair', 'Manage, diagnose, and dry-run repair planner, executor, reviewer, and doctor provider profiles without secrets.'],
@@ -330,6 +330,7 @@ function printUsage(language = DEFAULT_LANGUAGE) {
   npx create-quiver ai status [options]
   npx create-quiver ai resume [options]
   npx create-quiver ai analyze-project [--deep] [--dry-run] [--json]
+  npx create-quiver ai analyze-project apply --run <run-id>
   npx create-quiver ai inspect [options]
   npx create-quiver ai export [--format json|markdown]
   npx create-quiver ai specs list [--json]
@@ -396,6 +397,10 @@ ${helpText(help, 'headings', 'options', 'Options:')}
       --include-source        ${optionDescription(help, 'For ai analyze-project, include source files without requiring --deep')}
       --include-tests         ${optionDescription(help, 'For ai analyze-project, include test files in the sample')}
       --include-db            ${optionDescription(help, 'For ai analyze-project, include schema, migration, and DB files in the sample')}
+      --apply-docs            ${optionDescription(help, 'For ai analyze-project, apply validated documentation proposals through the safe docs workflow')}
+      --save-proposal         ${optionDescription(help, 'For ai analyze-project, save a validated documentation proposal without writing final docs')}
+      --diff                  ${optionDescription(help, 'For ai analyze-project, show or save the proposed documentation diff')}
+      --allow-dirty-docs      ${optionDescription(help, 'For ai analyze-project, allow dirty target docs checks where the safe apply workflow supports it')}
       --scope <path|name>     ${optionDescription(help, 'For ai analyze-project, restrict discovery to a repo path or workspace name')}
       --print-prompt          ${optionDescription(help, 'Print the exact AI prompt and exit without executing provider CLIs')}
       --with-planner          ${optionDescription(help, 'Enable planner-assisted behavior on commands that explicitly support it')}
@@ -579,6 +584,10 @@ function parseArgs(argv, options = {}) {
     aiAnalyzeIncludeDb: false,
     aiAnalyzeIncludeSource: false,
     aiAnalyzeIncludeTests: false,
+    aiAnalyzeApplyDocs: false,
+    aiAnalyzeSaveProposal: false,
+    aiAnalyzeDiff: false,
+    aiAnalyzeAllowDirtyDocs: false,
     aiAnalyzeMaxBytes: null,
     aiAnalyzeMaxFiles: null,
     aiAnalyzeScope: '',
@@ -759,6 +768,30 @@ function parseArgs(argv, options = {}) {
 
     if (arg === '--include-db') {
       result.aiAnalyzeIncludeDb = true;
+      result.aiAnalyzeOptionUsed = true;
+      continue;
+    }
+
+    if (arg === '--apply-docs') {
+      result.aiAnalyzeApplyDocs = true;
+      result.aiAnalyzeOptionUsed = true;
+      continue;
+    }
+
+    if (arg === '--save-proposal') {
+      result.aiAnalyzeSaveProposal = true;
+      result.aiAnalyzeOptionUsed = true;
+      continue;
+    }
+
+    if (arg === '--diff') {
+      result.aiAnalyzeDiff = true;
+      result.aiAnalyzeOptionUsed = true;
+      continue;
+    }
+
+    if (arg === '--allow-dirty-docs') {
+      result.aiAnalyzeAllowDirtyDocs = true;
       result.aiAnalyzeOptionUsed = true;
       continue;
     }
@@ -1332,6 +1365,15 @@ function parseArgs(argv, options = {}) {
     if (result.aiCommand === 'run' && !result.aiRunCommand && positional.length > 0) {
       result.aiRunCommand = positional.shift();
     }
+    if (result.aiCommand === 'analyze-project' && !result.aiSecondaryCommand && positional.length > 0) {
+      result.aiSecondaryCommand = positional.shift();
+    }
+    if (result.aiCommand === 'analyze-project' && result.aiSecondaryCommand && result.aiSecondaryCommand !== 'apply') {
+      throw new Error(formatError(`unsupported ai analyze-project subcommand: ${result.aiSecondaryCommand}. Supported tasks: apply`));
+    }
+    if (result.aiCommand === 'analyze-project' && result.aiSecondaryCommand === 'apply' && !result.aiRunId) {
+      throw new Error(formatError('ai analyze-project apply requires --run <run-id>'));
+    }
     if ((result.aiCommand === 'specs' || result.aiCommand === 'slices' || result.aiCommand === 'models' || result.aiCommand === 'trace' || result.aiCommand === 'active-slice') && !result.aiSecondaryCommand && positional.length > 0) {
       result.aiSecondaryCommand = positional.shift();
     }
@@ -1468,6 +1510,24 @@ function parseArgs(argv, options = {}) {
 
   if (result.mode === 'config' && result.configGlobal && result.configCommand !== 'set') {
     throw new Error(formatError('--global is only supported by config language set. Use: npx create-quiver config language set <en|es> --global'));
+  }
+
+  if (result.mode === 'ai' && result.aiCommand === 'analyze-project') {
+    if (result.review && result.aiAnalyzeApplyDocs) {
+      throw new Error(formatError('ai analyze-project --apply-docs cannot be combined with --review'));
+    }
+    if (result.dryRun && result.aiAnalyzeApplyDocs) {
+      throw new Error(formatError('ai analyze-project --dry-run cannot be combined with --apply-docs'));
+    }
+    if (result.dryRun && result.aiAnalyzeSaveProposal) {
+      throw new Error(formatError('ai analyze-project --dry-run cannot be combined with --save-proposal'));
+    }
+    if (result.dryRun && result.aiSecondaryCommand === 'apply') {
+      throw new Error(formatError('ai analyze-project apply --run cannot be combined with --dry-run'));
+    }
+    if (result.json && result.aiAnalyzeApplyDocs && !result.force) {
+      throw new Error(formatError('ai analyze-project --json with --apply-docs requires --yes'));
+    }
   }
 
   return result;
@@ -3519,6 +3579,10 @@ async function run(argv) {
       await runAiAnalyzeProject(process.cwd(), {
         deep: args.aiAnalyzeDeep,
         dryRun: args.dryRun,
+        allowDirtyDocs: args.aiAnalyzeAllowDirtyDocs,
+        applyDocs: args.aiAnalyzeApplyDocs,
+        applyRun: args.aiSecondaryCommand === 'apply',
+        diff: args.aiAnalyzeDiff,
         force: args.force,
         includeDb: args.aiAnalyzeIncludeDb,
         includeSource: args.aiAnalyzeIncludeSource,
@@ -3528,10 +3592,16 @@ async function run(argv) {
         language: args.language,
         maxBytes: args.aiAnalyzeMaxBytes || undefined,
         maxFiles: args.aiAnalyzeMaxFiles || undefined,
+        model: args.aiModel || undefined,
         printPrompt: args.aiPrintPrompt,
+        provider: args.aiProvider || undefined,
+        providerExplicit: args.aiProviderExplicit,
         review: args.review,
+        runId: args.aiRunId || undefined,
+        saveProposal: args.aiAnalyzeSaveProposal,
         scope: args.aiAnalyzeScope || undefined,
         strict: args.strict,
+        timeout: args.aiTimeout || undefined,
       });
       return;
     }

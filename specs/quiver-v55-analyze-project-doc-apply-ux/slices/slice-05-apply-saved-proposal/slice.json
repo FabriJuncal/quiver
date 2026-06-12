@@ -1,0 +1,66 @@
+{
+  "slice_id": "slice-05-apply-saved-proposal",
+  "ticket": "QUIVER-55-05",
+  "type": "feature",
+  "title": "Apply Saved Proposal",
+  "objective": "Apply saved analyze-project doc proposals by run id without provider execution.",
+  "description": "Adds ai analyze-project apply --run <run-id>, revalidates saved artifacts against current repo state, detects stale/dirty docs, and delegates writes to the apply engine.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v55-apply-saved-proposal",
+    "branch_name": "feature/QUIVER-55-05-v55-apply-saved-proposal"
+  },
+  "files": [
+    "src/create-quiver/commands/ai.js",
+    "src/create-quiver/lib/ai/analyze-project-apply.js",
+    "src/create-quiver/lib/ai/analyze-project-proposal.js",
+    "tests/commands/ai-analyze-project-review.test.js",
+    "tests/lib/ai-analyze-project-proposal.test.js",
+    "specs/quiver-v55-analyze-project-doc-apply-ux/**"
+  ],
+  "expected_read_paths": [
+    "src/create-quiver/lib/ai/analyze-project-apply.js",
+    "src/create-quiver/lib/ai/analyze-project-proposal.js",
+    "src/create-quiver/lib/ai/analyze-project-docs.js"
+  ],
+  "allowed_write_paths": [
+    "src/create-quiver/commands/ai.js",
+    "src/create-quiver/lib/ai/analyze-project-apply.js",
+    "src/create-quiver/lib/ai/analyze-project-proposal.js",
+    "tests/commands/ai-analyze-project-review.test.js",
+    "tests/lib/ai-analyze-project-proposal.test.js",
+    "specs/quiver-v55-analyze-project-doc-apply-ux/**"
+  ],
+  "depends_on": [
+    "slice-02-save-proposal-flow",
+    "slice-03-noninteractive-apply-engine"
+  ],
+  "parallel_safe": "never",
+  "parallel_safe_reason": "Saved-run apply crosses a trust boundary and must reuse completed apply engine behavior.",
+  "must": [
+    "Never run provider.",
+    "Revalidate saved proposal and manifest.",
+    "Detect stale/dirty target docs.",
+    "Reject --run latest --yes."
+  ],
+  "not_included": [
+    "Interactive fresh analysis selector.",
+    "Docs release smoke."
+  ],
+  "acceptance": [
+    "Explicit run id applies valid saved proposal.",
+    "Invalid run id fails actionably.",
+    "Stale saved proposal blocks unsafe writes.",
+    "Provider/model are not required."
+  ],
+  "tests": [
+    "node --test tests/commands/ai-analyze-project-review.test.js",
+    "node --test tests/lib/ai-analyze-project-proposal.test.js",
+    "node bin/create-quiver.js spec validate specs/quiver-v55-analyze-project-doc-apply-ux --strict",
+    "git diff --check"
+  ],
+  "estimated_hours": 5,
+  "status": "planned",
+  "blocked_reason": null
+}

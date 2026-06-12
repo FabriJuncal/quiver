@@ -17,6 +17,12 @@ const UX_FLAG_MATRIX = Object.freeze({
     review: true,
     note: 'planner-assisted docs-only context preparation',
   }),
+  'ai analyze-project': Object.freeze({
+    withPlanner: false,
+    interactive: false,
+    review: true,
+    note: 'deep project analysis and advanced proposal review',
+  }),
   'ai plan': Object.freeze({
     withPlanner: true,
     interactive: true,

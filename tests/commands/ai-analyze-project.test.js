@@ -32,6 +32,14 @@ function execAnalyzeProject(repoRoot, args = []) {
   });
 }
 
+function spawnAnalyzeProject(repoRoot, args = []) {
+  return spawnSync(process.execPath, [BIN_PATH, 'ai', 'analyze-project', ...args], {
+    cwd: repoRoot,
+    encoding: 'utf8',
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
+}
+
 test('ai analyze-project --deep --dry-run reports read-only sample and creates no .quiver directory', () => {
   const repo = makeRepo({
     'package.json': JSON.stringify({
@@ -112,6 +120,69 @@ test('ai analyze-project rejects analysis flags on other ai subcommands', () => 
     assert.notEqual(result.status, 0);
     assert.equal(result.stdout, '');
     assert.match(result.stderr, /analysis flags are only supported by ai analyze-project/);
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('ai analyze-project accepts v55 doc-apply flags but rejects invalid combinations before provider', () => {
+  const repo = makeRepo({
+    'package.json': JSON.stringify({ name: 'contract-demo' }, null, 2),
+  });
+
+  try {
+    const reviewApply = spawnAnalyzeProject(repo.root, ['--deep', '--apply-docs', '--review']);
+    assert.notEqual(reviewApply.status, 0);
+    assert.equal(reviewApply.stdout, '');
+    assert.match(reviewApply.stderr, /--apply-docs cannot be combined with --review/);
+
+    const drySave = spawnAnalyzeProject(repo.root, ['--deep', '--dry-run', '--save-proposal']);
+    assert.notEqual(drySave.status, 0);
+    assert.equal(drySave.stdout, '');
+    assert.match(drySave.stderr, /--dry-run cannot be combined with --save-proposal/);
+
+    const jsonApply = spawnAnalyzeProject(repo.root, ['--deep', '--apply-docs', '--json']);
+    assert.notEqual(jsonApply.status, 0);
+    assert.equal(jsonApply.stdout, '');
+    assert.match(jsonApply.stderr, /--json with --apply-docs requires --yes/);
+
+    assert.equal(fs.existsSync(path.join(repo.root, '.quiver')), false);
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('ai analyze-project apply --run is parsed without provider/model and does not run provider in contract slice', () => {
+  const repo = makeRepo({
+    'package.json': JSON.stringify({ name: 'apply-contract' }, null, 2),
+  });
+
+  try {
+    const missingRun = spawnAnalyzeProject(repo.root, ['apply']);
+    assert.notEqual(missingRun.status, 0);
+    assert.match(missingRun.stderr, /apply requires --run <run-id>/);
+
+    const applyRun = spawnAnalyzeProject(repo.root, ['apply', '--run', 'run-123']);
+    assert.notEqual(applyRun.status, 0);
+    assert.equal(applyRun.stdout, '');
+    assert.match(applyRun.stderr, /apply --run is recognized/);
+    assert.match(applyRun.stderr, /No provider was run and no files were written/);
+    assert.equal(fs.existsSync(path.join(repo.root, '.quiver')), false);
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('ai analyze-project --review remains a supported UX flag at CLI boundary', () => {
+  const repo = makeRepo({
+    'package.json': JSON.stringify({ name: 'review-contract' }, null, 2),
+  });
+
+  try {
+    const result = spawnAnalyzeProject(repo.root, ['--deep', '--review', '--json']);
+    assert.notEqual(result.status, 0);
+    assert.doesNotMatch(result.stderr, /UX flag --review is not supported/);
+    assert.match(result.stderr, /--json cannot be combined with --review/);
   } finally {
     repo.cleanup();
   }

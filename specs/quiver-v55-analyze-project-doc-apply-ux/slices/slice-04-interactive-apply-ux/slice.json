@@ -1,0 +1,69 @@
+{
+  "slice_id": "slice-04-interactive-apply-ux",
+  "ticket": "QUIVER-55-04",
+  "type": "ux",
+  "title": "Interactive Apply UX",
+  "objective": "Add the explained TTY selector for --apply-docs while delegating all writes to the tested apply engine.",
+  "description": "Implements the human selector with option descriptions, dynamic recommendation, diff flow, save/edit/cancel actions, and bounded terminal output.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v55-interactive-apply-ux",
+    "branch_name": "feature/QUIVER-55-04-v55-interactive-apply-ux"
+  },
+  "files": [
+    "src/create-quiver/commands/ai.js",
+    "src/create-quiver/lib/ai/analyze-project-interactive.js",
+    "src/create-quiver/lib/ai/analyze-project-apply.js",
+    "src/create-quiver/lib/i18n/messages/en.js",
+    "src/create-quiver/lib/i18n/messages/es.js",
+    "tests/commands/ai-analyze-project-review.test.js",
+    "tests/lib/cli-ux.test.js",
+    "specs/quiver-v55-analyze-project-doc-apply-ux/**"
+  ],
+  "expected_read_paths": [
+    "src/create-quiver/lib/cli/ux.js",
+    "src/create-quiver/lib/ai/analyze-project-review.js",
+    "src/create-quiver/lib/ai/analyze-project-apply.js"
+  ],
+  "allowed_write_paths": [
+    "src/create-quiver/commands/ai.js",
+    "src/create-quiver/lib/ai/analyze-project-interactive.js",
+    "src/create-quiver/lib/ai/analyze-project-apply.js",
+    "src/create-quiver/lib/i18n/messages/en.js",
+    "src/create-quiver/lib/i18n/messages/es.js",
+    "tests/commands/ai-analyze-project-review.test.js",
+    "tests/lib/cli-ux.test.js",
+    "specs/quiver-v55-analyze-project-doc-apply-ux/**"
+  ],
+  "depends_on": [
+    "slice-03-noninteractive-apply-engine"
+  ],
+  "parallel_safe": "never",
+  "parallel_safe_reason": "Selector behavior depends on the completed apply engine contract.",
+  "must": [
+    "Show option descriptions.",
+    "Use dynamic recommendation.",
+    "Keep terminal diff bounded.",
+    "Route write actions through apply engine."
+  ],
+  "not_included": [
+    "Apply saved run.",
+    "Release smoke docs."
+  ],
+  "acceptance": [
+    "TTY --apply-docs shows explained selector.",
+    "no-TTY --apply-docs without --yes fails actionably.",
+    "Cancel writes no final docs.",
+    "View diff requires a second decision."
+  ],
+  "tests": [
+    "node --test tests/commands/ai-analyze-project-review.test.js",
+    "node --test tests/lib/cli-ux.test.js",
+    "node bin/create-quiver.js spec validate specs/quiver-v55-analyze-project-doc-apply-ux --strict",
+    "git diff --check"
+  ],
+  "estimated_hours": 6,
+  "status": "planned",
+  "blocked_reason": null
+}

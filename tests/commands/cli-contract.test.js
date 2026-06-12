@@ -143,6 +143,11 @@ test('help output documents important public commands', () => {
   }
   assert.match(output, /--dry-run\s+Preview .*ai agent set/);
   assert.match(output, /--max-files <n>\s+For ai analyze-project, maximum files/);
+  assert.match(output, /ai analyze-project apply --run <run-id>/);
+  assert.match(output, /--apply-docs\s+For ai analyze-project, apply validated documentation proposals/);
+  assert.match(output, /--save-proposal\s+For ai analyze-project, save a validated documentation proposal/);
+  assert.match(output, /--diff\s+For ai analyze-project, show or save the proposed documentation diff/);
+  assert.match(output, /--allow-dirty-docs\s+For ai analyze-project, allow dirty target docs checks/);
   assert.match(output, /--details\s+Show the full human dashboard report/);
   assert.match(output, /--section <name>\s+Show one human dashboard section \(overview, specs, slices, blockers, warnings, agents, approvals, runs, active-slice, next-steps\)/);
   assert.match(output, /--limit <n>\s+Limit dashboard human lists/);

@@ -1,0 +1,82 @@
+{
+  "slice_id": "slice-01-cli-proposal-contract",
+  "ticket": "QUIVER-55-01",
+  "type": "contract",
+  "title": "CLI Contract + Proposal Artifact Contract",
+  "objective": "Freeze the parser, flag, subcommand, and artifact schema contracts before implementing save/apply behavior.",
+  "description": "Adds the command contract for --apply-docs, --save-proposal, --diff, --yes, --allow-dirty-docs, and ai analyze-project apply --run, plus proposal/write manifest schema definitions and tests.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v55-cli-proposal-contract",
+    "branch_name": "feature/QUIVER-55-01-v55-cli-proposal-contract"
+  },
+  "files": [
+    "src/create-quiver/index.js",
+    "src/create-quiver/commands/ai.js",
+    "src/create-quiver/lib/ai/analyze-project-*.js",
+    "src/create-quiver/lib/cli/ux-flags.js",
+    "src/create-quiver/lib/i18n/messages/en.js",
+    "src/create-quiver/lib/i18n/messages/es.js",
+    "tests/commands/cli-contract.test.js",
+    "tests/commands/ai-analyze-project*.test.js",
+    "tests/lib/ai*.test.js",
+    "docs/reference/commands.md",
+    "specs/quiver-v43-cli-i18n-audit-release-readiness/command-language-mode-matrix.json",
+    "specs/quiver-v55-analyze-project-doc-apply-ux/**"
+  ],
+  "expected_read_paths": [
+    "src/create-quiver/commands/ai.js",
+    "src/create-quiver/lib/ai/analyze-project-review.js",
+    "src/create-quiver/lib/ai/analyze-project-docs.js",
+    "docs/CLI_UX_GUIDE.md"
+  ],
+  "allowed_write_paths": [
+    "src/create-quiver/index.js",
+    "src/create-quiver/commands/ai.js",
+    "src/create-quiver/lib/ai/analyze-project-proposal.js",
+    "src/create-quiver/lib/cli/ux-flags.js",
+    "src/create-quiver/lib/i18n/messages/en.js",
+    "src/create-quiver/lib/i18n/messages/es.js",
+    "tests/commands/cli-contract.test.js",
+    "tests/commands/ai-analyze-project.test.js",
+    "tests/commands/ai-analyze-project-review.test.js",
+    "tests/lib/ai-analyze-project-proposal.test.js",
+    "docs/reference/commands.md",
+    "specs/quiver-v43-cli-i18n-audit-release-readiness/command-language-mode-matrix.json",
+    "specs/quiver-v55-analyze-project-doc-apply-ux/**"
+  ],
+  "depends_on": [],
+  "parallel_safe": "never",
+  "parallel_safe_reason": "This slice defines contracts required by every later slice.",
+  "must": [
+    "Define exact flag compatibility rules.",
+    "Define proposal and write manifest schemas.",
+    "Keep --review backward compatible.",
+    "Ensure apply --run does not require provider/model."
+  ],
+  "not_included": [
+    "Saving proposal end-to-end.",
+    "Applying docs.",
+    "Interactive selector UX."
+  ],
+  "acceptance": [
+    "Parser accepts approved flags and subaction.",
+    "Invalid combinations fail before provider execution.",
+    "Proposal manifest schema is testable.",
+    "Existing --review tests remain green."
+  ],
+  "tests": [
+    "node --test tests/commands/ai-analyze-project.test.js",
+    "node --test tests/commands/ai-analyze-project-review.test.js",
+    "node --test tests/commands/i18n-audit-matrix.test.js",
+    "node bin/create-quiver.js spec validate specs/quiver-v55-analyze-project-doc-apply-ux --strict",
+    "git diff --check"
+  ],
+  "estimated_hours": 4,
+  "actual_hours": 4,
+  "status": "completed",
+  "blocked_reason": null,
+  "started_at": "2026-06-12T00:00:00.000Z",
+  "completed_at": "2026-06-12T00:00:00.000Z"
+}
