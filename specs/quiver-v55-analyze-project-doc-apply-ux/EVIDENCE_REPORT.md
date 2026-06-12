@@ -154,3 +154,30 @@ Covered behavior:
 - View diff saves the full diff artifact, prints a bounded preview, and requires a second decision.
 - Edit proposal reuses the existing review/editor confirmation flow.
 - English and Spanish selector copy are covered.
+
+## Slice-05 Evidence - slice-05-apply-saved-proposal
+
+Executed:
+
+```bash
+node --test tests/commands/ai-analyze-project-review.test.js
+node --test tests/lib/ai-analyze-project-proposal.test.js
+node --test tests/commands/ai-analyze-project.test.js
+npm run docs:check
+npm run schema:slice:check
+node bin/create-quiver.js spec validate specs/quiver-v55-analyze-project-doc-apply-ux --strict
+git diff --check
+npm test
+```
+
+Result: all passed. Full `npm test` passed with 747 tests.
+
+Covered behavior:
+
+- `ai analyze-project apply --run <run-id>` applies a saved proposal without executing provider/model resolution.
+- Saved proposal manifests and proposal JSON are revalidated before write.
+- Missing or unsafe saved artifacts fail before final docs writes.
+- Dirty target docs block by default and can be applied only with `--allow-dirty-docs`.
+- Stale target docs block before any final docs write.
+- Manual proposal edits are accepted after revalidation and recorded in the write manifest.
+- `--run latest --yes` and `--run latest --json` are rejected to keep automation deterministic.

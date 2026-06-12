@@ -4,6 +4,7 @@ const path = require('node:path');
 
 const { z } = require('zod');
 
+const { parseAnalyzeProjectDocProposal } = require('./analyze-project-docs');
 const { validateProjectRelativePath } = require('../paths');
 
 const ANALYZE_PROJECT_PROPOSAL_MANIFEST_SCHEMA_VERSION = 1;
@@ -53,6 +54,26 @@ function sha256(contents) {
   return crypto.createHash('sha256').update(String(contents || ''), 'utf8').digest('hex');
 }
 
+function normalizeAnalyzeProjectProposalRunId(value) {
+  const runId = String(value || '').trim();
+  if (!runId) {
+    throw new AnalyzeProjectProposalContractError('analyze-project proposal run id is required', [
+      { path: 'run_id', issue: 'missing-run-id', message: 'run_id is required' },
+    ]);
+  }
+  if (runId === '.' || runId === '..' || runId.includes('/') || runId.includes('\\') || runId.includes('\0')) {
+    throw new AnalyzeProjectProposalContractError('analyze-project proposal run id is not safe', [
+      { path: 'run_id', issue: 'unsafe-run-id', message: 'run_id must be a single path segment' },
+    ]);
+  }
+  if (!/^[A-Za-z0-9._-]+$/.test(runId)) {
+    throw new AnalyzeProjectProposalContractError('analyze-project proposal run id is not safe', [
+      { path: 'run_id', issue: 'unsafe-run-id', message: 'run_id can contain only letters, numbers, dots, underscores, and hyphens' },
+    ]);
+  }
+  return runId;
+}
+
 function writeJsonFile(filePath, value) {
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
   fs.writeFileSync(filePath, `${JSON.stringify(value, null, 2)}\n`);
@@ -61,6 +82,21 @@ function writeJsonFile(filePath, value) {
 function writeTextFile(filePath, value) {
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
   fs.writeFileSync(filePath, String(value || ''));
+}
+
+function readJsonFile(filePath, description) {
+  if (!fs.existsSync(filePath)) {
+    throw new AnalyzeProjectProposalContractError(`missing analyze-project ${description}`, [
+      { path: toPosix(filePath), issue: 'missing-artifact', message: `${description} does not exist` },
+    ]);
+  }
+  try {
+    return JSON.parse(fs.readFileSync(filePath, 'utf8'));
+  } catch (error) {
+    throw new AnalyzeProjectProposalContractError(`invalid analyze-project ${description}`, [
+      { path: toPosix(filePath), issue: 'malformed-json', message: error.message },
+    ]);
+  }
 }
 
 function artifactPathFromRef(ref) {
@@ -148,12 +184,7 @@ function normalizeAnalyzeProjectWriteManifest(value) {
 }
 
 function buildAnalyzeProjectProposalArtifactPaths(runId) {
-  const safeRunId = String(runId || '').trim();
-  if (!safeRunId) {
-    throw new AnalyzeProjectProposalContractError('analyze-project proposal artifact paths require a run id', [
-      { path: 'run_id', issue: 'missing-run-id', message: 'run_id is required' },
-    ]);
-  }
+  const safeRunId = normalizeAnalyzeProjectProposalRunId(runId);
 
   const root = `.quiver/runs/${safeRunId}/proposal`;
   return {
@@ -164,6 +195,159 @@ function buildAnalyzeProjectProposalArtifactPaths(runId) {
     manifest: `${root}/${PROPOSAL_ARTIFACT_FILENAMES.manifest}`,
     write_manifest: `.quiver/runs/${safeRunId}/writes/analyze-project-doc-writes.json`,
   };
+}
+
+function assertSavedProposalManifestMatchesRun(manifest, paths, runId) {
+  const issues = [];
+  if (manifest.run_id !== runId) {
+    issues.push({
+      path: 'manifest.run_id',
+      issue: 'run-id-mismatch',
+      message: `manifest run_id must match requested run id (${runId})`,
+    });
+  }
+  for (const [field, expected] of Object.entries({
+    proposal_json: paths.proposal_json,
+    proposal_markdown: paths.proposal_markdown,
+    proposal_diff: paths.proposal_diff,
+  })) {
+    if (manifest[field] !== expected) {
+      issues.push({
+        path: `manifest.${field}`,
+        issue: 'artifact-path-mismatch',
+        message: `${field} must match ${expected}`,
+      });
+    }
+  }
+  if (issues.length > 0) {
+    throw new AnalyzeProjectProposalContractError('saved analyze-project proposal manifest does not match the requested run', issues);
+  }
+}
+
+function assertSavedProposalArtifactsExist(repoRoot, manifest) {
+  const issues = [];
+  for (const [field, relativePath] of Object.entries({
+    proposal_json: manifest.proposal_json,
+    proposal_markdown: manifest.proposal_markdown,
+    proposal_diff: manifest.proposal_diff,
+  })) {
+    if (!fs.existsSync(path.join(repoRoot, relativePath))) {
+      issues.push({
+        path: field,
+        issue: 'missing-artifact',
+        message: `${relativePath} does not exist`,
+      });
+    }
+  }
+  if (issues.length > 0) {
+    throw new AnalyzeProjectProposalContractError('saved analyze-project proposal is missing required artifacts', issues);
+  }
+}
+
+function assertSavedProposalDocPathsMatchManifest(proposal, manifest) {
+  const proposalPaths = (proposal.docs || []).map((doc) => doc.path).sort();
+  const manifestPaths = [...(manifest.doc_paths || [])].sort();
+  if (JSON.stringify(proposalPaths) === JSON.stringify(manifestPaths)) {
+    return;
+  }
+  throw new AnalyzeProjectProposalContractError('saved analyze-project proposal docs do not match the proposal manifest', [
+    {
+      path: 'doc_paths',
+      issue: 'doc-paths-mismatch',
+      message: 'manual proposal edits may change content, but target doc paths must match the saved manifest',
+      expected: manifestPaths,
+      actual: proposalPaths,
+    },
+  ]);
+}
+
+function readAnalyzeProjectSavedProposal(repoRoot, runId) {
+  const resolvedRunId = normalizeAnalyzeProjectProposalRunId(runId);
+  const paths = buildAnalyzeProjectProposalArtifactPaths(resolvedRunId);
+  const manifestPath = path.join(repoRoot, paths.manifest);
+  const manifest = normalizeAnalyzeProjectProposalManifest(readJsonFile(manifestPath, 'proposal manifest'));
+  assertSavedProposalManifestMatchesRun(manifest, paths, resolvedRunId);
+  assertSavedProposalArtifactsExist(repoRoot, manifest);
+
+  const proposalPath = path.join(repoRoot, manifest.proposal_json);
+  let proposal;
+  try {
+    proposal = parseAnalyzeProjectDocProposal(fs.readFileSync(proposalPath, 'utf8'));
+  } catch (error) {
+    throw new AnalyzeProjectProposalContractError('saved analyze-project proposal JSON is invalid', error.issues || [{
+      path: manifest.proposal_json,
+      issue: error.code || 'invalid-proposal',
+      message: error.message,
+    }]);
+  }
+  assertSavedProposalDocPathsMatchManifest(proposal, manifest);
+
+  const proposalJson = `${JSON.stringify(proposal, null, 2)}\n`;
+  const proposalHash = sha256(proposalJson);
+  const proposalEdited = proposalHash !== manifest.proposal_sha256;
+
+  return {
+    run_id: resolvedRunId,
+    proposal,
+    proposal_sha256: proposalHash,
+    proposal_edited: proposalEdited,
+    manifest,
+    artifacts: {
+      root: paths.root,
+      proposal_json: manifest.proposal_json,
+      proposal_markdown: manifest.proposal_markdown,
+      proposal_diff: manifest.proposal_diff,
+      manifest: paths.manifest,
+      proposal_sha256: proposalHash,
+      doc_paths: manifest.doc_paths,
+      changed_docs: manifest.doc_paths,
+      manifest_data: manifest,
+      files: [
+        manifest.proposal_json,
+        manifest.proposal_markdown,
+        manifest.proposal_diff,
+        paths.manifest,
+      ],
+    },
+  };
+}
+
+function findLatestAnalyzeProjectSavedProposalRun(repoRoot) {
+  const runsRoot = path.join(repoRoot, '.quiver', 'runs');
+  if (!fs.existsSync(runsRoot)) {
+    return null;
+  }
+
+  const candidates = [];
+  for (const entry of fs.readdirSync(runsRoot)) {
+    let runId;
+    try {
+      runId = normalizeAnalyzeProjectProposalRunId(entry);
+    } catch {
+      continue;
+    }
+    const manifestPath = path.join(runsRoot, runId, 'proposal', PROPOSAL_ARTIFACT_FILENAMES.manifest);
+    if (!fs.existsSync(manifestPath)) {
+      continue;
+    }
+    let timestamp = 0;
+    try {
+      const manifest = normalizeAnalyzeProjectProposalManifest(readJsonFile(manifestPath, 'proposal manifest'));
+      timestamp = Date.parse(manifest.created_at) || fs.statSync(manifestPath).mtimeMs;
+    } catch {
+      timestamp = fs.statSync(manifestPath).mtimeMs;
+    }
+    candidates.push({ runId, timestamp });
+  }
+
+  candidates.sort((a, b) => {
+    if (b.timestamp !== a.timestamp) {
+      return b.timestamp - a.timestamp;
+    }
+    return b.runId.localeCompare(a.runId);
+  });
+
+  return candidates[0]?.runId || null;
 }
 
 function formatAnalyzeProjectFullDiff(writePlan = []) {
@@ -384,11 +568,14 @@ module.exports = {
   AnalyzeProjectProposalContractError,
   PROPOSAL_ARTIFACT_FILENAMES,
   buildAnalyzeProjectProposalArtifactPaths,
+  findLatestAnalyzeProjectSavedProposalRun,
   formatAnalyzeProjectFullDiff,
   formatAnalyzeProjectProposalSummary,
+  normalizeAnalyzeProjectProposalRunId,
   normalizeAnalyzeProjectProposalManifest,
   normalizeAnalyzeProjectWriteManifest,
   proposalManifestSchema,
+  readAnalyzeProjectSavedProposal,
   writeAnalyzeProjectProposalArtifacts,
   writeAnalyzeProjectWriteManifest,
   writeManifestSchema,

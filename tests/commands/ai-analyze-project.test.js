@@ -152,7 +152,7 @@ test('ai analyze-project accepts v55 doc-apply flags but rejects invalid combina
   }
 });
 
-test('ai analyze-project apply --run is parsed without provider/model and does not run provider in contract slice', () => {
+test('ai analyze-project apply --run is parsed without provider/model and validates saved artifacts', () => {
   const repo = makeRepo({
     'package.json': JSON.stringify({ name: 'apply-contract' }, null, 2),
   });
@@ -165,8 +165,22 @@ test('ai analyze-project apply --run is parsed without provider/model and does n
     const applyRun = spawnAnalyzeProject(repo.root, ['apply', '--run', 'run-123']);
     assert.notEqual(applyRun.status, 0);
     assert.equal(applyRun.stdout, '');
-    assert.match(applyRun.stderr, /apply --run is recognized/);
-    assert.match(applyRun.stderr, /No provider was run and no files were written/);
+    assert.match(applyRun.stderr, /missing analyze-project proposal manifest/);
+
+    const latestYes = spawnAnalyzeProject(repo.root, ['apply', '--run', 'latest', '--yes']);
+    assert.notEqual(latestYes.status, 0);
+    assert.equal(latestYes.stdout, '');
+    assert.match(latestYes.stderr, /--run latest cannot be combined with --yes/);
+
+    const latestJson = spawnAnalyzeProject(repo.root, ['apply', '--run', 'latest', '--json']);
+    assert.notEqual(latestJson.status, 0);
+    assert.equal(latestJson.stdout, '');
+    assert.match(latestJson.stderr, /--run latest cannot be combined with --json/);
+
+    const mixed = spawnAnalyzeProject(repo.root, ['apply', '--run', 'run-123', '--save-proposal']);
+    assert.notEqual(mixed.status, 0);
+    assert.equal(mixed.stdout, '');
+    assert.match(mixed.stderr, /apply --run cannot be combined with --apply-docs, --save-proposal, or --review/);
     assert.equal(fs.existsSync(path.join(repo.root, '.quiver')), false);
   } finally {
     repo.cleanup();

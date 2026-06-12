@@ -37,6 +37,8 @@ const {
   reviewAnalyzeProjectDocProposal,
 } = require('../lib/ai/analyze-project-review');
 const {
+  findLatestAnalyzeProjectSavedProposalRun,
+  readAnalyzeProjectSavedProposal,
   writeAnalyzeProjectProposalArtifacts,
 } = require('../lib/ai/analyze-project-proposal');
 const {
@@ -606,13 +608,15 @@ function formatAnalyzeProjectApplyReport(report = {}) {
     'AI analyze-project docs applied',
     `Run: ${report.run_id || 'unknown'}`,
     `Provider: ${report.provider || 'unknown'}`,
+    report.provider_execution ? `Provider execution: ${report.provider_execution}` : '',
+    report.apply_run ? `Saved proposal edited: ${report.saved_proposal?.proposal_edited ? 'yes' : 'no'}` : '',
     `Writes: ${changed.length > 0 ? changed.map((item) => item.path).join(', ') : 'none'}`,
     `Dirty target docs: ${dirty.length > 0 ? dirty.map((item) => item.path).join(', ') : 'none'}`,
     `Written docs: ${report.written_docs?.length > 0 ? report.written_docs.join(', ') : 'none'}`,
     `Snapshot: ${report.snapshot?.root || 'none'}`,
     `Proposal manifest: ${artifacts.manifest || 'none'}`,
     `Write manifest: ${writeManifest.path || 'none'}`,
-  ];
+  ].filter(Boolean);
   lines.push(...formatAnalyzeProjectPostWriteValidation(report.post_write_validation));
   return `${lines.join('\n')}\n`;
 }
@@ -632,13 +636,42 @@ function formatAnalyzeProjectApplyPreflightError(error) {
     error.message,
     'Issues:',
     ...issueLines,
-    'Next safe step: rerun with `--review`, or inspect with `--save-proposal`, or add `--allow-dirty-docs` if overwriting existing managed docs is intended.',
+    error.apply_run
+      ? 'Next safe step: inspect `.quiver/runs/<run-id>/proposal/analyze-project-doc-proposal.diff`, then rerun with an explicit run id. Add `--allow-dirty-docs` only if overwriting existing managed docs is intended.'
+      : 'Next safe step: rerun with `--review`, or inspect with `--save-proposal`, or add `--allow-dirty-docs` if overwriting existing managed docs is intended.',
   ].join('\n'));
   wrapped.name = error.name;
   wrapped.code = error.code;
   wrapped.cause = error;
   wrapped.issues = error.issues;
   return wrapped;
+}
+
+function resolveAnalyzeProjectSavedProposalRunId(repoRoot, options = {}) {
+  const requestedRunId = String(options.runId || '').trim();
+  if (requestedRunId !== 'latest') {
+    return { runId: requestedRunId, requestedRunId };
+  }
+
+  if (!canUseInteractiveTerminal(options)) {
+    throw analyzeProjectContractError(
+      'ai analyze-project apply --run latest requires an interactive terminal.',
+      'Use an explicit run id for automation: `npx create-quiver ai analyze-project apply --run <run-id>`.',
+    );
+  }
+
+  const latestRunId = findLatestAnalyzeProjectSavedProposalRun(repoRoot);
+  if (!latestRunId) {
+    throw analyzeProjectContractError(
+      'ai analyze-project apply --run latest could not find a saved proposal.',
+      'Create one first: `npx create-quiver ai analyze-project --deep --save-proposal --provider <provider> --model <model>`.',
+    );
+  }
+
+  if (options.json !== true) {
+    process.stdout.write(`Resolved latest analyze-project proposal: ${latestRunId}\n`);
+  }
+  return { runId: latestRunId, requestedRunId };
 }
 
 function analyzeProjectRawProviderArtifactPaths(rawProviderArtifacts = []) {
@@ -770,6 +803,106 @@ function applyAnalyzeProjectDocProposalReport(repoRoot, options = {}) {
     },
   });
   return applyReport;
+}
+
+function applyAnalyzeProjectSavedProposalRun(repoRoot, options = {}) {
+  const { runId, requestedRunId } = resolveAnalyzeProjectSavedProposalRunId(repoRoot, options);
+  const now = options.now instanceof Date ? options.now : new Date(options.now || Date.now());
+  const saved = readAnalyzeProjectSavedProposal(repoRoot, runId);
+  const provider = saved.manifest.provider || null;
+  const runStatusPath = path.join('.quiver', 'runs', runId, 'status.json').split(path.sep).join('/');
+  const baseReport = {
+    schema_version: 1,
+    kind: 'quiver-project-analysis-apply-saved-proposal',
+    command: 'ai analyze-project apply',
+    mode: 'apply-saved-proposal',
+    apply_run: true,
+    requested_run_id: requestedRunId,
+    run_id: runId,
+    provider,
+    provider_execution: 'skipped',
+    writes: [],
+    doc_proposal: saved.proposal,
+    saved_proposal: {
+      requested_run_id: requestedRunId,
+      run_id: runId,
+      manifest: saved.artifacts.manifest,
+      proposal_json: saved.artifacts.proposal_json,
+      proposal_sha256: saved.proposal_sha256,
+      proposal_edited: saved.proposal_edited,
+    },
+    run_status_path: runStatusPath,
+  };
+  const events = [
+    {
+      type: 'saved-proposal-apply',
+      at: now.toISOString(),
+      requested_run_id: requestedRunId,
+      run_id: runId,
+    },
+  ];
+  if (saved.proposal_edited) {
+    events.push({
+      type: 'saved-proposal-edited',
+      at: now.toISOString(),
+      original_sha256: saved.manifest.proposal_sha256,
+      current_sha256: saved.proposal_sha256,
+    });
+  }
+
+  let applyReport;
+  try {
+    applyReport = applyAnalyzeProjectDocProposal(repoRoot, {
+      report: baseReport,
+      runId,
+      now,
+      provider,
+      language: saved.manifest.language,
+      proposal: saved.proposal,
+      proposalArtifacts: saved.artifacts,
+      proposalManifest: saved.manifest,
+      proposalEdited: saved.proposal_edited,
+      strict: options.strict === true,
+      allowDirtyDocs: options.allowDirtyDocs === true,
+      summarizeWritePlan: summarizeAnalyzeProjectWritePlan,
+      events,
+    });
+  } catch (error) {
+    error.apply_run = true;
+    const proposalArtifacts = error.proposal_artifacts || saved.artifacts || {};
+    writeAnalyzeProjectRunStatus(repoRoot, runId, error.code === 'AI_ANALYZE_PROJECT_APPLY_BLOCKED' ? 'apply-blocked' : 'apply-failed', {
+      now,
+      provider,
+      attempts: [],
+      artifacts: {
+        proposal_manifest: proposalArtifacts.manifest || saved.artifacts.manifest,
+        proposal_files: listAnalyzeProjectProposalArtifactFiles(proposalArtifacts),
+        write_manifest: error.write_manifest?.path || null,
+        snapshot_manifest: error.snapshot?.manifestPath || null,
+      },
+    });
+    throw formatAnalyzeProjectApplyPreflightError(error);
+  }
+
+  applyReport = {
+    ...applyReport,
+    apply_run: true,
+    requested_run_id: requestedRunId,
+    saved_proposal: baseReport.saved_proposal,
+    run_status_path: runStatusPath,
+  };
+  writeAnalyzeProjectRunStatus(repoRoot, runId, applyReport.post_write_validation?.ok ? 'docs-applied' : 'apply-validation-failed', {
+    now,
+    provider,
+    attempts: [],
+    artifacts: {
+      proposal_manifest: applyReport.proposal_artifacts?.manifest,
+      proposal_files: listAnalyzeProjectProposalArtifactFiles(applyReport.proposal_artifacts),
+      write_manifest: applyReport.write_manifest?.path,
+      snapshot_manifest: applyReport.snapshot?.manifestPath,
+    },
+  });
+  return emitAnalyzeProjectApplyReport(applyReport, options);
 }
 
 function emitAnalyzeProjectApplyReport(applyReport, options = {}) {
@@ -916,6 +1049,10 @@ function analyzeProjectContractError(message, nextCommand) {
   return error;
 }
 
+function canUseInteractiveTerminal(options = {}) {
+  return options.stdinIsTTY === true || (options.stdinIsTTY !== false && Boolean(process.stdin.isTTY));
+}
+
 function assertAnalyzeProjectCommandContract(options = {}) {
   if (options.review === true && options.applyDocs === true) {
     throw analyzeProjectContractError(
@@ -945,6 +1082,13 @@ function assertAnalyzeProjectCommandContract(options = {}) {
     );
   }
 
+  if (options.applyRun === true && (options.applyDocs === true || options.saveProposal === true || options.review === true)) {
+    throw analyzeProjectContractError(
+      'ai analyze-project apply --run cannot be combined with --apply-docs, --save-proposal, or --review.',
+      'Use `npx create-quiver ai analyze-project apply --run <run-id>` to apply a saved proposal, or rerun `ai analyze-project --deep` for a fresh proposal.',
+    );
+  }
+
   if (options.json === true && options.applyDocs === true && options.force !== true) {
     throw analyzeProjectContractError(
       'ai analyze-project --json with --apply-docs requires --yes because JSON output cannot include an interactive selector.',
@@ -956,6 +1100,20 @@ function assertAnalyzeProjectCommandContract(options = {}) {
     throw analyzeProjectContractError(
       'ai analyze-project apply requires --run <run-id>.',
       'Use `npx create-quiver ai analyze-project apply --run <run-id>`.',
+    );
+  }
+
+  if (options.applyRun === true && String(options.runId || '').trim() === 'latest' && options.force === true) {
+    throw analyzeProjectContractError(
+      'ai analyze-project apply --run latest cannot be combined with --yes.',
+      'Use an explicit run id for automation: `npx create-quiver ai analyze-project apply --run <run-id> --yes`.',
+    );
+  }
+
+  if (options.applyRun === true && String(options.runId || '').trim() === 'latest' && options.json === true) {
+    throw analyzeProjectContractError(
+      'ai analyze-project apply --run latest cannot be combined with --json.',
+      'Use an explicit run id for JSON automation: `npx create-quiver ai analyze-project apply --run <run-id> --json`.',
     );
   }
 }
@@ -2402,10 +2560,7 @@ async function runPrepareContext(repoRoot, options = {}) {
 async function runAnalyzeProject(repoRoot, options = {}) {
   assertAnalyzeProjectCommandContract(options);
   if (options.applyRun === true) {
-    throw analyzeProjectContractError(
-      'ai analyze-project apply --run is recognized, but applying saved proposals is implemented in a later v55 slice. No provider was run and no files were written.',
-      'Use `npx create-quiver ai analyze-project --deep --review` until apply --run is available.',
-    );
+    return applyAnalyzeProjectSavedProposalRun(repoRoot, options);
   }
   if (options.applyDocs === true && options.force !== true && !canUseAnalyzeProjectInteractiveSelector(options)) {
     throw analyzeProjectContractError(

@@ -5,7 +5,7 @@
 
 ## Current State
 
-The requirement, acceptance criteria, technical plan, production review, and stricter slice-cut review are approved. `slice-01-cli-proposal-contract`, `slice-02-save-proposal-flow`, `slice-03-noninteractive-apply-engine`, and `slice-04-interactive-apply-ux` have been implemented and validated.
+The requirement, acceptance criteria, technical plan, production review, and stricter slice-cut review are approved. `slice-01-cli-proposal-contract`, `slice-02-save-proposal-flow`, `slice-03-noninteractive-apply-engine`, `slice-04-interactive-apply-ux`, and `slice-05-apply-saved-proposal` have been implemented and validated.
 
 ## Slice Status
 
@@ -15,7 +15,7 @@ The requirement, acceptance criteria, technical plan, production review, and str
 | slice-02-save-proposal-flow | completed | `--save-proposal` persists JSON, Markdown summary, diff, and manifest artifacts without final docs writes. |
 | slice-03-noninteractive-apply-engine | completed | `--apply-docs --yes` applies valid docs through proposal artifacts, dirty/stale preflight, snapshot, write manifest, and post-write validation. |
 | slice-04-interactive-apply-ux | completed | Plain TTY `--apply-docs` now shows an explained selector with apply, view diff, save, edit, and cancel actions routed through tested flows. |
-| slice-05-apply-saved-proposal | pending | Apply saved proposals by run id without provider execution. |
+| slice-05-apply-saved-proposal | completed | `ai analyze-project apply --run <run-id>` applies saved proposals without provider execution after manifest/proposal revalidation and dirty/stale checks. |
 | slice-06-i18n-docs-release-smoke | pending | Complete EN/ES copy, docs, command matrix, and release smoke guidance. |
 
 ## Blockers
@@ -25,5 +25,5 @@ The requirement, acceptance criteria, technical plan, production review, and str
 ## Next Command
 
 ```bash
-npx create-quiver slice start specs/quiver-v55-analyze-project-doc-apply-ux/slices/slice-05-apply-saved-proposal/slice.json
+npx create-quiver slice start specs/quiver-v55-analyze-project-doc-apply-ux/slices/slice-06-i18n-docs-release-smoke/slice.json
 ```

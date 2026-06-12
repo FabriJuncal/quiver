@@ -270,14 +270,16 @@ function collectChangedDocPaths(report) {
 }
 
 function addSchemaValidation(report, errors) {
-  try {
-    normalizeAnalyzeProjectAnalysis(report.analysis, {
-      selectedFiles: report.selected_files || [],
-      promptFiles: report.prompt?.files || [],
-    });
-  } catch (error) {
-    for (const issue of error.issues || []) {
-      errors.push(makeIssue(issue.path, issue.issue || 'analysis-schema-invalid', issue.message || error.message));
+  if (report.apply_run !== true || report.analysis) {
+    try {
+      normalizeAnalyzeProjectAnalysis(report.analysis, {
+        selectedFiles: report.selected_files || [],
+        promptFiles: report.prompt?.files || [],
+      });
+    } catch (error) {
+      for (const issue of error.issues || []) {
+        errors.push(makeIssue(issue.path, issue.issue || 'analysis-schema-invalid', issue.message || error.message));
+      }
     }
   }
 

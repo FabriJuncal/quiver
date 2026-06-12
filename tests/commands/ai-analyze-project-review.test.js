@@ -394,6 +394,186 @@ test('ai analyze-project --apply-docs --yes --allow-dirty-docs writes managed bl
   }
 });
 
+test('ai analyze-project apply --run applies a saved proposal without executing provider', async () => {
+  const repo = makeRepo({
+    'README.md': '# Apply Saved Demo\n',
+    'package.json': JSON.stringify({ name: 'apply-saved-demo' }, null, 2),
+    'src/routes/users.ts': 'export const users = [];\n',
+  });
+  let providerCalls = 0;
+
+  try {
+    const saved = await captureStdout(() => runAnalyzeProject(repo.root, {
+      includeSource: true,
+      saveProposal: true,
+      provider: 'codex',
+      providerExplicit: true,
+      runProviderFn: async () => {
+        providerCalls += 1;
+        return providerResult(validAnalysis(), { cwd: repo.root });
+      },
+      now: new Date('2026-06-12T14:00:00Z'),
+    }));
+    let applyProviderCalled = false;
+
+    const { output, result } = await captureStdout(() => runAnalyzeProject(repo.root, {
+      applyRun: true,
+      json: true,
+      runId: saved.result.run_id,
+      runProviderFn: async () => {
+        applyProviderCalled = true;
+        return providerResult(validAnalysis(), { cwd: repo.root });
+      },
+      now: new Date('2026-06-12T14:01:00Z'),
+    }));
+
+    const parsed = JSON.parse(output);
+    const context = fs.readFileSync(path.join(repo.root, 'docs/CONTEXTO.md'), 'utf8');
+    const writeManifest = readJson(path.join(repo.root, parsed.write_manifest.path));
+    const status = readJson(path.join(repo.root, parsed.run_status_path));
+
+    assert.equal(providerCalls, 1);
+    assert.equal(applyProviderCalled, false);
+    assert.equal(parsed.apply_run, true);
+    assert.equal(parsed.provider_execution, 'skipped');
+    assert.equal(parsed.saved_proposal.proposal_edited, false);
+    assert.deepEqual(parsed.written_docs, ['docs/CONTEXTO.md']);
+    assert.equal(writeManifest.events.some((event) => event.type === 'saved-proposal-apply'), true);
+    assert.equal(status.status, 'docs-applied');
+    assert.ok(context.includes('Provider proposal.'));
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('ai analyze-project apply --run blocks dirty saved docs unless explicitly allowed', async () => {
+  const repo = makeRepo({
+    'README.md': '# Apply Saved Dirty Demo\n',
+    'package.json': JSON.stringify({ name: 'apply-saved-dirty-demo' }, null, 2),
+    'src/routes/users.ts': 'export const users = [];\n',
+    'docs/CONTEXTO.md': '# Manual\n\nHuman text.\n',
+  });
+
+  try {
+    const saved = await captureStdout(() => runAnalyzeProject(repo.root, {
+      includeSource: true,
+      saveProposal: true,
+      provider: 'codex',
+      providerExplicit: true,
+      runProviderFn: async () => providerResult(validAnalysis(), { cwd: repo.root }),
+      now: new Date('2026-06-12T14:02:00Z'),
+    }));
+
+    await assert.rejects(
+      captureStdout(() => runAnalyzeProject(repo.root, {
+        applyRun: true,
+        runId: saved.result.run_id,
+        now: new Date('2026-06-12T14:03:00Z'),
+      })),
+      /dirty-target-doc/,
+    );
+
+    let context = fs.readFileSync(path.join(repo.root, 'docs/CONTEXTO.md'), 'utf8');
+    let status = readJson(path.join(repo.root, saved.result.run_status_path));
+    assert.equal(context, '# Manual\n\nHuman text.\n');
+    assert.equal(status.status, 'apply-blocked');
+
+    const allowed = await captureStdout(() => runAnalyzeProject(repo.root, {
+      allowDirtyDocs: true,
+      applyRun: true,
+      runId: saved.result.run_id,
+      now: new Date('2026-06-12T14:04:00Z'),
+    }));
+
+    context = fs.readFileSync(path.join(repo.root, 'docs/CONTEXTO.md'), 'utf8');
+    status = readJson(path.join(repo.root, allowed.result.run_status_path));
+    assert.equal(allowed.result.post_write_validation.ok, true);
+    assert.deepEqual(allowed.result.written_docs, ['docs/CONTEXTO.md']);
+    assert.equal(status.status, 'docs-applied');
+    assert.ok(context.includes('Human text.'));
+    assert.ok(context.includes('Provider proposal.'));
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('ai analyze-project apply --run blocks stale saved proposals before writing', async () => {
+  const repo = makeRepo({
+    'README.md': '# Apply Saved Stale Demo\n',
+    'package.json': JSON.stringify({ name: 'apply-saved-stale-demo' }, null, 2),
+    'src/routes/users.ts': 'export const users = [];\n',
+  });
+
+  try {
+    const saved = await captureStdout(() => runAnalyzeProject(repo.root, {
+      includeSource: true,
+      saveProposal: true,
+      provider: 'codex',
+      providerExplicit: true,
+      runProviderFn: async () => providerResult(validAnalysis(), { cwd: repo.root }),
+      now: new Date('2026-06-12T14:05:00Z'),
+    }));
+
+    writeFile(path.join(repo.root, 'docs/CONTEXTO.md'), '# Manual\n\nCreated after proposal.\n');
+
+    await assert.rejects(
+      captureStdout(() => runAnalyzeProject(repo.root, {
+        allowDirtyDocs: true,
+        applyRun: true,
+        runId: saved.result.run_id,
+        now: new Date('2026-06-12T14:06:00Z'),
+      })),
+      /stale-target-doc/,
+    );
+
+    const context = fs.readFileSync(path.join(repo.root, 'docs/CONTEXTO.md'), 'utf8');
+    const status = readJson(path.join(repo.root, saved.result.run_status_path));
+    assert.equal(context, '# Manual\n\nCreated after proposal.\n');
+    assert.equal(status.status, 'apply-blocked');
+    assert.equal(fs.existsSync(path.join(repo.root, '.quiver/runs', saved.result.run_id, 'writes/analyze-project-doc-writes.json')), false);
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('ai analyze-project apply --run accepts revalidated manual proposal edits and records them', async () => {
+  const repo = makeRepo({
+    'README.md': '# Apply Saved Edited Demo\n',
+    'package.json': JSON.stringify({ name: 'apply-saved-edited-demo' }, null, 2),
+    'src/routes/users.ts': 'export const users = [];\n',
+  });
+
+  try {
+    const saved = await captureStdout(() => runAnalyzeProject(repo.root, {
+      includeSource: true,
+      saveProposal: true,
+      provider: 'codex',
+      providerExplicit: true,
+      runProviderFn: async () => providerResult(validAnalysis(), { cwd: repo.root }),
+      now: new Date('2026-06-12T14:07:00Z'),
+    }));
+    const proposalPath = path.join(repo.root, saved.result.proposal_artifacts.proposal_json);
+    const proposal = readJson(proposalPath);
+    proposal.docs[0].content = '# Context\nEdited saved proposal.\n';
+    fs.writeFileSync(proposalPath, `${JSON.stringify(proposal, null, 2)}\n`);
+
+    const { result } = await captureStdout(() => runAnalyzeProject(repo.root, {
+      applyRun: true,
+      runId: saved.result.run_id,
+      now: new Date('2026-06-12T14:08:00Z'),
+    }));
+
+    const context = fs.readFileSync(path.join(repo.root, 'docs/CONTEXTO.md'), 'utf8');
+    const writeManifest = readJson(path.join(repo.root, result.write_manifest.path));
+    assert.equal(result.saved_proposal.proposal_edited, true);
+    assert.equal(result.proposal_artifacts.proposal_edited, true);
+    assert.equal(writeManifest.events.some((event) => event.type === 'saved-proposal-edited'), true);
+    assert.ok(context.includes('Edited saved proposal.'));
+  } finally {
+    repo.cleanup();
+  }
+});
+
 test('ai analyze-project --apply-docs --yes blocks invalid provider doc proposals without final docs', async () => {
   const repo = makeRepo({
     'README.md': '# Invalid Apply Demo\n',
