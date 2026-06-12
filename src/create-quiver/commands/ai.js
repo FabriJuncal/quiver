@@ -40,6 +40,9 @@ const {
   writeAnalyzeProjectProposalArtifacts,
 } = require('../lib/ai/analyze-project-proposal');
 const {
+  applyAnalyzeProjectDocProposal,
+} = require('../lib/ai/analyze-project-apply');
+const {
   DEFAULT_MAX_BYTES: DEFAULT_ANALYZE_MAX_BYTES,
   DEFAULT_MAX_FILES: DEFAULT_ANALYZE_MAX_FILES,
   sampleProjectFiles,
@@ -588,6 +591,50 @@ function formatAnalyzeProjectReviewPlan({ writePlan, reviewPath, snapshot, writt
   lines.push('', 'Confirmation required before writing.');
 
   return `${lines.join('\n')}\n`;
+}
+
+function formatAnalyzeProjectApplyReport(report = {}) {
+  const artifacts = report.proposal_artifacts || {};
+  const writeManifest = report.write_manifest || {};
+  const changed = report.write_plan?.filter((item) => item.action !== 'skip') || [];
+  const dirty = changed.filter((item) => item.dirty);
+  const lines = [
+    'AI analyze-project docs applied',
+    `Run: ${report.run_id || 'unknown'}`,
+    `Provider: ${report.provider || 'unknown'}`,
+    `Writes: ${changed.length > 0 ? changed.map((item) => item.path).join(', ') : 'none'}`,
+    `Dirty target docs: ${dirty.length > 0 ? dirty.map((item) => item.path).join(', ') : 'none'}`,
+    `Written docs: ${report.written_docs?.length > 0 ? report.written_docs.join(', ') : 'none'}`,
+    `Snapshot: ${report.snapshot?.root || 'none'}`,
+    `Proposal manifest: ${artifacts.manifest || 'none'}`,
+    `Write manifest: ${writeManifest.path || 'none'}`,
+  ];
+  lines.push(...formatAnalyzeProjectPostWriteValidation(report.post_write_validation));
+  return `${lines.join('\n')}\n`;
+}
+
+function formatAnalyzeProjectApplyPreflightError(error) {
+  if (!error || error.code !== 'AI_ANALYZE_PROJECT_APPLY_BLOCKED') {
+    return error;
+  }
+
+  const issueLines = (error.issues || []).slice(0, 12).map((issue) => {
+    const hashes = issue.expected_sha256 || issue.current_sha256
+      ? ` expected=${issue.expected_sha256 || 'none'} current=${issue.current_sha256 || 'none'}`
+      : '';
+    return `- ${issue.path || 'docs'}: ${issue.issue}${hashes} - ${issue.message}`;
+  });
+  const wrapped = new Error([
+    error.message,
+    'Issues:',
+    ...issueLines,
+    'Next safe step: rerun with `--review`, or inspect with `--save-proposal`, or add `--allow-dirty-docs` if overwriting existing managed docs is intended.',
+  ].join('\n'));
+  wrapped.name = error.name;
+  wrapped.code = error.code;
+  wrapped.cause = error;
+  wrapped.issues = error.issues;
+  return wrapped;
 }
 
 function formatLocalizedActionableError({ failure, impact, fix, nextCommand } = {}, options = {}) {
@@ -2107,10 +2154,10 @@ async function runAnalyzeProject(repoRoot, options = {}) {
       'Use `npx create-quiver ai analyze-project --deep --review` until apply --run is available.',
     );
   }
-  if (options.applyDocs === true) {
+  if (options.applyDocs === true && options.force !== true) {
     throw analyzeProjectContractError(
-      'ai analyze-project doc apply flags are recognized, but their execution flow is implemented in a later v55 slice. No provider was run and no files were written.',
-      'Use `npx create-quiver ai analyze-project --deep --review` until --apply-docs is available.',
+      'ai analyze-project --apply-docs interactive selector is implemented in a later v55 slice. No provider was run and no files were written.',
+      'Use `npx create-quiver ai analyze-project --deep --apply-docs --yes --provider <provider> --model <model>` for non-interactive apply, or `--review` for advanced edit mode.',
     );
   }
 
@@ -2431,6 +2478,86 @@ async function runAnalyzeProject(repoRoot, options = {}) {
     run_status_path: path.join('.quiver', 'runs', auditRunId, 'status.json').split(path.sep).join('/'),
     selected_context_manifest: selectedContextManifest,
   };
+
+  if (options.applyDocs === true && options.force === true) {
+    const proposal = buildAnalyzeProjectDocProposal(parsed.analysis);
+    let applyReport;
+    try {
+      applyReport = applyAnalyzeProjectDocProposal(repoRoot, {
+        report: completedReport,
+        runId: auditRunId,
+        now: options.now || new Date(),
+        provider,
+        language: options.language,
+        proposal,
+        providerArtifact: completedReport.provider_artifact,
+        selectedContextManifest,
+        repairManifest,
+        strict: options.strict === true,
+        allowDirtyDocs: options.allowDirtyDocs === true,
+        summarizeWritePlan: summarizeAnalyzeProjectWritePlan,
+      });
+    } catch (error) {
+      const proposalArtifacts = error.proposal_artifacts || {};
+      writeAnalyzeProjectRunStatus(repoRoot, auditRunId, error.code === 'AI_ANALYZE_PROJECT_APPLY_BLOCKED' ? 'apply-blocked' : 'apply-failed', {
+        now: options.now,
+        provider,
+        attempts: providerAttempts,
+        artifacts: {
+          selected_context: selectedContextManifest,
+          raw_provider: rawProviderArtifacts.map((artifact) => artifact.path),
+          repair: repairManifest,
+          retry: retryManifest,
+          proposal_manifest: proposalArtifacts.manifest || null,
+          proposal_files: proposalArtifacts.files || [],
+          write_manifest: error.write_manifest?.path || null,
+          snapshot_manifest: error.snapshot?.manifestPath || null,
+        },
+      });
+      throw formatAnalyzeProjectApplyPreflightError(error);
+    }
+
+    writeAnalyzeProjectRunStatus(repoRoot, auditRunId, applyReport.post_write_validation?.ok ? 'docs-applied' : 'apply-validation-failed', {
+      now: options.now,
+      provider,
+      attempts: providerAttempts,
+      artifacts: {
+        selected_context: selectedContextManifest,
+        raw_provider: rawProviderArtifacts.map((artifact) => artifact.path),
+        repair: repairManifest,
+        retry: retryManifest,
+        proposal_manifest: applyReport.proposal_artifacts?.manifest,
+        proposal_files: [
+          applyReport.proposal_artifacts?.proposal_json,
+          applyReport.proposal_artifacts?.proposal_markdown,
+          applyReport.proposal_artifacts?.proposal_diff,
+          applyReport.proposal_artifacts?.manifest,
+        ].filter(Boolean),
+        write_manifest: applyReport.write_manifest?.path,
+        snapshot_manifest: applyReport.snapshot?.manifestPath,
+      },
+    });
+
+    if (options.json === true) {
+      process.stdout.write(`${JSON.stringify(applyReport, null, 2)}\n`);
+      if (!applyReport.post_write_validation?.ok) {
+        const error = new Error(formatError('ai analyze-project post-write validation failed.'));
+        error.code = 'AI_ANALYZE_PROJECT_POST_WRITE_VALIDATION_FAILED';
+        error.validation = applyReport.post_write_validation;
+        throw error;
+      }
+      return applyReport;
+    }
+
+    process.stdout.write(formatAnalyzeProjectApplyReport(applyReport));
+    if (!applyReport.post_write_validation?.ok) {
+      const error = new Error(formatError('ai analyze-project post-write validation failed.'));
+      error.code = 'AI_ANALYZE_PROJECT_POST_WRITE_VALIDATION_FAILED';
+      error.validation = applyReport.post_write_validation;
+      throw error;
+    }
+    return applyReport;
+  }
 
   if (options.saveProposal === true) {
     const proposal = buildAnalyzeProjectDocProposal(parsed.analysis);

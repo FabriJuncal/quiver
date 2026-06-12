@@ -92,3 +92,32 @@ Covered behavior:
 - Final docs remain unchanged.
 - Save-only flows do not create snapshots.
 - Invalid final provider JSON does not create usable proposal artifacts.
+
+## Slice-03 Evidence - slice-03-noninteractive-apply-engine
+
+Executed:
+
+```bash
+node --test tests/lib/ai-analyze-project-apply.test.js
+node --test tests/lib/ai-analyze-project-proposal.test.js
+node --test tests/commands/ai-analyze-project-review.test.js
+node --test tests/commands/ai-analyze-project.test.js tests/commands/cli-contract.test.js tests/commands/ux-flags.test.js
+node --test tests/commands/ai-analyze-project-provider.test.js
+node --test tests/lib/ai/analyze-project-repair.test.js
+npm run docs:check
+npm run schema:slice:check
+node bin/create-quiver.js spec validate specs/quiver-v55-analyze-project-doc-apply-ux --strict
+git diff --check
+npm test
+```
+
+Result: all passed. Full `npm test` passed with 730 tests.
+
+Covered behavior:
+
+- `--apply-docs --yes` applies validated allowed docs.
+- `--apply-docs --yes --json` returns run id, proposal artifacts, write plan, snapshot, written docs, post-write validation, and write manifest.
+- Dirty target docs block `--yes` unless `--allow-dirty-docs` is provided.
+- Stale target docs are blocked at the apply engine boundary.
+- Invalid provider doc proposals do not write final docs.
+- Existing `--review` behavior remains covered.

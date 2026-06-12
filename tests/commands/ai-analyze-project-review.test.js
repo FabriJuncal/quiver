@@ -11,6 +11,10 @@ function writeFile(filePath, contents) {
   fs.writeFileSync(filePath, contents);
 }
 
+function readJson(filePath) {
+  return JSON.parse(fs.readFileSync(filePath, 'utf8'));
+}
+
 function makeRepo(structure = {}) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'quiver-ai-analyze-review-'));
   for (const [relativePath, contents] of Object.entries(structure)) {
@@ -81,6 +85,14 @@ function validAnalysis() {
       'docs/CONTEXTO.md': '# Context\nProvider proposal.\n',
     },
   });
+}
+
+function invalidDocUpdateAnalysis() {
+  const analysis = JSON.parse(validAnalysis());
+  analysis.doc_updates = {
+    'README.md': '# Unsafe target\n',
+  };
+  return JSON.stringify(analysis);
 }
 
 async function captureStdout(fn) {
@@ -268,6 +280,142 @@ test('ai analyze-project --review rejects invalid edited proposal without writin
     );
     assert.equal(fs.existsSync(path.join(repo.root, 'docs')), false);
     assertAnalyzeProjectAuditRun(repo.root);
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('ai analyze-project --apply-docs --yes writes valid docs with proposal and write manifests', async () => {
+  const repo = makeRepo({
+    'README.md': '# Apply Demo\n',
+    'package.json': JSON.stringify({ name: 'apply-demo' }, null, 2),
+    'src/routes/users.ts': 'export const users = [];\n',
+  });
+
+  try {
+    const { output, result } = await captureStdout(() => runAnalyzeProject(repo.root, {
+      applyDocs: true,
+      force: true,
+      includeSource: true,
+      json: true,
+      provider: 'codex',
+      providerExplicit: true,
+      runProviderFn: async () => providerResult(validAnalysis(), { cwd: repo.root }),
+      now: new Date('2026-06-12T13:00:00Z'),
+    }));
+
+    const parsed = JSON.parse(output);
+    const context = fs.readFileSync(path.join(repo.root, 'docs/CONTEXTO.md'), 'utf8');
+    const writeManifest = readJson(path.join(repo.root, parsed.write_manifest.path));
+    const proposalManifest = readJson(path.join(repo.root, parsed.proposal_artifacts.manifest));
+    const status = readJson(path.join(repo.root, parsed.run_status_path));
+
+    assert.equal(parsed.apply_docs, true);
+    assert.equal(parsed.run_id, result.run_id);
+    assert.deepEqual(parsed.written_docs, ['docs/CONTEXTO.md']);
+    assert.equal(parsed.post_write_validation.ok, true);
+    assert.equal(writeManifest.kind, 'quiver-analyze-project-doc-writes');
+    assert.equal(writeManifest.actions[0].status, 'written');
+    assert.equal(writeManifest.proposal_manifest, parsed.proposal_artifacts.manifest);
+    assert.equal(proposalManifest.kind, 'quiver-analyze-project-doc-proposal');
+    assert.equal(status.status, 'docs-applied');
+    assert.equal(status.artifacts.write_manifest, parsed.write_manifest.path);
+    assert.ok(fs.existsSync(path.join(repo.root, parsed.snapshot.manifestPath)));
+    assert.ok(context.includes('Provider proposal.'));
+    assert.ok(context.includes('<!-- quiver:analyze-project:start -->'));
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('ai analyze-project --apply-docs --yes blocks dirty docs unless explicitly allowed', async () => {
+  const repo = makeRepo({
+    'README.md': '# Dirty Apply Demo\n',
+    'package.json': JSON.stringify({ name: 'dirty-apply-demo' }, null, 2),
+    'src/routes/users.ts': 'export const users = [];\n',
+    'docs/CONTEXTO.md': '# Manual\n\nHuman text.\n',
+  });
+
+  try {
+    await assert.rejects(
+      captureStdout(() => runAnalyzeProject(repo.root, {
+        applyDocs: true,
+        force: true,
+        includeSource: true,
+        provider: 'codex',
+        providerExplicit: true,
+        runProviderFn: async () => providerResult(validAnalysis(), { cwd: repo.root }),
+        now: new Date('2026-06-12T13:01:00Z'),
+      })),
+      /dirty-target-doc/,
+    );
+
+    const context = fs.readFileSync(path.join(repo.root, 'docs/CONTEXTO.md'), 'utf8');
+    const status = readJson(path.join(repo.root, '.quiver/runs/run-2026-06-12t13-01-00z/status.json'));
+    assert.equal(context, '# Manual\n\nHuman text.\n');
+    assert.equal(status.status, 'apply-blocked');
+    assert.equal(fs.existsSync(path.join(repo.root, '.quiver/runs/run-2026-06-12t13-01-00z/proposal/manifest.json')), true);
+    assert.equal(fs.existsSync(path.join(repo.root, '.quiver/runs/run-2026-06-12t13-01-00z/writes/analyze-project-doc-writes.json')), false);
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('ai analyze-project --apply-docs --yes --allow-dirty-docs writes managed block into existing docs', async () => {
+  const repo = makeRepo({
+    'README.md': '# Dirty Allowed Demo\n',
+    'package.json': JSON.stringify({ name: 'dirty-allowed-demo' }, null, 2),
+    'src/routes/users.ts': 'export const users = [];\n',
+    'docs/CONTEXTO.md': '# Manual\n\nHuman text.\n',
+  });
+
+  try {
+    const { result } = await captureStdout(() => runAnalyzeProject(repo.root, {
+      allowDirtyDocs: true,
+      applyDocs: true,
+      force: true,
+      includeSource: true,
+      provider: 'codex',
+      providerExplicit: true,
+      runProviderFn: async () => providerResult(validAnalysis(), { cwd: repo.root }),
+      now: new Date('2026-06-12T13:02:00Z'),
+    }));
+
+    const context = fs.readFileSync(path.join(repo.root, 'docs/CONTEXTO.md'), 'utf8');
+    const writeManifest = readJson(path.join(repo.root, result.write_manifest.path));
+    assert.equal(result.post_write_validation.ok, true);
+    assert.deepEqual(result.written_docs, ['docs/CONTEXTO.md']);
+    assert.ok(context.includes('Human text.'));
+    assert.ok(context.includes('Provider proposal.'));
+    assert.equal(writeManifest.actions[0].dirty, true);
+    assert.equal(writeManifest.actions[0].status, 'written');
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('ai analyze-project --apply-docs --yes blocks invalid provider doc proposals without final docs', async () => {
+  const repo = makeRepo({
+    'README.md': '# Invalid Apply Demo\n',
+    'package.json': JSON.stringify({ name: 'invalid-apply-demo' }, null, 2),
+    'src/routes/users.ts': 'export const users = [];\n',
+  });
+
+  try {
+    await assert.rejects(
+      captureStdout(() => runAnalyzeProject(repo.root, {
+        applyDocs: true,
+        force: true,
+        includeSource: true,
+        provider: 'codex',
+        providerExplicit: true,
+        runProviderFn: async () => providerResult(invalidDocUpdateAnalysis(), { cwd: repo.root }),
+        now: new Date('2026-06-12T13:03:00Z'),
+      })),
+      /unapproved-doc-update-path/,
+    );
+    assert.equal(fs.existsSync(path.join(repo.root, 'docs')), false);
+    assert.equal(fs.existsSync(path.join(repo.root, '.quiver/runs/run-2026-06-12t13-03-00z/proposal')), false);
   } finally {
     repo.cleanup();
   }

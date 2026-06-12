@@ -11,6 +11,7 @@ const {
   normalizeAnalyzeProjectProposalManifest,
   normalizeAnalyzeProjectWriteManifest,
   writeAnalyzeProjectProposalArtifacts,
+  writeAnalyzeProjectWriteManifest,
 } = require('../../src/create-quiver/lib/ai/analyze-project-proposal');
 
 function makeRepo() {
@@ -171,6 +172,52 @@ test('writeAnalyzeProjectProposalArtifacts writes normalized proposal, compact s
     assert.equal(manifest.doc_before_hashes['docs/CONTEXTO.md'], null);
     assert.equal(manifest.proposal_sha256, artifacts.proposal_sha256);
     assert.equal(manifest.events[0].type, 'proposal-saved');
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('writeAnalyzeProjectWriteManifest writes final normalized apply manifest', () => {
+  const repo = makeRepo();
+
+  try {
+    const written = writeAnalyzeProjectWriteManifest(repo.root, {
+      runId: 'run-2026-06-12t12-10-00z',
+      now: new Date('2026-06-12T12:10:00.000Z'),
+      proposalManifest: '.quiver/runs/run-2026-06-12t12-10-00z/proposal/manifest.json',
+      snapshot: {
+        root: '.quiver/runs/run-2026-06-12t12-10-00z/snapshots/20260612T121000Z',
+        entries: [{
+          path: 'docs/CONTEXTO.md',
+          snapshot_path: '.quiver/runs/run-2026-06-12t12-10-00z/snapshots/20260612T121000Z/docs/CONTEXTO.md',
+        }],
+      },
+      writePlan: [{
+        path: 'docs/CONTEXTO.md',
+        action: 'update',
+        dirty: true,
+        before_sha256: 'before-hash',
+        after_sha256: 'after-hash',
+      }],
+      writtenDocs: ['docs/CONTEXTO.md'],
+      validation: {
+        ok: true,
+        strict: false,
+        errors: [],
+        warnings: [],
+      },
+      status: 'completed',
+      events: [{ type: 'write-completed' }],
+    });
+
+    const manifest = normalizeAnalyzeProjectWriteManifest(readJson(path.join(repo.root, written.path)));
+    assert.equal(manifest.kind, ANALYZE_PROJECT_WRITE_MANIFEST_KIND);
+    assert.equal(manifest.proposal_manifest, '.quiver/runs/run-2026-06-12t12-10-00z/proposal/manifest.json');
+    assert.equal(manifest.snapshot_root, '.quiver/runs/run-2026-06-12t12-10-00z/snapshots/20260612T121000Z');
+    assert.equal(manifest.actions[0].status, 'written');
+    assert.equal(manifest.actions[0].snapshot_path, '.quiver/runs/run-2026-06-12t12-10-00z/snapshots/20260612T121000Z/docs/CONTEXTO.md');
+    assert.equal(manifest.validation.ok, true);
+    assert.equal(manifest.partial_write, false);
   } finally {
     repo.cleanup();
   }
