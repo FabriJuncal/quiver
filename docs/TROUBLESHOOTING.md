@@ -117,7 +117,48 @@ Si `package-lock.json` aparece como problema, no deberías incluirlo completo. E
 Cuando el análisis sea válido y quieras escribir documentación:
 
 ```bash
-npx --yes create-quiver@latest ai analyze-project --deep --review --provider codex --model gpt-5.5
+npx --yes create-quiver@latest ai analyze-project --deep --apply-docs --provider codex --model gpt-5.5
 ```
 
-`--review` abre una propuesta editable, revalida el JSON editado, muestra diff final, pide confirmación, crea snapshot y recién después escribe docs permitidos.
+`--apply-docs` muestra opciones explicadas en TTY: aplicar documentación, ver diff, guardar propuesta, editar propuesta o cancelar. Si elegís aplicar, Quiver revalida la propuesta, crea snapshot y escribe solo docs permitidos.
+
+Para guardar primero y aplicar después sin volver a ejecutar el proveedor:
+
+```bash
+npx --yes create-quiver@latest ai analyze-project --deep --save-proposal --provider codex --model gpt-5.5
+npx --yes create-quiver@latest ai analyze-project apply --run <run-id>
+```
+
+`--review` sigue disponible como modo avanzado si querés editar la propuesta JSON manualmente antes de escribir.
+
+## `ai analyze-project` no completa `docs/CONTEXTO.md` ni crea `docs/ARCHITECTURE.md`
+
+### Síntoma
+
+Después de ejecutar:
+
+```bash
+npx --yes create-quiver@latest ai analyze-project --deep --provider codex --model gpt-5.5
+```
+
+los docs finales siguen con placeholders o falta `docs/ARCHITECTURE.md`.
+
+### Explicación
+
+Ese comando ejecuta el análisis, valida la respuesta IA y guarda artifacts auditados en `.quiver/runs`, pero no escribe documentación final por defecto. Es intencional: evita cambios sorpresivos en repos reales.
+
+### Qué hacer
+
+Usá uno de estos caminos seguros:
+
+```bash
+npx --yes create-quiver@latest ai analyze-project --deep --apply-docs --provider codex --model gpt-5.5
+npx --yes create-quiver@latest ai analyze-project --deep --apply-docs --yes --provider codex --model gpt-5.5
+npx --yes create-quiver@latest ai analyze-project --deep --save-proposal --provider codex --model gpt-5.5
+npx --yes create-quiver@latest ai analyze-project apply --run <run-id>
+```
+
+- `--apply-docs` en TTY muestra opciones explicadas antes de escribir.
+- `--apply-docs --yes` aplica en automatización si la propuesta y los docs destino son seguros.
+- `--save-proposal` guarda `.quiver/runs/<run-id>/proposal/*` sin tocar docs finales.
+- `apply --run <run-id>` aplica una propuesta guardada sin ejecutar proveedor ni pedir `--provider` o `--model`.
