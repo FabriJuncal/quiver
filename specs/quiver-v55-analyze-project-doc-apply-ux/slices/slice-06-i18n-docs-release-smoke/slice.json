@@ -1,0 +1,75 @@
+{
+  "slice_id": "slice-06-i18n-docs-release-smoke",
+  "ticket": "QUIVER-55-06",
+  "type": "docs-release",
+  "title": "i18n, Docs, Release Smoke",
+  "objective": "Complete bilingual UX coverage, documentation, command matrix alignment, and real-project release smoke guidance.",
+  "description": "Adds EN/ES copy coverage, updates user-facing docs, keeps generated command docs aligned, and documents safe nika-erp smoke using a temporary copy or disposable branch.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v55-i18n-docs-release-smoke",
+    "branch_name": "feature/QUIVER-55-06-v55-i18n-docs-release-smoke"
+  },
+  "files": [
+    "src/create-quiver/lib/i18n/messages/en.js",
+    "src/create-quiver/lib/i18n/messages/es.js",
+    "docs/reference/commands.md",
+    "docs/CLI_UX_GUIDE.md",
+    "docs/workflows/existing-project.md",
+    "docs/TROUBLESHOOTING.md",
+    "tests/commands/**",
+    "tests/lib/**",
+    "specs/quiver-v55-analyze-project-doc-apply-ux/**"
+  ],
+  "expected_read_paths": [
+    "docs/reference/commands.md",
+    "docs/CLI_UX_GUIDE.md",
+    "docs/workflows/existing-project.md",
+    "docs/TROUBLESHOOTING.md",
+    "src/create-quiver/lib/i18n/messages/en.js",
+    "src/create-quiver/lib/i18n/messages/es.js"
+  ],
+  "allowed_write_paths": [
+    "src/create-quiver/lib/i18n/messages/en.js",
+    "src/create-quiver/lib/i18n/messages/es.js",
+    "docs/reference/commands.md",
+    "docs/CLI_UX_GUIDE.md",
+    "docs/workflows/existing-project.md",
+    "docs/TROUBLESHOOTING.md",
+    "tests/commands/**",
+    "tests/lib/**",
+    "specs/quiver-v55-analyze-project-doc-apply-ux/**"
+  ],
+  "depends_on": [
+    "slice-04-interactive-apply-ux",
+    "slice-05-apply-saved-proposal"
+  ],
+  "parallel_safe": "never",
+  "parallel_safe_reason": "Docs and i18n must reflect final behavior from earlier slices.",
+  "must": [
+    "Cover English and Spanish output.",
+    "Update docs and command matrix.",
+    "Document release smoke against a temporary copy or disposable branch.",
+    "Keep commands, flags, and paths untranslated."
+  ],
+  "not_included": [
+    "Runtime apply implementation.",
+    "Live provider CI gate."
+  ],
+  "acceptance": [
+    "EN/ES tests pass.",
+    "docs:check passes.",
+    "schema:slice:check passes.",
+    "Spec validation passes."
+  ],
+  "tests": [
+    "npm run docs:check",
+    "npm run schema:slice:check",
+    "node bin/create-quiver.js spec validate specs/quiver-v55-analyze-project-doc-apply-ux --strict",
+    "git diff --check"
+  ],
+  "estimated_hours": 4,
+  "status": "planned",
+  "blocked_reason": null
+}

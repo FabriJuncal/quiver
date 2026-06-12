@@ -1,0 +1,67 @@
+{
+  "slice_id": "slice-03-noninteractive-apply-engine",
+  "ticket": "QUIVER-55-03",
+  "type": "feature",
+  "title": "Non-Interactive Apply Engine",
+  "objective": "Apply validated analyze-project doc proposals safely through --apply-docs --yes without selector UI.",
+  "description": "Adds the reusable apply engine: proposal persistence, dirty/stale preflight, snapshot, doc writes, write manifest, post-write validation, and JSON output.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v55-noninteractive-apply-engine",
+    "branch_name": "feature/QUIVER-55-03-v55-noninteractive-apply-engine"
+  },
+  "files": [
+    "src/create-quiver/commands/ai.js",
+    "src/create-quiver/lib/ai/analyze-project-apply.js",
+    "src/create-quiver/lib/ai/analyze-project-proposal.js",
+    "tests/commands/ai-analyze-project-review.test.js",
+    "tests/lib/ai-analyze-project-validation.test.js",
+    "specs/quiver-v55-analyze-project-doc-apply-ux/**"
+  ],
+  "expected_read_paths": [
+    "src/create-quiver/lib/ai/analyze-project-docs.js",
+    "src/create-quiver/lib/ai/analyze-project-validation.js",
+    "src/create-quiver/lib/ai/analyze-project-review.js"
+  ],
+  "allowed_write_paths": [
+    "src/create-quiver/commands/ai.js",
+    "src/create-quiver/lib/ai/analyze-project-apply.js",
+    "src/create-quiver/lib/ai/analyze-project-proposal.js",
+    "tests/commands/ai-analyze-project-review.test.js",
+    "tests/lib/ai-analyze-project-validation.test.js",
+    "specs/quiver-v55-analyze-project-doc-apply-ux/**"
+  ],
+  "depends_on": [
+    "slice-01-cli-proposal-contract",
+    "slice-02-save-proposal-flow"
+  ],
+  "parallel_safe": "never",
+  "parallel_safe_reason": "This slice owns the docs write boundary and must be reviewed independently.",
+  "must": [
+    "Persist proposal before apply.",
+    "Create snapshot before final doc writes.",
+    "Save write manifest.",
+    "Run post-write validation."
+  ],
+  "not_included": [
+    "Interactive selector.",
+    "Apply saved run.",
+    "Docs release smoke."
+  ],
+  "acceptance": [
+    "--apply-docs --yes writes valid allowed docs.",
+    "Dirty docs block --yes unless --allow-dirty-docs is passed.",
+    "Invalid proposal writes no final docs.",
+    "--apply-docs --yes --json is parseable and complete."
+  ],
+  "tests": [
+    "node --test tests/commands/ai-analyze-project-review.test.js",
+    "node --test tests/lib/ai-analyze-project-validation.test.js",
+    "node bin/create-quiver.js spec validate specs/quiver-v55-analyze-project-doc-apply-ux --strict",
+    "git diff --check"
+  ],
+  "estimated_hours": 6,
+  "status": "planned",
+  "blocked_reason": null
+}

@@ -1,0 +1,64 @@
+{
+  "slice_id": "slice-02-save-proposal-flow",
+  "ticket": "QUIVER-55-02",
+  "type": "feature",
+  "title": "Save Proposal Flow",
+  "objective": "Persist validated analyze-project doc proposals without writing final documentation.",
+  "description": "Implements --save-proposal with normalized JSON, compact Markdown summary, full diff artifact, manifest hashes, run-status metadata, and JSON automation output.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v55-save-proposal-flow",
+    "branch_name": "feature/QUIVER-55-02-v55-save-proposal-flow"
+  },
+  "files": [
+    "src/create-quiver/commands/ai.js",
+    "src/create-quiver/lib/ai/analyze-project-proposal.js",
+    "tests/commands/ai-analyze-project-provider.test.js",
+    "tests/lib/ai-analyze-project-proposal.test.js",
+    "specs/quiver-v55-analyze-project-doc-apply-ux/**"
+  ],
+  "expected_read_paths": [
+    "src/create-quiver/lib/ai/analyze-project-docs.js",
+    "src/create-quiver/lib/ai/analyze-project-review.js",
+    "src/create-quiver/lib/ai/artifacts.js"
+  ],
+  "allowed_write_paths": [
+    "src/create-quiver/commands/ai.js",
+    "src/create-quiver/lib/ai/analyze-project-proposal.js",
+    "tests/commands/ai-analyze-project-provider.test.js",
+    "tests/lib/ai-analyze-project-proposal.test.js",
+    "specs/quiver-v55-analyze-project-doc-apply-ux/**"
+  ],
+  "depends_on": [
+    "slice-01-cli-proposal-contract"
+  ],
+  "parallel_safe": "never",
+  "parallel_safe_reason": "This slice depends on the artifact contract and feeds the apply engine.",
+  "must": [
+    "Save normalized proposal JSON.",
+    "Save compact Markdown summary.",
+    "Save diff artifact.",
+    "Never write final docs."
+  ],
+  "not_included": [
+    "Apply docs.",
+    "Interactive selector.",
+    "Apply saved run."
+  ],
+  "acceptance": [
+    "--save-proposal writes proposal artifacts.",
+    "--save-proposal --json is parseable.",
+    "Final docs remain unchanged.",
+    "Invalid final JSON does not create usable proposal artifacts."
+  ],
+  "tests": [
+    "node --test tests/commands/ai-analyze-project-provider.test.js",
+    "node --test tests/lib/ai-analyze-project-proposal.test.js",
+    "node bin/create-quiver.js spec validate specs/quiver-v55-analyze-project-doc-apply-ux --strict",
+    "git diff --check"
+  ],
+  "estimated_hours": 5,
+  "status": "planned",
+  "blocked_reason": null
+}

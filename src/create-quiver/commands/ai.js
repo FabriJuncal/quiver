@@ -570,6 +570,59 @@ function formatLocalizedActionableError({ failure, impact, fix, nextCommand } = 
   return lines.join('\n');
 }
 
+function analyzeProjectContractError(message, nextCommand) {
+  const error = new Error(formatError([
+    message,
+    nextCommand ? `Next safe step: ${nextCommand}` : '',
+  ].filter(Boolean).join('\n')));
+  error.code = 'AI_ANALYZE_PROJECT_CONTRACT_UNAVAILABLE';
+  return error;
+}
+
+function assertAnalyzeProjectCommandContract(options = {}) {
+  if (options.review === true && options.applyDocs === true) {
+    throw analyzeProjectContractError(
+      'ai analyze-project --apply-docs cannot be combined with --review.',
+      'Use either `npx create-quiver ai analyze-project --deep --review` or `npx create-quiver ai analyze-project --deep --apply-docs`.',
+    );
+  }
+
+  if (options.dryRun === true && options.applyDocs === true) {
+    throw analyzeProjectContractError(
+      'ai analyze-project --dry-run cannot be combined with --apply-docs.',
+      'Preview with `npx create-quiver ai analyze-project --deep --dry-run`, then rerun without --dry-run.',
+    );
+  }
+
+  if (options.dryRun === true && options.saveProposal === true) {
+    throw analyzeProjectContractError(
+      'ai analyze-project --dry-run cannot be combined with --save-proposal.',
+      'Preview with `npx create-quiver ai analyze-project --deep --dry-run`, then rerun with --save-proposal.',
+    );
+  }
+
+  if (options.applyRun === true && options.dryRun === true) {
+    throw analyzeProjectContractError(
+      'ai analyze-project apply --run cannot be combined with --dry-run.',
+      'Inspect the saved proposal under `.quiver/runs/<run-id>/proposal/`, then rerun without --dry-run.',
+    );
+  }
+
+  if (options.json === true && options.applyDocs === true && options.force !== true) {
+    throw analyzeProjectContractError(
+      'ai analyze-project --json with --apply-docs requires --yes because JSON output cannot include an interactive selector.',
+      'Use `npx create-quiver ai analyze-project --deep --apply-docs --yes --json` for automation.',
+    );
+  }
+
+  if (options.applyRun === true && !String(options.runId || '').trim()) {
+    throw analyzeProjectContractError(
+      'ai analyze-project apply requires --run <run-id>.',
+      'Use `npx create-quiver ai analyze-project apply --run <run-id>`.',
+    );
+  }
+}
+
 function readTextFile(filePath, repoRoot) {
   if (!filePath) {
     return '';
@@ -2010,6 +2063,22 @@ async function runPrepareContext(repoRoot, options = {}) {
 }
 
 async function runAnalyzeProject(repoRoot, options = {}) {
+  assertAnalyzeProjectCommandContract(options);
+  if (options.applyRun === true) {
+    throw analyzeProjectContractError(
+      'ai analyze-project apply --run is recognized, but applying saved proposals is implemented in a later v55 slice. No provider was run and no files were written.',
+      'Use `npx create-quiver ai analyze-project --deep --review` until apply --run is available.',
+    );
+  }
+  if (options.applyDocs === true || options.saveProposal === true) {
+    throw analyzeProjectContractError(
+      'ai analyze-project doc apply/proposal flags are recognized, but their execution flow is implemented in later v55 slices. No provider was run and no files were written.',
+      options.saveProposal === true
+        ? 'Use `npx create-quiver ai analyze-project --deep --review` until --save-proposal is available.'
+        : 'Use `npx create-quiver ai analyze-project --deep --review` until --apply-docs is available.',
+    );
+  }
+
   const role = normalizeRole(options.role || DEFAULT_PLAN_ROLE);
   const runtimeProfile = resolveRuntimeAgentProfile(repoRoot, role, options, DEFAULT_PLAN_PROVIDER);
   const provider = runtimeProfile.provider;

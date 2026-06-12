@@ -49,7 +49,7 @@ El contenido curado fuera de los marcadores se mantiene manual y no debe ser ree
 | AI lifecycle | `ai active-slice status\|reconcile` | Inspect or dry-run reconcile local active-slice state from every supported source. |
 | AI lifecycle | `ai status` | Show current AI lifecycle phase, approved versions, blockers, and next command. |
 | AI lifecycle | `ai resume` | Resume guidance from the last valid lifecycle phase without chat memory. |
-| AI lifecycle | `ai analyze-project` | Read and explain a bounded project sample without provider execution or writes. |
+| AI lifecycle | `ai analyze-project` | Analyze a bounded project sample and generate audited documentation proposals. |
 | AI lifecycle | `ai onboard` | Run or print the planner onboarding prompt with a token-aware context pack. |
 | AI lifecycle | `ai prepare-context` | Preview or write docs-only AI context updates with assumptions and risks. |
 | AI lifecycle | `ai agent set\|list\|show\|doctor\|repair` | Manage, diagnose, and dry-run repair planner, executor, reviewer, and doctor provider profiles without secrets. |
@@ -252,6 +252,10 @@ Rollback de release:
 | `npx --yes create-quiver@latest ai analyze-project --deep --dry-run --json` | Emite el plan de análisis como JSON parseable para automatización. |
 | `npx --yes create-quiver@latest ai analyze-project --deep --review` | Ejecuta proveedor, valida análisis JSON con evidencia, abre revisión humana y escribe solo docs permitidos tras confirmación. |
 | `npx --yes create-quiver@latest ai analyze-project --deep --provider codex --model gpt-5.5` | Ejecuta proveedor y genera propuesta auditada en `.quiver/runs`; no escribe docs finales sin `--review`. |
+| `npx --yes create-quiver@latest ai analyze-project --deep --save-proposal --provider codex --model gpt-5.5` | Guarda una propuesta validada en `.quiver/runs/<run-id>/proposal` sin escribir docs finales. |
+| `npx --yes create-quiver@latest ai analyze-project --deep --apply-docs --provider codex --model gpt-5.5` | En TTY debe mostrar opciones explicadas para aplicar, ver diff, guardar, editar o cancelar. |
+| `npx --yes create-quiver@latest ai analyze-project --deep --apply-docs --yes --provider codex --model gpt-5.5` | Aplica docs validados en modo automatizado, con snapshots y validación post-write. |
+| `npx --yes create-quiver@latest ai analyze-project apply --run <run-id>` | Aplica una propuesta guardada sin ejecutar proveedor ni requerir `--provider` o `--model`. |
 | `npx --yes create-quiver@latest ai analyze-project --scope apps/web --max-files 80 --max-bytes 300000 --include-tests --dry-run` | Acota el análisis por workspace/ruta y presupuesto de muestra. |
 | `npx --yes create-quiver@latest ai prepare-context --dry-run` | Previsualiza actualizaciones documentales de contexto para IA. |
 | `npx --yes create-quiver@latest ai prepare-context` | Escribe actualizaciones documentales de contexto para IA. |
@@ -331,6 +335,10 @@ Base branch policy: `--base <branch>` always wins. Without `--base`, slice readi
 | `--include-source` | En `ai analyze-project`, incluye código fuente sin requerir `--deep`. |
 | `--include-tests` | En `ai analyze-project`, incluye tests en la muestra. |
 | `--include-db` | En `ai analyze-project`, incluye schemas, migraciones y archivos DB. |
+| `--apply-docs` | En `ai analyze-project`, habilita el flujo seguro para aplicar propuestas documentales validadas. |
+| `--save-proposal` | En `ai analyze-project`, guarda la propuesta validada como artifacts sin escribir docs finales. |
+| `--diff` | En `ai analyze-project`, muestra o guarda el diff documental propuesto cuando el flujo lo soporta. |
+| `--allow-dirty-docs` | En `ai analyze-project`, permite continuar con docs destino modificados solo donde el flujo seguro lo soporte. |
 | `--scope <path\|name>` | En `ai analyze-project`, restringe el análisis a una ruta o workspace. |
 | `--strict` | En validaciones soportadas, convierte conflictos importantes en errores. |
 | `--with-planner` | Activa comportamiento asistido por planner solo en comandos que lo soportan. |

@@ -15,6 +15,10 @@ module.exports = {
       commandDescriptions: {},
       optionDescriptions: {
         'Show one human dashboard section': 'Show one human dashboard section (overview, specs, slices, blockers, warnings, agents, approvals, runs, active-slice, next-steps)',
+        'For ai analyze-project, apply validated documentation proposals through the safe docs workflow': 'For ai analyze-project, apply validated documentation proposals through the safe docs workflow',
+        'For ai analyze-project, save a validated documentation proposal without writing final docs': 'For ai analyze-project, save a validated documentation proposal without writing final docs',
+        'For ai analyze-project, show or save the proposed documentation diff': 'For ai analyze-project, show or save the proposed documentation diff',
+        'For ai analyze-project, allow dirty target docs checks where the safe apply workflow supports it': 'For ai analyze-project, allow dirty target docs checks where the safe apply workflow supports it',
       },
     },
     'common.command.help': 'Run: npx create-quiver --help',
