@@ -37,6 +37,9 @@ const {
   reviewAnalyzeProjectDocProposal,
 } = require('../lib/ai/analyze-project-review');
 const {
+  writeAnalyzeProjectProposalArtifacts,
+} = require('../lib/ai/analyze-project-proposal');
+const {
   DEFAULT_MAX_BYTES: DEFAULT_ANALYZE_MAX_BYTES,
   DEFAULT_MAX_FILES: DEFAULT_ANALYZE_MAX_FILES,
   sampleProjectFiles,
@@ -501,9 +504,43 @@ function formatAnalyzeProjectLiveReport(report) {
   }
 
   lines.push('', 'Next commands:');
+  lines.push('- npx create-quiver ai analyze-project --deep --save-proposal --provider <provider> --model <model>');
   lines.push('- npx create-quiver ai analyze-project --deep --review');
   lines.push('- npx create-quiver ai analyze-project --deep --json');
 
+  return `${lines.join('\n')}\n`;
+}
+
+function summarizeAnalyzeProjectWritePlan(writePlan = []) {
+  return writePlan.map((item) => ({
+    path: item.path,
+    action: item.action,
+    dirty: item.dirty,
+    before_sha256: item.before_sha256,
+    after_sha256: item.after_sha256,
+    reason: item.reason,
+  }));
+}
+
+function formatAnalyzeProjectSavedProposalReport(report = {}) {
+  const artifacts = report.proposal_artifacts || {};
+  const changed = report.write_plan?.filter((item) => item.action !== 'skip') || [];
+  const lines = [
+    'AI analyze-project proposal saved',
+    `Run: ${report.run_id || 'unknown'}`,
+    `Provider: ${report.provider || 'unknown'}`,
+    `Writes: none (final docs were not modified)`,
+    `Proposed docs: ${report.doc_paths?.length || 0}`,
+    `Docs with changes: ${changed.length}`,
+    `Proposal JSON: ${artifacts.proposal_json || 'none'}`,
+    `Proposal summary: ${artifacts.proposal_markdown || 'none'}`,
+    `Proposal diff: ${artifacts.proposal_diff || 'none'}`,
+    `Manifest: ${artifacts.manifest || 'none'}`,
+    '',
+    'Next commands:',
+    `- npx create-quiver ai analyze-project apply --run ${report.run_id || '<run-id>'}`,
+    '- npx create-quiver ai analyze-project --deep --apply-docs --provider <provider> --model <model>',
+  ];
   return `${lines.join('\n')}\n`;
 }
 
@@ -2070,12 +2107,10 @@ async function runAnalyzeProject(repoRoot, options = {}) {
       'Use `npx create-quiver ai analyze-project --deep --review` until apply --run is available.',
     );
   }
-  if (options.applyDocs === true || options.saveProposal === true) {
+  if (options.applyDocs === true) {
     throw analyzeProjectContractError(
-      'ai analyze-project doc apply/proposal flags are recognized, but their execution flow is implemented in later v55 slices. No provider was run and no files were written.',
-      options.saveProposal === true
-        ? 'Use `npx create-quiver ai analyze-project --deep --review` until --save-proposal is available.'
-        : 'Use `npx create-quiver ai analyze-project --deep --review` until --apply-docs is available.',
+      'ai analyze-project doc apply flags are recognized, but their execution flow is implemented in a later v55 slice. No provider was run and no files were written.',
+      'Use `npx create-quiver ai analyze-project --deep --review` until --apply-docs is available.',
     );
   }
 
@@ -2392,9 +2427,61 @@ async function runAnalyzeProject(repoRoot, options = {}) {
     provider_artifact: buildAnalyzeProjectProviderArtifact(result, clean, repoRoot),
     raw_provider_artifacts: rawProviderArtifacts.map((artifact) => artifact.path),
     provider_attempts: providerAttempts,
+    run_id: auditRunId,
     run_status_path: path.join('.quiver', 'runs', auditRunId, 'status.json').split(path.sep).join('/'),
     selected_context_manifest: selectedContextManifest,
   };
+
+  if (options.saveProposal === true) {
+    const proposal = buildAnalyzeProjectDocProposal(parsed.analysis);
+    const writePlan = buildAnalyzeProjectWritePlan(repoRoot, proposal);
+    const proposalArtifacts = writeAnalyzeProjectProposalArtifacts(repoRoot, {
+      runId: auditRunId,
+      now: options.now || new Date(),
+      provider,
+      language: options.language,
+      proposal,
+      writePlan,
+      selectedContextManifest,
+      repairManifest,
+    });
+    const saveReport = {
+      ...completedReport,
+      save_proposal: true,
+      doc_proposal: proposal,
+      doc_paths: proposalArtifacts.doc_paths,
+      proposal_artifacts: {
+        root: proposalArtifacts.root,
+        proposal_json: proposalArtifacts.proposal_json,
+        proposal_markdown: proposalArtifacts.proposal_markdown,
+        proposal_diff: proposalArtifacts.proposal_diff,
+        manifest: proposalArtifacts.manifest,
+        proposal_sha256: proposalArtifacts.proposal_sha256,
+      },
+      write_plan: summarizeAnalyzeProjectWritePlan(writePlan),
+    };
+    writeAnalyzeProjectRunStatus(repoRoot, auditRunId, 'proposal-saved', {
+      now: options.now,
+      provider,
+      attempts: providerAttempts,
+      artifacts: {
+        selected_context: selectedContextManifest,
+        raw_provider: rawProviderArtifacts.map((artifact) => artifact.path),
+        repair: repairManifest,
+        retry: retryManifest,
+        proposal_manifest: proposalArtifacts.manifest,
+        proposal_files: proposalArtifacts.files,
+      },
+    });
+
+    if (options.json === true) {
+      process.stdout.write(`${JSON.stringify(saveReport, null, 2)}\n`);
+      return saveReport;
+    }
+
+    process.stdout.write(formatAnalyzeProjectSavedProposalReport(saveReport));
+    return saveReport;
+  }
 
   if (options.review === true) {
     const initialProposal = buildAnalyzeProjectDocProposal(parsed.analysis);
@@ -2422,14 +2509,7 @@ async function runAnalyzeProject(repoRoot, options = {}) {
       review: true,
       review_path: reviewed.reviewPath,
       doc_proposal: reviewed.proposal,
-      write_plan: writePlan.map((item) => ({
-        path: item.path,
-        action: item.action,
-        dirty: item.dirty,
-        before_sha256: item.before_sha256,
-        after_sha256: item.after_sha256,
-        reason: item.reason,
-      })),
+      write_plan: summarizeAnalyzeProjectWritePlan(writePlan),
       snapshot,
       written_docs: writtenDocs,
       run_id: lifecycleRun.run_id,
