@@ -420,3 +420,268 @@ test('ai analyze-project --apply-docs --yes blocks invalid provider doc proposal
     repo.cleanup();
   }
 });
+
+test('ai analyze-project --apply-docs without TTY fails before provider', async () => {
+  const repo = makeRepo({
+    'README.md': '# No TTY Apply\n',
+    'package.json': JSON.stringify({ name: 'no-tty-apply' }, null, 2),
+    'src/routes/users.ts': 'export const users = [];\n',
+  });
+  let providerCalled = false;
+
+  try {
+    await assert.rejects(
+      captureStdout(() => runAnalyzeProject(repo.root, {
+        applyDocs: true,
+        includeSource: true,
+        provider: 'codex',
+        providerExplicit: true,
+        stdinIsTTY: false,
+        stdoutIsTTY: false,
+        stderrIsTTY: false,
+        runProviderFn: async () => {
+          providerCalled = true;
+          return providerResult(validAnalysis(), { cwd: repo.root });
+        },
+      })),
+      /requires an interactive TTY unless --yes is passed/,
+    );
+    assert.equal(providerCalled, false);
+    assert.equal(fs.existsSync(path.join(repo.root, '.quiver')), false);
+    assert.equal(fs.existsSync(path.join(repo.root, 'docs')), false);
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('ai analyze-project --apply-docs TTY cancel writes no final docs', async () => {
+  const repo = makeRepo({
+    'README.md': '# Cancel Apply\n',
+    'package.json': JSON.stringify({ name: 'cancel-apply' }, null, 2),
+    'src/routes/users.ts': 'export const users = [];\n',
+  });
+  const selections = [];
+
+  try {
+    const { output, result } = await captureStdout(() => runAnalyzeProject(repo.root, {
+      applyDocs: true,
+      includeSource: true,
+      provider: 'codex',
+      providerExplicit: true,
+      stdinIsTTY: true,
+      stdoutIsTTY: true,
+      stderrIsTTY: true,
+      promptSelect: async (message, choices) => {
+        selections.push({ message, choices });
+        return 'cancel';
+      },
+      runProviderFn: async () => providerResult(validAnalysis(), { cwd: repo.root }),
+      now: new Date('2026-06-12T13:04:00Z'),
+    }));
+
+    const status = readJson(path.join(repo.root, result.run_status_path));
+    assert.equal(result.cancelled, true);
+    assert.equal(result.interactive_action, 'cancel');
+    assert.match(output, /Analysis completed\./);
+    assert.match(output, /AI analyze-project apply canceled/);
+    assert.equal(selections.length, 1);
+    assert.equal(selections[0].message, 'What do you want to do?');
+    assert.equal(selections[0].choices[0].value, 'apply');
+    assert.match(selections[0].choices[0].label, /recommended/);
+    assert.ok(selections[0].choices[0].hint);
+    assert.equal(status.status, 'apply-canceled');
+    assert.equal(fs.existsSync(path.join(repo.root, 'docs')), false);
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('ai analyze-project --apply-docs TTY save proposal writes artifacts only', async () => {
+  const repo = makeRepo({
+    'README.md': '# Save Apply\n',
+    'package.json': JSON.stringify({ name: 'save-apply' }, null, 2),
+    'src/routes/users.ts': 'export const users = [];\n',
+  });
+
+  try {
+    const { output, result } = await captureStdout(() => runAnalyzeProject(repo.root, {
+      applyDocs: true,
+      includeSource: true,
+      provider: 'codex',
+      providerExplicit: true,
+      stdinIsTTY: true,
+      stdoutIsTTY: true,
+      stderrIsTTY: true,
+      promptSelect: async () => 'save-proposal',
+      runProviderFn: async () => providerResult(validAnalysis(), { cwd: repo.root }),
+      now: new Date('2026-06-12T13:05:00Z'),
+    }));
+
+    const status = readJson(path.join(repo.root, result.run_status_path));
+    assert.equal(result.save_proposal, true);
+    assert.equal(result.interactive_action, 'save-proposal');
+    assert.match(output, /AI analyze-project proposal saved/);
+    assert.equal(status.status, 'proposal-saved');
+    assert.equal(fs.existsSync(path.join(repo.root, result.proposal_artifacts.proposal_json)), true);
+    assert.equal(fs.existsSync(path.join(repo.root, result.proposal_artifacts.proposal_diff)), true);
+    assert.equal(fs.existsSync(path.join(repo.root, 'docs')), false);
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('ai analyze-project --apply-docs TTY view diff requires second decision', async () => {
+  const repo = makeRepo({
+    'README.md': '# Diff Apply\n',
+    'package.json': JSON.stringify({ name: 'diff-apply' }, null, 2),
+    'src/routes/users.ts': 'export const users = [];\n',
+    'docs/CONTEXTO.md': '# Manual\n\nHuman text.\n',
+  });
+  const answers = ['view-diff', 'cancel'];
+  const prompts = [];
+
+  try {
+    const { output, result } = await captureStdout(() => runAnalyzeProject(repo.root, {
+      applyDocs: true,
+      includeSource: true,
+      provider: 'codex',
+      providerExplicit: true,
+      stdinIsTTY: true,
+      stdoutIsTTY: true,
+      stderrIsTTY: true,
+      promptSelect: async (message, choices) => {
+        prompts.push({ message, choices });
+        return answers.shift();
+      },
+      runProviderFn: async () => providerResult(validAnalysis(), { cwd: repo.root }),
+      now: new Date('2026-06-12T13:06:00Z'),
+    }));
+
+    const status = readJson(path.join(repo.root, result.run_status_path));
+    const context = fs.readFileSync(path.join(repo.root, 'docs/CONTEXTO.md'), 'utf8');
+    assert.equal(result.cancelled, true);
+    assert.equal(result.interactive_action, 'cancel');
+    assert.equal(prompts.length, 2);
+    assert.equal(prompts[0].choices[0].value, 'view-diff');
+    assert.match(prompts[0].choices[0].label, /recommended/);
+    assert.equal(prompts[1].message, 'What do you want to do after reviewing the diff?');
+    assert.equal(prompts[1].choices.some((choice) => choice.value === 'view-diff'), false);
+    assert.match(output, /Diff preview/);
+    assert.match(output, /Full diff artifact:/);
+    assert.equal(context, '# Manual\n\nHuman text.\n');
+    assert.equal(status.status, 'apply-canceled');
+    assert.equal(fs.existsSync(path.join(repo.root, '.quiver/runs/run-2026-06-12t13-06-00z/proposal/analyze-project-doc-proposal.diff')), true);
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('ai analyze-project --apply-docs TTY edit reuses review flow', async () => {
+  const repo = makeRepo({
+    'README.md': '# Edit Apply\n',
+    'package.json': JSON.stringify({ name: 'edit-apply' }, null, 2),
+    'src/routes/users.ts': 'export const users = [];\n',
+  });
+  const reviewDir = fs.mkdtempSync(path.join(os.tmpdir(), 'quiver-ai-apply-edit-'));
+
+  try {
+    const { output, result } = await captureStdout(() => runAnalyzeProject(repo.root, {
+      applyDocs: true,
+      includeSource: true,
+      reviewDir,
+      provider: 'codex',
+      providerExplicit: true,
+      stdinIsTTY: true,
+      stdoutIsTTY: true,
+      stderrIsTTY: true,
+      promptSelect: async () => 'edit-proposal',
+      openEditorFn: (reviewPath) => {
+        const proposal = JSON.parse(fs.readFileSync(reviewPath, 'utf8'));
+        proposal.docs[0].content = '# Context\nEdited from selector.\n';
+        fs.writeFileSync(reviewPath, `${JSON.stringify(proposal, null, 2)}\n`);
+        return { ok: true };
+      },
+      promptConfirm: async () => true,
+      runProviderFn: async () => providerResult(validAnalysis(), { cwd: repo.root }),
+      now: new Date('2026-06-12T13:07:00Z'),
+    }));
+
+    const context = fs.readFileSync(path.join(repo.root, 'docs/CONTEXTO.md'), 'utf8');
+    assert.equal(result.review, true);
+    assert.equal(result.interactive_action, 'edit-proposal');
+    assert.match(output, /AI analyze-project review write plan/);
+    assert.ok(context.includes('Edited from selector.'));
+  } finally {
+    fs.rmSync(reviewDir, { recursive: true, force: true });
+    repo.cleanup();
+  }
+});
+
+test('ai analyze-project --apply-docs TTY apply writes docs through apply engine', async () => {
+  const repo = makeRepo({
+    'README.md': '# Apply Selector\n',
+    'package.json': JSON.stringify({ name: 'apply-selector' }, null, 2),
+    'src/routes/users.ts': 'export const users = [];\n',
+  });
+
+  try {
+    const { output, result } = await captureStdout(() => runAnalyzeProject(repo.root, {
+      applyDocs: true,
+      includeSource: true,
+      provider: 'codex',
+      providerExplicit: true,
+      stdinIsTTY: true,
+      stdoutIsTTY: true,
+      stderrIsTTY: true,
+      promptSelect: async () => 'apply',
+      runProviderFn: async () => providerResult(validAnalysis(), { cwd: repo.root }),
+      now: new Date('2026-06-12T13:08:00Z'),
+    }));
+
+    const context = fs.readFileSync(path.join(repo.root, 'docs/CONTEXTO.md'), 'utf8');
+    const status = readJson(path.join(repo.root, result.run_status_path));
+    assert.equal(result.apply_docs, true);
+    assert.equal(result.interactive_action, 'apply');
+    assert.deepEqual(result.written_docs, ['docs/CONTEXTO.md']);
+    assert.equal(status.status, 'docs-applied');
+    assert.match(output, /AI analyze-project docs applied/);
+    assert.ok(context.includes('Provider proposal.'));
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('ai analyze-project --apply-docs TTY renders Spanish selector copy', async () => {
+  const repo = makeRepo({
+    'README.md': '# Selector ES\n',
+    'package.json': JSON.stringify({ name: 'selector-es' }, null, 2),
+    'src/routes/users.ts': 'export const users = [];\n',
+  });
+  const prompts = [];
+
+  try {
+    const { output } = await captureStdout(() => runAnalyzeProject(repo.root, {
+      applyDocs: true,
+      includeSource: true,
+      language: 'es',
+      provider: 'codex',
+      providerExplicit: true,
+      stdinIsTTY: true,
+      stdoutIsTTY: true,
+      stderrIsTTY: true,
+      promptSelect: async (message, choices) => {
+        prompts.push({ message, choices });
+        return 'cancel';
+      },
+      runProviderFn: async () => providerResult(validAnalysis(), { cwd: repo.root }),
+      now: new Date('2026-06-12T13:09:00Z'),
+    }));
+
+    assert.match(output, /Analisis completado\./);
+    assert.equal(prompts[0].message, 'Que queres hacer?');
+    assert.match(prompts[0].choices[0].label, /recomendado/);
+    assert.equal(prompts[0].choices[0].hint, 'Escribe los docs propuestos usando merge seguro y snapshot previo.');
+  } finally {
+    repo.cleanup();
+  }
+});

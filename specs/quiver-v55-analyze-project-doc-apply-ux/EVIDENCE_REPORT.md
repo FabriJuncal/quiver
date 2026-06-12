@@ -121,3 +121,36 @@ Covered behavior:
 - Stale target docs are blocked at the apply engine boundary.
 - Invalid provider doc proposals do not write final docs.
 - Existing `--review` behavior remains covered.
+
+## Slice-04 Evidence - slice-04-interactive-apply-ux
+
+Executed:
+
+```bash
+node --test tests/commands/ai-analyze-project-review.test.js
+node --test tests/lib/cli-ux.test.js
+node --test tests/commands/ai-analyze-project.test.js
+node --test tests/commands/cli-contract.test.js
+node --test tests/lib/i18n-catalog.test.js
+node --test tests/commands/ux-flags.test.js
+node --test tests/commands/ai-analyze-project-provider.test.js
+node --test tests/lib/ai-analyze-project-validation.test.js tests/lib/ai/analyze-project-repair.test.js
+npm run docs:check
+npm run schema:slice:check
+node bin/create-quiver.js spec validate specs/quiver-v55-analyze-project-doc-apply-ux --strict
+git diff --check
+npm test
+```
+
+Result: all passed. Full `npm test` passed with 741 tests.
+
+Covered behavior:
+
+- TTY `--apply-docs` shows an explained selector after provider validation.
+- Clean creates recommend `apply`; dirty/update targets recommend `view-diff`.
+- no-TTY `--apply-docs` without `--yes` fails before provider execution.
+- Cancel writes no final docs and records `apply-canceled`.
+- Save proposal writes proposal artifacts only.
+- View diff saves the full diff artifact, prints a bounded preview, and requires a second decision.
+- Edit proposal reuses the existing review/editor confirmation flow.
+- English and Spanish selector copy are covered.

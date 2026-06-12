@@ -2,6 +2,15 @@ const assert = require('node:assert/strict');
 const test = require('node:test');
 
 const { createUx, resolveUxMode } = require('../../src/create-quiver/lib/cli/ux');
+const { createTranslator } = require('../../src/create-quiver/lib/i18n/catalog');
+const {
+  APPLY_ACTION,
+  VIEW_DIFF_ACTION,
+  buildAnalyzeProjectApplyChoices,
+  canUseAnalyzeProjectInteractiveSelector,
+  formatBoundedAnalyzeProjectDiff,
+  selectRecommendedAction,
+} = require('../../src/create-quiver/lib/ai/analyze-project-interactive');
 
 test('resolveUxMode disables decoration, prompts, and spinners for machine modes', () => {
   const json = resolveUxMode({ json: true }, {}, {
@@ -253,4 +262,64 @@ test('promptConfirm uses injected confirmation in interactive TTY mode', async (
   });
 
   assert.equal(await ux.promptConfirm('Apply changes?', { initialValue: true }), true);
+});
+
+test('analyze-project apply selector recommends apply for clean creates', () => {
+  const translator = createTranslator('en');
+  const writePlan = [{
+    path: 'docs/CONTEXTO.md',
+    action: 'create',
+    dirty: false,
+  }];
+
+  const recommended = selectRecommendedAction(writePlan);
+  const choices = buildAnalyzeProjectApplyChoices(translator, recommended);
+
+  assert.equal(recommended, APPLY_ACTION);
+  assert.equal(choices[0].value, APPLY_ACTION);
+  assert.equal(choices[0].default, true);
+  assert.match(choices[0].label, /recommended/);
+  assert.ok(choices.every((choice) => choice.hint));
+});
+
+test('analyze-project apply selector is disabled in CI even with TTY streams', () => {
+  assert.equal(canUseAnalyzeProjectInteractiveSelector({
+    stdinIsTTY: true,
+    stdoutIsTTY: true,
+    stderrIsTTY: true,
+    env: { CI: 'true' },
+  }), false);
+});
+
+test('analyze-project apply selector recommends diff for dirty updates', () => {
+  const translator = createTranslator('en');
+  const writePlan = [{
+    path: 'docs/CONTEXTO.md',
+    action: 'update',
+    dirty: true,
+  }];
+
+  const recommended = selectRecommendedAction(writePlan);
+  const choices = buildAnalyzeProjectApplyChoices(translator, recommended);
+
+  assert.equal(recommended, VIEW_DIFF_ACTION);
+  assert.equal(choices[0].value, VIEW_DIFF_ACTION);
+  assert.equal(choices[0].default, true);
+  assert.match(choices[0].label, /recommended/);
+});
+
+test('analyze-project apply diff preview is bounded and marks truncation', () => {
+  const diff = formatBoundedAnalyzeProjectDiff([{
+    path: 'docs/CONTEXTO.md',
+    action: 'update',
+    diff: ['--- docs/CONTEXTO.md', '+++ docs/CONTEXTO.md', '- old', '+ new', '+ more'],
+  }], {
+    maxDiffLines: 3,
+    language: 'en',
+  });
+
+  assert.match(diff, /^Diff preview/);
+  assert.match(diff, /--- docs\/CONTEXTO\.md/);
+  assert.match(diff, /\[diff truncated; full diff saved in the artifact\]/);
+  assert.doesNotMatch(diff, /\+ new/);
 });
