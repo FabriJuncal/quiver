@@ -1,0 +1,79 @@
+{
+  "slice_id": "slice-03-cli-docs-real-fixture-smoke",
+  "ticket": "QUIVER-56-03",
+  "type": "hardening",
+  "title": "CLI UX + Docs + Real Fixture Smoke",
+  "objective": "Make the new merge behavior understandable to users and prove the nika-erp regression is covered.",
+  "description": "Updates human output, docs, troubleshooting, changelog guidance, and deterministic nika-erp style fixture/smoke evidence.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v56-cli-docs-real-fixture-smoke",
+    "branch_name": "feature/QUIVER-56-03-v56-cli-docs-real-fixture-smoke"
+  },
+  "files": [
+    "src/create-quiver/commands/ai.js",
+    "src/create-quiver/lib/i18n/messages/en.js",
+    "src/create-quiver/lib/i18n/messages/es.js",
+    "tests/commands/ai-analyze-project*.test.js",
+    "tests/fixtures/analyze-project/**",
+    "docs/CLI_UX_GUIDE.md",
+    "docs/TROUBLESHOOTING.md",
+    "docs/reference/commands.md",
+    "CHANGELOG.md",
+    "specs/quiver-v56-analyze-project-usable-doc-merge/**"
+  ],
+  "expected_read_paths": [
+    "specs/quiver-v56-analyze-project-usable-doc-merge/slices/slice-02-apply-integration-validation-contract/CLOSURE_BRIEF.md",
+    "docs/TROUBLESHOOTING.md",
+    "docs/reference/commands.md"
+  ],
+  "allowed_write_paths": [
+    "src/create-quiver/commands/ai.js",
+    "src/create-quiver/lib/i18n/messages/en.js",
+    "src/create-quiver/lib/i18n/messages/es.js",
+    "tests/commands/ai-analyze-project-provider.test.js",
+    "tests/fixtures/analyze-project/**",
+    "docs/CLI_UX_GUIDE.md",
+    "docs/TROUBLESHOOTING.md",
+    "docs/reference/commands.md",
+    "CHANGELOG.md",
+    "specs/quiver-v56-analyze-project-usable-doc-merge/**"
+  ],
+  "depends_on": [
+    "slice-02-apply-integration-validation-contract"
+  ],
+  "parallel_safe": "after_dependencies",
+  "parallel_safe_reason": "Docs can draft after Slice 01, but final fixture smoke and output assertions depend on Slice 02.",
+  "must": [
+    "Human output reports replaced scaffold, preserved human content, placeholder counts, conflicts, snapshot, and manifest paths.",
+    "Troubleshooting explains re-running analyze-project after upgrading.",
+    "Docs explain the merge contract without overpromising.",
+    "Deterministic fixture covers NIKA_ERP scaffold plus stockflow/StockFlow conflict and old context-prep block.",
+    "Evidence proves final CONTEXTO.md has no critical visible placeholders."
+  ],
+  "not_included": [
+    "Provider prompt redesign.",
+    "Publishing npm.",
+    "Product repository changes."
+  ],
+  "acceptance": [
+    "CLI output is compact and actionable.",
+    "Docs and command reference are synchronized.",
+    "nika-erp style fixture passes without visible scaffold placeholders.",
+    "Name conflict warning is visible.",
+    "Release smoke guidance is updated."
+  ],
+  "tests": [
+    "node --test tests/commands/ai-analyze-project-provider.test.js tests/commands/cli-contract.test.js",
+    "npm run docs:check",
+    "node bin/create-quiver.js spec validate specs/quiver-v56-analyze-project-usable-doc-merge --strict",
+    "git diff --check"
+  ],
+  "estimated_hours": 4,
+  "actual_hours": null,
+  "status": "planned",
+  "blocked_reason": null,
+  "started_at": null,
+  "completed_at": null
+}
