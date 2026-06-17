@@ -158,9 +158,12 @@ test('ai analyze-project --review writes approved docs with snapshot manifest', 
     assert.match(output, /AI analyze-project review write plan/);
     assert.match(output, /Dirty target docs: docs\/CONTEXTO\.md/);
     assert.match(output, /Final diff:/);
+    assert.match(output, /\+ Human text\./);
+    assert.match(output, /\+ <!-- quiver:analyze-project:start -->/);
     assert.match(output, /Post-write validation: passed/);
     assert.deepEqual(result.written_docs, ['docs/CONTEXTO.md']);
     assert.equal(result.post_write_validation.ok, true);
+    assert.equal(result.write_plan[0].merge_report.strategy, 'preserve-and-update-managed-block');
     assert.ok(context.includes('Human text.'));
     assert.ok(context.includes('Edited during review.'));
     assert.equal(manifest.entries[0].path, 'docs/CONTEXTO.md');

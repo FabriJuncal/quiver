@@ -264,6 +264,8 @@ function assertSavedProposalArtifacts(repoRoot, result) {
   assert.equal(manifest.run_id, result.run_id);
   assert.equal(manifest.provider, 'codex');
   assert.ok(manifest.doc_paths.includes('docs/CONTEXTO.md'));
+  assert.ok(manifest.merge_plan.some((item) => item.path === 'docs/CONTEXTO.md'));
+  assert.ok(manifest.merge_plan.every((item) => item.merge_report?.strategy));
   assert.equal(manifest.proposal_sha256, artifacts.proposal_sha256);
   return manifest;
 }
@@ -321,6 +323,7 @@ test('runAnalyzeProject executes provider and applies validated docs by default'
     assert.deepEqual(result.written_docs, ['docs/CONTEXTO.md']);
     assert.equal(result.post_write_validation.ok, true);
     assert.equal(result.interactive_action, 'auto-apply');
+    assert.ok(result.write_plan.every((item) => item.merge_report?.strategy));
     assert.equal(fs.existsSync(path.join(repo.root, result.proposal_artifacts.manifest)), true);
     assert.equal(fs.existsSync(path.join(repo.root, result.write_manifest.path)), true);
     assert.equal(fs.existsSync(path.join(repo.root, result.snapshot.manifestPath)), true);
@@ -361,6 +364,7 @@ test('runAnalyzeProject default auto-apply preserves existing docs with managed 
     assert.ok(context.includes('<!-- quiver:analyze-project:start -->'));
     const writeManifest = readJson(path.join(repo.root, result.write_manifest.path));
     assert.equal(writeManifest.actions[0].status, 'written');
+    assert.equal(writeManifest.actions[0].merge_report.strategy, 'preserve-and-update-managed-block');
   } finally {
     repo.cleanup();
   }
@@ -422,6 +426,7 @@ test('runAnalyzeProject --save-proposal --json emits clean parseable proposal re
     assert.equal(parsed.save_proposal, true);
     assert.equal(parsed.run_id, result.run_id);
     assert.equal(parsed.proposal_artifacts.manifest, result.proposal_artifacts.manifest);
+    assert.ok(parsed.write_plan.every((item) => item.merge_report?.strategy));
     assertSavedProposalArtifacts(repo.root, parsed);
     assert.equal(fs.existsSync(path.join(repo.root, 'docs', 'CONTEXTO.md')), false);
   } finally {

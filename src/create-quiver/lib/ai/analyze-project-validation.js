@@ -4,6 +4,8 @@ const path = require('node:path');
 const {
   ANALYZE_MANAGED_END,
   ANALYZE_MANAGED_START,
+  classifyAnalyzeProjectDoc,
+  collectCriticalPlaceholders,
   normalizeAnalyzeProjectDocProposal,
 } = require('./analyze-project-docs');
 const { normalizeAnalyzeProjectAnalysis } = require('./analyze-project-parser');
@@ -326,6 +328,29 @@ function addPlaceholderValidation(docPath, managedContent, errors) {
   }
 }
 
+function addVisiblePlaceholderValidation(docPath, content, warnings, errors, options = {}) {
+  const classification = classifyAnalyzeProjectDoc(content);
+  const placeholders = collectCriticalPlaceholders(classification.visible_body || '');
+  if (placeholders.length === 0) {
+    return;
+  }
+
+  const issue = makeIssue(
+    docPath,
+    'visible-critical-placeholder',
+    `critical scaffold placeholder remains in primary visible content: ${placeholders.slice(0, 3).join(', ')}`,
+    {
+      classification: classification.classification,
+      placeholders,
+    },
+  );
+  if (options.strict === true) {
+    errors.push(issue);
+  } else {
+    warnings.push(issue);
+  }
+}
+
 function normalizeFactValue(value) {
   return String(value || '')
     .replace(/[`*_]/g, '')
@@ -446,6 +471,7 @@ function validateAnalyzeProjectPostWrite(repoRoot, report, options = {}) {
       content: file.content,
       managedBlock,
     });
+    addVisiblePlaceholderValidation(docPath, file.content, warnings, errors, { strict: options.strict === true });
     if (!managedBlock.ok) {
       errors.push(makeIssue(docPath, managedBlock.issue, `Quiver managed block is missing or unbalanced in ${docPath}.`));
       continue;
