@@ -37,7 +37,7 @@ module.exports = {
         'ai active-slice status|reconcile': 'Inspecciona o simula reconciliar el estado local de active-slice desde todas las fuentes soportadas.',
         'ai status': 'Muestra fase actual del ciclo de vida de IA, versiones aprobadas, bloqueos y proximo comando.',
         'ai resume': 'Reanuda la guia desde la ultima fase valida del ciclo de vida sin memoria de chat.',
-        'ai analyze-project': 'Analiza una muestra acotada del proyecto y genera propuestas documentales auditadas.',
+        'ai analyze-project': 'Analiza una muestra acotada del proyecto y aplica actualizaciones documentales validadas.',
         'ai onboard': 'Ejecuta o imprime el prompt de onboarding del planner con contexto optimizado por tokens.',
         'ai prepare-context': 'Previsualiza o escribe actualizaciones docs-only del contexto de IA con supuestos y riesgos.',
         'ai agent set|list|show|doctor|repair': 'Gestiona, diagnostica y simula reparaciones de perfiles planner, executor, reviewer y doctor sin secretos.',

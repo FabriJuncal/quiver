@@ -49,7 +49,7 @@ El contenido curado fuera de los marcadores se mantiene manual y no debe ser ree
 | AI lifecycle | `ai active-slice status\|reconcile` | Inspect or dry-run reconcile local active-slice state from every supported source. |
 | AI lifecycle | `ai status` | Show current AI lifecycle phase, approved versions, blockers, and next command. |
 | AI lifecycle | `ai resume` | Resume guidance from the last valid lifecycle phase without chat memory. |
-| AI lifecycle | `ai analyze-project` | Analyze a bounded project sample and generate audited documentation proposals. |
+| AI lifecycle | `ai analyze-project` | Analyze a bounded project sample and apply validated documentation updates. |
 | AI lifecycle | `ai onboard` | Run or print the planner onboarding prompt with a token-aware context pack. |
 | AI lifecycle | `ai prepare-context` | Preview or write docs-only AI context updates with assumptions and risks. |
 | AI lifecycle | `ai agent set\|list\|show\|doctor\|repair` | Manage, diagnose, and dry-run repair planner, executor, reviewer, and doctor provider profiles without secrets. |
@@ -199,8 +199,8 @@ En `--dry-run`, Quiver no escribe archivos, no ejecuta proveedor y muestra qué 
 Para generar docs desde IA:
 
 ```bash
+npx --yes create-quiver@latest ai analyze-project --deep --provider codex --model gpt-5.5
 npx --yes create-quiver@latest ai analyze-project --deep --save-proposal --provider codex --model gpt-5.5
-npx --yes create-quiver@latest ai analyze-project --deep --apply-docs --provider codex --model gpt-5.5
 npx --yes create-quiver@latest ai analyze-project apply --run <run-id>
 ```
 
@@ -216,12 +216,12 @@ Garantías del flujo con proveedor:
 - Si el proveedor devuelve JSON con drift seguro como `notes`, `claim` usado como `name` faltante, o `confidence` en paths no permitidos, Quiver lo repara, registra el repair y revalida.
 - Si el JSON sigue inválido pero el error es retryable, Quiver hace 1 retry por defecto, con cap duro de 2 retries.
 - Si el JSON final es inválido, Quiver falla sin escribir docs finales y deja manifests de validación/retry/repair en `.quiver/runs`.
-- El modo provider normal no escribe docs finales por defecto; usá `--apply-docs`, `--save-proposal` o `--review` para decidir qué hacer con la propuesta validada.
+- El modo provider normal aplica docs finales por defecto después de validar la propuesta, crear proposal artifacts, snapshot, write manifest y validación post-write.
 - `--apply-docs` en TTY muestra opciones explicadas para aplicar, ver diff, guardar propuesta, editar propuesta o cancelar.
 - `--apply-docs --yes` aplica en automatización después de validar propuesta, paths permitidos, hashes, snapshot y post-write.
 - `--save-proposal` guarda `.quiver/runs/<run-id>/proposal/*` sin escribir docs finales.
 - `ai analyze-project apply --run <run-id>` aplica una propuesta guardada sin ejecutar proveedor ni requerir `--provider` o `--model`.
-- `--review` abre una propuesta JSON editable, revalida el JSON editado, muestra diff final y pide confirmación antes de escribir docs permitidos.
+- `--review` queda como modo avanzado para editar manualmente una propuesta JSON antes de escribir.
 - Las escrituras aprobadas crean snapshot con hashes y se escriben con rename atómico.
 
 Benchmark recomendado:
@@ -238,7 +238,6 @@ cd /tmp/quiver-smoke/nika-erp
 npx --yes create-quiver@latest ai analyze-project --deep --dry-run --json
 npx --yes create-quiver@latest ai analyze-project --deep --provider codex --model gpt-5.5
 npx --yes create-quiver@latest ai analyze-project --deep --save-proposal --provider codex --model gpt-5.5
-npx --yes create-quiver@latest ai analyze-project --deep --apply-docs --provider codex --model gpt-5.5
 npx --yes create-quiver@latest ai analyze-project apply --run <run-id>
 ```
 
@@ -248,7 +247,7 @@ Evidencia esperada:
 
 - `--dry-run --json` parsea como JSON, `provider_execution` queda `skipped`, `writes` queda vacío y no crea docs finales.
 - `package-lock.json` aparece en `detected.lockfiles` y en omitidos con `sampling:lockfile-metadata`, no en contenido enviado al provider.
-- El modo provider escribe artifacts auditados en `.quiver/runs`, redactados y con tamaño controlado, pero no escribe docs finales sin `--apply-docs`, `--review` o `apply --run`.
+- El modo provider escribe artifacts auditados en `.quiver/runs`, redactados y con tamaño controlado, y aplica docs finales validados por defecto.
 - Si el provider devuelve drift no reparable, el comando falla con path/tipo/causa probable y próximo comando seguro, sin escribir docs finales.
 - `--save-proposal` debe crear `.quiver/runs/<run-id>/proposal/*` sin modificar docs finales.
 - `--apply-docs` debe mostrar selector explicado en TTY o requerir `--yes` en automatización.
@@ -256,7 +255,7 @@ Evidencia esperada:
 
 Rollback de release:
 
-- Si el smoke live escribe docs inesperadamente sin `--review`, filtra secretos, omite artifacts críticos o falla con ruido masivo de schema, no publiques `latest`.
+- Si el smoke live no escribe docs validados en el comando normal, filtra secretos, omite artifacts críticos o falla con ruido masivo de schema, no publiques `latest`.
 - Publicá una corrección como canary o revertí la versión npm afectada según el proceso de release vigente.
 - Para usuarios impactados, indicar `npx create-quiver ai analyze-project --deep --dry-run --json` como siguiente comando seguro y pedir `.quiver/runs/run-.../validation/analyze-project-validation.json` redactado como evidencia.
 
@@ -264,8 +263,8 @@ Rollback de release:
 |---|---|
 | `npx --yes create-quiver@latest ai analyze-project --deep --dry-run` | Previsualiza descubrimiento y muestreo del repo sin escribir ni ejecutar proveedor. |
 | `npx --yes create-quiver@latest ai analyze-project --deep --dry-run --json` | Emite el plan de análisis como JSON parseable para automatización. |
-| `npx --yes create-quiver@latest ai analyze-project --deep --review` | Ejecuta proveedor, valida análisis JSON con evidencia, abre revisión humana y escribe solo docs permitidos tras confirmación. |
-| `npx --yes create-quiver@latest ai analyze-project --deep --provider codex --model gpt-5.5` | Ejecuta proveedor y genera propuesta auditada en `.quiver/runs`; no escribe docs finales sin `--review`. |
+| `npx --yes create-quiver@latest ai analyze-project --deep --review` | Modo avanzado: ejecuta proveedor, valida análisis JSON con evidencia y abre edición manual antes de escribir docs permitidos. |
+| `npx --yes create-quiver@latest ai analyze-project --deep --provider codex --model gpt-5.5` | Ejecuta proveedor, valida JSON y aplica docs finales con proposal artifacts, snapshot, write manifest y validación post-write. |
 | `npx --yes create-quiver@latest ai analyze-project --deep --save-proposal --provider codex --model gpt-5.5` | Guarda una propuesta validada en `.quiver/runs/<run-id>/proposal` sin escribir docs finales. |
 | `npx --yes create-quiver@latest ai analyze-project --deep --apply-docs --provider codex --model gpt-5.5` | En TTY debe mostrar opciones explicadas para aplicar, ver diff, guardar, editar o cancelar. |
 | `npx --yes create-quiver@latest ai analyze-project --deep --apply-docs --yes --provider codex --model gpt-5.5` | Aplica docs validados en modo automatizado, con snapshots y validación post-write. |

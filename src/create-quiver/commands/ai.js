@@ -2886,7 +2886,11 @@ async function runAnalyzeProject(repoRoot, options = {}) {
     run_status_path: path.join('.quiver', 'runs', auditRunId, 'status.json').split(path.sep).join('/'),
     selected_context_manifest: selectedContextManifest,
   };
-  const needsDocProposal = options.applyDocs === true || options.saveProposal === true || options.review === true;
+  const autoApplyDocs = options.applyDocs !== true
+    && options.saveProposal !== true
+    && options.review !== true
+    && options.json !== true;
+  const needsDocProposal = autoApplyDocs || options.applyDocs === true || options.saveProposal === true || options.review === true;
   const docProposal = needsDocProposal ? buildAnalyzeProjectDocProposal(parsed.analysis) : null;
   const docWritePlan = docProposal ? buildAnalyzeProjectWritePlan(repoRoot, docProposal) : [];
   const docActionContext = {
@@ -2907,6 +2911,15 @@ async function runAnalyzeProject(repoRoot, options = {}) {
     const applyReport = applyAnalyzeProjectDocProposalReport(repoRoot, {
       ...docActionContext,
       allowDirtyDocs: options.allowDirtyDocs === true,
+    });
+    return emitAnalyzeProjectApplyReport(applyReport, options);
+  }
+
+  if (autoApplyDocs) {
+    const applyReport = applyAnalyzeProjectDocProposalReport(repoRoot, {
+      ...docActionContext,
+      allowDirtyDocs: true,
+      interactiveAction: 'auto-apply',
     });
     return emitAnalyzeProjectApplyReport(applyReport, options);
   }

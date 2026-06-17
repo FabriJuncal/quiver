@@ -230,7 +230,7 @@ const COMMAND_HELP_GROUPS = [
       ['ai active-slice status|reconcile', 'Inspect or dry-run reconcile local active-slice state from every supported source.'],
       ['ai status', 'Show current AI lifecycle phase, approved versions, blockers, and next command.'],
       ['ai resume', 'Resume guidance from the last valid lifecycle phase without chat memory.'],
-      ['ai analyze-project', 'Analyze a bounded project sample and generate audited documentation proposals.'],
+      ['ai analyze-project', 'Analyze a bounded project sample and apply validated documentation updates.'],
       ['ai onboard', 'Run or print the planner onboarding prompt with a token-aware context pack.'],
       ['ai prepare-context', 'Preview or write docs-only AI context updates with assumptions and risks.'],
       ['ai agent set|list|show|doctor|repair', 'Manage, diagnose, and dry-run repair planner, executor, reviewer, and doctor provider profiles without secrets.'],

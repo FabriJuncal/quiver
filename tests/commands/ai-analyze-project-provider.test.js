@@ -282,7 +282,7 @@ function assertOnlySelectedContextAudit(repoRoot) {
   return assertSelectedContextManifest(repoRoot, manifestPaths[0]);
 }
 
-test('runAnalyzeProject executes provider after redacted privacy preflight and writes only audit manifest', async () => {
+test('runAnalyzeProject executes provider and applies validated docs by default', async () => {
   const repo = makeRepo({
     'README.md': '# Provider Demo\n',
     'package.json': JSON.stringify({ name: 'provider-demo' }, null, 2),
@@ -307,8 +307,9 @@ test('runAnalyzeProject executes provider after redacted privacy preflight and w
     }));
 
     assert.equal(providerCalled, true);
-    assert.match(output, /AI analyze-project provider analysis/);
+    assert.match(output, /AI analyze-project docs applied/);
     assert.equal(result.provider_execution, 'completed');
+    assert.equal(result.apply_docs, true);
     assert.equal(result.privacy_preflight.ok, true);
     assert.equal(result.analysis.kind, 'quiver-project-analysis');
     assert.equal(result.provider_artifact.redacted, true);
@@ -317,7 +318,49 @@ test('runAnalyzeProject executes provider after redacted privacy preflight and w
     assertSelectedContextManifest(repo.root, result.selected_context_manifest);
     assert.ok(result.raw_provider_artifacts.every((artifactPath) => fs.existsSync(path.join(repo.root, artifactPath))));
     assert.equal(fs.existsSync(path.join(repo.root, result.run_status_path)), true);
-    assert.equal(fs.existsSync(path.join(repo.root, 'docs')), false);
+    assert.deepEqual(result.written_docs, ['docs/CONTEXTO.md']);
+    assert.equal(result.post_write_validation.ok, true);
+    assert.equal(result.interactive_action, 'auto-apply');
+    assert.equal(fs.existsSync(path.join(repo.root, result.proposal_artifacts.manifest)), true);
+    assert.equal(fs.existsSync(path.join(repo.root, result.write_manifest.path)), true);
+    assert.equal(fs.existsSync(path.join(repo.root, result.snapshot.manifestPath)), true);
+    const context = fs.readFileSync(path.join(repo.root, 'docs/CONTEXTO.md'), 'utf8');
+    assert.ok(context.includes('Provider proposal.'));
+    assert.ok(context.includes('<!-- quiver:analyze-project:start -->'));
+    const status = readJson(path.join(repo.root, result.run_status_path));
+    assert.equal(status.status, 'docs-applied');
+    assert.equal(status.artifacts.write_manifest, result.write_manifest.path);
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('runAnalyzeProject default auto-apply preserves existing docs with managed block', async () => {
+  const repo = makeRepo({
+    'README.md': '# Provider Existing Docs Demo\n',
+    'package.json': JSON.stringify({ name: 'provider-existing-docs-demo' }, null, 2),
+    'src/routes/users.ts': 'export const users = [];\n',
+    'docs/CONTEXTO.md': '# Manual Context\n\nHuman-written context stays here.\n',
+  });
+
+  try {
+    const { result } = await captureStdout(() => runAnalyzeProject(repo.root, {
+      includeSource: true,
+      provider: 'codex',
+      providerExplicit: true,
+      runProviderFn: async () => providerResult(validAnalysis(), { cwd: repo.root }),
+      now: new Date('2026-06-12T12:34:50.000Z'),
+    }));
+
+    const context = fs.readFileSync(path.join(repo.root, 'docs/CONTEXTO.md'), 'utf8');
+    assert.equal(result.apply_docs, true);
+    assert.equal(result.interactive_action, 'auto-apply');
+    assert.ok(context.includes('# Manual Context'));
+    assert.ok(context.includes('Human-written context stays here.'));
+    assert.ok(context.includes('Provider proposal.'));
+    assert.ok(context.includes('<!-- quiver:analyze-project:start -->'));
+    const writeManifest = readJson(path.join(repo.root, result.write_manifest.path));
+    assert.equal(writeManifest.actions[0].status, 'written');
   } finally {
     repo.cleanup();
   }
@@ -536,7 +579,7 @@ test('runAnalyzeProject --save-proposal rejects invalid final JSON without usabl
   }
 });
 
-test('runAnalyzeProject repairs nika-erp notes drift fixture without writing final docs', async () => {
+test('runAnalyzeProject repairs nika-erp notes drift fixture and applies final docs', async () => {
   const repo = makeProviderFixtureRepo();
 
   try {
@@ -563,13 +606,15 @@ test('runAnalyzeProject repairs nika-erp notes drift fixture without writing fin
       ],
     );
     assertSelectedContextManifest(repo.root, result.selected_context_manifest);
-    assert.equal(fs.existsSync(path.join(repo.root, 'docs')), false);
+    assert.equal(result.apply_docs, true);
+    assert.equal(result.post_write_validation.ok, true);
+    assert.equal(fs.existsSync(path.join(repo.root, 'docs', 'CONTEXTO.md')), true);
   } finally {
     repo.cleanup();
   }
 });
 
-test('runAnalyzeProject repairs claim-name and question confidence drift fixtures without writing final docs', async () => {
+test('runAnalyzeProject repairs claim-name and question confidence drift fixtures and applies final docs', async () => {
   for (const [fixtureName, expectedEntry] of [
     ['claim-name-drift', 'domain.entities.0:claim:name:mapped'],
     ['question-confidence-drift', 'questions.0:confidence::removed'],
@@ -595,7 +640,9 @@ test('runAnalyzeProject repairs claim-name and question confidence drift fixture
       ].join(':'));
       assert.ok(entries.includes(expectedEntry), `expected repair entry ${expectedEntry}`);
       assertSelectedContextManifest(repo.root, result.selected_context_manifest);
-      assert.equal(fs.existsSync(path.join(repo.root, 'docs')), false);
+      assert.equal(result.apply_docs, true);
+      assert.equal(result.post_write_validation.ok, true);
+      assert.equal(fs.existsSync(path.join(repo.root, 'docs', 'CONTEXTO.md')), true);
     } finally {
       repo.cleanup();
     }
@@ -606,7 +653,7 @@ for (const [name, parseSource] of [
   ['fenced-json', 'fenced-json'],
   ['surrounding-text', 'embedded-json'],
 ]) {
-  test(`runAnalyzeProject accepts ${name} provider fixture output without live provider`, async () => {
+  test(`runAnalyzeProject accepts ${name} provider fixture output and applies final docs`, async () => {
     const repo = makeProviderFixtureRepo();
 
     try {
@@ -621,7 +668,9 @@ for (const [name, parseSource] of [
       assert.equal(result.analysis.kind, 'quiver-project-analysis');
       assert.equal(result.analysis_validation.parse_source, parseSource);
       assertSelectedContextManifest(repo.root, result.selected_context_manifest);
-      assert.equal(fs.existsSync(path.join(repo.root, 'docs')), false);
+      assert.equal(result.apply_docs, true);
+      assert.equal(result.post_write_validation.ok, true);
+      assert.equal(fs.existsSync(path.join(repo.root, 'docs', 'CONTEXTO.md')), true);
     } finally {
       repo.cleanup();
     }
@@ -678,7 +727,9 @@ test('runAnalyzeProject redacts secret-like provider output fixture before artif
     assert.equal(result.provider_artifact.output.includes('fixture-secret-token'), false);
     assert.match(result.provider_artifact.output, /\[REDACTED\]/);
     assertSelectedContextManifest(repo.root, result.selected_context_manifest);
-    assert.equal(fs.existsSync(path.join(repo.root, 'docs')), false);
+    assert.equal(result.apply_docs, true);
+    assert.equal(result.post_write_validation.ok, true);
+    assert.equal(fs.existsSync(path.join(repo.root, 'docs', 'CONTEXTO.md')), true);
   } finally {
     repo.cleanup();
   }
@@ -733,7 +784,9 @@ test('runAnalyzeProject retries retryable schema drift once and succeeds', async
     assert.equal(retry.final_status, 'valid');
     assert.equal(retry.attempts[0].status, 'invalid');
     assert.equal(retry.attempts[1].status, 'valid');
-    assert.equal(fs.existsSync(path.join(repo.root, 'docs')), false);
+    assert.equal(result.apply_docs, true);
+    assert.equal(result.post_write_validation.ok, true);
+    assert.equal(fs.existsSync(path.join(repo.root, 'docs', 'CONTEXTO.md')), true);
   } finally {
     repo.cleanup();
   }
