@@ -139,6 +139,13 @@ Opciones de aplicacion:
 - `ai analyze-project apply --run <run-id>` aplica una propuesta guardada sin ejecutar proveedor ni requerir `--provider` o `--model`.
 - `--review` se mantiene como modo avanzado: abre la propuesta JSON en editor y revalida el JSON editado antes de escribir.
 
+Feedback de merge:
+
+- Cuando hay docs modificados, la salida humana muestra `Merge decisions`.
+- Cada item informa estrategia, clasificacion, placeholders reemplazados, contenido humano preservado y bloques `context-prep` removidos cuando aplica.
+- La salida debe ser compacta; el detalle auditable queda en `.quiver/runs/<run-id>/proposal/manifest.json` y `.quiver/runs/<run-id>/writes/analyze-project-doc-writes.json`.
+- Conflictos de nombres o facts se muestran en `Post-write validation` como warnings o errores con `--strict`.
+
 Modo deterministico:
 
 ```bash

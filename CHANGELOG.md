@@ -28,6 +28,7 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
+- `ai analyze-project` human output now reports compact merge decisions so users can see scaffold replacement, human-content preservation, old `context-prep` cleanup, and warnings without opening manifests.
 - Existing-project docs now recommend the simple `--apply-docs` flow instead of forcing users into the advanced `--review` editor path.
 - English and Spanish CLI help now explain analyze-project docs apply options while preserving commands, flags, paths, providers, and model ids exactly.
 - `ai analyze-project --deep` now builds safer provider context by summarizing lockfiles as metadata, excluding generated/runtime directories, and prioritizing product source over Quiver-generated docs.
@@ -48,6 +49,7 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 
+- `ai analyze-project` now replaces visible Quiver scaffold placeholders and old template `context-prep` blocks when a valid project proposal is available, with nika-erp style regression coverage for `NIKA_ERP`/`stockflow`/`StockFlow` naming conflicts.
 - `ai analyze-project --deep` now repairs common safe provider schema drift, retries with compact schema feedback, records redacted raw artifacts, and fails closed without final doc writes when JSON remains invalid.
 - `doctor --fix` now gives an actionable repair path for existing `AGENTS.md` files that are missing Quiver contract sections while preserving manual content.
 - `ai analyze-project` now shows human TTY progress while provider analysis runs and reports schema validation issues with actionable detail.

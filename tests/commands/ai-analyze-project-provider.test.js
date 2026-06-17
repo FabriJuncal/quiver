@@ -619,6 +619,134 @@ test('runAnalyzeProject repairs nika-erp notes drift fixture and applies final d
   }
 });
 
+test('runAnalyzeProject nika-erp style fixture replaces visible scaffold and reports name conflicts', async () => {
+  const repo = makeRepo({
+    'README.md': '# StockFlow\n\nInventory management app.\n',
+    'package.json': JSON.stringify({ name: 'stockflow' }, null, 2),
+    'app/layout.tsx': 'export const metadata = { title: "StockFlow" };\n',
+    'src/context/ProductContext.tsx': 'export const ProductContext = null;\n',
+    'docs/CONTEXTO.md': [
+      '---',
+      'purpose: "Human-readable project overview"',
+      'last_updated: "2026-06-17"',
+      '---',
+      '',
+      '# Contexto de NIKA_ERP',
+      '',
+      '## Que es NIKA_ERP?',
+      '',
+      '[Uno o dos parrafos que expliquen el proyecto.]',
+      '',
+      '## Propuesta de valor',
+      '',
+      '> "[Frase principal del proyecto]"',
+      '',
+      '<!-- quiver:context-prep:start -->',
+      '# stockflow Context',
+      '',
+      '[One or two paragraphs that explain the project.]',
+      '',
+      '## Context Preparation Notes',
+      '- TODO: confirm any repo fact.',
+      '<!-- quiver:context-prep:end -->',
+      '',
+    ].join('\n'),
+    'docs/PROJECT_MAP.md': [
+      '# Project Map',
+      '',
+      '<!-- quiver:analyze-project:start -->',
+      '# Project Map',
+      'Product: NIKA_ERP',
+      'Stack: Next.js',
+      '<!-- quiver:analyze-project:end -->',
+      '',
+    ].join('\n'),
+  });
+  const analysis = {
+    schema_version: 1,
+    kind: 'quiver-project-analysis',
+    product: {
+      name: { name: 'StockFlow', confidence: 'confirmed', evidence: ['app/layout.tsx', 'package.json'] },
+      type: { name: 'Inventory web app', confidence: 'inferred', evidence: ['README.md', 'src/context/ProductContext.tsx'] },
+      summary: 'StockFlow manages products, purchases, sales, suppliers, movements, and inventory reporting.',
+      claims: [],
+    },
+    domain: {
+      roles: [{ name: 'authenticated inventory user', confidence: 'inferred', evidence: ['src/context/ProductContext.tsx'] }],
+      entities: [{ name: 'products', confidence: 'confirmed', evidence: ['src/context/ProductContext.tsx'] }],
+      actions: [{ name: 'manage inventory', confidence: 'inferred', evidence: ['README.md'] }],
+      flows: [],
+      incomplete_or_suspicious: [],
+      claims: [],
+    },
+    architecture: {
+      frontend: [{ name: 'Next.js app router', confidence: 'confirmed', evidence: ['app/layout.tsx'] }],
+      backend: [],
+      auth: [],
+      persistence: [],
+      integrations: [],
+      state: [{ name: 'ProductContext', confidence: 'confirmed', evidence: ['src/context/ProductContext.tsx'] }],
+      api: [],
+      testing: [],
+      deploy: [],
+      risks: [{ claim: 'Project naming conflicts between NIKA_ERP, stockflow, and StockFlow require confirmation.', confidence: 'confirmed', evidence: ['docs/CONTEXTO.md', 'package.json', 'app/layout.tsx'] }],
+      claims: [],
+    },
+    features: [{ name: 'Inventory management', confidence: 'inferred', evidence: ['README.md', 'src/context/ProductContext.tsx'] }],
+    risks: [{ claim: 'Name conflict needs human confirmation.', confidence: 'confirmed', evidence: ['docs/CONTEXTO.md', 'package.json', 'app/layout.tsx'] }],
+    questions: [],
+    claims: [],
+    doc_updates: {
+      'docs/CONTEXTO.md': [
+        '# Contexto de StockFlow',
+        '',
+        'Product: StockFlow',
+        '',
+        'StockFlow gestiona productos, compras, ventas, proveedores, movimientos y reportes de inventario.',
+        '',
+        '## Riesgos',
+        '',
+        '- Confirmar nombre canonico entre NIKA_ERP, stockflow y StockFlow.',
+        '',
+      ].join('\n'),
+      'docs/PROJECT_MAP.md': [
+        '# Project Map',
+        '',
+        'Product: NIKA_ERP',
+        'Stack: Next.js',
+        '',
+      ].join('\n'),
+      'docs/ARCHITECTURE.md': '# Architecture\n\nFrontend: Next.js app router.\nState: ProductContext.\n',
+    },
+  };
+
+  try {
+    const { output, result } = await captureStdout(() => runAnalyzeProject(repo.root, {
+      includeSource: true,
+      includeDb: true,
+      provider: 'codex',
+      providerExplicit: true,
+      runProviderFn: async () => providerResult(JSON.stringify(analysis), { cwd: repo.root }),
+    }));
+
+    const context = fs.readFileSync(path.join(repo.root, 'docs/CONTEXTO.md'), 'utf8');
+    assert.equal(result.apply_docs, true);
+    assert.equal(result.post_write_validation.ok, true);
+    assert.ok(result.post_write_validation.warnings.some((issue) => issue.issue === 'deterministic-doc-conflict'));
+    assert.match(output, /Merge decisions:/);
+    assert.match(output, /replace-scaffold-primary-content/);
+    assert.match(output, /context-prep removed/);
+    assert.match(output, /deterministic-doc-conflict/);
+    assert.match(context, /StockFlow gestiona productos/);
+    assert.doesNotMatch(context, /\[Uno o dos parrafos/);
+    assert.doesNotMatch(context, /\[One or two paragraphs/);
+    assert.doesNotMatch(context, /quiver:context-prep:start/);
+    assert.equal(fs.existsSync(path.join(repo.root, 'docs/ARCHITECTURE.md')), true);
+  } finally {
+    repo.cleanup();
+  }
+});
+
 test('runAnalyzeProject repairs claim-name and question confidence drift fixtures and applies final docs', async () => {
   for (const [fixtureName, expectedEntry] of [
     ['claim-name-drift', 'domain.entities.0:claim:name:mapped'],

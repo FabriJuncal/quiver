@@ -206,6 +206,16 @@ npx --yes create-quiver@latest ai analyze-project apply --run <run-id>
 
 El modo con proveedor exige JSON validado por schema, evidencia por conclusión, niveles `confirmed`, `inferred`, `unknown` o `conflict`, artifacts auditados en `.quiver/runs`, diff, snapshot previo cuando se escribe y validación post-write. `--strict` convierte conflictos importantes de docs en error. El resultado puede quedar como `unknown` o `needs_confirmation` cuando el código no prueba una conclusión.
 
+Al escribir docs, Quiver no pega la respuesta del proveedor sin más. Primero clasifica el contenido existente y aplica un merge determinístico:
+
+- reemplaza scaffolds con placeholders críticos en español o inglés;
+- preserva contenido humano real;
+- reemplaza un bloque `quiver:analyze-project` previo en lugar de duplicarlo;
+- remueve bloques `quiver:context-prep` viejos cuando todavía son template;
+- reporta `Merge decisions` con estrategia, placeholders reemplazados, contenido humano preservado y warnings.
+
+Los conflictos de nombres o facts, por ejemplo `NIKA_ERP`, `stockflow` y `StockFlow`, se reportan en la validación post-write. En modo normal aparecen como warnings; con `--strict` bloquean la ejecución.
+
 Garantías del flujo con proveedor:
 
 - `--dry-run` no escribe archivos ni ejecuta proveedor.
@@ -223,6 +233,7 @@ Garantías del flujo con proveedor:
 - `ai analyze-project apply --run <run-id>` aplica una propuesta guardada sin ejecutar proveedor ni requerir `--provider` o `--model`.
 - `--review` queda como modo avanzado para editar manualmente una propuesta JSON antes de escribir.
 - Las escrituras aprobadas crean snapshot con hashes y se escriben con rename atómico.
+- El write manifest guarda `merge_report` por archivo y el proposal manifest guarda `merge_plan` para auditoría.
 
 Benchmark recomendado:
 
@@ -252,6 +263,8 @@ Evidencia esperada:
 - `--save-proposal` debe crear `.quiver/runs/<run-id>/proposal/*` sin modificar docs finales.
 - `--apply-docs` debe mostrar selector explicado en TTY o requerir `--yes` en automatización.
 - `apply --run <run-id>` debe aplicar la propuesta guardada sin volver a ejecutar proveedor.
+- La salida humana debe mostrar `Merge decisions` cuando haya docs modificados.
+- En fixtures tipo `nika-erp`, `docs/CONTEXTO.md` no debe conservar placeholders visibles ni bloques `quiver:context-prep` de template después de aplicar.
 
 Rollback de release:
 
