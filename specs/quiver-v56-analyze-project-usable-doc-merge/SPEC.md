@@ -1,7 +1,7 @@
 # Quiver v56 - Analyze Project Usable Doc Merge
 
 **Date:** 2026-06-17
-**Status:** Approved, in progress
+**Status:** Completed
 **Source:** User-approved requirement, production review, stricter second-pass review, and execution plan for `ai analyze-project` usable documentation output.
 
 ## Problem
@@ -67,9 +67,9 @@ classify existing doc -> merge by classification -> preserve real human content 
 
 | Slice | Title | Status | Dependencies | Parallel Guidance |
 |---|---|---|---|---|
-| slice-01-document-classification-merge-engine | Document Classification + Merge Engine | in progress | none | sequential first |
-| slice-02-apply-integration-validation-contract | Apply Integration + Validation Contract | pending | slice-01 | sequential after slice-01 |
-| slice-03-cli-docs-real-fixture-smoke | CLI UX + Docs + Real Fixture Smoke | pending | slice-02 | final hardening; docs can draft after slice-01 |
+| slice-01-document-classification-merge-engine | Document Classification + Merge Engine | completed | none | sequential first |
+| slice-02-apply-integration-validation-contract | Apply Integration + Validation Contract | completed | slice-01 | sequential after slice-01 |
+| slice-03-cli-docs-real-fixture-smoke | CLI UX + Docs + Real Fixture Smoke | completed | slice-02 | final hardening; docs can draft after slice-01 |
 
 ## Validation Strategy
 

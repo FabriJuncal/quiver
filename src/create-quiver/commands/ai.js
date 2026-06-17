@@ -546,12 +546,44 @@ function formatAnalyzeProjectSavedProposalReport(report = {}) {
     `Proposal summary: ${artifacts.proposal_markdown || 'none'}`,
     `Proposal diff: ${artifacts.proposal_diff || 'none'}`,
     `Manifest: ${artifacts.manifest || 'none'}`,
+  ];
+  lines.push(...formatAnalyzeProjectMergeSummary(report.write_plan));
+  lines.push(
     '',
     'Next commands:',
     `- npx create-quiver ai analyze-project apply --run ${report.run_id || '<run-id>'}`,
     '- npx create-quiver ai analyze-project --deep --apply-docs --provider <provider> --model <model>',
-  ];
+  );
   return `${lines.join('\n')}\n`;
+}
+
+function formatAnalyzeProjectMergeSummary(writePlan = []) {
+  const changed = (Array.isArray(writePlan) ? writePlan : []).filter((item) => item.action !== 'skip');
+  if (changed.length === 0) {
+    return [];
+  }
+
+  const lines = ['', 'Merge decisions:'];
+  for (const item of changed.slice(0, 10)) {
+    const merge = item.merge_report || {};
+    const details = [
+      merge.classification ? `class=${merge.classification}` : '',
+      merge.scaffold_replaced ? 'scaffold replaced' : '',
+      merge.human_content_preserved ? 'human preserved' : '',
+      merge.context_prep_removed ? 'context-prep removed' : '',
+      Array.isArray(merge.critical_placeholders) && merge.critical_placeholders.length > 0
+        ? `placeholders=${merge.critical_placeholders.length}`
+        : '',
+    ].filter(Boolean);
+    lines.push(`- ${item.path}: ${merge.strategy || 'unknown'}${details.length > 0 ? ` (${details.join(', ')})` : ''}`);
+    for (const warning of Array.isArray(merge.warnings) ? merge.warnings.slice(0, 2) : []) {
+      lines.push(`  warning: ${warning}`);
+    }
+  }
+  if (changed.length > 10) {
+    lines.push(`- ... ${changed.length - 10} more doc merge decision${changed.length - 10 === 1 ? '' : 's'}`);
+  }
+  return lines;
 }
 
 function formatAnalyzeProjectPostWriteValidation(validation) {
@@ -593,6 +625,7 @@ function formatAnalyzeProjectReviewPlan({ writePlan, reviewPath, snapshot, writt
   for (const item of writePlan || []) {
     lines.push(`- ${item.path}: ${item.action}${item.reason ? ` (${item.reason})` : ''}`);
   }
+  lines.push(...formatAnalyzeProjectMergeSummary(writePlan));
   lines.push('', 'Final diff:');
   lines.push(...formatAnalyzeProjectDiffPreview(writePlan || []));
   lines.push('', 'Confirmation required before writing.');
@@ -618,6 +651,7 @@ function formatAnalyzeProjectApplyReport(report = {}) {
     `Proposal manifest: ${artifacts.manifest || 'none'}`,
     `Write manifest: ${writeManifest.path || 'none'}`,
   ].filter(Boolean);
+  lines.push(...formatAnalyzeProjectMergeSummary(report.write_plan));
   lines.push(...formatAnalyzeProjectPostWriteValidation(report.post_write_validation));
   return `${lines.join('\n')}\n`;
 }

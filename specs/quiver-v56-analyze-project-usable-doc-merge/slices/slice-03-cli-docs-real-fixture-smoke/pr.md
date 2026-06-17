@@ -47,7 +47,10 @@ git diff --check
 
 ## Evidence
 
-Pending.
+- `node --test tests/commands/ai-analyze-project-provider.test.js tests/commands/cli-contract.test.js`: passed.
+- `npm run docs:check`: passed.
+- `node bin/create-quiver.js spec validate specs/quiver-v56-analyze-project-usable-doc-merge --strict`: passed.
+- `git diff --check`: passed.
 
 ## Rollback
 

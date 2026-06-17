@@ -147,6 +147,14 @@ los docs finales siguen con placeholders o falta `docs/ARCHITECTURE.md`.
 
 En versiones actuales, ese comando debe escribir documentación final validada. Si los docs siguen con placeholders, el flujo se bloqueó antes de escribir o la propuesta IA no incluyó contenido útil para esos paths.
 
+Quiver clasifica cada doc antes de escribir:
+
+- `scaffold`: reemplaza el contenido visible de template y conserva frontmatter válido.
+- `partial_scaffold` o `mixed`: elimina placeholders críticos, conserva contenido humano real y consolida bloques gestionados.
+- `human_content`: conserva el contenido humano y agrega/actualiza el bloque `quiver:analyze-project`.
+
+Los bloques antiguos `quiver:context-prep` que todavía contienen placeholders se eliminan durante `analyze-project` para que no compitan con el contexto nuevo. Si hay conflicto de nombres, por ejemplo `NIKA_ERP`, `stockflow` y `StockFlow`, Quiver lo reporta como warning o error en `--strict` en vez de ocultarlo.
+
 ### Qué hacer
 
 Revisá el error mostrado y los artifacts del run. Los caminos seguros son:
@@ -160,3 +168,5 @@ npx --yes create-quiver@latest ai analyze-project apply --run <run-id>
 - el comando normal aplica docs después de validar JSON, proposal, snapshot y post-write;
 - `--save-proposal` guarda `.quiver/runs/<run-id>/proposal/*` sin tocar docs finales.
 - `apply --run <run-id>` aplica una propuesta guardada sin ejecutar proveedor ni pedir `--provider` o `--model`.
+
+Si venís de una versión anterior y tus docs tienen placeholders arriba y un bloque `quiver:analyze-project` útil abajo, volvé a ejecutar el comando normal. La salida debe mostrar `Merge decisions`, el strategy aplicado, si reemplazó scaffold, si preservó contenido humano y si removió `context-prep`.
