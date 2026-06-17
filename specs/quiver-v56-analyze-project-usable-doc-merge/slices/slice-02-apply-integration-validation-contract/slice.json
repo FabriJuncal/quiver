@@ -1,0 +1,80 @@
+{
+  "slice_id": "slice-02-apply-integration-validation-contract",
+  "ticket": "QUIVER-56-02",
+  "type": "feature",
+  "title": "Apply Integration + Validation Contract",
+  "objective": "Integrate the merge engine across every analyze-project write path and validate visible output quality.",
+  "description": "Uses the shared merge engine in live auto-apply, --apply-docs, --save-proposal, --review, and apply --run paths; extends post-write validation for primary visible placeholders and exposes stable JSON merge metadata.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v56-apply-integration-validation",
+    "branch_name": "feature/QUIVER-56-02-v56-apply-integration-validation"
+  },
+  "files": [
+    "src/create-quiver/commands/ai.js",
+    "src/create-quiver/lib/ai/analyze-project-apply.js",
+    "src/create-quiver/lib/ai/analyze-project-docs.js",
+    "src/create-quiver/lib/ai/analyze-project-proposal.js",
+    "src/create-quiver/lib/ai/analyze-project-validation.js",
+    "tests/commands/ai-analyze-project*.test.js",
+    "tests/lib/ai-analyze-project-*.test.js",
+    "specs/quiver-v56-analyze-project-usable-doc-merge/**"
+  ],
+  "expected_read_paths": [
+    "src/create-quiver/commands/ai.js",
+    "src/create-quiver/lib/ai/analyze-project-apply.js",
+    "src/create-quiver/lib/ai/analyze-project-proposal.js",
+    "src/create-quiver/lib/ai/analyze-project-validation.js",
+    "specs/quiver-v56-analyze-project-usable-doc-merge/slices/slice-01-document-classification-merge-engine/CLOSURE_BRIEF.md"
+  ],
+  "allowed_write_paths": [
+    "src/create-quiver/commands/ai.js",
+    "src/create-quiver/lib/ai/analyze-project-apply.js",
+    "src/create-quiver/lib/ai/analyze-project-docs.js",
+    "src/create-quiver/lib/ai/analyze-project-proposal.js",
+    "src/create-quiver/lib/ai/analyze-project-validation.js",
+    "tests/commands/ai-analyze-project-provider.test.js",
+    "tests/commands/ai-analyze-project-review.test.js",
+    "tests/lib/ai-analyze-project-docs.test.js",
+    "tests/lib/ai-analyze-project-validation.test.js",
+    "specs/quiver-v56-analyze-project-usable-doc-merge/**"
+  ],
+  "depends_on": [
+    "slice-01-document-classification-merge-engine"
+  ],
+  "parallel_safe": "never",
+  "parallel_safe_reason": "All write paths must share the same merge engine; integrating before slice 01 is complete would duplicate logic.",
+  "must": [
+    "Use the same merge engine in live apply and apply --run.",
+    "Expose merge metadata in JSON apply reports without removing existing fields.",
+    "Make --save-proposal include merge-plan metadata or final diff preview.",
+    "Make --review show final post-merge diff.",
+    "Detect critical placeholders in primary visible content.",
+    "Make --strict fail when critical visible placeholders remain."
+  ],
+  "not_included": [
+    "Final docs/troubleshooting polish.",
+    "Live provider smoke against nika-erp.",
+    "Changing provider prompt semantics."
+  ],
+  "acceptance": [
+    "Live auto-apply and apply --run produce the same result with the same proposal.",
+    "--json includes merge strategy and warnings.",
+    "--strict fails on critical visible placeholders.",
+    "--save-proposal artifacts include enough merge metadata to preview the final write.",
+    "--review diff reflects the final post-merge write."
+  ],
+  "tests": [
+    "node --test tests/commands/ai-analyze-project-provider.test.js tests/commands/ai-analyze-project-review.test.js",
+    "node --test tests/lib/ai-analyze-project-docs.test.js tests/lib/ai-analyze-project-validation.test.js",
+    "node bin/create-quiver.js spec validate specs/quiver-v56-analyze-project-usable-doc-merge --strict",
+    "git diff --check"
+  ],
+  "estimated_hours": 6,
+  "actual_hours": null,
+  "status": "planned",
+  "blocked_reason": null,
+  "started_at": null,
+  "completed_at": null
+}

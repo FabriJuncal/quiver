@@ -1,0 +1,71 @@
+{
+  "slice_id": "slice-01-document-classification-merge-engine",
+  "ticket": "QUIVER-56-01",
+  "type": "feature",
+  "title": "Document Classification + Merge Engine",
+  "objective": "Implement deterministic document classification and merge behavior for analyze-project docs without integrating every CLI path yet.",
+  "description": "Adds a shared merge engine that classifies existing docs, replaces scaffold placeholders when safe, preserves human content, consolidates managed analyze-project blocks, handles context-prep scaffolds, and records merge metadata in the write plan.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v56-doc-classification-merge-engine",
+    "branch_name": "feature/QUIVER-56-01-v56-doc-classification-merge-engine"
+  },
+  "files": [
+    "src/create-quiver/lib/ai/analyze-project-docs.js",
+    "tests/lib/ai-analyze-project-docs.test.js",
+    "specs/quiver-v56-analyze-project-usable-doc-merge/**"
+  ],
+  "expected_read_paths": [
+    "src/create-quiver/lib/ai/analyze-project-docs.js",
+    "src/create-quiver/lib/ai/analyze-project-validation.js",
+    "tests/lib/ai-analyze-project-docs.test.js",
+    "specs/quiver-v56-analyze-project-usable-doc-merge/SPEC.md"
+  ],
+  "allowed_write_paths": [
+    "src/create-quiver/lib/ai/analyze-project-docs.js",
+    "tests/lib/ai-analyze-project-docs.test.js",
+    "specs/quiver-v56-analyze-project-usable-doc-merge/**"
+  ],
+  "depends_on": [],
+  "parallel_safe": "never",
+  "parallel_safe_reason": "This slice defines the shared merge contract that every later integration path must use.",
+  "must": [
+    "Classify docs as scaffold, partial_scaffold, human_content, managed_only, mixed, or unknown.",
+    "Detect critical placeholders in English and Spanish using explicit known patterns only.",
+    "Preserve parseable frontmatter.",
+    "Replace scaffold primary content with proposed content.",
+    "Preserve human content and avoid deleting significant non-placeholder text.",
+    "Replace existing analyze-project block instead of duplicating it.",
+    "Handle context-prep scaffold blocks so they do not remain as confusing primary content.",
+    "Expose merge metadata on write plan items.",
+    "Keep the merge idempotent for the same input and proposal."
+  ],
+  "not_included": [
+    "CLI output copy changes.",
+    "Post-write strict validation changes.",
+    "Review selector changes.",
+    "Saved proposal merge-plan persistence.",
+    "Live nika-erp smoke."
+  ],
+  "acceptance": [
+    "A Quiver scaffold CONTEXTO.md with Spanish placeholders is replaced as primary visible content.",
+    "A partial scaffold preserves completed human sections and replaces placeholder sections.",
+    "Human content remains present after merge.",
+    "Existing analyze-project block is replaced, not duplicated.",
+    "Context-prep scaffold content is removed or superseded when analyze-project content is applied.",
+    "Two consecutive merges with the same proposal are stable.",
+    "Write plan items include classification and strategy metadata."
+  ],
+  "tests": [
+    "node --test tests/lib/ai-analyze-project-docs.test.js",
+    "node bin/create-quiver.js spec validate specs/quiver-v56-analyze-project-usable-doc-merge --strict",
+    "git diff --check"
+  ],
+  "estimated_hours": 5,
+  "actual_hours": 5,
+  "status": "completed",
+  "blocked_reason": null,
+  "started_at": "2026-06-17T00:00:00.000Z",
+  "completed_at": "2026-06-17T00:00:00.000Z"
+}
