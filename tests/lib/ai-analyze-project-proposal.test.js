@@ -64,12 +64,19 @@ test('proposal and write manifests validate strict safe paths', () => {
     doc_before_hashes: {
       'docs/CONTEXTO.md': 'abc123',
     },
+    merge_plan: [{
+      path: 'docs/CONTEXTO.md',
+      action: 'update',
+      dirty: true,
+      merge_report: { classification: 'human_content', strategy: 'preserve-and-update-managed-block' },
+    }],
     proposal_sha256: 'def456',
     events: [],
   });
 
   assert.equal(proposal.kind, ANALYZE_PROJECT_PROPOSAL_MANIFEST_KIND);
   assert.deepEqual(proposal.doc_paths, ['docs/CONTEXTO.md']);
+  assert.equal(proposal.merge_plan[0].merge_report.classification, 'human_content');
 
   const write = normalizeAnalyzeProjectWriteManifest({
     schema_version: 1,
@@ -86,6 +93,7 @@ test('proposal and write manifests validate strict safe paths', () => {
       snapshot_path: '.quiver/runs/run-1/snapshots/20260612T120100Z/docs/CONTEXTO.md',
       dirty: true,
       status: 'written',
+      merge_report: { classification: 'human_content', strategy: 'preserve-and-update-managed-block' },
     }],
     validation: {
       ok: true,
@@ -99,6 +107,7 @@ test('proposal and write manifests validate strict safe paths', () => {
 
   assert.equal(write.kind, ANALYZE_PROJECT_WRITE_MANIFEST_KIND);
   assert.equal(write.actions[0].path, 'docs/CONTEXTO.md');
+  assert.equal(write.actions[0].merge_report.classification, 'human_content');
 });
 
 test('proposal manifest rejects traversal and extra keys', () => {
@@ -147,6 +156,11 @@ test('writeAnalyzeProjectProposalArtifacts writes normalized proposal, compact s
     reason: 'AI analyze-project proposed a managed documentation update.',
     currentContent: '',
     proposedContent: '<!-- quiver:analyze-project:start -->\n# Context\nSecret-free proposed context.\n<!-- quiver:analyze-project:end -->\n',
+    merge_report: {
+      classification: 'managed_only',
+      strategy: 'replace-managed-only-content',
+      warnings: [],
+    },
   }];
 
   try {
@@ -178,6 +192,7 @@ test('writeAnalyzeProjectProposalArtifacts writes normalized proposal, compact s
     assert.equal(manifest.language, 'es');
     assert.deepEqual(manifest.doc_paths, ['docs/CONTEXTO.md']);
     assert.equal(manifest.doc_before_hashes['docs/CONTEXTO.md'], null);
+    assert.equal(manifest.merge_plan[0].merge_report.strategy, 'replace-managed-only-content');
     assert.equal(manifest.proposal_sha256, artifacts.proposal_sha256);
     assert.equal(manifest.events[0].type, 'proposal-saved');
   } finally {
@@ -260,6 +275,11 @@ test('writeAnalyzeProjectWriteManifest writes final normalized apply manifest', 
         dirty: true,
         before_sha256: 'before-hash',
         after_sha256: 'after-hash',
+        merge_report: {
+          classification: 'human_content',
+          strategy: 'preserve-and-update-managed-block',
+          warnings: [],
+        },
       }],
       writtenDocs: ['docs/CONTEXTO.md'],
       validation: {
@@ -278,6 +298,7 @@ test('writeAnalyzeProjectWriteManifest writes final normalized apply manifest', 
     assert.equal(manifest.snapshot_root, '.quiver/runs/run-2026-06-12t12-10-00z/snapshots/20260612T121000Z');
     assert.equal(manifest.actions[0].status, 'written');
     assert.equal(manifest.actions[0].snapshot_path, '.quiver/runs/run-2026-06-12t12-10-00z/snapshots/20260612T121000Z/docs/CONTEXTO.md');
+    assert.equal(manifest.actions[0].merge_report.strategy, 'preserve-and-update-managed-block');
     assert.equal(manifest.validation.ok, true);
     assert.equal(manifest.partial_write, false);
   } finally {

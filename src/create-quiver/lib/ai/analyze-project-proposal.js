@@ -127,6 +127,7 @@ const proposalManifestSchema = z.object({
   repair_manifest: relativePathSchema('repair_manifest').nullable(),
   doc_paths: z.array(relativePathSchema('doc_paths')).default([]),
   doc_before_hashes: z.record(z.string().trim().min(1), z.string().trim().min(1).nullable()).default({}),
+  merge_plan: z.array(z.record(z.string(), z.unknown())).default([]),
   proposal_sha256: z.string().trim().min(1),
   events: z.array(z.record(z.string(), z.unknown())).default([]),
 }).strict();
@@ -139,6 +140,7 @@ const writeManifestActionSchema = z.object({
   snapshot_path: relativePathSchema('actions.snapshot_path').nullable(),
   dirty: z.boolean().default(false),
   status: z.enum(['planned', 'written', 'skipped', 'failed']).default('planned'),
+  merge_report: z.record(z.string(), z.unknown()).optional(),
 }).strict();
 
 const writeManifestSchema = z.object({
@@ -419,9 +421,16 @@ function writeAnalyzeProjectProposalArtifacts(repoRoot, options = {}) {
   const proposalJson = `${JSON.stringify(proposal, null, 2)}\n`;
   const proposalHash = sha256(proposalJson);
   const docBeforeHashes = {};
+  const mergePlan = [];
 
   for (const item of writePlan) {
     docBeforeHashes[item.path] = item.before_sha256 || null;
+    mergePlan.push({
+      path: item.path,
+      action: item.action,
+      dirty: item.dirty === true,
+      merge_report: item.merge_report || null,
+    });
   }
 
   const selectedContextPath = artifactPathFromRef(options.selectedContextManifest)
@@ -441,6 +450,7 @@ function writeAnalyzeProjectProposalArtifacts(repoRoot, options = {}) {
     repair_manifest: repairPath,
     doc_paths: writePlan.map((item) => item.path),
     doc_before_hashes: docBeforeHashes,
+    merge_plan: mergePlan,
     proposal_sha256: proposalHash,
     events: [
       {
@@ -524,6 +534,7 @@ function writeAnalyzeProjectWriteManifest(repoRoot, options = {}) {
       snapshot_path: snapshotEntry?.snapshot_path || null,
       dirty: item.dirty === true,
       status,
+      merge_report: item.merge_report || undefined,
     };
   });
   const validation = options.validation || {

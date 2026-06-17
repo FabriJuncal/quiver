@@ -528,6 +528,7 @@ function summarizeAnalyzeProjectWritePlan(writePlan = []) {
     before_sha256: item.before_sha256,
     after_sha256: item.after_sha256,
     reason: item.reason,
+    merge_report: item.merge_report,
   }));
 }
 

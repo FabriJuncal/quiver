@@ -5,14 +5,14 @@
 
 ## Current State
 
-The requirement, acceptance criteria, production review, second stricter review, and execution plan are approved. Slice 01 is active.
+The requirement, acceptance criteria, production review, second stricter review, and execution plan are approved. Slice 02 is complete.
 
 ## Slice Status
 
 | Slice | Status | Notes |
 |---|---|---|
 | slice-01-document-classification-merge-engine | completed | Deterministic classification and merge engine implemented with unit and analyze-project flow tests. |
-| slice-02-apply-integration-validation-contract | pending | Integrates engine across live/apply/review/json/strict paths. |
+| slice-02-apply-integration-validation-contract | completed | Merge metadata is exposed in JSON/write reports, proposal/write manifests persist merge plan/report, review diff uses post-merge output, and strict validation fails visible scaffold placeholders. |
 | slice-03-cli-docs-real-fixture-smoke | pending | Updates UX/docs and validates nika-erp regression fixture. |
 
 ## Blockers

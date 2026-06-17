@@ -132,6 +132,26 @@ test('post-write validation rejects critical placeholders in managed docs', () =
   }
 });
 
+test('post-write validation warns or fails strict when primary visible docs keep critical scaffold placeholders', () => {
+  const repo = makeRepo({
+    'README.md': '# Validation Demo\n',
+    'docs/CONTEXTO.md': `# Contexto\n\n[Uno o dos parrafos que expliquen el proyecto.]\n\n${managed('# Context\nProduct: Validation Demo\n')}`,
+  });
+
+  try {
+    writeManifest(repo.root);
+    const warningValidation = validateAnalyzeProjectPostWrite(repo.root, baseReport());
+    const strictValidation = validateAnalyzeProjectPostWrite(repo.root, baseReport(), { strict: true });
+
+    assert.equal(warningValidation.ok, true);
+    assert.ok(warningValidation.warnings.some((issue) => issue.issue === 'visible-critical-placeholder'));
+    assert.equal(strictValidation.ok, false);
+    assert.ok(strictValidation.errors.some((issue) => issue.issue === 'visible-critical-placeholder'));
+  } finally {
+    repo.cleanup();
+  }
+});
+
 test('post-write validation reports PROJECT_MAP contradictions as warnings or strict errors', () => {
   const repo = makeRepo({
     'README.md': '# Validation Demo\n',
