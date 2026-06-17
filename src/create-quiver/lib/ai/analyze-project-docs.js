@@ -93,6 +93,21 @@ function mergeManagedBlock(currentContent, proposedContent) {
   return `${current.replace(/\s+$/g, '')}\n\n${block}`;
 }
 
+function redactSnapshotValue(value, repoRoot) {
+  if (typeof value === 'string') {
+    return redactSensitiveLocalValues(value, { projectRoot: repoRoot });
+  }
+  if (Array.isArray(value)) {
+    return value.map((item) => redactSnapshotValue(item, repoRoot));
+  }
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, item]) => [key, redactSnapshotValue(item, repoRoot)]),
+    );
+  }
+  return value;
+}
+
 function validateDocPath(docPath) {
   let normalized;
   try {
@@ -303,7 +318,7 @@ function createAnalyzeProjectSnapshot(repoRoot, run, writePlan, options = {}) {
 
   const providerArtifactPath = path.join(rawRoot, 'analyze-project-provider-artifact.json');
   const providerArtifact = options.providerArtifact
-    ? JSON.parse(redactSensitiveLocalValues(JSON.stringify(options.providerArtifact), { projectRoot: repoRoot }))
+    ? redactSnapshotValue(options.providerArtifact, repoRoot)
     : null;
   fs.writeFileSync(providerArtifactPath, `${JSON.stringify(providerArtifact, null, 2)}\n`);
 
