@@ -610,6 +610,7 @@
     { "command": "ai analyze-project --deep --review", "profile": "ai-analyze-project", "critical": "pass" },
     { "command": "ai analyze-project --deep --provider codex --model gpt-5.5", "profile": "ai-analyze-project", "critical": "pass" },
     { "command": "ai analyze-project --deep --save-proposal --provider codex --model gpt-5.5", "profile": "ai-analyze-project", "critical": "pass" },
+    { "command": "ai analyze-project --deep --max-files 120 --max-bytes 500000 --provider codex --model gpt-5.5", "profile": "ai-analyze-project", "critical": "pass" },
     { "command": "ai analyze-project --deep --apply-docs --provider codex --model gpt-5.5", "profile": "ai-analyze-project", "critical": "pass" },
     { "command": "ai analyze-project --deep --apply-docs --yes --provider codex --model gpt-5.5", "profile": "ai-analyze-project", "critical": "pass" },
     { "command": "ai analyze-project apply --run <run-id>", "profile": "ai-analyze-project", "critical": "pass" },

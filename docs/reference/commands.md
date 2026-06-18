@@ -226,6 +226,7 @@ Garantías del flujo con proveedor:
 - Si el proveedor devuelve JSON con drift seguro como `notes`, `claim` usado como `name` faltante, o `confidence` en paths no permitidos, Quiver lo repara, registra el repair y revalida.
 - Si el JSON sigue inválido pero el error es retryable, Quiver hace 1 retry por defecto, con cap duro de 2 retries.
 - Si el JSON final es inválido, Quiver falla sin escribir docs finales y deja manifests de validación/retry/repair en `.quiver/runs`.
+- Si el proveedor cita evidencia fuera de la muestra seleccionada, Quiver clasifica esas rutas, no recomienda incluir secretos ni binarios, y muestra una `Recommended fix` / `Solucion recomendada` con un comando seguro cuando corresponde.
 - El modo provider normal aplica docs finales por defecto después de validar la propuesta, crear proposal artifacts, snapshot, write manifest y validación post-write.
 - `--apply-docs` en TTY muestra opciones explicadas para aplicar, ver diff, guardar propuesta, editar propuesta o cancelar.
 - `--apply-docs --yes` aplica en automatización después de validar propuesta, paths permitidos, hashes, snapshot y post-write.
@@ -260,6 +261,7 @@ Evidencia esperada:
 - `package-lock.json` aparece en `detected.lockfiles` y en omitidos con `sampling:lockfile-metadata`, no en contenido enviado al provider.
 - El modo provider escribe artifacts auditados en `.quiver/runs`, redactados y con tamaño controlado, y aplica docs finales validados por defecto.
 - Si el provider devuelve drift no reparable, el comando falla con path/tipo/causa probable y próximo comando seguro, sin escribir docs finales.
+- Si el error es `evidence-not-selected`, el validation manifest incluye un bloque `recovery` con clasificación de rutas, presupuesto calculado, warnings y comando recomendado. Por ejemplo, si el provider citó tests omitidos, Quiver puede sugerir `--include-tests`; si faltó presupuesto seguro, puede sugerir `--max-files` y `--max-bytes` mayores. Si la evidencia es `.env`, dependencias, caches, dumps o binarios, no la recomienda.
 - `--save-proposal` debe crear `.quiver/runs/<run-id>/proposal/*` sin modificar docs finales.
 - `--apply-docs` debe mostrar selector explicado en TTY o requerir `--yes` en automatización.
 - `apply --run <run-id>` debe aplicar la propuesta guardada sin volver a ejecutar proveedor.
@@ -283,6 +285,7 @@ Rollback de release:
 | `npx --yes create-quiver@latest ai analyze-project --deep --apply-docs --yes --provider codex --model gpt-5.5` | Aplica docs validados en modo automatizado, con snapshots y validación post-write. |
 | `npx --yes create-quiver@latest ai analyze-project apply --run <run-id>` | Aplica una propuesta guardada sin ejecutar proveedor ni requerir `--provider` o `--model`. |
 | `npx --yes create-quiver@latest ai analyze-project --scope apps/web --max-files 80 --max-bytes 300000 --include-tests --dry-run` | Acota el análisis por workspace/ruta y presupuesto de muestra. |
+| `npx --yes create-quiver@latest ai analyze-project --deep --max-files 120 --max-bytes 500000 --provider codex --model gpt-5.5` | Ejemplo de rerun cuando Quiver recomienda ampliar una muestra segura después de `evidence-not-selected`. Usá el comando exacto que imprime el error. |
 | `npx --yes create-quiver@latest ai prepare-context --dry-run` | Previsualiza actualizaciones documentales de contexto para IA. |
 | `npx --yes create-quiver@latest ai prepare-context` | Escribe actualizaciones documentales de contexto para IA. |
 | `npx --yes create-quiver@latest ai prepare-context --with-planner --dry-run` | Previsualiza una propuesta docs-only generada por el planner sin escribir archivos. |

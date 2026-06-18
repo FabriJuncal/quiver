@@ -169,6 +169,7 @@ function writeAnalyzeProjectValidationManifest(repoRoot, options = {}) {
     issue_count: issues.length,
     groups: groupAnalyzeProjectIssues(issues, { maxExamplesPerGroup: 5 }),
     retry: options.retry || null,
+    recovery: options.recovery || null,
     issues,
   };
 

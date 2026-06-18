@@ -33,6 +33,10 @@ const {
   writeAnalyzeProjectRepairManifest,
 } = require('../lib/ai/analyze-project-repair');
 const {
+  buildEvidenceRecoveryPayload,
+  classifyEvidenceRecoveryIssues,
+} = require('../lib/ai/analyze-project-recovery');
+const {
   confirmAnalyzeProjectWrites,
   reviewAnalyzeProjectDocProposal,
 } = require('../lib/ai/analyze-project-review');
@@ -207,6 +211,40 @@ function formatAnalyzeProjectIssues(issues = [], maxIssues = 8) {
   return lines;
 }
 
+function formatAnalyzeProjectRecoveryLines(recovery, translator = createTranslator('en')) {
+  if (!recovery || recovery.reason !== 'evidence_not_selected') {
+    return [];
+  }
+
+  const lines = [
+    '',
+    translator.t('analyze_project.recovery.title'),
+  ];
+
+  if (recovery.command) {
+    lines.push(
+      translator.t('analyze_project.recovery.reason'),
+      translator.t('analyze_project.recovery.recommended_command'),
+      recovery.command,
+    );
+  } else {
+    lines.push(translator.t('analyze_project.recovery.safe_fallback'));
+  }
+
+  if (recovery.budget) {
+    lines.push(translator.t('analyze_project.recovery.budget', {
+      files: recovery.budget.recommended_max_files || 0,
+      bytes: recovery.budget.recommended_max_bytes || 0,
+    }));
+  }
+
+  for (const warning of recovery.warnings || []) {
+    lines.push(`${translator.t('analyze_project.recovery.warning')}: ${warning}`);
+  }
+
+  return lines;
+}
+
 function enhanceAnalyzeProjectAnalysisError(error, options = {}) {
   if (!error || error.code !== 'AI_ANALYZE_PROJECT_INVALID') {
     return error;
@@ -219,6 +257,7 @@ function enhanceAnalyzeProjectAnalysisError(error, options = {}) {
 
   const wrapped = new Error([
     error.message,
+    ...formatAnalyzeProjectRecoveryLines(options.recovery, options.translator),
     'Issues:',
     ...issueLines,
     options.repairManifest?.path ? `Repair manifest: ${options.repairManifest.path}` : '',
@@ -234,7 +273,38 @@ function enhanceAnalyzeProjectAnalysisError(error, options = {}) {
   wrapped.repair_manifest = options.repairManifest || null;
   wrapped.retry_manifest = options.retryManifest || null;
   wrapped.validation_manifest = options.validationManifest || null;
+  wrapped.recovery = options.recovery || null;
   return wrapped;
+}
+
+function buildAnalyzeProjectEvidenceRecovery(repoRoot, error, report, options = {}) {
+  const issues = Array.isArray(error?.issues) ? error.issues : [];
+  if (!issues.some((issue) => (issue.issue || issue.code) === 'evidence-not-selected')) {
+    return null;
+  }
+
+  const classification = classifyEvidenceRecoveryIssues(repoRoot, issues, {
+    selectedFiles: report.selected_files || [],
+    omittedFiles: report.omitted_files || [],
+    safetyExclusions: report.safety_exclusions || [],
+  });
+  const payload = buildEvidenceRecoveryPayload(classification, {
+    budgets: report.budgets || {},
+    deep: report.options?.deep === true || options.deep === true,
+    includeDb: report.options?.include_db === true,
+    includeSource: report.options?.include_source === true,
+    includeTests: report.options?.include_tests === true,
+    lang: options.language,
+    model: options.model,
+    provider: options.provider,
+    scope: options.scope,
+    strict: options.strict === true,
+  });
+
+  return {
+    ...payload,
+    classification,
+  };
 }
 
 function formatAnalyzeProjectFileLine(file) {
@@ -2854,6 +2924,10 @@ async function runAnalyzeProject(repoRoot, options = {}) {
         });
       }
 
+      const recovery = buildAnalyzeProjectEvidenceRecovery(repoRoot, error, report, {
+        ...options,
+        provider,
+      });
       let validationManifest = null;
       try {
         validationManifest = writeAnalyzeProjectValidationManifest(repoRoot, {
@@ -2862,6 +2936,7 @@ async function runAnalyzeProject(repoRoot, options = {}) {
           command: 'ai analyze-project',
           runId: auditRunId,
           now: options.now,
+          recovery,
           retry: {
             attempts: providerAttempts.length,
             max_retries: maxRetries,
@@ -2885,11 +2960,31 @@ async function runAnalyzeProject(repoRoot, options = {}) {
           validation: validationManifest,
         },
       });
-      throw enhanceAnalyzeProjectAnalysisError(error, {
+      const enhancedError = enhanceAnalyzeProjectAnalysisError(error, {
         validationManifest,
         repairManifest: attemptRepairManifest,
         retryManifest,
+        recovery,
+        translator: progressTranslator,
       });
+      if (options.json === true) {
+        process.stdout.write(`${JSON.stringify({
+          schema_version: 1,
+          kind: 'quiver-analyze-project-error',
+          ok: false,
+          error: {
+            code: enhancedError.code || null,
+            message: error.message,
+          },
+          recovery,
+          manifests: {
+            repair: attemptRepairManifest,
+            retry: retryManifest,
+            validation: validationManifest,
+          },
+        }, null, 2)}\n`);
+      }
+      throw enhancedError;
     }
   }
   const completedReport = {

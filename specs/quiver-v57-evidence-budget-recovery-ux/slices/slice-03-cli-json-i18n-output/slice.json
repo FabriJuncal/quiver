@@ -1,0 +1,68 @@
+{
+  "slice_id": "slice-03-cli-json-i18n-output",
+  "ticket": "QUIVER-57-03",
+  "type": "feature",
+  "title": "CLI + JSON + i18n Output",
+  "objective": "Expose recovery guidance in CLI output, JSON output, manifests, and English/Spanish messages.",
+  "description": "Integrates recovery payloads into analyze-project failure output, JSON error output, validation manifests, and English/Spanish copy.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v57-cli-json-i18n-output",
+    "branch_name": "feature/QUIVER-57-03-v57-cli-json-i18n-output"
+  },
+  "files": [
+    "src/create-quiver/commands/ai.js",
+    "src/create-quiver/lib/ai/analyze-project-validation.js",
+    "src/create-quiver/lib/i18n/messages/en.js",
+    "src/create-quiver/lib/i18n/messages/es.js",
+    "tests/commands/ai-analyze-project-provider.test.js",
+    "tests/lib/i18n-catalog.test.js",
+    "specs/quiver-v57-evidence-budget-recovery-ux/**"
+  ],
+  "allowed_write_paths": [
+    "src/create-quiver/commands/ai.js",
+    "src/create-quiver/lib/ai/analyze-project-validation.js",
+    "src/create-quiver/lib/i18n/messages/en.js",
+    "src/create-quiver/lib/i18n/messages/es.js",
+    "tests/commands/ai-analyze-project-provider.test.js",
+    "tests/lib/i18n-catalog.test.js",
+    "specs/quiver-v57-evidence-budget-recovery-ux/**"
+  ],
+  "depends_on": ["slice-02-budget-command-recommendation"],
+  "parallel_safe": "never",
+  "parallel_safe_reason": "Consumes the recovery recommendation contract from slice 02.",
+  "must": [
+    "Detect evidence-not-selected validation failures and attach recovery guidance.",
+    "Render a prominent safe rerun command in human CLI output.",
+    "Expose recovery details in JSON output without breaking existing fields.",
+    "Persist recovery details in validation or repair manifests.",
+    "Provide English and Spanish copy for recovery guidance.",
+    "Keep analyze-project failing when final validation remains invalid."
+  ],
+  "not_included": [
+    "Weakening schema or evidence validation.",
+    "Automatically applying recovery budgets.",
+    "Changing budget recommendation formulas.",
+    "Adding live provider integration tests.",
+    "Writing final docs after invalid JSON."
+  ],
+  "acceptance": [
+    "Evidence validation failures include a highlighted next command.",
+    "Issue details remain grouped and truncated instead of producing noisy schema dumps.",
+    "JSON output remains valid and includes recovery details when available.",
+    "Spanish output includes equivalent actionable recovery guidance.",
+    "The command exits as a controlled failure until validation passes."
+  ],
+  "actual_hours": 4,
+  "tests": [
+    "node --test tests/commands/ai-analyze-project-provider.test.js",
+    "node --test tests/lib/i18n-catalog.test.js",
+    "node bin/create-quiver.js spec validate specs/quiver-v57-evidence-budget-recovery-ux --strict",
+    "git diff --check"
+  ],
+  "estimated_hours": 4,
+  "status": "completed",
+  "started_at": "2026-06-18T00:00:00.000Z",
+  "completed_at": "2026-06-18T00:00:00.000Z"
+}
