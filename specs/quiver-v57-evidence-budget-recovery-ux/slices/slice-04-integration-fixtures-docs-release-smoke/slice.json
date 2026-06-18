@@ -4,6 +4,7 @@
   "type": "feature",
   "title": "Integration Fixtures + Docs + Release Smoke",
   "objective": "Validate recovery guidance end to end and document the safe rerun workflow.",
+  "description": "Completes integration evidence, documentation, troubleshooting guidance, and release-smoke coverage for the recovery workflow.",
   "git": {
     "branch_type": "feature",
     "base_branch": "main",
@@ -25,9 +26,39 @@
     "specs/quiver-v57-evidence-budget-recovery-ux/**"
   ],
   "depends_on": ["slice-03-cli-json-i18n-output"],
-  "parallel_safe": "limited",
+  "parallel_safe": "after_dependencies",
   "parallel_safe_reason": "Docs and fixture drafting can run in parallel after slice 03, but final smoke depends on all prior slices.",
+  "must": [
+    "Cover nika-erp-style evidence validation failures with sanitized fixtures.",
+    "Document how users should respond to budget and evidence recovery guidance.",
+    "Ensure recovery details are represented in manifests and JSON output.",
+    "Verify English and Spanish recovery output.",
+    "Record release-smoke evidence for the final workflow."
+  ],
+  "not_included": [
+    "Committing private real-project fixtures.",
+    "Storing secrets or private source content in tests.",
+    "Publishing npm packages.",
+    "Making live provider calls mandatory in CI.",
+    "Changing product code in analyzed repositories."
+  ],
+  "acceptance": [
+    "A nika-erp-style failure produces a clear recovery command.",
+    "Unsafe, generated, and metadata-only paths are not recommended as context expansion targets.",
+    "Validation manifests include recovery details when relevant.",
+    "Documentation explains why and how to adjust max-files and max-bytes.",
+    "Release evidence identifies the smoke command and expected controlled behavior."
+  ],
   "actual_hours": 3,
+  "tests": [
+    "node --test tests/lib/ai-analyze-project-recovery.test.js",
+    "node --test tests/commands/ai-analyze-project-provider.test.js",
+    "node --test tests/lib/i18n-catalog.test.js",
+    "npm run docs:check",
+    "node bin/create-quiver.js spec validate specs/quiver-v57-evidence-budget-recovery-ux --strict",
+    "git diff --check"
+  ],
+  "estimated_hours": 3,
   "status": "completed",
   "started_at": "2026-06-18T00:00:00.000Z",
   "completed_at": "2026-06-18T00:00:00.000Z"

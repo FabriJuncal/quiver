@@ -4,6 +4,7 @@
   "type": "feature",
   "title": "Budget + Command Recommendation",
   "objective": "Generate safe rerun budget and command recommendations from recovery classification.",
+  "description": "Adds safe recovery budget calculation, caps, category flag hints, and a rerun command builder based only on classified evidence.",
   "git": {
     "branch_type": "feature",
     "base_branch": "main",
@@ -23,7 +24,36 @@
   "depends_on": ["slice-01-recovery-contract-security-classifier"],
   "parallel_safe": "never",
   "parallel_safe_reason": "Consumes the finalized recovery classification contract.",
+  "must": [
+    "Calculate recommended max files and max bytes from recovery classification output only.",
+    "Never recommend budgets lower than the user's current effective budgets.",
+    "Apply caps so recovery cannot suggest runaway context expansion.",
+    "Preserve relevant analyze-project flags in the suggested command.",
+    "Drop transient or unsafe flags from the suggested command.",
+    "Ensure unsafe, generated, dependency, and metadata-only evidence does not increase recommended budgets."
+  ],
+  "not_included": [
+    "CLI rendering changes.",
+    "Security classification recalculation.",
+    "Automatic retry with expanded budgets.",
+    "Provider schema changes.",
+    "Relaxing evidence validation."
+  ],
+  "acceptance": [
+    "Recommendations are calculated only from safe evidence paths.",
+    "Unsafe and metadata-only evidence never increases the recommended budget.",
+    "Existing user budgets are not reduced.",
+    "Caps prevent unbounded max-files or max-bytes suggestions.",
+    "The suggested command preserves deep, provider, model, scope, category, language, and strict flags when applicable.",
+    "The suggested command omits transient output and execution flags."
+  ],
   "actual_hours": 4,
+  "tests": [
+    "node --test tests/lib/ai-analyze-project-recovery.test.js",
+    "node bin/create-quiver.js spec validate specs/quiver-v57-evidence-budget-recovery-ux --strict",
+    "git diff --check"
+  ],
+  "estimated_hours": 4,
   "status": "completed",
   "started_at": "2026-06-18T00:00:00.000Z",
   "completed_at": "2026-06-18T00:00:00.000Z"

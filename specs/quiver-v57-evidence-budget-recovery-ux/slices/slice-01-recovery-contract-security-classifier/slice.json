@@ -4,6 +4,7 @@
   "type": "feature",
   "title": "Recovery Contract + Security Classifier",
   "objective": "Implement safe evidence recovery classification for analyze-project evidence-not-selected failures.",
+  "description": "Defines the deterministic, security-first classifier used to decide whether evidence paths from provider validation failures are safe to recommend, metadata-only, missing, generated, or excluded.",
   "git": {
     "branch_type": "feature",
     "base_branch": "main",
