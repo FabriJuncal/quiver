@@ -558,6 +558,181 @@ test('runAnalyzeProject rejects invalid provider JSON without writing final docs
   }
 });
 
+test('runAnalyzeProject enriches evidence-not-selected failures with Spanish recovery guidance', async () => {
+  const repo = makeRepo({
+    'README.md': '# Recovery Demo\n',
+    'package.json': JSON.stringify({ name: 'recovery-demo' }, null, 2),
+    '.env.example': 'NEXT_PUBLIC_URL=https://example.com\n',
+    'app/test/page.tsx': 'export default function TestPage() { return null }\n',
+    'src/routes/users.ts': 'export const users = [];\n',
+  });
+  const invalidEvidenceAnalysis = JSON.stringify({
+    schema_version: 1,
+    kind: 'quiver-project-analysis',
+    product: {
+      name: { name: 'Recovery Demo', confidence: 'confirmed', evidence: ['README.md'] },
+      type: { name: 'Web app', confidence: 'inferred', evidence: ['package.json'] },
+      summary: 'Recovery demo.',
+      claims: [],
+    },
+    domain: {
+      roles: [],
+      entities: [],
+      actions: [],
+      flows: [],
+      incomplete_or_suspicious: [],
+      claims: [],
+    },
+    architecture: {
+      frontend: [],
+      backend: [],
+      auth: [],
+      persistence: [],
+      integrations: [],
+      state: [],
+      api: [],
+      testing: [],
+      deploy: [],
+      risks: [],
+      claims: [],
+    },
+    features: [],
+    risks: [
+      { name: 'Env example needs review', confidence: 'inferred', evidence: ['.env.example'] },
+    ],
+    questions: [
+      { question: 'Is the test page intentional?', reason: 'Provider cited a test route.', evidence: ['app/test/page.tsx'] },
+    ],
+    claims: [],
+    doc_updates: {
+      'docs/CONTEXTO.md': '# Context\n',
+    },
+  });
+
+  try {
+    let capturedError;
+    await assert.rejects(
+      captureStdout(() => runAnalyzeProject(repo.root, {
+        deep: true,
+        language: 'es',
+        maxAnalyzeProjectRetries: 0,
+        model: 'gpt-5.5',
+        provider: 'codex',
+        providerExplicit: true,
+        runProviderFn: async () => providerResult(invalidEvidenceAnalysis, { cwd: repo.root }),
+      })),
+      (error) => {
+        capturedError = error;
+        assert.equal(error.code, 'AI_ANALYZE_PROJECT_INVALID');
+        assert.match(error.message, /Solucion recomendada/);
+        assert.match(error.message, /Comando recomendado:/);
+        assert.match(error.message, /--include-tests/);
+        assert.match(error.message, /--provider codex --model gpt-5\.5 --lang es/);
+        assert.ok(error.recovery);
+        return true;
+      },
+    );
+
+    assert.equal(capturedError.recovery.available, true);
+    assert.equal(capturedError.recovery.classification.summary.metadata_only, 1);
+    assert.equal(capturedError.recovery.classification.summary.safe_to_include, 1);
+    const validationManifest = assertValidationManifest(repo.root, capturedError);
+    assert.equal(validationManifest.recovery.available, true);
+    assert.equal(validationManifest.recovery.command.includes('--include-tests'), true);
+    assert.equal(validationManifest.recovery.classification.summary.metadata_only, 1);
+    assert.equal(fs.existsSync(path.join(repo.root, 'docs')), false);
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('runAnalyzeProject --json prints parseable recovery payload on evidence validation failure', async () => {
+  const repo = makeRepo({
+    'README.md': '# Recovery JSON Demo\n',
+    'package.json': JSON.stringify({ name: 'recovery-json-demo' }, null, 2),
+    'src/routes/users.ts': 'export const users = [];\n',
+    'src/__tests__/users.test.ts': 'test("users", () => {});\n',
+  });
+  const invalidEvidenceAnalysis = JSON.stringify({
+    schema_version: 1,
+    kind: 'quiver-project-analysis',
+    product: {
+      name: { name: 'Recovery JSON Demo', confidence: 'confirmed', evidence: ['README.md'] },
+      type: { name: 'Web app', confidence: 'inferred', evidence: ['package.json'] },
+      summary: 'Recovery JSON demo.',
+      claims: [],
+    },
+    domain: {
+      roles: [],
+      entities: [],
+      actions: [],
+      flows: [],
+      incomplete_or_suspicious: [],
+      claims: [],
+    },
+    architecture: {
+      frontend: [],
+      backend: [],
+      auth: [],
+      persistence: [],
+      integrations: [],
+      state: [],
+      api: [],
+      testing: [],
+      deploy: [],
+      risks: [],
+      claims: [],
+    },
+    features: [
+      { name: 'User tests', confidence: 'inferred', evidence: ['src/__tests__/users.test.ts'] },
+    ],
+    risks: [],
+    questions: [],
+    claims: [],
+    doc_updates: {
+      'docs/CONTEXTO.md': '# Context\n',
+    },
+  });
+
+  try {
+    let capturedError;
+    let output = '';
+    const original = process.stdout.write;
+    process.stdout.write = (chunk) => {
+      output += String(chunk);
+      return true;
+    };
+    try {
+      await assert.rejects(
+        runAnalyzeProject(repo.root, {
+          deep: true,
+          json: true,
+          maxAnalyzeProjectRetries: 0,
+          model: 'gpt-5.5',
+          provider: 'codex',
+          providerExplicit: true,
+          runProviderFn: async () => providerResult(invalidEvidenceAnalysis, { cwd: repo.root }),
+        }),
+        (error) => {
+          capturedError = error;
+          assert.equal(error.code, 'AI_ANALYZE_PROJECT_INVALID');
+          return true;
+        },
+      );
+    } finally {
+      process.stdout.write = original;
+    }
+    const payload = JSON.parse(output);
+    assert.equal(payload.kind, 'quiver-analyze-project-error');
+    assert.equal(payload.ok, false);
+    assert.equal(payload.recovery.available, true);
+    assert.equal(payload.recovery.command.includes('--include-tests'), true);
+    assert.equal(payload.manifests.validation.path, capturedError.validation_manifest.path);
+  } finally {
+    repo.cleanup();
+  }
+});
+
 test('runAnalyzeProject --save-proposal rejects invalid final JSON without usable proposal artifacts', async () => {
   const repo = makeRepo({
     'README.md': '# Invalid Save Proposal\n',

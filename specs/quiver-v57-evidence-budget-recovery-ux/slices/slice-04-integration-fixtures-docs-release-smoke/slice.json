@@ -1,0 +1,34 @@
+{
+  "slice_id": "slice-04-integration-fixtures-docs-release-smoke",
+  "ticket": "QUIVER-57-04",
+  "type": "feature",
+  "title": "Integration Fixtures + Docs + Release Smoke",
+  "objective": "Validate recovery guidance end to end and document the safe rerun workflow.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v57-integration-fixtures-docs-release-smoke",
+    "branch_name": "feature/QUIVER-57-04-v57-integration-fixtures-docs-release-smoke"
+  },
+  "files": [
+    "tests/lib/ai-analyze-project-recovery.test.js",
+    "tests/commands/ai-analyze-project-provider.test.js",
+    "tests/lib/i18n-catalog.test.js",
+    "docs/**",
+    "specs/quiver-v57-evidence-budget-recovery-ux/**"
+  ],
+  "allowed_write_paths": [
+    "tests/lib/ai-analyze-project-recovery.test.js",
+    "tests/commands/ai-analyze-project-provider.test.js",
+    "tests/lib/i18n-catalog.test.js",
+    "docs/**",
+    "specs/quiver-v57-evidence-budget-recovery-ux/**"
+  ],
+  "depends_on": ["slice-03-cli-json-i18n-output"],
+  "parallel_safe": "limited",
+  "parallel_safe_reason": "Docs and fixture drafting can run in parallel after slice 03, but final smoke depends on all prior slices.",
+  "actual_hours": 3,
+  "status": "completed",
+  "started_at": "2026-06-18T00:00:00.000Z",
+  "completed_at": "2026-06-18T00:00:00.000Z"
+}

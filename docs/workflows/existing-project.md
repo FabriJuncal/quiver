@@ -98,6 +98,7 @@ Qué hace:
 - muestra loader en TTY y progreso lineal en no-TTY;
 - si hay drift seguro de schema, como `notes` extra, `claim` usado como `name` faltante o `confidence` donde no está permitido, lo repara de forma auditada;
 - si el error es retryable, hace un retry acotado con feedback compacto;
+- si el provider cita evidencia fuera de la muestra, clasifica esas rutas y muestra una solución recomendada con `--include-tests`, `--include-db`, `--max-files` o `--max-bytes` solo cuando sea seguro;
 - si la propuesta final no es válida, falla sin escribir docs finales.
 
 Si preferís separar generación y aplicación:

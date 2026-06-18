@@ -1,0 +1,30 @@
+{
+  "slice_id": "slice-02-budget-command-recommendation",
+  "ticket": "QUIVER-57-02",
+  "type": "feature",
+  "title": "Budget + Command Recommendation",
+  "objective": "Generate safe rerun budget and command recommendations from recovery classification.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v57-budget-command-recommendation",
+    "branch_name": "feature/QUIVER-57-02-v57-budget-command-recommendation"
+  },
+  "files": [
+    "src/create-quiver/lib/ai/analyze-project-recovery.js",
+    "tests/lib/ai-analyze-project-recovery.test.js",
+    "specs/quiver-v57-evidence-budget-recovery-ux/**"
+  ],
+  "allowed_write_paths": [
+    "src/create-quiver/lib/ai/analyze-project-recovery.js",
+    "tests/lib/ai-analyze-project-recovery.test.js",
+    "specs/quiver-v57-evidence-budget-recovery-ux/**"
+  ],
+  "depends_on": ["slice-01-recovery-contract-security-classifier"],
+  "parallel_safe": "never",
+  "parallel_safe_reason": "Consumes the finalized recovery classification contract.",
+  "actual_hours": 4,
+  "status": "completed",
+  "started_at": "2026-06-18T00:00:00.000Z",
+  "completed_at": "2026-06-18T00:00:00.000Z"
+}

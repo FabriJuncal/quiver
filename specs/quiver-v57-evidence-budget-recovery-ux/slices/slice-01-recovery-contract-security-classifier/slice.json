@@ -1,0 +1,59 @@
+{
+  "slice_id": "slice-01-recovery-contract-security-classifier",
+  "ticket": "QUIVER-57-01",
+  "type": "feature",
+  "title": "Recovery Contract + Security Classifier",
+  "objective": "Implement safe evidence recovery classification for analyze-project evidence-not-selected failures.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v57-recovery-contract-security-classifier",
+    "branch_name": "feature/QUIVER-57-01-recovery-contract-security-classifier"
+  },
+  "files": [
+    "src/create-quiver/lib/ai/analyze-project-recovery.js",
+    "tests/lib/ai-analyze-project-recovery.test.js",
+    "specs/quiver-v57-evidence-budget-recovery-ux/**"
+  ],
+  "allowed_write_paths": [
+    "src/create-quiver/lib/ai/analyze-project-recovery.js",
+    "tests/lib/ai-analyze-project-recovery.test.js",
+    "specs/quiver-v57-evidence-budget-recovery-ux/**"
+  ],
+  "depends_on": [],
+  "parallel_safe": "never",
+  "parallel_safe_reason": "This slice defines the security and classification contract consumed by every later slice.",
+  "must": [
+    "Normalize evidence paths as repo-relative paths.",
+    "Never read unsafe file contents for classification.",
+    "Classify safe, metadata-only, security-excluded, generated/dependency, missing, outside-scope, and unknown evidence.",
+    "Keep output deterministic and manifest-ready.",
+    "Add focused unit tests."
+  ],
+  "not_included": [
+    "Budget recommendation.",
+    "Recommended command builder.",
+    "CLI output changes.",
+    "JSON output integration.",
+    "i18n rendering."
+  ],
+  "acceptance": [
+    "Unsafe paths are never marked safe to include.",
+    ".env.example is metadata-only/redacted.",
+    "Missing and traversal paths do not throw.",
+    "Generated/dependency paths are excluded.",
+    "Binary files are excluded.",
+    "Classification output is deterministic."
+  ],
+  "tests": [
+    "node --test tests/lib/ai-analyze-project-recovery.test.js",
+    "node bin/create-quiver.js spec validate specs/quiver-v57-evidence-budget-recovery-ux --strict",
+    "git diff --check"
+  ],
+  "estimated_hours": 4,
+  "actual_hours": 4,
+  "status": "completed",
+  "blocked_reason": null,
+  "started_at": "2026-06-18T00:00:00.000Z",
+  "completed_at": "2026-06-18T00:00:00.000Z"
+}

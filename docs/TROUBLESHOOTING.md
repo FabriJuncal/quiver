@@ -131,6 +131,58 @@ npx --yes create-quiver@latest ai analyze-project apply --run <run-id>
 
 `--review` sigue disponible como modo avanzado si querés editar la propuesta JSON manualmente antes de escribir.
 
+## `ai analyze-project` falla con `evidence-not-selected`
+
+### Síntoma
+
+El comando:
+
+```bash
+npx --yes create-quiver@latest ai analyze-project --deep --provider codex --model gpt-5.5
+```
+
+falla con un mensaje como:
+
+```text
+provider analysis JSON failed evidence validation
+evidence-not-selected
+```
+
+### Explicación
+
+El provider citó una ruta que no estaba dentro de la muestra enviada. Quiver mantiene esa validación porque evita que el modelo afirme cosas usando archivos que no leyó.
+
+En versiones actuales, Quiver clasifica esas rutas antes de sugerir un fix:
+
+- rutas seguras omitidas por presupuesto pueden recomendar `--max-files` o `--max-bytes` mayores;
+- tests omitidos pueden recomendar `--include-tests`;
+- DB/schema omitidos pueden recomendar `--include-db`;
+- `.env`, secretos, `.git`, `.quiver`, dependencias, caches, dumps, binarios y outputs generados no se recomiendan;
+- `.env.example` se trata como metadata/redacted, no como contenido seguro completo.
+
+### Qué hacer
+
+Usá el comando exacto que Quiver imprime debajo de `Recommended fix` o `Solucion recomendada`. Por ejemplo:
+
+```bash
+npx --yes create-quiver@latest ai analyze-project --deep --max-files 120 --max-bytes 500000 --provider codex --model gpt-5.5
+```
+
+Si Quiver no puede recomendar un aumento seguro porque se exceden los caps o la evidencia no debe enviarse, inspeccioná la muestra y acotá el scope:
+
+```bash
+npx --yes create-quiver@latest ai analyze-project --deep --dry-run --json
+npx --yes create-quiver@latest ai analyze-project --deep --scope apps/web --provider codex --model gpt-5.5
+```
+
+La auditoría queda en:
+
+```text
+.quiver/runs/run-.../validation/analyze-project-validation.json
+```
+
+Ese manifest incluye `recovery`, con clasificación de rutas, presupuesto calculado, comando sugerido y warnings.
+
 ## `ai analyze-project` no completa `docs/CONTEXTO.md` ni crea `docs/ARCHITECTURE.md`
 
 ### Síntoma

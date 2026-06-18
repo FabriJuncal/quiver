@@ -1,0 +1,38 @@
+{
+  "slice_id": "slice-03-cli-json-i18n-output",
+  "ticket": "QUIVER-57-03",
+  "type": "feature",
+  "title": "CLI + JSON + i18n Output",
+  "objective": "Expose recovery guidance in CLI output, JSON output, manifests, and English/Spanish messages.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v57-cli-json-i18n-output",
+    "branch_name": "feature/QUIVER-57-03-v57-cli-json-i18n-output"
+  },
+  "files": [
+    "src/create-quiver/commands/ai.js",
+    "src/create-quiver/lib/ai/analyze-project-validation.js",
+    "src/create-quiver/lib/i18n/messages/en.js",
+    "src/create-quiver/lib/i18n/messages/es.js",
+    "tests/commands/ai-analyze-project-provider.test.js",
+    "tests/lib/i18n-catalog.test.js",
+    "specs/quiver-v57-evidence-budget-recovery-ux/**"
+  ],
+  "allowed_write_paths": [
+    "src/create-quiver/commands/ai.js",
+    "src/create-quiver/lib/ai/analyze-project-validation.js",
+    "src/create-quiver/lib/i18n/messages/en.js",
+    "src/create-quiver/lib/i18n/messages/es.js",
+    "tests/commands/ai-analyze-project-provider.test.js",
+    "tests/lib/i18n-catalog.test.js",
+    "specs/quiver-v57-evidence-budget-recovery-ux/**"
+  ],
+  "depends_on": ["slice-02-budget-command-recommendation"],
+  "parallel_safe": "never",
+  "parallel_safe_reason": "Consumes the recovery recommendation contract from slice 02.",
+  "actual_hours": 4,
+  "status": "completed",
+  "started_at": "2026-06-18T00:00:00.000Z",
+  "completed_at": "2026-06-18T00:00:00.000Z"
+}

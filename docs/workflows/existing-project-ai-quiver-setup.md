@@ -108,7 +108,6 @@ Archivos que puede crear o actualizar:
 ```bash
 npx --yes create-quiver@latest ai analyze-project \
   --deep \
-  --review \
   --provider codex \
   --model gpt-5.5
 ```
