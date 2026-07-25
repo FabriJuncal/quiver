@@ -4,7 +4,9 @@
 
 - Status: Completed
 - Active slice: none
-- Branch: `feature/QUIVER-57-01-recovery-contract-security-classifier`
+- Implementation PR: `#134` (merged)
+- Merge commit: `880952136d9c99e785f5e40c713ceea59b97e848`
+- Subsequent local release commit: `f322133734dfb03e3c7e8bdc6d13a5fdb139ff74`
 
 ## Slice Status
 
@@ -17,4 +19,7 @@
 
 ## Open Risks
 
-- No critical open risks. Live provider behavior should still be smoke-tested before npm release because external providers can drift.
+- No known local functional blockers remain.
+- A smoke test with a real external provider has not been verified.
+- Publication of npm version `0.17.6` has not been verified from this environment.
+- The existence of a GitHub Release has not been verified from this environment.

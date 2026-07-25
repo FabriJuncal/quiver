@@ -25,3 +25,16 @@
 - Sanitized nika-erp-style smoke. Covered by provider command fixture that reproduces omitted test evidence and metadata-only `.env.example` without private repo content.
 - Spec validation. Completed.
 - `git diff --check`. Completed.
+
+## Closure Reconciliation
+
+- Reconciliation date: 2026-07-25.
+- Observed HEAD: `f322133734dfb03e3c7e8bdc6d13a5fdb139ff74`.
+- Worktree state before reconciliation: clean.
+- Implementation PR `#134` and merge commit `880952136d9c99e785f5e40c713ceea59b97e848` confirmed through Git history.
+- PASS `node bin/create-quiver.js spec validate specs/quiver-v57-evidence-budget-recovery-ux --strict`.
+- PASS `git diff --check`.
+- PASS `npm test` (774 tests passed, 0 failed).
+- PASS `npm run docs:check`.
+- PASS `npm run schema:slice:check`.
+- External risks remain: a real-provider smoke test, publication of npm version `0.17.6`, and the existence of a GitHub Release were not verified from this environment.

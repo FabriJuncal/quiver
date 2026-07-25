@@ -122,3 +122,10 @@ Revert this PR. The feature is additive around failed `ai analyze-project` evide
 - The recovery command is diagnostic guidance only. It does not auto-expand context in the same run.
 - The validation manifest gains an optional `recovery` field; existing consumers should remain compatible.
 
+## Post-merge reconciliation
+
+- Implementation PR `#134` was merged in commit `880952136d9c99e785f5e40c713ceea59b97e848`.
+- `human merge required` records the policy that applied before that merge.
+- This follow-up change is exclusively a documentation reconciliation and does not modify runtime behavior.
+- This reconciliation does not confirm publication of npm version `0.17.6` or the existence of a GitHub Release.
+- A smoke test with a real external provider remains a residual risk.
