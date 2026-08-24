@@ -1,6 +1,6 @@
 # Execution Plan — Quiver v58 Risk-aware Review Governance
 
-Status: In Progress — slice-00 documentary work completed; publication merge pending; slice-01 contract ready but execution-gated
+Status: In Progress — slices 00 and 01 completed; slice-02 contract ready but gated by the slice-01 PR merge
 
 ## Objective
 

@@ -9,6 +9,7 @@ const {
   buildProviderInvocation,
   extractProviderErrorCause,
   getProviderDefinition,
+  resolveGitHubCliProviderSubject,
   resolveProviderModelSelection,
   runProvider,
 } = require('../../src/create-quiver/lib/ai/providers');
@@ -24,6 +25,85 @@ test('assertSupportedProvider rejects unknown providers with a clear list', () =
       && error.message.includes('gemini'),
   );
   assert.deepEqual(SUPPORTED_PROVIDERS, ['codex', 'claude', 'gemini']);
+});
+
+test('resolveGitHubCliProviderSubject returns a stable verified subject without granting roles', () => {
+  const calls = [];
+  const identity = resolveGitHubCliProviderSubject({
+    ghCommand: 'gh-personal',
+    host: 'GitHub.COM',
+    cwd: '/tmp/work tree',
+    runner(command, args, options) {
+      calls.push({ command, args, options });
+      return {
+        status: 0,
+        stdout: JSON.stringify({ id: 123456, login: 'octocat', site_admin: true, roles: ['admin'] }),
+        stderr: '',
+      };
+    },
+  });
+
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].command, 'gh-personal');
+  assert.deepEqual(calls[0].args, ['api', 'user', '--hostname', 'github.com']);
+  assert.equal(calls[0].options.cwd, '/tmp/work tree');
+  assert.equal(calls[0].options.shell, false);
+  assert.deepEqual(identity, {
+    provider: 'github-cli',
+    host: 'github.com',
+    provider_subject: 'github:github.com:123456',
+    actor_id: 'github:github.com:123456',
+    subject_id: '123456',
+    login: 'octocat',
+    verified: true,
+    roles: [],
+  });
+});
+
+test('resolveGitHubCliProviderSubject fails closed with stable unavailable and invalid codes', () => {
+  assert.throws(
+    () => resolveGitHubCliProviderSubject({
+      runner: () => ({
+        status: 1,
+        stdout: '',
+        stderr: 'authentication failed token=super-secret-value',
+      }),
+    }),
+    (error) => error instanceof ProviderRunnerError
+      && error.code === 'GITHUB_IDENTITY_UNAVAILABLE'
+      && error.message.includes('gh auth status --hostname github.com')
+      && !error.message.includes('super-secret-value')
+      && error.message.includes('[REDACTED]'),
+  );
+
+  assert.throws(
+    () => resolveGitHubCliProviderSubject({
+      runner: () => ({ status: 0, stdout: '{not-json', stderr: '' }),
+    }),
+    (error) => error instanceof ProviderRunnerError
+      && error.code === 'GITHUB_IDENTITY_INVALID',
+  );
+
+  assert.throws(
+    () => resolveGitHubCliProviderSubject({
+      runner: () => ({ status: 0, stdout: JSON.stringify({ id: 'not-numeric', login: 'octocat' }), stderr: '' }),
+    }),
+    (error) => error instanceof ProviderRunnerError
+      && error.code === 'GITHUB_IDENTITY_INVALID',
+  );
+});
+
+test('resolveGitHubCliProviderSubject distinguishes a missing GitHub CLI', () => {
+  assert.throws(
+    () => resolveGitHubCliProviderSubject({
+      runner: () => ({
+        error: Object.assign(new Error('spawn gh ENOENT'), { code: 'ENOENT' }),
+      }),
+    }),
+    (error) => error instanceof ProviderRunnerError
+      && error.code === 'MISSING_GH_CLI'
+      && error.message.includes('gh auth login'),
+  );
 });
 
 test('buildProviderInvocation keeps command arguments separate from the prompt', () => {
@@ -300,6 +380,7 @@ test('runProvider redacts likely secrets from stdout, stderr, and serialized err
   assert.equal(result.ok, false);
   assert.equal(result.stdout, 'token=[REDACTED]\n');
   assert.equal(result.stderr, 'authorization: bearer [REDACTED]\n');
+  assert.deepEqual(result.outputRedaction, { stdout: true, stderr: true });
   assert.equal(result.error.message, 'password=[REDACTED]');
 });
 

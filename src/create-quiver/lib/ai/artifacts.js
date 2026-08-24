@@ -34,11 +34,19 @@ function escapeRegExp(value) {
   return String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-function redactSensitiveLocalValues(text, options = {}) {
-  let result = redactSecrets(text)
+function redactSecretPatterns(text) {
+  return redactSecrets(text)
     .replace(/\bsk-[A-Za-z0-9_-]{16,}\b/g, '[REDACTED]')
     .replace(/\bghp_[A-Za-z0-9_]{16,}\b/g, '[REDACTED]')
     .replace(/\bgithub_pat_[A-Za-z0-9_]{16,}\b/g, '[REDACTED]');
+}
+
+function containsSensitiveText(text) {
+  return redactSecretPatterns(text) !== String(text || '');
+}
+
+function redactSensitiveLocalValues(text, options = {}) {
+  let result = redactSecretPatterns(text);
   const replacements = [];
 
   if (options.projectRoot) {
@@ -63,6 +71,47 @@ function redactSensitiveLocalValues(text, options = {}) {
   }
 
   return result;
+}
+
+function isCredentialStructuredKey(key) {
+  const normalized = String(key || '').replace(/[^a-z0-9]/gi, '').toLowerCase();
+  return /(?:apikey|token|secrets?|credentials?|password|passwd|pwd|privatekey)$/.test(normalized);
+}
+
+function isSensitiveStructuredKey(key) {
+  const normalized = String(key || '').replace(/[^a-z0-9]/gi, '').toLowerCase();
+  return normalized === 'authorization' || isCredentialStructuredKey(key);
+}
+
+function redactSensitiveValue(value, options = {}, seen = new WeakSet(), key = '') {
+  if (isSensitiveStructuredKey(key) && value !== undefined && value !== null) {
+    return '[REDACTED]';
+  }
+  if (typeof value === 'string') {
+    return redactSensitiveLocalValues(value, options);
+  }
+  if (!value || typeof value !== 'object') {
+    return value;
+  }
+  if (seen.has(value)) {
+    return '[REDACTED_CIRCULAR]';
+  }
+  seen.add(value);
+  if (Array.isArray(value)) {
+    const redacted = value.map((item) => redactSensitiveValue(item, options, seen));
+    seen.delete(value);
+    return redacted;
+  }
+  if (value instanceof Date) {
+    seen.delete(value);
+    return value.toISOString();
+  }
+  const redacted = Object.fromEntries(Object.entries(value).map(([entryKey, entryValue]) => [
+    entryKey,
+    redactSensitiveValue(entryValue, options, seen, entryKey),
+  ]));
+  seen.delete(value);
+  return redacted;
 }
 
 function normalizePositiveInteger(value, fallback) {
@@ -197,8 +246,12 @@ function normalizeDraftOutput(text, sourceText = text) {
 }
 
 function extractCleanProviderOutput(result, options = {}) {
-  const stdout = redactSensitiveLocalValues(result?.stdout || '', options);
-  const stderr = redactSensitiveLocalValues(result?.stderr || '', options);
+  const stdout = options.redact === false
+    ? String(result?.stdout || '')
+    : redactSensitiveLocalValues(result?.stdout || '', options);
+  const stderr = options.redact === false
+    ? String(result?.stderr || '')
+    : redactSensitiveLocalValues(result?.stderr || '', options);
   const primary = stdout.trim() ? stdout : stderr;
   const cleaned = stripProviderLogEdges(stripPromptEcho(primary, options.prompt || ''));
   const cleanOutput = normalizeDraftOutput(cleaned, primary);
@@ -243,7 +296,7 @@ function writeRawProviderArtifact(projectRoot, runId, scope, result, options = {
 
   const now = options.now || new Date();
   const rawDir = path.join(quiverInternalPaths(projectRoot).runsDir, String(runId), 'raw');
-  const rawPath = path.join(rawDir, safeArtifactName(scope, now));
+  const baseName = safeArtifactName(scope, now);
   const serializedError = result?.error
     ? {
         code: result.error.code || null,
@@ -266,27 +319,42 @@ function writeRawProviderArtifact(projectRoot, runId, scope, result, options = {
     scope: String(scope || 'provider-output'),
     created_at: now.toISOString(),
     provider: result?.provider || null,
-    command: result?.command || null,
-    args: Array.isArray(result?.args) ? result.args.slice() : [],
+    command: result?.command ? redactSensitiveLocalValues(result.command, { projectRoot }) : null,
+    args: Array.isArray(result?.args) ? redactSensitiveValue(result.args, { projectRoot }) : [],
     cwd: result?.cwd ? redactSensitiveLocalValues(result.cwd, { projectRoot }) : null,
     ok: Boolean(result?.ok),
     dry_run: Boolean(result?.dryRun),
     exit_code: typeof result?.exitCode === 'number' ? result.exitCode : null,
     signal: result?.signal || null,
     timeout_ms: typeof result?.timeoutMs === 'number' ? result.timeoutMs : null,
-    prompt_transport: result?.promptTransport || null,
+    prompt_transport: redactSensitiveValue(result?.promptTransport || null, { projectRoot }),
     stdout: stdout.text,
     stderr: stderr.text,
     streams: {
       stdout: stdout.metadata,
       stderr: stderr.metadata,
     },
-    error: serializedError ? JSON.parse(redactSensitiveLocalValues(JSON.stringify(serializedError), { projectRoot })) : null,
-    metadata: options.metadata || {},
+    error: serializedError ? redactSensitiveValue(serializedError, { projectRoot }) : null,
+    metadata: redactSensitiveValue(options.metadata || {}, { projectRoot }),
   };
 
   fs.mkdirSync(rawDir, { recursive: true });
-  fs.writeFileSync(rawPath, `${JSON.stringify(artifact, null, 2)}\n`);
+  let rawPath;
+  for (let attempt = 0; ; attempt += 1) {
+    const candidateName = attempt === 0
+      ? baseName
+      : baseName.replace(/\.json$/, `-${String(attempt).padStart(3, '0')}.json`);
+    const candidatePath = path.join(rawDir, candidateName);
+    try {
+      fs.writeFileSync(candidatePath, `${JSON.stringify(artifact, null, 2)}\n`, { flag: 'wx' });
+      rawPath = candidatePath;
+      break;
+    } catch (error) {
+      if (error.code !== 'EEXIST') {
+        throw error;
+      }
+    }
+  }
 
   return {
     filePath: rawPath,
@@ -394,9 +462,12 @@ module.exports = {
   assertProviderPromptWithinLimit,
   byteLength,
   compactRevisionInput,
+  containsSensitiveText,
   extractCleanProviderOutput,
+  isCredentialStructuredKey,
   limitRawProviderStream,
   redactSensitiveLocalValues,
+  redactSensitiveValue,
   resolveAiArtifactLimits,
   writeRawProviderArtifact,
 };

@@ -1,6 +1,6 @@
 # PR Plan — Quiver v58 Risk-aware Review Governance
 
-Status: Planning template; no implementation PR is claimed.
+Status: In progress; slices 00 and 01 completed, slice-01 implementation PR pending human review and merge.
 
 ## Summary
 
@@ -28,7 +28,7 @@ Deliver risk-aware review governance through seven ordered slice PRs. Each PR mu
 ## Package validation checklist
 
 - [ ] Every slice PR links its slice.json and acceptance criteria.
-- [ ] Every completed slice records commands and evidence in its closure brief.
+- [x] Every completed slice records commands and evidence in its closure brief.
 - [ ] Dependencies are completed in order.
 - [ ] EVIDENCE_REPORT.md is updated from executed results only.
 - [ ] No v59, v60, release, or deployment scope is included.

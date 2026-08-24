@@ -2,9 +2,9 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 
-const { buildApprovalCandidateReport } = require('./approval-candidates');
 const { formatStatus, translatorForHuman } = require('../i18n/read-only-format');
 const { quiverInternalPaths } = require('../init-layout');
+const { runGovernanceStateSchema } = require('./review-governance.schema');
 
 const AI_RUN_PHASES = Object.freeze([
   'created',
@@ -91,6 +91,10 @@ function runApprovalsPath(projectRoot, runId) {
   return path.join(runDir(projectRoot, runId), 'approvals.json');
 }
 
+function runGovernancePath(projectRoot, runId) {
+  return path.join(runDir(projectRoot, runId), 'review-governance.json');
+}
+
 function runRequirementPath(projectRoot, runId) {
   return path.join(runDir(projectRoot, runId), 'requirement.md');
 }
@@ -110,6 +114,7 @@ function nextCommandForPhase(phase, projectRoot = '') {
   assertKnownPhase(phase);
   if (projectRoot && phase === 'acceptance-draft') {
     try {
+      const { buildApprovalCandidateReport } = require('./approval-candidates');
       const report = buildApprovalCandidateReport(projectRoot, 'acceptance');
       return report.recommended?.next_command || report.current?.next_command || PHASE_NEXT_COMMAND[phase];
     } catch {
@@ -118,6 +123,7 @@ function nextCommandForPhase(phase, projectRoot = '') {
   }
   if (projectRoot && phase === 'technical-plan-reviewed') {
     try {
+      const { buildApprovalCandidateReport } = require('./approval-candidates');
       const report = buildApprovalCandidateReport(projectRoot, 'technical-plan');
       return report.recommended?.next_command || report.current?.next_command || PHASE_NEXT_COMMAND[phase];
     } catch {
@@ -181,6 +187,25 @@ function resolveAiRun(projectRoot, runId = '') {
   return latest;
 }
 
+function resolveGovernedAiRun(projectRoot, runId = '') {
+  if (runId) {
+    const run = resolveAiRun(projectRoot, runId);
+    if (run?.status === 'closed') {
+      throw new Error(formatError(`AI_RUN_CLOSED: governed mutation cannot target closed run '${run.run_id}'`));
+    }
+    return run;
+  }
+
+  const activeRuns = listAiRuns(projectRoot).filter((run) => run.status !== 'closed');
+  if (activeRuns.length === 0) {
+    return null;
+  }
+  if (activeRuns.length > 1) {
+    throw new Error(formatError('AI_RUN_REQUIRED: governed mutation requires --run <id> when more than one active run exists'));
+  }
+  return activeRuns[0];
+}
+
 function createAiRun(projectRoot, options = {}) {
   const sourceInput = options.input ? path.resolve(projectRoot, options.input) : '';
   if (sourceInput && !fs.existsSync(sourceInput)) {
@@ -224,6 +249,7 @@ function createAiRun(projectRoot, options = {}) {
     },
     approvals_path: toRelativePosix(projectRoot, runApprovalsPath(projectRoot, runId)),
     decisions_path: toRelativePosix(projectRoot, path.join(targetDir, 'decisions.md')),
+    governance: options.governance || null,
     history: [
       {
         phase: options.phase || 'created',
@@ -250,32 +276,45 @@ function ensureAiRun(projectRoot, options = {}) {
 
 function updateAiRunPhase(projectRoot, runId, phase, options = {}) {
   assertKnownPhase(phase);
-  const current = resolveAiRun(projectRoot, runId);
-  if (!current) {
-    throw new Error(formatError('missing AI run to update'));
-  }
+  const applyUpdate = () => {
+    const current = resolveAiRun(projectRoot, runId);
+    if (!current) {
+      throw new Error(formatError('missing AI run to update'));
+    }
 
-  if (phaseRank(phase) < phaseRank(current.phase)) {
-    throw new Error(formatError(`cannot move AI run ${current.run_id} backwards from ${current.phase} to ${phase}`));
-  }
+    const reviewRevision = options.reviewRevision === true
+      && current.phase === 'technical-plan-reviewed'
+      && phase === 'technical-plan-draft';
+    if (phaseRank(phase) < phaseRank(current.phase) && !reviewRevision) {
+      throw new Error(formatError(`cannot move AI run ${current.run_id} backwards from ${current.phase} to ${phase}`));
+    }
 
-  const now = (options.now || new Date()).toISOString();
-  const next = {
-    ...current,
-    phase,
-    status: phase === 'closed' ? 'closed' : 'active',
-    spec_slug: options.specSlug || current.spec_slug || null,
-    updated_at: now,
-    history: (current.history || []).concat({
+    const now = (options.now || new Date()).toISOString();
+    const next = {
+      ...current,
       phase,
-      command: options.command || 'unknown',
-      artifact: options.artifact || null,
-      at: now,
-    }),
+      status: phase === 'closed' ? 'closed' : 'active',
+      spec_slug: options.specSlug || current.spec_slug || null,
+      updated_at: now,
+      history: (current.history || []).concat({
+        phase,
+        command: options.command || 'unknown',
+        artifact: options.artifact || null,
+        at: now,
+      }),
+    };
+
+    writeJson(runStatePath(projectRoot, current.run_id), next);
+    return next;
   };
 
-  writeJson(runStatePath(projectRoot, current.run_id), next);
-  return next;
+  if (options.locked === true) {
+    return applyUpdate();
+  }
+  const current = resolveAiRun(projectRoot, runId);
+  return current?.governance
+    ? withAiRunLock(projectRoot, runId, { command: options.command || `advance AI run to ${phase}`, now: options.now }, applyUpdate)
+    : applyUpdate();
 }
 
 function recordAiRunApproval(projectRoot, runId, approval) {
@@ -328,6 +367,49 @@ function readAiRunLock(projectRoot, runId, sliceId = '') {
   return readJsonIfExists(lockPath(projectRoot, runId, sliceId));
 }
 
+function readRunGovernance(projectRoot, runId) {
+  const state = readJsonIfExists(runGovernancePath(projectRoot, runId));
+  if (!state) return null;
+  const parsed = runGovernanceStateSchema.safeParse(state);
+  if (!parsed.success) {
+    const error = new Error(formatError(`GOVERNANCE_STATE_INVALID: invalid canonical governance state for run '${runId}'`));
+    error.code = 'GOVERNANCE_STATE_INVALID';
+    error.details = {
+      issues: parsed.error.issues.map((issue) => ({
+        path: issue.path.join('.'),
+        message: issue.message,
+      })),
+    };
+    throw error;
+  }
+  return parsed.data;
+}
+
+function writeRunGovernance(projectRoot, runId, governanceState) {
+  const normalizedRunId = normalizeRunId(runId);
+  if (!governanceState || typeof governanceState !== 'object' || Array.isArray(governanceState)) {
+    throw new Error(formatError('invalid run governance state'));
+  }
+  if (governanceState.run_id !== normalizedRunId) {
+    throw new Error(formatError(`run governance state belongs to '${governanceState.run_id || 'unknown'}', expected '${normalizedRunId}'`));
+  }
+  const parsed = runGovernanceStateSchema.safeParse(governanceState);
+  if (!parsed.success) {
+    const error = new Error(formatError(`GOVERNANCE_STATE_INVALID: refusing to write invalid canonical governance state for run '${normalizedRunId}'`));
+    error.code = 'GOVERNANCE_STATE_INVALID';
+    error.details = {
+      issues: parsed.error.issues.map((issue) => ({
+        path: issue.path.join('.'),
+        message: issue.message,
+      })),
+    };
+    throw error;
+  }
+  const filePath = runGovernancePath(projectRoot, normalizedRunId);
+  writeJson(filePath, parsed.data);
+  return filePath;
+}
+
 function acquireAiRunLock(projectRoot, runId, options = {}) {
   const filePath = lockPath(projectRoot, runId, options.sliceId || '');
   const payload = {
@@ -363,6 +445,75 @@ function releaseAiRunLock(projectRoot, runId, options = {}) {
     fs.rmSync(filePath);
   }
   return filePath;
+}
+
+function withAiRunLock(projectRoot, runId, options = {}, callback) {
+  if (typeof callback !== 'function') {
+    throw new Error(formatError('withAiRunLock requires a callback'));
+  }
+  acquireAiRunLock(projectRoot, runId, options);
+  try {
+    const result = callback();
+    if (result && typeof result.then === 'function') {
+      return Promise.resolve(result).finally(() => {
+        releaseAiRunLock(projectRoot, runId, options);
+      });
+    }
+    releaseAiRunLock(projectRoot, runId, options);
+    return result;
+  } catch (error) {
+    releaseAiRunLock(projectRoot, runId, options);
+    throw error;
+  }
+}
+
+function bindAiRunGovernance(projectRoot, runId, governance, options = {}) {
+  const normalized = {
+    requested_profile: String(governance?.requested_profile || '').trim(),
+    effective_profile: String(governance?.effective_profile || '').trim(),
+    policy_version: String(governance?.policy_version || '').trim(),
+    policy_digest: String(governance?.policy_digest || '').trim(),
+    requirement_categories: Array.isArray(governance?.requirement_categories)
+      ? [...new Set(governance.requirement_categories.map((value) => String(value || '').trim()).filter(Boolean))].sort()
+      : [],
+  };
+  if (!normalized.requested_profile || !normalized.effective_profile || !normalized.policy_version || !normalized.policy_digest) {
+    throw new Error(formatError('invalid governed run profile binding'));
+  }
+
+  const applyBinding = () => {
+    const current = resolveAiRun(projectRoot, runId);
+    if (!current) {
+      throw new Error(formatError('missing AI run for governance binding'));
+    }
+    if (current.status === 'closed') {
+      throw new Error(formatError(`AI_RUN_CLOSED: governed mutation cannot target closed run '${current.run_id}'`));
+    }
+    if ((current.governance?.effective_profile === 'high-assurance'
+        && normalized.effective_profile === 'fast-delivery')
+      || (current.governance?.requested_profile === 'high-assurance'
+        && normalized.requested_profile === 'fast-delivery')) {
+      throw new Error(formatError('PROFILE_DOWNGRADE_FORBIDDEN: an active high-assurance run cannot be downgraded to fast-delivery'));
+    }
+    if (current.governance
+        && (current.governance.policy_version !== normalized.policy_version
+          || current.governance.policy_digest !== normalized.policy_digest)) {
+      throw new Error(formatError('GOVERNANCE_POLICY_MISMATCH: an active governed run cannot change policy version or digest'));
+    }
+
+    const now = (options.now || new Date()).toISOString();
+    const next = {
+      ...current,
+      governance: normalized,
+      updated_at: now,
+    };
+    writeJson(runStatePath(projectRoot, current.run_id), next);
+    return next;
+  };
+
+  return options.locked === true
+    ? applyBinding()
+    : withAiRunLock(projectRoot, runId, { command: options.command || 'bind AI run governance', now: options.now }, applyBinding);
 }
 
 function formatAiRunStatus(projectRoot, run, options = {}) {
@@ -430,6 +581,7 @@ module.exports = {
   AI_RUN_PHASES,
   acquireAiRunLock,
   assertAiRunPhaseAllows,
+  bindAiRunGovernance,
   createAiRun,
   ensureAiRun,
   formatAiRunResume,
@@ -439,11 +591,16 @@ module.exports = {
   nextCommandForPhase,
   readAiRun,
   readAiRunLock,
+  readRunGovernance,
   recordAiRunApproval,
   releaseAiRunLock,
   resolveAiRun,
+  resolveGovernedAiRun,
   runApprovalsPath,
   runDir,
+  runGovernancePath,
   runStatePath,
   updateAiRunPhase,
+  withAiRunLock,
+  writeRunGovernance,
 };

@@ -205,6 +205,82 @@ test('doctor fix applies safe repairs idempotently', () => {
   }
 });
 
+test('doctor fix migrates a blanket .quiver Git exclusion to granular runtime rules', () => {
+  const { dir, cleanup } = makeTmpDir();
+  const target = path.join(dir, 'target');
+  try {
+    runCli(['init', '--name', 'Doctor Ignore Project', '--dir', target, '--skip-install']);
+    execFileSync('git', ['init'], { cwd: target, stdio: 'ignore' });
+    const excludePath = path.join(target, '.git', 'info', 'exclude');
+    fs.appendFileSync(excludePath, '.quiver/\ncustom-local.log\n');
+
+    const before = runCli(['doctor'], { cwd: target });
+    const firstFix = runCli(['doctor', '--fix'], { cwd: target });
+    const secondFix = runCli(['doctor', '--fix'], { cwd: target });
+    const exclude = fs.readFileSync(excludePath, 'utf8');
+
+    assert.match(before, /blanket \.quiver\/ Git exclusion hides repository-visible configuration/);
+    assert.match(firstFix, /Updated \.git\/info\/exclude/);
+    assert.match(secondFix, /No safe fixes to apply/);
+    assert.doesNotMatch(exclude, /^\.quiver\/$/m);
+    assert.match(exclude, /^custom-local\.log$/m);
+    assert.equal((exclude.match(/^\.quiver\/locks\/$/gm) || []).length, 1);
+    assert.throws(
+      () => execFileSync('git', ['check-ignore', '-q', '.quiver/config.json'], { cwd: target, stdio: 'ignore' }),
+      (error) => error.status === 1,
+    );
+  } finally {
+    cleanup();
+  }
+});
+
+test('doctor fix merges missing governance defaults and preserves compatible config keys', () => {
+  const { dir, cleanup } = makeTmpDir();
+  const target = path.join(dir, 'target');
+  try {
+    runCli(['init', '--name', 'Doctor Governance Merge', '--dir', target, '--skip-install']);
+    const configPath = path.join(target, '.quiver', 'config.json');
+    const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+    delete config.governance;
+    config.compatible_project_key = { enabled: true };
+    fs.writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`);
+
+    const before = runCli(['doctor'], { cwd: target });
+    const fixed = runCli(['doctor', '--fix'], { cwd: target });
+    const saved = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+
+    assert.match(before, /missing v58 governance configuration/);
+    assert.match(fixed, /Updated \.quiver\/config\.json/);
+    assert.equal(saved.compatible_project_key.enabled, true);
+    assert.equal(saved.governance.schema_version, 1);
+    assert.equal(saved.governance.policy.authorization.default_effect, 'deny');
+  } finally {
+    cleanup();
+  }
+});
+
+test('doctor reports invalid governance without overwriting authorization policy', () => {
+  const { dir, cleanup } = makeTmpDir();
+  const target = path.join(dir, 'target');
+  try {
+    runCli(['init', '--name', 'Doctor Invalid Governance', '--dir', target, '--skip-install']);
+    const configPath = path.join(target, '.quiver', 'config.json');
+    const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+    config.governance.requested_profile = 'unsafe-profile';
+    fs.writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`);
+    const before = fs.readFileSync(configPath, 'utf8');
+
+    const report = runCli(['doctor'], { cwd: target });
+    const fixed = runCli(['doctor', '--fix'], { cwd: target });
+
+    assert.match(report, /invalid v58 governance configuration \(GOVERNANCE_CONFIG_INVALID\)/);
+    assert.match(fixed, /No safe fixes to apply/);
+    assert.equal(fs.readFileSync(configPath, 'utf8'), before);
+  } finally {
+    cleanup();
+  }
+});
+
 test('doctor gives actionable AGENTS.md repair guidance', () => {
   const { dir, cleanup } = makeTmpDir();
   const target = path.join(dir, 'target');

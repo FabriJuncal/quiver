@@ -405,11 +405,19 @@ test('init uses existing project language config for generated docs without --la
     runCli(['init', '--name', 'Configured Project', '--dir', target, '--skip-install']);
 
     assert.match(readText(target, path.join('docs', 'INDEX.md')), /Indice de documentacion/);
-    assert.deepEqual(JSON.parse(readText(target, path.join('.quiver', 'config.json'))), {
+    const config = JSON.parse(readText(target, path.join('.quiver', 'config.json')));
+    assert.deepEqual({
+      layout_version: config.layout_version,
+      language: config.language,
+      custom: config.custom,
+    }, {
       layout_version: 1,
       language: 'es',
       custom: true,
     });
+    assert.equal(config.governance.schema_version, 1);
+    assert.equal(config.governance.requested_profile, 'fast-delivery');
+    assert.equal(config.governance.policy.authorization.default_effect, 'deny');
   } finally {
     cleanup();
   }

@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
+const { isDeepStrictEqual } = require('util');
 const { readAllSlices } = require('./slice-graph');
 const { hasGeneratedProjectSpec, hasInitializedStateMetadata, readState } = require('./state');
 const { worktreeList } = require('./git');
@@ -9,6 +10,12 @@ const {
   buildQuiverInternalGitignore,
   resolveInitPackageScripts,
 } = require('./init-layout');
+const {
+  mergeGovernanceConfig,
+  readGovernanceConfig,
+  validateGovernanceConfig,
+} = require('./ai/review-governance');
+const { ensureQuiverStateIgnored, inspectQuiverStateIgnore } = require('./locks');
 
 const NEW_LAYOUT_REQUIRED_PATHS = [
   'README.md',
@@ -592,11 +599,39 @@ function buildDoctorFixPlan(projectRoot) {
 
   const configPath = path.join(projectRoot, '.quiver', 'config.json');
   if (!fs.existsSync(configPath)) {
+    const config = mergeGovernanceConfig(buildQuiverConfig());
+    validateGovernanceConfig(config.governance);
     fixes.push({
       type: 'write-json-or-text',
       path: '.quiver/config.json',
       description: 'Create missing Quiver config metadata.',
-      content: `${JSON.stringify(buildQuiverConfig(), null, 2)}\n`,
+      content: `${JSON.stringify(config, null, 2)}\n`,
+    });
+  } else {
+    try {
+      readGovernanceConfig(projectRoot, { allowMissing: true });
+      const current = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+      const next = mergeGovernanceConfig(current);
+      validateGovernanceConfig(next.governance);
+      if (!isDeepStrictEqual(current, next)) {
+        fixes.push({
+          type: 'write-json-or-text',
+          path: '.quiver/config.json',
+          description: 'Merge missing v58 governance defaults while preserving compatible project config keys.',
+          content: `${JSON.stringify(next, null, 2)}\n`,
+        });
+      }
+    } catch {
+      // Invalid policy is diagnostic-only; doctor must not overwrite authorization config.
+    }
+  }
+
+  const gitExclude = inspectQuiverStateIgnore(projectRoot);
+  if (gitExclude.available && gitExclude.blanket) {
+    fixes.push({
+      type: 'migrate-quiver-git-exclude',
+      path: '.git/info/exclude',
+      description: 'Replace blanket .quiver/ exclusion with granular runtime-only exclusions.',
     });
   }
 
@@ -640,6 +675,11 @@ function buildDoctorFixPlan(projectRoot) {
 
 function applyDoctorFixPlan(projectRoot, fixes) {
   for (const fix of fixes) {
+    if (fix.type === 'migrate-quiver-git-exclude') {
+      ensureQuiverStateIgnored(projectRoot);
+      continue;
+    }
+
     const targetPath = path.join(projectRoot, fix.path);
     if (fix.type === 'append-lines') {
       appendMissingLines(targetPath, fix.lines);
@@ -757,6 +797,24 @@ function collectEnvironmentWarnings(projectRoot, options = {}) {
 
 function collectDoctorWarnings(projectRoot) {
   const warnings = [];
+
+  const configPath = path.join(projectRoot, '.quiver', 'config.json');
+  if (fs.existsSync(configPath)) {
+    try {
+      const governance = readGovernanceConfig(projectRoot, { allowMissing: true });
+      if (!governance) {
+        warnings.push('missing v58 governance configuration; run doctor --fix to merge default-deny policy without removing compatible keys');
+      }
+    } catch (error) {
+      const code = error?.code || 'GOVERNANCE_CONFIG_INVALID';
+      warnings.push(`invalid v58 governance configuration (${code}); repair the policy explicitly because doctor will not overwrite it`);
+    }
+  }
+
+  const gitExclude = inspectQuiverStateIgnore(projectRoot);
+  if (gitExclude.available && gitExclude.blanket) {
+    warnings.push('blanket .quiver/ Git exclusion hides repository-visible configuration; run doctor --fix to replace it with granular runtime-only exclusions');
+  }
 
   const agentsMissing = countAgentsSections(projectRoot);
   if (agentsMissing.length > 0) {

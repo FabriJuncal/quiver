@@ -6,6 +6,7 @@ const { execFileSync, spawnSync } = require('node:child_process');
 const test = require('node:test');
 
 const BIN_PATH = path.resolve(__dirname, '../../bin/create-quiver.js');
+const { buildDefaultGovernanceConfig } = require('../../src/create-quiver/lib/ai/review-governance');
 
 function makeProject() {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'quiver-config-language-'));
@@ -29,6 +30,7 @@ function cleanEnv(home, extra = {}) {
     LANGUAGE: '',
     LC_ALL: '',
     LC_MESSAGES: '',
+    NODE_PATH: process.env.NODE_PATH,
     QUIVER_LANG: '',
     ...extra,
   };
@@ -56,8 +58,14 @@ test('config language set writes project config and preserves existing keys', ()
   const project = makeProject();
   try {
     const configPath = path.join(project.root, '.quiver', 'config.json');
+    const governance = {
+      ...buildDefaultGovernanceConfig(),
+      compatible_future_control: {
+        enabled: true,
+      },
+    };
     fs.mkdirSync(path.dirname(configPath), { recursive: true });
-    fs.writeFileSync(configPath, `${JSON.stringify({ project: 'demo' }, null, 2)}\n`);
+    fs.writeFileSync(configPath, `${JSON.stringify({ project: 'demo', governance }, null, 2)}\n`);
 
     const output = runCli(project.root, ['config', 'language', 'set', 'es'], cleanEnv(project.home));
     const saved = JSON.parse(fs.readFileSync(configPath, 'utf8'));
@@ -68,8 +76,27 @@ test('config language set writes project config and preserves existing keys', ()
     assert.match(output, /Language: es/);
     assert.deepEqual(saved, {
       project: 'demo',
+      governance,
       language: 'es',
     });
+  } finally {
+    project.cleanup();
+  }
+});
+
+test('config language refuses to overwrite an invalid governance namespace', () => {
+  const project = makeProject();
+  try {
+    const configPath = path.join(project.root, '.quiver', 'config.json');
+    const original = '{"language":"en","governance":{"schema_version":99}}\n';
+    fs.mkdirSync(path.dirname(configPath), { recursive: true });
+    fs.writeFileSync(configPath, original);
+
+    const result = runCliRaw(project.root, ['config', 'language', 'set', 'es'], cleanEnv(project.home));
+
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /GOVERNANCE_CONFIG_INVALID/);
+    assert.equal(fs.readFileSync(configPath, 'utf8'), original);
   } finally {
     project.cleanup();
   }

@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const { execSync } = require('child_process');
+const { isDeepStrictEqual } = require('util');
 const {
   buildQuiverConfig,
   buildQuiverInternalGitignore,
@@ -8,6 +9,12 @@ const {
   resolveInitPackageScripts,
 } = require('./init-layout');
 const { resolveLocalizedTemplatePath } = require('./i18n/templates');
+const {
+  mergeGovernanceConfig,
+  readGovernanceConfig,
+  validateGovernanceConfig,
+} = require('./ai/review-governance');
+const { ensureQuiverStateIgnored } = require('./locks');
 const { writeState } = require('./state');
 
 function ensureDir(dirPath) {
@@ -261,6 +268,44 @@ function mergeRootGitignore(projectRoot) {
   ensureDir(path.dirname(gitignorePath));
   fs.writeFileSync(gitignorePath, mergeLineList(existingText, ROOT_GITIGNORE_DEFAULTS));
   return exists ? 'merged' : 'created';
+}
+
+function mergeQuiverInternalGitignore(projectRoot) {
+  const gitignorePath = quiverInternalPaths(projectRoot).gitignorePath;
+  const exists = fs.existsSync(gitignorePath);
+  const existingText = exists
+    ? fs.readFileSync(gitignorePath, 'utf8')
+    : '';
+  const defaults = buildQuiverInternalGitignore().split(/\r?\n/).filter(Boolean);
+
+  ensureDir(path.dirname(gitignorePath));
+  fs.writeFileSync(gitignorePath, mergeLineList(existingText, defaults));
+  return exists ? 'merged' : 'created';
+}
+
+function mergeQuiverConfig(projectRoot) {
+  const configPath = quiverInternalPaths(projectRoot).configPath;
+  const exists = fs.existsSync(configPath);
+  let current = buildQuiverConfig();
+
+  if (exists) {
+    // Validate the existing root and governance namespace before rewriting any bytes.
+    readGovernanceConfig(projectRoot, { allowMissing: true });
+    current = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+  }
+
+  const next = mergeGovernanceConfig(current);
+  validateGovernanceConfig(next.governance);
+  const serialized = `${JSON.stringify(next, null, 2)}\n`;
+  const changed = !exists || !isDeepStrictEqual(current, next);
+
+  if (changed) {
+    ensureDir(path.dirname(configPath));
+    fs.writeFileSync(configPath, serialized);
+  }
+
+  if (!exists) return 'created';
+  return changed ? 'merged' : 'preserved';
 }
 
 function resolvePackageName(projectRoot, options = {}) {
@@ -736,15 +781,12 @@ function initializeProjectDocs(options) {
   }
 
   const operations = [];
-  if (!fs.existsSync(internalPaths.configPath)) {
-    fs.writeFileSync(internalPaths.configPath, `${JSON.stringify(buildQuiverConfig(), null, 2)}\n`);
-    operations.push({ source: 'Quiver config', destination: '.quiver/config.json', result: 'created' });
-  } else {
-    operations.push({ source: 'Quiver config', destination: '.quiver/config.json', result: 'skipped' });
-  }
+  const configResult = mergeQuiverConfig(projectRoot);
+  operations.push({ source: 'Quiver config', destination: '.quiver/config.json', result: configResult });
 
-  fs.writeFileSync(internalPaths.gitignorePath, buildQuiverInternalGitignore());
-  operations.push({ source: 'Quiver internal gitignore', destination: '.quiver/.gitignore', result: 'updated' });
+  const internalGitignoreResult = mergeQuiverInternalGitignore(projectRoot);
+  operations.push({ source: 'Quiver internal gitignore', destination: '.quiver/.gitignore', result: internalGitignoreResult });
+  ensureQuiverStateIgnored(projectRoot);
 
   const rootGitignoreResult = mergeRootGitignore(projectRoot);
   operations.push({ source: 'root gitignore defaults', destination: '.gitignore', result: rootGitignoreResult });

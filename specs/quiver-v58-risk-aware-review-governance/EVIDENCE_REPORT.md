@@ -1,8 +1,6 @@
 # Evidence Report — Quiver v58 Risk-aware Review Governance
 
-Status: Documentary foundation validated; runtime evidence pending
-
-No runtime implementation or test result is claimed by this document.
+Status: Runtime foundation validated through slice-01; later-slice evidence pending
 
 ## Documentary foundation evidence
 
@@ -13,7 +11,7 @@ No runtime implementation or test result is claimed by this document.
 | Slice contracts | 7 schema-valid serial slices with safe scope and dependencies | Passed |
 | Handoffs | 7 execution briefs and 7 closure briefs validated | Passed |
 | Package validation | Strict spec, local gates, Markdown, whitespace, expected-read, and diff checks | Passed |
-| Runtime source and tests | No change under src/ or tests/ | Passed |
+| Runtime source and tests during slice-00 | No change under src/ or tests/ in the documentary slice | Passed |
 
 Detailed documentary evidence is recorded in slices/slice-00-governance-contracts/CLOSURE_BRIEF.md.
 
@@ -21,14 +19,52 @@ Detailed documentary evidence is recorded in slices/slice-00-governance-contract
 
 | Acceptance criterion | Owning slice | Evidence to record | Result |
 |---|---|---|---|
-| AC-01 to AC-04 | slice-01 | Contract, config, profile, actor, and finding validation outputs | Pending |
-| AC-05 to AC-06 | slice-01 | Phase-policy and invalid-provider fixtures | Pending |
+| AC-01 to AC-04 | slice-01 | Contract, config, profile, actor, finding lifecycle, isolation, and authorization outputs | Passed for slice-01 contract |
+| AC-05 to AC-06 | slice-01 | Phase-policy, reconciliation, invalid-provider, and retained-state fixtures | Passed |
 | AC-07 to AC-08 | slice-02 and slice-04 | Budget concurrency, exhaustion, and run-isolation evidence | Pending |
 | AC-09 and AC-12 | slice-04 | Digest, atomicity, tampering, and representation tests | Pending |
 | AC-10 | slice-03 | Condition eligibility and fail-closed decision tests | Pending |
 | AC-11 | slice-05 | Spec, slice, PR propagation and gate evidence | Pending |
-| AC-13 to AC-14 | slice-05 and slice-06 | CLI/JSON contract and redaction evidence | Pending |
+| AC-13 | slice-04 and slice-06 | CLI/JSON code, status, exit, and representation evidence | Pending |
+| AC-14 | slice-01, slice-05, and slice-06 | Review-evidence redaction passed in slice-01; downstream/export surfaces pending | Partial |
 | AC-15 to AC-16 | slice-06 | Migration, rollback, directed integration, and documentation checks | Pending |
+
+## Slice-01 Evidence — phase-aware blocking policy
+
+Executed with exit code 0:
+
+```bash
+NODE_PATH='/Users/fabrijk/Documents/Work/Proyectos Personales/nika/frameworks/quiver/node_modules' node --test tests/lib/ai-review-governance.test.js tests/lib/ai-providers.test.js tests/lib/ai-artifacts.test.js tests/lib/ai-run-state.test.js tests/lib/init-layout.test.js tests/lib/init-docs.test.js tests/lib/doctor.test.js tests/commands/ai-review-plan.test.js tests/commands/ai-plan.test.js tests/commands/cli-contract.test.js tests/commands/config-language.test.js tests/commands/doctor.test.js tests/commands/init-profiles.test.js
+npm test
+node bin/create-quiver.js slice check --local specs/quiver-v58-risk-aware-review-governance/slices/slice-01-phase-aware-blocking-policy/slice.json
+node bin/create-quiver.js spec validate specs/quiver-v58-risk-aware-review-governance --strict
+git diff --check
+```
+
+Results:
+
+- 200 directed runtime tests passed with no failures.
+- The full portable regression passed 819 tests with no failures.
+- The local slice gate and strict seven-slice spec validation passed.
+- Slice schema validation passed for 309 current runtime fixtures.
+- Repository docs checks and direct lint of the changed spec Markdown passed.
+- `git diff --check` passed.
+- Scope assertion checked 34 changed paths with none outside `allowed_write_paths`.
+- Independent governance/security review ended approved with no mandatory findings pending.
+- Independent final review ended approved; its separate 77-test focal run passed and cross-process lock exclusion was reproduced.
+
+Covered behavior:
+
+- Governance defaults, compatible-key preservation, secret rejection, and granular runtime ignores.
+- CLI/config profile selection, sensitive forcing, minimum controls, propagated policy identity, and anti-downgrade.
+- Stable provider identity separated from explicit default-deny bindings, roles, independence, and authorization.
+- Strict provider parsing, canonical finding schemas, stable identity, reopen/supersession lifecycle, and ambiguous-state rejection.
+- Deterministic phase-aware blocker projection and provider-aggregate non-authority.
+- Invalid output preserving prior valid state with no approval or phase transition.
+- Run ownership, foreign-run rejection, closed-run rejection, locked correlation, review/revise transitions, and approval recheck after identity resolution.
+- Redaction of provider streams, serialized errors, raw evidence, prompts, and rendered review projections.
+
+Detailed evidence, scope boundaries, and pending later-slice work are recorded in `slices/slice-01-phase-aware-blocking-policy/CLOSURE_BRIEF.md`.
 
 ## Evidence required from each slice
 
@@ -61,7 +97,11 @@ Record only deviations observed during implementation. Each entry must identify:
 - approved replacement or follow-up;
 - owner and status.
 
-Current documentary deviation: repository lifecycle makes slice-00 documentary-only although the master roadmap labels it finding schema and enums. SPEC.md Decision 9 freezes those contracts in slice-00 and assigns runtime implementation to slice-01. No runtime deviation is recorded because runtime execution has not started.
+Current documentary deviation: repository lifecycle makes slice-00 documentary-only although the master roadmap labels it finding schema and enums. SPEC.md Decision 9 freezes those contracts in slice-00 and assigns runtime implementation to slice-01.
+
+Post-PR CI exposed one directly affected historical init-profile assertion outside the original file list. The slice scope and directed command were amended only to include `tests/commands/init-profiles.test.js`; product behavior and acceptance scope did not change.
+
+Automatic source and capture timing for run creator, reviewer, and executor are neither defined nor assigned by the frozen contracts, so no implicit attribution was invented. This provenance contract requires explicit future approval before use; slice-04 owns only decision-time actor revalidation and ledger recording.
 
 ## Closure rule
 

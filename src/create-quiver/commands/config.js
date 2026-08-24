@@ -11,6 +11,7 @@ const {
   writeProjectLanguageConfig,
 } = require('../lib/i18n/language');
 const { createTranslator } = require('../lib/i18n/catalog');
+const { readGovernanceConfig } = require('../lib/ai/review-governance');
 
 function formatError(message) {
   return `create-quiver: ${message}`;
@@ -40,6 +41,17 @@ function validateLanguageForSet(language, translator = createTranslator()) {
     })));
   }
   return normalized;
+}
+
+function assertValidProjectGovernance(repoRoot) {
+  try {
+    readGovernanceConfig(repoRoot, { allowMissing: true });
+  } catch (error) {
+    if (error?.code === 'GOVERNANCE_CONFIG_INVALID') {
+      throw new Error(formatError(`${error.code}: ${error.message}`));
+    }
+    throw error;
+  }
 }
 
 function runLanguageShow(repoRoot, options = {}) {
@@ -113,6 +125,10 @@ function runConfig(repoRoot, options = {}) {
     throw new Error(formatError(translator.t('config.error.unsupported_section', {
       section: options.section || '(missing)',
     })));
+  }
+
+  if (options.global !== true) {
+    assertValidProjectGovernance(repoRoot);
   }
 
   if (options.command === 'show') {

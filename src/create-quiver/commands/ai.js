@@ -96,22 +96,36 @@ const {
   summarizePlanReview,
 } = require('../lib/ai/plan-review');
 const {
+  GovernanceError,
+  PROVIDER_OUTPUT_INVALID,
+  authorizeGovernanceAction,
+  hasGovernanceConfig,
+  readGovernanceConfig,
+  resolveEffectiveProfile,
+  stableStringify,
+} = require('../lib/ai/review-governance');
+const {
   buildSpecGenerationManifest,
   describeSpecGeneration,
   generateSpecArtifacts,
   validateTechnicalPlanSpecContract,
 } = require('../lib/ai/spec-generator');
-const { buildProviderInvocation, runProvider } = require('../lib/ai/providers');
+const { buildProviderInvocation, resolveGitHubCliProviderSubject, runProvider } = require('../lib/ai/providers');
 const { preflightProvider } = require('../lib/ai/preflight');
 const {
   createAiRun,
+  bindAiRunGovernance,
   ensureAiRun,
   formatAiRunResume,
   formatAiRunStatus,
   listAiRuns,
+  readAiRun,
+  readRunGovernance,
   recordAiRunApproval,
   resolveAiRun,
+  resolveGovernedAiRun,
   updateAiRunPhase,
+  withAiRunLock,
 } = require('../lib/ai/run-state');
 const {
   agentProfilesPath,
@@ -158,6 +172,210 @@ const ANALYZE_PROJECT_KIND = 'quiver-project-analysis-plan';
 
 function formatError(message) {
   return `create-quiver: ${message}`;
+}
+
+function governanceIsEnabled(repoRoot, options = {}, activeRun = null) {
+  return Boolean(options.governanceProfile)
+    || hasGovernanceConfig(repoRoot)
+    || Boolean(activeRun?.governance);
+}
+
+function resolveGovernanceRuntime(repoRoot, options = {}, activeRun = null) {
+  if (!governanceIsEnabled(repoRoot, options, activeRun)) {
+    return null;
+  }
+  const configuredGovernance = readGovernanceConfig(repoRoot, { allowMissing: true });
+  if (!configuredGovernance) {
+    throw new GovernanceError(
+      'GOVERNANCE_CONFIG_MISSING',
+      activeRun?.run_id
+        ? `Governance config is required to continue governed run '${activeRun.run_id}'.`
+        : 'Governance config is required before starting a governed run.',
+      { run_id: activeRun?.run_id || null },
+    );
+  }
+  const governance = configuredGovernance;
+  const requirementCategories = Array.isArray(governance.requirement_categories)
+    ? [...new Set(governance.requirement_categories
+      .map((value) => String(value || '').trim())
+      .filter(Boolean))].sort()
+    : [];
+  const profile = resolveEffectiveProfile({
+    governance,
+    cliProfile: options.governanceProfile || activeRun?.governance?.requested_profile || undefined,
+    requirementCategories,
+    activeRunProfile: activeRun?.governance || null,
+  });
+  if (activeRun?.governance
+      && (activeRun.governance.policy_version !== profile.policy_version
+        || activeRun.governance.policy_digest !== profile.policy_digest)) {
+    throw new GovernanceError(
+      'GOVERNANCE_POLICY_MISMATCH',
+      `Governance policy changed after run '${activeRun.run_id}' was bound.`,
+      {
+        run_id: activeRun.run_id,
+        expected_policy_version: activeRun.governance.policy_version,
+        expected_policy_digest: activeRun.governance.policy_digest,
+        actual_policy_version: profile.policy_version,
+        actual_policy_digest: profile.policy_digest,
+      },
+    );
+  }
+  return {
+    governance,
+    profile,
+    binding: {
+      requested_profile: profile.requested_profile,
+      effective_profile: profile.effective_profile,
+      policy_version: profile.policy_version,
+      policy_digest: profile.policy_digest,
+      requirement_categories: requirementCategories,
+    },
+  };
+}
+
+function prepareGovernedRun(repoRoot, options = {}) {
+  const explicitRun = options.runId ? readAiRun(repoRoot, options.runId) : null;
+  if (!governanceIsEnabled(repoRoot, options, explicitRun)) {
+    return null;
+  }
+  if (explicitRun?.status === 'closed') {
+    resolveGovernedAiRun(repoRoot, options.runId);
+  }
+  const activeRun = options.runId ? explicitRun : resolveGovernedAiRun(repoRoot);
+  const runtime = resolveGovernanceRuntime(repoRoot, options, activeRun);
+  if (activeRun && options.artifactPhase) {
+    assertGovernedRunOwnsArtifact(repoRoot, activeRun, options.artifactPhase, options.artifact);
+  }
+  if (!activeRun && options.artifactPhase) {
+    throw new GovernanceError(
+      'AI_RUN_REQUIRED',
+      'Governed plan review requires an existing run that owns the current versioned technical-plan draft.',
+      { artifact: normalizeRunArtifactPath(repoRoot, options.artifact) || null },
+    );
+  }
+  if (options.readOnly === true) {
+    return { ...runtime, run: activeRun };
+  }
+  const run = activeRun || createAiRun(repoRoot, {
+    command: options.command,
+    input: options.input,
+    runId: options.runId,
+    phase: options.phase,
+    governance: runtime.binding,
+  });
+  const bindingMatches = activeRun && Object.entries(runtime.binding)
+    .every(([key, value]) => JSON.stringify(activeRun.governance?.[key]) === JSON.stringify(value));
+  const bound = activeRun && !bindingMatches
+    ? bindAiRunGovernance(repoRoot, run.run_id, runtime.binding, { command: options.command })
+    : run;
+  return { ...runtime, run: bound };
+}
+
+function governanceFailure(result) {
+  const code = result?.code || 'AUTHORIZATION_DENIED';
+  const message = result?.message || 'Governance authorization denied.';
+  return new Error(formatError(`${code}: ${message}`));
+}
+
+function assertGovernedPlanReviewCorrelation(repoRoot, review, run, runtime) {
+  const state = readRunGovernance(repoRoot, run.run_id);
+  const currentReview = state?.reviews?.find((item) => item.review_id === state.current_review_id) || null;
+  const expected = {
+    run_id: run.run_id,
+    review_id: state?.current_review_id || null,
+    requested_profile: run.governance?.requested_profile || null,
+    effective_profile: run.governance?.effective_profile || null,
+    policy_version: run.governance?.policy_version || null,
+    policy_digest: run.governance?.policy_digest || null,
+  };
+  const runtimeBinding = runtime?.binding || {};
+  const mismatches = [];
+
+  if (review?.meta?.governed !== true || !state || !currentReview || !expected.review_id) {
+    mismatches.push('current_governed_review');
+  }
+  for (const [field, value] of Object.entries(expected)) {
+    if (review?.meta?.[field] !== value) mismatches.push(`meta.${field}`);
+    if (currentReview?.[field] !== value) mismatches.push(`canonical.${field}`);
+    if (field !== 'run_id' && field !== 'review_id' && runtimeBinding[field] !== value) {
+      mismatches.push(`runtime.${field}`);
+    }
+  }
+  if (review?.meta?.source_file !== currentReview?.source_file
+      || review?.meta?.source_kind !== currentReview?.source_kind
+      || review?.meta?.source_version !== currentReview?.source_version) {
+    mismatches.push('source_identity');
+  }
+  if (currentReview) {
+    const projection = currentReview.projection;
+    const expectedReviewResult = {
+      schema_version: 2,
+      ...projection,
+      next_command: projection.approval_recommendation === 'revise'
+        ? 'npx create-quiver ai revise --phase technical-plan --input <feedback.md> --dry-run'
+        : `npx create-quiver ai approve --phase technical-plan --version ${currentReview.source_version || '<n>'}`,
+      risks: projection.later_phase_transfers,
+      findings: (state.findings || []).filter((finding) => finding.state === 'open'),
+      source: 'governed-canonical',
+    };
+    if (stableStringify(review?.meta?.review_result) !== stableStringify(expectedReviewResult)) {
+      mismatches.push('review_result_projection');
+    }
+  }
+
+  if (mismatches.length > 0) {
+    throw new GovernanceError(
+      'GOVERNANCE_STATE_INVALID',
+      `The current plan review is not correlated with governed run '${run.run_id}'.`,
+      { run_id: run.run_id, mismatches: [...new Set(mismatches)] },
+    );
+  }
+  return currentReview;
+}
+
+function normalizeRunArtifactPath(repoRoot, value) {
+  if (!value) return '';
+  const resolved = path.isAbsolute(value) ? value : path.resolve(repoRoot, value);
+  return path.relative(repoRoot, resolved).split(path.sep).join('/');
+}
+
+function assertGovernedRunOwnsArtifact(repoRoot, run, phase, artifactPath) {
+  const expectedArtifact = normalizeRunArtifactPath(repoRoot, artifactPath);
+  const matchingHistory = [...(run.history || [])].reverse().find((event) => (
+    event?.phase === phase
+    && normalizeRunArtifactPath(repoRoot, event.artifact) === expectedArtifact
+  ));
+  if (!expectedArtifact || !matchingHistory) {
+    throw new GovernanceError(
+      'GOVERNANCE_STATE_INVALID',
+      `Artifact '${expectedArtifact || '(missing)'}' is not owned by governed run '${run.run_id}' at phase '${phase}'.`,
+      { run_id: run.run_id, phase, artifact: expectedArtifact || null },
+    );
+  }
+}
+
+function assertGovernedApprovalCandidateCorrelation(repoRoot, run, phase, version, review = null) {
+  const report = buildApprovalCandidateReport(repoRoot, phase);
+  const candidate = report.candidates.find((item) => Number(item.version) === Number(version));
+  if (!candidate) {
+    throw new GovernanceError(
+      'GOVERNANCE_STATE_INVALID',
+      `Approval candidate v${version} is not available for governed run '${run.run_id}'.`,
+      { run_id: run.run_id, phase, version: Number(version) || null },
+    );
+  }
+  assertGovernedRunOwnsArtifact(repoRoot, run, `${phase}-draft`, candidate.path);
+  if (phase === 'technical-plan'
+      && (Number(review?.meta?.source_version) !== Number(candidate.version)
+        || normalizeRunArtifactPath(repoRoot, review?.meta?.source_file)
+          !== normalizeRunArtifactPath(repoRoot, candidate.path))) {
+    throw new GovernanceError(
+      'GOVERNANCE_STATE_INVALID',
+      `The governed plan review does not target technical-plan candidate v${candidate.version}.`,
+      { run_id: run.run_id, version: candidate.version },
+    );
+  }
 }
 
 function normalizeAnalyzeBudget(value, fallback, flagName) {
@@ -3393,6 +3611,15 @@ async function runPlan(repoRoot, options = {}) {
   if (!inputText) {
     inputText = readTextFile(inputPath, repoRoot);
   }
+  const governedRun = prepareGovernedRun(repoRoot, {
+    ...options,
+    command: `ai plan --phase ${phase}`,
+    input: inputPath,
+    phase: 'created',
+    artifact: phase === 'technical-plan' && options.revise !== true ? inputPath : undefined,
+    artifactPhase: phase === 'technical-plan' && options.revise !== true ? 'acceptance-approved' : undefined,
+    readOnly: options.dryRun === true || options.printPrompt === true,
+  });
   const contextInfo = buildPlanContext({
     role,
     context,
@@ -3431,6 +3658,7 @@ async function runPlan(repoRoot, options = {}) {
       phase,
       invocation,
       profile: runtimeProfile,
+      governance: governedRun?.profile || null,
     };
     process.stdout.write(formatDryRunReport({ ...report, language: options.language }));
     if (options.withPlanner === true) {
@@ -3455,6 +3683,7 @@ async function runPlan(repoRoot, options = {}) {
       invocation,
       prompt,
       profile: runtimeProfile,
+      governance: governedRun?.profile || null,
     };
     process.stdout.write(formatPromptOnlyReport({ ...report, language: options.language }));
     return report;
@@ -3516,7 +3745,7 @@ async function runPlan(repoRoot, options = {}) {
   }
 
   await confirmInteractiveAction(`Save ${phase} planner draft?`, options);
-  const lifecycleRun = ensureAiRun(repoRoot, {
+  const lifecycleRun = governedRun?.run || ensureAiRun(repoRoot, {
     command: `ai plan --phase ${phase}`,
     input: inputPath,
     runId: options.runId,
@@ -3530,18 +3759,55 @@ async function runPlan(repoRoot, options = {}) {
       clean_output_source: clean.source,
       stripped_prompt_echo: clean.strippedPromptEcho,
       input_compaction: inputCompaction,
+      governance: governedRun?.binding || null,
     },
   });
-  const draft = savePlannerDraft(repoRoot, phase, inputPath, cleanOutput, {
-    rawArtifactPath: rawArtifact.path,
-    outputSource: clean.source,
-    inputCompaction,
-    reviewPath,
-  });
-  updateAiRunPhase(repoRoot, lifecycleRun.run_id, phase === 'acceptance' ? 'acceptance-draft' : 'technical-plan-draft', {
-    artifact: path.relative(repoRoot, draft.filePath).split(path.sep).join('/'),
-    command: `ai plan --phase ${phase}`,
-  });
+  const persistDraft = (locked = false) => {
+    if (governedRun) {
+      const lockedRun = readAiRun(repoRoot, lifecycleRun.run_id);
+      if (lockedRun?.status === 'closed') {
+        throw new GovernanceError('AI_RUN_CLOSED', `Governed plan cannot mutate closed run '${lockedRun.run_id}'.`);
+      }
+      resolveGovernanceRuntime(repoRoot, options, lockedRun);
+      const allowedPhases = phase === 'acceptance'
+        ? ['created', 'onboarding-ready', 'acceptance-draft']
+        : options.revise === true
+          ? ['technical-plan-draft', 'technical-plan-reviewed']
+          : ['acceptance-approved', 'technical-plan-draft'];
+      if (!allowedPhases.includes(lockedRun?.phase)) {
+        throw new GovernanceError(
+          'AI_RUN_PHASE_INVALID',
+          `Governed ${phase} planning cannot publish a draft from run phase '${lockedRun?.phase || 'missing'}'.`,
+          { run_id: lockedRun?.run_id || null, phase: lockedRun?.phase || null },
+        );
+      }
+    }
+    const draft = savePlannerDraft(repoRoot, phase, inputPath, cleanOutput, {
+      rawArtifactPath: rawArtifact.path,
+      outputSource: clean.source,
+      inputCompaction,
+      reviewPath,
+    });
+    const savedDraft = readPhaseApproval(repoRoot, phase).meta?.drafts
+      ?.find((item) => Number(item.version) === Number(draft.version));
+    updateAiRunPhase(repoRoot, lifecycleRun.run_id, phase === 'acceptance' ? 'acceptance-draft' : 'technical-plan-draft', {
+      artifact: savedDraft?.path || path.relative(repoRoot, draft.filePath).split(path.sep).join('/'),
+      command: `ai plan --phase ${phase}`,
+      locked,
+      reviewRevision: options.revise === true && phase === 'technical-plan',
+    });
+    return draft;
+  };
+  if (governedRun) {
+    withAiRunLock(
+      repoRoot,
+      lifecycleRun.run_id,
+      { command: `ai plan --phase ${phase} commit` },
+      () => persistDraft(true),
+    );
+  } else {
+    persistDraft();
+  }
 
   return {
     task: 'plan',
@@ -3564,6 +3830,15 @@ async function runReviewPlan(repoRoot, options = {}) {
   const resolved = resolveTechnicalPlanReviewInput(repoRoot, options.input || undefined);
   const inputPath = resolved.inputPath;
   const inputText = readTextFile(inputPath, repoRoot);
+  const governedRun = prepareGovernedRun(repoRoot, {
+    ...options,
+    command: 'ai review-plan',
+    input: inputPath,
+    phase: 'technical-plan-draft',
+    artifact: inputPath,
+    artifactPhase: 'technical-plan-draft',
+    readOnly: options.dryRun === true || options.printPrompt === true,
+  });
   const pack = buildContextPackMetadata({
     role,
     packName: context,
@@ -3573,6 +3848,12 @@ async function runReviewPlan(repoRoot, options = {}) {
     pack,
     inputText,
     inputPath,
+    governed: Boolean(governedRun),
+    governance: governedRun?.governance || null,
+    governanceProfile: governedRun?.profile || null,
+    canonicalFindings: governedRun?.run
+      ? (readRunGovernance(repoRoot, governedRun.run.run_id)?.findings || [])
+      : [],
   });
   assertProviderPromptWithinLimit(built.prompt, options);
   let invocation;
@@ -3605,6 +3886,7 @@ async function runReviewPlan(repoRoot, options = {}) {
       inputKind: resolved.kind,
       inputVersion: resolved.version,
       profile: runtimeProfile,
+      governance: governedRun?.profile || null,
     };
     process.stdout.write(formatDryRunReport({
       task: 'review-plan',
@@ -3639,6 +3921,7 @@ async function runReviewPlan(repoRoot, options = {}) {
       inputKind: resolved.kind,
       inputVersion: resolved.version,
       profile: runtimeProfile,
+      governance: governedRun?.profile || null,
     };
     process.stdout.write(formatPromptOnlyReport({ ...report, language: options.language }));
     return report;
@@ -3685,13 +3968,16 @@ async function runReviewPlan(repoRoot, options = {}) {
     throw annotateProviderError(result.error || new Error('provider run failed'), 'review-plan');
   }
 
-  const lifecycleRun = ensureAiRun(repoRoot, {
+  const lifecycleRun = governedRun?.run || ensureAiRun(repoRoot, {
     command: 'ai review-plan',
     input: inputPath,
     runId: options.runId,
     phase: 'technical-plan-reviewed',
   });
   const clean = extractCleanProviderOutput(result, { prompt: built.prompt, projectRoot: repoRoot });
+  const contractualClean = governedRun
+    ? extractCleanProviderOutput(result, { prompt: built.prompt, projectRoot: repoRoot, redact: false })
+    : clean;
   const rawArtifact = writeRawProviderArtifact(repoRoot, lifecycleRun.run_id, 'ai-review-plan', result, {
     metadata: {
       phase: 'plan-review',
@@ -3701,17 +3987,32 @@ async function runReviewPlan(repoRoot, options = {}) {
       prompt_bytes: invocation.promptLength,
       clean_output_source: clean.source,
       stripped_prompt_echo: clean.strippedPromptEcho,
+      contractual: false,
+      provider_output_redacted: result.outputRedaction || null,
+      governance: governedRun?.binding || null,
     },
   });
-  writeCleanProviderOutput(clean);
+  if (governedRun && result.outputRedaction?.[contractualClean.source] === true) {
+    throw new GovernanceError(
+      PROVIDER_OUTPUT_INVALID,
+      `Provider ${contractualClean.source} required secret redaction and cannot be accepted as contractual review evidence.`,
+      { raw_artifact_path: rawArtifact.path, source: contractualClean.source },
+    );
+  }
   const saved = savePlanReview(repoRoot, {
-    contents: clean.cleanOutput,
+    contents: contractualClean.cleanOutput,
     inputPath,
     inputKind: resolved.kind,
     inputVersion: resolved.version,
     outputSource: clean.source,
     rawArtifactPath: rawArtifact.path,
+    governance: governedRun?.governance || null,
+    profile: governedRun?.profile || null,
+    runId: governedRun?.run?.run_id || null,
   });
+  if (!governedRun) {
+    writeCleanProviderOutput(clean);
+  }
   const relativePath = path.relative(repoRoot, saved.filePath).split(path.sep).join('/');
   const summary = localizeApprovalSummary(summarizePlanReview(repoRoot), createTranslator(options.language)).trimEnd();
   const translator = createTranslator(options.language);
@@ -3728,6 +4029,8 @@ async function runReviewPlan(repoRoot, options = {}) {
     filePath: relativePath,
     invocation,
     result,
+    governance: governedRun?.profile || null,
+    reviewId: saved.reviewId || null,
   };
 }
 
@@ -4034,23 +4337,61 @@ async function runApprove(repoRoot, options = {}) {
     throw new Error(formatError(translator.t('ai.approve.error.input_not_supported', { phase, input: options.input })));
   }
 
+  const explicitRun = options.runId ? readAiRun(repoRoot, options.runId) : null;
+  let governedApproval = null;
+  if (governanceIsEnabled(repoRoot, options, explicitRun)) {
+    const run = options.runId
+      ? resolveGovernedAiRun(repoRoot, options.runId)
+      : resolveGovernedAiRun(repoRoot);
+    if (!run) {
+      throw new Error(formatError('AI_RUN_REQUIRED: governed approval requires an existing --run <id>'));
+    }
+    governedApproval = {
+      ...resolveGovernanceRuntime(repoRoot, options, run),
+      run,
+    };
+  }
+
+  let technicalPlanReview = null;
+  let governedCanonicalReview = null;
+  if (phase === 'technical-plan') {
+    technicalPlanReview = readPlanReview(repoRoot);
+    if (governedApproval) {
+      governedCanonicalReview = assertGovernedPlanReviewCorrelation(
+        repoRoot,
+        technicalPlanReview,
+        governedApproval.run,
+        governedApproval,
+      );
+    }
+  }
+
   const version = await resolveApprovalVersion(repoRoot, phase, options);
 
   if (phase === 'technical-plan') {
-    const review = readPlanReview(repoRoot);
-    if (review.status !== 'unapproved' && review.status !== 'reviewed') {
-      throw new Error(formatError(translator.t('ai.approve.error.review_required', { status: review.status })));
+    if (technicalPlanReview.status !== 'unapproved' && technicalPlanReview.status !== 'reviewed') {
+      throw new Error(formatError(translator.t('ai.approve.error.review_required', { status: technicalPlanReview.status })));
     }
-    if (reviewBlocksApproval(review)) {
-      const result = review.meta.review_result;
-      const requiredFixes = Array.isArray(result.required_fixes) ? result.required_fixes.length : 0;
+    if (governedCanonicalReview?.projection?.blocking === true
+        || (!governedCanonicalReview && reviewBlocksApproval(technicalPlanReview))) {
+      const reviewResult = governedCanonicalReview?.projection || technicalPlanReview.meta.review_result;
+      const requiredFixes = Array.isArray(reviewResult.required_fixes) ? reviewResult.required_fixes.length : 0;
       throw new Error(formatError(translator.t('ai.approve.error.review_blocked', {
-        recommendation: result.approval_recommendation,
+        recommendation: reviewResult.approval_recommendation,
         fixes: requiredFixes,
-        command: result.next_command,
+        command: technicalPlanReview.meta.review_result.next_command,
       })));
     }
     assertTechnicalPlanDraftHasSpecContract(repoRoot, version);
+  }
+  if (governedApproval) {
+    assertGovernedApprovalCandidateCorrelation(
+      repoRoot,
+      governedApproval.run,
+      phase,
+      version,
+      technicalPlanReview,
+    );
   }
 
   const inputText = '';
@@ -4066,37 +4407,138 @@ async function runApprove(repoRoot, options = {}) {
     };
   }
 
-  const result = approvePlannerPhase(repoRoot, phase, options.input || '', inputText, {
-    version: version || undefined,
-  });
-  const lifecycleRun = ensureAiRun(repoRoot, {
-    command: `ai approve --phase ${phase}`,
-    input: options.input || result.filePath,
-    runId: options.runId,
-  });
-  recordAiRunApproval(repoRoot, lifecycleRun.run_id, {
-    artifact: path.relative(repoRoot, result.filePath).split(path.sep).join('/'),
-    phase,
-    source_file: options.input || `draft version ${version}`,
-    version: result.version || null,
-  });
-  updateAiRunPhase(repoRoot, lifecycleRun.run_id, phase === 'acceptance' ? 'acceptance-approved' : 'technical-plan-approved', {
-    artifact: path.relative(repoRoot, result.filePath).split(path.sep).join('/'),
-    command: `ai approve --phase ${phase}`,
-  });
-  process.stdout.write(formatApprovalResult({
-    ...result,
-    sourceFile: options.input || `draft version ${version}`,
-  }, repoRoot, options));
+  const commitApproval = (governanceContext = null) => {
+    const result = approvePlannerPhase(repoRoot, phase, options.input || '', inputText, {
+      version: version || undefined,
+    });
+    const lifecycleRun = governanceContext?.run || ensureAiRun(repoRoot, {
+      command: `ai approve --phase ${phase}`,
+      input: options.input || result.filePath,
+      runId: options.runId,
+    });
+    recordAiRunApproval(repoRoot, lifecycleRun.run_id, {
+      artifact: path.relative(repoRoot, result.filePath).split(path.sep).join('/'),
+      phase,
+      source_file: options.input || `draft version ${version}`,
+      version: result.version || null,
+      governance: governanceContext ? {
+        requested_profile: governanceContext.profile.requested_profile,
+        effective_profile: governanceContext.profile.effective_profile,
+        policy_version: governanceContext.profile.policy_version,
+        policy_digest: governanceContext.profile.policy_digest,
+        actor: governanceContext.actor,
+        authorization: governanceContext.authorization.evidence,
+      } : null,
+    });
+    updateAiRunPhase(repoRoot, lifecycleRun.run_id, phase === 'acceptance' ? 'acceptance-approved' : 'technical-plan-approved', {
+      artifact: path.relative(repoRoot, result.filePath).split(path.sep).join('/'),
+      command: `ai approve --phase ${phase}`,
+      locked: Boolean(governanceContext),
+    });
+    process.stdout.write(formatApprovalResult({
+      ...result,
+      sourceFile: options.input || `draft version ${version}`,
+    }, repoRoot, options));
 
-  return {
-    task: 'approve',
-    phase,
-    input: options.input,
-    filePath: path.relative(repoRoot, result.filePath).split(path.sep).join('/'),
-    createdAt: result.createdAt,
-    version: result.version || null,
+    return {
+      task: 'approve',
+      phase,
+      input: options.input,
+      filePath: path.relative(repoRoot, result.filePath).split(path.sep).join('/'),
+      createdAt: result.createdAt,
+      version: result.version || null,
+      governance: governanceContext?.profile || null,
+    };
   };
+
+  if (!governedApproval) {
+    return commitApproval();
+  }
+
+  const actor = options.actor || await (options.resolveActorFn || resolveGitHubCliProviderSubject)({
+    cwd: repoRoot,
+    env: options.env,
+    runner: options.identityRunner,
+    host: options.githubHost,
+  });
+  return withAiRunLock(
+    repoRoot,
+    governedApproval.run.run_id,
+    { command: `ai approve --phase ${phase}` },
+    () => {
+      const lockedRun = readAiRun(repoRoot, governedApproval.run.run_id);
+      const requiredRunPhase = phase === 'acceptance' ? 'acceptance-draft' : 'technical-plan-reviewed';
+      if (lockedRun?.status === 'closed') {
+        throw new GovernanceError('AI_RUN_CLOSED', `Governed approval cannot mutate closed run '${lockedRun.run_id}'.`);
+      }
+      if (lockedRun?.phase !== requiredRunPhase) {
+        throw new GovernanceError(
+          'AI_RUN_PHASE_INVALID',
+          `Governed ${phase} approval requires run phase '${requiredRunPhase}', found '${lockedRun?.phase || 'missing'}'.`,
+          { run_id: lockedRun?.run_id || null, expected_phase: requiredRunPhase, actual_phase: lockedRun?.phase || null },
+        );
+      }
+      const lockedRuntime = resolveGovernanceRuntime(repoRoot, options, lockedRun);
+      let lockedTechnicalPlanReview = null;
+      let lockedCanonicalReview = null;
+      if (phase === 'technical-plan') {
+        lockedTechnicalPlanReview = readPlanReview(repoRoot);
+        lockedCanonicalReview = assertGovernedPlanReviewCorrelation(
+          repoRoot,
+          lockedTechnicalPlanReview,
+          lockedRun,
+          lockedRuntime,
+        );
+        if (lockedTechnicalPlanReview.status !== 'unapproved'
+            && lockedTechnicalPlanReview.status !== 'reviewed') {
+          throw new Error(formatError(translator.t('ai.approve.error.review_required', {
+            status: lockedTechnicalPlanReview.status,
+          })));
+        }
+        if (lockedCanonicalReview.projection.blocking === true) {
+          const reviewResult = lockedCanonicalReview.projection;
+          const requiredFixes = Array.isArray(reviewResult.required_fixes) ? reviewResult.required_fixes.length : 0;
+          throw new Error(formatError(translator.t('ai.approve.error.review_blocked', {
+            recommendation: reviewResult.approval_recommendation,
+            fixes: requiredFixes,
+            command: lockedTechnicalPlanReview.meta.review_result.next_command,
+          })));
+        }
+        assertTechnicalPlanDraftHasSpecContract(repoRoot, version);
+      }
+      assertGovernedApprovalCandidateCorrelation(
+        repoRoot,
+        lockedRun,
+        phase,
+        version,
+        lockedTechnicalPlanReview,
+      );
+      const authorization = authorizeGovernanceAction({
+        governance: lockedRuntime.governance,
+        action: 'approve',
+        actor,
+        profile: lockedRuntime.profile.effective_profile,
+        context: {
+          run_creator: lockedRun.governance_actors?.run_creator || null,
+          reviewer: lockedRun.governance_actors?.reviewer || null,
+          executor: lockedRun.governance_actors?.executor || null,
+        },
+      });
+      if (!authorization.authorized) {
+        throw governanceFailure(authorization);
+      }
+      const boundRun = bindAiRunGovernance(repoRoot, lockedRun.run_id, lockedRuntime.binding, {
+        command: `ai approve --phase ${phase}`,
+        locked: true,
+      });
+      return commitApproval({
+        ...lockedRuntime,
+        run: boundRun,
+        actor,
+        authorization,
+      });
+    },
+  );
 }
 
 async function runApprovalStatus(repoRoot, options = {}) {
