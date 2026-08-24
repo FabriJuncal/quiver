@@ -1,0 +1,103 @@
+{
+  "slice_id": "slice-05-finding-disposition-transfer",
+  "ticket": "QUIVER-58-05",
+  "type": "feature",
+  "title": "Finding Disposition and Transfer",
+  "objective": "Propagate canonical findings and eligible conditions through generated specs, slice briefs, PR evidence, and readiness gates without losing identity.",
+  "description": "Adds a versioned governance manifest and validates exact-one transfer targets so every conditioned obligation remains traceable and enforceable downstream.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v58-finding-disposition-transfer",
+    "branch_name": "feature/QUIVER-58-05-v58-finding-disposition-transfer"
+  },
+  "expected_read_paths": [
+    "specs/quiver-v58-risk-aware-review-governance/SPEC.md",
+    "src/create-quiver/lib/ai/review-governance.js",
+    "src/create-quiver/commands/spec.js",
+    "src/create-quiver/lib/ai/spec-generator.js",
+    "src/create-quiver/lib/ai/spec-templates.js",
+    "src/create-quiver/lib/readiness.js",
+    "src/create-quiver/commands/ai.js",
+    "src/create-quiver/index.js"
+  ],
+  "files": [
+    "src/create-quiver/lib/ai/spec-governance.js",
+    "src/create-quiver/lib/ai/review-governance.js",
+    "src/create-quiver/commands/findings.js",
+    "src/create-quiver/commands/spec.js",
+    "src/create-quiver/lib/ai/spec-generator.js",
+    "src/create-quiver/lib/ai/spec-templates.js",
+    "src/create-quiver/lib/readiness.js",
+    "src/create-quiver/commands/ai.js",
+    "src/create-quiver/index.js",
+    "tests/lib/ai-spec-generator.test.js",
+    "tests/lib/check-slice.test.js",
+    "tests/commands/spec-create.test.js",
+    "tests/commands/slice-namespace.test.js",
+    "tests/commands/ai-pr.test.js",
+    "tests/commands/findings.test.js",
+    "specs/quiver-v58-risk-aware-review-governance/**"
+  ],
+  "allowed_write_paths": [
+    "src/create-quiver/lib/ai/spec-governance.js",
+    "src/create-quiver/lib/ai/review-governance.js",
+    "src/create-quiver/commands/findings.js",
+    "src/create-quiver/commands/spec.js",
+    "src/create-quiver/lib/ai/spec-generator.js",
+    "src/create-quiver/lib/ai/spec-templates.js",
+    "src/create-quiver/lib/readiness.js",
+    "src/create-quiver/commands/ai.js",
+    "src/create-quiver/index.js",
+    "tests/lib/ai-spec-generator.test.js",
+    "tests/lib/check-slice.test.js",
+    "tests/commands/spec-create.test.js",
+    "tests/commands/slice-namespace.test.js",
+    "tests/commands/ai-pr.test.js",
+    "tests/commands/findings.test.js",
+    "specs/quiver-v58-risk-aware-review-governance/**"
+  ],
+  "depends_on": [
+    "slice-04-digest-bound-approvals"
+  ],
+  "parallel_safe": "never",
+  "parallel_safe_reason": "This slice consumes finalized decision records and changes shared spec generation and readiness gates.",
+  "must": [
+    "Allow spec creation only from approved or eligible approved-with-conditions decisions.",
+    "Support individual finding transfer and batch disposition commands against the canonical governance store.",
+    "Validate all transfer targets before rendering or mutating generated artifacts.",
+    "Require every transferred finding target to resolve to exactly one existing phase or slice.",
+    "Preserve decision kind, approved artifact version and digest, reviewer recommendation, canonical finding ID, run and review origin, disposition, acceptance reference, target, and required evidence.",
+    "Generate one immutable digest-bound governance manifest as a projection of the canonical run store, never as a second writer.",
+    "Render slice briefs, PR evidence, and human or JSON views as projections of the manifest.",
+    "Generate a traceability matrix and expose pending findings in destination slices and PR templates.",
+    "Make check-slice and check-pr reject omitted, orphaned, unknown, stale, or unresolved conditions.",
+    "Apply common redaction before generation, persistence, rendering, and export."
+  ],
+  "not_included": [
+    "General artifact graph.",
+    "Evidence bundle platform.",
+    "v59 addenda or amendment lifecycle.",
+    "v60 slice state contract.",
+    "Automatic remediation of failed conditions.",
+    "PR merge automation."
+  ],
+  "acceptance": [
+    "AC-11 is satisfied for complete identity-preserving transfer and referentially strict gates.",
+    "AC-13 is satisfied for shared condition projections across spec, slice, PR, and CLI surfaces.",
+    "AC-14 is satisfied for redaction on generated, rendered, persisted, and exported transfer surfaces.",
+    "Spec creation accepts unconditional approval and only eligible conditioned approval.",
+    "Individual transfer and batch disposition preserve identity and cannot silently remove a finding.",
+    "Every transfer target resolves exactly once before any generated artifact is published.",
+    "Manifest source digest mismatch or unavailable canonical parity fails closed.",
+    "Omitted, orphaned, unknown, stale, or unresolved conditions block the relevant slice or PR gate."
+  ],
+  "tests": [
+    "node --test tests/lib/ai-spec-generator.test.js tests/lib/check-slice.test.js tests/commands/spec-create.test.js tests/commands/slice-namespace.test.js tests/commands/ai-pr.test.js tests/commands/findings.test.js",
+    "node bin/create-quiver.js slice check --local specs/quiver-v58-risk-aware-review-governance/slices/slice-05-finding-disposition-transfer/slice.json",
+    "node bin/create-quiver.js spec validate specs/quiver-v58-risk-aware-review-governance --strict",
+    "git diff --check"
+  ],
+  "estimated_hours": 7,
+  "status": "planned"
+}

@@ -1,0 +1,98 @@
+{
+  "slice_id": "slice-04-digest-bound-approvals",
+  "ticket": "QUIVER-58-04",
+  "type": "feature",
+  "title": "Digest-bound Approvals",
+  "objective": "Commit approvals atomically against exact final bytes, explicit run state, canonical counts, policy, review, dispositions, and authorized actor.",
+  "description": "Closes stale-state and TOCTOU gaps by revalidating all approval bindings under lock and publishing the decision and phase transition as one logical operation.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v58-digest-bound-approvals",
+    "branch_name": "feature/QUIVER-58-04-v58-digest-bound-approvals"
+  },
+  "expected_read_paths": [
+    "specs/quiver-v58-risk-aware-review-governance/SPEC.md",
+    "src/create-quiver/lib/approvals.js",
+    "src/create-quiver/lib/ai/review-governance.js",
+    "src/create-quiver/lib/ai/approval-candidates.js",
+    "src/create-quiver/lib/ai/run-state.js",
+    "src/create-quiver/lib/locks.js",
+    "src/create-quiver/lib/actionable-error.js",
+    "src/create-quiver/commands/ai.js"
+  ],
+  "files": [
+    "src/create-quiver/lib/approvals.js",
+    "src/create-quiver/lib/ai/review-governance.js",
+    "src/create-quiver/lib/ai/run-state.js",
+    "src/create-quiver/lib/locks.js",
+    "src/create-quiver/lib/actionable-error.js",
+    "src/create-quiver/commands/ai.js",
+    "src/create-quiver/index.js",
+    "tests/lib/approvals.test.js",
+    "tests/lib/ai-review-governance.test.js",
+    "tests/lib/ai-run-state.test.js",
+    "tests/commands/ai-plan.test.js",
+    "tests/commands/ai-run-state.test.js",
+    "tests/commands/cli-contract.test.js",
+    "specs/quiver-v58-risk-aware-review-governance/**"
+  ],
+  "allowed_write_paths": [
+    "src/create-quiver/lib/approvals.js",
+    "src/create-quiver/lib/ai/review-governance.js",
+    "src/create-quiver/lib/ai/approval-candidates.js",
+    "src/create-quiver/lib/ai/run-state.js",
+    "src/create-quiver/lib/locks.js",
+    "src/create-quiver/lib/actionable-error.js",
+    "src/create-quiver/commands/ai.js",
+    "src/create-quiver/index.js",
+    "tests/lib/approvals.test.js",
+    "tests/lib/ai-review-governance.test.js",
+    "tests/lib/ai-run-state.test.js",
+    "tests/commands/ai-plan.test.js",
+    "tests/commands/ai-run-state.test.js",
+    "tests/commands/cli-contract.test.js",
+    "specs/quiver-v58-risk-aware-review-governance/**"
+  ],
+  "depends_on": [
+    "slice-03-approved-with-conditions"
+  ],
+  "parallel_safe": "never",
+  "parallel_safe_reason": "This slice commits decisions over state produced by every preceding slice and changes the central approval boundary.",
+  "must": [
+    "Build every approval candidate from an explicit or uniquely resolved run.",
+    "Re-read exact final artifact bytes and all canonical governance bindings inside one protected critical section.",
+    "Verify artifact and input digests, version, review digest, profile and policy digests, finding and criterion counts, disposition and reason digests, run, and actor.",
+    "Re-evaluate actor authorization and independence at commit time.",
+    "Publish the decision and phase transition as one logical all-or-nothing operation.",
+    "Leave no decision or transition behind after stale state, tampering, mismatch, or injected write failure.",
+    "Derive canonical counts from structured collections and return REPRESENTATION_MISMATCH on divergence.",
+    "Expose stable machine code, status, and exit semantics without localized JSON keys.",
+    "Provide approval show, verify, and Linear-comment export from the same canonical digest-bound record."
+  ],
+  "not_included": [
+    "Finding transfer into generated specs.",
+    "Slice or PR governance gates.",
+    "General transactional storage framework.",
+    "Database introduction.",
+    "Break-glass.",
+    "Release or deployment changes."
+  ],
+  "acceptance": [
+    "AC-08 is satisfied for explicit run selection and decision correlation.",
+    "AC-09 is satisfied for exact-byte binding, complete digest validation, atomic commit, and no partial state.",
+    "AC-12 is satisfied for canonical counts and REPRESENTATION_MISMATCH.",
+    "AC-13 is satisfied for approval-related machine codes, statuses, exit behavior, and clean JSON stdout.",
+    "Approval show and verify recompute canonical validity, while export reports version, artifact digest, input digest, and criterion count.",
+    "Tampering or staleness in any bound value prevents both decision publication and phase transition.",
+    "Two active runs cannot approve, invalidate, or count state for one another."
+  ],
+  "tests": [
+    "node --test tests/lib/approvals.test.js tests/lib/ai-review-governance.test.js tests/lib/ai-run-state.test.js tests/commands/ai-plan.test.js tests/commands/ai-run-state.test.js tests/commands/cli-contract.test.js",
+    "node bin/create-quiver.js slice check --local specs/quiver-v58-risk-aware-review-governance/slices/slice-04-digest-bound-approvals/slice.json",
+    "node bin/create-quiver.js spec validate specs/quiver-v58-risk-aware-review-governance --strict",
+    "git diff --check"
+  ],
+  "estimated_hours": 7,
+  "status": "planned"
+}
