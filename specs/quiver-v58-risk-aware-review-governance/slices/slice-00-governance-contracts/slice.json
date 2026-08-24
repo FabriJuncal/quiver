@@ -1,0 +1,70 @@
+{
+  "slice_id": "slice-00-governance-contracts",
+  "ticket": "QUIVER-58-00",
+  "type": "documentation",
+  "title": "Governance Contract Foundation",
+  "objective": "Freeze the accepted v58 documentary baseline, normative governance rules, slice contracts, and handoffs before runtime implementation.",
+  "description": "Mandatory slice-00 foundation that reconciles RQ-001 through RQ-009 and approved review findings into one executable, validated, and non-runtime spec package.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v58-governance-contract-foundation",
+    "branch_name": "feature/QUIVER-58-00-v58-governance-contract-foundation"
+  },
+  "expected_read_paths": [
+    "docs/INDEX.md",
+    "README_FOR_AI.md",
+    "docs/reference/slice-schema.md",
+    "docs/ai/PRINCIPLES.md",
+    "docs/ai/RULES.yaml",
+    "specs/quiver-v58-risk-aware-review-governance/SPEC.md",
+    "specs/quiver-v58-risk-aware-review-governance/EXECUTION_PLAN.md",
+    "specs/quiver-v58-risk-aware-review-governance/STATUS.md"
+  ],
+  "files": [
+    "specs/quiver-v58-risk-aware-review-governance/**"
+  ],
+  "allowed_write_paths": [
+    "specs/quiver-v58-risk-aware-review-governance/**"
+  ],
+  "depends_on": [],
+  "parallel_safe": "never",
+  "parallel_safe_reason": "The documentary baseline must be frozen and closed before any implementation slice can begin.",
+  "must": [
+    "Keep RQ-001 through RQ-009 and limited RQ-029 and RQ-100 dependencies traceable to AC-01 through AC-16.",
+    "Keep REV-01 through REV-16 materially covered by normative rules, acceptance criteria, slice scope, and validation.",
+    "Define one mutable condition authority and keep all manifests, briefs, matrices, PR content, exports, and gates as verified projections.",
+    "Define an executable default-deny authorization oracle without inventing implicit roles.",
+    "Define deterministic finding reconciliation, review event classification, condition eligibility, migration, and rollback behavior.",
+    "Validate all seven slice contracts, dependencies, allowed paths, execution briefs, and closure templates.",
+    "Keep every closure and evidence report in preimplementation state.",
+    "Make no runtime source, test, release, or deployment change."
+  ],
+  "not_included": [
+    "Runtime implementation.",
+    "Test implementation.",
+    "Product source changes.",
+    "Migration execution.",
+    "Release, publish, deployment, or OTA.",
+    "Closing any acceptance criterion as passed."
+  ],
+  "acceptance": [
+    "SPEC.md contains the authorized reconstructed acceptance baseline and normative rules needed to implement it without policy improvisation.",
+    "EXECUTION_PLAN.md and the seven slice contracts have explicit order, dependencies, write scopes, validation, and out-of-scope boundaries.",
+    "Every slice contains schema-valid slice.json plus preimplementation EXECUTION_BRIEF.md, CLOSURE_BRIEF.md, and pr.md.",
+    "The package identifies the canonical run store as the only mutable condition authority.",
+    "No expected read path points to known-missing repository documentation.",
+    "Schema, strict spec, handoff, local slice, Markdown, and diff checks pass.",
+    "No runtime or test file is modified by this slice."
+  ],
+  "tests": [
+    "npm run schema:slice:check",
+    "node bin/create-quiver.js slice check --local specs/quiver-v58-risk-aware-review-governance/slices/slice-00-governance-contracts/slice.json",
+    "node bin/create-quiver.js spec validate specs/quiver-v58-risk-aware-review-governance --strict",
+    "npx --no-install markdownlint-cli2 specs/quiver-v58-risk-aware-review-governance/**/*.md",
+    "git diff --check"
+  ],
+  "estimated_hours": 3,
+  "status": "completed",
+  "completed_at": "2026-08-24T17:03:14Z"
+}

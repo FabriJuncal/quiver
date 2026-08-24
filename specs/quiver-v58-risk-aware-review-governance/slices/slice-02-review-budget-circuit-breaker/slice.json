@@ -1,0 +1,96 @@
+{
+  "slice_id": "slice-02-review-budget-circuit-breaker",
+  "ticket": "QUIVER-58-02",
+  "type": "feature",
+  "title": "Review Budget and Circuit Breaker",
+  "objective": "Bound semantic review loops with an atomic event ledger and deterministic per-run circuit breaker.",
+  "description": "Classifies review attempts, reserves capacity before provider invocation, isolates concurrent runs, and requires an authorized human decision when budget is exhausted.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "v58-review-budget-circuit-breaker",
+    "branch_name": "feature/QUIVER-58-02-v58-review-budget-circuit-breaker"
+  },
+  "expected_read_paths": [
+    "specs/quiver-v58-risk-aware-review-governance/SPEC.md",
+    "src/create-quiver/lib/ai/review-governance.js",
+    "src/create-quiver/lib/ai/plan-review.js",
+    "src/create-quiver/lib/ai/run-state.js",
+    "src/create-quiver/lib/locks.js",
+    "src/create-quiver/commands/ai.js"
+  ],
+  "files": [
+    "src/create-quiver/lib/ai/review-budget.js",
+    "src/create-quiver/lib/ai/review-governance.js",
+    "src/create-quiver/lib/ai/plan-review.js",
+    "src/create-quiver/lib/ai/run-state.js",
+    "src/create-quiver/lib/locks.js",
+    "src/create-quiver/commands/ai.js",
+    "tests/lib/ai-review-budget.test.js",
+    "tests/lib/ai-review-governance.test.js",
+    "tests/lib/ai-run-state.test.js",
+    "tests/commands/ai-review-plan.test.js",
+    "tests/commands/ai-run-state.test.js",
+    "specs/quiver-v58-risk-aware-review-governance/**"
+  ],
+  "allowed_write_paths": [
+    "src/create-quiver/lib/ai/review-budget.js",
+    "src/create-quiver/lib/ai/review-governance.js",
+    "src/create-quiver/lib/ai/plan-review.js",
+    "src/create-quiver/lib/ai/run-state.js",
+    "src/create-quiver/lib/locks.js",
+    "src/create-quiver/commands/ai.js",
+    "tests/lib/ai-review-budget.test.js",
+    "tests/lib/ai-review-governance.test.js",
+    "tests/lib/ai-run-state.test.js",
+    "tests/commands/ai-review-plan.test.js",
+    "tests/commands/ai-run-state.test.js",
+    "specs/quiver-v58-risk-aware-review-governance/**"
+  ],
+  "depends_on": [
+    "slice-01-phase-aware-blocking-policy"
+  ],
+  "parallel_safe": "never",
+  "parallel_safe_reason": "Budget events mutate the same run-scoped review state consumed by later decisions and must land on the finalized finding policy.",
+  "must": [
+    "Classify full, targeted, retry, and external events only from explicit immutable command intent and request-envelope identity.",
+    "Increment review_count for full and targeted events, full_revision_count only for a complete replacement with an explicit reviewed parent, and targeted_amendment_count only for targeted events.",
+    "Prevent findings owned by later implementation phases from consuming a full technical-plan revision.",
+    "Store an append-only run-scoped event ledger and derive all counts from it.",
+    "Reserve semantic review capacity atomically before provider invocation.",
+    "Prevent concurrent commands from overspending the same run budget.",
+    "Count an accepted external review in its declared full or targeted class.",
+    "Finalize and consume the reserved semantic event as invalid-output when a provider payload is received but fails contractual validation, while preserving the last valid review.",
+    "Convert only a pre-payload transport or timeout failure with the same request-envelope digest to retry without semantic consumption.",
+    "Return REVIEW_BUDGET_EXHAUSTED and HUMAN_DECISION_REQUIRED without invoking the provider when exhausted.",
+    "Expose approve-with-conditions, reject, transfer-findings, create-follow-up, and targeted-amendment as governed next actions after exhaustion.",
+    "Require verified authorization and an audit event for every budget extension.",
+    "Keep events and counts isolated across simultaneous runs."
+  ],
+  "not_included": [
+    "Conditioned approval eligibility.",
+    "Digest-bound approval commit.",
+    "Finding propagation to specs or PRs.",
+    "Generalized provider retry orchestration.",
+    "External review import workflow beyond deterministic event classification.",
+    "Load or performance testing without new evidence of a bottleneck."
+  ],
+  "acceptance": [
+    "AC-07 is satisfied for deterministic event classes, atomic reservation, exhaustion, retry behavior, and authorized extension.",
+    "AC-08 is satisfied for budget and review event isolation by run.",
+    "Concurrent reservation never permits semantic review consumption above the configured run budget.",
+    "Exhaustion is detected before provider invocation and returns both required machine codes.",
+    "Exhaustion projects the five governed next actions without executing any automatically.",
+    "Human and JSON budget counts derive from the canonical event ledger.",
+    "Technical retry and external review behavior is covered by focused fixtures.",
+    "Invalid provider payload consumes its reservation, records invalid-output, and leaves the last valid review current."
+  ],
+  "tests": [
+    "node --test tests/lib/ai-review-budget.test.js tests/lib/ai-review-governance.test.js tests/lib/ai-run-state.test.js tests/commands/ai-review-plan.test.js tests/commands/ai-run-state.test.js",
+    "node bin/create-quiver.js slice check --local specs/quiver-v58-risk-aware-review-governance/slices/slice-02-review-budget-circuit-breaker/slice.json",
+    "node bin/create-quiver.js spec validate specs/quiver-v58-risk-aware-review-governance --strict",
+    "git diff --check"
+  ],
+  "estimated_hours": 6,
+  "status": "planned"
+}
