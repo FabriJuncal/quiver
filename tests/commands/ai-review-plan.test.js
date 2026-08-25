@@ -59,6 +59,19 @@ function makeRepo(structure = {}) {
   };
 }
 
+function snapshotFileContents(root) {
+  const snapshot = {};
+  const visit = (directory) => {
+    for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+      const filePath = path.join(directory, entry.name);
+      if (entry.isDirectory()) visit(filePath);
+      else snapshot[path.relative(root, filePath).split(path.sep).join('/')] = fs.readFileSync(filePath).toString('base64');
+    }
+  };
+  visit(root);
+  return snapshot;
+}
+
 function execAi(repoRoot, args = [], env = {}) {
   return execFileSync('node', [BIN_PATH, 'ai', ...args], {
     cwd: repoRoot,
@@ -176,6 +189,71 @@ function seedGovernedTechnicalPlanRun(repoRoot, runId, governance, artifactPath,
 function latestDraftArtifact(repoRoot, phase = 'technical-plan') {
   const drafts = readPhaseApproval(repoRoot, phase).meta?.drafts || [];
   return drafts.at(-1)?.path || '';
+}
+
+function conditionedApprovalActor(suffix = '42') {
+  return {
+    actor_id: `github:github.com:${suffix}`,
+    provider: 'github-cli',
+    provider_subject: `github:github.com:${suffix}`,
+    verified: true,
+  };
+}
+
+function allowConditionedApproval(governance, actor) {
+  governance.policy.authorization.actor_bindings[actor.provider_subject] = {
+    actor_id: actor.actor_id,
+    roles: ['maintainer'],
+  };
+  governance.policy.authorization.actions['approve-with-conditions'] = {
+    allowed_actor_ids: [],
+    allowed_roles: ['maintainer'],
+    independence: 'none',
+  };
+}
+
+function transferableSliceFinding(overrides = {}) {
+  return {
+    id: 'provider-slice-1',
+    title: 'Carry validation into the implementation slice',
+    summary: 'The implementation slice must preserve the directed validation evidence.',
+    severity: 'medium',
+    category: 'implementation-detail',
+    phase_owner: 'slice',
+    phase_blocking: false,
+    evidence: ['technical-plan.md#/validation'],
+    acceptance_refs: ['AC-10'],
+    recommended_disposition: 'transfer-to-slice',
+    confidence: 'high',
+    ...overrides,
+  };
+}
+
+function conditionEnvelope(repoRoot, runId, dispositions) {
+  const run = readAiRun(repoRoot, runId);
+  const state = readRunGovernance(repoRoot, runId);
+  return {
+    schema_version: 1,
+    run_id: runId,
+    review_id: state.current_review_id,
+    policy_version: run.governance.policy_version,
+    policy_digest: run.governance.policy_digest,
+    dispositions,
+  };
+}
+
+async function captureStdout(run) {
+  const originalWrite = process.stdout.write;
+  let output = '';
+  process.stdout.write = (chunk) => {
+    output += String(chunk);
+    return true;
+  };
+  try {
+    return { result: await run(), output };
+  } finally {
+    process.stdout.write = originalWrite;
+  }
 }
 
 function createProgressRecorder() {
@@ -579,6 +657,301 @@ test('governed approval is default-deny before mutation and records explicit aut
     assert.equal(readPhaseApproval(repo.root, 'technical-plan').status, 'approved');
     assert.equal(approvals.approvals[0].governance.actor.actor_id, actor.actor_id);
     assert.deepEqual(approvals.approvals[0].governance.authorization.matched_roles, ['maintainer']);
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('conditioned approval persists only an eligible non-final candidate and keeps reviewer non-approval visible', async () => {
+  const governance = buildDefaultGovernanceConfig();
+  const actor = conditionedApprovalActor();
+  allowConditionedApproval(governance, actor);
+  const runId = 'run-conditioned-candidate';
+  const reasonText = 'The remaining implementation finding is accepted only as an explicit slice obligation.';
+  const repo = makeRepo({
+    'technical-plan.md': structuredTechnicalPlanText('conditioned-candidate'),
+    'condition-reason.md': `${reasonText}\n`,
+    '.quiver/config.json': `${JSON.stringify({ governance }, null, 2)}\n`,
+  });
+
+  try {
+    savePlannerDraft(repo.root, 'technical-plan', 'technical-plan.md', structuredTechnicalPlanText('conditioned-candidate'));
+    seedGovernedTechnicalPlanRun(repo.root, runId, governance, latestDraftArtifact(repo.root));
+    await runReviewPlan(repo.root, {
+      runId,
+      runProviderFn: async () => providerSuccess(repo.root, governedReviewOutput([transferableSliceFinding()])),
+    });
+    const conditionsPath = path.join(repo.root, 'conditions.json');
+    const disposition = {
+      finding_id: 'F-001',
+      action: 'transfer-to-slice',
+      target: 'slice-04-digest-bound-approvals',
+      evidence_obligations: ['Record the directed slice validation result.'],
+    };
+    writeFile(conditionsPath, `${JSON.stringify(conditionEnvelope(repo.root, runId, [disposition]), null, 2)}\n`);
+    const governancePath = path.join(repo.root, `.quiver/runs/${runId}/review-governance.json`);
+    const beforeDryRun = fs.readFileSync(governancePath);
+
+    writeFile(path.join(repo.root, 'conditions-duplicate-evidence.json'), `${JSON.stringify(conditionEnvelope(repo.root, runId, [{
+      ...disposition,
+      evidence_obligations: ['Duplicate obligation.', 'Duplicate obligation.'],
+    }]), null, 2)}\n`);
+    await assert.rejects(
+      () => runApprove(repo.root, {
+        actor,
+        conditionsFile: 'conditions-duplicate-evidence.json',
+        decision: 'approved-with-conditions',
+        phase: 'technical-plan',
+        reasonFile: 'condition-reason.md',
+        runId,
+        version: 1,
+      }),
+      (error) => error.code === 'DISPOSITION_UNRESOLVED',
+    );
+    assert.deepEqual(fs.readFileSync(governancePath), beforeDryRun);
+
+    const preview = await captureStdout(() => runApprove(repo.root, {
+      actor,
+      conditionsFile: 'conditions.json',
+      decision: 'approved-with-conditions',
+      dryRun: true,
+      now: new Date('2026-08-25T18:30:00.000Z'),
+      phase: 'technical-plan',
+      reasonFile: './condition-reason.md',
+      runId,
+      version: 1,
+    }));
+    assert.equal(preview.result.dry_run, true);
+    assert.equal(preview.result.eligibility.code, 'ELIGIBLE_WITH_CONDITIONS');
+    assert.match(preview.output, /Publication state: candidate/);
+    assert.match(preview.output, /Reviewer recommendation: approve-with-risk/);
+    assert.match(preview.output, /Reviewer approved: no/);
+    assert.match(preview.output, /Final decision published: no/);
+    assert.match(preview.output, /No files were changed\./);
+    assert.deepEqual(fs.readFileSync(governancePath), beforeDryRun);
+
+    const committed = await captureStdout(() => runApprove(repo.root, {
+      actor,
+      conditionsFile: 'conditions.json',
+      decision: 'approved-with-conditions',
+      now: new Date('2026-08-25T18:31:00.000Z'),
+      phase: 'technical-plan',
+      reasonFile: './condition-reason.md',
+      runId,
+      version: 1,
+    }));
+    const state = readRunGovernance(repo.root, runId);
+    const approvals = JSON.parse(fs.readFileSync(path.join(repo.root, `.quiver/runs/${runId}/approvals.json`), 'utf8'));
+    const serializedState = JSON.stringify(state);
+
+    assert.equal(committed.result.decision, 'approved-with-conditions');
+    assert.equal(committed.result.publication_state, 'candidate');
+    assert.equal(committed.result.reviewer_recommendation, 'approve-with-risk');
+    assert.equal(committed.result.reviewer_approved, false);
+    assert.equal(committed.result.final_decision_published, false);
+    assert.equal(committed.result.phase_advanced, false);
+    assert.equal(committed.result.reason_path, 'condition-reason.md');
+    assert.match(committed.output, /Legacy approved\.md written: no/);
+    assert.equal(state.dispositions.length, 1);
+    assert.equal(state.dispositions[0].state, 'current');
+    assert.equal(state.condition_evaluations.length, 1);
+    assert.equal(state.conditioned_candidates.length, 1);
+    assert.equal(state.conditioned_candidates[0].publication_state, 'candidate');
+    assert.equal(state.conditioned_candidates[0].reviewer_approved, false);
+    assert.equal(serializedState.includes(reasonText), false);
+    assert.equal(readAiRun(repo.root, runId).phase, 'technical-plan-reviewed');
+    assert.equal(readPhaseApproval(repo.root, 'technical-plan').status, 'draft');
+    assert.deepEqual(approvals.approvals, []);
+    assert.equal(fs.existsSync(path.join(repo.root, '.quiver/approvals/technical-plan/approved.md')), false);
+
+    const canonicalStateText = fs.readFileSync(governancePath, 'utf8');
+    const actorTamper = JSON.parse(canonicalStateText);
+    actorTamper.dispositions[0].actor_id = 'person:mallory';
+    actorTamper.dispositions[0].authorization.actor_id = 'person:mallory';
+    writeFile(governancePath, `${JSON.stringify(actorTamper, null, 2)}\n`);
+    assert.throws(
+      () => readRunGovernance(repo.root, runId),
+      (error) => error.code === 'GOVERNANCE_STATE_INVALID'
+        && error.details.issues.some((issue) => issue.message === 'condition evaluation disposition correlation is invalid'),
+    );
+
+    const recommendationTamper = JSON.parse(canonicalStateText);
+    recommendationTamper.conditioned_candidates[0].reviewer_recommendation = 'approve';
+    writeFile(governancePath, `${JSON.stringify(recommendationTamper, null, 2)}\n`);
+    assert.throws(
+      () => readRunGovernance(repo.root, runId),
+      (error) => error.code === 'GOVERNANCE_STATE_INVALID'
+        && error.details.issues.some((issue) => issue.message === 'conditioned candidate correlation is invalid'),
+    );
+    writeFile(governancePath, canonicalStateText);
+
+    const beforeInvalidInputs = fs.readFileSync(governancePath);
+    writeFile(path.join(repo.root, 'conditions-invalid.json'), '{not-json\n');
+    writeFile(path.join(repo.root, 'conditions-invalid-schema.json'), '{"schema_version":1,"dispositions":[]}\n');
+    for (const [conditionsFile, issue] of [
+      ['conditions-missing.json', 'missing'],
+      ['conditions-invalid.json', 'invalid-json'],
+      ['conditions-invalid-schema.json', 'invalid-envelope'],
+    ]) {
+      await assert.rejects(
+        () => runApprove(repo.root, {
+          actor,
+          conditionsFile,
+          decision: 'approved-with-conditions',
+          phase: 'technical-plan',
+          reasonFile: 'condition-reason.md',
+          runId,
+          version: 1,
+        }),
+        (error) => {
+          assert.equal(error.code, 'DISPOSITION_UNRESOLVED');
+          assert.equal(error.details.input_issue, `conditions:${issue}`);
+          return true;
+        },
+      );
+      assert.deepEqual(fs.readFileSync(governancePath), beforeInvalidInputs);
+    }
+
+    const outsideReasonPath = path.join(os.tmpdir(), `quiver-condition-reason-${process.pid}-${Date.now()}.md`);
+    writeFile(outsideReasonPath, '# Outside reason\n');
+    fs.symlinkSync(outsideReasonPath, path.join(repo.root, 'condition-reason-link.md'));
+    writeFile(path.join(repo.root, 'conditions-existing.json'), `${JSON.stringify(conditionEnvelope(repo.root, runId, []), null, 2)}\n`);
+    try {
+      await assert.rejects(
+        () => runApprove(repo.root, {
+          actor,
+          conditionsFile: 'conditions-existing.json',
+          decision: 'approved-with-conditions',
+          phase: 'technical-plan',
+          reasonFile: 'condition-reason-link.md',
+          runId,
+          version: 1,
+        }),
+        (error) => error.code === 'DISPOSITION_UNRESOLVED'
+          && error.details.input_issue === 'reason:invalid-path',
+      );
+      assert.deepEqual(fs.readFileSync(governancePath), beforeInvalidInputs);
+    } finally {
+      fs.rmSync(outsideReasonPath, { force: true });
+    }
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('conditioned approval preserves authorization and protected-critical precedence without mutation', async () => {
+  for (const scenario of ['unauthorized', 'protected-critical']) {
+    const governance = buildDefaultGovernanceConfig();
+    const actor = conditionedApprovalActor(scenario === 'unauthorized' ? '99' : '42');
+    if (scenario === 'protected-critical') allowConditionedApproval(governance, actor);
+    const runId = `run-conditioned-${scenario}`;
+    const finding = scenario === 'protected-critical'
+      ? transferableSliceFinding({
+        category: 'security',
+        id: 'provider-critical-security',
+        severity: 'critical',
+        title: 'Protected critical security finding',
+      })
+      : transferableSliceFinding();
+    const repo = makeRepo({
+      'technical-plan.md': structuredTechnicalPlanText(runId),
+      'condition-reason.md': '# Condition reason\n',
+      '.quiver/config.json': `${JSON.stringify({ governance }, null, 2)}\n`,
+    });
+
+    try {
+      savePlannerDraft(repo.root, 'technical-plan', 'technical-plan.md', structuredTechnicalPlanText(runId));
+      seedGovernedTechnicalPlanRun(repo.root, runId, governance, latestDraftArtifact(repo.root));
+      await runReviewPlan(repo.root, {
+        runId,
+        runProviderFn: async () => providerSuccess(repo.root, governedReviewOutput([finding])),
+      });
+      writeFile(path.join(repo.root, 'conditions.json'), `${JSON.stringify(conditionEnvelope(repo.root, runId, [{
+        finding_id: 'F-001',
+        action: 'transfer-to-slice',
+        target: 'slice-04-digest-bound-approvals',
+        evidence_obligations: ['Preserve this finding as downstream evidence.'],
+      }]), null, 2)}\n`);
+      const governancePath = path.join(repo.root, `.quiver/runs/${runId}/review-governance.json`);
+      const before = fs.readFileSync(governancePath);
+      const expectedCode = scenario === 'protected-critical'
+        ? 'BREAK_GLASS_REQUIRED'
+        : 'DISPOSITION_UNAUTHORIZED';
+
+      await assert.rejects(
+        () => runApprove(repo.root, {
+          actor,
+          conditionsFile: 'conditions.json',
+          decision: 'approved-with-conditions',
+          phase: 'technical-plan',
+          reasonFile: 'condition-reason.md',
+          runId,
+          version: 1,
+        }),
+        (error) => error.code === expectedCode
+          && (scenario !== 'protected-critical'
+            || error.details.eligibility.code === 'PROTECTED_CRITICAL_REQUIRES_BREAK_GLASS'),
+      );
+      assert.deepEqual(fs.readFileSync(governancePath), before);
+      assert.equal(readAiRun(repo.root, runId).phase, 'technical-plan-reviewed');
+      assert.equal(readPhaseApproval(repo.root, 'technical-plan').status, 'draft');
+      assert.equal(fs.existsSync(path.join(repo.root, '.quiver/approvals/technical-plan/approved.md')), false);
+    } finally {
+      repo.cleanup();
+    }
+  }
+});
+
+test('conditioned approval preserves a sanitized identity failure code without mutation', async () => {
+  const governance = buildDefaultGovernanceConfig();
+  const actor = conditionedApprovalActor();
+  allowConditionedApproval(governance, actor);
+  const runId = 'run-conditioned-identity-unavailable';
+  const repo = makeRepo({
+    'technical-plan.md': structuredTechnicalPlanText(runId),
+    'condition-reason.md': '# Condition reason\n',
+    '.quiver/config.json': `${JSON.stringify({ governance }, null, 2)}\n`,
+  });
+
+  try {
+    savePlannerDraft(repo.root, 'technical-plan', 'technical-plan.md', structuredTechnicalPlanText(runId));
+    seedGovernedTechnicalPlanRun(repo.root, runId, governance, latestDraftArtifact(repo.root));
+    await runReviewPlan(repo.root, {
+      runId,
+      runProviderFn: async () => providerSuccess(repo.root, governedReviewOutput([transferableSliceFinding()])),
+    });
+    writeFile(path.join(repo.root, 'conditions.json'), `${JSON.stringify(conditionEnvelope(repo.root, runId, [{
+      finding_id: 'F-001',
+      action: 'transfer-to-slice',
+      target: 'slice-04-digest-bound-approvals',
+      evidence_obligations: ['Preserve this finding as downstream evidence.'],
+    }]), null, 2)}\n`);
+    const governancePath = path.join(repo.root, `.quiver/runs/${runId}/review-governance.json`);
+    const before = fs.readFileSync(governancePath);
+
+    await assert.rejects(
+      () => runApprove(repo.root, {
+        conditionsFile: 'conditions.json',
+        decision: 'approved-with-conditions',
+        phase: 'technical-plan',
+        reasonFile: 'condition-reason.md',
+        resolveActorFn: async () => {
+          const error = new Error('sensitive identity adapter detail');
+          error.code = 'GITHUB_IDENTITY_UNAVAILABLE';
+          throw error;
+        },
+        runId,
+        version: 1,
+      }),
+      (error) => {
+        assert.equal(error.code, 'DISPOSITION_UNAUTHORIZED');
+        assert.equal(error.details.eligibility.authorization_code, 'GITHUB_IDENTITY_UNAVAILABLE');
+        assert.equal(JSON.stringify(error.details).includes('sensitive identity adapter detail'), false);
+        return true;
+      },
+    );
+    assert.deepEqual(fs.readFileSync(governancePath), before);
+    assert.equal(readAiRun(repo.root, runId).phase, 'technical-plan-reviewed');
   } finally {
     repo.cleanup();
   }
@@ -1055,6 +1428,26 @@ test('governed review WAL recovers every interrupted commit point exactly once',
           dryRun: true,
         }));
         assert.equal(fs.existsSync(runReviewCommitPath(repo.root, runId)), true);
+      }
+
+      if (faultPoint === 'after-phase') {
+        const beforeConditionedDryRun = snapshotFileContents(repo.root);
+        await assert.rejects(
+          () => runApprove(repo.root, {
+            actor: {
+              actor_id: 'local:wal-dry-run',
+              provider: 'local',
+              verified: false,
+            },
+            decision: 'approved-with-conditions',
+            dryRun: true,
+            phase: 'technical-plan',
+            runId,
+            version: 1,
+          }),
+          (error) => error.code === 'GOVERNANCE_RECOVERY_REQUIRED',
+        );
+        assert.deepEqual(snapshotFileContents(repo.root), beforeConditionedDryRun);
       }
 
       const recovery = recoverGovernedPlanReviewCommit(repo.root, { runId });

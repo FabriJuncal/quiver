@@ -15,6 +15,10 @@ Implement deterministic approved-with-conditions eligibility and canonical dispo
 - Require authorized actor, reason path and digest, and complete dispositions.
 - Apply the normative eligibility matrix by phase owner, blocking flag, category, severity, disposition, target, and policy.
 - Return the stable reason code for every ineligible state.
+- Apply the authorized reason-code precedence and return `ELIGIBLE_WITH_CONDITIONS` only after every prior check passes.
+- Evaluate the versioned `condition_dispositions` allowlist with default deny; release has no implicit rule.
+- Track explicit current/superseded disposition state and validate target shape plus evidence presence without resolving downstream destinations.
+- Persist an eligibility evaluation and conditioned candidate only; do not publish the final decision, append a run approval, or advance the run phase.
 - Return BREAK_GLASS_REQUIRED for Critical security, data-integrity, or rollout findings.
 - Prevent legacy approved.md from representing conditioned state.
 - Keep the reviewer's non-approval visible in every human and JSON conditioned projection.
@@ -33,23 +37,28 @@ The normative wording and traceability are in ../../SPEC.md.
 1. Confirm slice-02 is completed and consume canonical findings and budget state.
 2. Define conditioned decision and disposition lifecycle transitions.
 3. Implement single-writer disposition validation.
-4. Implement the SPEC.md transferability matrix and stable ineligibility reason codes.
+4. Implement the SPEC.md transferability matrix, default-deny policy allowlist, and authorized stable reason codes.
 5. Enforce authorization, independence, and reason reference/digest.
 6. Reject Critical protected categories with BREAK_GLASS_REQUIRED.
 7. Block legacy marker creation and interpretation for conditioned state.
 8. Preserve the reviewer recommendation in conditioned projections.
-9. Add eligibility, authorization, disposition, and legacy-safety tests.
+9. Prove success and failure both leave final publication and phase advancement to slice-04.
+10. Add eligibility, authorization, disposition, and legacy-safety tests.
 
 ## Expected Files
 
 - src/create-quiver/lib/ai/review-governance.js
+- src/create-quiver/lib/ai/review-governance.schema.js
+- src/create-quiver/lib/ai/plan-review.js
 - src/create-quiver/lib/ai/review-budget.js
 - src/create-quiver/lib/ai/approval-candidates.js
 - src/create-quiver/lib/approvals.js
 - src/create-quiver/lib/ai/run-state.js
 - src/create-quiver/commands/ai.js
 - src/create-quiver/commands/flow.js
+- tests/lib/ai-run-state.test.js
 - Focused tests listed in slice.json.
+- The public CLI parser remains assigned to slice-04; this slice exposes the conditioned lifecycle through the command service contract.
 
 ## Restrictions
 
@@ -57,11 +66,12 @@ The normative wording and traceability are in ../../SPEC.md.
 - Do not equate approved-with-conditions with approved.
 - Do not copy full reason text into the canonical decision.
 - Do not implement exact-byte approval commit owned by slice-04.
+- Do not publish a final decision, append a run approval projection, or advance the phase in this slice.
 - Do not generate specs or transfer findings in this slice.
 
 ## Validation
 
-    node --test tests/lib/ai-review-governance.test.js tests/lib/approvals.test.js tests/commands/ai-plan.test.js tests/commands/ai-run-state.test.js tests/commands/flow.test.js
+    node --test tests/lib/ai-review-governance.test.js tests/lib/ai-run-state.test.js tests/lib/approvals.test.js tests/commands/ai-plan.test.js tests/commands/ai-review-plan.test.js tests/commands/ai-run-state.test.js tests/commands/flow.test.js
     node bin/create-quiver.js slice check --local specs/quiver-v58-risk-aware-review-governance/slices/slice-03-approved-with-conditions/slice.json
     node bin/create-quiver.js spec validate specs/quiver-v58-risk-aware-review-governance --strict
     git diff --check
@@ -70,6 +80,7 @@ The normative wording and traceability are in ../../SPEC.md.
 
 - Conditioned and unconditional decisions remain distinguishable.
 - Eligibility and ineligibility reasons are deterministic.
+- `ELIGIBLE_WITH_CONDITIONS` and the five authorized `DISPOSITION_*` codes use the normative precedence.
 - Requirement, acceptance, and current-plan blockers cannot transfer beyond their owning phase.
 - Later-phase transfers require matching policy, disposition, one target, and evidence obligations.
 - Every remaining finding has exactly one current disposition.
@@ -78,4 +89,5 @@ The normative wording and traceability are in ../../SPEC.md.
 - Reason storage uses relative path plus digest.
 - Legacy approved.md cannot represent conditioned state.
 - Human and JSON output remain explicit that the reviewer did not approve.
+- The canonical candidate remains unpublished and the run phase remains technical-plan-reviewed until slice-04.
 - Closure evidence and deviations are recorded.

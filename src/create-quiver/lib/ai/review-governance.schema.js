@@ -104,6 +104,29 @@ const DECISION_KINDS = Object.freeze([
   'rejected',
 ]);
 
+const CONDITION_DISPOSITION_STATES = Object.freeze([
+  'current',
+  'superseded',
+]);
+
+const CONDITION_ELIGIBILITY_CODES = Object.freeze([
+  'PROTECTED_CRITICAL_REQUIRES_BREAK_GLASS',
+  'DISPOSITION_STALE',
+  'DISPOSITION_DUPLICATE',
+  'DISPOSITION_MISSING',
+  'DISPOSITION_UNAUTHORIZED',
+  'NON_TRANSFERABLE_BLOCKER',
+  'CURRENT_PHASE_REVISION_REQUIRED',
+  'DISPOSITION_UNRESOLVED',
+  'ELIGIBLE_WITH_CONDITIONS',
+]);
+
+const CONDITION_ELIGIBILITY_STATUSES = Object.freeze([
+  'BREAK_GLASS_REQUIRED',
+  'INELIGIBLE',
+  'ELIGIBLE',
+]);
+
 const executionProfileSchema = z.enum(EXECUTION_PROFILES);
 const findingSeveritySchema = z.enum(FINDING_SEVERITIES);
 const findingCategorySchema = z.enum(FINDING_CATEGORIES);
@@ -114,6 +137,9 @@ const independenceRuleSchema = z.enum(INDEPENDENCE_RULES);
 const reviewEventClassSchema = z.enum(REVIEW_EVENT_CLASSES);
 const planReviewRecommendationSchema = z.enum(PLAN_REVIEW_RECOMMENDATIONS);
 const decisionKindSchema = z.enum(DECISION_KINDS);
+const conditionDispositionStateSchema = z.enum(CONDITION_DISPOSITION_STATES);
+const conditionEligibilityCodeSchema = z.enum(CONDITION_ELIGIBILITY_CODES);
+const conditionEligibilityStatusSchema = z.enum(CONDITION_ELIGIBILITY_STATUSES);
 
 const nonEmptyStringSchema = z.string().trim().min(1);
 const identifierSchema = nonEmptyStringSchema.max(200).regex(/^[A-Za-z0-9][A-Za-z0-9._:-]*$/, 'invalid identifier');
@@ -122,6 +148,18 @@ const evidenceLocationSchema = nonEmptyStringSchema.max(2_000);
 const acceptanceReferenceSchema = nonEmptyStringSchema.max(200);
 const sha256DigestSchema = z.string().regex(/^sha256:[a-f0-9]{64}$/);
 const timestampSchema = z.string().datetime();
+const repositoryRelativePathSchema = nonEmptyStringSchema.max(2_000).superRefine((value, context) => {
+  const segments = value.split('/');
+  if (value.includes('\\')
+      || value.startsWith('/')
+      || /^[A-Za-z]:/.test(value)
+      || segments.some((segment) => segment === '.' || segment === '..' || segment.length === 0)) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'path must be a normalized repository-relative POSIX path',
+    });
+  }
+});
 
 function addUniqueArrayIssue(value, context, path, label) {
   if (new Set(value).size !== value.length) {
@@ -237,6 +275,26 @@ const phaseReviewPolicySchema = z.object({
   non_blocking_categories: z.array(findingCategorySchema).default([]),
 }).passthrough();
 
+const conditionDispositionRuleSchema = z.object({
+  rule_id: identifierSchema,
+  phase_owners: z.array(phaseOwnerSchema).min(1),
+  categories: z.array(findingCategorySchema).min(1),
+  severities: z.array(findingSeveritySchema).min(1),
+  allowed_dispositions: z.array(recommendedDispositionSchema).min(1),
+}).passthrough().superRefine((rule, context) => {
+  addUniqueArrayIssue(rule.phase_owners, context, ['phase_owners'], 'phase_owners');
+  addUniqueArrayIssue(rule.categories, context, ['categories'], 'categories');
+  addUniqueArrayIssue(rule.severities, context, ['severities'], 'severities');
+  addUniqueArrayIssue(rule.allowed_dispositions, context, ['allowed_dispositions'], 'allowed_dispositions');
+});
+
+const conditionDispositionPolicySchema = z.object({
+  default_effect: z.literal('deny'),
+  rules: z.array(conditionDispositionRuleSchema).default([]),
+}).passthrough().superRefine((policy, context) => {
+  addUniqueArrayIssue(policy.rules.map((rule) => rule.rule_id), context, ['rules'], 'condition disposition rule IDs');
+});
+
 const boundedCountSchema = (maximum, minimum = 0) => z.number().int().min(minimum).max(maximum);
 
 const fastDeliveryProfileSchema = z.object({
@@ -303,6 +361,10 @@ const governancePolicySchema = z.object({
     'high-assurance': highAssuranceProfileSchema,
   }).passthrough(),
   review_policy: z.record(phaseReviewPolicySchema),
+  condition_dispositions: conditionDispositionPolicySchema.default({
+    default_effect: 'deny',
+    rules: [],
+  }),
   authorization: authorizationPolicySchema,
 }).passthrough().superRefine((policy, context) => {
   const configured = new Set(policy.sensitive_categories.map((value) => String(value)
@@ -373,6 +435,22 @@ const actorIdentitySchema = z.object({
   verified: z.boolean(),
 }).strict();
 
+const authorizationEvidenceSchema = z.object({
+  action: governanceActionSchema,
+  policy_version: nonEmptyStringSchema.max(200),
+  policy_digest: sha256DigestSchema,
+  actor_id: nonEmptyStringSchema.max(300),
+  provider_actor_id: nonEmptyStringSchema.max(300).optional(),
+  provider_subject: nonEmptyStringSchema.max(500).nullable().optional(),
+  verified: z.boolean(),
+  binding: nonEmptyStringSchema.max(500),
+  matched_actor_ids: z.array(nonEmptyStringSchema.max(300)).default([]),
+  matched_roles: z.array(nonEmptyStringSchema.max(200)).default([]),
+  independence: independenceRuleSchema,
+  independence_result: z.literal('passed'),
+  identity_label: z.literal('LOCAL_UNVERIFIED_IDENTITY').nullable().optional(),
+}).strict();
+
 const dispositionSchema = z.object({
   schema_version: z.literal(GOVERNANCE_RECORD_SCHEMA_VERSION),
   run_id: nonEmptyStringSchema.max(300),
@@ -382,6 +460,67 @@ const dispositionSchema = z.object({
   target: nonEmptyStringSchema.max(500).optional(),
   target_issue: nonEmptyStringSchema.max(500).optional(),
 }).strict();
+
+const proposedConditionDispositionSchema = z.object({
+  finding_id: canonicalFindingIdSchema,
+  action: recommendedDispositionSchema,
+  target: nonEmptyStringSchema.max(500).optional(),
+  target_issue: nonEmptyStringSchema.max(500).optional(),
+  evidence_obligations: z.array(nonEmptyStringSchema.max(2_000)).default([]),
+  supersedes: identifierSchema.nullable().optional(),
+}).strict();
+
+const conditionDispositionEnvelopeSchema = z.object({
+  schema_version: z.literal(GOVERNANCE_RECORD_SCHEMA_VERSION),
+  run_id: nonEmptyStringSchema.max(300),
+  review_id: nonEmptyStringSchema.max(300),
+  policy_version: nonEmptyStringSchema.max(200),
+  policy_digest: sha256DigestSchema,
+  dispositions: z.array(proposedConditionDispositionSchema),
+}).strict();
+
+const canonicalDispositionSchema = z.object({
+  schema_version: z.literal(GOVERNANCE_RECORD_SCHEMA_VERSION),
+  disposition_id: identifierSchema,
+  run_id: nonEmptyStringSchema.max(300),
+  review_id: nonEmptyStringSchema.max(300),
+  finding_id: canonicalFindingIdSchema,
+  action: recommendedDispositionSchema,
+  target: nonEmptyStringSchema.max(500).optional(),
+  target_issue: nonEmptyStringSchema.max(500).optional(),
+  evidence_obligations: z.array(nonEmptyStringSchema.max(2_000)).min(1),
+  state: conditionDispositionStateSchema,
+  supersedes: identifierSchema.nullable().default(null),
+  actor_id: nonEmptyStringSchema.max(300),
+  authorization: authorizationEvidenceSchema,
+  policy_version: nonEmptyStringSchema.max(200),
+  policy_digest: sha256DigestSchema,
+  recorded_at: timestampSchema,
+}).strict().superRefine((disposition, context) => {
+  addUniqueArrayIssue(
+    disposition.evidence_obligations,
+    context,
+    ['evidence_obligations'],
+    'evidence_obligations',
+  );
+  if (disposition.supersedes === disposition.disposition_id) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['supersedes'],
+      message: 'a disposition cannot supersede itself',
+    });
+  }
+  if (disposition.authorization.action !== 'approve-with-conditions'
+      || disposition.authorization.actor_id !== disposition.actor_id
+      || disposition.authorization.policy_version !== disposition.policy_version
+      || disposition.authorization.policy_digest !== disposition.policy_digest) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['authorization'],
+      message: 'disposition authorization must match its actor and policy bindings',
+    });
+  }
+});
 
 const reviewEventSchema = z.object({
   schema_version: z.literal(GOVERNANCE_RECORD_SCHEMA_VERSION),
@@ -400,8 +539,126 @@ const decisionSchema = z.object({
   policy_digest: sha256DigestSchema,
   artifact_sha256: sha256DigestSchema,
   reason_sha256: sha256DigestSchema.nullable(),
+  reason_path: repositoryRelativePathSchema.optional(),
+  authorization: authorizationEvidenceSchema.optional(),
+  disposition_ids: z.array(identifierSchema).optional(),
+  reviewer_recommendation: planReviewRecommendationSchema.optional(),
+  reviewer_approved: z.literal(false).optional(),
   recorded_at: timestampSchema,
-}).strict();
+}).strict().superRefine((decision, context) => {
+  if (decision.decision !== 'approved-with-conditions') return;
+  for (const field of ['reason_path', 'authorization', 'disposition_ids', 'reviewer_recommendation', 'reviewer_approved']) {
+    if (typeof decision[field] === 'undefined') {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: [field],
+        message: `${field} is required for approved-with-conditions`,
+      });
+    }
+  }
+  if (decision.reason_sha256 === null) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['reason_sha256'],
+      message: 'reason_sha256 is required for approved-with-conditions',
+    });
+  }
+  if (Array.isArray(decision.disposition_ids) && decision.disposition_ids.length === 0) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['disposition_ids'],
+      message: 'approved-with-conditions requires at least one disposition',
+    });
+  }
+  if (decision.authorization && (
+    decision.authorization.action !== 'approve-with-conditions'
+    || decision.authorization.actor_id !== decision.actor_id
+    || decision.authorization.policy_version !== decision.policy_version
+    || decision.authorization.policy_digest !== decision.policy_digest
+  )) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['authorization'],
+      message: 'conditioned decision authorization must match its actor and policy bindings',
+    });
+  }
+  if (Array.isArray(decision.disposition_ids)) {
+    addUniqueArrayIssue(decision.disposition_ids, context, ['disposition_ids'], 'disposition_ids');
+  }
+});
+
+const conditionEligibilityResultSchema = z.object({
+  eligible: z.boolean(),
+  status: conditionEligibilityStatusSchema,
+  code: conditionEligibilityCodeSchema,
+  finding_id: canonicalFindingIdSchema.nullable().default(null),
+  disposition_id: identifierSchema.nullable().default(null),
+  policy_rule_ids: z.array(identifierSchema).default([]),
+  authorization_code: nonEmptyStringSchema.max(200).nullable().default(null),
+}).strict().superRefine((result, context) => {
+  const expectedStatus = result.code === 'ELIGIBLE_WITH_CONDITIONS'
+    ? 'ELIGIBLE'
+    : result.code === 'PROTECTED_CRITICAL_REQUIRES_BREAK_GLASS'
+      ? 'BREAK_GLASS_REQUIRED'
+      : 'INELIGIBLE';
+  if (result.eligible !== (result.code === 'ELIGIBLE_WITH_CONDITIONS') || result.status !== expectedStatus) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['status'],
+      message: 'eligible must agree with the eligibility status and code',
+    });
+  }
+});
+
+const conditionEvaluationSchema = z.object({
+  schema_version: z.literal(GOVERNANCE_RECORD_SCHEMA_VERSION),
+  evaluation_id: identifierSchema,
+  run_id: nonEmptyStringSchema.max(300),
+  review_id: nonEmptyStringSchema.max(300),
+  actor_id: nonEmptyStringSchema.max(300).nullable(),
+  policy_version: nonEmptyStringSchema.max(200),
+  policy_digest: sha256DigestSchema,
+  disposition_ids: z.array(identifierSchema),
+  reason_path: repositoryRelativePathSchema.nullable(),
+  reason_sha256: sha256DigestSchema.nullable(),
+  result: conditionEligibilityResultSchema,
+  evaluated_at: timestampSchema,
+}).strict().superRefine((evaluation, context) => {
+  addUniqueArrayIssue(evaluation.disposition_ids, context, ['disposition_ids'], 'disposition_ids');
+});
+
+const conditionedDecisionCandidateSchema = z.object({
+  schema_version: z.literal(GOVERNANCE_RECORD_SCHEMA_VERSION),
+  candidate_id: identifierSchema,
+  evaluation_id: identifierSchema,
+  run_id: nonEmptyStringSchema.max(300),
+  review_id: nonEmptyStringSchema.max(300),
+  phase: z.literal('technical-plan'),
+  decision: z.literal('approved-with-conditions'),
+  publication_state: z.literal('candidate'),
+  actor_id: nonEmptyStringSchema.max(300),
+  authorization: authorizationEvidenceSchema,
+  policy_version: nonEmptyStringSchema.max(200),
+  policy_digest: sha256DigestSchema,
+  reason_path: repositoryRelativePathSchema,
+  reason_sha256: sha256DigestSchema,
+  disposition_ids: z.array(identifierSchema).min(1),
+  reviewer_recommendation: planReviewRecommendationSchema,
+  reviewer_approved: z.literal(false),
+  recorded_at: timestampSchema,
+}).strict().superRefine((candidate, context) => {
+  addUniqueArrayIssue(candidate.disposition_ids, context, ['disposition_ids'], 'disposition_ids');
+  if (candidate.authorization.action !== 'approve-with-conditions'
+      || candidate.authorization.actor_id !== candidate.actor_id
+      || candidate.authorization.policy_version !== candidate.policy_version
+      || candidate.authorization.policy_digest !== candidate.policy_digest) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['authorization'],
+      message: 'conditioned candidate authorization must match its actor and policy bindings',
+    });
+  }
+});
 
 const findingLifecycleEventSchema = z.discriminatedUnion('event', [
   z.object({
@@ -507,12 +764,21 @@ const runGovernanceStateSchema = z.object({
   current_review_id: z.string().regex(/^R-\d{3,}$/).nullable(),
   reviews: z.array(canonicalReviewSchema),
   findings: z.array(canonicalFindingSchema),
+  dispositions: z.array(canonicalDispositionSchema).default([]),
+  condition_evaluations: z.array(conditionEvaluationSchema).default([]),
+  conditioned_candidates: z.array(conditionedDecisionCandidateSchema).default([]),
   updated_at: timestampSchema.optional(),
 }).strict().superRefine((state, context) => {
   const reviewIds = state.reviews.map((review) => review.review_id);
   const findingIds = state.findings.map((finding) => finding.finding_id);
+  const dispositionIds = state.dispositions.map((disposition) => disposition.disposition_id);
+  const evaluationIds = state.condition_evaluations.map((evaluation) => evaluation.evaluation_id);
+  const candidateIds = state.conditioned_candidates.map((candidate) => candidate.candidate_id);
   addUniqueArrayIssue(reviewIds, context, ['reviews'], 'review IDs');
   addUniqueArrayIssue(findingIds, context, ['findings'], 'finding IDs');
+  addUniqueArrayIssue(dispositionIds, context, ['dispositions'], 'disposition IDs');
+  addUniqueArrayIssue(evaluationIds, context, ['condition_evaluations'], 'condition evaluation IDs');
+  addUniqueArrayIssue(candidateIds, context, ['conditioned_candidates'], 'conditioned candidate IDs');
   for (const [index, review] of state.reviews.entries()) {
     if (review.run_id !== state.run_id) {
       context.addIssue({
@@ -529,6 +795,143 @@ const runGovernanceStateSchema = z.object({
         path: ['findings', index, 'run_id'],
         message: 'finding belongs to a different run',
       });
+    }
+  }
+  const dispositionById = new Map(state.dispositions.map((disposition) => [disposition.disposition_id, disposition]));
+  const reviewById = new Map(state.reviews.map((review) => [review.review_id, review]));
+  const currentByFinding = new Map();
+  for (const [index, disposition] of state.dispositions.entries()) {
+    if (disposition.run_id !== state.run_id) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['dispositions', index, 'run_id'],
+        message: 'disposition belongs to a different run',
+      });
+    }
+    if (!findingIds.includes(disposition.finding_id)) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['dispositions', index, 'finding_id'],
+        message: 'disposition references an unknown finding',
+      });
+    }
+    if (!reviewIds.includes(disposition.review_id)) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['dispositions', index, 'review_id'],
+        message: 'disposition references an unknown review',
+      });
+    }
+    const dispositionReview = reviewById.get(disposition.review_id);
+    if (dispositionReview && (
+      dispositionReview.policy_version !== disposition.policy_version
+      || dispositionReview.policy_digest !== disposition.policy_digest
+    )) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['dispositions', index],
+        message: 'disposition policy does not match its review',
+      });
+    }
+    if (disposition.state === 'current') {
+      const priorIndex = currentByFinding.get(disposition.finding_id);
+      if (typeof priorIndex === 'number') {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['dispositions', index, 'state'],
+          message: `finding '${disposition.finding_id}' has more than one current disposition`,
+        });
+      } else {
+        currentByFinding.set(disposition.finding_id, index);
+      }
+    }
+    if (disposition.supersedes) {
+      const prior = dispositionById.get(disposition.supersedes);
+      const priorIndex = state.dispositions.findIndex((candidate) => (
+        candidate.disposition_id === disposition.supersedes
+      ));
+      if (!prior
+          || prior.disposition_id === disposition.disposition_id
+          || prior.finding_id !== disposition.finding_id
+          || prior.state !== 'superseded'
+          || priorIndex >= index) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['dispositions', index, 'supersedes'],
+          message: 'supersedes must reference a superseded disposition for the same finding',
+        });
+      }
+    }
+  }
+  const evaluationIdSet = new Set(evaluationIds);
+  const dispositionIdSet = new Set(dispositionIds);
+  const evaluationById = new Map(state.condition_evaluations.map((evaluation) => [evaluation.evaluation_id, evaluation]));
+  for (const [index, evaluation] of state.condition_evaluations.entries()) {
+    const evaluationReview = reviewById.get(evaluation.review_id);
+    if (evaluation.run_id !== state.run_id
+        || !evaluationReview
+        || evaluationReview.policy_version !== evaluation.policy_version
+        || evaluationReview.policy_digest !== evaluation.policy_digest) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['condition_evaluations', index],
+        message: 'condition evaluation correlation is invalid',
+      });
+    }
+    for (const [dispositionIndex, dispositionId] of evaluation.disposition_ids.entries()) {
+      const disposition = dispositionById.get(dispositionId);
+      if (!dispositionIdSet.has(dispositionId)) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['condition_evaluations', index, 'disposition_ids', dispositionIndex],
+          message: 'condition evaluation references an unknown disposition',
+        });
+      } else if (disposition.run_id !== evaluation.run_id
+          || disposition.review_id !== evaluation.review_id
+          || disposition.actor_id !== evaluation.actor_id
+          || disposition.policy_version !== evaluation.policy_version
+          || disposition.policy_digest !== evaluation.policy_digest) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['condition_evaluations', index, 'disposition_ids', dispositionIndex],
+          message: 'condition evaluation disposition correlation is invalid',
+        });
+      }
+    }
+  }
+  for (const [index, candidate] of state.conditioned_candidates.entries()) {
+    const evaluation = evaluationById.get(candidate.evaluation_id);
+    const candidateReview = reviewById.get(candidate.review_id);
+    const candidateDispositionIds = [...candidate.disposition_ids].sort();
+    const evaluationDispositionIds = [...(evaluation?.disposition_ids || [])].sort();
+    if (candidate.run_id !== state.run_id
+        || !reviewIds.includes(candidate.review_id)
+        || !evaluationIdSet.has(candidate.evaluation_id)
+        || evaluation?.result.eligible !== true
+        || evaluation?.run_id !== candidate.run_id
+        || evaluation?.review_id !== candidate.review_id
+        || evaluation?.actor_id !== candidate.actor_id
+        || evaluation?.policy_version !== candidate.policy_version
+        || evaluation?.policy_digest !== candidate.policy_digest
+        || evaluation?.reason_path !== candidate.reason_path
+        || evaluation?.reason_sha256 !== candidate.reason_sha256
+        || candidateReview?.provider_recommendation !== candidate.reviewer_recommendation
+        || candidateDispositionIds.length !== evaluationDispositionIds.length
+        || candidateDispositionIds.some((id, dispositionIndex) => id !== evaluationDispositionIds[dispositionIndex])) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['conditioned_candidates', index],
+        message: 'conditioned candidate correlation is invalid',
+      });
+    }
+    for (const [dispositionIndex, dispositionId] of candidate.disposition_ids.entries()) {
+      if (!dispositionIdSet.has(dispositionId)) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['conditioned_candidates', index, 'disposition_ids', dispositionIndex],
+          message: 'conditioned candidate references an unknown disposition',
+        });
+      }
     }
   }
   if (state.current_review_id && !reviewIds.includes(state.current_review_id)) {
@@ -573,6 +976,9 @@ const runGovernanceStateSchema = z.object({
 });
 
 module.exports = {
+  CONDITION_DISPOSITION_STATES,
+  CONDITION_ELIGIBILITY_CODES,
+  CONDITION_ELIGIBILITY_STATUSES,
   DECISION_KINDS,
   EXECUTION_PROFILES,
   FINDING_CATEGORIES,
@@ -589,11 +995,22 @@ module.exports = {
   RECOMMENDED_DISPOSITIONS,
   REVIEW_EVENT_CLASSES,
   actorIdentitySchema,
+  authorizationEvidenceSchema,
   authorizationPolicySchema,
   authorizationRuleSchema,
   canonicalFindingIdSchema,
   canonicalFindingSchema,
+  canonicalDispositionSchema,
   canonicalReviewSchema,
+  conditionedDecisionCandidateSchema,
+  conditionDispositionEnvelopeSchema,
+  conditionDispositionPolicySchema,
+  conditionDispositionRuleSchema,
+  conditionDispositionStateSchema,
+  conditionEligibilityCodeSchema,
+  conditionEligibilityResultSchema,
+  conditionEligibilityStatusSchema,
+  conditionEvaluationSchema,
   decisionKindSchema,
   decisionSchema,
   dispositionSchema,
@@ -611,6 +1028,7 @@ module.exports = {
   providerReviewBodySchema,
   providerReviewSchema,
   recommendedDispositionSchema,
+  repositoryRelativePathSchema,
   reviewEventSchema,
   reviewEventClassSchema,
   reviewProjectionSchema,
