@@ -22,6 +22,8 @@ Implement an append-only review event ledger, atomic reservation, deterministic 
 - Offer only the governed human next actions defined by AC-07 after exhaustion.
 - Require verified authorization and audit evidence for an extension.
 - Project stable exhaustion and human-decision machine codes.
+- Fail closed when canonical reviews and valid ledger outcomes are not correlated one to one.
+- Recover interrupted governed review commits idempotently before later mutation or closure.
 
 ## Acceptance Criteria
 
@@ -35,19 +37,22 @@ The normative wording and traceability are in ../../SPEC.md.
 
 1. Confirm slice-01 is completed and use its canonical review identifiers.
 2. Implement the normative event classifier without provider-prose heuristics.
-3. Add lock-scoped reservation before any provider call.
+3. Add an explicit provider-adapter payload-received signal and lock-scoped reservation before any provider call.
 4. Enforce run isolation and unambiguous mutation targeting.
 5. Add exhaustion and authorized extension behavior.
 6. Project the five governed next actions without auto-executing one.
 7. Wire invalid-output and retry outcomes to the ledger while preserving the last valid review.
-8. Wire human and JSON budget views to event-derived counts.
-9. Add concurrency, invalid-output consumption, retry, external classification, exhaustion, and multi-run tests.
+8. Add a run-scoped recoverable commit marker for canonical review, valid outcome, rendered projections, and phase advancement.
+9. Block mutation or closure on unverifiable history, corrupt recovery state, or an in-flight reservation.
+10. Wire human and JSON budget views to event-derived counts.
+11. Add concurrency, invalid-output consumption, retry, external classification, exhaustion, recovery, and multi-run tests.
 
 ## Expected Files
 
 - src/create-quiver/lib/ai/review-budget.js
 - src/create-quiver/lib/ai/review-governance.js
 - src/create-quiver/lib/ai/plan-review.js
+- src/create-quiver/lib/ai/providers.js
 - src/create-quiver/lib/ai/run-state.js
 - src/create-quiver/lib/locks.js
 - src/create-quiver/commands/ai.js
@@ -60,10 +65,11 @@ The normative wording and traceability are in ../../SPEC.md.
 - Do not treat transport or timeout retry as a new semantic review.
 - Do not allow a display name alone to authorize extension.
 - Do not implement generalized retry or external import workflows.
+- Do not synthesize ledger outcomes for legacy canonical reviews; slice-06 owns explicit migration.
 
 ## Validation
 
-    node --test tests/lib/ai-review-budget.test.js tests/lib/ai-review-governance.test.js tests/lib/ai-run-state.test.js tests/commands/ai-review-plan.test.js tests/commands/ai-run-state.test.js
+    node --test tests/lib/ai-review-budget.test.js tests/lib/ai-review-governance.test.js tests/lib/ai-providers.test.js tests/lib/ai-run-state.test.js tests/commands/ai-review-plan.test.js tests/commands/ai-run-state.test.js
     node bin/create-quiver.js slice check --local specs/quiver-v58-risk-aware-review-governance/slices/slice-02-review-budget-circuit-breaker/slice.json
     node bin/create-quiver.js spec validate specs/quiver-v58-risk-aware-review-governance --strict
     git diff --check
@@ -80,4 +86,6 @@ The normative wording and traceability are in ../../SPEC.md.
 - Exhaustion lists the governed next actions and performs none automatically.
 - Extension requires verified authorization and produces audit evidence.
 - Human and JSON counts derive from ledger events.
+- Canonical review history has exact one-to-one valid outcome correlation before mutation.
+- Interrupted commits recover idempotently, and close cannot race an in-flight provider reservation.
 - Closure evidence and deviations are recorded.

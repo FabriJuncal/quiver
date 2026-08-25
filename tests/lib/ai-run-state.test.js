@@ -227,6 +227,28 @@ test('run lock remains held until an asynchronous callback settles', async () =>
   }
 });
 
+test('run locks normalize aliases and release only the lock instance they own', () => {
+  const repo = makeRepo();
+
+  try {
+    const first = acquireAiRunLock(repo.root, 'RUN-Alias', { command: 'first owner' });
+    assert.equal(first.lock.run_id, 'run-alias');
+    assert.throws(
+      () => acquireAiRunLock(repo.root, 'run-alias', { command: 'case alias' }),
+      /AI run is locked/,
+    );
+
+    fs.rmSync(first.filePath);
+    const second = acquireAiRunLock(repo.root, 'run-alias', { command: 'second owner' });
+    releaseAiRunLock(repo.root, 'RUN-ALIAS', { handle: first });
+    assert.equal(readAiRunLock(repo.root, 'run-alias').nonce, second.lock.nonce);
+    releaseAiRunLock(repo.root, 'run-alias', { handle: second });
+    assert.equal(readAiRunLock(repo.root, 'run-alias'), null);
+  } finally {
+    repo.cleanup();
+  }
+});
+
 test('governed phase transitions share the run lock with governance commits', () => {
   const repo = makeRepo();
   const governance = {

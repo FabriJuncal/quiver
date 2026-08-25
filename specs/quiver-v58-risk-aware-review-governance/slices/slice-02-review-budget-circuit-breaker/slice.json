@@ -15,6 +15,7 @@
     "specs/quiver-v58-risk-aware-review-governance/SPEC.md",
     "src/create-quiver/lib/ai/review-governance.js",
     "src/create-quiver/lib/ai/plan-review.js",
+    "src/create-quiver/lib/ai/providers.js",
     "src/create-quiver/lib/ai/run-state.js",
     "src/create-quiver/lib/locks.js",
     "src/create-quiver/commands/ai.js"
@@ -23,11 +24,13 @@
     "src/create-quiver/lib/ai/review-budget.js",
     "src/create-quiver/lib/ai/review-governance.js",
     "src/create-quiver/lib/ai/plan-review.js",
+    "src/create-quiver/lib/ai/providers.js",
     "src/create-quiver/lib/ai/run-state.js",
     "src/create-quiver/lib/locks.js",
     "src/create-quiver/commands/ai.js",
     "tests/lib/ai-review-budget.test.js",
     "tests/lib/ai-review-governance.test.js",
+    "tests/lib/ai-providers.test.js",
     "tests/lib/ai-run-state.test.js",
     "tests/commands/ai-review-plan.test.js",
     "tests/commands/ai-run-state.test.js",
@@ -37,11 +40,13 @@
     "src/create-quiver/lib/ai/review-budget.js",
     "src/create-quiver/lib/ai/review-governance.js",
     "src/create-quiver/lib/ai/plan-review.js",
+    "src/create-quiver/lib/ai/providers.js",
     "src/create-quiver/lib/ai/run-state.js",
     "src/create-quiver/lib/locks.js",
     "src/create-quiver/commands/ai.js",
     "tests/lib/ai-review-budget.test.js",
     "tests/lib/ai-review-governance.test.js",
+    "tests/lib/ai-providers.test.js",
     "tests/lib/ai-run-state.test.js",
     "tests/commands/ai-review-plan.test.js",
     "tests/commands/ai-run-state.test.js",
@@ -62,10 +67,14 @@
     "Count an accepted external review in its declared full or targeted class.",
     "Finalize and consume the reserved semantic event as invalid-output when a provider payload is received but fails contractual validation, while preserving the last valid review.",
     "Convert only a pre-payload transport or timeout failure with the same request-envelope digest to retry without semantic consumption.",
+    "Treat payload as received only when the provider adapter reports bytes on its declared contractual output stream; diagnostic output cannot consume semantic budget.",
     "Return REVIEW_BUDGET_EXHAUSTED and HUMAN_DECISION_REQUIRED without invoking the provider when exhausted.",
     "Expose approve-with-conditions, reject, transfer-findings, create-follow-up, and targeted-amendment as governed next actions after exhaustion.",
     "Require verified authorization and an audit event for every budget extension.",
-    "Keep events and counts isolated across simultaneous runs."
+    "Keep events and counts isolated across simultaneous runs.",
+    "Verify one-to-one correlation between canonical reviews and valid budget outcomes before any new reservation or extension, and fail closed on unverifiable legacy history.",
+    "Commit canonical review state, the valid budget outcome, rendered projections, and phase advancement through a run-scoped recoverable marker.",
+    "Recover an interrupted governed review commit idempotently before later governed mutations, and prevent run closure while recovery or a provider reservation is pending."
   ],
   "not_included": [
     "Conditioned approval eligibility.",
@@ -83,14 +92,21 @@
     "Exhaustion projects the five governed next actions without executing any automatically.",
     "Human and JSON budget counts derive from the canonical event ledger.",
     "Technical retry and external review behavior is covered by focused fixtures.",
-    "Invalid provider payload consumes its reservation, records invalid-output, and leaves the last valid review current."
+    "Invalid provider payload consumes its reservation, records invalid-output, and leaves the last valid review current.",
+    "A provider success with diagnostic output but no contractual payload records a transport retry and publishes no canonical review.",
+    "Canonical review history without an exactly correlated valid ledger outcome fails closed before provider or identity invocation.",
+    "Injected interruption at every governed review commit boundary recovers to exactly one canonical review and one valid outcome.",
+    "Run closure fails while review work is reserved and succeeds only after the governed review commit is durable."
   ],
   "tests": [
-    "node --test tests/lib/ai-review-budget.test.js tests/lib/ai-review-governance.test.js tests/lib/ai-run-state.test.js tests/commands/ai-review-plan.test.js tests/commands/ai-run-state.test.js",
+    "node --test tests/lib/ai-review-budget.test.js tests/lib/ai-review-governance.test.js tests/lib/ai-providers.test.js tests/lib/ai-run-state.test.js tests/commands/ai-review-plan.test.js tests/commands/ai-run-state.test.js",
     "node bin/create-quiver.js slice check --local specs/quiver-v58-risk-aware-review-governance/slices/slice-02-review-budget-circuit-breaker/slice.json",
     "node bin/create-quiver.js spec validate specs/quiver-v58-risk-aware-review-governance --strict",
     "git diff --check"
   ],
   "estimated_hours": 6,
-  "status": "ready"
+  "status": "completed",
+  "started_at": "2026-08-25T13:19:56Z",
+  "actual_hours": 1.4,
+  "completed_at": "2026-08-25T14:45:12Z"
 }

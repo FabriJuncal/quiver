@@ -11,6 +11,7 @@ const PROVIDERS = {
     id: 'codex',
     command: 'codex',
     args: ['exec'],
+    contractualOutputStream: 'stdout',
     supportsModelSelection: true,
     modelArgBuilder: (model) => ['--model', model],
     timeoutMs: 10 * 60 * 1000,
@@ -20,6 +21,7 @@ const PROVIDERS = {
     id: 'claude',
     command: 'claude',
     args: ['-p'],
+    contractualOutputStream: 'stdout',
     supportsModelSelection: true,
     modelArgBuilder: (model) => ['--model', model],
     timeoutMs: 10 * 60 * 1000,
@@ -29,6 +31,7 @@ const PROVIDERS = {
     id: 'gemini',
     command: 'gemini',
     args: ['--prompt', ''],
+    contractualOutputStream: 'stdout',
     supportsModelSelection: true,
     modelArgBuilder: (model) => ['--model', model],
     timeoutMs: 10 * 60 * 1000,
@@ -322,6 +325,7 @@ function createDryRunResult(invocation) {
     modelSelection: invocation.modelSelection,
     promptTransport: invocation.promptTransport,
     exitCode: 0,
+    payloadReceived: false,
     stdout: '',
     stderr: '',
     error: null,
@@ -449,12 +453,14 @@ function runSpawn(command, args, options = {}) {
 
     let stdout = '';
     let stderr = '';
+    let payloadReceived = false;
     const cleanupFns = [];
     let settled = false;
 
     if (child.stdout) {
       child.stdout.setEncoding('utf8');
       child.stdout.on('data', (chunk) => {
+        if (options.contractualOutputStream === 'stdout') payloadReceived = true;
         stdout += chunk;
       });
     }
@@ -462,6 +468,7 @@ function runSpawn(command, args, options = {}) {
     if (child.stderr) {
       child.stderr.setEncoding('utf8');
       child.stderr.on('data', (chunk) => {
+        if (options.contractualOutputStream === 'stderr') payloadReceived = true;
         stderr += chunk;
       });
     }
@@ -487,6 +494,7 @@ function runSpawn(command, args, options = {}) {
         ok: payload.exitCode === 0,
         exitCode: payload.exitCode,
         signal: payload.signal || null,
+        payloadReceived,
         stdout: redactedStdout,
         stderr: redactedStderr,
         outputRedaction: {
@@ -534,13 +542,30 @@ function runSpawn(command, args, options = {}) {
       });
     });
 
-    if (options.transport && options.transport.mode === 'temp-file') {
-      if (child.stdin) {
+    const finalizeTransportFailure = (error) => {
+      if (child && typeof child.kill === 'function') child.kill('SIGTERM');
+      finalize({
+        exitCode: null,
+        signal: 'SIGTERM',
+        error: new ProviderRunnerError(
+          'PROVIDER_TRANSPORT_ERROR',
+          `Provider '${options.provider}' prompt transport failed before completion.`,
+          { cause: error?.code || error?.message || 'unknown' },
+        ),
+      });
+    };
+    if (child.stdin && typeof child.stdin.on === 'function') {
+      child.stdin.on('error', finalizeTransportFailure);
+    }
+    try {
+      if (options.transport && options.transport.mode === 'temp-file' && child.stdin) {
         const contents = fs.readFileSync(options.transport.filePath, 'utf8');
         child.stdin.end(contents, 'utf8');
+      } else if (child.stdin) {
+        child.stdin.end(String(options.prompt ?? ''), 'utf8');
       }
-    } else if (child.stdin) {
-      child.stdin.end(String(options.prompt ?? ''), 'utf8');
+    } catch (error) {
+      finalizeTransportFailure(error);
     }
   });
 }
@@ -554,11 +579,15 @@ async function runProvider(providerId, options = {}) {
 
   let preflightResult;
   try {
-    const { preflightProvider } = require('./preflight');
-    preflightResult = preflightProvider(providerId, {
-      probe: options.probe,
-      cwd: invocation.cwd,
-    });
+    if (options.preflightResult) {
+      preflightResult = options.preflightResult;
+    } else {
+      const { preflightProvider } = require('./preflight');
+      preflightResult = preflightProvider(providerId, {
+        probe: options.probe,
+        cwd: invocation.cwd,
+      });
+    }
   } catch (error) {
     return {
       ok: false,
@@ -571,6 +600,7 @@ async function runProvider(providerId, options = {}) {
       modelSelection: invocation.modelSelection,
       promptTransport: invocation.promptTransport,
       exitCode: null,
+      payloadReceived: false,
       stdout: '',
       stderr: '',
       error: serializeError(error, invocation.provider, invocation),
@@ -578,12 +608,40 @@ async function runProvider(providerId, options = {}) {
     };
   }
 
-  const transport = preparePromptTransport(String(options.prompt ?? ''), {
-    mode: invocation.promptTransport.mode,
-    tempRoot: options.tempRoot,
-    tempFileName: options.tempFileName,
-    tempFilePrefix: options.tempFilePrefix,
-  });
+  let transport;
+  try {
+    transport = preparePromptTransport(String(options.prompt ?? ''), {
+      mode: invocation.promptTransport.mode,
+      tempRoot: options.tempRoot,
+      tempFileName: options.tempFileName,
+      tempFilePrefix: options.tempFilePrefix,
+    });
+  } catch (error) {
+    const transportError = new ProviderRunnerError(
+      'PROVIDER_TRANSPORT_ERROR',
+      `Provider '${invocation.provider}' prompt transport could not be prepared.`,
+      { cause: error?.code || error?.message || 'unknown' },
+    );
+    return {
+      ok: false,
+      dryRun: false,
+      provider: invocation.provider,
+      command: invocation.command,
+      args: invocation.args.slice(),
+      cwd: invocation.cwd,
+      timeoutMs: invocation.timeoutMs,
+      modelSelection: invocation.modelSelection,
+      promptTransport: invocation.promptTransport,
+      exitCode: null,
+      signal: null,
+      payloadReceived: false,
+      stdout: '',
+      stderr: '',
+      outputRedaction: { stdout: false, stderr: false },
+      error: serializeError(transportError, invocation.provider, invocation),
+      preflight: preflightResult,
+    };
+  }
 
   try {
     const execution = await runSpawn(invocation.command, invocation.args, {
@@ -595,6 +653,7 @@ async function runProvider(providerId, options = {}) {
       provider: invocation.provider,
       invocation,
       timeoutMs: invocation.timeoutMs,
+      contractualOutputStream: getProviderDefinition(invocation.provider).contractualOutputStream,
     });
 
     const providerResult = {
@@ -609,6 +668,7 @@ async function runProvider(providerId, options = {}) {
       promptTransport: describePromptTransport(transport),
       exitCode: execution.exitCode,
       signal: execution.signal,
+      payloadReceived: execution.payloadReceived === true,
       stdout: execution.stdout,
       stderr: execution.stderr,
       outputRedaction: execution.outputRedaction,

@@ -240,6 +240,7 @@ test('runProvider dry-run returns a structured plan without invoking spawn', asy
   assert.deepEqual(result.args, ['--prompt', '']);
   assert.equal(result.modelSelection.model, '');
   assert.equal(result.exitCode, 0);
+  assert.equal(result.payloadReceived, false);
   assert.equal(result.stderr, '');
 });
 
@@ -333,6 +334,7 @@ test('runProvider uses an argument array and writes the prompt through stdin', a
   assert.equal(events[0].options.shell, false);
   assert.deepEqual(events.filter((event) => Object.prototype.hasOwnProperty.call(event, 'stdin')).map((event) => event.stdin), ['line 1\nline 2']);
   assert.equal(result.exitCode, 0);
+  assert.equal(result.payloadReceived, false);
   assert.equal(result.stdout, '');
 });
 
@@ -378,6 +380,7 @@ test('runProvider redacts likely secrets from stdout, stderr, and serialized err
   });
 
   assert.equal(result.ok, false);
+  assert.equal(result.payloadReceived, true);
   assert.equal(result.stdout, 'token=[REDACTED]\n');
   assert.equal(result.stderr, 'authorization: bearer [REDACTED]\n');
   assert.deepEqual(result.outputRedaction, { stdout: true, stderr: true });
@@ -420,8 +423,84 @@ test('runProvider times out and terminates a hung provider', async () => {
   assert.equal(result.ok, false);
   assert.equal(result.exitCode, null);
   assert.equal(result.signal, 'SIGTERM');
+  assert.equal(result.payloadReceived, false);
   assert.equal(result.error.code, 'PROVIDER_TIMEOUT');
   assert.deepEqual(events, [{ kill: 'SIGTERM' }]);
+});
+
+test('provider payload signal ignores diagnostic stderr but records contractual stdout before timeout', async () => {
+  async function timedResult(stream) {
+    return runProvider('codex', {
+      prompt: 'hang after output',
+      timeoutMs: 5,
+      spawn() {
+        const listeners = {};
+        const child = {
+          stdout: {
+            setEncoding() {},
+            on(event, handler) { listeners[`stdout:${event}`] = handler; },
+          },
+          stderr: {
+            setEncoding() {},
+            on(event, handler) { listeners[`stderr:${event}`] = handler; },
+          },
+          stdin: { end() {} },
+          kill() {},
+          on(event, handler) { listeners[event] = handler; },
+        };
+        process.nextTick(() => listeners[`${stream}:data`](`${stream} bytes\n`));
+        return child;
+      },
+      probe() { return { status: 0, stdout: 'codex 1.0.0', stderr: '' }; },
+    });
+  }
+
+  const stderrOnly = await timedResult('stderr');
+  const stdoutPartial = await timedResult('stdout');
+  assert.equal(stderrOnly.error.code, 'PROVIDER_TIMEOUT');
+  assert.equal(stderrOnly.payloadReceived, false);
+  assert.equal(stdoutPartial.error.code, 'PROVIDER_TIMEOUT');
+  assert.equal(stdoutPartial.payloadReceived, true);
+});
+
+test('prompt delivery failures return an explicit pre-payload transport result', async () => {
+  async function deliveryResult(withStdout) {
+    return runProvider('codex', {
+      prompt: 'transport failure',
+      spawn() {
+        const listeners = {};
+        return {
+          stdout: {
+            setEncoding() {},
+            on(event, handler) { listeners[`stdout:${event}`] = handler; },
+          },
+          stderr: {
+            setEncoding() {},
+            on(event, handler) { listeners[`stderr:${event}`] = handler; },
+          },
+          stdin: {
+            on() {},
+            end() {
+              if (withStdout) listeners['stdout:data']('partial contractual output\n');
+              const error = new Error('broken prompt pipe');
+              error.code = 'EPIPE';
+              throw error;
+            },
+          },
+          kill() {},
+          on(event, handler) { listeners[event] = handler; },
+        };
+      },
+      probe() { return { status: 0, stdout: 'codex 1.0.0', stderr: '' }; },
+    });
+  }
+
+  const prePayload = await deliveryResult(false);
+  const postPayload = await deliveryResult(true);
+  assert.equal(prePayload.error.code, 'PROVIDER_TRANSPORT_ERROR');
+  assert.equal(prePayload.payloadReceived, false);
+  assert.equal(postPayload.error.code, 'PROVIDER_TRANSPORT_ERROR');
+  assert.equal(postPayload.payloadReceived, true);
 });
 
 test('runProvider returns structured metadata when preflight fails', async () => {
@@ -436,6 +515,7 @@ test('runProvider returns structured metadata when preflight fails', async () =>
 
   assert.equal(result.ok, false);
   assert.equal(result.exitCode, null);
+  assert.equal(result.payloadReceived, false);
   assert.equal(result.error.code, 'MISSING_PROVIDER_CLI');
   assert.equal(result.preflight, null);
 });

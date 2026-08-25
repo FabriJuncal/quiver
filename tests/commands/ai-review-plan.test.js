@@ -5,15 +5,28 @@ const path = require('node:path');
 const { execFileSync } = require('node:child_process');
 const test = require('node:test');
 
-const { runApprove, runReviewPlan, runRevise } = require('../../src/create-quiver/commands/ai');
+const {
+  runApprove,
+  runExtendReviewBudget,
+  runLifecycleRun,
+  runReviewPlan,
+  runRevise,
+} = require('../../src/create-quiver/commands/ai');
 const { approvePlannerPhase, readPhaseApproval, savePlannerDraft } = require('../../src/create-quiver/lib/approvals');
 const {
   buildTechnicalPlanApprovalCandidates,
   readPlanReview,
+  recoverGovernedPlanReviewCommit,
   saveGovernedPlanReview,
   summarizePlanReview,
 } = require('../../src/create-quiver/lib/ai/plan-review');
 const { buildDefaultGovernanceConfig, resolveEffectiveProfile } = require('../../src/create-quiver/lib/ai/review-governance');
+const {
+  REVIEW_BUDGET_NEXT_ACTIONS,
+  extendReviewBudget,
+  readReviewBudget,
+  readReviewBudgetEvents,
+} = require('../../src/create-quiver/lib/ai/review-budget');
 const {
   bindAiRunGovernance,
   createAiRun,
@@ -21,6 +34,7 @@ const {
   readAiRun,
   readAiRunLock,
   readRunGovernance,
+  runReviewCommitPath,
   updateAiRunPhase,
 } = require('../../src/create-quiver/lib/ai/run-state');
 
@@ -112,6 +126,30 @@ function providerSuccess(repoRoot, stdout) {
     stderr: '',
     error: null,
     preflight: { ok: true },
+    payloadReceived: true,
+  };
+}
+
+function providerFailure(repoRoot, options = {}) {
+  return {
+    ok: false,
+    dryRun: false,
+    provider: 'codex',
+    command: 'codex',
+    args: ['exec'],
+    cwd: repoRoot,
+    timeoutMs: 0,
+    promptTransport: { mode: 'stdin' },
+    exitCode: null,
+    signal: options.signal || null,
+    stdout: options.stdout || '',
+    stderr: options.stderr || '',
+    error: {
+      code: options.code || 'PROVIDER_RUN_FAILED',
+      message: options.message || 'provider failed',
+    },
+    preflight: { ok: true },
+    payloadReceived: options.payloadReceived === true,
   };
 }
 
@@ -286,6 +324,21 @@ test('ai review-plan persists review state and becomes valid after approving the
 test('governed review preserves the last valid state and omission does not close an open blocker', async () => {
   const governance = buildDefaultGovernanceConfig();
   governance.requirement_categories = ['auth'];
+  const budgetActor = {
+    actor_id: 'github:github.com:42',
+    provider: 'github-cli',
+    provider_subject: 'github:github.com:42',
+    verified: true,
+  };
+  governance.policy.authorization.actor_bindings[budgetActor.provider_subject] = {
+    actor_id: budgetActor.actor_id,
+    roles: ['maintainer'],
+  };
+  governance.policy.authorization.actions['extend-review-budget'] = {
+    allowed_actor_ids: [],
+    allowed_roles: ['maintainer'],
+    independence: 'none',
+  };
   const repo = makeRepo({
     'technical-plan.md': structuredTechnicalPlanText('governed-plan'),
     '.quiver/config.json': `${JSON.stringify({ governance }, null, 2)}\n`,
@@ -331,20 +384,39 @@ test('governed review preserves the last valid state and omission does not close
     assert.equal(readAiRun(repo.root, 'run-governed-review').phase, 'technical-plan-reviewed');
     assert.equal(firstState.findings[0].finding_id, 'F-001');
     assert.equal(firstState.reviews[0].projection.blocking, true);
+    const targetedIntent = () => ({
+      event_class: 'targeted',
+      base_review_id: 'R-001',
+      finding_ids: ['F-001'],
+      sections: [],
+    });
+    const extendBudget = () => extendReviewBudget(repo.root, {
+      runId: 'run-governed-review',
+      governance,
+      profile: first.governance,
+      actor: budgetActor,
+    });
 
     await assert.rejects(
       () => runReviewPlan(repo.root, {
         runId: 'run-governed-review',
+        reviewIntent: targetedIntent('malformed-output-contract'),
         runProviderFn: async () => providerSuccess(repo.root, 'authorization: bearer secret-value\nnot json\n'),
       }),
       (error) => error.code === 'PROVIDER_OUTPUT_INVALID',
     );
     assert.deepEqual(fs.readFileSync(metaPath), firstMetaBytes);
     assert.deepEqual(fs.readFileSync(governancePath), firstGovernanceBytes);
+    assert.equal(readReviewBudget(repo.root, 'run-governed-review', {
+      governance,
+      profile: first.governance,
+    }).projection.counts.invalid_output_count, 1);
 
+    extendBudget();
     await assert.rejects(
       () => runReviewPlan(repo.root, {
         runId: 'run-governed-review',
+        reviewIntent: targetedIntent('sensitive-contract-output'),
         runProviderFn: async () => providerSuccess(repo.root, governedReviewOutput([{
           ...blocker,
           summary: 'authorization: bearer contract-secret-value-123456789',
@@ -355,9 +427,11 @@ test('governed review preserves the last valid state and omission does not close
     assert.deepEqual(fs.readFileSync(metaPath), firstMetaBytes);
     assert.deepEqual(fs.readFileSync(governancePath), firstGovernanceBytes);
 
+    extendBudget();
     await assert.rejects(
       () => runReviewPlan(repo.root, {
         runId: 'run-governed-review',
+        reviewIntent: targetedIntent('provider-redaction'),
         runProviderFn: async () => ({
           ...providerSuccess(repo.root, governedReviewOutput([{
             ...blocker,
@@ -371,10 +445,12 @@ test('governed review preserves the last valid state and omission does not close
     assert.deepEqual(fs.readFileSync(metaPath), firstMetaBytes);
     assert.deepEqual(fs.readFileSync(governancePath), firstGovernanceBytes);
 
+    extendBudget();
     let secondPrompt = '';
     await assert.rejects(
       () => runReviewPlan(repo.root, {
         runId: 'run-governed-review',
+        reviewIntent: targetedIntent('canonical-finding-omission'),
         runProviderFn: async (provider, providerOptions) => {
           secondPrompt = providerOptions.prompt;
           return providerSuccess(repo.root, governedReviewOutput([]));
@@ -391,11 +467,16 @@ test('governed review preserves the last valid state and omission does not close
     assert.match(secondPrompt, /"blocking_justification": "Authorization must be defined/);
     assert.match(secondPrompt, /"recommended_disposition": "revise-plan"/);
     assert.match(secondPrompt, /"confidence": "high"/);
+    assert.match(secondPrompt, /Immutable review scope intent/);
+    assert.match(secondPrompt, /"event_class": "targeted"/);
+    assert.match(secondPrompt, /"finding_ids": \[/);
     assert.deepEqual(fs.readFileSync(metaPath), firstMetaBytes);
     assert.deepEqual(fs.readFileSync(governancePath), firstGovernanceBytes);
 
+    extendBudget();
     const repeated = await runReviewPlan(repo.root, {
       runId: 'run-governed-review',
+      reviewIntent: targetedIntent('canonical-finding-reconciliation'),
       runProviderFn: async () => providerSuccess(repo.root, governedReviewOutput([{
         ...blocker,
         id: 'provider-security-repeat',
@@ -505,6 +586,7 @@ test('governed approval is default-deny before mutation and records explicit aut
 
 test('governed approval rechecks canonical blockers under the run lock after identity resolution', async () => {
   const governance = buildDefaultGovernanceConfig();
+  governance.requested_profile = 'high-assurance';
   const actor = {
     actor_id: 'github:github.com:42',
     provider: 'github-cli',
@@ -555,6 +637,12 @@ test('governed approval rechecks canonical blockers under the run lock after ide
         resolveActorFn: async () => {
           await runReviewPlan(repo.root, {
             runId: 'run-approval-race',
+            reviewIntent: {
+              event_class: 'targeted',
+              base_review_id: 'R-001',
+              finding_ids: [],
+              sections: ['objective'],
+            },
             runProviderFn: async () => providerSuccess(repo.root, governedReviewOutput([blocker])),
           });
           return actor;
@@ -574,6 +662,7 @@ test('governed approval rechecks canonical blockers under the run lock after ide
 
 test('governed blocking review can revise to an owned draft and review again', async () => {
   const governance = buildDefaultGovernanceConfig();
+  governance.requested_profile = 'high-assurance';
   const repo = makeRepo({
     'requirements.md': '# Requirements\n- Keep the review cycle traceable.\n',
     'technical-plan.md': structuredTechnicalPlanText('review-cycle-plan'),
@@ -628,6 +717,574 @@ test('governed blocking review can revise to an owned draft and review again', a
     });
     assert.equal(second.reviewId, 'R-002');
     assert.equal(readAiRun(repo.root, 'run-review-cycle').phase, 'technical-plan-reviewed');
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('governed review exhaustion blocks provider preflight and execution with five explicit actions', async () => {
+  const governance = buildDefaultGovernanceConfig();
+  const repo = makeRepo({
+    'technical-plan.md': structuredTechnicalPlanText('exhausted-plan'),
+    '.quiver/config.json': `${JSON.stringify({ governance }, null, 2)}\n`,
+  });
+  let probeCalls = 0;
+  let spawnCalls = 0;
+
+  try {
+    savePlannerDraft(repo.root, 'technical-plan', 'technical-plan.md', structuredTechnicalPlanText('exhausted-plan'));
+    seedGovernedTechnicalPlanRun(repo.root, 'run-exhausted', governance, latestDraftArtifact(repo.root));
+    await runReviewPlan(repo.root, {
+      runId: 'run-exhausted',
+      runProviderFn: async () => providerSuccess(repo.root, governedReviewOutput([])),
+    });
+    const beforeEvents = readReviewBudgetEvents(repo.root, 'run-exhausted');
+
+    await assert.rejects(
+      () => runReviewPlan(repo.root, {
+        runId: 'run-exhausted',
+        reviewIntent: {
+          event_class: 'targeted',
+          base_review_id: 'R-001',
+          finding_ids: [],
+          sections: ['objective'],
+        },
+        probe() {
+          probeCalls += 1;
+          return { status: 0, stdout: 'codex 1.0.0', stderr: '' };
+        },
+        spawn() {
+          spawnCalls += 1;
+          throw new Error('provider must not start');
+        },
+      }),
+      (error) => error.code === 'REVIEW_BUDGET_EXHAUSTED'
+        && error.details.machine_codes.includes('HUMAN_DECISION_REQUIRED')
+        && error.details.next_actions.length === 5
+        && error.details.next_actions.every((action, index) => action === REVIEW_BUDGET_NEXT_ACTIONS[index]),
+    );
+    assert.equal(probeCalls, 0);
+    assert.equal(spawnCalls, 0);
+    assert.deepEqual(readReviewBudgetEvents(repo.root, 'run-exhausted'), beforeEvents);
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('governed review validates immutable candidate and targeted scope before provider invocation', async () => {
+  const governance = buildDefaultGovernanceConfig();
+  governance.requested_profile = 'high-assurance';
+  const repo = makeRepo({
+    'technical-plan.md': structuredTechnicalPlanText('intent-validation-plan'),
+    '.quiver/config.json': `${JSON.stringify({ governance }, null, 2)}\n`,
+  });
+  let providerCalls = 0;
+
+  try {
+    savePlannerDraft(repo.root, 'technical-plan', 'technical-plan.md', structuredTechnicalPlanText('intent-validation-plan'));
+    seedGovernedTechnicalPlanRun(repo.root, 'run-intent-validation', governance, latestDraftArtifact(repo.root));
+    await assert.rejects(
+      () => runReviewPlan(repo.root, {
+        runId: 'run-intent-validation',
+        reviewIntent: { event_class: 'full', candidate_id: 'caller-forged-candidate' },
+        runProviderFn: async () => {
+          providerCalls += 1;
+          return providerSuccess(repo.root, governedReviewOutput([]));
+        },
+      }),
+      (error) => error.code === 'REVIEW_INTENT_INVALID',
+    );
+    assert.equal(readReviewBudgetEvents(repo.root, 'run-intent-validation').length, 0);
+
+    await runReviewPlan(repo.root, {
+      runId: 'run-intent-validation',
+      runProviderFn: async () => {
+        providerCalls += 1;
+        return providerSuccess(repo.root, governedReviewOutput([]));
+      },
+    });
+    for (const reviewIntent of [{
+      event_class: 'targeted', base_review_id: 'R-001', finding_ids: ['F-999'], sections: [],
+    }, {
+      event_class: 'targeted', base_review_id: 'R-001', finding_ids: [], sections: ['section-not-in-candidate'],
+    }]) {
+      await assert.rejects(
+        () => runReviewPlan(repo.root, {
+          runId: 'run-intent-validation',
+          reviewIntent,
+          runProviderFn: async () => {
+            providerCalls += 1;
+            return providerSuccess(repo.root, governedReviewOutput([]));
+          },
+        }),
+        (error) => error.code === 'REVIEW_INTENT_INVALID',
+      );
+    }
+    assert.equal(providerCalls, 1);
+    assert.equal(readReviewBudgetEvents(repo.root, 'run-intent-validation').filter((event) => event.kind === 'reservation').length, 1);
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('governed pre-payload timeout retries the same envelope and consumes one semantic review on success', async () => {
+  const governance = buildDefaultGovernanceConfig();
+  const repo = makeRepo({
+    'technical-plan.md': structuredTechnicalPlanText('retry-plan'),
+    '.quiver/config.json': `${JSON.stringify({ governance }, null, 2)}\n`,
+  });
+  let providerCalls = 0;
+
+  try {
+    savePlannerDraft(repo.root, 'technical-plan', 'technical-plan.md', structuredTechnicalPlanText('retry-plan'));
+    seedGovernedTechnicalPlanRun(repo.root, 'run-command-retry', governance, latestDraftArtifact(repo.root));
+    await assert.rejects(
+      () => runReviewPlan(repo.root, {
+        runId: 'run-command-retry',
+        runProviderFn: async () => {
+          providerCalls += 1;
+          return providerFailure(repo.root, {
+            code: 'PROVIDER_TIMEOUT',
+            message: 'provider timed out before output',
+            payloadReceived: false,
+          });
+        },
+      }),
+      (error) => error.code === 'PROVIDER_TIMEOUT',
+    );
+    const retryBudget = readReviewBudget(repo.root, 'run-command-retry', {
+      governance,
+      profile: resolveEffectiveProfile({ governance }),
+    }).projection;
+    assert.equal(retryBudget.counts.review_count, 0);
+    assert.equal(retryBudget.counts.retry_count, 1);
+
+    const result = await runReviewPlan(repo.root, {
+      runId: 'run-command-retry',
+      runProviderFn: async () => {
+        providerCalls += 1;
+        return providerSuccess(repo.root, governedReviewOutput([]));
+      },
+    });
+    assert.equal(providerCalls, 2);
+    assert.equal(result.reviewId, 'R-001');
+    assert.equal(result.budget.counts.review_count, 1);
+    assert.equal(result.budget.counts.retry_count, 1);
+    assert.equal(result.budget.counts.invalid_output_count, 0);
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('missing provider CLI releases the semantic slot as a transport retry', async () => {
+  const governance = buildDefaultGovernanceConfig();
+  const repo = makeRepo({
+    'technical-plan.md': structuredTechnicalPlanText('missing-cli-retry'),
+    '.quiver/config.json': `${JSON.stringify({ governance }, null, 2)}\n`,
+  });
+  let spawnCalls = 0;
+
+  try {
+    savePlannerDraft(repo.root, 'technical-plan', 'technical-plan.md', structuredTechnicalPlanText('missing-cli-retry'));
+    seedGovernedTechnicalPlanRun(repo.root, 'run-missing-cli-retry', governance, latestDraftArtifact(repo.root));
+    await assert.rejects(
+      () => runReviewPlan(repo.root, {
+        runId: 'run-missing-cli-retry',
+        probe() {
+          const error = new Error('codex not found');
+          error.code = 'ENOENT';
+          return { error };
+        },
+        spawn() {
+          spawnCalls += 1;
+          throw new Error('spawn must not run after failed preflight');
+        },
+      }),
+      (error) => error.code === 'MISSING_PROVIDER_CLI',
+    );
+    const retryBudget = readReviewBudget(repo.root, 'run-missing-cli-retry', {
+      governance,
+      profile: resolveEffectiveProfile({ governance }),
+    }).projection;
+    assert.equal(spawnCalls, 0);
+    assert.equal(retryBudget.counts.review_count, 0);
+    assert.equal(retryBudget.counts.retry_count, 1);
+
+    const result = await runReviewPlan(repo.root, {
+      runId: 'run-missing-cli-retry',
+      runProviderFn: async () => providerSuccess(repo.root, governedReviewOutput([])),
+    });
+    assert.equal(result.reviewId, 'R-001');
+    assert.equal(result.budget.counts.review_count, 1);
+    assert.equal(result.budget.counts.retry_count, 1);
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('governed review rejects diagnostic-only success as a pre-payload transport retry', async () => {
+  const governance = buildDefaultGovernanceConfig();
+  const repo = makeRepo({
+    'technical-plan.md': structuredTechnicalPlanText('diagnostic-only-output'),
+    '.quiver/config.json': `${JSON.stringify({ governance }, null, 2)}\n`,
+  });
+
+  try {
+    savePlannerDraft(repo.root, 'technical-plan', 'technical-plan.md', structuredTechnicalPlanText('diagnostic-only-output'));
+    seedGovernedTechnicalPlanRun(repo.root, 'run-diagnostic-only', governance, latestDraftArtifact(repo.root));
+    await assert.rejects(
+      () => runReviewPlan(repo.root, {
+        runId: 'run-diagnostic-only',
+        runProviderFn: async () => ({
+          ...providerSuccess(repo.root, ''),
+          stdout: '',
+          stderr: governedReviewOutput([]),
+          payloadReceived: false,
+        }),
+      }),
+      (error) => error.code === 'PROVIDER_TRANSPORT_ERROR',
+    );
+    const retryBudget = readReviewBudget(repo.root, 'run-diagnostic-only', {
+      governance,
+      profile: resolveEffectiveProfile({ governance }),
+    }).projection;
+    assert.equal(retryBudget.counts.review_count, 0);
+    assert.equal(retryBudget.counts.retry_count, 1);
+    assert.equal(readRunGovernance(repo.root, 'run-diagnostic-only'), null);
+
+    const recovered = await runReviewPlan(repo.root, {
+      runId: 'run-diagnostic-only',
+      runProviderFn: async () => providerSuccess(repo.root, governedReviewOutput([])),
+    });
+    assert.equal(recovered.reviewId, 'R-001');
+    assert.equal(recovered.budget.counts.review_count, 1);
+    assert.equal(recovered.budget.counts.retry_count, 1);
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('canonical reviews without ledger outcomes fail closed before provider or extension mutation', async () => {
+  const governance = buildDefaultGovernanceConfig();
+  const repo = makeRepo({
+    'technical-plan.md': structuredTechnicalPlanText('unverified-history'),
+    '.quiver/config.json': `${JSON.stringify({ governance }, null, 2)}\n`,
+  });
+  let providerCalls = 0;
+  let identityCalls = 0;
+
+  try {
+    savePlannerDraft(repo.root, 'technical-plan', 'technical-plan.md', structuredTechnicalPlanText('unverified-history'));
+    seedGovernedTechnicalPlanRun(repo.root, 'run-unverified-history', governance, latestDraftArtifact(repo.root));
+    await runReviewPlan(repo.root, {
+      runId: 'run-unverified-history',
+      runProviderFn: async () => providerSuccess(repo.root, governedReviewOutput([])),
+    });
+    fs.rmSync(path.join(repo.root, '.quiver/runs/run-unverified-history/review-budget-events'), {
+      recursive: true,
+      force: true,
+    });
+
+    await assert.rejects(
+      () => runReviewPlan(repo.root, {
+        runId: 'run-unverified-history',
+        runProviderFn: async () => {
+          providerCalls += 1;
+          return providerSuccess(repo.root, governedReviewOutput([]));
+        },
+      }),
+      (error) => error.code === 'REVIEW_BUDGET_HISTORY_UNVERIFIED',
+    );
+    await assert.rejects(
+      () => runExtendReviewBudget(repo.root, {
+        runId: 'run-unverified-history',
+        resolveActorFn: async () => {
+          identityCalls += 1;
+          return {
+            actor_id: 'github:github.com:42',
+            provider: 'github-cli',
+            provider_subject: 'github:github.com:42',
+            verified: true,
+          };
+        },
+      }),
+      (error) => error.code === 'REVIEW_BUDGET_HISTORY_UNVERIFIED',
+    );
+    assert.equal(providerCalls, 0);
+    assert.equal(identityCalls, 0);
+    assert.deepEqual(readReviewBudgetEvents(repo.root, 'run-unverified-history'), []);
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('governed review WAL recovers every interrupted commit point exactly once', async () => {
+  const faultPoints = ['after-wal', 'after-canonical', 'after-outcome', 'after-review', 'after-meta', 'after-phase'];
+
+  for (const faultPoint of faultPoints) {
+    const governance = buildDefaultGovernanceConfig();
+    const runId = `run-wal-${faultPoint}`;
+    const repo = makeRepo({
+      'technical-plan.md': structuredTechnicalPlanText(runId),
+      '.quiver/config.json': `${JSON.stringify({ governance }, null, 2)}\n`,
+    });
+    try {
+      savePlannerDraft(repo.root, 'technical-plan', 'technical-plan.md', structuredTechnicalPlanText(runId));
+      seedGovernedTechnicalPlanRun(repo.root, runId, governance, latestDraftArtifact(repo.root));
+      await assert.rejects(
+        () => runReviewPlan(repo.root, {
+          runId,
+          runProviderFn: async () => providerSuccess(repo.root, governedReviewOutput([])),
+          commitFaultInjector(point) {
+            if (point === faultPoint) {
+              const error = new Error(`injected ${faultPoint}`);
+              error.code = 'TEST_REVIEW_COMMIT_FAILURE';
+              throw error;
+            }
+          },
+        }),
+        (error) => error.code === 'TEST_REVIEW_COMMIT_FAILURE',
+      );
+      assert.equal(fs.existsSync(runReviewCommitPath(repo.root, runId)), true);
+
+      if (faultPoint === 'after-canonical') {
+        await assert.rejects(() => runApprove(repo.root, {
+          phase: 'technical-plan',
+          runId,
+          version: 1,
+          dryRun: true,
+        }));
+        assert.equal(fs.existsSync(runReviewCommitPath(repo.root, runId)), true);
+      }
+
+      const recovery = recoverGovernedPlanReviewCommit(repo.root, { runId });
+      assert.equal(recovery.recovered, true);
+      assert.equal(fs.existsSync(runReviewCommitPath(repo.root, runId)), false);
+      assert.equal(readAiRun(repo.root, runId).phase, 'technical-plan-reviewed');
+      assert.equal(readRunGovernance(repo.root, runId).current_review_id, 'R-001');
+      const events = readReviewBudgetEvents(repo.root, runId);
+      assert.deepEqual(events.map((event) => event.kind), ['reservation', 'outcome']);
+      assert.equal(events[1].outcome, 'valid');
+      assert.equal(events[1].review_id, 'R-001');
+      assert.equal(recoverGovernedPlanReviewCommit(repo.root, { runId }).recovered, false);
+    } finally {
+      repo.cleanup();
+    }
+  }
+});
+
+test('corrupt or foreign governed review WAL fails closed without publishing state', async () => {
+  for (const corruption of ['digest', 'foreign-run']) {
+    const governance = buildDefaultGovernanceConfig();
+    const runId = `run-wal-corrupt-${corruption}`;
+    const repo = makeRepo({
+      'technical-plan.md': structuredTechnicalPlanText(runId),
+      '.quiver/config.json': `${JSON.stringify({ governance }, null, 2)}\n`,
+    });
+    try {
+      savePlannerDraft(repo.root, 'technical-plan', 'technical-plan.md', structuredTechnicalPlanText(runId));
+      seedGovernedTechnicalPlanRun(repo.root, runId, governance, latestDraftArtifact(repo.root));
+      await assert.rejects(
+        () => runReviewPlan(repo.root, {
+          runId,
+          runProviderFn: async () => providerSuccess(repo.root, governedReviewOutput([])),
+          commitFaultInjector(point) {
+            if (point === 'after-wal') {
+              const error = new Error('injected after-wal');
+              error.code = 'TEST_REVIEW_COMMIT_FAILURE';
+              throw error;
+            }
+          },
+        }),
+        (error) => error.code === 'TEST_REVIEW_COMMIT_FAILURE',
+      );
+      const walPath = runReviewCommitPath(repo.root, runId);
+      const marker = JSON.parse(fs.readFileSync(walPath, 'utf8'));
+      if (corruption === 'digest') marker.meta_sha256 = `sha256:${'0'.repeat(64)}`;
+      else marker.run_id = 'run-foreign';
+      fs.writeFileSync(walPath, `${JSON.stringify(marker, null, 2)}\n`);
+
+      assert.throws(
+        () => recoverGovernedPlanReviewCommit(repo.root, { runId }),
+        (error) => error.code === 'REVIEW_COMMIT_RECOVERY_REQUIRED',
+      );
+      assert.equal(readRunGovernance(repo.root, runId), null);
+      assert.equal(readAiRun(repo.root, runId).phase, 'technical-plan-draft');
+      assert.deepEqual(readReviewBudgetEvents(repo.root, runId).map((event) => event.kind), ['reservation']);
+    } finally {
+      repo.cleanup();
+    }
+  }
+});
+
+test('run close rejects an in-flight provider reservation and remains isolated by run', async () => {
+  const governance = buildDefaultGovernanceConfig();
+  const repo = makeRepo({
+    'technical-plan.md': structuredTechnicalPlanText('close-in-flight'),
+    '.quiver/config.json': `${JSON.stringify({ governance }, null, 2)}\n`,
+  });
+  let resolveStarted;
+  let resolveProvider;
+  const started = new Promise((resolve) => { resolveStarted = resolve; });
+  const providerResult = new Promise((resolve) => { resolveProvider = resolve; });
+
+  try {
+    savePlannerDraft(repo.root, 'technical-plan', 'technical-plan.md', structuredTechnicalPlanText('close-in-flight'));
+    const artifact = latestDraftArtifact(repo.root);
+    seedGovernedTechnicalPlanRun(repo.root, 'run-close-in-flight', governance, artifact);
+    seedGovernedTechnicalPlanRun(repo.root, 'run-close-independent', governance, artifact);
+    const reviewPromise = runReviewPlan(repo.root, {
+      runId: 'run-close-in-flight',
+      runProviderFn: async () => {
+        resolveStarted();
+        return providerResult;
+      },
+    });
+    await started;
+
+    assert.throws(
+      () => runLifecycleRun(repo.root, { command: 'close', runId: 'run-close-in-flight' }),
+      (error) => error.code === 'REVIEW_BUDGET_RESERVATION_PENDING',
+    );
+    assert.equal(readAiRun(repo.root, 'run-close-in-flight').status, 'active');
+    const independent = runLifecycleRun(repo.root, { command: 'close', runId: 'run-close-independent' });
+    assert.equal(independent.run.status, 'closed');
+
+    resolveProvider(providerSuccess(repo.root, governedReviewOutput([])));
+    const reviewed = await reviewPromise;
+    assert.equal(reviewed.reviewId, 'R-001');
+    const closed = runLifecycleRun(repo.root, { command: 'close', runId: 'run-close-in-flight' });
+    assert.equal(closed.run.status, 'closed');
+    assert.equal(readReviewBudgetEvents(repo.root, 'run-close-in-flight').at(-1).outcome, 'valid');
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('provider payload failures consume budget consistently in TTY and non-TTY modes', async () => {
+  for (const tty of [false, true]) {
+    const governance = buildDefaultGovernanceConfig();
+    const repo = makeRepo({
+      'technical-plan.md': structuredTechnicalPlanText(`payload-failure-${tty}`),
+      '.quiver/config.json': `${JSON.stringify({ governance }, null, 2)}\n`,
+    });
+    const progress = createProgressRecorder();
+    try {
+      savePlannerDraft(repo.root, 'technical-plan', 'technical-plan.md', structuredTechnicalPlanText(`payload-failure-${tty}`));
+      seedGovernedTechnicalPlanRun(repo.root, `run-payload-${tty}`, governance, latestDraftArtifact(repo.root));
+      await assert.rejects(
+        () => runReviewPlan(repo.root, {
+          runId: `run-payload-${tty}`,
+          stdinIsTTY: tty,
+          stdoutIsTTY: tty,
+          stderrIsTTY: tty,
+          write: progress.write,
+          prompts: progress.prompts,
+          runProviderFn: async () => providerFailure(repo.root, {
+            code: 'PROVIDER_TIMEOUT',
+            message: 'timeout after partial response',
+            payloadReceived: true,
+            stdout: '{"partial":',
+          }),
+        }),
+        (error) => error.code === 'PROVIDER_OUTPUT_INVALID',
+      );
+      const budget = readReviewBudget(repo.root, `run-payload-${tty}`, {
+        governance,
+        profile: resolveEffectiveProfile({ governance }),
+      }).projection;
+      assert.equal(budget.counts.review_count, 1);
+      assert.equal(budget.counts.invalid_output_count, 1);
+      assert.equal(budget.counts.retry_count, 0);
+      assert.equal(readRunGovernance(repo.root, `run-payload-${tty}`), null);
+    } finally {
+      repo.cleanup();
+    }
+  }
+});
+
+test('governed review rejects a candidate that changes while the provider is running and consumes the received payload', async () => {
+  const governance = buildDefaultGovernanceConfig();
+  const repo = makeRepo({
+    'technical-plan.md': structuredTechnicalPlanText('stale-provider-plan'),
+    '.quiver/config.json': `${JSON.stringify({ governance }, null, 2)}\n`,
+  });
+
+  try {
+    savePlannerDraft(repo.root, 'technical-plan', 'technical-plan.md', structuredTechnicalPlanText('stale-provider-plan'));
+    seedGovernedTechnicalPlanRun(repo.root, 'run-stale-provider', governance, latestDraftArtifact(repo.root));
+    await assert.rejects(
+      () => runReviewPlan(repo.root, {
+        runId: 'run-stale-provider',
+        runProviderFn: async () => {
+          fs.appendFileSync(path.join(repo.root, latestDraftArtifact(repo.root)), '\nchanged while provider ran\n');
+          return providerSuccess(repo.root, governedReviewOutput([]));
+        },
+      }),
+      (error) => error.code === 'REVIEW_REQUEST_STALE',
+    );
+    const budget = readReviewBudget(repo.root, 'run-stale-provider', {
+      governance,
+      profile: resolveEffectiveProfile({ governance }),
+    }).projection;
+    assert.equal(budget.counts.review_count, 1);
+    assert.equal(budget.counts.invalid_output_count, 1);
+    assert.equal(readRunGovernance(repo.root, 'run-stale-provider'), null);
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('review budget extension action resolves identity and rejects caller-supplied actor claims', async () => {
+  const governance = buildDefaultGovernanceConfig();
+  const localActor = {
+    actor_id: 'local:maintainer', provider: 'local', provider_subject: null, verified: false,
+  };
+  const verifiedActor = {
+    actor_id: 'github:github.com:42', provider: 'github-cli', provider_subject: 'github:github.com:42', verified: true,
+  };
+  governance.policy.authorization.actor_bindings[localActor.actor_id] = {
+    actor_id: localActor.actor_id, roles: ['maintainer'],
+  };
+  governance.policy.authorization.actor_bindings[verifiedActor.provider_subject] = {
+    actor_id: verifiedActor.actor_id, roles: ['maintainer'],
+  };
+  governance.policy.authorization.actions['extend-review-budget'] = {
+    allowed_actor_ids: [], allowed_roles: ['maintainer'], independence: 'none',
+  };
+  const repo = makeRepo({
+    'technical-plan.md': structuredTechnicalPlanText('extension-action-plan'),
+    '.quiver/config.json': `${JSON.stringify({ governance }, null, 2)}\n`,
+  });
+
+  try {
+    savePlannerDraft(repo.root, 'technical-plan', 'technical-plan.md', structuredTechnicalPlanText('extension-action-plan'));
+    seedGovernedTechnicalPlanRun(repo.root, 'run-extension-action', governance, latestDraftArtifact(repo.root));
+    await runReviewPlan(repo.root, {
+      runId: 'run-extension-action',
+      runProviderFn: async () => providerSuccess(repo.root, governedReviewOutput([])),
+    });
+    const before = readReviewBudgetEvents(repo.root, 'run-extension-action');
+    await assert.rejects(
+      () => runExtendReviewBudget(repo.root, { runId: 'run-extension-action', actor: verifiedActor }),
+      (error) => error.code === 'ACTOR_IDENTITY_UNAVAILABLE',
+    );
+    assert.deepEqual(readReviewBudgetEvents(repo.root, 'run-extension-action'), before);
+
+    const local = await runExtendReviewBudget(repo.root, {
+      runId: 'run-extension-action',
+      resolveActorFn: async () => localActor,
+    });
+    assert.equal(local.budget.limits.max_reviews, 2);
+    assert.equal(local.authorization.identity_label, 'LOCAL_UNVERIFIED_IDENTITY');
+
+    const verified = await runExtendReviewBudget(repo.root, {
+      runId: 'run-extension-action',
+      resolveActorFn: async () => verifiedActor,
+    });
+    assert.equal(verified.budget.limits.max_reviews, 3);
+    assert.equal(verified.authorization.verified, true);
+    assert.equal(readReviewBudgetEvents(repo.root, 'run-extension-action').filter((event) => event.kind === 'extension').length, 2);
   } finally {
     repo.cleanup();
   }
@@ -826,6 +1483,12 @@ test('governed reviews and approvals cannot consume another run artifact or revi
       runId: 'run-b',
       runProviderFn: async () => providerSuccess(repo.root, governedReviewOutput([])),
     });
+    const runAEvents = readReviewBudgetEvents(repo.root, 'run-a');
+    const runBEvents = readReviewBudgetEvents(repo.root, 'run-b');
+    assert.equal(runAEvents.every((event) => event.run_id === 'run-a'), true);
+    assert.equal(runBEvents.every((event) => event.run_id === 'run-b'), true);
+    assert.equal(runAEvents.filter((event) => event.kind === 'reservation').length, 1);
+    assert.equal(runBEvents.filter((event) => event.kind === 'reservation').length, 1);
 
     await assert.rejects(
       () => runApprove(repo.root, {

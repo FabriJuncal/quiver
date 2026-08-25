@@ -1,6 +1,6 @@
 # Evidence Report — Quiver v58 Risk-aware Review Governance
 
-Status: Runtime foundation validated through slice-01; later-slice evidence pending
+Status: Runtime foundation validated through slice-02; later-slice evidence pending
 
 ## Documentary foundation evidence
 
@@ -21,8 +21,10 @@ Detailed documentary evidence is recorded in slices/slice-00-governance-contract
 |---|---|---|---|
 | AC-01 to AC-04 | slice-01 | Contract, config, profile, actor, finding lifecycle, isolation, and authorization outputs | Passed for slice-01 contract |
 | AC-05 to AC-06 | slice-01 | Phase-policy, reconciliation, invalid-provider, and retained-state fixtures | Passed |
-| AC-07 to AC-08 | slice-02 and slice-04 | Budget concurrency, exhaustion, and run-isolation evidence | Pending |
-| AC-09 and AC-12 | slice-04 | Digest, atomicity, tampering, and representation tests | Pending |
+| AC-07 | slice-02 | Budget classification, concurrency, exhaustion, retry, invalid-output, extension, and recovery evidence | Passed |
+| AC-08 | slice-02 and slice-04 | Review/budget isolation and correlation passed in slice-02; final decision isolation remains | Partial |
+| AC-09 | slice-04 | Digest, atomicity, and tampering tests | Pending |
+| AC-12 | slice-02 and slice-04 | Canonical budget-count projections passed in slice-02; final decision representation remains | Partial |
 | AC-10 | slice-03 | Condition eligibility and fail-closed decision tests | Pending |
 | AC-11 | slice-05 | Spec, slice, PR propagation and gate evidence | Pending |
 | AC-13 | slice-04 and slice-06 | CLI/JSON code, status, exit, and representation evidence | Pending |
@@ -65,6 +67,44 @@ Covered behavior:
 - Redaction of provider streams, serialized errors, raw evidence, prompts, and rendered review projections.
 
 Detailed evidence, scope boundaries, and pending later-slice work are recorded in `slices/slice-01-phase-aware-blocking-policy/CLOSURE_BRIEF.md`.
+
+## Slice-02 Evidence — review budget and circuit breaker
+
+Executed with exit code 0:
+
+```bash
+node --test tests/lib/ai-review-budget.test.js tests/lib/ai-review-governance.test.js tests/lib/ai-providers.test.js tests/lib/ai-run-state.test.js tests/commands/ai-review-plan.test.js tests/commands/ai-run-state.test.js
+npm test
+node scripts/ci/check-slice-schema.js
+node bin/create-quiver.js slice check --local specs/quiver-v58-risk-aware-review-governance/slices/slice-02-review-budget-circuit-breaker/slice.json
+node bin/create-quiver.js spec validate specs/quiver-v58-risk-aware-review-governance --strict
+npm run docs:check
+npx --no-install markdownlint-cli2 specs/quiver-v58-risk-aware-review-governance/EVIDENCE_REPORT.md specs/quiver-v58-risk-aware-review-governance/EXECUTION_PLAN.md specs/quiver-v58-risk-aware-review-governance/STATUS.md specs/quiver-v58-risk-aware-review-governance/pr.md specs/quiver-v58-risk-aware-review-governance/slices/slice-02-review-budget-circuit-breaker/EXECUTION_BRIEF.md specs/quiver-v58-risk-aware-review-governance/slices/slice-02-review-budget-circuit-breaker/CLOSURE_BRIEF.md specs/quiver-v58-risk-aware-review-governance/slices/slice-02-review-budget-circuit-breaker/pr.md
+node bin/create-quiver.js slice pr specs/quiver-v58-risk-aware-review-governance/slices/slice-02-review-budget-circuit-breaker/slice.json
+git diff --check
+```
+
+Results:
+
+- 111 directed slice tests passed with no failures.
+- The full portable regression passed 847 tests with no failures.
+- The local slice gate and strict seven-slice spec validation passed.
+- Slice schema, repository docs, direct Markdown, PR handoff, and whitespace gates passed.
+- Scope assertion found no changed path outside `allowed_write_paths`.
+- Independent governance/security review ended approved and separately reproduced 111 passing slice tests.
+- Independent final review ended approved with all four mandatory findings materially closed.
+
+Covered behavior:
+
+- Explicit full, targeted, retry, and external classification from immutable command intent and request-envelope identity.
+- Atomic pre-provider reservation, cross-process exclusion, exhaustion before provider execution, and isolated simultaneous runs.
+- Strict contractual payload receipt, invalid-output consumption, non-consuming pre-payload retry, and preservation of the last valid review.
+- Canonical event-derived counts, caller aggregate rejection, policy-derived limits, and authorized audited extension.
+- Exact one-to-one canonical-review/valid-outcome history with fail-closed legacy handling.
+- Redacted, digest-bound commit recovery at every injected boundary, including corrupt and foreign marker rejection.
+- Run closure exclusion while provider work is reserved and idempotent recovery before later governed mutations.
+
+Detailed evidence, scope boundaries, and pending later-slice work are recorded in `slices/slice-02-review-budget-circuit-breaker/CLOSURE_BRIEF.md`.
 
 ## Evidence required from each slice
 

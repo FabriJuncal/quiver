@@ -1,3 +1,4 @@
+const crypto = require('node:crypto');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
@@ -140,6 +141,7 @@ function acquireLock(projectRoot, lockName, options = {}) {
     lock_name: sanitizeLockName(lockName),
     pid: process.pid,
     hostname: os.hostname(),
+    nonce: crypto.randomBytes(16).toString('hex'),
     command: options.command || 'unknown',
     created_at: (options.now || new Date()).toISOString(),
     metadata: options.metadata || {},
@@ -166,7 +168,16 @@ function acquireLock(projectRoot, lockName, options = {}) {
 }
 
 function releaseLock(handle) {
-  if (handle?.filePath && fs.existsSync(handle.filePath)) {
+  if (!handle?.filePath || !fs.existsSync(handle.filePath)) {
+    return;
+  }
+  let current;
+  try {
+    current = JSON.parse(fs.readFileSync(handle.filePath, 'utf8'));
+  } catch {
+    return;
+  }
+  if (current.nonce === handle.lock?.nonce) {
     fs.rmSync(handle.filePath);
   }
 }
