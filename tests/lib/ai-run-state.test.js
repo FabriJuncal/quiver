@@ -7,16 +7,21 @@ const test = require('node:test');
 const {
   acquireAiRunLock,
   assertAiRunPhaseAllows,
+  bindAiRunGovernance,
   createAiRun,
   formatAiRunResume,
   formatAiRunStatus,
   readAiRun,
   readAiRunLock,
+  readRunGovernance,
   recordAiRunApproval,
   releaseAiRunLock,
+  resolveGovernedAiRun,
   runApprovalsPath,
   runStatePath,
   updateAiRunPhase,
+  withAiRunLock,
+  writeRunGovernance,
 } = require('../../src/create-quiver/lib/ai/run-state');
 
 function makeRepo() {
@@ -113,6 +118,141 @@ test('AI run approvals metadata and locks are persisted safely', () => {
     );
     releaseAiRunLock(repo.root, 'run-lock');
     assert.equal(readAiRunLock(repo.root, 'run-lock'), null);
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('governed run selection is unambiguous and profile binding cannot downgrade', () => {
+  const repo = makeRepo();
+
+  try {
+    createAiRun(repo.root, { input: 'requirements.md', runId: 'run-governed-a' });
+    assert.equal(resolveGovernedAiRun(repo.root).run_id, 'run-governed-a');
+
+    const high = bindAiRunGovernance(repo.root, 'run-governed-a', {
+      requested_profile: 'high-assurance',
+      effective_profile: 'high-assurance',
+      policy_version: 'v58',
+      policy_digest: 'sha256:policy',
+      requirement_categories: ['roles', 'auth', 'roles'],
+    });
+    assert.deepEqual(high.governance.requirement_categories, ['auth', 'roles']);
+    assert.equal(readAiRunLock(repo.root, 'run-governed-a'), null);
+    assert.throws(
+      () => bindAiRunGovernance(repo.root, 'run-governed-a', {
+        requested_profile: 'fast-delivery',
+        effective_profile: 'fast-delivery',
+        policy_version: 'v58',
+        policy_digest: 'sha256:policy',
+      }),
+      /PROFILE_DOWNGRADE_FORBIDDEN/,
+    );
+    assert.throws(
+      () => bindAiRunGovernance(repo.root, 'run-governed-a', {
+        requested_profile: 'high-assurance',
+        effective_profile: 'high-assurance',
+        policy_version: 'v58',
+        policy_digest: 'sha256:different-policy',
+      }),
+      /GOVERNANCE_POLICY_MISMATCH/,
+    );
+
+    createAiRun(repo.root, { input: 'requirements.md', runId: 'run-governed-b' });
+    assert.throws(() => resolveGovernedAiRun(repo.root), /AI_RUN_REQUIRED/);
+    assert.equal(resolveGovernedAiRun(repo.root, 'run-governed-b').run_id, 'run-governed-b');
+    updateAiRunPhase(repo.root, 'run-governed-b', 'closed');
+    assert.throws(() => resolveGovernedAiRun(repo.root, 'run-governed-b'), /AI_RUN_CLOSED/);
+    assert.throws(
+      () => bindAiRunGovernance(repo.root, 'run-governed-b', {
+        requested_profile: 'fast-delivery',
+        effective_profile: 'fast-delivery',
+        policy_version: 'v58',
+        policy_digest: 'sha256:policy',
+      }),
+      /AI_RUN_CLOSED/,
+    );
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('run governance state is correlated and written inside the run lock', () => {
+  const repo = makeRepo();
+
+  try {
+    createAiRun(repo.root, { input: 'requirements.md', runId: 'run-review-state' });
+    const governanceState = {
+      schema_version: 1,
+      run_id: 'run-review-state',
+      next_finding_number: 1,
+      current_review_id: null,
+      findings: [],
+      reviews: [],
+    };
+    const result = withAiRunLock(repo.root, 'run-review-state', { command: 'test governance write' }, () => {
+      const filePath = writeRunGovernance(repo.root, 'run-review-state', governanceState);
+      assert.equal(readAiRunLock(repo.root, 'run-review-state').command, 'test governance write');
+      return filePath;
+    });
+
+    assert.equal(result.endsWith('review-governance.json'), true);
+    assert.deepEqual(readRunGovernance(repo.root, 'run-review-state'), governanceState);
+    assert.equal(readAiRunLock(repo.root, 'run-review-state'), null);
+    assert.throws(
+      () => writeRunGovernance(repo.root, 'run-review-state', { ...governanceState, run_id: 'other-run' }),
+      /belongs to 'other-run'/,
+    );
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('run lock remains held until an asynchronous callback settles', async () => {
+  const repo = makeRepo();
+
+  try {
+    createAiRun(repo.root, { input: 'requirements.md', runId: 'run-async-lock' });
+    const result = await withAiRunLock(repo.root, 'run-async-lock', { command: 'async governance write' }, async () => {
+      assert.equal(readAiRunLock(repo.root, 'run-async-lock').command, 'async governance write');
+      await new Promise((resolve) => setImmediate(resolve));
+      assert.equal(readAiRunLock(repo.root, 'run-async-lock').command, 'async governance write');
+      return 'done';
+    });
+
+    assert.equal(result, 'done');
+    assert.equal(readAiRunLock(repo.root, 'run-async-lock'), null);
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('governed phase transitions share the run lock with governance commits', () => {
+  const repo = makeRepo();
+  const governance = {
+    requested_profile: 'fast-delivery',
+    effective_profile: 'fast-delivery',
+    policy_version: 'v58',
+    policy_digest: 'sha256:policy',
+    requirement_categories: [],
+  };
+
+  try {
+    createAiRun(repo.root, {
+      input: 'requirements.md',
+      runId: 'run-transition-lock',
+      governance,
+    });
+    withAiRunLock(repo.root, 'run-transition-lock', { command: 'governance commit' }, () => {
+      assert.throws(
+        () => updateAiRunPhase(repo.root, 'run-transition-lock', 'closed', { command: 'ai run close' }),
+        /AI run is locked/,
+      );
+      assert.equal(readAiRun(repo.root, 'run-transition-lock').status, 'active');
+    });
+
+    updateAiRunPhase(repo.root, 'run-transition-lock', 'closed', { command: 'ai run close' });
+    assert.equal(readAiRun(repo.root, 'run-transition-lock').status, 'closed');
   } finally {
     repo.cleanup();
   }

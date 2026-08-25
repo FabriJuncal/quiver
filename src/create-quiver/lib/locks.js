@@ -5,6 +5,14 @@ const { execFileSync } = require('node:child_process');
 
 const { quiverInternalPaths } = require('./init-layout');
 
+const QUIVER_RUNTIME_GIT_EXCLUDE_PATTERNS = Object.freeze([
+  '.quiver/cache/',
+  '.quiver/evidence/',
+  '.quiver/locks/',
+  '.quiver/runs/',
+  '.quiver/worktrees/',
+]);
+
 function formatError(message) {
   return `create-quiver: ${message}`;
 }
@@ -42,29 +50,87 @@ function readLock(projectRoot, lockName) {
   }
 }
 
-function appendUniqueLine(filePath, line) {
-  fs.mkdirSync(path.dirname(filePath), { recursive: true });
-  const current = fs.existsSync(filePath) ? fs.readFileSync(filePath, 'utf8') : '';
-  const lines = current.split(/\r?\n/);
-  if (!lines.includes(line)) {
-    const prefix = current.endsWith('\n') || current.length === 0 ? current : `${current}\n`;
-    fs.writeFileSync(filePath, `${prefix}${line}\n`);
-  }
-}
-
-function ensureQuiverStateIgnored(projectRoot) {
+function resolveGitCommonDir(projectRoot) {
   try {
-    const gitDir = execFileSync('git', ['rev-parse', '--absolute-git-dir'], {
+    const gitCommonDir = execFileSync('git', ['rev-parse', '--git-common-dir'], {
       cwd: projectRoot,
       encoding: 'utf8',
       stdio: ['ignore', 'pipe', 'ignore'],
     }).trim();
-    if (gitDir) {
-      appendUniqueLine(path.join(gitDir, 'info', 'exclude'), '.quiver/');
-    }
+    return gitCommonDir
+      ? path.resolve(projectRoot, gitCommonDir)
+      : '';
   } catch {
-    // Non-git fixtures can still use filesystem locks.
+    return '';
   }
+}
+
+function inspectQuiverStateIgnore(projectRoot) {
+  const gitCommonDir = resolveGitCommonDir(projectRoot);
+  if (!gitCommonDir) {
+    return {
+      available: false,
+      blanket: false,
+      filePath: '',
+      missingRuntimePatterns: [...QUIVER_RUNTIME_GIT_EXCLUDE_PATTERNS],
+    };
+  }
+
+  const filePath = path.join(gitCommonDir, 'info', 'exclude');
+  const current = fs.existsSync(filePath) ? fs.readFileSync(filePath, 'utf8') : '';
+  const normalizedLines = current.split(/\r?\n/).map((line) => line.trim());
+
+  return {
+    available: true,
+    blanket: normalizedLines.includes('.quiver/'),
+    filePath,
+    missingRuntimePatterns: QUIVER_RUNTIME_GIT_EXCLUDE_PATTERNS
+      .filter((pattern) => !normalizedLines.includes(pattern)),
+  };
+}
+
+function ensureQuiverStateIgnored(projectRoot) {
+  const inspection = inspectQuiverStateIgnore(projectRoot);
+  if (!inspection.available) {
+    // Non-git fixtures can still use filesystem locks.
+    return {
+      ...inspection,
+      added: [],
+      changed: false,
+      removedBlanket: false,
+    };
+  }
+
+  const current = fs.existsSync(inspection.filePath)
+    ? fs.readFileSync(inspection.filePath, 'utf8')
+    : '';
+  const retainedLines = current
+    .split(/\r?\n/)
+    .filter((line, index, lines) => line.length > 0 || index < lines.length - 1)
+    .filter((line) => line.trim() !== '.quiver/');
+  const normalized = new Set(retainedLines.map((line) => line.trim()).filter(Boolean));
+  const added = [];
+
+  for (const pattern of QUIVER_RUNTIME_GIT_EXCLUDE_PATTERNS) {
+    if (!normalized.has(pattern)) {
+      retainedLines.push(pattern);
+      normalized.add(pattern);
+      added.push(pattern);
+    }
+  }
+
+  const changed = inspection.blanket || added.length > 0;
+  if (changed) {
+    fs.mkdirSync(path.dirname(inspection.filePath), { recursive: true });
+    fs.writeFileSync(inspection.filePath, `${retainedLines.join('\n').replace(/\s+$/g, '')}\n`);
+  }
+
+  return {
+    ...inspection,
+    added,
+    changed,
+    removedBlanket: inspection.blanket,
+  };
 }
 
 function acquireLock(projectRoot, lockName, options = {}) {
@@ -125,6 +191,8 @@ async function withLock(projectRoot, lockName, options, callback) {
 
 module.exports = {
   acquireLock,
+  ensureQuiverStateIgnored,
+  inspectQuiverStateIgnore,
   lockPath,
   readLock,
   releaseLock,

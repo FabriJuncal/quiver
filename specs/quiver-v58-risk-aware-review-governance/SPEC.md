@@ -1,6 +1,6 @@
 # Quiver v58 — Risk-aware review governance
 
-Status: In Progress — slice-00 documentary work completed; publication merge pending; slice-01 contract ready but execution-gated
+Status: In Progress — slices 00 and 01 completed; slice-01 implementation PR pending human review and merge
 
 Classification: Level 3 — governance, authorization, integrity, and cross-command runtime contracts
 
@@ -341,10 +341,10 @@ Traceability: RQ-001 through RQ-009; REV-02, REV-03, REV-06, REV-07, REV-11, REV
 - Legacy false green: label unverifiable state and keep rollback readers and gates fail-closed.
 - Secret propagation: reuse the common redaction boundary on every new persistence and output surface.
 
-## Definition of ready
+## Delivery readiness
 
 - Acceptance criteria and technical plan are approved.
 - All slices have schema-valid contracts and preimplementation handoffs.
-- The documentary foundation in slice-00 is completed with recorded structural and semantic evidence.
-- slice-01 is the only implementation slice marked ready; later slices remain planned behind explicit dependencies.
-- No runtime code is modified in this documentation stage.
+- The documentary foundation in slice-00 is completed and merged with recorded structural and semantic evidence.
+- slice-01 runtime implementation is completed with executed and independently reviewed evidence.
+- slice-02 is contract-ready but remains execution-gated by the slice-01 PR merge; later slices remain planned behind explicit dependencies.

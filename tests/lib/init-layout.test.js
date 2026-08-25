@@ -60,14 +60,21 @@ test('buildInitLayout reports preserved files instead of overwriting them', () =
   try {
     fs.writeFileSync(path.join(dir, 'README.md'), '# Existing\n');
     fs.writeFileSync(path.join(dir, '.gitignore'), 'custom.log\n');
+    fs.mkdirSync(path.join(dir, '.quiver'), { recursive: true });
+    fs.writeFileSync(path.join(dir, '.quiver', 'config.json'), '{}\n');
+    fs.writeFileSync(path.join(dir, '.quiver', '.gitignore'), 'custom-runtime/\n');
     const plan = buildInitLayout(dir, { projectName: 'Existing Project' });
     const readmeOperation = plan.operations.find((operation) => operation.path === 'README.md');
     const gitignoreOperation = plan.operations.find((operation) => operation.path === '.gitignore');
+    const configOperation = plan.operations.find((operation) => operation.path === '.quiver/config.json');
+    const internalGitignoreOperation = plan.operations.find((operation) => operation.path === '.quiver/.gitignore');
 
     assert.equal(readmeOperation.action, 'preserve');
     assert.equal(readmeOperation.exists, true);
     assert.equal(gitignoreOperation.action, 'update');
     assert.equal(gitignoreOperation.exists, true);
+    assert.equal(configOperation.action, 'update');
+    assert.equal(internalGitignoreOperation.action, 'update');
   } finally {
     cleanup();
   }

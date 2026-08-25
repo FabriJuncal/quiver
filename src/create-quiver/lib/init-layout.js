@@ -287,7 +287,12 @@ function buildInitLayout(projectRoot, options = {}) {
   }
 
   for (const file of visibleFiles) {
-    const updateMode = file === 'package.json' || file === '.gitignore';
+    const updateMode = [
+      'package.json',
+      '.gitignore',
+      '.quiver/config.json',
+      '.quiver/.gitignore',
+    ].includes(file);
     pushPlannedOperation(
       operations,
       projectRoot,

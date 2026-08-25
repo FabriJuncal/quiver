@@ -82,7 +82,7 @@ The normative wording and traceability are in ../../SPEC.md.
 
 ## Validation
 
-    node --test tests/lib/ai-review-governance.test.js tests/lib/ai-providers.test.js tests/lib/ai-artifacts.test.js tests/lib/ai-run-state.test.js tests/lib/init-layout.test.js tests/lib/init-docs.test.js tests/lib/doctor.test.js tests/commands/ai-review-plan.test.js tests/commands/ai-plan.test.js tests/commands/cli-contract.test.js tests/commands/config-language.test.js tests/commands/doctor.test.js
+    node --test tests/lib/ai-review-governance.test.js tests/lib/ai-providers.test.js tests/lib/ai-artifacts.test.js tests/lib/ai-run-state.test.js tests/lib/init-layout.test.js tests/lib/init-docs.test.js tests/lib/doctor.test.js tests/commands/ai-review-plan.test.js tests/commands/ai-plan.test.js tests/commands/cli-contract.test.js tests/commands/config-language.test.js tests/commands/doctor.test.js tests/commands/init-profiles.test.js
     node bin/create-quiver.js slice check --local specs/quiver-v58-risk-aware-review-governance/slices/slice-01-phase-aware-blocking-policy/slice.json
     node bin/create-quiver.js spec validate specs/quiver-v58-risk-aware-review-governance --strict
     git diff --check

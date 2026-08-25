@@ -416,6 +416,8 @@ ${helpText(help, 'headings', 'options', 'Options:')}
       --mode <name>           ${optionDescription(help, 'Execution mode for ai execute-plan (auto, manual, delegated)')}
       --provider <name>       ${optionDescription(help, 'Provider CLI to preflight for prepare or AI commands')}
       --model <model-id>      ${optionDescription(help, 'Technical model id for AI agent profiles or provider-backed AI commands')}
+      --governance-profile <fast-delivery|high-assurance>
+                              ${optionDescription(help, 'Request the v58 governance execution profile for a governed AI run')}
       --version <n>           ${optionDescription(help, 'Draft version to approve for AI planner phases')}
       --run <id>              ${optionDescription(help, 'AI lifecycle run id')}
       --ssh-host-alias <name> ${optionDescription(help, 'SSH host alias to validate for prepare or AI commands')}
@@ -568,6 +570,7 @@ function parseArgs(argv, options = {}) {
     aiAgentRole: '',
     aiRunCommand: '',
     aiRunId: '',
+    aiGovernanceProfile: '',
     aiPhase: 'acceptance',
     aiProvider: 'codex',
     aiProviderExplicit: false,
@@ -1075,6 +1078,18 @@ function parseArgs(argv, options = {}) {
         throw new Error(formatError('missing value for --reviewer'));
       }
       result.aiReviewerProfile = value;
+      continue;
+    }
+
+    if (arg === '--governance-profile') {
+      const value = args[++index];
+      if (!value) {
+        throw new Error(formatError('missing value for --governance-profile'));
+      }
+      if (!['fast-delivery', 'high-assurance'].includes(value)) {
+        throw new Error(formatError(`invalid governance profile '${value}'; expected fast-delivery or high-assurance`));
+      }
+      result.aiGovernanceProfile = value;
       continue;
     }
 
@@ -3770,6 +3785,7 @@ async function run(argv) {
         provider: args.aiProvider,
         providerExplicit: args.aiProviderExplicit,
         model: args.aiModel || undefined,
+        governanceProfile: args.aiGovernanceProfile || undefined,
         plannerProfile: args.aiPlannerProfile || undefined,
         interactive: args.interactive,
         review: args.review,
@@ -3792,7 +3808,9 @@ async function run(argv) {
         provider: args.aiProvider,
         providerExplicit: args.aiProviderExplicit,
         model: args.aiModel || undefined,
+        governanceProfile: args.aiGovernanceProfile || undefined,
         reviewerProfile: args.aiReviewerProfile || undefined,
+        runId: args.aiRunId || undefined,
         timeout: args.aiTimeout,
       });
       return;
@@ -3808,6 +3826,7 @@ async function run(argv) {
         provider: args.aiProvider,
         providerExplicit: args.aiProviderExplicit,
         model: args.aiModel || undefined,
+        governanceProfile: args.aiGovernanceProfile || undefined,
         plannerProfile: args.aiPlannerProfile || undefined,
         role: args.aiRole,
         runId: args.aiRunId || undefined,
@@ -3827,6 +3846,7 @@ async function run(argv) {
         provider: args.aiProvider,
         providerExplicit: args.aiProviderExplicit,
         model: args.aiModel || undefined,
+        governanceProfile: args.aiGovernanceProfile || undefined,
         plannerProfile: args.aiPlannerProfile || undefined,
         role: args.aiRole,
         runId: args.aiRunId || undefined,
@@ -3841,6 +3861,7 @@ async function run(argv) {
         input: args.aiInput || undefined,
         language: args.language,
         phase: args.aiPhase,
+        governanceProfile: args.aiGovernanceProfile || undefined,
         runId: args.aiRunId || undefined,
         version: args.aiVersion || undefined,
       });

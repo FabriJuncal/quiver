@@ -3,6 +3,24 @@ const path = require('node:path');
 
 const { buildPlannerApprovalCandidates, readPhaseApproval, resolveApprovedPlannerInput } = require('../approvals');
 const { quiverInternalPaths } = require('../init-layout');
+const { redactSensitiveValue } = require('./artifacts');
+const {
+  GovernanceError,
+  PROVIDER_OUTPUT_INVALID,
+  assertProviderReviewAggregates,
+  computePolicyDigest,
+  parseProviderReview,
+  projectPhaseAwareReview,
+  reconcileFindings,
+  stableStringify,
+} = require('./review-governance');
+const {
+  readAiRun,
+  readRunGovernance,
+  updateAiRunPhase,
+  withAiRunLock,
+  writeRunGovernance,
+} = require('./run-state');
 
 const PLAN_REVIEW_PROMPT_SOURCE = 'packaged production-readiness plan review template';
 const PLAN_REVIEW_RECOMMENDATIONS = Object.freeze(['approve', 'approve-with-risk', 'revise']);
@@ -389,6 +407,10 @@ function readPlanReview(projectRoot) {
 }
 
 function savePlanReview(projectRoot, options = {}) {
+  if (options.governance && options.runId) {
+    return saveGovernedPlanReview(projectRoot, options);
+  }
+
   const root = planReviewRoot(projectRoot);
   fs.mkdirSync(root, { recursive: true });
   const reviewPath = planReviewPath(projectRoot);
@@ -420,6 +442,262 @@ function savePlanReview(projectRoot, options = {}) {
   };
 }
 
+function nextReviewId(state) {
+  const used = new Set((state.reviews || []).map((review) => review.review_id));
+  let number = (state.reviews || []).length + 1;
+  let reviewId;
+  do {
+    reviewId = `R-${String(number).padStart(3, '0')}`;
+    number += 1;
+  } while (used.has(reviewId));
+  return reviewId;
+}
+
+function canonicalProjectionSummary(projection) {
+  const toIds = (items) => (items || []).map((item) => item.finding_id || item.id).filter(Boolean);
+  return {
+    blocking: projection.blocking,
+    approval_recommendation: projection.approval_recommendation,
+    required_fixes: [...projection.required_fixes],
+    plan_required_fixes: [...projection.plan_required_fixes],
+    slice_required_fixes: [...projection.slice_required_fixes],
+    pr_required_fixes: [...projection.pr_required_fixes],
+    follow_ups: [...projection.follow_ups],
+    optional_hardening: [...projection.optional_hardening],
+    current_blockers: toIds(projection.current_blockers),
+    later_phase_transfers: toIds(projection.later_phase_transfers),
+  };
+}
+
+function renderGovernedPlanReview(state, review, findingsById) {
+  const projection = review.projection;
+  const lines = [
+    '# Plan review',
+    '',
+    `Review: ${review.review_id}`,
+    `Run: ${state.run_id}`,
+    `Profile: ${review.effective_profile}`,
+    `Policy: ${review.policy_version} (${review.policy_digest})`,
+    `Approval recommendation: ${projection.approval_recommendation}`,
+    `Blocking: ${projection.blocking ? 'yes' : 'no'}`,
+    '',
+  ];
+  const sections = [
+    ['Current blockers', projection.current_blockers],
+    ['Later-phase transfers', projection.later_phase_transfers],
+    ['Follow-ups', projection.follow_ups],
+    ['Optional hardening', projection.optional_hardening],
+  ];
+  for (const [title, ids] of sections) {
+    lines.push(`## ${title}`, '');
+    if (!ids || ids.length === 0) {
+      lines.push('- None', '');
+      continue;
+    }
+    for (const findingId of ids) {
+      const finding = findingsById.get(findingId);
+      lines.push(`- ${findingId}: ${finding?.title || 'Finding'} (${finding?.severity || 'unknown'}, ${finding?.phase_owner || 'unknown'})`);
+    }
+    lines.push('');
+  }
+  return `${lines.join('\n').trimEnd()}\n`;
+}
+
+function saveGovernedPlanReview(projectRoot, options = {}) {
+  const runId = String(options.runId || '').trim();
+  const governance = options.governance;
+  const profile = options.profile || {};
+  const policyDigest = profile.policy_digest || computePolicyDigest(governance);
+  const parsed = parseProviderReview(String(options.contents || ''), {
+    governance,
+    currentPhase: 'technical-plan',
+    effectiveProfile: profile.effective_profile,
+  });
+  const redactedParsed = redactSensitiveValue(parsed, { projectRoot });
+  if (stableStringify(parsed) !== stableStringify(redactedParsed)) {
+    throw new GovernanceError(
+      PROVIDER_OUTPUT_INVALID,
+      'Provider review contains sensitive values in contractual fields; retained raw evidence is non-contractual.',
+    );
+  }
+  const validated = parseProviderReview(JSON.stringify(redactedParsed), {
+    governance,
+    currentPhase: 'technical-plan',
+    effectiveProfile: profile.effective_profile,
+  });
+
+  return withAiRunLock(projectRoot, runId, { command: 'ai review-plan governance commit' }, () => {
+    const run = readAiRun(projectRoot, runId);
+    if (run?.status === 'closed') {
+      throw new GovernanceError(
+        'AI_RUN_CLOSED',
+        `Governed review cannot mutate closed run '${runId}'.`,
+        { run_id: runId },
+      );
+    }
+    if (!['technical-plan-draft', 'technical-plan-reviewed'].includes(run?.phase)) {
+      throw new GovernanceError(
+        'AI_RUN_PHASE_INVALID',
+        `Governed review cannot mutate run '${runId}' from phase '${run?.phase || 'missing'}'.`,
+        { run_id: runId, phase: run?.phase || null },
+      );
+    }
+    const expectedBinding = {
+      requested_profile: profile.requested_profile || governance.requested_profile,
+      effective_profile: profile.effective_profile || governance.requested_profile,
+      policy_version: profile.policy_version || governance.policy.version,
+      policy_digest: policyDigest,
+    };
+    if (!run?.governance) {
+      throw new GovernanceError(
+        'GOVERNANCE_STATE_INVALID',
+        `Governed review run '${runId}' has no profile binding.`,
+      );
+    }
+    if ((run.governance.effective_profile === 'high-assurance'
+        && expectedBinding.effective_profile === 'fast-delivery')
+      || (run.governance.requested_profile === 'high-assurance'
+        && expectedBinding.requested_profile === 'fast-delivery')) {
+      throw new GovernanceError(
+        'PROFILE_DOWNGRADE_FORBIDDEN',
+        'An active high-assurance run cannot publish a fast-delivery review.',
+      );
+    }
+    const mismatchedBinding = Object.entries(expectedBinding)
+      .find(([key, value]) => run.governance[key] !== value);
+    if (mismatchedBinding) {
+      const [field, expected] = mismatchedBinding;
+      throw new GovernanceError(
+        'GOVERNANCE_STATE_INVALID',
+        `Governed review ${field} does not match the active run binding.`,
+        { field, expected, actual: run.governance[field] },
+      );
+    }
+
+    const current = readRunGovernance(projectRoot, runId) || {
+      schema_version: 1,
+      run_id: runId,
+      next_finding_number: 1,
+      current_review_id: null,
+      reviews: [],
+      findings: [],
+    };
+    if (current.run_id !== runId) {
+      throw new Error(formatError(`governance state run mismatch: expected ${runId}`));
+    }
+    const foreignReview = (Array.isArray(current.reviews) ? current.reviews : [])
+      .find((review) => review?.run_id !== runId);
+    if (foreignReview) {
+      throw new GovernanceError(
+        'GOVERNANCE_STATE_INVALID',
+        `Canonical review '${foreignReview.review_id || 'unknown'}' belongs to a different run.`,
+      );
+    }
+
+    const reviewId = nextReviewId(current);
+    const reconciled = reconcileFindings({
+      runId,
+      reviewId,
+      incomingFindings: validated.review.findings,
+      existingFindings: current.findings,
+      nextFindingNumber: current.next_finding_number,
+      now: options.now || new Date(),
+    });
+    const openFindings = reconciled.findings.filter((finding) => finding.state === 'open');
+    const projection = canonicalProjectionSummary(projectPhaseAwareReview(openFindings, {
+      governance,
+      currentPhase: 'technical-plan',
+      effectiveProfile: profile.effective_profile,
+    }));
+    const canonicalIdByProviderId = new Map(validated.review.findings.map((finding, index) => [
+      finding.id,
+      reconciled.reconciledFindings[index]?.finding_id || null,
+    ]));
+    assertProviderReviewAggregates(validated.review, projection, {
+      mapFindingId: (findingId) => canonicalIdByProviderId.get(findingId) || null,
+    });
+    const nowValue = options.now || new Date();
+    const now = nowValue instanceof Date ? nowValue.toISOString() : new Date(nowValue).toISOString();
+    const review = {
+      schema_version: 1,
+      review_id: reviewId,
+      run_id: runId,
+      source_file: options.inputPath || '',
+      source_kind: options.inputKind || null,
+      source_version: options.inputVersion || null,
+      raw_artifact_path: options.rawArtifactPath || null,
+      output_source: options.outputSource || null,
+      provider_finding_ids: validated.review.findings.map((finding) => finding.id),
+      finding_ids: reconciled.reconciledFindings.map((finding) => finding.finding_id),
+      requested_profile: profile.requested_profile || governance.requested_profile,
+      effective_profile: profile.effective_profile || governance.requested_profile,
+      policy_version: profile.policy_version || governance.policy.version,
+      policy_digest: policyDigest,
+      provider_recommendation: validated.review.recommendation,
+      provider_blocking: validated.review.blocking,
+      projection,
+      reviewed_at: now,
+    };
+    const nextState = {
+      ...current,
+      next_finding_number: reconciled.nextFindingNumber,
+      current_review_id: reviewId,
+      findings: reconciled.findings,
+      reviews: (current.reviews || []).concat(review),
+      updated_at: now,
+    };
+    const findingsById = new Map(nextState.findings.map((finding) => [finding.finding_id, finding]));
+    const rendered = redactSensitiveValue(renderGovernedPlanReview(nextState, review, findingsById), { projectRoot });
+    const root = planReviewRoot(projectRoot);
+    fs.mkdirSync(root, { recursive: true });
+    const reviewPath = planReviewPath(projectRoot);
+    const meta = {
+      schema_version: 2,
+      governed: true,
+      phase: 'plan-review',
+      run_id: runId,
+      review_id: reviewId,
+      source_file: options.inputPath || '',
+      source_kind: options.inputKind || null,
+      source_version: options.inputVersion || null,
+      path: toRelativePosix(projectRoot, reviewPath),
+      raw_artifact_path: options.rawArtifactPath || null,
+      output_source: options.outputSource || null,
+      requested_profile: review.requested_profile,
+      effective_profile: review.effective_profile,
+      policy_version: review.policy_version,
+      policy_digest: review.policy_digest,
+      review_result: {
+        schema_version: 2,
+        ...projection,
+        next_command: recommendedNextCommand(projection.approval_recommendation, options.inputVersion),
+        risks: projection.later_phase_transfers,
+        findings: openFindings,
+        source: 'governed-canonical',
+      },
+      reviewed_at: now,
+    };
+
+    writeRunGovernance(projectRoot, runId, nextState);
+    fs.writeFileSync(reviewPath, rendered);
+    fs.writeFileSync(planReviewMetaPath(projectRoot), `${JSON.stringify(redactSensitiveValue(meta, { projectRoot }), null, 2)}\n`);
+    updateAiRunPhase(projectRoot, runId, 'technical-plan-reviewed', {
+      artifact: toRelativePosix(projectRoot, reviewPath),
+      command: 'ai review-plan',
+      locked: true,
+      now: nowValue instanceof Date ? nowValue : new Date(nowValue),
+    });
+    return {
+      filePath: reviewPath,
+      metaPath: planReviewMetaPath(projectRoot),
+      governancePath: toRelativePosix(projectRoot, path.join(quiverInternalPaths(projectRoot).runsDir, runId, 'review-governance.json')),
+      reviewedAt: now,
+      reviewId,
+      projection,
+    };
+  });
+}
+
 function assertPlanReviewed(projectRoot) {
   const review = readPlanReview(projectRoot);
   if (review.status !== 'reviewed') {
@@ -447,7 +725,35 @@ function resolveReviewedTechnicalPlanInput(projectRoot, explicitInput) {
   };
 }
 
-function buildPlanReviewPrompt({ pack, inputText, inputPath }) {
+function buildCanonicalFindingReviewContext(findings = []) {
+  return findings.map((finding) => ({
+    finding_id: finding.finding_id,
+    state: finding.state,
+    origin_fingerprint: finding.origin_fingerprint,
+    title: finding.title,
+    summary: finding.summary,
+    severity: finding.severity,
+    category: finding.category,
+    phase_owner: finding.phase_owner,
+    phase_blocking: finding.phase_blocking,
+    blocking_justification: finding.blocking_justification || null,
+    acceptance_refs: finding.acceptance_refs,
+    evidence: finding.evidence,
+    recommended_disposition: finding.recommended_disposition,
+    confidence: finding.confidence,
+    supersedes: finding.supersedes || null,
+  }));
+}
+
+function buildPlanReviewPrompt({
+  pack,
+  inputText,
+  inputPath,
+  governed = false,
+  governance = null,
+  governanceProfile = null,
+  canonicalFindings = [],
+}) {
   const sections = [
     pack.prompt,
     'Task: review the technical plan as if it will be implemented and tested in production.',
@@ -462,9 +768,35 @@ function buildPlanReviewPrompt({ pack, inputText, inputPath }) {
     '- operational risks',
     '- recommended fixes to the plan',
     'If ambiguity is not blocking, state the safest assumption and continue.',
-    'Required output contract: include a fenced json block with `{ "review": { "blocking": boolean, "approvalRecommendation": "approve|approve-with-risk|revise", "requiredFixes": [], "optionalHardening": [], "risks": [], "nextCommand": "" } }`.',
-    'Use `approve` only when no required fixes remain. Use `approve-with-risk` when only optional hardening or accepted risks remain. Use `revise` when required fixes or blocking ambiguity remain.',
   ];
+
+  if (governed) {
+    const phaseRule = governance?.policy?.review_policy?.['technical-plan'] || {};
+    const blockingCategories = Array.isArray(phaseRule.blocking_categories)
+      ? phaseRule.blocking_categories
+      : [];
+    const nonBlockingCategories = Array.isArray(phaseRule.non_blocking_categories)
+      ? phaseRule.non_blocking_categories
+      : [];
+    sections.push(
+      'Return exactly one JSON object (directly or in one fenced json block) with schema_version 2, kind "quiver-plan-review", and a strict review object.',
+      'Each review.findings item must include: id, title, summary, severity, category, phase_owner, phase_blocking, evidence, acceptance_refs, recommended_disposition, and confidence. Add blocking_justification whenever phase_blocking is true. canonical_id and supersedes are optional canonical references supplied by Quiver context; provider ids are never canonical.',
+      'The review object must include recommendation, blocking, findings, plan_required_fixes, slice_required_fixes, pr_required_fixes, follow_ups, and optional_hardening. Aggregate arrays reference finding ids from this payload and must exactly match the phase-aware finding projection.',
+      'Valid severities: critical, high, medium, low, info. Valid categories: security, data-integrity, rollout, architecture, business-rule, implementation-detail, testing, evidence, operations, tooling, follow-up, optional-hardening. Valid phases: requirement, acceptance, technical-plan, spec, slice, pr-review, release, follow-up.',
+      'Valid recommended dispositions: revise-requirement, revise-acceptance, revise-plan, transfer-to-spec, transfer-to-slice, transfer-to-pr, create-follow-up, accept-risk, optional.',
+      `Effective governance: profile ${governanceProfile?.effective_profile || 'unknown'}, policy ${governanceProfile?.policy_version || governance?.policy?.version || 'unknown'}, digest ${governanceProfile?.policy_digest || 'unknown'}.`,
+      `For technical-plan, blocking categories are: ${blockingCategories.join(', ') || '(none)'}. Non-blocking categories are: ${nonBlockingCategories.join(', ') || '(none)'}.`,
+      'A technical-plan blocker must have phase_owner "technical-plan", phase_blocking true, and a category listed by the effective blocking policy above. Provider recommendation and blocking aggregates are advisory and must agree with those canonical fields.',
+      'Re-emit every unresolved canonical finding that still applies. Use canonical_id for an existing finding, including a closed finding that reappears. Omission never closes a finding and an aggregate that omits retained canonical state is invalid. Use supersedes only for a material identity change and keep the prior finding explicit.',
+      'Canonical finding context for this run:',
+      JSON.stringify(redactSensitiveValue(buildCanonicalFindingReviewContext(canonicalFindings)), null, 2),
+    );
+  } else {
+    sections.push(
+      'Required output contract: include a fenced json block with `{ "review": { "blocking": boolean, "approvalRecommendation": "approve|approve-with-risk|revise", "requiredFixes": [], "optionalHardening": [], "risks": [], "nextCommand": "" } }`.',
+      'Use `approve` only when no required fixes remain. Use `approve-with-risk` when only optional hardening or accepted risks remain. Use `revise` when required fixes or blocking ambiguity remain.',
+    );
+  }
 
   if (inputPath) {
     sections.push(`Input file: ${inputPath}`);
@@ -519,5 +851,6 @@ module.exports = {
   resolveTechnicalPlanReviewInput,
   resolveReviewedTechnicalPlanInput,
   savePlanReview,
+  saveGovernedPlanReview,
   summarizePlanReview,
 };

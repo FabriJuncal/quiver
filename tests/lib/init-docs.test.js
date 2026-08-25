@@ -1,4 +1,5 @@
 const assert = require('node:assert/strict');
+const { execFileSync, spawnSync } = require('node:child_process');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
@@ -10,6 +11,7 @@ const {
   formatInstallSelfCommand,
   installSelfAsDevDep,
 } = require('../../src/create-quiver/lib/init-docs');
+const { buildDefaultGovernanceConfig } = require('../../src/create-quiver/lib/ai/review-governance');
 
 function makeTmpDir() {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'quiver-init-test-'));
@@ -198,11 +200,14 @@ test('initializeProjectDocs writes legacy scripts and exports templates only whe
     assert.equal(fs.existsSync(path.join(projectRoot, 'docs-template')), false);
 
     const pkg = JSON.parse(fs.readFileSync(path.join(projectRoot, 'package.json'), 'utf8'));
+    const config = JSON.parse(fs.readFileSync(path.join(projectRoot, '.quiver', 'config.json'), 'utf8'));
     assert.equal(pkg.scripts['quiver:version'], 'npx create-quiver version');
     assert.equal(pkg.scripts['quiver:dashboard'], 'npx create-quiver dashboard');
     assert.equal(typeof pkg.scripts['start:slice'], 'string');
     assert.equal(typeof pkg.scripts.migrate, 'string');
     assert.equal(typeof pkg.scripts['quiver:ai:onboard'], 'string');
+    assert.equal(config.governance.schema_version, 1);
+    assert.equal(config.governance.policy.authorization.default_effect, 'deny');
   } finally {
     templateRoot.cleanup();
     cleanup();
@@ -217,6 +222,18 @@ test('initializeProjectDocs full migrate mode preserves existing files and keeps
   try {
     fs.mkdirSync(projectRoot, { recursive: true });
     fs.writeFileSync(path.join(projectRoot, 'README.md'), 'keep me\n');
+    writeFile(path.join(projectRoot, '.quiver', 'config.json'), `${JSON.stringify({
+      layout_version: 1,
+      compatible_root_key: {
+        owner: 'project',
+      },
+      governance: {
+        ...buildDefaultGovernanceConfig(),
+        compatible_future_control: {
+          enabled: true,
+        },
+      },
+    }, null, 2)}\n`);
 
     initializeProjectDocs({
       cliVersion: '0.8.0',
@@ -236,8 +253,84 @@ test('initializeProjectDocs full migrate mode preserves existing files and keeps
     assert.equal(fs.existsSync(path.join(projectRoot, '.quiver', 'templates')), false);
 
     const pkg = JSON.parse(fs.readFileSync(path.join(projectRoot, 'package.json'), 'utf8'));
+    const config = JSON.parse(fs.readFileSync(path.join(projectRoot, '.quiver', 'config.json'), 'utf8'));
     assert.equal(typeof pkg.scripts['start:slice'], 'string');
     assert.equal(typeof pkg.scripts.migrate, 'string');
+    assert.equal(config.compatible_root_key.owner, 'project');
+    assert.equal(config.governance.compatible_future_control.enabled, true);
+  } finally {
+    templateRoot.cleanup();
+    cleanup();
+  }
+});
+
+test('initializeProjectDocs preserves custom internal ignores and migrates blanket Git excludes', () => {
+  const { dir, cleanup } = makeTmpDir();
+  const templateRoot = makeTemplateRoot();
+  const projectRoot = path.join(dir, 'project');
+
+  try {
+    fs.mkdirSync(projectRoot, { recursive: true });
+    execFileSync('git', ['init'], { cwd: projectRoot, stdio: 'ignore' });
+    const excludePath = path.join(projectRoot, '.git', 'info', 'exclude');
+    fs.appendFileSync(excludePath, 'custom-local.log\n.quiver/\n');
+    writeFile(path.join(projectRoot, '.quiver', '.gitignore'), 'custom-runtime/\n');
+
+    initializeProjectDocs({
+      cliVersion: '0.8.0',
+      migrateMode: true,
+      profile: 'full',
+      projectName: 'Granular Ignore Project',
+      projectRoot,
+      templateRoot: templateRoot.dir,
+    });
+
+    const internalIgnore = fs.readFileSync(path.join(projectRoot, '.quiver', '.gitignore'), 'utf8');
+    const localExclude = fs.readFileSync(excludePath, 'utf8');
+    assert.match(internalIgnore, /^custom-runtime\/$/m);
+    assert.match(internalIgnore, /^runs\/$/m);
+    assert.match(localExclude, /^custom-local\.log$/m);
+    assert.doesNotMatch(localExclude, /^\.quiver\/$/m);
+    assert.equal((localExclude.match(/^\.quiver\/runs\/$/gm) || []).length, 1);
+    assert.equal(spawnSync('git', ['check-ignore', '-q', '.quiver/config.json'], { cwd: projectRoot }).status, 1);
+
+    writeFile(path.join(projectRoot, '.quiver', 'runs', 'run-test', 'state.json'), '{}\n');
+    assert.equal(spawnSync('git', ['check-ignore', '-q', '.quiver/runs/run-test/state.json'], { cwd: projectRoot }).status, 0);
+  } finally {
+    templateRoot.cleanup();
+    cleanup();
+  }
+});
+
+test('initializeProjectDocs fails closed without overwriting invalid governance config', () => {
+  const { dir, cleanup } = makeTmpDir();
+  const templateRoot = makeTemplateRoot();
+  const projectRoot = path.join(dir, 'project');
+  const configPath = path.join(projectRoot, '.quiver', 'config.json');
+
+  try {
+    const invalidConfig = {
+      layout_version: 1,
+      governance: {
+        ...buildDefaultGovernanceConfig(),
+        requested_profile: 'unsafe-profile',
+      },
+    };
+    writeFile(configPath, `${JSON.stringify(invalidConfig, null, 2)}\n`);
+    const before = fs.readFileSync(configPath, 'utf8');
+
+    assert.throws(
+      () => initializeProjectDocs({
+        cliVersion: '0.8.0',
+        migrateMode: true,
+        profile: 'full',
+        projectName: 'Invalid Governance Project',
+        projectRoot,
+        templateRoot: templateRoot.dir,
+      }),
+      (error) => error?.code === 'GOVERNANCE_CONFIG_INVALID',
+    );
+    assert.equal(fs.readFileSync(configPath, 'utf8'), before);
   } finally {
     templateRoot.cleanup();
     cleanup();

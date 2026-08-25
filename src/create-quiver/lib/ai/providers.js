@@ -1,5 +1,5 @@
 const fs = require('node:fs');
-const { spawn } = require('node:child_process');
+const { spawn, spawnSync } = require('node:child_process');
 
 const { finalizePromptTransport, preparePromptTransport, describePromptTransport } = require('./prompt-transport');
 const { redactSecrets } = require('../evidence');
@@ -43,6 +43,113 @@ class ProviderRunnerError extends Error {
     this.code = code;
     this.details = details;
   }
+}
+
+function normalizeGitHubHost(options = {}) {
+  const host = String(options.host || options.env?.GH_HOST || process.env.GH_HOST || 'github.com')
+    .trim()
+    .toLowerCase();
+  if (!/^[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?(?::[0-9]+)?$/.test(host)) {
+    throw new ProviderRunnerError(
+      'GITHUB_IDENTITY_INVALID',
+      `GitHub identity host '${host || '<empty>'}' is invalid.`,
+      { host },
+    );
+  }
+  return host;
+}
+
+function resolveGitHubCliProviderSubject(options = {}) {
+  const command = String(options.ghCommand || 'gh');
+  const host = normalizeGitHubHost(options);
+  const args = ['api', 'user', '--hostname', host];
+  const runner = options.runner || spawnSync;
+  let result;
+
+  try {
+    result = runner(command, args, {
+      cwd: options.cwd,
+      encoding: 'utf8',
+      env: options.env ? { ...process.env, ...options.env } : process.env,
+      shell: false,
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+  } catch (error) {
+    if (error?.code === 'ENOENT') {
+      throw new ProviderRunnerError(
+        'MISSING_GH_CLI',
+        "GitHub CLI is not available. Install 'gh' and run `gh auth login` before retrying identity verification.",
+        { command, host },
+      );
+    }
+    throw new ProviderRunnerError(
+      'GITHUB_IDENTITY_UNAVAILABLE',
+      `GitHub CLI identity verification could not run for host '${host}'.`,
+      { command, host, errorCode: error?.code || null },
+    );
+  }
+
+  if (result?.error?.code === 'ENOENT') {
+    throw new ProviderRunnerError(
+      'MISSING_GH_CLI',
+      "GitHub CLI is not available. Install 'gh' and run `gh auth login` before retrying identity verification.",
+      { command, host },
+    );
+  }
+
+  if (!result || result.error || result.status !== 0) {
+    const diagnostic = compactProviderText([
+      result?.error?.message,
+      result?.stderr,
+      result?.stdout,
+    ].filter(Boolean).join('\n'));
+    throw new ProviderRunnerError(
+      'GITHUB_IDENTITY_UNAVAILABLE',
+      `GitHub CLI could not verify an authenticated identity for host '${host}'. Run \`gh auth status --hostname ${host}\` and authenticate before retrying.${diagnostic ? ` ${diagnostic}` : ''}`,
+      {
+        command,
+        host,
+        status: typeof result?.status === 'number' ? result.status : null,
+      },
+    );
+  }
+
+  let payload;
+  try {
+    payload = JSON.parse(String(result.stdout || '').trim());
+  } catch {
+    throw new ProviderRunnerError(
+      'GITHUB_IDENTITY_INVALID',
+      `GitHub CLI returned invalid identity JSON for host '${host}'.`,
+      { command, host },
+    );
+  }
+
+  const numericId = typeof payload?.id === 'number' && Number.isSafeInteger(payload.id) && payload.id > 0
+    ? String(payload.id)
+    : typeof payload?.id === 'string' && /^[1-9][0-9]*$/.test(payload.id)
+      ? payload.id
+      : '';
+  const login = String(payload?.login || '').trim();
+  if (!numericId || !login) {
+    throw new ProviderRunnerError(
+      'GITHUB_IDENTITY_INVALID',
+      `GitHub CLI identity for host '${host}' is missing a numeric id or login.`,
+      { command, host },
+    );
+  }
+
+  const providerSubject = `github:${host}:${numericId}`;
+  return {
+    provider: 'github-cli',
+    host,
+    provider_subject: providerSubject,
+    actor_id: providerSubject,
+    subject_id: numericId,
+    login,
+    verified: true,
+    roles: [],
+  };
 }
 
 function formatProviderList() {
@@ -374,12 +481,18 @@ function runSpawn(command, args, options = {}) {
         }
       }
 
+      const redactedStdout = redactSecrets(stdout);
+      const redactedStderr = redactSecrets(stderr);
       resolve({
         ok: payload.exitCode === 0,
         exitCode: payload.exitCode,
         signal: payload.signal || null,
-        stdout: redactSecrets(stdout),
-        stderr: redactSecrets(stderr),
+        stdout: redactedStdout,
+        stderr: redactedStderr,
+        outputRedaction: {
+          stdout: redactedStdout !== stdout,
+          stderr: redactedStderr !== stderr,
+        },
         error: payload.error ? serializeError(payload.error, options.provider, options.invocation) : null,
       });
     };
@@ -498,6 +611,7 @@ async function runProvider(providerId, options = {}) {
       signal: execution.signal,
       stdout: execution.stdout,
       stderr: execution.stderr,
+      outputRedaction: execution.outputRedaction,
       error: execution.error,
       preflight: preflightResult,
     };
@@ -520,6 +634,7 @@ module.exports = {
   extractProviderErrorCause,
   formatProviderList,
   getProviderDefinition,
+  resolveGitHubCliProviderSubject,
   resolveProviderModelSelection,
   runProvider,
 };

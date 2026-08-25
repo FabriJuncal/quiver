@@ -152,11 +152,19 @@ test('help output documents important public commands', () => {
   assert.match(output, /--section <name>\s+Show one human dashboard section \(overview, specs, slices, blockers, warnings, agents, approvals, runs, active-slice, next-steps\)/);
   assert.match(output, /--limit <n>\s+Limit dashboard human lists/);
   assert.match(output, /--model <model-id>\s+Technical model id for AI agent profiles or provider-backed AI commands/);
+  assert.match(output, /--governance-profile <fast-delivery\|high-assurance>\s+Request the v58 governance execution profile/);
   assert.match(output, /--lang <en\|es>\s+Override CLI human output language/);
   assert.match(output, /--global\s+For config language set, write the global user config/);
   assert.match(output, /--yes\s+Skip prompts and confirm write prompts such as migrate/);
   assert.match(output, /ai agent set planner --provider codex --model gpt-5\.5 --dry-run/);
   assert.match(output, new RegExp(`npx --yes create-quiver@${packageJson.version.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')} ai prompt-slice`));
+});
+
+test('governance profile flag rejects unknown profile names before command execution', () => {
+  const result = runCliRaw(['ai', 'review-plan', '--governance-profile', 'turbo', '--dry-run']);
+
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /invalid governance profile 'turbo'; expected fast-delivery or high-assurance/);
 });
 
 test('global --lang works before and after command names without changing JSON output', () => {
