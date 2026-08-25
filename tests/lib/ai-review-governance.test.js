@@ -5,12 +5,23 @@ const path = require('node:path');
 const test = require('node:test');
 
 const {
+  CURRENT_PHASE_REVISION_REQUIRED,
+  DISPOSITION_DUPLICATE,
+  DISPOSITION_MISSING,
+  DISPOSITION_STALE,
+  DISPOSITION_UNAUTHORIZED,
+  DISPOSITION_UNRESOLVED,
+  ELIGIBLE_WITH_CONDITIONS,
   FINDING_RECONCILIATION_AMBIGUOUS,
+  NON_TRANSFERABLE_BLOCKER,
   PROVIDER_OUTPUT_INVALID,
+  PROTECTED_CRITICAL_REQUIRES_BREAK_GLASS,
   authorizeGovernanceAction,
+  buildConditionedDecisionProjection,
   buildDefaultGovernanceConfig,
   computeFindingFingerprint,
   computePolicyDigest,
+  evaluateConditionEligibility,
   hasGovernanceConfig,
   mergeGovernanceConfig,
   parseProviderReview,
@@ -22,9 +33,13 @@ const {
   validateGovernanceConfig,
 } = require('../../src/create-quiver/lib/ai/review-governance');
 const {
+  canonicalDispositionSchema,
+  conditionedDecisionCandidateSchema,
+  conditionDispositionEnvelopeSchema,
   decisionSchema,
   dispositionSchema,
   reviewEventSchema,
+  runGovernanceStateSchema,
 } = require('../../src/create-quiver/lib/ai/review-governance.schema');
 
 function makeFinding(overrides = {}) {
@@ -64,6 +79,77 @@ function makeReview(findings = [makeFinding()], overrides = {}) {
   };
 }
 
+function makeCanonicalConditionFinding(overrides = {}) {
+  return {
+    finding_id: 'F-001',
+    state: 'open',
+    severity: 'medium',
+    category: 'implementation-detail',
+    phase_owner: 'slice',
+    phase_blocking: false,
+    ...overrides,
+  };
+}
+
+function configureConditionApprover(governance, overrides = {}) {
+  governance.policy.authorization.actor_bindings['github:github.com:42'] = {
+    actor_id: 'person:alice',
+    roles: ['condition-approver'],
+  };
+  governance.policy.authorization.actions['approve-with-conditions'] = {
+    allowed_actor_ids: [],
+    allowed_roles: ['condition-approver'],
+    independence: 'different-from-reviewer',
+  };
+  const actor = {
+    actor_id: 'github:github.com:42',
+    provider: 'github-cli',
+    provider_subject: 'github:github.com:42',
+    verified: true,
+  };
+  return authorizeGovernanceAction({
+    governance,
+    action: 'approve-with-conditions',
+    actor,
+    profile: 'high-assurance',
+    context: { reviewer: { actor_id: 'person:bob' } },
+    ...overrides,
+  });
+}
+
+function makeConditionContext(overrides = {}) {
+  const governance = overrides.governance || buildDefaultGovernanceConfig();
+  const authorization = overrides.authorization || configureConditionApprover(governance);
+  const policyDigest = computePolicyDigest(governance);
+  const envelope = overrides.envelope || {
+    schema_version: 1,
+    run_id: 'run-1',
+    review_id: 'R-001',
+    policy_version: governance.policy.version,
+    policy_digest: policyDigest,
+    dispositions: [{
+      finding_id: 'F-001',
+      action: 'transfer-to-slice',
+      target: 'slice-04-runtime',
+      evidence_obligations: ['Record directed test evidence.'],
+    }],
+  };
+  return {
+    governance,
+    runId: 'run-1',
+    reviewId: 'R-001',
+    policyVersion: governance.policy.version,
+    policyDigest,
+    envelope,
+    findings: [makeCanonicalConditionFinding()],
+    actorId: 'person:alice',
+    authorization,
+    reasonPath: 'docs/decisions/condition-reason.md',
+    reasonSha256: `sha256:${'b'.repeat(64)}`,
+    ...overrides,
+  };
+}
+
 function expectCode(code) {
   return (error) => error && error.code === code;
 }
@@ -93,6 +179,12 @@ test('default governance config is valid, secret-free, and merge preserves compa
 
   assert.equal(validated.requested_profile, 'fast-delivery');
   assert.equal(validated.policy.authorization.default_effect, 'deny');
+  assert.equal(validated.policy.condition_dispositions.default_effect, 'deny');
+  assert.equal(validated.policy.condition_dispositions.rules.length, 8);
+  assert.equal(
+    validated.policy.condition_dispositions.rules.some((rule) => rule.phase_owners.includes('release')),
+    false,
+  );
   assert.deepEqual(Object.keys(validated.policy.authorization.actions).sort(), [
     'accept-risk',
     'approve',
@@ -109,6 +201,21 @@ test('default governance config is valid, secret-free, and merge preserves compa
 
 test('versioned disposition, review-event, and decision envelopes are strict', () => {
   const digest = `sha256:${'a'.repeat(64)}`;
+  const authorization = {
+    action: 'approve-with-conditions',
+    policy_version: 'v58',
+    policy_digest: digest,
+    actor_id: 'person:alice',
+    provider_actor_id: 'github:github.com:42',
+    provider_subject: 'github:github.com:42',
+    verified: true,
+    binding: 'github:github.com:42',
+    matched_actor_ids: [],
+    matched_roles: ['condition-approver'],
+    independence: 'different-from-reviewer',
+    independence_result: 'passed',
+    identity_label: null,
+  };
   assert.equal(dispositionSchema.parse({
     schema_version: 1,
     run_id: 'run-1',
@@ -117,6 +224,48 @@ test('versioned disposition, review-event, and decision envelopes are strict', (
     action: 'transfer-to-slice',
     target: 'slice-02-runtime',
   }).action, 'transfer-to-slice');
+  assert.equal(conditionDispositionEnvelopeSchema.parse({
+    schema_version: 1,
+    run_id: 'run-1',
+    review_id: 'R-001',
+    policy_version: 'v58',
+    policy_digest: digest,
+    dispositions: [{
+      finding_id: 'F-001',
+      action: 'transfer-to-slice',
+      target: 'slice-02-runtime',
+      evidence_obligations: ['Attach test evidence.'],
+    }],
+  }).dispositions[0].finding_id, 'F-001');
+  assert.throws(() => conditionDispositionEnvelopeSchema.parse({
+    schema_version: 1,
+    run_id: 'run-1',
+    review_id: 'R-001',
+    policy_version: 'v58',
+    policy_digest: digest,
+    dispositions: [{
+      finding_id: 'F-001',
+      action: 'transfer-to-slice',
+      actor_id: 'person:mallory',
+    }],
+  }), 'input dispositions cannot inject canonical actor evidence');
+  assert.equal(canonicalDispositionSchema.parse({
+    schema_version: 1,
+    disposition_id: 'D-001',
+    run_id: 'run-1',
+    review_id: 'R-001',
+    finding_id: 'F-001',
+    action: 'transfer-to-slice',
+    target: 'slice-02-runtime',
+    evidence_obligations: ['Attach test evidence.'],
+    state: 'current',
+    supersedes: null,
+    actor_id: 'person:alice',
+    authorization,
+    policy_version: 'v58',
+    policy_digest: digest,
+    recorded_at: '2026-08-24T10:00:00.000Z',
+  }).state, 'current');
   assert.equal(reviewEventSchema.parse({
     schema_version: 1,
     run_id: 'run-1',
@@ -133,6 +282,11 @@ test('versioned disposition, review-event, and decision envelopes are strict', (
     policy_digest: digest,
     artifact_sha256: digest,
     reason_sha256: digest,
+    reason_path: 'docs/decisions/reason.md',
+    authorization,
+    disposition_ids: ['D-001'],
+    reviewer_recommendation: 'revise',
+    reviewer_approved: false,
     recorded_at: '2026-08-24T10:00:00.000Z',
   }).decision, 'approved-with-conditions');
   assert.throws(() => reviewEventSchema.parse({
@@ -141,6 +295,266 @@ test('versioned disposition, review-event, and decision envelopes are strict', (
     event_class: 'full',
     inferred_from_prose: true,
   }));
+});
+
+test('legacy run governance state reads additively without inventing decisions', () => {
+  const state = runGovernanceStateSchema.parse({
+    schema_version: 1,
+    run_id: 'run-legacy',
+    next_finding_number: 1,
+    current_review_id: null,
+    reviews: [],
+    findings: [],
+  });
+
+  assert.deepEqual(state.dispositions, []);
+  assert.deepEqual(state.condition_evaluations, []);
+  assert.deepEqual(state.conditioned_candidates, []);
+  assert.equal(Object.prototype.hasOwnProperty.call(state, 'decisions'), false);
+});
+
+test('condition policy is default-deny, uses allow-only union matching, and keeps release denied', () => {
+  const context = makeConditionContext();
+  context.findings = [
+    makeCanonicalConditionFinding({
+      finding_id: 'F-001',
+      category: 'architecture',
+      phase_owner: 'spec',
+    }),
+    makeCanonicalConditionFinding({ finding_id: 'F-002' }),
+    makeCanonicalConditionFinding({
+      finding_id: 'F-003',
+      category: 'evidence',
+      phase_owner: 'pr-review',
+    }),
+    makeCanonicalConditionFinding({
+      finding_id: 'F-004',
+      category: 'tooling',
+      phase_owner: 'follow-up',
+    }),
+  ];
+  context.envelope.dispositions = [
+    {
+      finding_id: 'F-001', action: 'transfer-to-spec', target: 'spec:58', evidence_obligations: ['Project into spec.'],
+    },
+    {
+      finding_id: 'F-002', action: 'transfer-to-slice', target: 'slice:04', evidence_obligations: ['Test in slice.'],
+    },
+    {
+      finding_id: 'F-003', action: 'transfer-to-pr', target: 'pr:pending', evidence_obligations: ['Attach PR evidence.'],
+    },
+    {
+      finding_id: 'F-004', action: 'create-follow-up', target_issue: 'QUIVER-99', evidence_obligations: ['Close follow-up.'],
+    },
+  ];
+
+  const eligible = evaluateConditionEligibility(context);
+  assert.equal(eligible.code, ELIGIBLE_WITH_CONDITIONS);
+  assert.equal(eligible.status, 'ELIGIBLE');
+  assert.deepEqual(eligible.policy_rule_ids, [
+    'v58-category-evidence-operations',
+    'v58-category-implementation-testing',
+    'v58-category-tooling-follow-up',
+    'v58-create-follow-up',
+    'v58-transfer-pr-review',
+    'v58-transfer-slice',
+    'v58-transfer-spec',
+  ]);
+
+  const release = makeConditionContext();
+  release.findings = [makeCanonicalConditionFinding({ phase_owner: 'release', category: 'operations' })];
+  release.envelope.dispositions = [{
+    finding_id: 'F-001',
+    action: 'transfer-to-pr',
+    target: 'pr:release',
+    evidence_obligations: ['Attach release evidence.'],
+  }];
+  assert.equal(evaluateConditionEligibility(release).code, DISPOSITION_UNRESOLVED);
+
+  assert.deepEqual(buildConditionedDecisionProjection({ reviewerRecommendation: 'revise' }), {
+    decision: 'approved-with-conditions',
+    reviewer_recommendation: 'revise',
+    reviewer_approved: false,
+  });
+});
+
+test('condition eligibility applies protected, stale, duplicate, missing, and unauthorized precedence', () => {
+  const critical = makeConditionContext();
+  critical.findings = [makeCanonicalConditionFinding({
+    severity: 'critical',
+    category: 'security',
+    phase_owner: 'technical-plan',
+    phase_blocking: true,
+  })];
+  critical.envelope.policy_digest = `sha256:${'0'.repeat(64)}`;
+  critical.envelope.dispositions = [];
+  critical.authorization = { authorized: false, code: 'AUTHORIZATION_DENIED' };
+  assert.deepEqual(
+    evaluateConditionEligibility(critical),
+    {
+      eligible: false,
+      status: 'BREAK_GLASS_REQUIRED',
+      code: PROTECTED_CRITICAL_REQUIRES_BREAK_GLASS,
+      finding_id: 'F-001',
+      disposition_id: null,
+      policy_rule_ids: [],
+      authorization_code: null,
+    },
+  );
+
+  const stale = makeConditionContext();
+  stale.envelope.policy_digest = `sha256:${'0'.repeat(64)}`;
+  stale.envelope.dispositions.push({ ...stale.envelope.dispositions[0] });
+  assert.equal(evaluateConditionEligibility(stale).code, DISPOSITION_STALE);
+
+  const duplicate = makeConditionContext();
+  duplicate.findings.push(makeCanonicalConditionFinding({ finding_id: 'F-002' }));
+  duplicate.envelope.dispositions.push({ ...duplicate.envelope.dispositions[0] });
+  assert.equal(evaluateConditionEligibility(duplicate).code, DISPOSITION_DUPLICATE);
+
+  const missing = makeConditionContext();
+  missing.envelope.dispositions = [];
+  missing.authorization = { authorized: false, code: 'AUTHORIZATION_DENIED' };
+  assert.equal(evaluateConditionEligibility(missing).code, DISPOSITION_MISSING);
+
+  const unauthorized = makeConditionContext();
+  unauthorized.findings = [makeCanonicalConditionFinding({
+    category: 'business-rule',
+    phase_owner: 'technical-plan',
+    phase_blocking: true,
+  })];
+  unauthorized.envelope.dispositions = [{
+    finding_id: 'F-001',
+    action: 'revise-plan',
+    evidence_obligations: ['Revise plan.'],
+  }];
+  unauthorized.authorization = { authorized: false, code: 'AUTHORIZATION_INDEPENDENCE_FAILED' };
+  const unauthorizedResult = evaluateConditionEligibility(unauthorized);
+  assert.equal(unauthorizedResult.code, DISPOSITION_UNAUTHORIZED);
+  assert.equal(unauthorizedResult.authorization_code, 'AUTHORIZATION_INDEPENDENCE_FAILED');
+});
+
+test('condition eligibility distinguishes hard blockers, unfinished revisions, and unresolved obligations', () => {
+  const blocker = makeConditionContext();
+  blocker.findings = [makeCanonicalConditionFinding({
+    category: 'business-rule',
+    phase_owner: 'technical-plan',
+    phase_blocking: true,
+  })];
+  blocker.envelope.dispositions = [{
+    finding_id: 'F-001',
+    action: 'revise-plan',
+    evidence_obligations: ['Revise plan.'],
+  }];
+  assert.equal(evaluateConditionEligibility(blocker).code, NON_TRANSFERABLE_BLOCKER);
+
+  const revision = makeConditionContext();
+  revision.envelope.dispositions = [{
+    finding_id: 'F-001',
+    action: 'revise-plan',
+    evidence_obligations: ['Revise plan.'],
+  }];
+  assert.equal(evaluateConditionEligibility(revision).code, CURRENT_PHASE_REVISION_REQUIRED);
+
+  const unresolved = makeConditionContext();
+  unresolved.envelope.dispositions[0].evidence_obligations = [];
+  assert.equal(evaluateConditionEligibility(unresolved).code, DISPOSITION_UNRESOLVED);
+
+  const duplicateEvidence = makeConditionContext();
+  duplicateEvidence.envelope.dispositions[0].evidence_obligations = ['Run the slice test.', 'Run the slice test.'];
+  assert.equal(evaluateConditionEligibility(duplicateEvidence).code, DISPOSITION_UNRESOLVED);
+
+  const invalidTarget = makeConditionContext();
+  delete invalidTarget.envelope.dispositions[0].target;
+  assert.equal(evaluateConditionEligibility(invalidTarget).code, DISPOSITION_UNRESOLVED);
+
+  const invalidReason = makeConditionContext();
+  invalidReason.reasonPath = '../outside.md';
+  assert.equal(evaluateConditionEligibility(invalidReason).code, DISPOSITION_UNRESOLVED);
+
+  const unknownFinding = makeConditionContext();
+  unknownFinding.envelope.dispositions.push({
+    finding_id: 'F-999',
+    action: 'transfer-to-slice',
+    target: 'slice:unknown',
+    evidence_obligations: ['Unknown finding evidence.'],
+  });
+  assert.equal(evaluateConditionEligibility(unknownFinding).code, DISPOSITION_UNRESOLVED);
+});
+
+test('condition disposition replacement is explicit and never becomes current implicitly', () => {
+  const context = makeConditionContext();
+  const authorizationEvidence = context.authorization.evidence;
+  const existing = {
+    schema_version: 1,
+    disposition_id: 'D-001',
+    run_id: 'run-1',
+    review_id: 'R-001',
+    finding_id: 'F-001',
+    action: 'transfer-to-slice',
+    target: 'slice:old',
+    evidence_obligations: ['Old evidence.'],
+    state: 'current',
+    supersedes: null,
+    actor_id: 'person:alice',
+    authorization: authorizationEvidence,
+    policy_version: 'v58',
+    policy_digest: context.policyDigest,
+    recorded_at: '2026-08-25T10:00:00.000Z',
+  };
+  context.existingDispositions = [existing];
+  context.envelope.dispositions[0].supersedes = 'D-001';
+  assert.equal(evaluateConditionEligibility(context).code, ELIGIBLE_WITH_CONDITIONS);
+
+  const refreshed = makeConditionContext();
+  refreshed.existingDispositions = [{
+    ...existing,
+    review_id: 'R-000',
+    policy_version: 'v57',
+    policy_digest: `sha256:${'0'.repeat(64)}`,
+    authorization: {
+      ...existing.authorization,
+      policy_version: 'v57',
+      policy_digest: `sha256:${'0'.repeat(64)}`,
+    },
+  }];
+  refreshed.envelope.dispositions[0].supersedes = 'D-001';
+  assert.equal(evaluateConditionEligibility(refreshed).code, ELIGIBLE_WITH_CONDITIONS);
+
+  const implicit = makeConditionContext();
+  implicit.existingDispositions = [existing];
+  assert.equal(evaluateConditionEligibility(implicit).code, DISPOSITION_DUPLICATE);
+
+  const stale = makeConditionContext();
+  stale.existingDispositions = [existing];
+  stale.envelope.dispositions[0].supersedes = 'D-999';
+  assert.equal(evaluateConditionEligibility(stale).code, DISPOSITION_STALE);
+});
+
+test('conditioned candidates are explicitly non-final publication records', () => {
+  const context = makeConditionContext();
+  const candidate = conditionedDecisionCandidateSchema.parse({
+    schema_version: 1,
+    candidate_id: 'C-001',
+    evaluation_id: 'E-001',
+    run_id: 'run-1',
+    review_id: 'R-001',
+    phase: 'technical-plan',
+    decision: 'approved-with-conditions',
+    publication_state: 'candidate',
+    actor_id: 'person:alice',
+    authorization: context.authorization.evidence,
+    policy_version: 'v58',
+    policy_digest: context.policyDigest,
+    reason_path: 'docs/decisions/condition-reason.md',
+    reason_sha256: context.reasonSha256,
+    disposition_ids: ['D-001'],
+    reviewer_recommendation: 'revise',
+    reviewer_approved: false,
+    recorded_at: '2026-08-25T10:00:00.000Z',
+  });
+  assert.equal(candidate.publication_state, 'candidate');
+  assert.throws(() => conditionedDecisionCandidateSchema.parse({ ...candidate, publication_state: 'final' }));
 });
 
 test('governance config rejects secret-bearing compatible keys', () => {

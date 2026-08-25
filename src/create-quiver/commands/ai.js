@@ -1,3 +1,4 @@
+const crypto = require('node:crypto');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
@@ -8,6 +9,7 @@ const {
   assertProviderPromptWithinLimit,
   byteLength,
   compactRevisionInput,
+  containsSensitiveText,
   extractCleanProviderOutput,
   redactSensitiveLocalValues,
   writeRawProviderArtifact,
@@ -100,6 +102,8 @@ const {
   GovernanceError,
   PROVIDER_OUTPUT_INVALID,
   authorizeGovernanceAction,
+  buildConditionedDecisionProjection,
+  evaluateConditionEligibility,
   hasGovernanceConfig,
   readGovernanceConfig,
   resolveEffectiveProfile,
@@ -140,9 +144,17 @@ const {
   recordAiRunApproval,
   resolveAiRun,
   resolveGovernedAiRun,
+  runReviewCommitPath,
   updateAiRunPhase,
   withAiRunLock,
+  writeRunGovernance,
 } = require('../lib/ai/run-state');
+const {
+  canonicalDispositionSchema,
+  conditionedDecisionCandidateSchema,
+  conditionDispositionEnvelopeSchema,
+  conditionEvaluationSchema,
+} = require('../lib/ai/review-governance.schema');
 const {
   agentProfilesPath,
   buildAgentProfileDoctorReport,
@@ -174,6 +186,7 @@ const {
 const { assertPlannerPhaseReady, getPlannerPhaseDetails, normalizePlannerPhase, PlannerPhaseError } = require('../lib/ai/phase-gates');
 const { formatStatus, translatorForHuman } = require('../lib/i18n/read-only-format');
 const { collectActiveSliceState, resolveProjectState } = require('../lib/project-state-resolver');
+const { assertPathInsideRoot, validateProjectRelativePath } = require('../lib/paths');
 
 const DEFAULT_ONBOARD_PROVIDER = 'codex';
 const DEFAULT_ONBOARD_ROLE = 'planner';
@@ -292,6 +305,229 @@ function governanceFailure(result) {
   const code = result?.code || 'AUTHORIZATION_DENIED';
   const message = result?.message || 'Governance authorization denied.';
   return new Error(formatError(`${code}: ${message}`));
+}
+
+function sha256Bytes(value) {
+  return `sha256:${crypto.createHash('sha256').update(value).digest('hex')}`;
+}
+
+function readBoundedProjectFile(repoRoot, value, label) {
+  if (!value) {
+    return { ok: false, issue: 'missing', path: null, bytes: null };
+  }
+  try {
+    const relativePath = validateProjectRelativePath(value, label);
+    if (containsSensitiveText(relativePath)) {
+      return { ok: false, issue: 'sensitive-path', path: null, bytes: null };
+    }
+    const filePath = path.resolve(repoRoot, relativePath);
+    if (!fs.existsSync(filePath)) {
+      return { ok: false, issue: 'missing', path: relativePath, bytes: null };
+    }
+    assertPathInsideRoot(repoRoot, filePath, label);
+    if (!fs.statSync(filePath).isFile()) {
+      return { ok: false, issue: 'not-a-file', path: relativePath, bytes: null };
+    }
+    const canonicalPath = path.relative(path.resolve(repoRoot), filePath).split(path.sep).join('/');
+    return {
+      ok: true,
+      issue: null,
+      path: canonicalPath,
+      bytes: fs.readFileSync(filePath),
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      issue: 'invalid-path',
+      path: null,
+      bytes: null,
+      error: error.message,
+    };
+  }
+}
+
+function parseConditionDispositionFile(repoRoot, value, correlation) {
+  const source = readBoundedProjectFile(repoRoot, value, 'conditions file');
+  if (!source.ok) {
+    return {
+      envelope: {
+        schema_version: 1,
+        run_id: correlation.runId,
+        review_id: correlation.reviewId,
+        policy_version: correlation.policyVersion,
+        policy_digest: correlation.policyDigest,
+        dispositions: [],
+      },
+      invalid: Boolean(value),
+      issue: source.issue,
+      path: source.path,
+    };
+  }
+  try {
+    const parsedJson = JSON.parse(source.bytes.toString('utf8'));
+    if (containsSensitiveText(stableStringify(parsedJson))) {
+      return {
+        envelope: {
+          schema_version: 1,
+          run_id: correlation.runId,
+          review_id: correlation.reviewId,
+          policy_version: correlation.policyVersion,
+          policy_digest: correlation.policyDigest,
+          dispositions: [],
+        },
+        invalid: true,
+        issue: 'sensitive-content',
+        path: source.path,
+      };
+    }
+    const parsed = conditionDispositionEnvelopeSchema.safeParse(parsedJson);
+    if (!parsed.success) {
+      return {
+        envelope: {
+          schema_version: 1,
+          run_id: correlation.runId,
+          review_id: correlation.reviewId,
+          policy_version: correlation.policyVersion,
+          policy_digest: correlation.policyDigest,
+          dispositions: [],
+        },
+        invalid: true,
+        issue: 'invalid-envelope',
+        path: source.path,
+      };
+    }
+    return {
+      envelope: parsed.data,
+      invalid: false,
+      issue: null,
+      path: source.path,
+    };
+  } catch {
+    return {
+      envelope: {
+        schema_version: 1,
+        run_id: correlation.runId,
+        review_id: correlation.reviewId,
+        policy_version: correlation.policyVersion,
+        policy_digest: correlation.policyDigest,
+        dispositions: [],
+      },
+      invalid: true,
+      issue: 'invalid-json',
+      path: source.path,
+    };
+  }
+}
+
+function readConditionReason(repoRoot, value) {
+  const source = readBoundedProjectFile(repoRoot, value, 'reason file');
+  if (!source.ok || source.bytes.length === 0 || !source.bytes.toString('utf8').trim()) {
+    return {
+      valid: false,
+      issue: source.issue || 'empty',
+      path: source.path,
+      sha256: null,
+    };
+  }
+  return {
+    valid: true,
+    issue: null,
+    path: source.path,
+    sha256: sha256Bytes(source.bytes),
+  };
+}
+
+function nextCanonicalRecordId(records, field, prefix) {
+  const used = new Set((records || []).map((record) => record?.[field]).filter(Boolean));
+  let number = records.length + 1;
+  let candidate;
+  do {
+    candidate = `${prefix}-${String(number).padStart(3, '0')}`;
+    number += 1;
+  } while (used.has(candidate));
+  return candidate;
+}
+
+function canonicalizeConditionDispositions(state, envelope, authorization, now) {
+  let dispositions = (state.dispositions || []).map((disposition) => ({ ...disposition }));
+  const added = [];
+  for (const proposal of envelope.dispositions) {
+    if (proposal.supersedes) {
+      dispositions = dispositions.map((disposition) => (
+        disposition.disposition_id === proposal.supersedes
+          ? { ...disposition, state: 'superseded' }
+          : disposition
+      ));
+    }
+    const canonical = canonicalDispositionSchema.parse({
+      schema_version: 1,
+      disposition_id: nextCanonicalRecordId(dispositions, 'disposition_id', 'D'),
+      run_id: envelope.run_id,
+      review_id: envelope.review_id,
+      finding_id: proposal.finding_id,
+      action: proposal.action,
+      ...(proposal.target ? { target: proposal.target } : {}),
+      ...(proposal.target_issue ? { target_issue: proposal.target_issue } : {}),
+      evidence_obligations: [...proposal.evidence_obligations],
+      state: 'current',
+      supersedes: proposal.supersedes || null,
+      actor_id: authorization.evidence.actor_id,
+      authorization: authorization.evidence,
+      policy_version: envelope.policy_version,
+      policy_digest: envelope.policy_digest,
+      recorded_at: now,
+    });
+    dispositions.push(canonical);
+    added.push(canonical);
+  }
+  return { dispositions, added };
+}
+
+function throwConditionEligibilityFailure(result, inputIssue = null) {
+  const normalizedResult = inputIssue && ![
+    'PROTECTED_CRITICAL_REQUIRES_BREAK_GLASS',
+    'DISPOSITION_STALE',
+    'DISPOSITION_DUPLICATE',
+    'DISPOSITION_MISSING',
+    'DISPOSITION_UNAUTHORIZED',
+    'NON_TRANSFERABLE_BLOCKER',
+    'CURRENT_PHASE_REVISION_REQUIRED',
+  ].includes(result.code)
+    ? { ...result, eligible: false, status: 'INELIGIBLE', code: 'DISPOSITION_UNRESOLVED' }
+    : result;
+  const errorCode = normalizedResult.status === 'BREAK_GLASS_REQUIRED'
+    ? 'BREAK_GLASS_REQUIRED'
+    : normalizedResult.code;
+  throw new GovernanceError(
+    errorCode,
+    `Conditioned approval candidate is not eligible: ${normalizedResult.code}.`,
+    {
+      eligibility: normalizedResult,
+      ...(inputIssue ? { input_issue: inputIssue } : {}),
+      final_decision_published: false,
+      phase_advanced: false,
+    },
+  );
+}
+
+function formatConditionedCandidateResult(result, options = {}) {
+  const lines = [
+    options.dryRun ? 'AI approved-with-conditions candidate dry-run' : 'AI approved-with-conditions candidate saved',
+    `Decision: ${result.decision}`,
+    `Publication state: ${result.publication_state}`,
+    `Eligibility: ${result.eligibility.code}`,
+    `Run: ${result.run_id}`,
+    `Review: ${result.review_id}`,
+    `Reviewer recommendation: ${result.reviewer_recommendation}`,
+    `Reviewer approved: ${result.reviewer_approved ? 'yes' : 'no'}`,
+    `Conditions: ${result.disposition_ids.length}`,
+    `Reason: ${result.reason_path}`,
+    'Final decision published: no',
+    'Phase advanced: no',
+    'Legacy approved.md written: no',
+  ];
+  if (options.dryRun) lines.push('No files were changed.');
+  return `${lines.join('\n')}\n`;
 }
 
 function assertGovernedPlanReviewCorrelation(repoRoot, review, run, runtime) {
@@ -4696,11 +4932,274 @@ async function resolveApprovalVersion(repoRoot, phase, options = {}) {
   return selected.value;
 }
 
+async function runConditionedApprovalCandidate(repoRoot, options = {}) {
+  const phase = normalizePlannerPhase(options.phase || DEFAULT_PLAN_PHASE);
+  if (phase !== 'technical-plan') {
+    throw new GovernanceError(
+      'DISPOSITION_UNRESOLVED',
+      'approved-with-conditions is only supported for the technical-plan phase in v58.',
+      { phase, final_decision_published: false, phase_advanced: false },
+    );
+  }
+  if (!options.governedApproval?.run) {
+    throw new GovernanceError(
+      'AI_RUN_REQUIRED',
+      'approved-with-conditions requires an explicit governed run.',
+      { final_decision_published: false, phase_advanced: false },
+    );
+  }
+
+  let actor = options.actor || null;
+  let identityFailureCode = null;
+  if (!actor) {
+    try {
+      actor = await (options.resolveActorFn || resolveGitHubCliProviderSubject)({
+        cwd: repoRoot,
+        env: options.env,
+        runner: options.identityRunner,
+        host: options.githubHost,
+      });
+    } catch (error) {
+      actor = null;
+      identityFailureCode = [
+        'MISSING_GH_CLI',
+        'GITHUB_IDENTITY_UNAVAILABLE',
+        'GITHUB_IDENTITY_INVALID',
+      ].includes(error?.code) ? error.code : 'ACTOR_IDENTITY_UNAVAILABLE';
+    }
+  }
+
+  const runId = options.governedApproval.run.run_id;
+  const evaluateCandidate = () => {
+      if (fs.existsSync(runReviewCommitPath(repoRoot, runId))) {
+        throw new GovernanceError(
+          'GOVERNANCE_RECOVERY_REQUIRED',
+          `Governed review recovery is required before evaluating conditioned approval for run '${runId}'.`,
+          {
+            run_id: runId,
+            final_decision_published: false,
+            phase_advanced: false,
+          },
+        );
+      }
+      assertNoPendingReviewBudgetReservations(repoRoot, runId);
+      const lockedRun = readAiRun(repoRoot, runId);
+      if (lockedRun?.status === 'closed') {
+        throw new GovernanceError('AI_RUN_CLOSED', `Governed approval cannot mutate closed run '${runId}'.`);
+      }
+      if (lockedRun?.phase !== 'technical-plan-reviewed') {
+        throw new GovernanceError(
+          'AI_RUN_PHASE_INVALID',
+          `Conditioned approval requires run phase 'technical-plan-reviewed', found '${lockedRun?.phase || 'missing'}'.`,
+          {
+            run_id: runId,
+            expected_phase: 'technical-plan-reviewed',
+            actual_phase: lockedRun?.phase || null,
+            final_decision_published: false,
+            phase_advanced: false,
+          },
+        );
+      }
+
+      const runtime = resolveGovernanceRuntime(repoRoot, options, lockedRun);
+      const review = readPlanReview(repoRoot);
+      const canonicalReview = assertGovernedPlanReviewCorrelation(repoRoot, review, lockedRun, runtime);
+      if (review.status !== 'unapproved' && review.status !== 'reviewed') {
+        throw new GovernanceError(
+          'GOVERNANCE_STATE_INVALID',
+          `Conditioned approval requires a current governed plan review, found '${review.status}'.`,
+        );
+      }
+      assertTechnicalPlanDraftHasSpecContract(repoRoot, options.version);
+      assertGovernedApprovalCandidateCorrelation(
+        repoRoot,
+        lockedRun,
+        'technical-plan',
+        options.version,
+        review,
+      );
+
+      const state = readRunGovernance(repoRoot, runId);
+      if (!state || state.current_review_id !== canonicalReview.review_id) {
+        throw new GovernanceError('GOVERNANCE_STATE_INVALID', 'Current condition state is not correlated with the governed review.');
+      }
+      const openFindings = (state.findings || []).filter((finding) => finding.state === 'open');
+      const correlation = {
+        runId,
+        reviewId: canonicalReview.review_id,
+        policyVersion: runtime.profile.policy_version,
+        policyDigest: runtime.profile.policy_digest,
+      };
+      const conditionInput = parseConditionDispositionFile(
+        repoRoot,
+        options.conditionsFile,
+        correlation,
+      );
+      const reason = readConditionReason(repoRoot, options.reasonFile);
+      const resolvedAuthorization = authorizeGovernanceAction({
+        governance: runtime.governance,
+        action: 'approve-with-conditions',
+        actor,
+        profile: runtime.profile.effective_profile,
+        context: {
+          run_creator: lockedRun.governance_actors?.run_creator || null,
+          reviewer: lockedRun.governance_actors?.reviewer || null,
+          executor: lockedRun.governance_actors?.executor || null,
+        },
+      });
+      const authorization = identityFailureCode && resolvedAuthorization.authorized !== true
+        ? { ...resolvedAuthorization, code: identityFailureCode }
+        : resolvedAuthorization;
+      const eligibility = evaluateConditionEligibility({
+        governance: runtime.governance,
+        runId: correlation.runId,
+        reviewId: correlation.reviewId,
+        policyVersion: correlation.policyVersion,
+        policyDigest: correlation.policyDigest,
+        envelope: conditionInput.envelope,
+        existingDispositions: state.dispositions,
+        findings: openFindings,
+        actorId: authorization.evidence?.actor_id || '',
+        authorization,
+        reasonPath: reason.path,
+        reasonSha256: reason.sha256,
+        completedPhases: ['requirement', 'acceptance'],
+      });
+      if (conditionInput.invalid) {
+        throwConditionEligibilityFailure(eligibility, `conditions:${conditionInput.issue}`);
+      }
+      if (!eligibility.eligible) {
+        const inputIssue = !reason.valid ? `reason:${reason.issue}` : null;
+        throwConditionEligibilityFailure(eligibility, inputIssue);
+      }
+
+      const nowValue = options.now || new Date();
+      const now = nowValue instanceof Date ? nowValue.toISOString() : new Date(nowValue).toISOString();
+      const canonicalized = canonicalizeConditionDispositions(
+        state,
+        conditionInput.envelope,
+        authorization,
+        now,
+      );
+      const canonicalEnvelope = {
+        ...conditionInput.envelope,
+        dispositions: [],
+      };
+      const canonicalEligibility = evaluateConditionEligibility({
+        governance: runtime.governance,
+        runId: correlation.runId,
+        reviewId: correlation.reviewId,
+        policyVersion: correlation.policyVersion,
+        policyDigest: correlation.policyDigest,
+        envelope: canonicalEnvelope,
+        existingDispositions: canonicalized.dispositions,
+        findings: openFindings,
+        actorId: authorization.evidence.actor_id,
+        authorization,
+        reasonPath: reason.path,
+        reasonSha256: reason.sha256,
+        completedPhases: ['requirement', 'acceptance'],
+      });
+      if (!canonicalEligibility.eligible) {
+        throwConditionEligibilityFailure(canonicalEligibility);
+      }
+
+      const openFindingIds = new Set(openFindings.map((finding) => finding.finding_id));
+      const dispositionIds = canonicalized.dispositions
+        .filter((disposition) => disposition.state === 'current' && openFindingIds.has(disposition.finding_id))
+        .sort((left, right) => left.finding_id.localeCompare(right.finding_id))
+        .map((disposition) => disposition.disposition_id);
+      const evaluation = conditionEvaluationSchema.parse({
+        schema_version: 1,
+        evaluation_id: nextCanonicalRecordId(state.condition_evaluations || [], 'evaluation_id', 'CE'),
+        run_id: runId,
+        review_id: canonicalReview.review_id,
+        actor_id: authorization.evidence.actor_id,
+        policy_version: correlation.policyVersion,
+        policy_digest: correlation.policyDigest,
+        disposition_ids: dispositionIds,
+        reason_path: reason.path,
+        reason_sha256: reason.sha256,
+        result: canonicalEligibility,
+        evaluated_at: now,
+      });
+      const reviewerProjection = buildConditionedDecisionProjection({ review: canonicalReview });
+      const candidate = conditionedDecisionCandidateSchema.parse({
+        schema_version: 1,
+        candidate_id: nextCanonicalRecordId(state.conditioned_candidates || [], 'candidate_id', 'CC'),
+        evaluation_id: evaluation.evaluation_id,
+        run_id: runId,
+        review_id: canonicalReview.review_id,
+        phase: 'technical-plan',
+        ...reviewerProjection,
+        publication_state: 'candidate',
+        actor_id: authorization.evidence.actor_id,
+        authorization: authorization.evidence,
+        policy_version: correlation.policyVersion,
+        policy_digest: correlation.policyDigest,
+        reason_path: reason.path,
+        reason_sha256: reason.sha256,
+        disposition_ids: dispositionIds,
+        recorded_at: now,
+      });
+      if (options.dryRun !== true) {
+        writeRunGovernance(repoRoot, runId, {
+          ...state,
+          dispositions: canonicalized.dispositions,
+          condition_evaluations: (state.condition_evaluations || []).concat(evaluation),
+          conditioned_candidates: (state.conditioned_candidates || []).concat(candidate),
+          updated_at: now,
+        });
+      }
+
+      const approvalReport = buildApprovalCandidateReport(repoRoot, 'technical-plan');
+      const draftCandidate = approvalReport.candidates.find((item) => Number(item.version) === Number(options.version));
+      const result = {
+        task: 'approve',
+        phase: 'technical-plan',
+        version: Number(options.version) || null,
+        artifact: draftCandidate?.path || canonicalReview.source_file,
+        run_id: runId,
+        review_id: canonicalReview.review_id,
+        ...reviewerProjection,
+        publication_state: 'candidate',
+        eligibility: canonicalEligibility,
+        evaluation_id: evaluation.evaluation_id,
+        candidate_id: candidate.candidate_id,
+        disposition_ids: dispositionIds,
+        reason_path: reason.path,
+        reason_sha256: reason.sha256,
+        final_decision_published: false,
+        phase_advanced: false,
+        dry_run: options.dryRun === true,
+      };
+      process.stdout.write(formatConditionedCandidateResult(result, options));
+      return result;
+  };
+
+  return options.dryRun === true
+    ? evaluateCandidate()
+    : withAiRunLock(
+      repoRoot,
+      runId,
+      { command: 'ai approve --decision approved-with-conditions' },
+      evaluateCandidate,
+    );
+}
+
 async function runApprove(repoRoot, options = {}) {
   const translator = createTranslator(options.language);
   const phase = normalizePlannerPhase(options.phase || DEFAULT_PLAN_PHASE);
+  const decision = String(options.decision || 'approved').trim();
+  if (!['approved', 'approved-with-conditions'].includes(decision)) {
+    throw new GovernanceError('DISPOSITION_UNRESOLVED', `Unsupported approval decision '${decision || 'missing'}'.`);
+  }
+  const conditionedDecision = decision === 'approved-with-conditions';
   if (phase === 'spec') {
     throw new Error(formatError(translator.t('ai.approve.error.unsupported_phase', { phase })));
+  }
+  if (conditionedDecision && phase !== 'technical-plan') {
+    throw new GovernanceError('DISPOSITION_UNRESOLVED', 'approved-with-conditions is only supported for technical-plan in v58.');
   }
 
   if (options.input) {
@@ -4720,17 +5219,20 @@ async function runApprove(repoRoot, options = {}) {
       ...resolveGovernanceRuntime(repoRoot, options, run),
       run,
     };
-    if (options.dryRun !== true) {
+    if (options.dryRun !== true && !conditionedDecision) {
       recoverGovernedPlanReviewCommit(repoRoot, { runId: run.run_id });
       governedApproval.run = readAiRun(repoRoot, run.run_id);
     }
+  }
+  if (conditionedDecision && !governedApproval) {
+    throw new GovernanceError('AI_RUN_REQUIRED', 'approved-with-conditions requires an explicit governed run.');
   }
 
   let technicalPlanReview = null;
   let governedCanonicalReview = null;
   if (phase === 'technical-plan') {
     technicalPlanReview = readPlanReview(repoRoot);
-    if (governedApproval) {
+    if (governedApproval && !conditionedDecision) {
       governedCanonicalReview = assertGovernedPlanReviewCorrelation(
         repoRoot,
         technicalPlanReview,
@@ -4742,12 +5244,21 @@ async function runApprove(repoRoot, options = {}) {
 
   const version = await resolveApprovalVersion(repoRoot, phase, options);
 
+  if (conditionedDecision) {
+    return runConditionedApprovalCandidate(repoRoot, {
+      ...options,
+      phase,
+      version,
+      governedApproval,
+    });
+  }
+
   if (phase === 'technical-plan') {
     if (technicalPlanReview.status !== 'unapproved' && technicalPlanReview.status !== 'reviewed') {
       throw new Error(formatError(translator.t('ai.approve.error.review_required', { status: technicalPlanReview.status })));
     }
-    if (governedCanonicalReview?.projection?.blocking === true
-        || (!governedCanonicalReview && reviewBlocksApproval(technicalPlanReview))) {
+    if (!conditionedDecision && (governedCanonicalReview?.projection?.blocking === true
+        || (!governedCanonicalReview && reviewBlocksApproval(technicalPlanReview)))) {
       const reviewResult = governedCanonicalReview?.projection || technicalPlanReview.meta.review_result;
       const requiredFixes = Array.isArray(reviewResult.required_fixes) ? reviewResult.required_fixes.length : 0;
       throw new Error(formatError(translator.t('ai.approve.error.review_blocked', {

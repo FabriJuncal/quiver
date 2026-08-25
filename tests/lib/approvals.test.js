@@ -97,6 +97,27 @@ test('planner approvals keep multiple drafts and only approve the current versio
   }
 });
 
+test('legacy planner approval writer rejects approved-with-conditions without creating approved.md', () => {
+  const repo = makeRepo();
+
+  try {
+    writeFile(path.join(repo.root, 'technical-plan.md'), '# Technical plan\n');
+    savePlannerDraft(repo.root, 'technical-plan', 'technical-plan.md', '# Technical plan\n');
+
+    assert.throws(
+      () => approvePlannerPhase(repo.root, 'technical-plan', '', '', {
+        decision: 'approved-with-conditions',
+        version: 1,
+      }),
+      /canonical run governance store.*cannot create legacy approved\.md/,
+    );
+    assert.equal(fs.existsSync(approvalApprovedPath(repo.root, 'technical-plan')), false);
+    assert.equal(readPhaseApproval(repo.root, 'technical-plan').status, 'draft');
+  } finally {
+    repo.cleanup();
+  }
+});
+
 test('planner approval candidates expose current draft, history, and safe previews', () => {
   const repo = makeRepo();
 

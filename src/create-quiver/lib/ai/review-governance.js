@@ -3,23 +3,43 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const {
+  CONDITION_ELIGIBILITY_CODES,
+  CONDITION_ELIGIBILITY_STATUSES,
   EXECUTION_PROFILES,
   FINDING_CATEGORIES,
+  FINDING_SEVERITIES,
   GOVERNANCE_ACTIONS,
   GOVERNANCE_SCHEMA_VERSION,
   INDEPENDENCE_RULES,
   MINIMUM_SENSITIVE_CATEGORIES,
   PHASE_OWNERS,
+  PLAN_REVIEW_RECOMMENDATIONS,
   actorIdentitySchema,
   canonicalFindingSchema,
   providerFindingSchema,
   providerReviewSchema,
   governanceConfigSchema,
+  repositoryRelativePathSchema,
 } = require('./review-governance.schema');
 
 const PROVIDER_OUTPUT_INVALID = 'PROVIDER_OUTPUT_INVALID';
 const FINDING_RECONCILIATION_AMBIGUOUS = 'FINDING_RECONCILIATION_AMBIGUOUS';
 const DEFAULT_EXECUTION_PROFILE = 'fast-delivery';
+const ELIGIBLE_WITH_CONDITIONS = 'ELIGIBLE_WITH_CONDITIONS';
+const PROTECTED_CRITICAL_REQUIRES_BREAK_GLASS = 'PROTECTED_CRITICAL_REQUIRES_BREAK_GLASS';
+const DISPOSITION_STALE = 'DISPOSITION_STALE';
+const DISPOSITION_DUPLICATE = 'DISPOSITION_DUPLICATE';
+const DISPOSITION_MISSING = 'DISPOSITION_MISSING';
+const DISPOSITION_UNAUTHORIZED = 'DISPOSITION_UNAUTHORIZED';
+const NON_TRANSFERABLE_BLOCKER = 'NON_TRANSFERABLE_BLOCKER';
+const CURRENT_PHASE_REVISION_REQUIRED = 'CURRENT_PHASE_REVISION_REQUIRED';
+const DISPOSITION_UNRESOLVED = 'DISPOSITION_UNRESOLVED';
+
+const PROTECTED_CRITICAL_CATEGORIES = Object.freeze([
+  'security',
+  'data-integrity',
+  'rollout',
+]);
 
 const TECHNICAL_PLAN_BLOCKING_CATEGORIES = Object.freeze([
   'security',
@@ -48,6 +68,68 @@ function defaultAuthorizationActions() {
     allowed_roles: [],
     independence: 'none',
   }]));
+}
+
+function defaultConditionDispositionRules() {
+  const selectors = {
+    categories: [...FINDING_CATEGORIES],
+    severities: [...FINDING_SEVERITIES],
+  };
+  const laterPhaseOwners = ['spec', 'slice', 'pr-review', 'follow-up'];
+  return [
+    {
+      rule_id: 'v58-transfer-spec',
+      phase_owners: ['spec'],
+      ...cloneJsonValue(selectors),
+      allowed_dispositions: ['transfer-to-spec'],
+    },
+    {
+      rule_id: 'v58-transfer-slice',
+      phase_owners: ['slice'],
+      ...cloneJsonValue(selectors),
+      allowed_dispositions: ['transfer-to-slice'],
+    },
+    {
+      rule_id: 'v58-transfer-pr-review',
+      phase_owners: ['pr-review'],
+      ...cloneJsonValue(selectors),
+      allowed_dispositions: ['transfer-to-pr'],
+    },
+    {
+      rule_id: 'v58-create-follow-up',
+      phase_owners: ['follow-up'],
+      ...cloneJsonValue(selectors),
+      allowed_dispositions: ['create-follow-up'],
+    },
+    {
+      rule_id: 'v58-category-implementation-testing',
+      phase_owners: [...laterPhaseOwners],
+      categories: ['implementation-detail', 'testing'],
+      severities: [...FINDING_SEVERITIES],
+      allowed_dispositions: ['transfer-to-slice'],
+    },
+    {
+      rule_id: 'v58-category-evidence-operations',
+      phase_owners: [...laterPhaseOwners],
+      categories: ['evidence', 'operations'],
+      severities: [...FINDING_SEVERITIES],
+      allowed_dispositions: ['transfer-to-pr'],
+    },
+    {
+      rule_id: 'v58-category-tooling-follow-up',
+      phase_owners: [...laterPhaseOwners],
+      categories: ['tooling', 'follow-up'],
+      severities: [...FINDING_SEVERITIES],
+      allowed_dispositions: ['create-follow-up'],
+    },
+    {
+      rule_id: 'v58-category-optional-hardening',
+      phase_owners: [...laterPhaseOwners],
+      categories: ['optional-hardening'],
+      severities: [...FINDING_SEVERITIES],
+      allowed_dispositions: ['optional'],
+    },
+  ];
 }
 
 function buildDefaultGovernanceConfig() {
@@ -119,6 +201,10 @@ function buildDefaultGovernanceConfig() {
           blocking_categories: [...TECHNICAL_PLAN_BLOCKING_CATEGORIES],
           non_blocking_categories: [...TECHNICAL_PLAN_NON_BLOCKING_CATEGORIES],
         },
+      },
+      condition_dispositions: {
+        default_effect: 'deny',
+        rules: defaultConditionDispositionRules(),
       },
       authorization: {
         default_effect: 'deny',
@@ -663,6 +749,285 @@ function assertProviderReviewAggregates(review, projection, options = {}) {
   return true;
 }
 
+function makeConditionEligibilityResult(code, options = {}) {
+  const status = code === ELIGIBLE_WITH_CONDITIONS
+    ? 'ELIGIBLE'
+    : code === PROTECTED_CRITICAL_REQUIRES_BREAK_GLASS
+      ? 'BREAK_GLASS_REQUIRED'
+      : 'INELIGIBLE';
+  if (!CONDITION_ELIGIBILITY_CODES.includes(code) || !CONDITION_ELIGIBILITY_STATUSES.includes(status)) {
+    throw new GovernanceError('GOVERNANCE_STATE_INVALID', 'Unknown condition eligibility result.');
+  }
+  return {
+    eligible: code === ELIGIBLE_WITH_CONDITIONS,
+    status,
+    code,
+    finding_id: options.findingId || null,
+    disposition_id: options.dispositionId || null,
+    policy_rule_ids: [...new Set(options.policyRuleIds || [])].sort(compareCodeUnits),
+    authorization_code: options.authorizationCode || null,
+  };
+}
+
+function resolveConditionPolicy(options = {}) {
+  const governance = options.governance || null;
+  return options.policy || governance?.policy || governance;
+}
+
+function matchingConditionDispositionRules(policy, finding, disposition) {
+  const conditionPolicy = policy?.condition_dispositions;
+  if (!isPlainObject(conditionPolicy) || conditionPolicy.default_effect !== 'deny') return [];
+  return (Array.isArray(conditionPolicy.rules) ? conditionPolicy.rules : [])
+    .filter((rule) => (
+      Array.isArray(rule.phase_owners) && rule.phase_owners.includes(finding.phase_owner)
+      && Array.isArray(rule.categories) && rule.categories.includes(finding.category)
+      && Array.isArray(rule.severities) && rule.severities.includes(finding.severity)
+      && Array.isArray(rule.allowed_dispositions) && rule.allowed_dispositions.includes(disposition.action)
+    ))
+    .map((rule) => rule.rule_id)
+    .filter(Boolean)
+    .sort(compareCodeUnits);
+}
+
+function dispositionTargetIsValid(disposition) {
+  const hasTarget = typeof disposition.target === 'string' && disposition.target.trim().length > 0;
+  const hasTargetIssue = typeof disposition.target_issue === 'string' && disposition.target_issue.trim().length > 0;
+  if (['transfer-to-spec', 'transfer-to-slice', 'transfer-to-pr'].includes(disposition.action)) {
+    return hasTarget && !hasTargetIssue;
+  }
+  if (disposition.action === 'create-follow-up') {
+    return !hasTarget && hasTargetIssue;
+  }
+  if (['optional', 'accept-risk'].includes(disposition.action)) {
+    return !hasTarget && !hasTargetIssue;
+  }
+  return false;
+}
+
+function dispositionHasEvidence(disposition) {
+  if (!Array.isArray(disposition.evidence_obligations)
+      || disposition.evidence_obligations.length === 0
+      || !disposition.evidence_obligations.every((item) => typeof item === 'string' && item.trim().length > 0)) {
+    return false;
+  }
+  return new Set(disposition.evidence_obligations).size === disposition.evidence_obligations.length;
+}
+
+function conditionCorrelationIsStale(value, correlation) {
+  return [
+    ['run_id', correlation.runId],
+    ['review_id', correlation.reviewId],
+    ['policy_version', correlation.policyVersion],
+    ['policy_digest', correlation.policyDigest],
+  ].some(([field, expected]) => (
+    Object.prototype.hasOwnProperty.call(value, field) && value[field] !== expected
+  ));
+}
+
+function evaluateConditionEligibility(options = {}) {
+  const envelope = isPlainObject(options.envelope) ? options.envelope : null;
+  const policy = resolveConditionPolicy(options);
+  const correlation = {
+    runId: String(options.runId || envelope?.run_id || '').trim(),
+    reviewId: String(options.reviewId || envelope?.review_id || '').trim(),
+    policyVersion: String(options.policyVersion || envelope?.policy_version || '').trim(),
+    policyDigest: String(options.policyDigest || envelope?.policy_digest || '').trim(),
+  };
+  const openFindings = (Array.isArray(options.findings) ? options.findings : [])
+    .filter((finding) => finding && finding.state !== 'closed')
+    .slice()
+    .sort((left, right) => compareCodeUnits(left.finding_id || left.id || '', right.finding_id || right.id || ''));
+  const proposed = (envelope ? envelope.dispositions : options.dispositions) || [];
+  const existing = Array.isArray(options.existingDispositions) ? options.existingDispositions : [];
+  const proposals = Array.isArray(proposed) ? proposed : [];
+  const allDispositions = existing.concat(proposals);
+
+  const protectedFinding = openFindings.find((finding) => (
+    finding.severity === 'critical' && PROTECTED_CRITICAL_CATEGORIES.includes(finding.category)
+  ));
+  if (protectedFinding) {
+    return makeConditionEligibilityResult(PROTECTED_CRITICAL_REQUIRES_BREAK_GLASS, {
+      findingId: protectedFinding.finding_id || protectedFinding.id,
+    });
+  }
+
+  const policyDigestMatches = isPlainObject(policy)
+    && policy.version === correlation.policyVersion
+    && computePolicyDigest(policy) === correlation.policyDigest;
+  if (!correlation.runId || !correlation.reviewId || !policyDigestMatches
+      || (envelope && conditionCorrelationIsStale(envelope, correlation))) {
+    return makeConditionEligibilityResult(DISPOSITION_STALE);
+  }
+
+  const openFindingIds = new Set(openFindings.map((finding) => finding.finding_id || finding.id));
+  const proposedReplacements = new Set(proposals
+    .map((disposition) => disposition?.supersedes)
+    .filter(Boolean));
+  const correlationRelevant = existing.filter((disposition) => (
+    disposition?.state === 'current'
+    && openFindingIds.has(disposition.finding_id)
+    && !proposedReplacements.has(disposition.disposition_id)
+  )).concat(proposals.filter((disposition) => (
+    disposition?.state !== 'superseded' && openFindingIds.has(disposition.finding_id)
+  )));
+  const staleDisposition = correlationRelevant.find((disposition) => conditionCorrelationIsStale(disposition, correlation));
+  if (staleDisposition) {
+    return makeConditionEligibilityResult(DISPOSITION_STALE, {
+      findingId: staleDisposition.finding_id,
+      dispositionId: staleDisposition.disposition_id,
+    });
+  }
+
+  const byId = new Map(allDispositions
+    .filter((disposition) => disposition?.disposition_id)
+    .map((disposition) => [disposition.disposition_id, disposition]));
+  const staleSupersession = proposals.find((disposition) => {
+    if (!disposition?.supersedes) return false;
+    const prior = byId.get(disposition.supersedes);
+    if (!prior || prior.finding_id !== disposition.finding_id || prior.disposition_id === disposition.disposition_id) return true;
+    const priorInExisting = existing.includes(prior);
+    return priorInExisting ? prior.state !== 'current' : prior.state !== 'superseded';
+  });
+  if (staleSupersession) {
+    return makeConditionEligibilityResult(DISPOSITION_STALE, {
+      findingId: staleSupersession.finding_id,
+      dispositionId: staleSupersession.disposition_id,
+    });
+  }
+
+  const currentByFinding = new Map();
+  for (const finding of openFindings) {
+    const findingId = finding.finding_id || finding.id;
+    const replacements = new Set(proposals
+      .filter((disposition) => disposition.finding_id === findingId && disposition.state !== 'superseded')
+      .map((disposition) => disposition.supersedes)
+      .filter(Boolean));
+    const currents = existing.filter((disposition) => (
+      disposition.finding_id === findingId
+      && disposition.state === 'current'
+      && !replacements.has(disposition.disposition_id)
+    )).concat(proposals.filter((disposition) => (
+      disposition.finding_id === findingId && disposition.state !== 'superseded'
+    )));
+    const uniqueCurrents = currents.filter((disposition, index) => (
+      !disposition.disposition_id
+      || currents.findIndex((candidate) => candidate.disposition_id === disposition.disposition_id) === index
+    ));
+    currentByFinding.set(findingId, uniqueCurrents);
+    if (uniqueCurrents.length > 1) {
+      return makeConditionEligibilityResult(DISPOSITION_DUPLICATE, { findingId });
+    }
+  }
+
+  for (const finding of openFindings) {
+    const findingId = finding.finding_id || finding.id;
+    if ((currentByFinding.get(findingId) || []).length === 0) {
+      return makeConditionEligibilityResult(DISPOSITION_MISSING, { findingId });
+    }
+  }
+
+  const authorization = options.authorization;
+  const actorId = String(options.actorId || authorization?.evidence?.actor_id || '').trim();
+  const authorizationCode = authorization?.code || 'ACTOR_IDENTITY_UNAVAILABLE';
+  const authorizationIsValid = authorization?.authorized === true
+    && authorization.evidence?.action === 'approve-with-conditions'
+    && authorization.evidence?.actor_id === actorId
+    && authorization.evidence?.policy_version === correlation.policyVersion
+    && authorization.evidence?.policy_digest === correlation.policyDigest;
+  if (!actorId || !authorizationIsValid) {
+    return makeConditionEligibilityResult(DISPOSITION_UNAUTHORIZED, { authorizationCode });
+  }
+  for (const [findingId, currents] of currentByFinding.entries()) {
+    const disposition = currents[0];
+    const canonicalAuthorizationMismatch = disposition.disposition_id && (
+      disposition.actor_id !== actorId
+      || disposition.authorization?.actor_id !== actorId
+      || disposition.authorization?.policy_version !== correlation.policyVersion
+      || disposition.authorization?.policy_digest !== correlation.policyDigest
+      || disposition.authorization?.independence_result !== 'passed'
+    );
+    if (canonicalAuthorizationMismatch) {
+      return makeConditionEligibilityResult(DISPOSITION_UNAUTHORIZED, {
+        findingId,
+        dispositionId: disposition.disposition_id,
+        authorizationCode: 'DISPOSITION_ACTOR_CORRELATION_FAILED',
+      });
+    }
+  }
+
+  const completedPhases = new Set(Array.isArray(options.completedPhases) ? options.completedPhases : []);
+  const reviseOwners = {
+    'revise-requirement': 'requirement',
+    'revise-acceptance': 'acceptance',
+    'revise-plan': 'technical-plan',
+  };
+  for (const finding of openFindings) {
+    const findingId = finding.finding_id || finding.id;
+    const disposition = currentByFinding.get(findingId)[0];
+    if (finding.phase_blocking === true
+        && ['requirement', 'acceptance', 'technical-plan'].includes(finding.phase_owner)) {
+      return makeConditionEligibilityResult(NON_TRANSFERABLE_BLOCKER, {
+        findingId,
+        dispositionId: disposition.disposition_id,
+      });
+    }
+    const reviseOwner = reviseOwners[disposition.action];
+    if (reviseOwner && !completedPhases.has(reviseOwner)) {
+      return makeConditionEligibilityResult(CURRENT_PHASE_REVISION_REQUIRED, {
+        findingId,
+        dispositionId: disposition.disposition_id,
+      });
+    }
+  }
+
+  const reasonPathValid = repositoryRelativePathSchema.safeParse(options.reasonPath).success;
+  const reasonDigestValid = /^sha256:[a-f0-9]{64}$/.test(String(options.reasonSha256 || ''));
+  if (!reasonPathValid || !reasonDigestValid || openFindings.length === 0) {
+    return makeConditionEligibilityResult(DISPOSITION_UNRESOLVED);
+  }
+
+  const unknownProposal = proposals.find((disposition) => !openFindingIds.has(disposition.finding_id));
+  if (unknownProposal) {
+    return makeConditionEligibilityResult(DISPOSITION_UNRESOLVED, {
+      findingId: unknownProposal.finding_id,
+      dispositionId: unknownProposal.disposition_id,
+    });
+  }
+
+  const matchedRuleIds = [];
+  for (const finding of openFindings) {
+    const findingId = finding.finding_id || finding.id;
+    const disposition = currentByFinding.get(findingId)[0];
+    const ruleIds = matchingConditionDispositionRules(policy, finding, disposition);
+    if (ruleIds.length === 0 || !dispositionTargetIsValid(disposition) || !dispositionHasEvidence(disposition)) {
+      return makeConditionEligibilityResult(DISPOSITION_UNRESOLVED, {
+        findingId,
+        dispositionId: disposition.disposition_id,
+        policyRuleIds: ruleIds,
+      });
+    }
+    matchedRuleIds.push(...ruleIds);
+  }
+
+  return makeConditionEligibilityResult(ELIGIBLE_WITH_CONDITIONS, {
+    policyRuleIds: matchedRuleIds,
+  });
+}
+
+function buildConditionedDecisionProjection(options = {}) {
+  const reviewerRecommendation = options.reviewerRecommendation
+    || options.review?.provider_recommendation
+    || options.review?.projection?.approval_recommendation;
+  if (!PLAN_REVIEW_RECOMMENDATIONS.includes(reviewerRecommendation)) {
+    throw new GovernanceError('GOVERNANCE_STATE_INVALID', 'A current reviewer recommendation is required.');
+  }
+  return {
+    decision: 'approved-with-conditions',
+    reviewer_recommendation: reviewerRecommendation,
+    reviewer_approved: false,
+  };
+}
+
 function normalizeFingerprintList(values, normalizer) {
   return [...new Set(values.map(normalizer).filter(Boolean))].sort(compareCodeUnits);
 }
@@ -933,18 +1298,31 @@ function reconcileFindings(options = {}) {
 }
 
 module.exports = {
+  CONDITION_ELIGIBILITY_CODES,
+  CONDITION_ELIGIBILITY_STATUSES,
+  CURRENT_PHASE_REVISION_REQUIRED,
   DEFAULT_SENSITIVE_CATEGORIES: MINIMUM_SENSITIVE_CATEGORIES,
   DEFAULT_EXECUTION_PROFILE,
+  DISPOSITION_DUPLICATE,
+  DISPOSITION_MISSING,
+  DISPOSITION_STALE,
+  DISPOSITION_UNAUTHORIZED,
+  DISPOSITION_UNRESOLVED,
+  ELIGIBLE_WITH_CONDITIONS,
   FINDING_RECONCILIATION_AMBIGUOUS,
   GovernanceError,
+  NON_TRANSFERABLE_BLOCKER,
   PROVIDER_OUTPUT_INVALID,
+  PROTECTED_CRITICAL_REQUIRES_BREAK_GLASS,
   TECHNICAL_PLAN_BLOCKING_CATEGORIES,
   assertProviderReviewAggregates,
   authorizeGovernanceAction,
   buildDefaultGovernanceConfig,
+  buildConditionedDecisionProjection,
   computeFindingFingerprint,
   computePolicyDigest,
   extractProviderReviewJson,
+  evaluateConditionEligibility,
   hasGovernanceConfig,
   mergeGovernanceConfig,
   parseProviderReview,

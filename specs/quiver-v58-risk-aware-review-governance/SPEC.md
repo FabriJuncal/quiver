@@ -1,6 +1,6 @@
 # Quiver v58 — Risk-aware review governance
 
-Status: In Progress — slices 00 and 01 completed; slice-01 implementation PR pending human review and merge
+Status: In Progress — slices 00 through 03 completed; slice-03 implementation PR pending human review and merge
 
 Classification: Level 3 — governance, authorization, integrity, and cross-command runtime contracts
 
@@ -14,6 +14,8 @@ This specification is derived from:
 - The approved technical plan and review findings REV-01 through REV-16.
 
 The acceptance baseline below was reconstructed with explicit user authorization on 2026-08-24. It is a normalized, testable baseline rather than a verbatim copy of the master requirement.
+
+The condition-policy, disposition-lifecycle, reason-code, and reviewer-projection clarifications below were explicitly authorized by the user on 2026-08-25 after slice-02 merged. They close implementation ambiguities without expanding the approved v58 scope.
 
 The master requirement was an external planning input and is intentionally not an execution prerequisite for this package. SPEC.md and the slice contracts contain the frozen implementation baseline.
 
@@ -83,6 +85,8 @@ Provider output is validated evidence input. The provider's aggregate recommenda
 
 Approval commits are atomic and digest-bound. The canonical decision is distinct from its human and JSON projections. approved-with-conditions is a separate decision kind and must never be represented through the legacy approved.md contract.
 
+Slice-03 may atomically persist canonical dispositions plus an eligibility evaluation and conditioned-decision candidate in the run governance store. It does not publish a final decision, append a run approval projection, create approved.md, or advance the run phase. Slice-04 rereads and revalidates that candidate with the exact artifact bytes and owns the single atomic publication of the final decision plus phase transition.
+
 ### Projections
 
 CLI status, flow, resume, export, spec generation, slice gates, and PR gates read a shared canonical projection. Counts and labels are derived from structured collections rather than copied aggregates.
@@ -130,6 +134,14 @@ Reservation occurs before provider invocation. A received provider payload, incl
 
 ### Condition eligibility
 
+The canonical path is `governance.policy.condition_dispositions`. It contains `default_effect: deny` and an explicit `rules[]` allowlist. Every rule has `rule_id` plus non-empty `phase_owners`, `categories`, `severities`, and `allowed_dispositions` arrays. A rule matches only when all four selectors include the canonical finding and requested disposition. Matching rules are allow-only and combine as a set union; one or more matching rules permit the disposition and zero matches deny it. Duplicate rule IDs are invalid. No provider recommendation, absent rule, unknown value, list order, or implicit deny override grants eligibility.
+
+The default v58 rules use all contractual severities and categories for the four phase mappings: spec to `transfer-to-spec`, slice to `transfer-to-slice`, pr-review to `transfer-to-pr`, and follow-up to `create-follow-up`. Four additional rules apply only to phase owners spec, slice, pr-review, or follow-up: implementation-detail/testing to `transfer-to-slice`; evidence/operations to `transfer-to-pr`; tooling/follow-up to `create-follow-up`; and optional-hardening to `optional`. Release, requirement, acceptance, and technical-plan appear in no default rule. Release remains denied until an explicit versioned rule permits an existing disposition. `accept-risk` has no implicit eligibility.
+
+Every eligible disposition has at least one evidence obligation. `transfer-to-spec`, `transfer-to-slice`, and `transfer-to-pr` require exactly one non-empty `target`; `create-follow-up` requires exactly one non-empty `target_issue`; `optional` and explicitly allowed `accept-risk` carry no target. Target shape and cardinality are validated in slice-03; referential destination resolution remains owned by slice-05.
+
+A proposed disposition envelope is correlated to one run, current review, policy version, and policy digest. The canonical store assigns each accepted disposition a stable ID, records actor and authorization evidence, and tracks `current` or `superseded` state with an explicit `supersedes` reference. A replacement never becomes current implicitly. Exactly one current disposition is required for every open finding; duplicate historical records do not count as current.
+
 At technical-plan decision time:
 
 | Finding state | Transferability | Result |
@@ -142,6 +154,19 @@ At technical-plan decision time:
 | Missing, duplicate, stale, unauthorized, or unresolved disposition | Not transferable | Ineligible with the corresponding stable reason |
 
 Eligibility also requires zero undispositioned findings, one current disposition per remaining finding, an authorized independent actor, a valid relative reason path and digest, and exact run/review/policy correlation. High findings in security, data-integrity, or rollout remain subject to the explicit versioned policy and cannot be autoapproved.
+
+Eligibility uses this precedence and stable result vocabulary:
+
+1. Critical security, data-integrity, or rollout returns status `BREAK_GLASS_REQUIRED` and reason `PROTECTED_CRITICAL_REQUIRES_BREAK_GLASS`.
+2. A run, review, policy-version, policy-digest, or explicit supersession mismatch returns `DISPOSITION_STALE`.
+3. More than one proposed or canonical current disposition for a finding returns `DISPOSITION_DUPLICATE`.
+4. No current disposition for an open finding returns `DISPOSITION_MISSING`.
+5. Failed decision identity, authorization, independence, or disposition actor correlation returns `DISPOSITION_UNAUTHORIZED` as the eligibility reason while retaining the specific authorization error as evidence.
+6. A current-phase hard blocker returns `NON_TRANSFERABLE_BLOCKER`; an unfinished revise disposition returns `CURRENT_PHASE_REVISION_REQUIRED`.
+7. A policy mismatch, unsupported action, invalid target cardinality, or missing evidence obligation returns `DISPOSITION_UNRESOLVED`.
+8. Only a complete set with no preceding failure returns `ELIGIBLE_WITH_CONDITIONS`.
+
+The conditioned candidate projection records `decision: approved-with-conditions`, `publication_state: candidate`, `reviewer_recommendation` from the current canonical review, and the literal `reviewer_approved: false`. Human output renders the same facts. Neither projection may imply unconditional reviewer approval or final publication before slice-04.
 
 ## Functional requirements
 
@@ -347,4 +372,5 @@ Traceability: RQ-001 through RQ-009; REV-02, REV-03, REV-06, REV-07, REV-11, REV
 - All slices have schema-valid contracts and preimplementation handoffs.
 - The documentary foundation in slice-00 is completed and merged with recorded structural and semantic evidence.
 - slice-01 runtime implementation is completed with executed and independently reviewed evidence.
-- slice-02 is contract-ready but remains execution-gated by the slice-01 PR merge; later slices remain planned behind explicit dependencies.
+- slice-02 is completed and merged; slice-03 implementation is completed with executed and independently reviewed evidence.
+- slice-04 is contract-ready but remains execution-gated by human review and merge of the slice-03 PR; later slices remain planned behind explicit dependencies.

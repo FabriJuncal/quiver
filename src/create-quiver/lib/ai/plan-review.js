@@ -872,6 +872,9 @@ function saveGovernedPlanReview(projectRoot, options = {}) {
       current_review_id: null,
       reviews: [],
       findings: [],
+      dispositions: [],
+      condition_evaluations: [],
+      conditioned_candidates: [],
     };
     if (current.run_id !== runId) {
       throw new Error(formatError(`governance state run mismatch: expected ${runId}`));

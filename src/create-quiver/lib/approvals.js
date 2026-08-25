@@ -389,6 +389,9 @@ function savePlannerDraft(projectRoot, phase, sourceFile, contents, options = {}
 }
 
 function approvePlannerPhase(projectRoot, phase, sourceFile, contents, options = {}) {
+  if (options.decision === 'approved-with-conditions') {
+    throw new Error(formatError('approved-with-conditions must use the canonical run governance store and cannot create legacy approved.md'));
+  }
   return writeApprovalArtifacts(projectRoot, phase, 'approved', sourceFile, contents, options);
 }
 

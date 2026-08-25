@@ -1,6 +1,6 @@
 # Execution Plan — Quiver v58 Risk-aware Review Governance
 
-Status: In Progress — slices 00 through 02 completed; slice-03 contract ready but gated by the slice-02 PR merge
+Status: In Progress — slices 00 through 03 completed; slice-03 implementation PR pending human review and merge
 
 ## Objective
 
@@ -100,10 +100,13 @@ Objective: add an explicit conditioned decision with deterministic eligibility a
 Key work:
 
 - Model approved-with-conditions separately from approved and apply the normative transferability matrix and stable ineligibility reasons.
+- Apply the authorized stable-code precedence and versioned default-deny condition-disposition allowlist; release has no implicit allowance.
 - Require reason, authorized actor, and one valid current disposition for every remaining finding.
+- Track current/superseded disposition state explicitly and validate target shape and evidence presence while deferring referential destination resolution to slice-05.
 - Reject non-transferable blockers and Critical security, data-integrity, or rollout findings.
 - Make one canonical source own condition resolution.
 - Prevent legacy approved.md from representing conditioned state.
+- Persist the eligible conditioned candidate without publishing a final decision or advancing phase; slice-04 owns both operations atomically.
 
 Validation:
 
@@ -111,6 +114,7 @@ Validation:
 - Missing, duplicate, stale, or unauthorized dispositions.
 - BREAK_GLASS_REQUIRED without implementing a bypass.
 - Legacy downgrade and false-green prevention.
+- Successful and failed evaluation both leave final decision publication and phase advancement untouched.
 
 ### Slice 04 — Digest-bound approvals
 

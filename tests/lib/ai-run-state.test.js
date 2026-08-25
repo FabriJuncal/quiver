@@ -189,6 +189,9 @@ test('run governance state is correlated and written inside the run lock', () =>
       current_review_id: null,
       findings: [],
       reviews: [],
+      dispositions: [],
+      condition_evaluations: [],
+      conditioned_candidates: [],
     };
     const result = withAiRunLock(repo.root, 'run-review-state', { command: 'test governance write' }, () => {
       const filePath = writeRunGovernance(repo.root, 'run-review-state', governanceState);
