@@ -89,6 +89,7 @@ const {
   PLAN_REVIEW_PROMPT_SOURCE,
   buildPlanReviewPrompt,
   readPlanReview,
+  recoverGovernedPlanReviewCommit,
   reviewBlocksApproval,
   resolveReviewedTechnicalPlanInput,
   resolveTechnicalPlanReviewInput,
@@ -105,13 +106,28 @@ const {
   stableStringify,
 } = require('../lib/ai/review-governance');
 const {
+  assertNoPendingReviewBudgetReservations,
+  assertReviewBudgetHistoryVerified,
+  classifyReviewIntent,
+  extendReviewBudget,
+  finalizeReviewBudget,
+  formatReviewBudget,
+  readReviewBudgetEvents,
+  reserveReviewBudget,
+  sha256Digest,
+} = require('../lib/ai/review-budget');
+const {
   buildSpecGenerationManifest,
   describeSpecGeneration,
   generateSpecArtifacts,
   validateTechnicalPlanSpecContract,
 } = require('../lib/ai/spec-generator');
-const { buildProviderInvocation, resolveGitHubCliProviderSubject, runProvider } = require('../lib/ai/providers');
-const { preflightProvider } = require('../lib/ai/preflight');
+const {
+  buildProviderInvocation,
+  getProviderDefinition,
+  resolveGitHubCliProviderSubject,
+  runProvider,
+} = require('../lib/ai/providers');
 const {
   createAiRun,
   bindAiRunGovernance,
@@ -3620,6 +3636,10 @@ async function runPlan(repoRoot, options = {}) {
     artifactPhase: phase === 'technical-plan' && options.revise !== true ? 'acceptance-approved' : undefined,
     readOnly: options.dryRun === true || options.printPrompt === true,
   });
+  if (governedRun && options.dryRun !== true && options.printPrompt !== true) {
+    recoverGovernedPlanReviewCommit(repoRoot, { runId: governedRun.run.run_id });
+    governedRun.run = readAiRun(repoRoot, governedRun.run.run_id);
+  }
   const contextInfo = buildPlanContext({
     role,
     context,
@@ -3821,6 +3841,195 @@ async function runPlan(repoRoot, options = {}) {
   };
 }
 
+function buildReviewBudgetIntent(governedRun, resolved, inputText, options = {}) {
+  const governanceState = options.governanceState || (governedRun?.run
+    ? readRunGovernance(governedRun.repoRoot || options.repoRoot, governedRun.run.run_id)
+    : null);
+  const currentReviewId = governanceState?.current_review_id || null;
+  const candidateId = `technical-plan:${resolved.version || 'unversioned'}:${sha256Digest(inputText)}`;
+  const explicit = options.reviewIntent && typeof options.reviewIntent === 'object'
+    ? options.reviewIntent
+    : {};
+  const declaredCandidateId = String(explicit.candidate_id || explicit.candidateId || '').trim();
+  if (declaredCandidateId && declaredCandidateId !== candidateId) {
+    throw new GovernanceError('REVIEW_INTENT_INVALID', 'Review candidate identity is derived from the owned draft and cannot be overridden.');
+  }
+  const eventClass = String(explicit.event_class || explicit.eventClass || 'full').trim();
+  if (eventClass === 'external') {
+    throw new GovernanceError('REVIEW_INTENT_INVALID', 'External review events may only be recorded by a validated adapter.');
+  }
+  if (eventClass === 'retry') {
+    throw new GovernanceError('REVIEW_INTENT_INVALID', 'Retry is derived from a prior pre-payload failure and cannot be selected by the command.');
+  }
+  if (eventClass === 'targeted') {
+    const intent = classifyReviewIntent({
+      event_class: 'targeted',
+      candidate_id: candidateId,
+      base_review_id: explicit.base_review_id || explicit.baseReviewId,
+      finding_ids: explicit.finding_ids || explicit.findingIds || [],
+      sections: explicit.sections || [],
+    }, { currentReviewId });
+    const knownFindingIds = new Set((governanceState?.findings || []).map((finding) => finding.finding_id));
+    const unknownFindingIds = intent.finding_ids.filter((findingId) => !knownFindingIds.has(findingId));
+    if (unknownFindingIds.length > 0) {
+      throw new GovernanceError('REVIEW_INTENT_INVALID', 'Targeted review references findings outside the current run.', {
+        unknown_finding_ids: unknownFindingIds,
+      });
+    }
+    const normalizedInput = String(inputText || '').normalize('NFC').toLowerCase();
+    const unknownSections = intent.sections.filter((section) => (
+      !normalizedInput.includes(String(section).normalize('NFC').toLowerCase())
+    ));
+    if (unknownSections.length > 0) {
+      throw new GovernanceError('REVIEW_INTENT_INVALID', 'Targeted review sections must be literal sections of the owned candidate.', {
+        unknown_sections: unknownSections,
+      });
+    }
+    return intent;
+  }
+  if (eventClass !== 'full') {
+    throw new GovernanceError('REVIEW_INTENT_INVALID', `Unsupported review event class '${eventClass || 'missing'}'.`);
+  }
+  return classifyReviewIntent({
+    event_class: 'full',
+    candidate_id: candidateId,
+    complete_replacement: true,
+    reviewed_parent_id: Object.prototype.hasOwnProperty.call(explicit, 'reviewed_parent_id')
+      ? explicit.reviewed_parent_id
+      : Object.prototype.hasOwnProperty.call(explicit, 'reviewedParentId')
+        ? explicit.reviewedParentId
+        : currentReviewId,
+  }, { currentReviewId });
+}
+
+function buildReviewBudgetRequestEnvelope({
+  repoRoot,
+  runId,
+  inputPath,
+  resolved,
+  pack,
+  provider,
+  runtimeProfile,
+  governance,
+  governanceProfile,
+  reviewIntent,
+  inputText,
+  canonicalFindings,
+  prompt,
+}) {
+  const currentInputText = typeof inputText === 'string' ? inputText : readTextFile(inputPath, repoRoot);
+  const currentFindings = Array.isArray(canonicalFindings)
+    ? canonicalFindings
+    : readRunGovernance(repoRoot, runId)?.findings || [];
+  const currentPrompt = typeof prompt === 'string'
+    ? prompt
+    : buildPlanReviewPrompt({
+      pack,
+      inputText: currentInputText,
+      inputPath,
+      governed: true,
+      governance,
+      governanceProfile,
+      canonicalFindings: currentFindings,
+      reviewIntent,
+    }).prompt;
+  return {
+    schema_version: 1,
+    command: 'ai review-plan',
+    run_id: runId,
+    phase: 'technical-plan',
+    input_path: inputPath,
+    input_kind: resolved.kind,
+    input_version: resolved.version || null,
+    candidate_sha256: sha256Digest(currentInputText),
+    canonical_findings_sha256: sha256Digest(stableStringify(currentFindings)),
+    requested_profile: governanceProfile.requested_profile,
+    effective_profile: governanceProfile.effective_profile,
+    policy_version: governanceProfile.policy_version,
+    policy_digest: governanceProfile.policy_digest,
+    provider,
+    model: runtimeProfile.model || null,
+    context: pack.packName,
+    prompt_sha256: sha256Digest(currentPrompt),
+  };
+}
+
+function providerPayloadWasReceived(result) {
+  return result?.payloadReceived === true;
+}
+
+function providerFailureKind(result, error) {
+  const code = String(result?.error?.code || error?.code || '').trim();
+  if (code === 'PROVIDER_TIMEOUT' || code === 'ETIMEDOUT') return 'timeout';
+  if (['PROVIDER_TRANSPORT_ERROR', 'MISSING_PROVIDER_CLI', 'ECONNRESET', 'ECONNREFUSED', 'EPIPE', 'ENETUNREACH', 'EAI_AGAIN', 'ENOENT'].includes(code)) {
+    return 'transport';
+  }
+  return null;
+}
+
+function finalizeGovernedReviewFailure(repoRoot, governedRun, reservation, requestEnvelope, result, error) {
+  if (!governedRun || !reservation) return null;
+  const receivedPayload = providerPayloadWasReceived(result);
+  const failureKind = receivedPayload ? null : providerFailureKind(result, error);
+  const payloadSignalKnown = typeof result?.payloadReceived === 'boolean';
+  if (!receivedPayload && (!payloadSignalKnown || !failureKind)) {
+    return null;
+  }
+  return finalizeReviewBudget(repoRoot, {
+    runId: governedRun.run.run_id,
+    governance: governedRun.governance,
+    profile: governedRun.profile,
+    reservationId: reservation.reservation_id,
+    attempt: reservation.attempt,
+    requestEnvelopeDigest: reservation.request_envelope_digest,
+    requestEnvelope,
+    outcome: receivedPayload ? 'invalid-output' : 'retry',
+    receivedPayload,
+    failureKind,
+  });
+}
+
+async function runExtendReviewBudget(repoRoot, options = {}) {
+  if (options.actor) {
+    throw new GovernanceError(
+      'ACTOR_IDENTITY_UNAVAILABLE',
+      'Review budget extension requires identity resolution through a configured actor adapter.',
+    );
+  }
+  const run = resolveGovernedAiRun(repoRoot, options.runId || '');
+  if (!run?.governance) {
+    throw new GovernanceError('REVIEW_BUDGET_CONTEXT_INVALID', 'Review budget extension requires an active governed run.');
+  }
+  const runtime = resolveGovernanceRuntime(repoRoot, options, run);
+  recoverGovernedPlanReviewCommit(repoRoot, { runId: run.run_id });
+  assertReviewBudgetHistoryVerified(
+    repoRoot,
+    run.run_id,
+    readReviewBudgetEvents(repoRoot, run.run_id),
+  );
+  const actor = await (options.resolveActorFn || resolveGitHubCliProviderSubject)({
+    cwd: repoRoot,
+    env: options.env,
+    runner: options.identityRunner,
+    host: options.githubHost,
+  });
+  const extension = extendReviewBudget(repoRoot, {
+    runId: run.run_id,
+    governance: runtime.governance,
+    profile: runtime.profile,
+    actor,
+    command: 'ai review-budget extend',
+  });
+  process.stdout.write(`Review budget extension recorded\nRun: ${run.run_id}\n${formatReviewBudget(extension.budget)}`);
+  return {
+    task: 'review-budget-extend',
+    runId: run.run_id,
+    event: extension.event,
+    authorization: extension.authorization.evidence,
+    budget: extension.budget,
+  };
+}
+
 async function runReviewPlan(repoRoot, options = {}) {
   const role = 'planner';
   const runtimeProfile = resolveRuntimeAgentProfile(repoRoot, 'reviewer', options, DEFAULT_PLAN_PROVIDER);
@@ -3839,6 +4048,20 @@ async function runReviewPlan(repoRoot, options = {}) {
     artifactPhase: 'technical-plan-draft',
     readOnly: options.dryRun === true || options.printPrompt === true,
   });
+  if (governedRun && options.dryRun !== true && options.printPrompt !== true) {
+    recoverGovernedPlanReviewCommit(repoRoot, { runId: governedRun.run.run_id });
+    governedRun.run = readAiRun(repoRoot, governedRun.run.run_id);
+  }
+  const governanceStateSnapshot = governedRun?.run
+    ? readRunGovernance(repoRoot, governedRun.run.run_id)
+    : null;
+  const reviewIntent = governedRun
+    ? buildReviewBudgetIntent(governedRun, resolved, inputText, {
+      ...options,
+      repoRoot,
+      governanceState: governanceStateSnapshot,
+    })
+    : null;
   const pack = buildContextPackMetadata({
     role,
     packName: context,
@@ -3851,9 +4074,8 @@ async function runReviewPlan(repoRoot, options = {}) {
     governed: Boolean(governedRun),
     governance: governedRun?.governance || null,
     governanceProfile: governedRun?.profile || null,
-    canonicalFindings: governedRun?.run
-      ? (readRunGovernance(repoRoot, governedRun.run.run_id)?.findings || [])
-      : [],
+    canonicalFindings: governanceStateSnapshot?.findings || [],
+    reviewIntent,
   });
   assertProviderPromptWithinLimit(built.prompt, options);
   let invocation;
@@ -3867,11 +4089,7 @@ async function runReviewPlan(repoRoot, options = {}) {
       enforceModelSelection: false,
     });
   } catch (error) {
-    if (error.providerResult) {
-      result = error.providerResult;
-    } else {
-      throw annotateProviderError(error, 'review-plan');
-    }
+    throw annotateProviderError(error, 'review-plan');
   }
 
   if (options.dryRun) {
@@ -3940,11 +4158,53 @@ async function runReviewPlan(repoRoot, options = {}) {
     ],
   );
 
+  let reviewBudgetReservation = null;
+  let reviewBudgetRequestEnvelope = null;
+  let reviewBudgetRequestEnvelopeFactory = null;
+  if (governedRun) {
+    reviewBudgetRequestEnvelopeFactory = () => buildReviewBudgetRequestEnvelope({
+      repoRoot,
+      runId: governedRun.run.run_id,
+      inputPath,
+      resolved,
+      pack,
+      provider,
+      runtimeProfile,
+      governance: governedRun.governance,
+      governanceProfile: governedRun.profile,
+      reviewIntent,
+    });
+    reviewBudgetRequestEnvelope = buildReviewBudgetRequestEnvelope({
+      repoRoot,
+      runId: governedRun.run.run_id,
+      inputPath,
+      resolved,
+      pack,
+      provider,
+      runtimeProfile,
+      governance: governedRun.governance,
+      governanceProfile: governedRun.profile,
+      reviewIntent,
+      inputText,
+      canonicalFindings: governanceStateSnapshot?.findings || [],
+      prompt: built.prompt,
+    });
+    reviewBudgetReservation = reserveReviewBudget(repoRoot, {
+      runId: governedRun.run.run_id,
+      governance: governedRun.governance,
+      profile: governedRun.profile,
+      intent: reviewIntent,
+      requestEnvelope: reviewBudgetRequestEnvelope,
+      currentRequestEnvelope: reviewBudgetRequestEnvelopeFactory,
+    });
+  }
+
   let result;
   try {
     result = await runProviderWithProgress({
       ux,
       enabled: showProgress,
+      failOnProviderResult: false,
       run: () => (options.runProviderFn || runProvider)(provider, {
         prompt: built.prompt,
         cwd: repoRoot,
@@ -3960,11 +4220,57 @@ async function runReviewPlan(repoRoot, options = {}) {
       }),
     });
   } catch (error) {
+    const providerResult = error.providerResult || null;
+    const finalized = finalizeGovernedReviewFailure(
+      repoRoot,
+      governedRun,
+      reviewBudgetReservation,
+      reviewBudgetRequestEnvelope,
+      providerResult,
+      error,
+    );
+    if (finalized && providerPayloadWasReceived(providerResult)) {
+      throw new GovernanceError(
+        PROVIDER_OUTPUT_INVALID,
+        'Provider returned a payload that could not be accepted as contractual review evidence.',
+        { budget: finalized.budget },
+      );
+    }
     throw annotateProviderError(error, 'review-plan');
   }
 
   if (!result.ok) {
+    let rawArtifactPath = null;
+    if (governedRun && providerPayloadWasReceived(result)) {
+      rawArtifactPath = writeRawProviderArtifact(repoRoot, governedRun.run.run_id, 'ai-review-plan', result, {
+        metadata: {
+          phase: 'plan-review',
+          input_path: inputPath,
+          input_kind: resolved.kind,
+          input_version: resolved.version || null,
+          prompt_bytes: invocation.promptLength,
+          contractual: false,
+          provider_payload_received: true,
+          governance: governedRun.binding,
+        },
+      }).path;
+    }
+    const finalized = finalizeGovernedReviewFailure(
+      repoRoot,
+      governedRun,
+      reviewBudgetReservation,
+      reviewBudgetRequestEnvelope,
+      result,
+      result.error,
+    );
     writeProviderOutput(result);
+    if (finalized && providerPayloadWasReceived(result)) {
+      throw new GovernanceError(
+        PROVIDER_OUTPUT_INVALID,
+        'Provider returned a non-contractual payload and its semantic review reservation was consumed.',
+        { raw_artifact_path: rawArtifactPath, budget: finalized.budget },
+      );
+    }
     throw annotateProviderError(result.error || new Error('provider run failed'), 'review-plan');
   }
 
@@ -3974,6 +4280,38 @@ async function runReviewPlan(repoRoot, options = {}) {
     runId: options.runId,
     phase: 'technical-plan-reviewed',
   });
+  if (governedRun && !providerPayloadWasReceived(result)) {
+    const rawArtifact = writeRawProviderArtifact(repoRoot, lifecycleRun.run_id, 'ai-review-plan', result, {
+      metadata: {
+        phase: 'plan-review',
+        input_path: inputPath,
+        input_kind: resolved.kind,
+        input_version: resolved.version || null,
+        prompt_bytes: invocation.promptLength,
+        contractual: false,
+        provider_payload_received: false,
+        governance: governedRun.binding,
+      },
+    });
+    const transportError = new GovernanceError(
+      'PROVIDER_TRANSPORT_ERROR',
+      `Provider '${provider}' completed without a payload on its contractual output channel.`,
+      { raw_artifact_path: rawArtifact.path },
+    );
+    const finalized = finalizeGovernedReviewFailure(
+      repoRoot,
+      governedRun,
+      reviewBudgetReservation,
+      reviewBudgetRequestEnvelope,
+      result,
+      transportError,
+    );
+    transportError.details = {
+      ...transportError.details,
+      budget: finalized?.budget || null,
+    };
+    throw annotateProviderError(transportError, 'review-plan');
+  }
   const clean = extractCleanProviderOutput(result, { prompt: built.prompt, projectRoot: repoRoot });
   const contractualClean = governedRun
     ? extractCleanProviderOutput(result, { prompt: built.prompt, projectRoot: repoRoot, redact: false })
@@ -3992,31 +4330,62 @@ async function runReviewPlan(repoRoot, options = {}) {
       governance: governedRun?.binding || null,
     },
   });
-  if (governedRun && result.outputRedaction?.[contractualClean.source] === true) {
-    throw new GovernanceError(
-      PROVIDER_OUTPUT_INVALID,
-      `Provider ${contractualClean.source} required secret redaction and cannot be accepted as contractual review evidence.`,
-      { raw_artifact_path: rawArtifact.path, source: contractualClean.source },
-    );
+  let saved;
+  try {
+    const contractualOutputStream = getProviderDefinition(provider).contractualOutputStream;
+    if (governedRun && contractualClean.source !== contractualOutputStream) {
+      throw new GovernanceError(
+        PROVIDER_OUTPUT_INVALID,
+        `Provider review evidence must be emitted on contractual ${contractualOutputStream}.`,
+        { raw_artifact_path: rawArtifact.path, source: contractualClean.source },
+      );
+    }
+    if (governedRun && result.outputRedaction?.[contractualClean.source] === true) {
+      throw new GovernanceError(
+        PROVIDER_OUTPUT_INVALID,
+        `Provider ${contractualClean.source} required secret redaction and cannot be accepted as contractual review evidence.`,
+        { raw_artifact_path: rawArtifact.path, source: contractualClean.source },
+      );
+    }
+    saved = savePlanReview(repoRoot, {
+      contents: contractualClean.cleanOutput,
+      inputPath,
+      inputKind: resolved.kind,
+      inputVersion: resolved.version,
+      outputSource: governedRun ? contractualClean.source : clean.source,
+      rawArtifactPath: rawArtifact.path,
+      governance: governedRun?.governance || null,
+      profile: governedRun?.profile || null,
+      runId: governedRun?.run?.run_id || null,
+      reviewBudgetReservation,
+      reviewBudgetRequestEnvelope: reviewBudgetRequestEnvelopeFactory,
+      commitFaultInjector: options.commitFaultInjector,
+    });
+  } catch (error) {
+    if (governedRun
+      && reviewBudgetReservation
+      && [PROVIDER_OUTPUT_INVALID, 'FINDING_RECONCILIATION_AMBIGUOUS', 'REVIEW_REQUEST_STALE'].includes(error.code)) {
+      finalizeReviewBudget(repoRoot, {
+        runId: governedRun.run.run_id,
+        governance: governedRun.governance,
+        profile: governedRun.profile,
+        reservationId: reviewBudgetReservation.reservation_id,
+        attempt: reviewBudgetReservation.attempt,
+        requestEnvelopeDigest: reviewBudgetReservation.request_envelope_digest,
+        outcome: 'invalid-output',
+        receivedPayload: providerPayloadWasReceived(result),
+      });
+    }
+    throw error;
   }
-  const saved = savePlanReview(repoRoot, {
-    contents: contractualClean.cleanOutput,
-    inputPath,
-    inputKind: resolved.kind,
-    inputVersion: resolved.version,
-    outputSource: clean.source,
-    rawArtifactPath: rawArtifact.path,
-    governance: governedRun?.governance || null,
-    profile: governedRun?.profile || null,
-    runId: governedRun?.run?.run_id || null,
-  });
   if (!governedRun) {
     writeCleanProviderOutput(clean);
   }
   const relativePath = path.relative(repoRoot, saved.filePath).split(path.sep).join('/');
   const summary = localizeApprovalSummary(summarizePlanReview(repoRoot), createTranslator(options.language)).trimEnd();
+  const budgetSummary = governedRun ? formatReviewBudget(saved.budget).trimEnd() : '';
   const translator = createTranslator(options.language);
-  process.stdout.write(`${translator.t('ai.review_plan.saved')}\n${translator.t('ai.approve.artifact')}: ${relativePath}\n${translator.t('ai_task.prompt_source', { source: PLAN_REVIEW_PROMPT_SOURCE })}\n${summary}\n`);
+  process.stdout.write(`${translator.t('ai.review_plan.saved')}\n${translator.t('ai.approve.artifact')}: ${relativePath}\n${translator.t('ai_task.prompt_source', { source: PLAN_REVIEW_PROMPT_SOURCE })}\n${summary}${budgetSummary ? `\n${budgetSummary}` : ''}\n`);
 
   return {
     task: 'review-plan',
@@ -4031,6 +4400,7 @@ async function runReviewPlan(repoRoot, options = {}) {
     result,
     governance: governedRun?.profile || null,
     reviewId: saved.reviewId || null,
+    budget: saved.budget || null,
   };
 }
 
@@ -4350,6 +4720,10 @@ async function runApprove(repoRoot, options = {}) {
       ...resolveGovernanceRuntime(repoRoot, options, run),
       run,
     };
+    if (options.dryRun !== true) {
+      recoverGovernedPlanReviewCommit(repoRoot, { runId: run.run_id });
+      governedApproval.run = readAiRun(repoRoot, run.run_id);
+    }
   }
 
   let technicalPlanReview = null;
@@ -4466,6 +4840,11 @@ async function runApprove(repoRoot, options = {}) {
     governedApproval.run.run_id,
     { command: `ai approve --phase ${phase}` },
     () => {
+      recoverGovernedPlanReviewCommit(repoRoot, {
+        runId: governedApproval.run.run_id,
+        locked: true,
+      });
+      assertNoPendingReviewBudgetReservations(repoRoot, governedApproval.run.run_id);
       const lockedRun = readAiRun(repoRoot, governedApproval.run.run_id);
       const requiredRunPhase = phase === 'acceptance' ? 'acceptance-draft' : 'technical-plan-reviewed';
       if (lockedRun?.status === 'closed') {
@@ -4687,9 +5066,18 @@ function runLifecycleRun(repoRoot, options = {}) {
     if (!current) {
       throw new Error(formatError(translator.t('ai.run.error.close_requires_run')));
     }
-    const run = updateAiRunPhase(repoRoot, current.run_id, 'closed', {
-      command: 'ai run close',
-    });
+    const closeRun = (locked = false) => {
+      if (current.governance) {
+        recoverGovernedPlanReviewCommit(repoRoot, { runId: current.run_id, locked });
+      }
+      return updateAiRunPhase(repoRoot, current.run_id, 'closed', {
+        command: 'ai run close',
+        locked,
+      });
+    };
+    const run = current.governance
+      ? withAiRunLock(repoRoot, current.run_id, { command: 'ai run close' }, () => closeRun(true))
+      : closeRun();
     const report = `${translator.t('ai.run.closed.title')}\n${formatAiRunStatus(repoRoot, run, options)}`;
     process.stdout.write(report);
     return {
@@ -5440,6 +5828,7 @@ module.exports = {
   runDoctor,
   runExecutePlan,
   runExecuteSlice,
+  runExtendReviewBudget,
   runLifecycleResume,
   runLifecycleRun,
   runLifecycleStatus,

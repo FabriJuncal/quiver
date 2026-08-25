@@ -1,3 +1,4 @@
+const crypto = require('node:crypto');
 const fs = require('node:fs');
 const path = require('node:path');
 
@@ -5,18 +6,29 @@ const { buildPlannerApprovalCandidates, readPhaseApproval, resolveApprovedPlanne
 const { quiverInternalPaths } = require('../init-layout');
 const { redactSensitiveValue } = require('./artifacts');
 const {
+  assertReviewBudgetHistoryVerified,
+  assertReviewBudgetReservationLocked,
+  finalizeReviewBudget,
+  readReviewBudget,
+  readReviewBudgetEvents,
+  reduceReviewBudgetEvents,
+  sha256Digest,
+} = require('./review-budget');
+const {
   GovernanceError,
   PROVIDER_OUTPUT_INVALID,
   assertProviderReviewAggregates,
   computePolicyDigest,
   parseProviderReview,
   projectPhaseAwareReview,
+  readGovernanceConfig,
   reconcileFindings,
   stableStringify,
 } = require('./review-governance');
 const {
   readAiRun,
   readRunGovernance,
+  runReviewCommitPath,
   updateAiRunPhase,
   withAiRunLock,
   writeRunGovernance,
@@ -24,6 +36,7 @@ const {
 
 const PLAN_REVIEW_PROMPT_SOURCE = 'packaged production-readiness plan review template';
 const PLAN_REVIEW_RECOMMENDATIONS = Object.freeze(['approve', 'approve-with-risk', 'revise']);
+const REVIEW_COMMIT_SCHEMA_VERSION = 1;
 
 function formatError(message) {
   return `create-quiver: ${message}`;
@@ -43,6 +56,283 @@ function planReviewPath(projectRoot) {
 
 function planReviewMetaPath(projectRoot) {
   return path.join(planReviewRoot(projectRoot), 'meta.json');
+}
+
+function reviewCommitError(message, details = {}) {
+  return new GovernanceError('REVIEW_COMMIT_RECOVERY_REQUIRED', message, details);
+}
+
+function writeFileAtomic(filePath, contents) {
+  fs.mkdirSync(path.dirname(filePath), { recursive: true });
+  const tempPath = path.join(
+    path.dirname(filePath),
+    `.tmp-${path.basename(filePath)}-${process.pid}-${crypto.randomBytes(6).toString('hex')}`,
+  );
+  try {
+    fs.writeFileSync(tempPath, contents, { flag: 'wx' });
+    fs.renameSync(tempPath, filePath);
+  } catch (error) {
+    if (fs.existsSync(tempPath)) fs.rmSync(tempPath);
+    throw error;
+  }
+}
+
+function governanceStateDigest(value) {
+  return sha256Digest(stableStringify(value || null));
+}
+
+function assertReviewCommitMarker(projectRoot, runId, marker) {
+  const reservation = marker?.reservation;
+  const expectedArtifactPath = toRelativePosix(projectRoot, planReviewPath(projectRoot));
+  const previous = marker?.previous_governance_state || null;
+  const next = marker?.next_governance_state;
+  const previousReviews = Array.isArray(previous?.reviews) ? previous.reviews : [];
+  const nextReviews = Array.isArray(next?.reviews) ? next.reviews : [];
+  const appendedReview = nextReviews.at(-1);
+  const findingsById = new Map((next?.findings || []).map((finding) => [finding.finding_id, finding]));
+  const expectedReviewContents = next && appendedReview
+    ? redactSensitiveValue(renderGovernedPlanReview(next, appendedReview, findingsById), { projectRoot })
+    : null;
+  const expectedMeta = appendedReview ? {
+    schema_version: 2,
+    governed: true,
+    phase: 'plan-review',
+    run_id: runId,
+    review_id: appendedReview.review_id,
+    source_file: appendedReview.source_file,
+    source_kind: appendedReview.source_kind,
+    source_version: appendedReview.source_version,
+    path: expectedArtifactPath,
+    raw_artifact_path: appendedReview.raw_artifact_path,
+    output_source: appendedReview.output_source,
+    requested_profile: appendedReview.requested_profile,
+    effective_profile: appendedReview.effective_profile,
+    policy_version: appendedReview.policy_version,
+    policy_digest: appendedReview.policy_digest,
+    review_result: {
+      schema_version: 2,
+      ...appendedReview.projection,
+      next_command: recommendedNextCommand(appendedReview.projection.approval_recommendation, appendedReview.source_version),
+      risks: appendedReview.projection.later_phase_transfers,
+      findings: (next.findings || []).filter((finding) => finding.state === 'open'),
+      source: 'governed-canonical',
+    },
+    reviewed_at: appendedReview.reviewed_at,
+  } : null;
+  const invalid = marker?.schema_version !== REVIEW_COMMIT_SCHEMA_VERSION
+    || marker?.kind !== 'governed-plan-review-commit'
+    || marker?.run_id !== runId
+    || !/^BR-\d{6,}$/.test(String(reservation?.reservation_id || ''))
+    || !Number.isInteger(reservation?.attempt)
+    || reservation.attempt < 1
+    || !/^sha256:[a-f0-9]{64}$/.test(String(reservation?.request_envelope_digest || ''))
+    || !/^R-\d{3,}$/.test(String(marker?.review_id || ''))
+    || marker?.target_phase !== 'technical-plan-reviewed'
+    || marker?.artifact_path !== expectedArtifactPath
+    || !marker?.profile
+    || !/^sha256:[a-f0-9]{64}$/.test(String(marker?.policy_digest || ''))
+    || marker.profile.policy_digest !== marker.policy_digest
+    || Number.isNaN(Date.parse(String(marker?.prepared_at || '')))
+    || marker.previous_governance_sha256 !== governanceStateDigest(previous)
+    || marker.next_governance_sha256 !== governanceStateDigest(next)
+    || marker.review_contents_sha256 !== sha256Digest(String(marker?.review_contents || ''))
+    || marker.meta_sha256 !== sha256Digest(stableStringify(marker?.meta || null))
+    || (previous && previous.run_id !== runId)
+    || next?.run_id !== runId
+    || next?.current_review_id !== marker.review_id
+    || nextReviews.length !== previousReviews.length + 1
+    || stableStringify(nextReviews.slice(0, -1)) !== stableStringify(previousReviews)
+    || appendedReview?.review_id !== marker.review_id
+    || appendedReview?.run_id !== runId
+    || marker?.meta?.run_id !== runId
+    || marker?.meta?.review_id !== marker.review_id
+    || marker?.meta?.path !== expectedArtifactPath
+    || stableStringify(marker?.meta || null) !== stableStringify(expectedMeta)
+    || typeof marker?.review_contents !== 'string'
+    || !marker.review_contents.trim()
+    || marker.review_contents !== expectedReviewContents;
+
+  if (invalid) {
+    throw reviewCommitError('Prepared governed review commit is corrupt or does not match its run.', {
+      run_id: runId,
+      wal_path: toRelativePosix(projectRoot, runReviewCommitPath(projectRoot, runId)),
+    });
+  }
+  const redacted = redactSensitiveValue(marker, { projectRoot });
+  if (stableStringify(marker) !== stableStringify(redacted)) {
+    throw reviewCommitError('Prepared governed review commit contains non-redacted values.', {
+      run_id: runId,
+      changed_sections: Object.keys(marker).filter((key) => (
+        stableStringify(marker[key]) !== stableStringify(redacted[key])
+      )),
+    });
+  }
+  return marker;
+}
+
+function readReviewCommitMarker(projectRoot, runId) {
+  const filePath = runReviewCommitPath(projectRoot, runId);
+  if (!fs.existsSync(filePath)) return null;
+  let marker;
+  try {
+    marker = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+  } catch (error) {
+    throw reviewCommitError('Prepared governed review commit is not valid JSON.', {
+      run_id: runId,
+      cause: error.message,
+    });
+  }
+  return assertReviewCommitMarker(projectRoot, runId, marker);
+}
+
+function writeReviewCommitMarker(projectRoot, runId, marker) {
+  const filePath = runReviewCommitPath(projectRoot, runId);
+  if (fs.existsSync(filePath)) {
+    throw reviewCommitError(`Run '${runId}' already has a prepared review commit.`);
+  }
+  const validated = assertReviewCommitMarker(projectRoot, runId, marker);
+  writeFileAtomic(filePath, `${JSON.stringify(validated, null, 2)}\n`);
+  return filePath;
+}
+
+function invokeReviewCommitFault(options, point) {
+  if (typeof options.faultInjector === 'function') options.faultInjector(point);
+}
+
+function applyGovernedReviewCommitLocked(projectRoot, markerValue, options = {}) {
+  const marker = assertReviewCommitMarker(projectRoot, markerValue.run_id, markerValue);
+  const run = readAiRun(projectRoot, marker.run_id);
+  if (!run || run.status === 'closed') {
+    throw reviewCommitError(`Prepared review commit cannot target closed or missing run '${marker.run_id}'.`);
+  }
+  const governance = readGovernanceConfig(projectRoot);
+  if (computePolicyDigest(governance) !== marker.policy_digest) {
+    throw reviewCommitError('Active governance policy does not match the prepared review commit.', {
+      run_id: marker.run_id,
+      expected_policy_digest: marker.policy_digest,
+      actual_policy_digest: computePolicyDigest(governance),
+    });
+  }
+
+  const currentGovernance = readRunGovernance(projectRoot, marker.run_id);
+  const currentDigest = governanceStateDigest(currentGovernance);
+  if (currentDigest !== marker.previous_governance_sha256
+    && currentDigest !== marker.next_governance_sha256) {
+    throw reviewCommitError('Canonical governance state diverged from the prepared review commit.', {
+      run_id: marker.run_id,
+      expected_previous_sha256: marker.previous_governance_sha256,
+      expected_next_sha256: marker.next_governance_sha256,
+      actual_sha256: currentDigest,
+    });
+  }
+
+  const reduced = reduceReviewBudgetEvents(readReviewBudgetEvents(projectRoot, marker.run_id));
+  const reservationState = reduced.reservations.find((state) => (
+    state.reservation.reservation_id === marker.reservation.reservation_id
+  ));
+  if (!reservationState
+    || reservationState.attempt !== marker.reservation.attempt
+    || reservationState.reservation.request_envelope_digest !== marker.reservation.request_envelope_digest
+    || !['reserved', 'valid'].includes(reservationState.status)
+    || (reservationState.status === 'valid' && reservationState.outcome?.review_id !== marker.review_id)) {
+    throw reviewCommitError('Prepared review commit no longer matches a finalizable budget reservation.', {
+      run_id: marker.run_id,
+      reservation_id: marker.reservation.reservation_id,
+      reservation_status: reservationState?.status || 'missing',
+    });
+  }
+
+  if (currentDigest === marker.previous_governance_sha256) {
+    writeRunGovernance(projectRoot, marker.run_id, marker.next_governance_state);
+  }
+  invokeReviewCommitFault(options, 'after-canonical');
+
+  let budget;
+  if (reservationState.status === 'reserved') {
+    budget = finalizeReviewBudget(projectRoot, {
+      runId: marker.run_id,
+      governance,
+      profile: marker.profile,
+      reservationId: marker.reservation.reservation_id,
+      attempt: marker.reservation.attempt,
+      requestEnvelopeDigest: marker.reservation.request_envelope_digest,
+      outcome: 'valid',
+      receivedPayload: true,
+      reviewId: marker.review_id,
+      locked: true,
+      prevalidated: true,
+      now: marker.prepared_at,
+    }).budget;
+  } else {
+    budget = readReviewBudget(projectRoot, marker.run_id, {
+      governance,
+      profile: marker.profile,
+    }).projection;
+  }
+  invokeReviewCommitFault(options, 'after-outcome');
+
+  writeFileAtomic(planReviewPath(projectRoot), marker.review_contents);
+  invokeReviewCommitFault(options, 'after-review');
+  writeFileAtomic(planReviewMetaPath(projectRoot), `${JSON.stringify(marker.meta, null, 2)}\n`);
+  invokeReviewCommitFault(options, 'after-meta');
+
+  const currentRun = readAiRun(projectRoot, marker.run_id);
+  if (currentRun.phase !== marker.target_phase) {
+    if (currentRun.phase !== 'technical-plan-draft') {
+      throw reviewCommitError('Prepared review commit cannot advance from the current run phase.', {
+        run_id: marker.run_id,
+        expected_phase: 'technical-plan-draft',
+        actual_phase: currentRun.phase,
+      });
+    }
+    updateAiRunPhase(projectRoot, marker.run_id, marker.target_phase, {
+      artifact: marker.artifact_path,
+      command: 'ai review-plan',
+      locked: true,
+      now: new Date(marker.prepared_at),
+    });
+  }
+  invokeReviewCommitFault(options, 'after-phase');
+
+  const committedGovernance = readRunGovernance(projectRoot, marker.run_id);
+  const committedEvents = readReviewBudgetEvents(projectRoot, marker.run_id);
+  assertReviewBudgetHistoryVerified(projectRoot, marker.run_id, committedEvents, {
+    governanceState: committedGovernance,
+  });
+  if (governanceStateDigest(committedGovernance) !== marker.next_governance_sha256
+    || fs.readFileSync(planReviewPath(projectRoot), 'utf8') !== marker.review_contents
+    || sha256Digest(stableStringify(JSON.parse(fs.readFileSync(planReviewMetaPath(projectRoot), 'utf8')))) !== marker.meta_sha256
+    || readAiRun(projectRoot, marker.run_id)?.phase !== marker.target_phase) {
+    throw reviewCommitError('Prepared review commit could not be verified after application.', {
+      run_id: marker.run_id,
+      reservation_id: marker.reservation.reservation_id,
+    });
+  }
+
+  const walPath = runReviewCommitPath(projectRoot, marker.run_id);
+  if (fs.existsSync(walPath)) fs.rmSync(walPath);
+  return {
+    recovered: options.recovery === true,
+    runId: marker.run_id,
+    reviewId: marker.review_id,
+    budget,
+    filePath: planReviewPath(projectRoot),
+    metaPath: planReviewMetaPath(projectRoot),
+  };
+}
+
+function recoverGovernedPlanReviewCommit(projectRoot, options = {}) {
+  const run = readAiRun(projectRoot, options.runId);
+  if (!run) return { recovered: false, runId: null };
+  const walPath = runReviewCommitPath(projectRoot, run.run_id);
+  if (!fs.existsSync(walPath)) return { recovered: false, runId: run.run_id };
+  const apply = () => {
+    const marker = readReviewCommitMarker(projectRoot, run.run_id);
+    if (!marker) return { recovered: false, runId: run.run_id };
+    return applyGovernedReviewCommitLocked(projectRoot, marker, { recovery: true });
+  };
+  if (options.locked === true) return apply();
+  return withAiRunLock(projectRoot, run.run_id, { command: 'recover governed plan review commit' }, apply);
 }
 
 function readPlanReviewMeta(projectRoot) {
@@ -574,7 +864,8 @@ function saveGovernedPlanReview(projectRoot, options = {}) {
       );
     }
 
-    const current = readRunGovernance(projectRoot, runId) || {
+    const previousGovernanceState = readRunGovernance(projectRoot, runId);
+    const current = previousGovernanceState || {
       schema_version: 1,
       run_id: runId,
       next_finding_number: 1,
@@ -593,6 +884,23 @@ function saveGovernedPlanReview(projectRoot, options = {}) {
         `Canonical review '${foreignReview.review_id || 'unknown'}' belongs to a different run.`,
       );
     }
+    const budgetReservation = options.reviewBudgetReservation;
+    if (!budgetReservation) {
+      throw new GovernanceError(
+        'REVIEW_BUDGET_RESERVATION_REQUIRED',
+        `Governed review '${runId}' requires a budget reservation before provider output can be committed.`,
+      );
+    }
+    assertReviewBudgetReservationLocked(projectRoot, {
+      runId,
+      governance,
+      profile,
+      reservationId: budgetReservation.reservation_id,
+      attempt: budgetReservation.attempt,
+      requestEnvelopeDigest: budgetReservation.request_envelope_digest,
+      requestEnvelope: options.reviewBudgetRequestEnvelope,
+      requireCurrent: true,
+    });
 
     const reviewId = nextReviewId(current);
     const reconciled = reconcileFindings({
@@ -678,14 +986,35 @@ function saveGovernedPlanReview(projectRoot, options = {}) {
       reviewed_at: now,
     };
 
-    writeRunGovernance(projectRoot, runId, nextState);
-    fs.writeFileSync(reviewPath, rendered);
-    fs.writeFileSync(planReviewMetaPath(projectRoot), `${JSON.stringify(redactSensitiveValue(meta, { projectRoot }), null, 2)}\n`);
-    updateAiRunPhase(projectRoot, runId, 'technical-plan-reviewed', {
-      artifact: toRelativePosix(projectRoot, reviewPath),
-      command: 'ai review-plan',
-      locked: true,
-      now: nowValue instanceof Date ? nowValue : new Date(nowValue),
+    const redactedMeta = redactSensitiveValue(meta, { projectRoot });
+    const marker = {
+      schema_version: REVIEW_COMMIT_SCHEMA_VERSION,
+      kind: 'governed-plan-review-commit',
+      run_id: runId,
+      prepared_at: now,
+      reservation: {
+        reservation_id: budgetReservation.reservation_id,
+        attempt: budgetReservation.attempt,
+        request_envelope_digest: budgetReservation.request_envelope_digest,
+      },
+      review_id: reviewId,
+      target_phase: 'technical-plan-reviewed',
+      artifact_path: toRelativePosix(projectRoot, reviewPath),
+      policy_digest: policyDigest,
+      profile: JSON.parse(stableStringify(profile)),
+      previous_governance_state: previousGovernanceState,
+      previous_governance_sha256: governanceStateDigest(previousGovernanceState),
+      next_governance_state: nextState,
+      next_governance_sha256: governanceStateDigest(nextState),
+      review_contents: rendered,
+      review_contents_sha256: sha256Digest(rendered),
+      meta: redactedMeta,
+      meta_sha256: sha256Digest(stableStringify(redactedMeta)),
+    };
+    writeReviewCommitMarker(projectRoot, runId, marker);
+    invokeReviewCommitFault({ faultInjector: options.commitFaultInjector }, 'after-wal');
+    const committed = applyGovernedReviewCommitLocked(projectRoot, marker, {
+      faultInjector: options.commitFaultInjector,
     });
     return {
       filePath: reviewPath,
@@ -694,6 +1023,7 @@ function saveGovernedPlanReview(projectRoot, options = {}) {
       reviewedAt: now,
       reviewId,
       projection,
+      budget: committed.budget,
     };
   });
 }
@@ -753,6 +1083,7 @@ function buildPlanReviewPrompt({
   governance = null,
   governanceProfile = null,
   canonicalFindings = [],
+  reviewIntent = null,
 }) {
   const sections = [
     pack.prompt,
@@ -791,6 +1122,16 @@ function buildPlanReviewPrompt({
       'Canonical finding context for this run:',
       JSON.stringify(redactSensitiveValue(buildCanonicalFindingReviewContext(canonicalFindings)), null, 2),
     );
+    if (reviewIntent) {
+      const scopeInstruction = reviewIntent.event_class === 'targeted'
+        ? 'Limit new analysis to the declared finding IDs and sections. Re-emit unresolved canonical findings as required by the output contract, but do not expand the requested review scope.'
+        : 'Review the complete replacement candidate. This is a full review, not a targeted amendment.';
+      sections.push(
+        'Immutable review scope intent:',
+        JSON.stringify(redactSensitiveValue(reviewIntent), null, 2),
+        scopeInstruction,
+      );
+    }
   } else {
     sections.push(
       'Required output contract: include a fenced json block with `{ "review": { "blocking": boolean, "approvalRecommendation": "approve|approve-with-risk|revise", "requiredFixes": [], "optionalHardening": [], "risks": [], "nextCommand": "" } }`.',
@@ -847,6 +1188,7 @@ module.exports = {
   planReviewMetaPath,
   planReviewPath,
   readPlanReview,
+  recoverGovernedPlanReviewCommit,
   reviewBlocksApproval,
   resolveTechnicalPlanReviewInput,
   resolveReviewedTechnicalPlanInput,

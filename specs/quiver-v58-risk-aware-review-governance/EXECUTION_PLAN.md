@@ -1,6 +1,6 @@
 # Execution Plan — Quiver v58 Risk-aware Review Governance
 
-Status: In Progress — slices 00 and 01 completed; slice-02 contract ready but gated by the slice-01 PR merge
+Status: In Progress — slices 00 through 02 completed; slice-03 contract ready but gated by the slice-02 PR merge
 
 ## Objective
 
@@ -83,12 +83,15 @@ Key work:
 - Stop before provider invocation on exhaustion.
 - Offer the governed human next actions without auto-executing one.
 - Authorize and audit budget extension.
+- Verify one-to-one canonical review and valid ledger-outcome history before further mutation.
+- Recover interrupted governed review commits before later mutation or run closure.
 
 Validation:
 
 - Event classification unit tests.
 - Concurrent reservation and multi-run integration tests.
 - Exhaustion, timeout retry, external review, invalid provider payload consumption, preserved last valid review, and extension cases.
+- Fault-injected commit recovery, corrupt/foreign marker rejection, unverifiable-history rejection, and provider/close race cases.
 
 ### Slice 03 — Approved with conditions
 

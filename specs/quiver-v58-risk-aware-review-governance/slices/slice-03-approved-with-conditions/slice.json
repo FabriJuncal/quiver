@@ -91,5 +91,5 @@
     "git diff --check"
   ],
   "estimated_hours": 6,
-  "status": "planned"
+  "status": "ready"
 }

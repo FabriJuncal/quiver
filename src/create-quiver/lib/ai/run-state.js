@@ -1,3 +1,4 @@
+const crypto = require('node:crypto');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
@@ -95,6 +96,14 @@ function runGovernancePath(projectRoot, runId) {
   return path.join(runDir(projectRoot, runId), 'review-governance.json');
 }
 
+function runReviewBudgetDir(projectRoot, runId) {
+  return path.join(runDir(projectRoot, runId), 'review-budget-events');
+}
+
+function runReviewCommitPath(projectRoot, runId) {
+  return path.join(runDir(projectRoot, runId), 'review-commit-wal.json');
+}
+
 function runRequirementPath(projectRoot, runId) {
   return path.join(runDir(projectRoot, runId), 'requirement.md');
 }
@@ -142,7 +151,17 @@ function readJsonIfExists(filePath) {
 
 function writeJson(filePath, value) {
   ensureDir(path.dirname(filePath));
-  fs.writeFileSync(filePath, `${JSON.stringify(value, null, 2)}\n`);
+  const tempPath = path.join(
+    path.dirname(filePath),
+    `.tmp-${path.basename(filePath)}-${process.pid}-${crypto.randomBytes(6).toString('hex')}`,
+  );
+  try {
+    fs.writeFileSync(tempPath, `${JSON.stringify(value, null, 2)}\n`, { flag: 'wx' });
+    fs.renameSync(tempPath, filePath);
+  } catch (error) {
+    if (fs.existsSync(tempPath)) fs.rmSync(tempPath);
+    throw error;
+  }
 }
 
 function listAiRuns(projectRoot) {
@@ -282,6 +301,16 @@ function updateAiRunPhase(projectRoot, runId, phase, options = {}) {
       throw new Error(formatError('missing AI run to update'));
     }
 
+    if (phase === 'closed' && current.governance) {
+      if (fs.existsSync(runReviewCommitPath(projectRoot, current.run_id))) {
+        const error = new Error(formatError(`REVIEW_COMMIT_RECOVERY_REQUIRED: run '${current.run_id}' has a prepared review commit that must be recovered before close`));
+        error.code = 'REVIEW_COMMIT_RECOVERY_REQUIRED';
+        throw error;
+      }
+      const { assertNoPendingReviewBudgetReservations } = require('./review-budget');
+      assertNoPendingReviewBudgetReservations(projectRoot, current.run_id);
+    }
+
     const reviewRevision = options.reviewRevision === true
       && current.phase === 'technical-plan-reviewed'
       && phase === 'technical-plan-draft';
@@ -357,9 +386,10 @@ function sanitizeLockPart(value) {
 }
 
 function lockPath(projectRoot, runId, sliceId = '') {
+  const normalizedRunId = normalizeRunId(runId);
   const name = sliceId
-    ? `${sanitizeLockPart(runId)}--${sanitizeLockPart(sliceId)}.lock`
-    : `${sanitizeLockPart(runId)}.lock`;
+    ? `${sanitizeLockPart(normalizedRunId)}--${sanitizeLockPart(sliceId)}.lock`
+    : `${sanitizeLockPart(normalizedRunId)}.lock`;
   return path.join(locksDir(projectRoot), name);
 }
 
@@ -418,6 +448,7 @@ function acquireAiRunLock(projectRoot, runId, options = {}) {
     slice_id: options.sliceId || null,
     pid: process.pid,
     hostname: os.hostname(),
+    nonce: crypto.randomBytes(16).toString('hex'),
     command: options.command || null,
     created_at: (options.now || new Date()).toISOString(),
   };
@@ -441,6 +472,13 @@ function acquireAiRunLock(projectRoot, runId, options = {}) {
 
 function releaseAiRunLock(projectRoot, runId, options = {}) {
   const filePath = lockPath(projectRoot, runId, options.sliceId || '');
+  const expectedNonce = options.handle?.lock?.nonce || options.nonce || '';
+  if (expectedNonce) {
+    const current = readAiRunLock(projectRoot, runId, options.sliceId || '');
+    if (!current || current.nonce !== expectedNonce) {
+      return filePath;
+    }
+  }
   if (fs.existsSync(filePath)) {
     fs.rmSync(filePath);
   }
@@ -451,18 +489,18 @@ function withAiRunLock(projectRoot, runId, options = {}, callback) {
   if (typeof callback !== 'function') {
     throw new Error(formatError('withAiRunLock requires a callback'));
   }
-  acquireAiRunLock(projectRoot, runId, options);
+  const handle = acquireAiRunLock(projectRoot, runId, options);
   try {
     const result = callback();
     if (result && typeof result.then === 'function') {
       return Promise.resolve(result).finally(() => {
-        releaseAiRunLock(projectRoot, runId, options);
+        releaseAiRunLock(projectRoot, runId, { ...options, handle });
       });
     }
-    releaseAiRunLock(projectRoot, runId, options);
+    releaseAiRunLock(projectRoot, runId, { ...options, handle });
     return result;
   } catch (error) {
-    releaseAiRunLock(projectRoot, runId, options);
+    releaseAiRunLock(projectRoot, runId, { ...options, handle });
     throw error;
   }
 }
@@ -599,6 +637,8 @@ module.exports = {
   runApprovalsPath,
   runDir,
   runGovernancePath,
+  runReviewCommitPath,
+  runReviewBudgetDir,
   runStatePath,
   updateAiRunPhase,
   withAiRunLock,
