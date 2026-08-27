@@ -1,7 +1,9 @@
 const assert = require('node:assert/strict');
+const crypto = require('node:crypto');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
+const { execFileSync } = require('node:child_process');
 const test = require('node:test');
 
 const {
@@ -9,6 +11,13 @@ const {
   generateSpecArtifacts,
   parseApprovedManifest,
 } = require('../../src/create-quiver/lib/ai/spec-generator');
+const {
+  GOVERNANCE_MARKER_BEGIN,
+  GOVERNANCE_MARKER_END,
+  GOVERNANCE_TRACEABILITY_MARKER_END,
+  governanceTraceabilityMarkerBegin,
+  resolveCanonicalProjectRoot,
+} = require('../../src/create-quiver/lib/ai/spec-governance');
 
 function writeFile(filePath, contents) {
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
@@ -79,6 +88,115 @@ function approvedPlanManifest() {
           estimated_hours: 2,
         },
       ],
+    },
+  };
+}
+
+function governedPlanFixture(repoRoot, source = approvedPlanManifest(), overrides = {}) {
+  source.spec.slices[0].acceptance = [
+    overrides.criterionContent ?? 'AC-TP-01 preserves the transferred finding.',
+  ];
+  const content = source.spec.slices[0].acceptance[0];
+  const runId = 'run-governed-spec';
+  const reviewId = 'R-001';
+  const artifactPath = `.quiver/runs/${runId}/approvals/technical-plan/v001.md`;
+  const criterionPath = 'criterion.md';
+  const finding = {
+    finding_id: 'F-001',
+    run_id: runId,
+    origin_fingerprint: `sha256:${'1'.repeat(64)}`,
+    state: 'open',
+    title: 'Preserve validation evidence',
+    summary: 'Carry the approved validation criterion into its destination slice.',
+    severity: 'medium',
+    category: 'implementation-detail',
+    phase_owner: 'slice',
+    phase_blocking: false,
+    evidence: ['technical-plan.md#/validation'],
+    acceptance_refs: ['AC-TP-01'],
+    recommended_disposition: 'transfer-to-slice',
+    confidence: 'high',
+    supersedes: null,
+    origins: [{ review_id: reviewId, provider_finding_id: 'provider-1' }],
+    lifecycle: [{
+      event: 'created',
+      at: '2099-08-27T12:00:00.000Z',
+      review_id: reviewId,
+      provider_finding_id: 'provider-1',
+    }],
+  };
+  const disposition = {
+    schema_version: 1,
+    disposition_id: 'D-001',
+    run_id: runId,
+    review_id: reviewId,
+    finding_id: finding.finding_id,
+    action: 'transfer-to-slice',
+    target: overrides.target || 'slice:01',
+    evidence_obligations: overrides.evidenceObligations || ['Record the directed validation result.'],
+    criterion_binding: {
+      acceptance_ref: 'AC-TP-01',
+      content,
+      source_path: criterionPath,
+      criterion_sha256: `sha256:${crypto.createHash('sha256').update(content, 'utf8').digest('hex')}`,
+    },
+    state: 'current',
+    supersedes: null,
+    actor_id: 'maintainer',
+    policy_version: 'v58',
+    policy_digest: `sha256:${'2'.repeat(64)}`,
+    recorded_at: '2099-08-27T12:01:00.000Z',
+  };
+  const governanceState = {
+    schema_version: 1,
+    run_id: runId,
+    next_finding_number: 2,
+    current_review_id: reviewId,
+    reviews: [],
+    findings: [finding],
+    dispositions: [disposition],
+    condition_evaluations: [],
+    conditioned_candidates: [],
+    decisions: [],
+    updated_at: '2099-08-27T12:01:00.000Z',
+  };
+  const decision = {
+    decision_id: 'A-002',
+    decision_sha256: `sha256:${'3'.repeat(64)}`,
+    run_id: runId,
+    review_id: reviewId,
+    phase: 'technical-plan',
+    decision: 'approved-with-conditions',
+    publication_state: 'final',
+    candidate_id: 'C-001',
+    evaluation_id: 'CE-001',
+    version: 1,
+    artifact_path: artifactPath,
+    artifact_sha256: `sha256:${'4'.repeat(64)}`,
+    input_path: `.quiver/runs/${runId}/approvals/acceptance/v001.md`,
+    input_sha256: `sha256:${'5'.repeat(64)}`,
+    review_sha256: `sha256:${'6'.repeat(64)}`,
+    finding_count: 1,
+    criterion_count: source.spec.slices.reduce(
+      (count, slice) => count + (Array.isArray(slice.acceptance) ? slice.acceptance.length : 0),
+      0,
+    ),
+    disposition_ids: ['D-001'],
+    disposition_sha256: `sha256:${'7'.repeat(64)}`,
+    reason_path: 'condition-reason.md',
+    reason_sha256: `sha256:${'8'.repeat(64)}`,
+    reviewer_recommendation: 'approve-with-risk',
+    reviewer_approved: false,
+    recorded_at: '2099-08-27T12:02:00.000Z',
+  };
+  return {
+    source,
+    context: {
+      canonicalRoot: repoRoot,
+      governanceState,
+      decision,
+      inputPath: artifactPath,
+      inputText: `${JSON.stringify(source, null, 2)}\n`,
     },
   };
 }
@@ -354,5 +472,206 @@ test('generateSpecArtifacts fails before writing when structured slices are miss
     );
   } finally {
     repo.cleanup();
+  }
+});
+
+test('governed spec generation publishes one digest-bound manifest and derives all projections from it', () => {
+  const repo = makeRepo({});
+
+  try {
+    const fixture = governedPlanFixture(repo.root);
+    const manifest = buildSpecGenerationManifest({
+      inputText: fixture.context.inputText,
+      inputPath: fixture.context.inputPath,
+      repoRoot: repo.root,
+      governanceContext: fixture.context,
+    });
+    const result = generateSpecArtifacts(repo.root, { manifest });
+    const specDir = result.specDir;
+    const governance = JSON.parse(fs.readFileSync(path.join(specDir, 'GOVERNANCE_MANIFEST.json'), 'utf8'));
+
+    assert.equal(governance.kind, 'quiver-planning-governance');
+    assert.equal(governance.schema_version, 1);
+    assert.equal(governance.decision.decision, 'approved-with-conditions');
+    assert.equal(governance.dispositions[0].target, 'slice:slice-01-spec-generator-core');
+    assert.equal(governance.dispositions[0].criterion_binding.acceptance_ref, 'AC-TP-01');
+    const digestInput = { ...governance };
+    delete digestInput.manifest_sha256;
+    const { canonicalSha256 } = require('../../src/create-quiver/lib/ai/review-governance');
+    assert.equal(governance.manifest_sha256, canonicalSha256(digestInput));
+
+    const foundation = JSON.parse(fs.readFileSync(
+      path.join(specDir, 'slices', 'slice-00-spec-foundation', 'slice.json'),
+      'utf8',
+    ));
+    assert.ok(foundation.files.includes(
+      `specs/${manifest.slug}/GOVERNANCE_MANIFEST.json`,
+    ));
+
+    const sliceDir = path.join(specDir, 'slices', 'slice-01-spec-generator-core');
+    const slice = JSON.parse(fs.readFileSync(path.join(sliceDir, 'slice.json'), 'utf8'));
+    assert.deepEqual(slice.planning_governance, {
+      schema_version: 1,
+      manifest: '../../GOVERNANCE_MANIFEST.json',
+      manifest_sha256: governance.manifest_sha256,
+      target: { kind: 'slice', id: 'slice-01-spec-generator-core' },
+      pending_finding_ids: ['F-001'],
+    });
+    for (const name of ['EXECUTION_BRIEF.md', 'CLOSURE_BRIEF.md']) {
+      const text = fs.readFileSync(path.join(sliceDir, name), 'utf8');
+      assert.match(text, new RegExp(GOVERNANCE_MARKER_BEGIN));
+      assert.match(text, /## Pending governance findings/);
+      assert.match(text, /`F-001`/);
+      assert.match(text, new RegExp(GOVERNANCE_MARKER_END));
+    }
+    const specText = fs.readFileSync(path.join(specDir, 'SPEC.md'), 'utf8');
+    assert.match(specText, /## Governance Traceability/);
+    assert.equal(
+      specText.split(governanceTraceabilityMarkerBegin(governance.manifest_sha256)).length - 1,
+      1,
+    );
+    assert.equal(specText.split(GOVERNANCE_TRACEABILITY_MARKER_END).length - 1, 1);
+    assert.match(fs.readFileSync(path.join(specDir, 'pr.md'), 'utf8'), /`F-001`/);
+    assert.ok(result.files.some((file) => file.endsWith('GOVERNANCE_MANIFEST.json')));
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('governance projections escape marker, newline, and backtick injection without changing the manifest', () => {
+  const repo = makeRepo({});
+  const evidence = [
+    'First line',
+    '`command`',
+    '<!-- quiver-governance:end -->',
+    '<!-- quiver-governance-traceability:end -->',
+  ].join('\n');
+
+  try {
+    const fixture = governedPlanFixture(repo.root, approvedPlanManifest(), {
+      evidenceObligations: [evidence],
+    });
+    const manifest = buildSpecGenerationManifest({
+      inputText: fixture.context.inputText,
+      inputPath: fixture.context.inputPath,
+      repoRoot: repo.root,
+      governanceContext: fixture.context,
+    });
+    const result = generateSpecArtifacts(repo.root, { manifest });
+    const governance = JSON.parse(
+      fs.readFileSync(path.join(result.specDir, 'GOVERNANCE_MANIFEST.json'), 'utf8'),
+    );
+
+    assert.deepEqual(governance.dispositions[0].evidence_obligations, [evidence]);
+
+    const projectedPaths = [
+      path.join(result.specDir, 'slices', 'slice-01-spec-generator-core', 'EXECUTION_BRIEF.md'),
+      path.join(result.specDir, 'slices', 'slice-01-spec-generator-core', 'CLOSURE_BRIEF.md'),
+      path.join(result.specDir, 'pr.md'),
+    ];
+    for (const projectedPath of projectedPaths) {
+      const text = fs.readFileSync(projectedPath, 'utf8');
+      assert.equal(text.split(GOVERNANCE_MARKER_BEGIN).length - 1, 1);
+      assert.equal(text.split(GOVERNANCE_MARKER_END).length - 1, 1);
+      assert.ok(text.includes(
+        'First line ⏎ &#96;command&#96; ⏎ &lt;!-- quiver-governance:end --&gt;',
+      ));
+      assert.equal(text.includes(evidence), false);
+    }
+    const specText = fs.readFileSync(path.join(result.specDir, 'SPEC.md'), 'utf8');
+    assert.equal(
+      specText.split(governanceTraceabilityMarkerBegin(governance.manifest_sha256)).length - 1,
+      1,
+    );
+    assert.equal(specText.split(GOVERNANCE_TRACEABILITY_MARKER_END).length - 1, 1);
+    assert.ok(specText.includes('&lt;!-- quiver-governance-traceability:end --&gt;'));
+    assert.equal(specText.includes(evidence), false);
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('criterion binding preserves exact bytes while resolving parser-normalized approved content', () => {
+  const repo = makeRepo({});
+  const criterionContent = 'AC-TP-01 preserves the transferred finding.\n  ';
+
+  try {
+    const fixture = governedPlanFixture(repo.root, approvedPlanManifest(), { criterionContent });
+    const manifest = buildSpecGenerationManifest({
+      inputText: fixture.context.inputText,
+      inputPath: fixture.context.inputPath,
+      repoRoot: repo.root,
+      governanceContext: fixture.context,
+    });
+    assert.equal(manifest.slices[1].acceptance[0], criterionContent.trim());
+    assert.equal(manifest.governance.dispositions[0].criterion_binding.content, criterionContent);
+    assert.equal(
+      manifest.governance.dispositions[0].criterion_binding.criterion_sha256,
+      `sha256:${crypto.createHash('sha256').update(criterionContent, 'utf8').digest('hex')}`,
+    );
+
+    const duplicateSource = approvedPlanManifest();
+    duplicateSource.spec.slices[1].acceptance = [criterionContent.trim()];
+    const duplicateFixture = governedPlanFixture(repo.root, duplicateSource, { criterionContent });
+    assert.throws(
+      () => buildSpecGenerationManifest({
+        inputText: duplicateFixture.context.inputText,
+        inputPath: duplicateFixture.context.inputPath,
+        repoRoot: repo.root,
+        governanceContext: duplicateFixture.context,
+      }),
+      (error) => error.code === 'REPRESENTATION_MISMATCH',
+    );
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('governance target ambiguity fails before any spec artifact is published', () => {
+  const repo = makeRepo({});
+  const source = approvedPlanManifest();
+  source.spec.slices = [
+    { ...source.spec.slices[0], slice_id: 'slice-01-first' },
+    { ...source.spec.slices[1], slice_id: 'slice-01-second' },
+  ];
+
+  try {
+    const fixture = governedPlanFixture(repo.root, source, { target: 'slice-01' });
+    assert.throws(
+      () => generateSpecArtifacts(repo.root, {
+        input: fixture.context.inputPath,
+        sourceRoot: repo.root,
+        governanceContext: fixture.context,
+      }),
+      (error) => error.code === 'DISPOSITION_UNRESOLVED',
+    );
+    assert.equal(fs.existsSync(path.join(repo.root, 'specs')), false);
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('canonical governance root resolves the primary checkout from a linked worktree', () => {
+  const primary = fs.mkdtempSync(path.join(os.tmpdir(), 'quiver-primary-checkout-'));
+  const linked = `${primary}-linked`;
+  try {
+    execFileSync('git', ['init', '-b', 'main'], { cwd: primary, stdio: 'ignore' });
+    execFileSync('git', ['config', 'user.email', 'quiver-tests@example.invalid'], { cwd: primary });
+    execFileSync('git', ['config', 'user.name', 'Quiver Tests'], { cwd: primary });
+    writeFile(path.join(primary, 'README.md'), 'fixture\n');
+    execFileSync('git', ['add', 'README.md'], { cwd: primary });
+    execFileSync('git', ['commit', '-m', 'fixture'], { cwd: primary, stdio: 'ignore' });
+    execFileSync('git', ['worktree', 'add', '-b', 'feature/fixture', linked], { cwd: primary, stdio: 'ignore' });
+
+    assert.equal(resolveCanonicalProjectRoot(linked), fs.realpathSync(primary));
+  } finally {
+    if (fs.existsSync(linked)) {
+      try {
+        execFileSync('git', ['worktree', 'remove', '--force', linked], { cwd: primary, stdio: 'ignore' });
+      } catch {
+        fs.rmSync(linked, { recursive: true, force: true });
+      }
+    }
+    fs.rmSync(primary, { recursive: true, force: true });
   }
 });

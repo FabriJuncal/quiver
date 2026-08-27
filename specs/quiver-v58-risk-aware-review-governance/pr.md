@@ -1,6 +1,6 @@
 # PR Plan — Quiver v58 Risk-aware Review Governance
 
-Status: In progress; slices 00 through 04 completed, slice-04 implementation PR pending human review and merge.
+Status: In progress; slices 00 through 04 merged and slice-05 completed, validated, and pending human review and merge.
 
 ## Summary
 

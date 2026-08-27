@@ -5,9 +5,23 @@ const path = require('node:path');
 const { execFileSync } = require('node:child_process');
 const test = require('node:test');
 
-const { approvePlannerPhase, savePlannerDraft } = require('../../src/create-quiver/lib/approvals');
+const {
+  approvePlannerPhase,
+  readPhaseApproval,
+  savePlannerDraft,
+} = require('../../src/create-quiver/lib/approvals');
 const { savePlanReview } = require('../../src/create-quiver/lib/ai/plan-review');
+const { runApprove, runPlan, runReviewPlan } = require('../../src/create-quiver/commands/ai');
 const { runCreateSpec } = require('../../src/create-quiver/commands/spec');
+const {
+  GovernanceError,
+  buildDefaultGovernanceConfig,
+  resolveEffectiveProfile,
+} = require('../../src/create-quiver/lib/ai/review-governance');
+const {
+  createAiRun,
+  updateAiRunPhase,
+} = require('../../src/create-quiver/lib/ai/run-state');
 
 const BIN_PATH = path.resolve(__dirname, '../../bin/create-quiver.js');
 
@@ -74,6 +88,163 @@ function seedReviewedApprovedPlan(repoRoot) {
     inputVersion: 1,
   });
   execCli(repoRoot, ['ai', 'approve', '--phase', 'technical-plan', '--version', '1']);
+}
+
+function governedApprovedContext(repoRoot) {
+  const source = approvedPlanManifest();
+  const runId = 'run-spec-create-governed';
+  const reviewId = 'R-001';
+  return {
+    canonicalRoot: repoRoot,
+    inputPath: `.quiver/runs/${runId}/approvals/technical-plan/v001.md`,
+    inputText: `${JSON.stringify(source, null, 2)}\n`,
+    governanceState: {
+      schema_version: 1,
+      run_id: runId,
+      next_finding_number: 1,
+      current_review_id: reviewId,
+      reviews: [],
+      findings: [],
+      dispositions: [],
+      condition_evaluations: [],
+      conditioned_candidates: [],
+      decisions: [],
+      updated_at: '2099-08-27T12:00:00.000Z',
+    },
+    decision: {
+      decision_id: 'A-002',
+      decision_sha256: `sha256:${'1'.repeat(64)}`,
+      run_id: runId,
+      review_id: reviewId,
+      phase: 'technical-plan',
+      decision: 'approved',
+      publication_state: 'final',
+      candidate_id: null,
+      evaluation_id: null,
+      version: 1,
+      artifact_path: `.quiver/runs/${runId}/approvals/technical-plan/v001.md`,
+      artifact_sha256: `sha256:${'2'.repeat(64)}`,
+      input_path: `.quiver/runs/${runId}/approvals/acceptance/v001.md`,
+      input_sha256: `sha256:${'3'.repeat(64)}`,
+      review_sha256: `sha256:${'4'.repeat(64)}`,
+      finding_count: 0,
+      criterion_count: 1,
+      disposition_ids: [],
+      disposition_sha256: `sha256:${'5'.repeat(64)}`,
+      reason_path: null,
+      reason_sha256: null,
+      reviewer_recommendation: 'approve',
+      reviewer_approved: null,
+      recorded_at: '2099-08-27T12:01:00.000Z',
+    },
+  };
+}
+
+function governedReviewOutput() {
+  return `${JSON.stringify({
+    schema_version: 2,
+    kind: 'quiver-plan-review',
+    review: {
+      recommendation: 'approve',
+      blocking: false,
+      findings: [],
+      plan_required_fixes: [],
+      slice_required_fixes: [],
+      pr_required_fixes: [],
+      follow_ups: [],
+      optional_hardening: [],
+    },
+  })}\n`;
+}
+
+function providerSuccess(repoRoot, stdout) {
+  return {
+    ok: true,
+    dryRun: false,
+    provider: 'codex',
+    command: 'codex',
+    args: ['exec'],
+    cwd: repoRoot,
+    timeoutMs: 0,
+    promptTransport: { mode: 'stdin' },
+    exitCode: 0,
+    stdout,
+    stderr: '',
+    error: null,
+    preflight: { ok: true },
+    payloadReceived: true,
+  };
+}
+
+async function seedCanonicalApprovedPlan(repoRoot) {
+  const runId = 'run-spec-create-ledger';
+  const actor = {
+    actor_id: 'github:github.com:58',
+    provider: 'github-cli',
+    provider_subject: 'github:github.com:58',
+    verified: true,
+  };
+  const governance = buildDefaultGovernanceConfig();
+  governance.policy.authorization.actor_bindings[actor.provider_subject] = {
+    actor_id: actor.actor_id,
+    roles: ['maintainer'],
+  };
+  governance.policy.authorization.actions.approve = {
+    allowed_actor_ids: [],
+    allowed_roles: ['maintainer'],
+    independence: 'none',
+  };
+  const profile = resolveEffectiveProfile({
+    governance,
+    requirementCategories: governance.requirement_categories,
+  });
+  const binding = {
+    requested_profile: profile.requested_profile,
+    effective_profile: profile.effective_profile,
+    policy_version: profile.policy_version,
+    policy_digest: profile.policy_digest,
+    requirement_categories: [...governance.requirement_categories],
+  };
+  writeFile(path.join(repoRoot, 'requirements.md'), '# Requirement\n\nCreate a spec from canonical approvals.\n');
+  writeFile(path.join(repoRoot, '.quiver/config.json'), `${JSON.stringify({ governance }, null, 2)}\n`);
+  createAiRun(repoRoot, { input: 'requirements.md', runId, governance: binding });
+
+  savePlannerDraft(repoRoot, 'acceptance', 'requirements.md', `${JSON.stringify({
+    spec: { acceptance: ['AC-01 creates the approved spec.'] },
+  }, null, 2)}\n`, { requireDigestBindings: true });
+  const acceptanceDraft = readPhaseApproval(repoRoot, 'acceptance').meta.drafts[0];
+  updateAiRunPhase(repoRoot, runId, 'acceptance-draft', {
+    artifact: acceptanceDraft.path,
+    command: 'ai plan --phase acceptance',
+  });
+  await runApprove(repoRoot, {
+    actor,
+    digestBound: true,
+    phase: 'acceptance',
+    publishFinal: true,
+    runId,
+    version: 1,
+  });
+  await runPlan(repoRoot, {
+    phase: 'technical-plan',
+    runId,
+    runProviderFn: async () => providerSuccess(
+      repoRoot,
+      `${JSON.stringify(approvedPlanManifest(), null, 2)}\n`,
+    ),
+  });
+  await runReviewPlan(repoRoot, {
+    runId,
+    runProviderFn: async () => providerSuccess(repoRoot, governedReviewOutput()),
+  });
+  await runApprove(repoRoot, {
+    actor,
+    digestBound: true,
+    phase: 'technical-plan',
+    runId,
+    version: 1,
+  });
+  return runId;
 }
 
 test('spec create dry-run previews files and next safe commands without writing', () => {
@@ -335,6 +506,84 @@ test('spec create fails before writing when approved plan lacks structured slice
       (error) => error.stderr.includes('approved technical plan must include a structured slices array'),
     );
     assert.equal(fs.existsSync(path.join(repo.root, 'specs')), false);
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('spec create accepts a canonical unconditional decision and publishes its governance manifest', async () => {
+  const repo = makeRepo();
+  let preflightCalls = 0;
+
+  try {
+    const context = governedApprovedContext(repo.root);
+    const result = await runCreateSpec(repo.root, {
+      resolveGovernanceContextFn: () => {
+        preflightCalls += 1;
+        return context;
+      },
+    });
+    const specDir = path.join(repo.root, result.specDir);
+    assert.equal(preflightCalls, 2);
+    assert.ok(fs.existsSync(path.join(specDir, 'GOVERNANCE_MANIFEST.json')));
+    const governance = JSON.parse(fs.readFileSync(path.join(specDir, 'GOVERNANCE_MANIFEST.json'), 'utf8'));
+    assert.equal(governance.decision.decision, 'approved');
+    assert.deepEqual(governance.findings, []);
+    assert.deepEqual(governance.dispositions, []);
+    const slice = JSON.parse(fs.readFileSync(path.join(
+      specDir,
+      'slices',
+      'slice-01-create-core',
+      'slice.json',
+    ), 'utf8'));
+    assert.deepEqual(slice.planning_governance.pending_finding_ids, []);
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('spec create resolves an on-disk canonical ledger without an injected governance resolver', async () => {
+  const repo = makeRepo();
+
+  try {
+    const runId = await seedCanonicalApprovedPlan(repo.root);
+    const result = await runCreateSpec(repo.root, { runId });
+    const specDir = path.join(repo.root, result.specDir);
+    const manifest = JSON.parse(
+      fs.readFileSync(path.join(specDir, 'GOVERNANCE_MANIFEST.json'), 'utf8'),
+    );
+
+    assert.equal(manifest.source.run_id, runId);
+    assert.equal(manifest.decision.decision, 'approved');
+    assert.equal(manifest.decision.publication_state, 'final');
+    assert.deepEqual(manifest.findings, []);
+    assert.deepEqual(manifest.dispositions, []);
+    assert.equal(fs.existsSync(path.join(specDir, 'SPEC.md')), true);
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('spec create revalidates governance after preview and fails before publication when parity changes', async () => {
+  const repo = makeRepo();
+  const context = governedApprovedContext(repo.root);
+  let preflightCalls = 0;
+
+  try {
+    await assert.rejects(
+      runCreateSpec(repo.root, {
+        resolveGovernanceContextFn: () => {
+          preflightCalls += 1;
+          if (preflightCalls === 2) {
+            throw new GovernanceError('APPROVAL_BINDING_MISMATCH', 'Canonical state changed after preview.');
+          }
+          return context;
+        },
+      }),
+      (error) => error.code === 'APPROVAL_BINDING_MISMATCH',
+    );
+    assert.equal(preflightCalls, 2);
+    assert.equal(fs.existsSync(path.join(repo.root, 'specs', 'quiver-v23-created-spec')), false);
   } finally {
     repo.cleanup();
   }

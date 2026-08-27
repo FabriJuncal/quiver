@@ -24,6 +24,7 @@ const SUPPORTED_COMMAND_MODES = new Set([
   'refresh-active-slices',
   'spec',
   'evidence',
+  'findings',
   'demo',
   'ai',
 ]);
@@ -59,6 +60,7 @@ const SUPPORTED_AI_COMMANDS = new Set([
 ]);
 
 const SUPPORTED_SPEC_COMMANDS = new Set(['close', 'create', 'start', 'status', 'validate']);
+const SUPPORTED_FINDINGS_COMMANDS = new Set(['disposition', 'transfer']);
 const SUPPORTED_DEMO_COMMANDS = new Set(['create']);
 const SUPPORTED_CONFIG_SECTIONS = new Set(['language']);
 const SUPPORTED_CONFIG_LANGUAGE_COMMANDS = new Set(['show', 'set']);
@@ -69,5 +71,6 @@ module.exports = {
   SUPPORTED_CONFIG_LANGUAGE_COMMANDS,
   SUPPORTED_CONFIG_SECTIONS,
   SUPPORTED_DEMO_COMMANDS,
+  SUPPORTED_FINDINGS_COMMANDS,
   SUPPORTED_SPEC_COMMANDS,
 };

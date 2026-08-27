@@ -44,6 +44,7 @@ const { runDemo } = require('./commands/demo');
 const { runPrepare } = require('./commands/prepare');
 const { runEvidence } = require('./commands/evidence');
 const { runFlow } = require('./commands/flow');
+const { runFindings } = require('./commands/findings');
 const { runGraph } = require('./commands/graph');
 const { runNext } = require('./commands/next');
 const { runPlan } = require('./commands/plan');
@@ -60,6 +61,7 @@ const { checkPrReadiness, checkScope, checkSliceReadiness } = require('./lib/rea
 const { cleanupSlice, refreshActiveSlicesBoard, startSlice } = require('./lib/lifecycle');
 const { buildSpecStatus, closeSpecWorktree, formatSpecCloseResult, formatSpecStartResult, formatSpecStatus, startSpecWorktree } = require('./lib/spec-worktrees');
 const { getContextPathExclusionReason } = require('./lib/ai/safety');
+const { redactSensitiveValue } = require('./lib/ai/artifacts');
 const { selectOption } = require('./lib/cli/selectors');
 const {
   SUPPORTED_AI_COMMANDS,
@@ -67,6 +69,7 @@ const {
   SUPPORTED_CONFIG_LANGUAGE_COMMANDS,
   SUPPORTED_CONFIG_SECTIONS,
   SUPPORTED_DEMO_COMMANDS,
+  SUPPORTED_FINDINGS_COMMANDS,
   SUPPORTED_SPEC_COMMANDS,
 } = require('./lib/cli/command-registry');
 const { parseCliArgs } = require('./lib/cli/parser');
@@ -131,19 +134,24 @@ function formatError(message) {
   return `create-quiver: ${localizeParserMessage(message)}`;
 }
 
-function emitAiApprovalJsonFailure(task, error) {
-  process.stdout.write(`${JSON.stringify({
+function emitJsonFailure(task, error, fallbackCode = 'COMMAND_FAILED') {
+  const payload = redactSensitiveValue({
     schema_version: 1,
     task,
     ok: false,
     status: 'error',
-    code: error?.code || 'APPROVAL_COMMAND_FAILED',
+    code: error?.code || fallbackCode,
     error: {
-      message: String(error?.message || 'Approval command failed.'),
+      message: String(error?.message || 'Command failed.'),
       details: error?.details || {},
     },
-  }, null, 2)}\n`);
+  }, { projectRoot: process.cwd() });
+  process.stdout.write(`${JSON.stringify(payload, null, 2)}\n`);
   process.exitCode = 1;
+}
+
+function emitAiApprovalJsonFailure(task, error) {
+  emitJsonFailure(task, error, 'APPROVAL_COMMAND_FAILED');
 }
 
 function helpCatalog(language = DEFAULT_LANGUAGE) {
@@ -282,6 +290,7 @@ const COMMAND_HELP_GROUPS = [
       ['spec status', 'Show spec worktree, branch, slice-00 state, and pending slices.'],
       ['spec validate', 'Validate spec docs, slices, briefs, evidence, status, dependencies, and safe paths.'],
       ['spec close', 'Close a merged clean spec worktree and guide local sync.'],
+      ['findings transfer|disposition', 'Transfer one finding or atomically apply a validated disposition batch.'],
       ['slice start|check|pr|scope|cleanup|refresh-active', 'Canonical namespace for slice lifecycle, validation, scope, and board commands.'],
       ['handoff check|new', 'Canonical namespace for validating or scaffolding handoff artifacts.'],
       ['start-slice', 'Start work on one slice and mark it active.'],
@@ -376,6 +385,7 @@ function printUsage(language = DEFAULT_LANGUAGE) {
   npx create-quiver spec status <spec-dir>
   npx create-quiver spec validate <spec-dir>
   npx create-quiver spec close <spec-dir>
+  npx create-quiver findings <transfer|disposition> [options]
   npx create-quiver slice <start|check|pr|scope|cleanup|refresh-active> [options]
   npx create-quiver handoff <check|new> [options]
   npx create-quiver evidence <run|list|show> [options]
@@ -442,6 +452,14 @@ ${helpText(help, 'headings', 'options', 'Options:')}
       --conditions-file <file>
                               ${optionDescription(help, 'Canonical condition disposition envelope for approved-with-conditions')}
       --reason-file <file>    ${optionDescription(help, 'Repository-relative reason file for approved-with-conditions')}
+      --finding <id>          ${optionDescription(help, 'Canonical finding id for findings transfer')}
+      --to <target>           ${optionDescription(help, 'Canonical phase or exact-one slice target for findings transfer')}
+      --criterion-file <file> ${optionDescription(help, 'Repository-relative UTF-8 criterion source for finding transfer')}
+      --acceptance-ref <ref>  ${optionDescription(help, 'Acceptance reference when it cannot be inferred uniquely')}
+      --evidence-obligation <text>
+                              ${optionDescription(help, 'Required downstream evidence; repeat for multiple obligations')}
+      --supersedes <id>       ${optionDescription(help, 'Current disposition id explicitly replaced by this transfer')}
+      --file <file>           ${optionDescription(help, 'Repository-relative JSON batch for findings disposition')}
       --run <id>              ${optionDescription(help, 'AI lifecycle run id')}
       --ssh-host-alias <name> ${optionDescription(help, 'SSH host alias to validate for prepare or AI commands')}
       --identity-file <path>  ${optionDescription(help, 'SSH identity file to validate for prepare or AI commands')}
@@ -642,6 +660,14 @@ function parseArgs(argv, options = {}) {
     specCommand: '',
     sliceCommand: '',
     handoffCommand: '',
+    findingsCommand: '',
+    findingId: '',
+    findingTarget: '',
+    criterionFile: '',
+    acceptanceRef: '',
+    evidenceObligations: [],
+    dispositionSupersedes: '',
+    findingsFile: '',
     legacyAliasCommand: '',
     demoCommand: '',
     demoName: '',
@@ -669,6 +695,9 @@ function parseArgs(argv, options = {}) {
     }
     if (result.mode === 'evidence') {
       result.evidenceCommand = args.shift() || '';
+    }
+    if (result.mode === 'findings') {
+      result.findingsCommand = args.shift() || '';
     }
     if (result.mode === 'demo') {
       result.demoCommand = args.shift() || '';
@@ -1188,6 +1217,69 @@ function parseArgs(argv, options = {}) {
       continue;
     }
 
+    if (arg === '--finding') {
+      const value = args[++index];
+      if (!value || String(value).startsWith('--')) {
+        throw new Error(formatError('missing value for --finding'));
+      }
+      result.findingId = value;
+      continue;
+    }
+
+    if (arg === '--to') {
+      const value = args[++index];
+      if (!value || String(value).startsWith('--')) {
+        throw new Error(formatError('missing value for --to'));
+      }
+      result.findingTarget = value;
+      continue;
+    }
+
+    if (arg === '--criterion-file') {
+      const value = args[++index];
+      if (!value || String(value).startsWith('--')) {
+        throw new Error(formatError('missing value for --criterion-file'));
+      }
+      result.criterionFile = value;
+      continue;
+    }
+
+    if (arg === '--acceptance-ref') {
+      const value = args[++index];
+      if (!value || String(value).startsWith('--')) {
+        throw new Error(formatError('missing value for --acceptance-ref'));
+      }
+      result.acceptanceRef = value;
+      continue;
+    }
+
+    if (arg === '--evidence-obligation') {
+      const value = args[++index];
+      if (!value || String(value).startsWith('--')) {
+        throw new Error(formatError('missing value for --evidence-obligation'));
+      }
+      result.evidenceObligations.push(value);
+      continue;
+    }
+
+    if (arg === '--supersedes') {
+      const value = args[++index];
+      if (!value || String(value).startsWith('--')) {
+        throw new Error(formatError('missing value for --supersedes'));
+      }
+      result.dispositionSupersedes = value;
+      continue;
+    }
+
+    if (arg === '--file') {
+      const value = args[++index];
+      if (!value || String(value).startsWith('--')) {
+        throw new Error(formatError('missing value for --file'));
+      }
+      result.findingsFile = value;
+      continue;
+    }
+
     if (arg === '--run') {
       const value = args[++index];
       if (!value || String(value).startsWith('--')) {
@@ -1509,6 +1601,38 @@ function parseArgs(argv, options = {}) {
     result.targetDir = positional.shift() || '';
     if (!result.targetDir) {
       throw new Error(formatError(`handoff ${result.handoffCommand} requires ${result.handoffCommand === 'new' ? 'a spec slug' : 'a handoff or brief path'}`));
+    }
+  } else if (result.mode === 'findings') {
+    if (!result.findingsCommand && positional.length > 0) {
+      result.findingsCommand = positional.shift();
+    }
+    if (!SUPPORTED_FINDINGS_COMMANDS.has(result.findingsCommand)) {
+      throw new Error(formatError(`unsupported findings subcommand: ${result.findingsCommand || '(missing)'}. Supported tasks: transfer, disposition`));
+    }
+    if (positional.length > 0) {
+      throw new Error(formatError('findings does not accept positional arguments'));
+    }
+    if (result.findingsCommand === 'transfer') {
+      const missing = [
+        ['--finding', result.findingId],
+        ['--to', result.findingTarget],
+        ['--criterion-file', result.criterionFile],
+      ].filter(([, value]) => !value).map(([flag]) => flag);
+      if (result.evidenceObligations.length === 0) missing.push('--evidence-obligation');
+      if (missing.length > 0) {
+        throw new Error(formatError(`findings transfer requires ${missing.join(', ')}`));
+      }
+      if (result.findingsFile) {
+        throw new Error(formatError('findings transfer does not accept --file'));
+      }
+    } else {
+      if (!result.findingsFile) {
+        throw new Error(formatError('findings disposition requires --file <file>'));
+      }
+      if (result.findingId || result.findingTarget || result.criterionFile
+          || result.acceptanceRef || result.evidenceObligations.length > 0 || result.dispositionSupersedes) {
+        throw new Error(formatError('findings disposition reads per-finding fields from --file'));
+      }
     }
   } else if (result.mode === 'spec') {
     if (!result.specCommand && positional.length > 0) {
@@ -3660,6 +3784,32 @@ async function run(argv) {
     return;
   }
 
+  if (args.mode === 'findings') {
+    try {
+      await runFindings(process.cwd(), {
+        acceptanceRef: args.acceptanceRef || undefined,
+        command: args.findingsCommand,
+        criterionFile: args.criterionFile || undefined,
+        dryRun: args.dryRun,
+        evidenceObligations: args.evidenceObligations,
+        file: args.findingsFile || undefined,
+        findingId: args.findingId || undefined,
+        json: args.json,
+        runId: args.aiRunId || undefined,
+        supersedes: args.dispositionSupersedes || undefined,
+        target: args.findingTarget || undefined,
+      });
+    } catch (error) {
+      if (!args.json) throw error;
+      emitJsonFailure(
+        args.findingsCommand === 'transfer' ? 'findings-transfer' : 'findings-disposition',
+        error,
+        'DISPOSITION_UNRESOLVED',
+      );
+    }
+    return;
+  }
+
   if (args.mode === 'ai') {
     if (!args.aiCommand) {
       throw new Error(formatError('missing ai subcommand. Use: npx create-quiver ai analyze-project | onboard | prepare-context | run | active-slice | status | resume | inspect | export | specs | slices | models | trace | plan | revise | repair-plan | review-plan | approve | approval | approvals | agent | prompt-slice | execute-slice | execute-plan | doctor | pr'));
@@ -4024,19 +4174,26 @@ async function run(argv) {
     }
 
     if (args.aiCommand === 'pr') {
-      await runAiPr(process.cwd(), {
-        baseBranch: args.baseBranchExplicit ? args.aiBaseBranch : '',
-        create: args.aiCreate,
-        dryRun: args.dryRun,
-        input: args.aiInput || undefined,
-        interactive: args.interactive,
-        language: args.language,
-        remote: args.aiRemote || undefined,
-        review: args.review,
-        sshHostAlias: args.aiSshHostAlias || undefined,
-        identityFile: args.aiIdentityFile || undefined,
-        title: args.aiTitle || undefined,
-      });
+      try {
+        await runAiPr(process.cwd(), {
+          baseBranch: args.baseBranchExplicit ? args.aiBaseBranch : '',
+          create: args.aiCreate,
+          dryRun: args.dryRun,
+          input: args.aiInput || undefined,
+          interactive: args.interactive,
+          json: args.json,
+          language: args.language,
+          remote: args.aiRemote || undefined,
+          review: args.review,
+          runId: args.aiRunId || undefined,
+          sshHostAlias: args.aiSshHostAlias || undefined,
+          identityFile: args.aiIdentityFile || undefined,
+          title: args.aiTitle || undefined,
+        });
+      } catch (error) {
+        if (!args.json) throw error;
+        emitJsonFailure('ai-pr', error, 'PR_READINESS_FAILED');
+      }
       return;
     }
 
@@ -4131,23 +4288,37 @@ async function run(argv) {
   }
 
   if (args.mode === 'check-slice') {
-    checkSliceReadiness(args.targetDir, {
-      baseBranch: args.baseBranchExplicit ? args.aiBaseBranch : '',
-      gate: args.gate,
-      language: args.language,
-      local: args.checkSliceLocal,
-      remote: args.aiRemote,
-      strictOverlap: args.strictOverlap,
-    });
+    try {
+      checkSliceReadiness(args.targetDir, {
+        baseBranch: args.baseBranchExplicit ? args.aiBaseBranch : '',
+        gate: args.gate,
+        json: args.json,
+        language: args.language,
+        local: args.checkSliceLocal,
+        remote: args.aiRemote,
+        runId: args.aiRunId || undefined,
+        strictOverlap: args.strictOverlap,
+      });
+    } catch (error) {
+      if (!args.json) throw error;
+      emitJsonFailure('check-slice', error, 'SLICE_READINESS_FAILED');
+    }
     return;
   }
 
   if (args.mode === 'check-pr') {
-    checkPrReadiness(args.targetDir, {
-      baseBranch: args.baseBranchExplicit ? args.aiBaseBranch : '',
-      language: args.language,
-      remote: args.aiRemote,
-    });
+    try {
+      checkPrReadiness(args.targetDir, {
+        baseBranch: args.baseBranchExplicit ? args.aiBaseBranch : '',
+        json: args.json,
+        language: args.language,
+        remote: args.aiRemote,
+        runId: args.aiRunId || undefined,
+      });
+    } catch (error) {
+      if (!args.json) throw error;
+      emitJsonFailure('check-pr', error, 'PR_READINESS_FAILED');
+    }
     return;
   }
 
@@ -4211,6 +4382,7 @@ async function run(argv) {
         language: args.language,
         methodology: args.methodology || undefined,
         review: args.review,
+        runId: args.aiRunId || undefined,
         specSlug: args.specSlug || undefined,
         withPlanner: args.withPlanner,
       });

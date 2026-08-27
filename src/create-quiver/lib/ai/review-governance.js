@@ -17,6 +17,8 @@ const {
   actorIdentitySchema,
   approvalDecisionSchema,
   canonicalFindingSchema,
+  conditionDispositionEnvelopeSchema,
+  criterionBindingSchema,
   providerFindingSchema,
   providerReviewSchema,
   governanceConfigSchema,
@@ -37,6 +39,17 @@ const CURRENT_PHASE_REVISION_REQUIRED = 'CURRENT_PHASE_REVISION_REQUIRED';
 const DISPOSITION_UNRESOLVED = 'DISPOSITION_UNRESOLVED';
 const APPROVAL_BINDING_MISMATCH = 'APPROVAL_BINDING_MISMATCH';
 const REPRESENTATION_MISMATCH = 'REPRESENTATION_MISMATCH';
+const TRANSFER_DISPOSITION_ACTIONS = Object.freeze([
+  'transfer-to-spec',
+  'transfer-to-slice',
+  'transfer-to-pr',
+]);
+const TRANSFER_BLOCKER_DISPOSITION_ACTIONS = Object.freeze([
+  ...TRANSFER_DISPOSITION_ACTIONS,
+  'create-follow-up',
+  'optional',
+  'revise-plan',
+]);
 
 const PROTECTED_CRITICAL_CATEGORIES = Object.freeze([
   'security',
@@ -349,6 +362,227 @@ function stableStringify(value) {
 
 function canonicalSha256(value) {
   return `sha256:${crypto.createHash('sha256').update(stableStringify(value), 'utf8').digest('hex')}`;
+}
+
+function buildCriterionBinding(options = {}) {
+  const content = String(options.content ?? '');
+  const sourceBytes = Buffer.isBuffer(options.sourceBytes)
+    ? options.sourceBytes
+    : Buffer.from(content, 'utf8');
+  const binding = {
+    acceptance_ref: String(options.acceptanceRef || '').trim(),
+    content,
+    source_path: String(options.sourcePath || '').trim(),
+    criterion_sha256: `sha256:${crypto.createHash('sha256').update(sourceBytes).digest('hex')}`,
+  };
+  const parsed = criterionBindingSchema.safeParse(binding);
+  if (!parsed.success) {
+    throw new GovernanceError(
+      DISPOSITION_UNRESOLVED,
+      'Criterion binding is invalid.',
+      { issues: formatSchemaIssues(parsed.error.issues) },
+    );
+  }
+  return parsed.data;
+}
+
+function normalizeConditionDispositionInput(value, correlation = {}) {
+  if (!isPlainObject(value)) {
+    throw new GovernanceError(DISPOSITION_UNRESOLVED, 'Finding disposition input must be a JSON object.');
+  }
+
+  if (Array.isArray(value.dispositions)) {
+    return {
+      schema_version: value.schema_version,
+      run_id: value.run_id,
+      review_id: value.review_id,
+      policy_version: value.policy_version,
+      policy_digest: value.policy_digest,
+      dispositions: value.dispositions.map((item) => cloneJsonValue(item)),
+    };
+  }
+
+  const reserved = new Set(['schema_version', 'run_id', 'review_id', 'policy_version', 'policy_digest']);
+  const entries = Object.entries(value).filter(([key]) => !reserved.has(key));
+  if (entries.length === 0) {
+    throw new GovernanceError(DISPOSITION_UNRESOLVED, 'Finding disposition input contains no dispositions.');
+  }
+  const dispositions = entries.map(([findingId, item]) => {
+    if (!isPlainObject(item)) {
+      throw new GovernanceError(
+        DISPOSITION_UNRESOLVED,
+        `Disposition '${findingId}' must be a JSON object.`,
+        { finding_id: findingId },
+      );
+    }
+    if (item.finding_id && item.finding_id !== findingId) {
+      throw new GovernanceError(
+        DISPOSITION_STALE,
+        `Disposition key '${findingId}' does not match finding_id '${item.finding_id}'.`,
+        { finding_id: findingId, declared_finding_id: item.finding_id },
+      );
+    }
+    return { ...cloneJsonValue(item), finding_id: findingId };
+  });
+
+  return {
+    schema_version: value.schema_version ?? correlation.schemaVersion ?? 1,
+    run_id: value.run_id ?? correlation.runId,
+    review_id: value.review_id ?? correlation.reviewId,
+    policy_version: value.policy_version ?? correlation.policyVersion,
+    policy_digest: value.policy_digest ?? correlation.policyDigest,
+    dispositions,
+  };
+}
+
+function transferTargetFailure(message, details = {}) {
+  throw new GovernanceError(DISPOSITION_UNRESOLVED, message, details);
+}
+
+function normalizeTransferTarget(target, options = {}) {
+  const action = options.action;
+  const sliceIds = options.sliceIds || [];
+  const raw = String(target || '').trim();
+  const uniqueSliceIds = [...new Set((sliceIds || []).map((item) => String(item || '').trim()).filter(Boolean))]
+    .sort(compareCodeUnits);
+
+  if (action === 'transfer-to-spec') {
+    if (raw === 'phase:spec' || /^spec:[^:]+$/.test(raw)) return 'phase:spec';
+    return transferTargetFailure('transfer-to-spec requires target phase:spec.', { action, target: raw });
+  }
+  if (action === 'transfer-to-pr') {
+    if (raw === 'phase:pr-review' || /^pr:[^:]+$/.test(raw)) return 'phase:pr-review';
+    return transferTargetFailure('transfer-to-pr requires target phase:pr-review.', { action, target: raw });
+  }
+  if (action !== 'transfer-to-slice') {
+    return raw;
+  }
+
+  let reference = raw;
+  if (reference.startsWith('slice:')) reference = reference.slice('slice:'.length);
+  if (/^\d+$/.test(reference)) reference = `slice-${reference.padStart(2, '0')}`;
+
+  const exact = uniqueSliceIds.filter((sliceId) => sliceId === reference);
+  const alias = /^slice-\d+$/.test(reference)
+    ? uniqueSliceIds.filter((sliceId) => sliceId === reference || sliceId.startsWith(`${reference}-`))
+    : [];
+  const matches = exact.length > 0 ? exact : alias;
+  if (matches.length !== 1) {
+    return transferTargetFailure(
+      matches.length === 0
+        ? `Transfer target '${raw || '<missing>'}' does not resolve to an existing slice.`
+        : `Transfer target '${raw}' resolves to more than one slice.`,
+      { action, target: raw, matches },
+    );
+  }
+  return `slice:${matches[0]}`;
+}
+
+function validateTransferDispositionSet(options = {}) {
+  const findings = Array.isArray(options.findings) ? options.findings : [];
+  const findingsById = new Map(findings.map((finding) => [finding.finding_id, finding]));
+  const policy = resolveConditionPolicy(options);
+  const input = Array.isArray(options.dispositions) ? options.dispositions : [];
+  const findingIds = input.map((item) => item?.finding_id).filter(Boolean);
+  if (new Set(findingIds).size !== findingIds.length) {
+    throw new GovernanceError(DISPOSITION_DUPLICATE, 'A batch cannot disposition the same finding more than once.');
+  }
+
+  const criterionKeys = new Set();
+  const normalized = input.map((item) => {
+    const disposition = cloneJsonValue(item);
+    const finding = findingsById.get(disposition.finding_id);
+    if (!finding || finding.state !== 'open') {
+      throw new GovernanceError(
+        DISPOSITION_UNRESOLVED,
+        `Disposition references unknown or closed finding '${disposition.finding_id || '<missing>'}'.`,
+        { finding_id: disposition.finding_id || null },
+      );
+    }
+    if (!dispositionHasEvidence(disposition)) {
+      throw new GovernanceError(
+        DISPOSITION_UNRESOLVED,
+        `Finding '${finding.finding_id}' requires at least one unique evidence obligation.`,
+        { finding_id: finding.finding_id },
+      );
+    }
+
+    if (TRANSFER_DISPOSITION_ACTIONS.includes(disposition.action)) {
+      disposition.target = normalizeTransferTarget(disposition.target, {
+        action: disposition.action,
+        sliceIds: options.sliceIds,
+      });
+      const binding = criterionBindingSchema.safeParse(disposition.criterion_binding);
+      if (!binding.success) {
+        throw new GovernanceError(
+          DISPOSITION_UNRESOLVED,
+          `Finding '${finding.finding_id}' requires a valid criterion binding.`,
+          { finding_id: finding.finding_id, issues: formatSchemaIssues(binding.error.issues) },
+        );
+      }
+      if (!finding.acceptance_refs.includes(binding.data.acceptance_ref)) {
+        throw new GovernanceError(
+          DISPOSITION_UNRESOLVED,
+          `Criterion reference '${binding.data.acceptance_ref}' is unknown for finding '${finding.finding_id}'.`,
+          { finding_id: finding.finding_id, acceptance_ref: binding.data.acceptance_ref },
+        );
+      }
+      const criterionKey = `${finding.finding_id}:${binding.data.acceptance_ref}`;
+      if (criterionKeys.has(criterionKey)) {
+        throw new GovernanceError(
+          DISPOSITION_DUPLICATE,
+          `Criterion '${binding.data.acceptance_ref}' is duplicated for finding '${finding.finding_id}'.`,
+          { finding_id: finding.finding_id, acceptance_ref: binding.data.acceptance_ref },
+        );
+      }
+      criterionKeys.add(criterionKey);
+      disposition.criterion_binding = binding.data;
+    }
+
+    if (!dispositionTargetIsValid(disposition)) {
+      throw new GovernanceError(
+        DISPOSITION_UNRESOLVED,
+        `Disposition target is invalid for finding '${finding.finding_id}'.`,
+        { finding_id: finding.finding_id, action: disposition.action },
+      );
+    }
+    if (policy
+        && disposition.action !== 'revise-plan'
+        && matchingConditionDispositionRules(policy, finding, disposition).length === 0) {
+      throw new GovernanceError(
+        DISPOSITION_UNRESOLVED,
+        `Disposition '${disposition.action}' is not allowed for finding '${finding.finding_id}'.`,
+        { finding_id: finding.finding_id, action: disposition.action },
+      );
+    }
+    if (TRANSFER_DISPOSITION_ACTIONS.includes(disposition.action)
+        && finding.severity === 'critical'
+        && PROTECTED_CRITICAL_CATEGORIES.includes(finding.category)) {
+      throw new GovernanceError(
+        PROTECTED_CRITICAL_REQUIRES_BREAK_GLASS,
+        `Protected critical finding '${finding.finding_id}' cannot be transferred in v58.`,
+        { finding_id: finding.finding_id },
+      );
+    }
+    return disposition;
+  });
+
+  const envelope = conditionDispositionEnvelopeSchema.safeParse({
+    schema_version: options.schemaVersion ?? 1,
+    run_id: options.runId,
+    review_id: options.reviewId,
+    policy_version: options.policyVersion,
+    policy_digest: options.policyDigest,
+    dispositions: normalized,
+  });
+  if (!envelope.success) {
+    throw new GovernanceError(
+      DISPOSITION_UNRESOLVED,
+      'Normalized finding dispositions are invalid.',
+      { issues: formatSchemaIssues(envelope.error.issues) },
+    );
+  }
+  return envelope.data.dispositions;
 }
 
 function computeApprovalProfileDigest(profile = {}, binding = {}) {
@@ -915,6 +1149,9 @@ function dispositionTargetIsValid(disposition) {
   if (['optional', 'accept-risk'].includes(disposition.action)) {
     return !hasTarget && !hasTargetIssue;
   }
+  if (['revise-requirement', 'revise-acceptance', 'revise-plan'].includes(disposition.action)) {
+    return !hasTarget && !hasTargetIssue;
+  }
   return false;
 }
 
@@ -1053,12 +1290,17 @@ function evaluateConditionEligibility(options = {}) {
   }
   for (const [findingId, currents] of currentByFinding.entries()) {
     const disposition = currents[0];
+    const dispositionAuthorization = disposition.authorization;
+    const approvalAuthorized = dispositionAuthorization?.action === 'approve-with-conditions'
+      && disposition.actor_id === actorId;
+    const transferAuthorized = dispositionAuthorization?.action === 'transfer-blocker'
+      && TRANSFER_BLOCKER_DISPOSITION_ACTIONS.includes(disposition.action);
     const canonicalAuthorizationMismatch = disposition.disposition_id && (
-      disposition.actor_id !== actorId
-      || disposition.authorization?.actor_id !== actorId
+      dispositionAuthorization?.actor_id !== disposition.actor_id
       || disposition.authorization?.policy_version !== correlation.policyVersion
       || disposition.authorization?.policy_digest !== correlation.policyDigest
       || disposition.authorization?.independence_result !== 'passed'
+      || (!approvalAuthorized && !transferAuthorized)
     );
     if (canonicalAuthorizationMismatch) {
       return makeConditionEligibilityResult(DISPOSITION_UNAUTHORIZED, {
@@ -1431,9 +1673,11 @@ module.exports = {
   PROTECTED_CRITICAL_REQUIRES_BREAK_GLASS,
   REPRESENTATION_MISMATCH,
   TECHNICAL_PLAN_BLOCKING_CATEGORIES,
+  TRANSFER_DISPOSITION_ACTIONS,
   assertProviderReviewAggregates,
   assertApprovalBindingParity,
   authorizeGovernanceAction,
+  buildCriterionBinding,
   buildDefaultGovernanceConfig,
   buildConditionedDecisionProjection,
   buildApprovalDecisionRecord,
@@ -1447,12 +1691,15 @@ module.exports = {
   evaluateConditionEligibility,
   hasGovernanceConfig,
   mergeGovernanceConfig,
+  normalizeConditionDispositionInput,
+  normalizeTransferTarget,
   parseProviderReview,
   projectPhaseAwareReview,
   readGovernanceConfig,
   reconcileFindings,
   resolveEffectiveProfile,
   stableStringify,
+  validateTransferDispositionSet,
   validateGovernanceConfig,
   verifyApprovalDecisionRecord,
 };

@@ -1,11 +1,26 @@
 const assert = require('node:assert/strict');
+const crypto = require('node:crypto');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const cp = require('node:child_process');
 const test = require('node:test');
 
-const { checkPrReadiness, checkSliceReadiness } = require('../../src/create-quiver/lib/readiness');
+const {
+  checkPrReadiness,
+  checkSliceReadiness,
+  verifyPrGovernanceReadiness,
+} = require('../../src/create-quiver/lib/readiness');
+const { buildSpecGenerationManifest } = require('../../src/create-quiver/lib/ai/spec-generator');
+const {
+  renderGovernanceTraceability,
+  renderPendingGovernanceBlock,
+} = require('../../src/create-quiver/lib/ai/spec-templates');
+const {
+  buildApprovalDecisionRecord,
+  canonicalSha256,
+  computeApprovalDispositionDigest,
+} = require('../../src/create-quiver/lib/ai/review-governance');
 
 function writeJson(filePath, data) {
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
@@ -15,6 +30,10 @@ function writeJson(filePath, data) {
 function writeText(filePath, text) {
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
   fs.writeFileSync(filePath, text);
+}
+
+function sha256Text(text) {
+  return `sha256:${crypto.createHash('sha256').update(text, 'utf8').digest('hex')}`;
 }
 
 function makeRepo(structure) {
@@ -156,6 +175,230 @@ function prBody() {
     '- None',
     '',
   ].join('\n');
+}
+
+function governanceBlock(findingIds = [], target = 'slice:slice-01-alpha') {
+  const entries = findingIds.map((findingId) => governanceEntry(findingId, target));
+  return `${renderPendingGovernanceBlock(entries).join('\n')}\n`;
+}
+
+function governanceTraceability(manifest, findingIds = null) {
+  const projectedIds = findingIds || manifest.findings.map((finding) => finding.finding_id);
+  const entries = projectedIds.map((findingId) => {
+    const finding = manifest.findings.find((item) => item.finding_id === findingId)
+      || { finding_id: findingId, state: 'open' };
+    const disposition = manifest.dispositions.find((item) => item.finding_id === findingId)
+      || governanceEntry(findingId).disposition;
+    return {
+      finding,
+      disposition,
+      target: disposition.target || disposition.target_issue || null,
+      criterion_binding: disposition.criterion_binding || null,
+    };
+  });
+  return `${renderGovernanceTraceability(manifest, entries).join('\n')}\n`;
+}
+
+function governanceManifest(findingIds = ['F-001']) {
+  const dispositionIds = findingIds.map((findingId) => `DISP-${findingId}`);
+  const manifest = {
+    schema_version: 1,
+    kind: 'quiver-planning-governance',
+    source: { run_id: 'run-test', path: '.quiver/runs/run-test/review-governance.json', sha256: `sha256:${'1'.repeat(64)}` },
+    decision: {
+      decision_id: 'DEC-001',
+      decision_sha256: `sha256:${'3'.repeat(64)}`,
+      phase: 'technical-plan',
+      publication_state: 'final',
+      decision: 'approved-with-conditions',
+      disposition_ids: dispositionIds,
+    },
+    findings: findingIds.map((findingId) => ({ finding_id: findingId, state: 'open' })),
+    dispositions: findingIds.map((findingId) => ({
+      disposition_id: `DISP-${findingId}`,
+      finding_id: findingId,
+      action: 'transfer-to-slice',
+      target: 'slice:slice-01-alpha',
+      evidence_obligations: ['Record directed test evidence.'],
+      state: 'current',
+      criterion_binding: { acceptance_ref: 'AC-11' },
+    })),
+  };
+  return { ...manifest, manifest_sha256: canonicalSha256(manifest) };
+}
+
+function governanceEntry(findingId = 'F-001', target = 'slice:slice-01-alpha', extra = {}) {
+  return {
+    finding: {
+      finding_id: findingId,
+      state: extra.state || 'open',
+    },
+    disposition: {
+      disposition_id: `DISP-${findingId}`,
+      action: target === 'phase:pr-review' ? 'transfer-to-pr' : 'transfer-to-slice',
+      target,
+      evidence_obligations: ['Record directed test evidence.'],
+      state: extra.dispositionState || 'current',
+      criterion_binding: { acceptance_ref: 'AC-11' },
+    },
+    target,
+    criterion_binding: { acceptance_ref: 'AC-11' },
+    pending: extra.pending ?? true,
+    resolved: extra.resolved ?? false,
+    accepted: extra.accepted ?? true,
+  };
+}
+
+function governancePlanning(sliceId, manifest, findingIds = ['F-001']) {
+  return {
+    schema_version: 1,
+    manifest: '../../GOVERNANCE_MANIFEST.json',
+    manifest_sha256: manifest.manifest_sha256,
+    target: { kind: 'slice', id: sliceId },
+    pending_finding_ids: findingIds,
+  };
+}
+
+function governanceGateOptions(manifest, entries, overrides = {}) {
+  return {
+    governanceEntriesForTargetFn: (value, target) => entries.filter((entry) => (
+      target == null || entry.disposition.target === target
+    )),
+    verifyGovernanceManifestParityFn: ({ specRoot }) => ({
+      manifest,
+      manifestPath: path.join(specRoot, 'GOVERNANCE_MANIFEST.json'),
+      specRoot,
+    }),
+    ...overrides,
+  };
+}
+
+function realCanonicalGovernanceFixture(projectRoot) {
+  const runId = 'run-real-readiness';
+  const reviewId = 'R-001';
+  const policyDigest = `sha256:${'a'.repeat(64)}`;
+  const artifactPath = `.quiver/runs/${runId}/approvals/technical-plan/v001.md`;
+  const source = {
+    spec: {
+      slug: 'spec-real',
+      title: 'Real governed readiness fixture',
+      ticket: 'QUIVER-REAL',
+      objective: 'Exercise the canonical governance parity reader.',
+      slices: [{
+        slice_id: 'slice-01-alpha',
+        title: 'Alpha',
+        objective: 'Validate real governance parity.',
+        acceptance: ['AC-01 validates canonical parity.'],
+        files: ['docs/example.md'],
+      }],
+    },
+  };
+  const artifactText = `${JSON.stringify(source, null, 2)}\n`;
+  writeText(path.join(projectRoot, artifactPath), artifactText);
+  const review = {
+    schema_version: 1,
+    review_id: reviewId,
+    run_id: runId,
+    source_file: artifactPath,
+    source_kind: 'draft',
+    source_version: 1,
+    raw_artifact_path: null,
+    output_source: 'fixture',
+    provider_finding_ids: [],
+    finding_ids: [],
+    requested_profile: 'fast-delivery',
+    effective_profile: 'fast-delivery',
+    policy_version: 'v58-test',
+    policy_digest: policyDigest,
+    provider_recommendation: 'approve',
+    provider_blocking: false,
+    projection: {
+      blocking: false,
+      approval_recommendation: 'approve',
+      required_fixes: [],
+      plan_required_fixes: [],
+      slice_required_fixes: [],
+      pr_required_fixes: [],
+      follow_ups: [],
+      optional_hardening: [],
+      current_blockers: [],
+      later_phase_transfers: [],
+    },
+    reviewed_at: '2026-08-27T12:00:00.000Z',
+  };
+  const authorization = {
+    action: 'approve',
+    policy_version: 'v58-test',
+    policy_digest: policyDigest,
+    actor_id: 'person:test',
+    provider_actor_id: 'local:test',
+    provider_subject: 'local:test',
+    verified: true,
+    binding: 'local:test',
+    matched_actor_ids: ['person:test'],
+    matched_roles: ['approver'],
+    independence: 'none',
+    independence_result: 'passed',
+    identity_label: null,
+  };
+  const decision = buildApprovalDecisionRecord({
+    schema_version: 1,
+    decision_id: 'A-001',
+    run_id: runId,
+    review_id: reviewId,
+    phase: 'technical-plan',
+    decision: 'approved',
+    publication_state: 'final',
+    candidate_id: null,
+    evaluation_id: null,
+    version: 1,
+    artifact_path: artifactPath,
+    artifact_sha256: sha256Text(artifactText),
+    input_path: artifactPath,
+    input_sha256: sha256Text(artifactText),
+    review_sha256: canonicalSha256(review),
+    requested_profile: 'fast-delivery',
+    effective_profile: 'fast-delivery',
+    profile_sha256: `sha256:${'b'.repeat(64)}`,
+    policy_version: 'v58-test',
+    policy_digest: policyDigest,
+    finding_count: 0,
+    criterion_count: 1,
+    disposition_ids: [],
+    disposition_sha256: computeApprovalDispositionDigest([]),
+    reason_path: null,
+    reason_sha256: null,
+    actor_id: 'person:test',
+    authorization,
+    reviewer_recommendation: 'approve',
+    reviewer_approved: null,
+    recorded_at: '2026-08-27T12:01:00.000Z',
+  });
+  const governanceState = {
+    schema_version: 1,
+    run_id: runId,
+    next_finding_number: 1,
+    current_review_id: reviewId,
+    reviews: [review],
+    findings: [],
+    dispositions: [],
+    condition_evaluations: [],
+    conditioned_candidates: [],
+    decisions: [decision],
+    updated_at: '2026-08-27T12:01:00.000Z',
+  };
+  writeJson(path.join(projectRoot, `.quiver/runs/${runId}/review-governance.json`), governanceState);
+  const generated = buildSpecGenerationManifest({
+    inputText: artifactText,
+    inputPath: artifactPath,
+    repoRoot: projectRoot,
+    governanceContext: {
+      canonicalRoot: projectRoot,
+      governanceState,
+      decision,
+    },
+  });
+  return { artifactPath, generated, governanceState, runId };
 }
 
 function readySlice(ref, extra = {}) {
@@ -518,5 +761,486 @@ test('check-slice requires a parallel_safe_reason when parallel_safe is never', 
     })));
   } finally {
     repo.cleanup();
+  }
+});
+
+test('check-slice projects governed pending findings from one verified manifest', () => {
+  const manifest = governanceManifest();
+  const entries = [governanceEntry()];
+  const slice = {
+    ...readySlice('spec-a/slice-01-alpha'),
+    planning_governance: governancePlanning('slice-01-alpha', manifest),
+  };
+  const project = makeProject({
+    'specs/spec-a/SPEC.md': governanceTraceability(manifest),
+    'specs/spec-a/STATUS.md': '# status\n',
+    'specs/spec-a/EVIDENCE_REPORT.md': '# evidence\n',
+    'specs/spec-a/GOVERNANCE_MANIFEST.json': manifest,
+    'specs/spec-a/slices/slice-01-alpha/EXECUTION_BRIEF.md': governanceBlock(['F-001']),
+    'specs/spec-a/slices/slice-01-alpha/CLOSURE_BRIEF.md': governanceBlock(['F-001']),
+    'specs/spec-a/slices/slice-01-alpha/slice.json': slice,
+  });
+
+  try {
+    const report = withRepoCwd(project.root, () => checkSliceReadiness(
+      'specs/spec-a/slices/slice-01-alpha/slice.json',
+      {
+        ...governanceGateOptions(manifest, entries),
+        emitReport: false,
+        json: true,
+        local: true,
+      },
+    ));
+    assert.equal(report.governance.status, 'verified');
+    assert.equal(report.governance.pending_count, 1);
+    assert.deepEqual(report.governance.findings.map((finding) => finding.finding_id), ['F-001']);
+    assert.equal(report.governance.findings[0].accepted, true);
+  } finally {
+    project.cleanup();
+  }
+});
+
+test('check-slice verifies a real manifest self-digest against the primary canonical run store', () => {
+  const project = makeProject({});
+
+  try {
+    const fixture = realCanonicalGovernanceFixture(project.root);
+    const manifest = fixture.generated.governance;
+    const slicePath = 'specs/spec-real/slices/slice-01-alpha/slice.json';
+    writeJson(path.join(project.root, 'specs/spec-real/GOVERNANCE_MANIFEST.json'), manifest);
+    writeText(path.join(project.root, 'specs/spec-real/SPEC.md'), governanceTraceability(manifest, []));
+    writeText(path.join(project.root, 'specs/spec-real/STATUS.md'), '# status\n');
+    writeText(path.join(project.root, 'specs/spec-real/EVIDENCE_REPORT.md'), '# evidence\n');
+    writeText(path.join(project.root, 'specs/spec-real/slices/slice-01-alpha/EXECUTION_BRIEF.md'), governanceBlock([]));
+    writeText(path.join(project.root, 'specs/spec-real/slices/slice-01-alpha/CLOSURE_BRIEF.md'), governanceBlock([]));
+    writeJson(path.join(project.root, slicePath), {
+      ...readySlice('spec-real/slice-01-alpha'),
+      planning_governance: governancePlanning('slice-01-alpha', manifest, []),
+    });
+
+    const report = withRepoCwd(project.root, () => checkSliceReadiness(slicePath, {
+      emitReport: false,
+      json: true,
+      local: true,
+      runId: fixture.runId,
+    }));
+    assert.equal(report.governance.run_id, fixture.runId);
+    assert.equal(report.governance.manifest_sha256, manifest.manifest_sha256);
+
+    writeJson(path.join(project.root, 'specs/spec-real/GOVERNANCE_MANIFEST.json'), {
+      ...manifest,
+      manifest_sha256: `sha256:${'f'.repeat(64)}`,
+    });
+    assert.throws(
+      () => withRepoCwd(project.root, () => checkSliceReadiness(slicePath, {
+        local: true,
+        runId: fixture.runId,
+      })),
+      (error) => error.code === 'APPROVAL_BINDING_MISMATCH'
+        && error.details.mismatches.includes('manifest_sha256'),
+    );
+
+    writeJson(path.join(project.root, 'specs/spec-real/GOVERNANCE_MANIFEST.json'), manifest);
+    writeJson(path.join(project.root, `.quiver/runs/${fixture.runId}/review-governance.json`), {
+      ...fixture.governanceState,
+      updated_at: '2026-08-27T12:02:00.000Z',
+    });
+    assert.throws(
+      () => withRepoCwd(project.root, () => checkSliceReadiness(slicePath, {
+        local: true,
+        runId: fixture.runId,
+      })),
+      (error) => error.code === 'APPROVAL_BINDING_MISMATCH'
+        && error.details.mismatches.includes('source.sha256'),
+    );
+  } finally {
+    project.cleanup();
+  }
+});
+
+test('check-slice with an explicit run cannot degrade to legacy when the manifest is absent', () => {
+  const project = makeProject({
+    'specs/spec-a/SPEC.md': '# spec-a\n',
+    'specs/spec-a/STATUS.md': '# status\n',
+    'specs/spec-a/EVIDENCE_REPORT.md': '# evidence\n',
+    'specs/spec-a/slices/slice-01-alpha/EXECUTION_BRIEF.md': '# execution\n',
+    'specs/spec-a/slices/slice-01-alpha/CLOSURE_BRIEF.md': '# closure\n',
+    'specs/spec-a/slices/slice-01-alpha/slice.json': readySlice('spec-a/slice-01-alpha'),
+  });
+
+  try {
+    assert.throws(
+      () => withRepoCwd(project.root, () => checkSliceReadiness(
+        'specs/spec-a/slices/slice-01-alpha/slice.json',
+        { local: true, runId: 'run-required' },
+      )),
+      (error) => error.code === 'REPRESENTATION_MISMATCH'
+        && error.details.mismatches.includes('GOVERNANCE_MANIFEST.json'),
+    );
+  } finally {
+    project.cleanup();
+  }
+});
+
+test('a generated manifest declaration prevents legacy downgrade for slices and PRs', () => {
+  const manifestPath = 'specs/spec-a/GOVERNANCE_MANIFEST.json';
+  const slicePath = 'specs/spec-a/slices/slice-01-alpha/slice.json';
+  const project = makeProject({
+    'specs/spec-a/SPEC.md': '# spec-a\n',
+    'specs/spec-a/STATUS.md': '# status\n',
+    'specs/spec-a/EVIDENCE_REPORT.md': '# evidence\n',
+    'specs/spec-a/pr.md': '# root pr without governance projection\n',
+    'specs/spec-a/slices/slice-00-spec-foundation/slice.json': readySlice(
+      'spec-a/slice-00-spec-foundation',
+      { files: [manifestPath] },
+    ),
+    'specs/spec-a/slices/slice-01-alpha/EXECUTION_BRIEF.md': '# execution\n',
+    'specs/spec-a/slices/slice-01-alpha/CLOSURE_BRIEF.md': '# closure\n',
+    'specs/spec-a/slices/slice-01-alpha/pr.md': '# slice pr without governance projection\n',
+    [slicePath]: readySlice('spec-a/slice-01-alpha'),
+  });
+
+  try {
+    const missingManifest = (error) => error.code === 'REPRESENTATION_MISMATCH'
+      && error.details.mismatches.includes('GOVERNANCE_MANIFEST.json');
+    assert.throws(
+      () => withRepoCwd(project.root, () => checkSliceReadiness(slicePath, { local: true })),
+      missingManifest,
+      'slice readiness',
+    );
+    for (const prPath of [
+      'specs/spec-a/pr.md',
+      'specs/spec-a/slices/slice-01-alpha/pr.md',
+    ]) {
+      assert.throws(
+        () => verifyPrGovernanceReadiness(project.root, path.join(project.root, prPath)),
+        missingManifest,
+        prPath,
+      );
+    }
+  } finally {
+    project.cleanup();
+  }
+});
+
+test('check-slice rejects stale, unknown, and reordered SPEC traceability projections', () => {
+  const manifest = governanceManifest(['F-001', 'F-002']);
+  const entries = [governanceEntry('F-001'), governanceEntry('F-002')];
+  const scenarios = [
+    {
+      name: 'stale digest',
+      code: 'APPROVAL_BINDING_MISMATCH',
+      text: governanceTraceability({ ...manifest, manifest_sha256: `sha256:${'f'.repeat(64)}` }),
+      verify: (error) => error.details.issue === 'stale',
+    },
+    {
+      name: 'unknown row',
+      code: 'REPRESENTATION_MISMATCH',
+      text: governanceTraceability(manifest, ['F-001', 'F-999']),
+      verify: (error) => error.details.unknown_finding_ids.includes('F-999'),
+    },
+    {
+      name: 'row order',
+      code: 'REPRESENTATION_MISMATCH',
+      text: governanceTraceability(manifest, ['F-002', 'F-001']),
+      verify: (error) => error.details.order_mismatch === true,
+    },
+    {
+      name: 'canonical field drift',
+      code: 'REPRESENTATION_MISMATCH',
+      text: governanceTraceability(manifest).replace('(transfer-to-slice)', '(revise-plan)'),
+      verify: (error) => error.details.mismatches.includes('canonical_governance_markdown'),
+    },
+  ];
+
+  for (const scenario of scenarios) {
+    const project = makeProject({
+      'specs/spec-a/SPEC.md': scenario.text,
+      'specs/spec-a/STATUS.md': '# status\n',
+      'specs/spec-a/EVIDENCE_REPORT.md': '# evidence\n',
+      'specs/spec-a/GOVERNANCE_MANIFEST.json': manifest,
+      'specs/spec-a/slices/slice-01-alpha/EXECUTION_BRIEF.md': governanceBlock(['F-001', 'F-002']),
+      'specs/spec-a/slices/slice-01-alpha/CLOSURE_BRIEF.md': governanceBlock(['F-001', 'F-002']),
+      'specs/spec-a/slices/slice-01-alpha/slice.json': {
+        ...readySlice('spec-a/slice-01-alpha'),
+        planning_governance: governancePlanning('slice-01-alpha', manifest, ['F-001', 'F-002']),
+      },
+    });
+
+    try {
+      assert.throws(
+        () => withRepoCwd(project.root, () => checkSliceReadiness(
+          'specs/spec-a/slices/slice-01-alpha/slice.json',
+          { ...governanceGateOptions(manifest, entries), local: true },
+        )),
+        (error) => error.code === scenario.code && scenario.verify(error),
+        scenario.name,
+      );
+    } finally {
+      project.cleanup();
+    }
+  }
+});
+
+test('check-slice rejects omitted and unknown governed finding projections', () => {
+  const manifest = governanceManifest();
+  const entries = [governanceEntry()];
+  for (const scenario of [
+    { name: 'omitted', ids: [], expectedDetail: 'omitted_finding_ids' },
+    { name: 'unknown', ids: ['F-001', 'F-999'], expectedDetail: 'unknown_finding_ids' },
+  ]) {
+    const slice = {
+      ...readySlice('spec-a/slice-01-alpha'),
+      planning_governance: governancePlanning('slice-01-alpha', manifest),
+    };
+    const project = makeProject({
+      'specs/spec-a/SPEC.md': governanceTraceability(manifest),
+      'specs/spec-a/STATUS.md': '# status\n',
+      'specs/spec-a/EVIDENCE_REPORT.md': '# evidence\n',
+      'specs/spec-a/GOVERNANCE_MANIFEST.json': manifest,
+      'specs/spec-a/slices/slice-01-alpha/EXECUTION_BRIEF.md': governanceBlock(scenario.ids),
+      'specs/spec-a/slices/slice-01-alpha/CLOSURE_BRIEF.md': governanceBlock(['F-001']),
+      'specs/spec-a/slices/slice-01-alpha/slice.json': slice,
+    });
+
+    try {
+      assert.throws(
+        () => withRepoCwd(project.root, () => checkSliceReadiness(
+          'specs/spec-a/slices/slice-01-alpha/slice.json',
+          { ...governanceGateOptions(manifest, entries), local: true },
+        )),
+        (error) => error.code === 'REPRESENTATION_MISMATCH'
+          && Array.isArray(error.details[scenario.expectedDetail])
+          && error.details[scenario.expectedDetail].length > 0,
+        scenario.name,
+      );
+    } finally {
+      project.cleanup();
+    }
+  }
+});
+
+test('check-slice rejects canonical governance field drift in execution briefs', () => {
+  const manifest = governanceManifest();
+  const entries = [governanceEntry()];
+  const mutations = [
+    ['disposition', 'DISP-F-001', 'DISP-TAMPERED'],
+    ['action', 'transfer-to-slice', 'revise-plan'],
+    ['state', 'current', 'superseded'],
+    ['target', 'slice:slice-01-alpha', 'slice:slice-02-beta'],
+    ['acceptance', 'AC-11', 'AC-99'],
+    ['evidence', 'Record directed test evidence.', 'Skip directed test evidence.'],
+  ];
+
+  for (const [name, currentValue, mutatedValue] of mutations) {
+    const project = makeProject({
+      'specs/spec-a/SPEC.md': governanceTraceability(manifest),
+      'specs/spec-a/STATUS.md': '# status\n',
+      'specs/spec-a/EVIDENCE_REPORT.md': '# evidence\n',
+      'specs/spec-a/GOVERNANCE_MANIFEST.json': manifest,
+      'specs/spec-a/slices/slice-01-alpha/EXECUTION_BRIEF.md': governanceBlock(['F-001'])
+        .replace(currentValue, mutatedValue),
+      'specs/spec-a/slices/slice-01-alpha/CLOSURE_BRIEF.md': governanceBlock(['F-001']),
+      'specs/spec-a/slices/slice-01-alpha/slice.json': {
+        ...readySlice('spec-a/slice-01-alpha'),
+        planning_governance: governancePlanning('slice-01-alpha', manifest),
+      },
+    });
+
+    try {
+      assert.throws(
+        () => withRepoCwd(project.root, () => checkSliceReadiness(
+          'specs/spec-a/slices/slice-01-alpha/slice.json',
+          { ...governanceGateOptions(manifest, entries), local: true },
+        )),
+        (error) => error.code === 'REPRESENTATION_MISMATCH'
+          && error.details.mismatches.includes('canonical_governance_markdown'),
+        name,
+      );
+    } finally {
+      project.cleanup();
+    }
+  }
+});
+
+test('check-slice requires the canonical governance heading inside marked blocks', () => {
+  const manifest = governanceManifest();
+  const entries = [governanceEntry()];
+  const project = makeProject({
+    'specs/spec-a/SPEC.md': governanceTraceability(manifest),
+    'specs/spec-a/STATUS.md': '# status\n',
+    'specs/spec-a/EVIDENCE_REPORT.md': '# evidence\n',
+    'specs/spec-a/GOVERNANCE_MANIFEST.json': manifest,
+    'specs/spec-a/slices/slice-01-alpha/EXECUTION_BRIEF.md': '<!-- quiver-governance:begin -->\n- `F-001` - pending\n<!-- quiver-governance:end -->\n',
+    'specs/spec-a/slices/slice-01-alpha/CLOSURE_BRIEF.md': governanceBlock(['F-001']),
+    'specs/spec-a/slices/slice-01-alpha/slice.json': {
+      ...readySlice('spec-a/slice-01-alpha'),
+      planning_governance: governancePlanning('slice-01-alpha', manifest),
+    },
+  });
+
+  try {
+    assert.throws(
+      () => withRepoCwd(project.root, () => checkSliceReadiness(
+        'specs/spec-a/slices/slice-01-alpha/slice.json',
+        { ...governanceGateOptions(manifest, entries), local: true },
+      )),
+      (error) => error.code === 'REPRESENTATION_MISMATCH'
+        && error.details.expected_heading === '## Pending governance findings',
+    );
+  } finally {
+    project.cleanup();
+  }
+});
+
+test('check-slice fails closed when a target finding is neither closed nor accepted', () => {
+  const manifest = governanceManifest();
+  const entries = [governanceEntry('F-001', 'slice:slice-01-alpha', { accepted: false })];
+  const project = makeProject({
+    'specs/spec-a/SPEC.md': governanceTraceability(manifest),
+    'specs/spec-a/STATUS.md': '# status\n',
+    'specs/spec-a/EVIDENCE_REPORT.md': '# evidence\n',
+    'specs/spec-a/GOVERNANCE_MANIFEST.json': manifest,
+    'specs/spec-a/slices/slice-01-alpha/EXECUTION_BRIEF.md': governanceBlock(['F-001']),
+    'specs/spec-a/slices/slice-01-alpha/CLOSURE_BRIEF.md': governanceBlock(['F-001']),
+    'specs/spec-a/slices/slice-01-alpha/slice.json': {
+      ...readySlice('spec-a/slice-01-alpha'),
+      planning_governance: governancePlanning('slice-01-alpha', manifest),
+    },
+  });
+
+  try {
+    assert.throws(
+      () => withRepoCwd(project.root, () => checkSliceReadiness(
+        'specs/spec-a/slices/slice-01-alpha/slice.json',
+        { ...governanceGateOptions(manifest, entries), local: true },
+      )),
+      (error) => error.code === 'DISPOSITION_UNRESOLVED'
+        && error.details.target === 'slice:slice-01-alpha'
+        && error.details.finding_ids.includes('F-001'),
+    );
+  } finally {
+    project.cleanup();
+  }
+});
+
+test('check-slice propagates orphaned, stale, and unresolved governance failures', () => {
+  const manifest = governanceManifest();
+  const entries = [governanceEntry()];
+  const slice = {
+    ...readySlice('spec-a/slice-01-alpha'),
+    planning_governance: governancePlanning('slice-01-alpha', manifest),
+  };
+  const project = makeProject({
+    'specs/spec-a/SPEC.md': governanceTraceability(manifest),
+    'specs/spec-a/STATUS.md': '# status\n',
+    'specs/spec-a/EVIDENCE_REPORT.md': '# evidence\n',
+    'specs/spec-a/GOVERNANCE_MANIFEST.json': manifest,
+    'specs/spec-a/slices/slice-01-alpha/EXECUTION_BRIEF.md': governanceBlock(['F-001']),
+    'specs/spec-a/slices/slice-01-alpha/CLOSURE_BRIEF.md': governanceBlock(['F-001']),
+    'specs/spec-a/slices/slice-01-alpha/slice.json': slice,
+  });
+
+  try {
+    for (const [issue, code] of [
+      ['orphaned', 'REPRESENTATION_MISMATCH'],
+      ['stale', 'APPROVAL_BINDING_MISMATCH'],
+      ['unresolved', 'DISPOSITION_UNRESOLVED'],
+    ]) {
+      const failure = new Error(`${code}: ${issue}`);
+      failure.code = code;
+      failure.details = { issue };
+      assert.throws(
+        () => withRepoCwd(project.root, () => checkSliceReadiness(
+          'specs/spec-a/slices/slice-01-alpha/slice.json',
+          {
+            ...governanceGateOptions(manifest, entries, {
+              verifyGovernanceManifestParityFn: () => { throw failure; },
+            }),
+            local: true,
+          },
+        )),
+        (error) => error.code === code && error.details.issue === issue,
+      );
+    }
+  } finally {
+    project.cleanup();
+  }
+});
+
+test('check-pr rejects a governed slice PR that omits its finding block', () => {
+  const manifest = governanceManifest();
+  const entries = [governanceEntry()];
+  const slice = {
+    ...completedSlice('spec-a/slice-01-alpha', {
+      files: ['src/app.js'],
+      git: {
+        branch_type: 'feature',
+        base_branch: 'main',
+        branch_slug: 'slice-01-alpha',
+        branch_name: 'feature/test-slice',
+      },
+    }),
+    planning_governance: governancePlanning('slice-01-alpha', manifest),
+  };
+  const repo = makeRepo({
+    'specs/spec-a/SPEC.md': governanceTraceability(manifest),
+    'specs/spec-a/STATUS.md': '# status\n',
+    'specs/spec-a/EVIDENCE_REPORT.md': '# evidence\n',
+    'specs/spec-a/GOVERNANCE_MANIFEST.json': manifest,
+    'specs/spec-a/slices/slice-01-alpha/EXECUTION_BRIEF.md': governanceBlock(['F-001']),
+    'specs/spec-a/slices/slice-01-alpha/CLOSURE_BRIEF.md': governanceBlock(['F-001']),
+    'specs/spec-a/slices/slice-01-alpha/pr.md': prBody(),
+    'specs/spec-a/slices/slice-01-alpha/slice.json': slice,
+    'src/app.js': 'module.exports = 1;\n',
+  });
+
+  try {
+    commitAll(repo.root, 'base');
+    cp.execFileSync('git', ['update-ref', 'refs/remotes/origin/main', 'HEAD'], { cwd: repo.root });
+    writeText(path.join(repo.root, 'src/app.js'), 'module.exports = 2;\n');
+    commitAll(repo.root, 'feature change');
+
+    assert.throws(
+      () => withRepoCwd(repo.root, () => checkPrReadiness(
+        'specs/spec-a/slices/slice-01-alpha/slice.json',
+        governanceGateOptions(manifest, entries),
+      )),
+      (error) => error.code === 'REPRESENTATION_MISMATCH' && error.details.issue === 'omitted',
+    );
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('PR governance readiness rejects canonical field drift with unchanged finding ids', () => {
+  const manifest = governanceManifest();
+  const entries = [governanceEntry()];
+  const mutatedBlock = governanceBlock(['F-001']).replace('AC-11', 'AC-99');
+  const project = makeProject({
+    'specs/spec-a/SPEC.md': governanceTraceability(manifest),
+    'specs/spec-a/GOVERNANCE_MANIFEST.json': manifest,
+    'specs/spec-a/pr.md': mutatedBlock,
+    'specs/spec-a/slices/slice-01-alpha/pr.md': mutatedBlock,
+  });
+
+  try {
+    for (const prPath of [
+      'specs/spec-a/pr.md',
+      'specs/spec-a/slices/slice-01-alpha/pr.md',
+    ]) {
+      assert.throws(
+        () => verifyPrGovernanceReadiness(
+          project.root,
+          path.join(project.root, prPath),
+          governanceGateOptions(manifest, entries),
+        ),
+        (error) => error.code === 'REPRESENTATION_MISMATCH'
+          && error.details.mismatches.includes('canonical_governance_markdown'),
+        prPath,
+      );
+    }
+  } finally {
+    project.cleanup();
   }
 });

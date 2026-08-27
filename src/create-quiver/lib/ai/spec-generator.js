@@ -16,6 +16,10 @@ const {
   normalizeApprovedSource,
   slugify,
 } = require('./spec-templates');
+const {
+  GOVERNANCE_MANIFEST_FILENAME,
+  buildPlanningGovernanceManifest,
+} = require('./spec-governance');
 
 function formatError(message) {
   return `create-quiver: ${message}`;
@@ -254,7 +258,7 @@ function validateGeneratedSliceJson(filePath, expectedSliceId) {
   return parsed;
 }
 
-function buildSpecGenerationManifest({ inputText, inputPath, repoRoot, specSlug }) {
+function buildSpecGenerationManifest({ inputText, inputPath, repoRoot, specSlug, governanceContext }) {
   const { sourceText, source } = parseApprovedManifest(inputText, {
     fallbackTitle: specSlug ? specSlug.replace(/-/g, ' ') : path.basename(inputPath || 'generated-spec.md', path.extname(inputPath || '.md')),
   });
@@ -273,6 +277,19 @@ function buildSpecGenerationManifest({ inputText, inputPath, repoRoot, specSlug 
 
   if (!manifest.slug) {
     throw new Error(formatError('unable to derive a spec slug from the approved input'));
+  }
+
+  if (governanceContext) {
+    manifest.governance = buildPlanningGovernanceManifest({
+      canonicalRoot: governanceContext.canonicalRoot || repoRoot,
+      governanceState: governanceContext.governanceState,
+      decision: governanceContext.decision,
+      planManifest: manifest,
+    });
+    const foundationManifestPath = `specs/${manifest.slug}/${GOVERNANCE_MANIFEST_FILENAME}`;
+    if (!manifest.slices[0].files.includes(foundationManifestPath)) {
+      manifest.slices[0].files.push(foundationManifestPath);
+    }
   }
 
   return manifest;
@@ -301,6 +318,14 @@ function validateSpecCollision(specDir) {
 function renderSpecTree(manifest, specDir) {
   const files = [];
   const sliceDirs = [];
+
+  if (manifest.governance) {
+    writeTextFile(
+      path.join(specDir, GOVERNANCE_MANIFEST_FILENAME),
+      `${JSON.stringify(manifest.governance, null, 2)}\n`,
+    );
+    files.push(GOVERNANCE_MANIFEST_FILENAME);
+  }
 
   writeTextFile(path.join(specDir, 'SPEC.md'), buildSpecMarkdown(manifest));
   files.push('SPEC.md');
@@ -334,13 +359,14 @@ function renderSpecTree(manifest, specDir) {
 }
 
 function generateSpecArtifacts(repoRoot, options = {}) {
+  const sourceRoot = options.sourceRoot || repoRoot;
   const inputPath = options.input;
-  const inputText = readSourceText(inputPath, repoRoot);
-  const manifest = buildSpecGenerationManifest({
+  const manifest = options.manifest || buildSpecGenerationManifest({
     inputPath,
-    inputText,
-    repoRoot,
+    inputText: options.governanceContext?.inputText ?? readSourceText(inputPath, sourceRoot),
+    repoRoot: sourceRoot,
     specSlug: options.specSlug,
+    governanceContext: options.governanceContext,
   });
 
   const specDir = path.join(repoRoot, 'specs', slugify(manifest.slug));
@@ -370,6 +396,7 @@ function generateSpecArtifacts(repoRoot, options = {}) {
 function describeSpecGeneration(manifest, repoRoot) {
   const specDir = path.join(repoRoot, 'specs', slugify(manifest.slug));
   const files = [
+    ...(manifest.governance ? [GOVERNANCE_MANIFEST_FILENAME] : []),
     'SPEC.md',
     'STATUS.md',
     'EVIDENCE_REPORT.md',
