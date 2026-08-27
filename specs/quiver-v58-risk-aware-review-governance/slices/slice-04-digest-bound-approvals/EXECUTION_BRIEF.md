@@ -43,10 +43,13 @@ The normative wording and traceability are in ../../SPEC.md.
 
 - src/create-quiver/lib/approvals.js
 - src/create-quiver/lib/ai/review-governance.js
+- src/create-quiver/lib/ai/review-governance.schema.js
 - src/create-quiver/lib/ai/approval-candidates.js
 - src/create-quiver/lib/ai/run-state.js
+- src/create-quiver/lib/ai/plan-review.js
 - src/create-quiver/lib/locks.js
 - src/create-quiver/lib/actionable-error.js
+- src/create-quiver/lib/cli/command-registry.js
 - src/create-quiver/commands/ai.js
 - src/create-quiver/index.js
 - Focused tests listed in slice.json.
@@ -59,10 +62,12 @@ The normative wording and traceability are in ../../SPEC.md.
 - Do not copy provider aggregate counts into the approval record.
 - Do not add a database or generalized transaction subsystem.
 - Do not implement downstream transfer gates.
+- Use the SPEC.md formulas for profile digest, complete finding count, and phase-specific criterion count; do not substitute provider aggregates.
+- Keep `ai approvals` as the compatible list command and implement the normative singular `ai approval show|verify|export` surface.
 
 ## Validation
 
-    node --test tests/lib/approvals.test.js tests/lib/ai-review-governance.test.js tests/lib/ai-run-state.test.js tests/commands/ai-plan.test.js tests/commands/ai-run-state.test.js tests/commands/cli-contract.test.js
+    node --test tests/lib/approvals.test.js tests/lib/ai-review-governance.test.js tests/lib/ai-run-state.test.js tests/commands/ai-plan.test.js tests/commands/ai-review-plan.test.js tests/commands/ai-run-state.test.js tests/commands/cli-contract.test.js
     node bin/create-quiver.js slice check --local specs/quiver-v58-risk-aware-review-governance/slices/slice-04-digest-bound-approvals/slice.json
     node bin/create-quiver.js spec validate specs/quiver-v58-risk-aware-review-governance --strict
     git diff --check

@@ -25,6 +25,7 @@ const {
   reconcileFindings,
   stableStringify,
 } = require('./review-governance');
+const { runGovernanceStateSchema } = require('./review-governance.schema');
 const {
   readAiRun,
   readRunGovernance,
@@ -81,6 +82,36 @@ function governanceStateDigest(value) {
   return sha256Digest(stableStringify(value || null));
 }
 
+function omitCanonicalAuthorizationEvidence(state) {
+  if (!state) return state;
+  const copy = JSON.parse(JSON.stringify(state));
+  for (const collection of ['dispositions', 'conditioned_candidates', 'decisions']) {
+    for (const record of copy[collection] || []) {
+      delete record.authorization;
+    }
+  }
+  return copy;
+}
+
+function assertCanonicalAuthorizationEvidenceSafe(projectRoot, state, label) {
+  if (!state) return;
+  const unsafe = [];
+  for (const collection of ['dispositions', 'conditioned_candidates', 'decisions']) {
+    for (const [index, record] of (state[collection] || []).entries()) {
+      if (!record?.authorization) continue;
+      const redacted = redactSensitiveValue(record.authorization, { projectRoot });
+      if (stableStringify(record.authorization) !== stableStringify(redacted)) {
+        unsafe.push(`${label}.${collection}.${index}.authorization`);
+      }
+    }
+  }
+  if (unsafe.length > 0) {
+    throw reviewCommitError('Prepared governed review commit contains non-redacted authorization evidence.', {
+      changed_sections: unsafe,
+    });
+  }
+}
+
 function assertReviewCommitMarker(projectRoot, runId, marker) {
   const reservation = marker?.reservation;
   const expectedArtifactPath = toRelativePosix(projectRoot, planReviewPath(projectRoot));
@@ -88,6 +119,10 @@ function assertReviewCommitMarker(projectRoot, runId, marker) {
   const next = marker?.next_governance_state;
   const previousReviews = Array.isArray(previous?.reviews) ? previous.reviews : [];
   const nextReviews = Array.isArray(next?.reviews) ? next.reviews : [];
+  const previousGovernanceValidation = previous === null
+    ? { success: true }
+    : runGovernanceStateSchema.safeParse(previous);
+  const nextGovernanceValidation = runGovernanceStateSchema.safeParse(next);
   const appendedReview = nextReviews.at(-1);
   const findingsById = new Map((next?.findings || []).map((finding) => [finding.finding_id, finding]));
   const expectedReviewContents = next && appendedReview
@@ -150,7 +185,9 @@ function assertReviewCommitMarker(projectRoot, runId, marker) {
     || stableStringify(marker?.meta || null) !== stableStringify(expectedMeta)
     || typeof marker?.review_contents !== 'string'
     || !marker.review_contents.trim()
-    || marker.review_contents !== expectedReviewContents;
+    || marker.review_contents !== expectedReviewContents
+    || previousGovernanceValidation.success !== true
+    || nextGovernanceValidation.success !== true;
 
   if (invalid) {
     throw reviewCommitError('Prepared governed review commit is corrupt or does not match its run.', {
@@ -158,12 +195,19 @@ function assertReviewCommitMarker(projectRoot, runId, marker) {
       wal_path: toRelativePosix(projectRoot, runReviewCommitPath(projectRoot, runId)),
     });
   }
-  const redacted = redactSensitiveValue(marker, { projectRoot });
-  if (stableStringify(marker) !== stableStringify(redacted)) {
+  assertCanonicalAuthorizationEvidenceSafe(projectRoot, previous, 'previous_governance_state');
+  assertCanonicalAuthorizationEvidenceSafe(projectRoot, next, 'next_governance_state');
+  const redactionCandidate = {
+    ...marker,
+    previous_governance_state: omitCanonicalAuthorizationEvidence(previous),
+    next_governance_state: omitCanonicalAuthorizationEvidence(next),
+  };
+  const redacted = redactSensitiveValue(redactionCandidate, { projectRoot });
+  if (stableStringify(redactionCandidate) !== stableStringify(redacted)) {
     throw reviewCommitError('Prepared governed review commit contains non-redacted values.', {
       run_id: runId,
-      changed_sections: Object.keys(marker).filter((key) => (
-        stableStringify(marker[key]) !== stableStringify(redacted[key])
+      changed_sections: Object.keys(redactionCandidate).filter((key) => (
+        stableStringify(redactionCandidate[key]) !== stableStringify(redacted[key])
       )),
     });
   }

@@ -33,6 +33,7 @@ const SUPPORTED_AI_COMMANDS = new Set([
   'agent',
   'analyze-project',
   'approve',
+  'approval',
   'approval-status',
   'approvals',
   'doctor',

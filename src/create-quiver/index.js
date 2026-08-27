@@ -13,6 +13,7 @@ const {
   runActiveSlice: runAiActiveSlice,
   runAgent: runAiAgent,
   runAnalyzeProject: runAiAnalyzeProject,
+  runApprovalRecord: runAiApprovalRecord,
   runApprovalStatus: runAiApprovalStatus,
   runApprove: runAiApprove,
   runDoctor: runAiDoctor,
@@ -128,6 +129,21 @@ function localizeParserMessage(message, language = currentErrorLanguage) {
 
 function formatError(message) {
   return `create-quiver: ${localizeParserMessage(message)}`;
+}
+
+function emitAiApprovalJsonFailure(task, error) {
+  process.stdout.write(`${JSON.stringify({
+    schema_version: 1,
+    task,
+    ok: false,
+    status: 'error',
+    code: error?.code || 'APPROVAL_COMMAND_FAILED',
+    error: {
+      message: String(error?.message || 'Approval command failed.'),
+      details: error?.details || {},
+    },
+  }, null, 2)}\n`);
+  process.exitCode = 1;
 }
 
 function helpCatalog(language = DEFAULT_LANGUAGE) {
@@ -341,6 +357,7 @@ function printUsage(language = DEFAULT_LANGUAGE) {
   npx create-quiver ai prepare-context [options]
   npx create-quiver ai revise [options]
   npx create-quiver ai repair-plan [options]
+  npx create-quiver ai approval <show|verify|export> --phase <acceptance|technical-plan> [--run <id>]
   npx create-quiver graph [options]
   npx create-quiver next [options]
   npx create-quiver migrate [options]
@@ -370,7 +387,7 @@ ${helpText(help, 'headings', 'options', 'Options:')}
   -n, --name <project-name>   ${optionDescription(help, 'Project name to generate')}
   -d, --dir <target-dir>      ${optionDescription(help, 'Target directory to scaffold into or inspect')}
       --spec <slug>           ${optionDescription(help, 'Restrict plan, graph, next, or dashboard output to one spec')}
-      --format <name>         ${optionDescription(help, 'Graph or AI export output format (tree, mermaid, dot, json, markdown)')}
+      --format <name>         ${optionDescription(help, 'Graph or AI export output format (tree, mermaid, dot, json, markdown, linear-comment)')}
       --show-conflicts        ${optionDescription(help, 'Show shared file paths in graph output')}
       --level <n>             ${optionDescription(help, 'Restrict graph output to one level')}
       --json                  ${optionDescription(help, 'Emit machine-readable JSON')}
@@ -419,6 +436,12 @@ ${helpText(help, 'headings', 'options', 'Options:')}
       --governance-profile <fast-delivery|high-assurance>
                               ${optionDescription(help, 'Request the v58 governance execution profile for a governed AI run')}
       --version <n>           ${optionDescription(help, 'Draft version to approve for AI planner phases')}
+      --phase <acceptance|technical-plan>
+                              ${optionDescription(help, 'Planner or canonical approval phase')}
+      --decision <name>       ${optionDescription(help, 'Approval decision: approved or approved-with-conditions')}
+      --conditions-file <file>
+                              ${optionDescription(help, 'Canonical condition disposition envelope for approved-with-conditions')}
+      --reason-file <file>    ${optionDescription(help, 'Repository-relative reason file for approved-with-conditions')}
       --run <id>              ${optionDescription(help, 'AI lifecycle run id')}
       --ssh-host-alias <name> ${optionDescription(help, 'SSH host alias to validate for prepare or AI commands')}
       --identity-file <path>  ${optionDescription(help, 'SSH identity file to validate for prepare or AI commands')}
@@ -478,6 +501,9 @@ ${helpText(help, 'headings', 'examples', 'Examples:')}
   cd ./my-project && npx create-quiver ai repair-plan --dry-run
   cd ./my-project && npx create-quiver ai review-plan --dry-run
   cd ./my-project && npx create-quiver ai approve --phase technical-plan --version 1
+  cd ./my-project && npx create-quiver ai approval show --phase acceptance --run <run-id>
+  cd ./my-project && npx create-quiver ai approval verify --phase acceptance --run <run-id> --json
+  cd ./my-project && npx create-quiver ai approval export --phase acceptance --run <run-id> --format linear-comment
   cd ./my-project && npx create-quiver spec create --dry-run
   cd ./my-project && npx create-quiver spec start specs/my-project --dry-run
   cd ./my-project && npx create-quiver ai approvals
@@ -572,6 +598,9 @@ function parseArgs(argv, options = {}) {
     aiRunId: '',
     aiGovernanceProfile: '',
     aiPhase: 'acceptance',
+    aiDecision: 'approved',
+    aiConditionsFile: '',
+    aiReasonFile: '',
     aiProvider: 'codex',
     aiProviderExplicit: false,
     aiModel: '',
@@ -970,7 +999,7 @@ function parseArgs(argv, options = {}) {
 
     if (arg === '--format') {
       const value = args[++index];
-      if (!value) {
+      if (!value || String(value).startsWith('--')) {
         throw new Error(formatError('missing value for --format'));
       }
       result.format = value;
@@ -1129,9 +1158,39 @@ function parseArgs(argv, options = {}) {
       continue;
     }
 
+    if (arg === '--decision') {
+      const value = args[++index];
+      if (!value || String(value).startsWith('--')) {
+        throw new Error(formatError('missing value for --decision'));
+      }
+      if (!['approved', 'approved-with-conditions'].includes(value)) {
+        throw new Error(formatError(`invalid approval decision '${value}'; expected approved or approved-with-conditions`));
+      }
+      result.aiDecision = value;
+      continue;
+    }
+
+    if (arg === '--conditions-file') {
+      const value = args[++index];
+      if (!value || String(value).startsWith('--')) {
+        throw new Error(formatError('missing value for --conditions-file'));
+      }
+      result.aiConditionsFile = value;
+      continue;
+    }
+
+    if (arg === '--reason-file') {
+      const value = args[++index];
+      if (!value || String(value).startsWith('--')) {
+        throw new Error(formatError('missing value for --reason-file'));
+      }
+      result.aiReasonFile = value;
+      continue;
+    }
+
     if (arg === '--run') {
       const value = args[++index];
-      if (!value) {
+      if (!value || String(value).startsWith('--')) {
         throw new Error(formatError('missing value for --run'));
       }
       result.aiRunId = value;
@@ -1257,7 +1316,7 @@ function parseArgs(argv, options = {}) {
 
     if (arg === '--phase') {
       const value = args[++index];
-      if (!value) {
+      if (!value || String(value).startsWith('--')) {
         throw new Error(formatError('missing value for --phase'));
       }
       result.aiPhase = value;
@@ -1388,6 +1447,13 @@ function parseArgs(argv, options = {}) {
     }
     if (result.aiCommand === 'analyze-project' && result.aiSecondaryCommand === 'apply' && !result.aiRunId) {
       throw new Error(formatError('ai analyze-project apply requires --run <run-id>'));
+    }
+    if (result.aiCommand === 'approval' && !result.aiSecondaryCommand && positional.length > 0) {
+      result.aiSecondaryCommand = positional.shift();
+    }
+    if (result.aiCommand === 'approval'
+        && !['show', 'verify', 'export'].includes(result.aiSecondaryCommand)) {
+      throw new Error(formatError(`unsupported ai approval subcommand: ${result.aiSecondaryCommand || '(missing)'}. Supported tasks: show, verify, export`));
     }
     if ((result.aiCommand === 'specs' || result.aiCommand === 'slices' || result.aiCommand === 'models' || result.aiCommand === 'trace' || result.aiCommand === 'active-slice') && !result.aiSecondaryCommand && positional.length > 0) {
       result.aiSecondaryCommand = positional.shift();
@@ -3596,7 +3662,7 @@ async function run(argv) {
 
   if (args.mode === 'ai') {
     if (!args.aiCommand) {
-      throw new Error(formatError('missing ai subcommand. Use: npx create-quiver ai analyze-project | onboard | prepare-context | run | active-slice | status | resume | inspect | export | specs | slices | models | trace | plan | revise | repair-plan | review-plan | approve | approvals | agent | prompt-slice | execute-slice | execute-plan | doctor | pr'));
+      throw new Error(formatError('missing ai subcommand. Use: npx create-quiver ai analyze-project | onboard | prepare-context | run | active-slice | status | resume | inspect | export | specs | slices | models | trace | plan | revise | repair-plan | review-plan | approve | approval | approvals | agent | prompt-slice | execute-slice | execute-plan | doctor | pr'));
     }
 
     if (args.aiCommand === 'analyze-project') {
@@ -3856,14 +3922,37 @@ async function run(argv) {
     }
 
     if (args.aiCommand === 'approve') {
-      await runAiApprove(process.cwd(), {
-        dryRun: args.dryRun,
-        input: args.aiInput || undefined,
+      try {
+        await runAiApprove(process.cwd(), {
+          conditionsFile: args.aiConditionsFile || undefined,
+          decision: args.aiDecision,
+          digestBound: true,
+          dryRun: args.dryRun,
+          input: args.aiInput || undefined,
+          json: args.json,
+          language: args.language,
+          phase: args.aiPhase,
+          governanceProfile: args.aiGovernanceProfile || undefined,
+          publishFinal: true,
+          reasonFile: args.aiReasonFile || undefined,
+          runId: args.aiRunId || undefined,
+          version: args.aiVersion || undefined,
+        });
+      } catch (error) {
+        if (!args.json) throw error;
+        emitAiApprovalJsonFailure('approval-commit', error);
+      }
+      return;
+    }
+
+    if (args.aiCommand === 'approval') {
+      runAiApprovalRecord(process.cwd(), {
+        command: args.aiSecondaryCommand,
+        format: args.formatExplicit ? args.format : 'linear-comment',
+        json: args.json,
         language: args.language,
         phase: args.aiPhase,
-        governanceProfile: args.aiGovernanceProfile || undefined,
         runId: args.aiRunId || undefined,
-        version: args.aiVersion || undefined,
       });
       return;
     }
@@ -3951,7 +4040,7 @@ async function run(argv) {
       return;
     }
 
-    throw new Error(formatError(`unsupported ai subcommand: ${args.aiCommand}. Supported tasks: analyze-project, onboard, prepare-context, run, active-slice, status, resume, inspect, export, specs, slices, models, trace, plan, revise, repair-plan, review-plan, approve, approvals, agent, prompt-slice, execute-slice, execute-plan, doctor, pr`));
+    throw new Error(formatError(`unsupported ai subcommand: ${args.aiCommand}. Supported tasks: analyze-project, onboard, prepare-context, run, active-slice, status, resume, inspect, export, specs, slices, models, trace, plan, revise, repair-plan, review-plan, approve, approval, approvals, agent, prompt-slice, execute-slice, execute-plan, doctor, pr`));
   }
 
   if (args.mode === 'graph') {

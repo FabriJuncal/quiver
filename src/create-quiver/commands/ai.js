@@ -101,13 +101,18 @@ const {
 const {
   GovernanceError,
   PROVIDER_OUTPUT_INVALID,
+  assertApprovalBindingParity,
   authorizeGovernanceAction,
   buildConditionedDecisionProjection,
+  computeApprovalDispositionDigest,
+  computeApprovalProfileDigest,
+  canonicalSha256,
   evaluateConditionEligibility,
   hasGovernanceConfig,
   readGovernanceConfig,
   resolveEffectiveProfile,
   stableStringify,
+  verifyApprovalDecisionRecord,
 } = require('../lib/ai/review-governance');
 const {
   assertNoPendingReviewBudgetReservations,
@@ -135,16 +140,24 @@ const {
 const {
   createAiRun,
   bindAiRunGovernance,
+  commitDigestBoundApproval,
   ensureAiRun,
   formatAiRunResume,
   formatAiRunStatus,
   listAiRuns,
   readAiRun,
+  readRunApprovalDecision,
+  readRunApprovalDecisions,
   readRunGovernance,
   recordAiRunApproval,
+  recoverDigestBoundApprovalCommit,
   resolveAiRun,
   resolveGovernedAiRun,
+  runApprovalsPath,
   runReviewCommitPath,
+  runApprovalArtifactPath,
+  runApprovalCommitPath,
+  runRequirementPath,
   updateAiRunPhase,
   withAiRunLock,
   writeRunGovernance,
@@ -174,13 +187,17 @@ const {
   approvePlannerPhase,
   findDraftVersion,
   latestDraftVersion,
+  preparePlannerApprovalProjection,
   readPhaseApproval,
+  readProjectFileBytes,
   resolveApprovedPlannerInput,
   savePlannerDraft,
   summarizePlannerApproval,
 } = require('../lib/approvals');
 const {
   buildApprovalCandidateReport,
+  buildDigestBoundApprovalBindings,
+  approvalCriteria,
   formatApprovalDecisionLines,
 } = require('../lib/ai/approval-candidates');
 const { assertPlannerPhaseReady, getPlannerPhaseDetails, normalizePlannerPhase, PlannerPhaseError } = require('../lib/ai/phase-gates');
@@ -304,7 +321,7 @@ function prepareGovernedRun(repoRoot, options = {}) {
 function governanceFailure(result) {
   const code = result?.code || 'AUTHORIZATION_DENIED';
   const message = result?.message || 'Governance authorization denied.';
-  return new Error(formatError(`${code}: ${message}`));
+  return new GovernanceError(code, `${code}: ${message}`, result?.evidence || {});
 }
 
 function sha256Bytes(value) {
@@ -609,15 +626,35 @@ function assertGovernedRunOwnsArtifact(repoRoot, run, phase, artifactPath) {
 
 function assertGovernedApprovalCandidateCorrelation(repoRoot, run, phase, version, review = null) {
   const report = buildApprovalCandidateReport(repoRoot, phase);
-  const candidate = report.candidates.find((item) => Number(item.version) === Number(version));
-  if (!candidate) {
+  const candidates = report.candidates.filter((item) => Number(item.version) === Number(version));
+  if (candidates.length !== 1) {
     throw new GovernanceError(
-      'GOVERNANCE_STATE_INVALID',
-      `Approval candidate v${version} is not available for governed run '${run.run_id}'.`,
-      { run_id: run.run_id, phase, version: Number(version) || null },
+      candidates.length === 0 ? 'GOVERNANCE_STATE_INVALID' : 'REPRESENTATION_MISMATCH',
+      candidates.length === 0
+        ? `Approval candidate v${version} is not available for governed run '${run.run_id}'.`
+        : `Approval candidate v${version} is represented ${candidates.length} times.`,
+      { run_id: run.run_id, phase, version: Number(version) || null, candidate_count: candidates.length },
     );
   }
+  const candidate = candidates[0];
   assertGovernedRunOwnsArtifact(repoRoot, run, `${phase}-draft`, candidate.path);
+  const latestDraftEvent = [...(run.history || [])].reverse().find((event) => (
+    event?.phase === `${phase}-draft`
+  ));
+  if (!latestDraftEvent
+      || normalizeRunArtifactPath(repoRoot, latestDraftEvent.artifact)
+        !== normalizeRunArtifactPath(repoRoot, candidate.path)) {
+    throw new GovernanceError(
+      'APPROVAL_BINDING_MISMATCH',
+      `Approval candidate v${candidate.version} is not the latest ${phase} draft owned by run '${run.run_id}'.`,
+      {
+        run_id: run.run_id,
+        phase,
+        version: candidate.version,
+        mismatches: ['latest_run_draft'],
+      },
+    );
+  }
   if (phase === 'technical-plan'
       && (Number(review?.meta?.source_version) !== Number(candidate.version)
         || normalizeRunArtifactPath(repoRoot, review?.meta?.source_file)
@@ -2354,6 +2391,127 @@ function writeCleanProviderOutput(clean) {
   process.stdout.write(output.endsWith('\n') ? output : `${output}\n`);
 }
 
+function resolveTechnicalPlanAcceptanceInput(repoRoot, options = {}, explicitInput = '') {
+  const explicitRun = options.runId ? readAiRun(repoRoot, options.runId) : null;
+  if (!governanceIsEnabled(repoRoot, options, explicitRun)) {
+    return resolveApprovedPlannerInput(repoRoot, 'technical-plan', explicitInput || undefined);
+  }
+  const run = options.runId
+    ? resolveGovernedAiRun(repoRoot, options.runId)
+    : resolveGovernedAiRun(repoRoot);
+  if (!run) {
+    throw new GovernanceError(
+      'AI_RUN_REQUIRED',
+      'Governed technical-plan planning requires a run with a canonical acceptance approval.',
+    );
+  }
+  const verification = verifyCanonicalApproval(repoRoot, {
+    ...options,
+    phase: 'acceptance',
+    runId: run.run_id,
+  });
+  const inputPath = verification.decision.artifact_path;
+  if (explicitInput
+      && normalizeRunArtifactPath(repoRoot, explicitInput) !== normalizeRunArtifactPath(repoRoot, inputPath)) {
+    throw new GovernanceError(
+      'APPROVAL_BINDING_MISMATCH',
+      'Governed technical-plan input must be the canonical acceptance artifact from the same run.',
+      { run_id: run.run_id, mismatches: ['input_path'] },
+    );
+  }
+  return { inputPath, verification };
+}
+
+function resolveRunOwnedTechnicalPlanDraft(repoRoot, options, approvalState) {
+  const explicitRun = options.runId ? readAiRun(repoRoot, options.runId) : null;
+  if (!governanceIsEnabled(repoRoot, options, explicitRun)) {
+    return null;
+  }
+  const run = options.runId
+    ? resolveGovernedAiRun(repoRoot, options.runId)
+    : resolveGovernedAiRun(repoRoot);
+  if (!run) {
+    throw new GovernanceError(
+      'AI_RUN_REQUIRED',
+      'Governed technical-plan revision requires a run that owns the current draft.',
+    );
+  }
+  const latestDraftEvent = [...(run.history || [])].reverse().find((entry) => (
+    entry?.phase === 'technical-plan-draft' && entry.artifact
+  ));
+  if (!latestDraftEvent) {
+    throw new GovernanceError(
+      'GOVERNANCE_STATE_INVALID',
+      `Run '${run.run_id}' does not own a technical-plan draft to revise.`,
+      { run_id: run.run_id, mismatches: ['technical-plan-draft'] },
+    );
+  }
+  const ownedPath = normalizeRunArtifactPath(repoRoot, latestDraftEvent.artifact);
+  const matches = (approvalState?.meta?.drafts || []).filter((entry) => (
+    normalizeRunArtifactPath(repoRoot, entry?.path) === ownedPath
+  ));
+  if (matches.length !== 1) {
+    throw new GovernanceError(
+      matches.length > 1 ? 'REPRESENTATION_MISMATCH' : 'APPROVAL_BINDING_MISMATCH',
+      `Run '${run.run_id}' technical-plan draft is not represented exactly once.`,
+      { run_id: run.run_id, artifact: ownedPath, draft_count: matches.length },
+    );
+  }
+  const record = matches[0];
+  const artifact = readProjectFileBytes(repoRoot, record.path, 'run-owned technical-plan draft');
+  if (!record.artifact_sha256 || artifact.sha256 !== record.artifact_sha256) {
+    throw new GovernanceError(
+      'APPROVAL_BINDING_MISMATCH',
+      `The technical-plan draft owned by run '${run.run_id}' has changed.`,
+      { run_id: run.run_id, mismatches: ['artifact_sha256'] },
+    );
+  }
+  return {
+    run,
+    record,
+    draft: {
+      path: artifact.path,
+      contents: artifact.bytes.toString('utf8'),
+    },
+  };
+}
+
+function resolveTechnicalPlanRevisionInput(repoRoot, options, approvalState) {
+  const owned = resolveRunOwnedTechnicalPlanDraft(repoRoot, options, approvalState);
+  const effectiveOptions = owned
+    ? { ...options, runId: owned.run.run_id }
+    : options;
+  try {
+    return {
+      ...resolveTechnicalPlanAcceptanceInput(repoRoot, effectiveOptions),
+      draft: owned?.draft || approvalState.draft,
+    };
+  } catch (error) {
+    if (error?.code !== 'APPROVAL_NOT_FOUND'
+        || !owned?.run?.governance
+        || !owned.record?.input_path
+        || !owned.record?.input_sha256) throw error;
+    const input = readProjectFileBytes(
+      repoRoot,
+      owned.record.input_path,
+      'technical-plan bound acceptance input',
+    );
+    if (input.sha256 !== owned.record.input_sha256) {
+      throw new GovernanceError(
+        'APPROVAL_BINDING_MISMATCH',
+        'The acceptance input bound to the run-owned technical-plan draft has changed.',
+        { run_id: owned.run.run_id, mismatches: ['input_sha256'] },
+      );
+    }
+    return {
+      inputPath: input.path,
+      verification: null,
+      compatibilityBinding: 'owned-draft-input',
+      draft: owned.draft,
+    };
+  }
+}
+
 function normalizeText(value) {
   return String(value || '').replace(/\r\n/g, '\n');
 }
@@ -2365,21 +2523,33 @@ function buildRevisionInput({ phase, feedbackPath, feedbackText, repoRoot, compa
   }
 
   const sections = [];
+  let sourceInputPath = feedbackPath;
 
   if (phase === 'technical-plan') {
-    const acceptance = resolveApprovedPlannerInput(repoRoot, phase, undefined);
-    const acceptanceText = readTextFile(acceptance.inputPath, repoRoot);
-    sections.push(`Approved acceptance input (${acceptance.inputPath}):`, acceptanceText.trimEnd());
+    const revision = resolveTechnicalPlanRevisionInput(repoRoot, compactionOptions, current);
+    sourceInputPath = revision.inputPath;
+    const acceptanceText = readTextFile(revision.inputPath, repoRoot);
+    sections.push(`Approved acceptance input (${revision.inputPath}):`, acceptanceText.trimEnd());
+    sections.push(
+      `Current ${phase} draft (${revision.draft.path}):`,
+      revision.draft.contents.trimEnd(),
+    );
+  } else {
+    sections.push(
+      `Current ${phase} draft (${current.draft.path}):`,
+      current.draft.contents.trimEnd(),
+    );
   }
 
   sections.push(
-    `Current ${phase} draft (${current.draft.path}):`,
-    current.draft.contents.trimEnd(),
     `Human feedback (${feedbackPath}):`,
     feedbackText.trimEnd(),
   );
 
-  return compactRevisionInput(sections.join('\n\n'), compactionOptions);
+  return {
+    ...compactRevisionInput(sections.join('\n\n'), compactionOptions),
+    sourceInputPath,
+  };
 }
 
 function buildManagedContextBlock(content) {
@@ -2768,20 +2938,116 @@ function formatActiveSliceReconciliationReport(report, options = {}) {
   return `${lines.join('\n')}\n`;
 }
 
+function canonicalRunApprovalRowMismatches(repoRoot, run, approval) {
+  if (!approval || typeof approval !== 'object' || Array.isArray(approval)) {
+    return ['entry'];
+  }
+  const canonicalFields = [
+    'schema_version',
+    'run_id',
+    'decision_id',
+    'decision',
+    'artifact_sha256',
+    'input_sha256',
+    'criterion_count',
+  ];
+  const artifactPath = String(approval.artifact || '').replace(/\\/g, '/');
+  const canonical = artifactPath.startsWith('.quiver/runs/')
+    || canonicalFields.some((field) => (
+      Object.prototype.hasOwnProperty.call(approval, field)
+    ));
+  if (!canonical) {
+    const legacyMismatches = [];
+    if (!['acceptance', 'technical-plan'].includes(approval.phase)) {
+      legacyMismatches.push('phase');
+    } else if (artifactPath !== `.quiver/approvals/${approval.phase}/approved.md`) {
+      legacyMismatches.push('artifact');
+    }
+    if (approval.version !== null
+        && (!Number.isInteger(approval.version) || approval.version <= 0)) {
+      legacyMismatches.push('version');
+    }
+    if (Number.isNaN(Date.parse(String(approval.at || '')))) legacyMismatches.push('at');
+    return legacyMismatches;
+  }
+
+  const mismatches = [];
+  const digestPattern = /^sha256:[a-f0-9]{64}$/;
+  if (approval.schema_version !== 1) mismatches.push('schema_version');
+  if (approval.run_id !== run.run_id) mismatches.push('run_id');
+  if (!/^A-\d{3,}$/.test(String(approval.decision_id || ''))) mismatches.push('decision_id');
+  if (!['acceptance', 'technical-plan'].includes(approval.phase)) mismatches.push('phase');
+  if (!['approved', 'approved-with-conditions'].includes(approval.decision)) mismatches.push('decision');
+  if (!Number.isInteger(approval.version) || approval.version <= 0) mismatches.push('version');
+  if (!digestPattern.test(String(approval.artifact_sha256 || ''))) mismatches.push('artifact_sha256');
+  if (!digestPattern.test(String(approval.input_sha256 || ''))) mismatches.push('input_sha256');
+  if (!Number.isInteger(approval.criterion_count) || approval.criterion_count < 0) {
+    mismatches.push('criterion_count');
+  }
+  if (Number.isNaN(Date.parse(String(approval.at || '')))) mismatches.push('at');
+
+  if (['acceptance', 'technical-plan'].includes(approval.phase)
+      && Number.isInteger(approval.version)
+      && approval.version > 0) {
+    const expectedArtifact = path.relative(
+      repoRoot,
+      runApprovalArtifactPath(repoRoot, run.run_id, approval.phase, approval.version),
+    ).split(path.sep).join('/');
+    if (approval.artifact !== expectedArtifact) mismatches.push('artifact');
+  } else if (typeof approval.artifact !== 'string' || !approval.artifact) {
+    mismatches.push('artifact');
+  }
+  return [...new Set(mismatches)];
+}
+
 function readRunApprovals(repoRoot, run) {
-  if (!run?.approvals_path) {
-    return [];
+  const canonicalPath = path.relative(repoRoot, runApprovalsPath(repoRoot, run.run_id)).split(path.sep).join('/');
+  if (run?.approvals_path !== canonicalPath) {
+    throw new GovernanceError(
+      'APPROVAL_BINDING_MISMATCH',
+      `Run '${run?.run_id || 'unknown'}' approval projection path is not canonical.`,
+      { run_id: run?.run_id || null, mismatches: ['run.approvals_path'] },
+    );
   }
-  const filePath = path.resolve(repoRoot, run.approvals_path);
-  if (!fs.existsSync(filePath)) {
-    return [];
-  }
+  const source = readApprovalBindingFile(
+    repoRoot,
+    canonicalPath,
+    'Run approval projection',
+    'approvals.json',
+  );
+  let parsed;
   try {
-    const parsed = JSON.parse(fs.readFileSync(filePath, 'utf8'));
-    return Array.isArray(parsed.approvals) ? parsed.approvals : [];
-  } catch {
-    return [];
+    parsed = JSON.parse(source.bytes.toString('utf8'));
+  } catch (error) {
+    throw new GovernanceError(
+      'APPROVAL_BINDING_MISMATCH',
+      `Run '${run.run_id}' approval projection is not valid JSON.`,
+      { run_id: run.run_id, mismatches: ['approvals.json'], cause: error.message },
+    );
   }
+  if (parsed?.schema_version !== 1
+      || parsed?.run_id !== run.run_id
+      || !Array.isArray(parsed?.approvals)) {
+    throw new GovernanceError(
+      'APPROVAL_BINDING_MISMATCH',
+      `Run '${run.run_id}' approval projection does not match its canonical namespace.`,
+      { run_id: run.run_id, mismatches: ['approvals.json'] },
+    );
+  }
+  for (const [index, approval] of parsed.approvals.entries()) {
+    const mismatches = canonicalRunApprovalRowMismatches(repoRoot, run, approval);
+    if (mismatches.length > 0) {
+      throw new GovernanceError(
+        'APPROVAL_BINDING_MISMATCH',
+        `Run '${run.run_id}' approval projection contains an invalid canonical approval entry.`,
+        {
+          run_id: run.run_id,
+          mismatches: mismatches.map((field) => `approvals[${index}].${field}`),
+        },
+      );
+    }
+  }
+  return parsed.approvals;
 }
 
 function collectRunApprovalRows(repoRoot) {
@@ -3851,8 +4117,9 @@ async function runPlan(repoRoot, options = {}) {
     });
     inputText = revisionInput.text;
     inputCompaction = revisionInput.compaction;
+    inputPath = revisionInput.sourceInputPath;
   } else if (phase === 'technical-plan') {
-    const resolved = resolveApprovedPlannerInput(repoRoot, phase, inputPath || undefined);
+    const resolved = resolveTechnicalPlanAcceptanceInput(repoRoot, options, inputPath);
     inputPath = resolved.inputPath;
   }
 
@@ -5050,6 +5317,111 @@ async function runConditionedApprovalCandidate(repoRoot, options = {}) {
       const authorization = identityFailureCode && resolvedAuthorization.authorized !== true
         ? { ...resolvedAuthorization, code: identityFailureCode }
         : resolvedAuthorization;
+      const publishedCandidateIds = new Set(
+        (state.decisions || []).map((decision) => decision.candidate_id).filter(Boolean),
+      );
+      const pendingCandidates = (state.conditioned_candidates || []).filter((candidate) => (
+        candidate.run_id === runId
+        && candidate.review_id === canonicalReview.review_id
+        && candidate.publication_state === 'candidate'
+        && !publishedCandidateIds.has(candidate.candidate_id)
+      ));
+      if (pendingCandidates.length > 1) {
+        throw new GovernanceError(
+          'APPROVAL_CANDIDATE_AMBIGUOUS',
+          `Conditioned approval has ${pendingCandidates.length} unpublished candidates for the current review.`,
+          { run_id: runId, review_id: canonicalReview.review_id },
+        );
+      }
+      const pendingCandidate = pendingCandidates[0] || null;
+      if (pendingCandidate) {
+        const unresolvedRetry = {
+          eligible: false,
+          status: 'INELIGIBLE',
+          code: 'DISPOSITION_UNRESOLVED',
+        };
+        if (conditionInput.invalid) {
+          throwConditionEligibilityFailure(unresolvedRetry, `conditions:${conditionInput.issue}`);
+        }
+        if (!reason.valid) {
+          throwConditionEligibilityFailure(unresolvedRetry, `reason:${reason.issue}`);
+        }
+        const projectDisposition = (disposition) => ({
+          finding_id: disposition.finding_id,
+          action: disposition.action,
+          ...(disposition.target ? { target: disposition.target } : {}),
+          ...(disposition.target_issue ? { target_issue: disposition.target_issue } : {}),
+          evidence_obligations: [...(disposition.evidence_obligations || [])],
+          supersedes: disposition.supersedes || null,
+        });
+        const sortDispositions = (items) => [...items].sort((left, right) => (
+          stableStringify(left).localeCompare(stableStringify(right))
+        ));
+        const proposedDispositions = sortDispositions(
+          conditionInput.envelope.dispositions.map(projectDisposition),
+        );
+        const persistedDispositions = pendingCandidate.disposition_ids.map((dispositionId) => (
+          state.dispositions.find((disposition) => disposition.disposition_id === dispositionId) || null
+        ));
+        const exactRetry = !persistedDispositions.includes(null)
+          && pendingCandidate.reason_path === reason.path
+          && pendingCandidate.reason_sha256 === reason.sha256
+          && pendingCandidate.actor_id === authorization.evidence?.actor_id
+          && stableStringify(pendingCandidate.authorization) === stableStringify(authorization.evidence)
+          && stableStringify(proposedDispositions)
+            === stableStringify(sortDispositions(persistedDispositions.map(projectDisposition)));
+        if (!exactRetry) {
+          throw new GovernanceError(
+            'APPROVAL_CANDIDATE_PENDING',
+            'A different conditioned approval candidate is already pending for the current review.',
+            { candidate_id: pendingCandidate.candidate_id },
+          );
+        }
+        const retryEligibility = evaluateConditionEligibility({
+          governance: runtime.governance,
+          runId: correlation.runId,
+          reviewId: correlation.reviewId,
+          policyVersion: correlation.policyVersion,
+          policyDigest: correlation.policyDigest,
+          envelope: { ...conditionInput.envelope, dispositions: [] },
+          existingDispositions: state.dispositions,
+          findings: openFindings,
+          actorId: authorization.evidence?.actor_id || '',
+          authorization,
+          reasonPath: reason.path,
+          reasonSha256: reason.sha256,
+          completedPhases: ['requirement', 'acceptance'],
+        });
+        if (!retryEligibility.eligible) throwConditionEligibilityFailure(retryEligibility);
+        const approvalReport = buildApprovalCandidateReport(repoRoot, 'technical-plan');
+        const draftCandidate = approvalReport.candidates.find((item) => Number(item.version) === Number(options.version));
+        const retryResult = {
+          task: 'approve',
+          phase: 'technical-plan',
+          version: Number(options.version) || null,
+          artifact: draftCandidate?.path || canonicalReview.source_file,
+          run_id: runId,
+          review_id: canonicalReview.review_id,
+          decision: pendingCandidate.decision,
+          reviewer_recommendation: pendingCandidate.reviewer_recommendation,
+          reviewer_approved: pendingCandidate.reviewer_approved,
+          publication_state: 'candidate',
+          eligibility: retryEligibility,
+          evaluation_id: pendingCandidate.evaluation_id,
+          candidate_id: pendingCandidate.candidate_id,
+          disposition_ids: [...pendingCandidate.disposition_ids],
+          reason_path: pendingCandidate.reason_path,
+          reason_sha256: pendingCandidate.reason_sha256,
+          final_decision_published: false,
+          phase_advanced: false,
+          dry_run: options.dryRun === true,
+          reused: true,
+        };
+        if (options.suppressOutput !== true) {
+          process.stdout.write(formatConditionedCandidateResult(retryResult, options));
+        }
+        return retryResult;
+      }
       const eligibility = evaluateConditionEligibility({
         governance: runtime.governance,
         runId: correlation.runId,
@@ -5142,16 +5514,6 @@ async function runConditionedApprovalCandidate(repoRoot, options = {}) {
         disposition_ids: dispositionIds,
         recorded_at: now,
       });
-      if (options.dryRun !== true) {
-        writeRunGovernance(repoRoot, runId, {
-          ...state,
-          dispositions: canonicalized.dispositions,
-          condition_evaluations: (state.condition_evaluations || []).concat(evaluation),
-          conditioned_candidates: (state.conditioned_candidates || []).concat(candidate),
-          updated_at: now,
-        });
-      }
-
       const approvalReport = buildApprovalCandidateReport(repoRoot, 'technical-plan');
       const draftCandidate = approvalReport.candidates.find((item) => Number(item.version) === Number(options.version));
       const result = {
@@ -5173,7 +5535,18 @@ async function runConditionedApprovalCandidate(repoRoot, options = {}) {
         phase_advanced: false,
         dry_run: options.dryRun === true,
       };
-      process.stdout.write(formatConditionedCandidateResult(result, options));
+      if (options.dryRun !== true) {
+        writeRunGovernance(repoRoot, runId, {
+          ...state,
+          dispositions: canonicalized.dispositions,
+          condition_evaluations: (state.condition_evaluations || []).concat(evaluation),
+          conditioned_candidates: (state.conditioned_candidates || []).concat(candidate),
+          updated_at: now,
+        });
+      }
+      if (options.suppressOutput !== true) {
+        process.stdout.write(formatConditionedCandidateResult(result, options));
+      }
       return result;
   };
 
@@ -5185,6 +5558,255 @@ async function runConditionedApprovalCandidate(repoRoot, options = {}) {
       { command: 'ai approve --decision approved-with-conditions' },
       evaluateCandidate,
     );
+}
+
+function resolveCanonicalApprovalInput(repoRoot, run, governanceState, phase, options = {}) {
+  if (phase === 'acceptance') {
+    const expectedPath = path.relative(
+      repoRoot,
+      runRequirementPath(repoRoot, run.run_id),
+    ).split(path.sep).join('/');
+    if (run.requirement?.path !== expectedPath) {
+      throw new GovernanceError('APPROVAL_BINDING_MISMATCH', 'Acceptance approval requires its canonical run-scoped requirement input.', {
+        mismatches: ['input_path'],
+      });
+    }
+    return expectedPath;
+  }
+  const acceptanceDecisions = (governanceState.decisions || [])
+    .filter((decision) => decision.phase === 'acceptance' && decision.publication_state === 'final');
+  if (acceptanceDecisions.length !== 1) {
+    throw new GovernanceError(
+      acceptanceDecisions.length === 0 ? 'APPROVAL_BINDING_MISMATCH' : 'REPRESENTATION_MISMATCH',
+      'Technical-plan approval requires exactly one canonical acceptance decision from the same run.',
+      { mismatches: ['acceptance_decision'], count: acceptanceDecisions.length },
+    );
+  }
+  const acceptanceDecision = verifyApprovalDecisionRecord(acceptanceDecisions[0]);
+  const verification = verifyCanonicalApproval(repoRoot, {
+    ...options,
+    phase: 'acceptance',
+    runId: run.run_id,
+  });
+  if (verification.decision.decision_id !== acceptanceDecision.decision_id
+      || verification.decision.decision_sha256 !== acceptanceDecision.decision_sha256) {
+    throw new GovernanceError(
+      'APPROVAL_BINDING_MISMATCH',
+      'Technical-plan approval input does not match the verified canonical acceptance decision.',
+      { mismatches: ['acceptance_decision'] },
+    );
+  }
+  return verification.decision.artifact_path;
+}
+
+function selectConditionedCandidateForCommit(state, options = {}) {
+  const publishedIds = new Set((state.decisions || []).map((decision) => decision.candidate_id).filter(Boolean));
+  const candidates = (state.conditioned_candidates || []).filter((candidate) => (
+    candidate.publication_state === 'candidate'
+    && candidate.run_id === options.runId
+    && candidate.review_id === state.current_review_id
+    && !publishedIds.has(candidate.candidate_id)
+    && (!options.candidateId || candidate.candidate_id === options.candidateId)
+  ));
+  if (candidates.length !== 1) {
+    throw new GovernanceError(
+      'APPROVAL_CANDIDATE_AMBIGUOUS',
+      `Conditioned approval requires exactly one unpublished candidate, found ${candidates.length}.`,
+      { run_id: options.runId, candidate_id: options.candidateId || null, candidate_count: candidates.length },
+    );
+  }
+  return candidates[0];
+}
+
+function assertApprovalRuntimeBinding(run, runtime) {
+  const fields = [
+    'requested_profile',
+    'effective_profile',
+    'policy_version',
+    'policy_digest',
+    'requirement_categories',
+  ];
+  const mismatches = fields.filter((field) => (
+    stableStringify(run?.governance?.[field]) !== stableStringify(runtime?.binding?.[field])
+  ));
+  if (mismatches.length > 0) {
+    throw new GovernanceError(
+      'APPROVAL_BINDING_MISMATCH',
+      'Current governance profile binding differs from the run-scoped binding.',
+      { run_id: run?.run_id || null, mismatches: mismatches.map((field) => `governance.${field}`) },
+    );
+  }
+}
+
+function formatDigestBoundApprovalResult(result, options = {}) {
+  const decision = result.decision;
+  if (options.json === true) {
+    return `${JSON.stringify({
+      schema_version: 1,
+      task: 'approval-commit',
+      ok: true,
+      status: 'approved',
+      code: 'APPROVAL_COMMITTED',
+      approval: decision,
+    }, null, 2)}\n`;
+  }
+  return `${[
+    'AI digest-bound approval saved',
+    `Run: ${decision.run_id}`,
+    `Phase: ${decision.phase}`,
+    `Decision: ${decision.decision}`,
+    `Version: v${decision.version}`,
+    `Artifact: ${decision.artifact_path}`,
+    `Artifact digest: ${decision.artifact_sha256}`,
+    `Input digest: ${decision.input_sha256}`,
+    `Criteria: ${decision.criterion_count}`,
+    `Findings: ${decision.finding_count}`,
+    `Decision digest: ${decision.decision_sha256}`,
+  ].join('\n')}\n`;
+}
+
+async function commitGovernedDigestBoundApproval(repoRoot, governedApproval, options = {}) {
+  const runId = governedApproval.run.run_id;
+  const result = await commitDigestBoundApproval(repoRoot, {
+    runId,
+    phase: options.phase,
+    command: `ai approve --phase ${options.phase}`,
+    now: options.now,
+    faultInjector: options.commitFaultInjector,
+    prepare: async ({ run, governanceState }) => {
+      if (fs.existsSync(runReviewCommitPath(repoRoot, runId))) {
+        throw new GovernanceError(
+          'GOVERNANCE_RECOVERY_REQUIRED',
+          `Governed review recovery is required before approving run '${runId}'.`,
+          { run_id: runId, final_decision_published: false, phase_advanced: false },
+        );
+      }
+      assertNoPendingReviewBudgetReservations(repoRoot, runId);
+      const requiredRunPhase = options.phase === 'acceptance' ? 'acceptance-draft' : 'technical-plan-reviewed';
+      if (run.phase !== requiredRunPhase) {
+        throw new GovernanceError(
+          'AI_RUN_PHASE_INVALID',
+          `Governed ${options.phase} approval requires run phase '${requiredRunPhase}', found '${run.phase}'.`,
+          { run_id: runId, expected_phase: requiredRunPhase, actual_phase: run.phase },
+        );
+      }
+      const actor = options.actor || await (options.resolveActorFn || resolveGitHubCliProviderSubject)({
+        cwd: repoRoot,
+        env: options.env,
+        runner: options.identityRunner,
+        host: options.githubHost,
+      });
+      const runtime = resolveGovernanceRuntime(repoRoot, options, run);
+      assertApprovalRuntimeBinding(run, runtime);
+      let review = null;
+      if (options.phase === 'technical-plan') {
+        review = readPlanReview(repoRoot);
+        const canonicalReview = assertGovernedPlanReviewCorrelation(repoRoot, review, run, runtime);
+        if (canonicalReview.projection.blocking === true && options.decision !== 'approved-with-conditions') {
+          throw new GovernanceError('GOVERNANCE_STATE_INVALID', 'The current canonical plan review blocks unconditional approval.');
+        }
+      }
+      assertGovernedApprovalCandidateCorrelation(repoRoot, run, options.phase, options.version, review);
+      const conditionedCandidate = options.decision === 'approved-with-conditions'
+        ? selectConditionedCandidateForCommit(governanceState, {
+            runId,
+            candidateId: options.conditionedCandidateId,
+          })
+        : null;
+      const authorization = authorizeGovernanceAction({
+        governance: runtime.governance,
+        action: conditionedCandidate ? 'approve-with-conditions' : 'approve',
+        actor,
+        profile: runtime.profile.effective_profile,
+        context: {
+          run_creator: run.governance_actors?.run_creator || null,
+          reviewer: run.governance_actors?.reviewer || null,
+          executor: run.governance_actors?.executor || null,
+        },
+      });
+      if (!authorization.authorized) throw governanceFailure(authorization);
+      if (conditionedCandidate) {
+        const openFindings = (governanceState.findings || []).filter((finding) => finding.state === 'open');
+        const reason = readConditionReason(repoRoot, conditionedCandidate.reason_path);
+        const eligibility = evaluateConditionEligibility({
+          governance: runtime.governance,
+          runId,
+          reviewId: conditionedCandidate.review_id,
+          policyVersion: runtime.profile.policy_version,
+          policyDigest: runtime.profile.policy_digest,
+          envelope: {
+            schema_version: 1,
+            run_id: runId,
+            review_id: conditionedCandidate.review_id,
+            policy_version: runtime.profile.policy_version,
+            policy_digest: runtime.profile.policy_digest,
+            dispositions: [],
+          },
+          existingDispositions: governanceState.dispositions,
+          findings: openFindings,
+          actorId: authorization.evidence.actor_id,
+          authorization,
+          reasonPath: reason.path,
+          reasonSha256: reason.sha256,
+          completedPhases: ['requirement', 'acceptance'],
+        });
+        if (!eligibility.eligible) throwConditionEligibilityFailure(eligibility);
+      }
+      const canonicalInputPath = resolveCanonicalApprovalInput(
+        repoRoot,
+        run,
+        governanceState,
+        options.phase,
+        options,
+      );
+      const bound = buildDigestBoundApprovalBindings(repoRoot, {
+        phase: options.phase,
+        version: options.version,
+        run,
+        runtime,
+        governanceState,
+        conditionedCandidate,
+        canonicalInputPath,
+        authorization,
+      });
+      if (options.phase === 'technical-plan') {
+        validateTechnicalPlanSpecContract(repoRoot, {
+          inputPath: bound.artifact.path,
+          inputText: bound.artifact.bytes.toString('utf8'),
+        });
+      }
+      let legacyProjection = null;
+      if (!conditionedCandidate) {
+        try {
+          legacyProjection = preparePlannerApprovalProjection(
+            repoRoot,
+            options.phase,
+            options.version,
+            {
+              allowHistorical: true,
+              requireDigestBindings: true,
+              now: options.now,
+            },
+          );
+        } catch (error) {
+          if (error instanceof GovernanceError) throw error;
+          throw new GovernanceError(
+            'APPROVAL_BINDING_MISMATCH',
+            'Legacy approval projection changed during digest-bound commit preparation.',
+            { mismatches: ['legacy_projection'], cause: error.message },
+          );
+        }
+      }
+      return { ...bound, legacyProjection };
+    },
+  });
+  if (options.suppressOutput !== true) {
+    process.stdout.write(formatDigestBoundApprovalResult(result, options));
+  }
+  return {
+    ...result,
+    governance: governedApproval.profile,
+  };
 }
 
 async function runApprove(repoRoot, options = {}) {
@@ -5206,6 +5828,29 @@ async function runApprove(repoRoot, options = {}) {
     throw new Error(formatError(translator.t('ai.approve.error.input_not_supported', { phase, input: options.input })));
   }
 
+  if (options.digestBound === true && options.dryRun !== true) {
+    const runsRoot = path.join(repoRoot, '.quiver', 'runs');
+    const pendingRunIds = fs.existsSync(runsRoot)
+      ? fs.readdirSync(runsRoot, { withFileTypes: true })
+        .filter((entry) => entry.isDirectory())
+        .filter((entry) => fs.existsSync(path.join(runsRoot, entry.name, 'approval-commit-wal.json')))
+        .map((entry) => entry.name)
+      : [];
+    const recoveryRunIds = options.runId
+      ? pendingRunIds.filter((runId) => runId === String(options.runId).trim().toLowerCase())
+      : pendingRunIds;
+    if (!options.runId && recoveryRunIds.length > 1) {
+      throw new GovernanceError(
+        'AI_RUN_AMBIGUOUS',
+        'Multiple runs require approval recovery; rerun with --run <id>.',
+        { run_ids: recoveryRunIds },
+      );
+    }
+    for (const runId of recoveryRunIds) {
+      recoverDigestBoundApprovalCommit(repoRoot, { runId });
+    }
+  }
+
   const explicitRun = options.runId ? readAiRun(repoRoot, options.runId) : null;
   let governedApproval = null;
   if (governanceIsEnabled(repoRoot, options, explicitRun)) {
@@ -5219,7 +5864,7 @@ async function runApprove(repoRoot, options = {}) {
       ...resolveGovernanceRuntime(repoRoot, options, run),
       run,
     };
-    if (options.dryRun !== true && !conditionedDecision) {
+    if (options.dryRun !== true && (!conditionedDecision || options.publishFinal === true)) {
       recoverGovernedPlanReviewCommit(repoRoot, { runId: run.run_id });
       governedApproval.run = readAiRun(repoRoot, run.run_id);
     }
@@ -5245,11 +5890,19 @@ async function runApprove(repoRoot, options = {}) {
   const version = await resolveApprovalVersion(repoRoot, phase, options);
 
   if (conditionedDecision) {
-    return runConditionedApprovalCandidate(repoRoot, {
+    const candidate = await runConditionedApprovalCandidate(repoRoot, {
       ...options,
       phase,
       version,
       governedApproval,
+      suppressOutput: options.publishFinal === true,
+    });
+    if (options.dryRun === true || options.publishFinal !== true) return candidate;
+    return commitGovernedDigestBoundApproval(repoRoot, governedApproval, {
+      ...options,
+      phase,
+      version,
+      conditionedCandidateId: candidate.candidate_id,
     });
   }
 
@@ -5267,7 +5920,9 @@ async function runApprove(repoRoot, options = {}) {
         command: technicalPlanReview.meta.review_result.next_command,
       })));
     }
-    assertTechnicalPlanDraftHasSpecContract(repoRoot, version);
+    if (!(governedApproval && options.digestBound === true)) {
+      assertTechnicalPlanDraftHasSpecContract(repoRoot, version);
+    }
   }
   if (governedApproval) {
     assertGovernedApprovalCandidateCorrelation(
@@ -5290,6 +5945,14 @@ async function runApprove(repoRoot, options = {}) {
       version: version || null,
       dryRun: true,
     };
+  }
+
+  if (governedApproval && options.digestBound === true) {
+    return commitGovernedDigestBoundApproval(repoRoot, governedApproval, {
+      ...options,
+      phase,
+      version,
+    });
   }
 
   const commitApproval = (governanceContext = null) => {
@@ -5429,6 +6092,435 @@ async function runApprove(repoRoot, options = {}) {
       });
     },
   );
+}
+
+function normalizeApprovalRecordPhase(value) {
+  const phase = normalizePlannerPhase(value || DEFAULT_PLAN_PHASE);
+  if (!PLANNER_APPROVAL_PHASES.includes(phase)) {
+    throw new GovernanceError(
+      'APPROVAL_PHASE_UNSUPPORTED',
+      `Canonical approval records are only available for ${PLANNER_APPROVAL_PHASES.join(' or ')}.`,
+      { phase },
+    );
+  }
+  return phase;
+}
+
+function resolveApprovalInspectionRun(repoRoot, options = {}) {
+  if (options.runId) {
+    const explicit = readAiRun(repoRoot, options.runId);
+    if (!explicit) {
+      throw new GovernanceError('AI_RUN_REQUIRED', `AI run '${options.runId}' does not exist.`, {
+        run_id: options.runId,
+      });
+    }
+    return explicit;
+  }
+
+  const active = listAiRuns(repoRoot).filter((run) => run.status !== 'closed');
+  if (active.length !== 1) {
+    throw new GovernanceError(
+      active.length === 0 ? 'AI_RUN_REQUIRED' : 'AI_RUN_AMBIGUOUS',
+      active.length === 0
+        ? 'Approval inspection requires --run <id> because there is no active run.'
+        : `Approval inspection requires --run <id> because ${active.length} runs are active.`,
+      { active_run_ids: active.map((run) => run.run_id) },
+    );
+  }
+  return active[0];
+}
+
+function approvalProjectionFailure(code, message, mismatches = []) {
+  return new GovernanceError(code, message, { mismatches });
+}
+
+function readApprovalBindingFile(repoRoot, value, label, mismatchField) {
+  try {
+    return readProjectFileBytes(repoRoot, value, label);
+  } catch (error) {
+    if (error instanceof GovernanceError) throw error;
+    throw new GovernanceError(
+      'APPROVAL_BINDING_MISMATCH',
+      `${label} is missing, invalid, or resolves outside the project.`,
+      { mismatches: [mismatchField], cause: error.message },
+    );
+  }
+}
+
+function readDecisionApprovalProjection(repoRoot, run, decision) {
+  const projectionPath = path.relative(repoRoot, runApprovalsPath(repoRoot, run.run_id)).split(path.sep).join('/');
+  if (run.approvals_path !== projectionPath) {
+    throw approvalProjectionFailure(
+      'APPROVAL_BINDING_MISMATCH',
+      'Run approval projection path does not match the canonical run namespace.',
+      ['run.approvals_path'],
+    );
+  }
+  const source = readApprovalBindingFile(
+    repoRoot,
+    projectionPath,
+    'Run approval projection',
+    'approvals.json',
+  );
+  let projection;
+  try {
+    projection = JSON.parse(source.bytes.toString('utf8'));
+  } catch (error) {
+    throw approvalProjectionFailure(
+      'APPROVAL_BINDING_MISMATCH',
+      'Run approval projection is not valid JSON.',
+      ['approvals.json'],
+    );
+  }
+  if (projection?.schema_version !== 1
+      || projection?.run_id !== run.run_id
+      || !Array.isArray(projection?.approvals)) {
+    throw approvalProjectionFailure(
+      'APPROVAL_BINDING_MISMATCH',
+      'Run approval projection does not match its canonical run.',
+      ['approvals.json'],
+    );
+  }
+  const matches = projection.approvals.filter((item) => item?.decision_id === decision.decision_id);
+  if (matches.length !== 1) {
+    throw approvalProjectionFailure(
+      'REPRESENTATION_MISMATCH',
+      'Run approval projection must contain exactly one copy of the canonical decision.',
+      ['decision_id'],
+    );
+  }
+  const item = matches[0];
+  const expected = {
+    schema_version: 1,
+    run_id: decision.run_id,
+    decision_id: decision.decision_id,
+    phase: decision.phase,
+    decision: decision.decision,
+    artifact: decision.artifact_path,
+    artifact_sha256: decision.artifact_sha256,
+    input_sha256: decision.input_sha256,
+    criterion_count: decision.criterion_count,
+    version: decision.version,
+    at: decision.recorded_at,
+  };
+  const representationMismatches = ['criterion_count'].filter((field) => item?.[field] !== expected[field]);
+  if (representationMismatches.length > 0) {
+    throw approvalProjectionFailure(
+      'REPRESENTATION_MISMATCH',
+      'Run approval projection count differs from the canonical decision.',
+      representationMismatches,
+    );
+  }
+  const bindingMismatches = Object.keys(expected)
+    .filter((field) => field !== 'criterion_count')
+    .filter((field) => stableStringify(item?.[field]) !== stableStringify(expected[field]));
+  if (bindingMismatches.length > 0) {
+    throw approvalProjectionFailure(
+      'APPROVAL_BINDING_MISMATCH',
+      'Run approval projection differs from the canonical decision.',
+      bindingMismatches,
+    );
+  }
+  return { path: source.path, value: item };
+}
+
+function approvalActorFromEvidence(evidence = {}) {
+  const providerSubject = evidence.provider_subject || null;
+  return {
+    actor_id: evidence.provider_actor_id || evidence.actor_id,
+    provider: providerSubject ? 'github-cli' : 'local',
+    provider_subject: providerSubject,
+    roles: [],
+    verified: providerSubject ? evidence.verified === true : false,
+  };
+}
+
+function assertApprovalRunHistory(run, decision) {
+  const expectedPhase = decision.phase === 'acceptance'
+    ? 'acceptance-approved'
+    : 'technical-plan-approved';
+  const matches = (run.history || []).filter((event) => (
+    event?.phase === expectedPhase
+    && event?.artifact === decision.artifact_path
+    && event?.at === decision.recorded_at
+  ));
+  if (matches.length !== 1) {
+    throw new GovernanceError(
+      'APPROVAL_BINDING_MISMATCH',
+      'AI run history does not contain exactly one matching approval transition.',
+      { mismatches: ['run.history'], expected_phase: expectedPhase },
+    );
+  }
+}
+
+function canonicalFindingCountAt(governanceState, recordedAt) {
+  const cutoff = Date.parse(String(recordedAt || ''));
+  return (governanceState.findings || []).filter((finding) => {
+    const created = (finding.lifecycle || []).find((event) => (
+      event.event === 'created' || event.event === 'created-as-supersession'
+    ));
+    if (!created) return true;
+    const createdAt = Date.parse(String(created.at || ''));
+    return Number.isNaN(cutoff) || Number.isNaN(createdAt) || createdAt <= cutoff;
+  }).length;
+}
+
+function verifyCanonicalApproval(repoRoot, options = {}) {
+  const phase = normalizeApprovalRecordPhase(options.phase);
+  const run = resolveApprovalInspectionRun(repoRoot, options);
+  if (fs.existsSync(runApprovalCommitPath(repoRoot, run.run_id))) {
+    throw new GovernanceError(
+      'APPROVAL_RECOVERY_REQUIRED',
+      `Approval commit recovery is required before reading run '${run.run_id}'.`,
+      { run_id: run.run_id },
+    );
+  }
+  const phaseDecisions = readRunApprovalDecisions(repoRoot, run.run_id)
+    .filter((item) => item.phase === phase);
+  if (phaseDecisions.length !== 1) {
+    throw new GovernanceError(
+      phaseDecisions.length === 0 ? 'APPROVAL_NOT_FOUND' : 'REPRESENTATION_MISMATCH',
+      phaseDecisions.length === 0
+        ? `No canonical ${phase} approval exists for run '${run.run_id}'.`
+        : `Run '${run.run_id}' contains ${phaseDecisions.length} canonical ${phase} decisions.`,
+      { run_id: run.run_id, phase, decision_count: phaseDecisions.length },
+    );
+  }
+  const decision = readRunApprovalDecision(repoRoot, run.run_id, phase);
+  const governanceState = readRunGovernance(repoRoot, run.run_id);
+  if (!governanceState) {
+    throw new GovernanceError('APPROVAL_BINDING_MISMATCH', 'Canonical run governance state is missing.', {
+      mismatches: ['review-governance.json'],
+    });
+  }
+  const runtime = resolveGovernanceRuntime(repoRoot, options, run);
+  if (!runtime) {
+    throw new GovernanceError('GOVERNANCE_CONFIG_MISSING', 'Canonical approval verification requires governance configuration.');
+  }
+  assertApprovalRuntimeBinding(run, runtime);
+
+  const expectedArtifactPath = path.relative(
+    repoRoot,
+    runApprovalArtifactPath(repoRoot, run.run_id, phase, decision.version),
+  ).split(path.sep).join('/');
+  const artifact = readApprovalBindingFile(
+    repoRoot,
+    expectedArtifactPath,
+    'Canonical approval artifact',
+    'artifact_path',
+  );
+  const canonicalInputPath = resolveCanonicalApprovalInput(repoRoot, run, governanceState, phase, options);
+  const input = readApprovalBindingFile(
+    repoRoot,
+    canonicalInputPath,
+    'Canonical approval input',
+    'input_path',
+  );
+  const criteria = approvalCriteria(repoRoot, phase, artifact);
+  const review = phase === 'technical-plan'
+    ? governanceState.reviews.find((item) => item.review_id === governanceState.current_review_id) || null
+    : null;
+  if (phase === 'technical-plan' && !review) {
+    throw new GovernanceError('APPROVAL_BINDING_MISMATCH', 'Canonical technical-plan review is missing.', {
+      mismatches: ['review_id'],
+    });
+  }
+
+  const conditionedCandidate = decision.candidate_id
+    ? governanceState.conditioned_candidates.find((item) => item.candidate_id === decision.candidate_id) || null
+    : null;
+  if (decision.decision === 'approved-with-conditions' && !conditionedCandidate) {
+    throw new GovernanceError('APPROVAL_BINDING_MISMATCH', 'Conditioned approval candidate is missing.', {
+      mismatches: ['candidate_id'],
+    });
+  }
+  const dispositionIds = conditionedCandidate
+    ? [...conditionedCandidate.disposition_ids].sort()
+    : [];
+  const dispositions = dispositionIds.map((dispositionId) => (
+    governanceState.dispositions.find((item) => item.disposition_id === dispositionId && item.state === 'current') || null
+  ));
+  if (dispositions.some((item) => item === null)) {
+    throw new GovernanceError('APPROVAL_BINDING_MISMATCH', 'A bound approval disposition is missing or no longer current.', {
+      mismatches: ['disposition_ids'],
+    });
+  }
+  const reason = conditionedCandidate
+    ? readApprovalBindingFile(
+        repoRoot,
+        conditionedCandidate.reason_path,
+        'Conditioned approval reason',
+        'reason_path',
+      )
+    : null;
+
+  const authorization = authorizeGovernanceAction({
+    governance: runtime.governance,
+    action: conditionedCandidate ? 'approve-with-conditions' : 'approve',
+    actor: approvalActorFromEvidence(decision.authorization),
+    profile: runtime.profile.effective_profile,
+    context: {
+      run_creator: run.governance_actors?.run_creator || null,
+      reviewer: run.governance_actors?.reviewer || null,
+      executor: run.governance_actors?.executor || null,
+    },
+  });
+  if (!authorization.authorized) throw governanceFailure(authorization);
+
+  const actual = {
+    run_id: run.run_id,
+    review_id: review?.review_id || null,
+    phase,
+    decision: conditionedCandidate ? conditionedCandidate.decision : 'approved',
+    candidate_id: conditionedCandidate?.candidate_id || null,
+    evaluation_id: conditionedCandidate?.evaluation_id || null,
+    version: decision.version,
+    artifact_path: artifact.path,
+    artifact_sha256: artifact.sha256,
+    input_path: input.path,
+    input_sha256: input.sha256,
+    review_sha256: review ? canonicalSha256(review) : null,
+    requested_profile: runtime.profile.requested_profile,
+    effective_profile: runtime.profile.effective_profile,
+    profile_sha256: computeApprovalProfileDigest(runtime.profile, run.governance || runtime.binding),
+    policy_version: runtime.profile.policy_version,
+    policy_digest: runtime.profile.policy_digest,
+    finding_count: canonicalFindingCountAt(governanceState, decision.recorded_at),
+    criterion_count: criteria.length,
+    disposition_ids: dispositionIds,
+    disposition_sha256: computeApprovalDispositionDigest(dispositions),
+    reason_path: reason?.path || null,
+    reason_sha256: reason?.sha256 || null,
+    actor_id: authorization.evidence.actor_id,
+    authorization: authorization.evidence,
+    reviewer_recommendation: review?.provider_recommendation || null,
+    reviewer_approved: conditionedCandidate ? false : null,
+  };
+  assertApprovalBindingParity(decision, actual);
+  const projection = readDecisionApprovalProjection(repoRoot, run, decision);
+  assertApprovalRunHistory(run, decision);
+  return {
+    valid: true,
+    code: 'APPROVAL_VALID',
+    run,
+    decision,
+    projection,
+    criteria,
+  };
+}
+
+function approvalInspectionJson(command, verification, extra = {}) {
+  return {
+    schema_version: 1,
+    task: `approval-${command}`,
+    ok: true,
+    status: 'valid',
+    code: verification.code,
+    approval: verification.decision,
+    verification: {
+      valid: true,
+      projection_path: verification.projection.path,
+      criteria_count: verification.criteria.length,
+    },
+    ...extra,
+  };
+}
+
+function formatLinearApprovalComment(decision) {
+  const lines = [
+    `${decision.phase.replace(/-/g, '_').toUpperCase()}_${decision.decision.replace(/-/g, '_').toUpperCase()}:v${decision.version}`,
+    `artifact_sha256=${decision.artifact_sha256}`,
+    `requirement_sha256=${decision.input_sha256}`,
+    `criteria_count=${decision.criterion_count}`,
+  ];
+  if (decision.decision === 'approved-with-conditions') {
+    lines.push(
+      `reviewer_recommendation=${decision.reviewer_recommendation}`,
+      'reviewer_approved=false',
+    );
+  }
+  return `${lines.join('\n')}\n`;
+}
+
+function formatApprovalInspection(command, verification, options = {}) {
+  const decision = verification.decision;
+  if (command === 'export') {
+    const format = String(options.format || 'linear-comment').trim().toLowerCase();
+    if (format !== 'linear-comment') {
+      throw new GovernanceError(
+        'APPROVAL_EXPORT_FORMAT_UNSUPPORTED',
+        `Unsupported approval export format '${format || 'missing'}'.`,
+        { supported_formats: ['linear-comment'] },
+      );
+    }
+    const output = formatLinearApprovalComment(decision);
+    return options.json === true
+      ? `${JSON.stringify(approvalInspectionJson(command, verification, { format, output }), null, 2)}\n`
+      : output;
+  }
+  if (options.json === true) {
+    return `${JSON.stringify(approvalInspectionJson(command, verification), null, 2)}\n`;
+  }
+  return `${[
+    command === 'show' ? 'AI canonical approval' : 'AI canonical approval verified',
+    `Status: valid`,
+    `Code: ${verification.code}`,
+    `Run: ${decision.run_id}`,
+    `Phase: ${decision.phase}`,
+    `Decision: ${decision.decision}`,
+    `Version: v${decision.version}`,
+    `Artifact: ${decision.artifact_path}`,
+    `Artifact digest: ${decision.artifact_sha256}`,
+    `Input: ${decision.input_path}`,
+    `Input digest: ${decision.input_sha256}`,
+    `Criteria: ${decision.criterion_count}`,
+    `Findings: ${decision.finding_count}`,
+    `Actor: ${decision.actor_id}`,
+    `Recorded: ${decision.recorded_at}`,
+    `Decision digest: ${decision.decision_sha256}`,
+  ].join('\n')}\n`;
+}
+
+function approvalJsonFailure(command, error) {
+  return {
+    schema_version: 1,
+    task: `approval-${command || 'unknown'}`,
+    ok: false,
+    status: 'error',
+    code: error?.code || 'APPROVAL_COMMAND_FAILED',
+    error: {
+      message: String(error?.message || 'Approval command failed.'),
+      details: error?.details || {},
+    },
+  };
+}
+
+function runApprovalRecord(repoRoot, options = {}) {
+  const command = String(options.command || '').trim().toLowerCase();
+  try {
+    if (!['show', 'verify', 'export'].includes(command)) {
+      throw new GovernanceError(
+        'APPROVAL_COMMAND_UNSUPPORTED',
+        `Unsupported ai approval subcommand '${command || 'missing'}'.`,
+        { supported_commands: ['show', 'verify', 'export'] },
+      );
+    }
+    const verification = verifyCanonicalApproval(repoRoot, options);
+    const output = formatApprovalInspection(command, verification, options);
+    process.stdout.write(output);
+    return {
+      task: `approval-${command}`,
+      command,
+      verification,
+      output,
+    };
+  } catch (error) {
+    if (options.json !== true) throw error;
+    const failure = approvalJsonFailure(command, error);
+    process.stdout.write(`${JSON.stringify(failure, null, 2)}\n`);
+    process.exitCode = 1;
+    return failure;
+  }
 }
 
 async function runApprovalStatus(repoRoot, options = {}) {
@@ -6348,6 +7440,7 @@ module.exports = {
   runInspect,
   runPromptSlice,
   runApprove,
+  runApprovalRecord,
   runApprovalStatus,
   runPrepareContext,
   runRepairPlan,

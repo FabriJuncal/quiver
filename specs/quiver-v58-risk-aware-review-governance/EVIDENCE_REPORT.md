@@ -1,6 +1,6 @@
 # Evidence Report — Quiver v58 Risk-aware Review Governance
 
-Status: Runtime foundation validated through slice-03; later-slice evidence pending
+Status: Runtime foundation validated through slice-04; later-slice evidence pending
 
 ## Documentary foundation evidence
 
@@ -22,12 +22,12 @@ Detailed documentary evidence is recorded in slices/slice-00-governance-contract
 | AC-01 to AC-04 | slice-01 and slice-03 | Contract, config, profile, actor, finding lifecycle, isolation, authorization, and conditioned actor evidence | Passed for slice-01 contract and slice-03 conditioned subset |
 | AC-05 to AC-06 | slice-01 | Phase-policy, reconciliation, invalid-provider, and retained-state fixtures | Passed |
 | AC-07 | slice-02 | Budget classification, concurrency, exhaustion, retry, invalid-output, extension, and recovery evidence | Passed |
-| AC-08 | slice-02 through slice-04 | Review/budget isolation passed in slice-02; conditioned state correlation passed in slice-03; final decision isolation remains | Partial |
-| AC-09 | slice-04 | Digest, atomicity, and tampering tests | Pending |
-| AC-12 | slice-02 through slice-04 | Canonical budget counts passed in slice-02 and candidate labels passed in slice-03; final decision representation remains | Partial |
+| AC-08 | slice-02 through slice-04 | Review/budget isolation, conditioned-state correlation, explicit final-decision run selection, ambiguity rejection, and simultaneous-run approval isolation | Passed |
+| AC-09 | slice-04 | Exact-byte bindings, current authorization, tampering, seven write-failure boundaries, rollback, recovery, and canonical inspection/export | Passed |
+| AC-12 | slice-02 through slice-04 | Event-derived budget counts, raw acceptance and complete finding counts, decision/projection parity, and representation mismatch blocking | Passed |
 | AC-10 | slice-03 | Condition policy, eligibility precedence, complete dispositions, protected Critical rejection, and explicit non-final candidate | Passed |
 | AC-11 | slice-05 | Spec, slice, PR propagation and gate evidence | Pending |
-| AC-13 | slice-04 and slice-06 | CLI/JSON code, status, exit, and representation evidence | Pending |
+| AC-13 | slice-04 and slice-06 | Approval commit/show/verify/export CLI, JSON code/status/exit, and Linear projection passed in slice-04; broader shared-surface convergence remains | Partial |
 | AC-14 | slice-01, slice-03, slice-05, and slice-06 | Review-evidence redaction passed in slice-01 and conditioned reason bounding passed in slice-03; downstream/export surfaces pending | Partial |
 | AC-15 | slice-03 and slice-06 | Additive conditioned-state reads and no false advancement passed in slice-03; migration remains | Partial |
 | AC-16 | slice-06 | Rollback, directed integration, and documentation checks | Pending |
@@ -151,6 +151,55 @@ Covered behavior:
 
 Detailed evidence, scope boundaries, and pending later-slice work are recorded in `slices/slice-03-approved-with-conditions/CLOSURE_BRIEF.md`.
 
+## Slice-04 Evidence — digest-bound approvals
+
+Required validation commands:
+
+```bash
+node --test tests/lib/approvals.test.js tests/lib/ai-review-governance.test.js tests/lib/ai-run-state.test.js tests/commands/ai-plan.test.js tests/commands/ai-review-plan.test.js tests/commands/ai-run-state.test.js tests/commands/cli-contract.test.js
+npm test
+node --check src/create-quiver/lib/approvals.js
+node --check src/create-quiver/lib/ai/approval-candidates.js
+node --check src/create-quiver/lib/ai/plan-review.js
+node --check src/create-quiver/lib/ai/review-governance.js
+node --check src/create-quiver/lib/ai/review-governance.schema.js
+node --check src/create-quiver/lib/ai/run-state.js
+node --check src/create-quiver/commands/ai.js
+node --check src/create-quiver/index.js
+node scripts/ci/check-slice-schema.js
+node bin/create-quiver.js slice check --local specs/quiver-v58-risk-aware-review-governance/slices/slice-04-digest-bound-approvals/slice.json
+node bin/create-quiver.js spec validate specs/quiver-v58-risk-aware-review-governance --strict
+npm run docs:check
+node bin/create-quiver.js slice pr specs/quiver-v58-risk-aware-review-governance/slices/slice-04-digest-bound-approvals/slice.json
+git diff --check
+```
+
+Final results:
+
+- The directed slice suite passed 171 tests with no failures.
+- The full portable regression passed 893 tests with no failures.
+- Relevant syntax, local slice, strict seven-slice spec, slice-schema, documentation, command-reference, PR-readiness, scope, and whitespace gates passed.
+- Independent atomicity review reproduced all seven injected recovery boundaries and approved the final WAL, recovery, and run-to-planner lock ordering.
+- Independent conditioned-flow review passed the full acceptance-to-review-to-candidate-to-final-decision path, exact retry, drift rejection, verify/export, and post-publication tamper checks.
+- Independent security review reproduced path redirection, symlink, secret propagation, cross-run binding, target-allowlist, and normal-publication attacks and closed approved with no blocker.
+- Independent compatibility review reproduced repeated-revision rebinding, cross-run draft mixing, canonical-row downgrade, and hidden symlinked run namespaces; all fixes passed terminal reaudit with no blocker.
+
+Covered behavior:
+
+- Exact artifact and canonical-input byte digests plus deterministic decision, profile, review, policy, disposition, and bounded-reason bindings.
+- Commit-time actor identity, default-deny authorization, independence, and policy re-evaluation under the protected critical section.
+- Complete canonical finding counts and phase-specific raw acceptance counts without provider aggregates.
+- Atomic publication of the run artifact, governance decision ledger, run approval projection, unconditional legacy projection, and phase transition.
+- Durable WAL snapshots, reverse rollback, fail-closed readers and legacy writers, idempotent recovery, corrupt/foreign target rejection, and no lock-order inversion.
+- Exact ordered WAL targets validated before publication and recovery, canonical no-follow run namespaces, and strict run/state/projection identity correlation.
+- Textual and structured redaction of artifact/input bytes and snapshots with schema-validated authorization evidence scanned leaf-by-leaf.
+- Separate conditioned final decisions with reviewer non-approval visible and no legacy technical-plan `approved.md`.
+- Canonical human/JSON show and verify plus exact Linear-comment export, stable machine codes, nonzero failures, and clean JSON stdout.
+- Explicit and ambiguous run selection, closed-run inspection, and two simultaneous runs retaining isolated versions, paths, counts, decisions, and phases.
+- Repeated technical-plan revision keeps both the selected run-owned draft and its canonical or compatibility acceptance input bound to the same run; plural listing rejects foreign or downgraded canonical rows while preserving the exact historical legacy namespace.
+
+Detailed evidence, scope boundaries, deviations, and pending later-slice work are recorded in `slices/slice-04-digest-bound-approvals/CLOSURE_BRIEF.md`.
+
 ## Evidence required from each slice
 
 - Commit and PR reference.
@@ -193,6 +242,12 @@ The condition-policy allowlist, stable-code precedence, explicit disposition lif
 The slice-03 full regression exposed one directly affected additive-state assertion in `tests/lib/ai-run-state.test.js`. The slice read/write scope and directed suite were amended before changing that expectation; no production behavior or acceptance scope changed.
 
 Independent slice-03 review exposed correlation and identity-evidence gaps. The implementation now rejects disposition/evaluation/candidate correlation tampering and preserves only supported stable identity adapter codes under the outer `DISPOSITION_UNAUTHORIZED` result. Follow-up review verified both gaps closed.
+
+The slice-04 ledger location, digest/count formulas, singular approval namespace, compatible plural listing, and schema/registry scope were clarified with explicit user authorization on 2026-08-27. These decisions are frozen in `SPEC.md` and the slice handoffs.
+
+Slice-04 integration exposed that the governed review WAL treated schema-valid canonical `authorization` evidence as an arbitrary credential key. `plan-review.js` was added to scope so only validated authorization evidence inside canonical decisions, dispositions, and candidates is excluded from that generic key-name check; provider and arbitrary marker data remain redacted.
+
+Independent slice-04 atomicity review found that a pending approval WAL did not yet block legacy planner writers and that concurrent recovery could observe an already removed marker. Both paths now fail safely or return idempotently, and the reviewer approved the final lock ordering and seven-boundary rollback evidence.
 
 ## Closure rule
 
