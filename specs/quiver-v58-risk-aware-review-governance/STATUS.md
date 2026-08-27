@@ -2,9 +2,9 @@
 
 Overall status: In Progress
 
-Current stage: slice-03 runtime implementation is completed, validated, and independently reviewed; its human-reviewed PR publication gate is pending.
+Current stage: slice-04 digest-bound approval implementation is completed and validated; its human-reviewed PR publication gate is pending.
 
-Next contract-ready slice: slice-04-digest-bound-approvals (execution remains gated by slice-03 completion and merge)
+Next contract-ready slice: slice-05-finding-disposition-transfer (execution remains gated by slice-04 human review and merge)
 
 ## Approval and delivery record
 
@@ -16,7 +16,10 @@ Next contract-ready slice: slice-04-digest-bound-approvals (execution remains ga
 - slice-02 implementation PR: human-reviewed and merged on 2026-08-25.
 - slice-03 ambiguity closure: condition policy, lifecycle, stable codes, and reviewer projection explicitly authorized on 2026-08-25.
 - slice-03 implementation closure: completed and independently reviewed on 2026-08-25.
-- Current publication gate: human review and merge of the slice-03 implementation PR.
+- slice-03 implementation PR: human-reviewed and merged on 2026-08-25.
+- slice-04 contract amendment: canonical ledger location, digest/count formulas, CLI namespace, and required scope additions explicitly authorized by the user on 2026-08-27.
+- slice-04 implementation closure: completed, validated, and independently reviewed on 2026-08-27.
+- Current publication gate: human review and merge of the slice-04 implementation PR.
 
 Here, `completed` records finished implementation and executed slice evidence; it does not bypass the human PR gate. `ready` records that the next slice contract is executable only after its completed dependency is merged into the base branch.
 
@@ -27,23 +30,23 @@ Here, `completed` records finished implementation and executed slice evidence; i
 | slice-00-governance-contracts | QUIVER-58-00 | completed | none | Merged dependency |
 | slice-01-phase-aware-blocking-policy | QUIVER-58-01 | completed | slice-00 | Merged dependency |
 | slice-02-review-budget-circuit-breaker | QUIVER-58-02 | completed | slice-01 | Merged dependency |
-| slice-03-approved-with-conditions | QUIVER-58-03 | completed | slice-02 | Human review and merge of implementation PR |
-| slice-04-digest-bound-approvals | QUIVER-58-04 | ready | slice-03 | Wait for slice-03 PR merge, then run preflight |
+| slice-03-approved-with-conditions | QUIVER-58-03 | completed | slice-02 | Merged dependency |
+| slice-04-digest-bound-approvals | QUIVER-58-04 | completed | slice-03 | Human review and merge of implementation PR |
 | slice-05-finding-disposition-transfer | QUIVER-58-05 | planned | slice-04 | Dependency completed |
 | slice-06-integration-migration-docs | QUIVER-58-06 | planned | slice-05 | Dependency completed |
 
 ## Pending work
 
-1. Obtain human review and merge of the slice-03 implementation PR.
-2. After that merge, run the slice-04 preflight and implement only its digest-bound approval contract.
-3. Continue slices 04 through 06 in dependency order.
+1. Obtain human review and merge of the slice-04 implementation PR.
+2. After that merge, run the slice-05 preflight and implement only its finding-transfer contract.
+3. Continue slices 05 and 06 in dependency order.
 4. Record per-slice validation in each `CLOSURE_BRIEF.md` and `pr.md`.
 5. Close the package only after all acceptance criteria have executed evidence.
 
 ## Blockers
 
-No slice-03 implementation blocker remains. Human review and merge are the pending publication gate; later runtime capabilities remain intentionally assigned to slices 04 through 06.
+No slice-04 implementation blocker remains. Human review and merge are the pending publication gate; later runtime capabilities remain intentionally assigned to slices 05 and 06.
 
 ## Guardrail
 
-Do not begin slice-04 before the slice-03 PR is human-reviewed and merged. Do not implement final exact-byte digest-bound commits, downstream transfer, migration, rollback, release, deployment, v59, or v60 from the slice-03 branch.
+Do not begin slice-05 before the slice-04 PR is human-reviewed and merged. Do not implement downstream transfer, compatibility migration, package rollback, release, deployment, v59, or v60 from the slice-04 branch.

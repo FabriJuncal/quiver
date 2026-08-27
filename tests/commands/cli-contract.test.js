@@ -103,6 +103,7 @@ test('help output documents important public commands', () => {
     'ai repair-plan',
     'ai review-plan',
     'ai approve',
+    'ai approval <show|verify|export>',
     'ai approvals',
     'ai prompt-slice',
     'ai execute-slice',
@@ -149,15 +150,97 @@ test('help output documents important public commands', () => {
   assert.match(output, /--diff\s+For ai analyze-project, show or save the proposed documentation diff/);
   assert.match(output, /--allow-dirty-docs\s+For ai analyze-project, allow dirty target docs checks/);
   assert.match(output, /--details\s+Show the full human dashboard report/);
+  assert.match(output, /--format <name>\s+[^\n]*linear-comment/);
+  assert.match(output, /--json\s+Emit machine-readable JSON/);
   assert.match(output, /--section <name>\s+Show one human dashboard section \(overview, specs, slices, blockers, warnings, agents, approvals, runs, active-slice, next-steps\)/);
   assert.match(output, /--limit <n>\s+Limit dashboard human lists/);
   assert.match(output, /--model <model-id>\s+Technical model id for AI agent profiles or provider-backed AI commands/);
   assert.match(output, /--governance-profile <fast-delivery\|high-assurance>\s+Request the v58 governance execution profile/);
+  assert.match(output, /--phase <acceptance\|technical-plan>\s+\S/);
+  assert.match(output, /--decision <name>\s+Approval decision: approved or approved-with-conditions/);
+  assert.match(output, /--conditions-file <file>\s+Canonical condition disposition envelope for approved-with-conditions/);
+  assert.match(output, /--reason-file <file>\s+Repository-relative reason file for approved-with-conditions/);
+  assert.match(output, /--run <id>\s+AI lifecycle run id/);
   assert.match(output, /--lang <en\|es>\s+Override CLI human output language/);
   assert.match(output, /--global\s+For config language set, write the global user config/);
   assert.match(output, /--yes\s+Skip prompts and confirm write prompts such as migrate/);
   assert.match(output, /ai agent set planner --provider codex --model gpt-5\.5 --dry-run/);
+  assert.match(output, /ai approval show --phase acceptance --run <run-id>/);
+  assert.match(output, /ai approval verify --phase acceptance --run <run-id> --json/);
+  assert.match(output, /ai approval export --phase acceptance --run <run-id> --format linear-comment/);
   assert.match(output, new RegExp(`npx --yes create-quiver@${packageJson.version.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')} ai prompt-slice`));
+});
+
+test('ai approval accepts the singular verify contract and emits a clean JSON runtime error', () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'quiver-approval-contract-'));
+  const result = runCliRaw([
+    'ai',
+    'approval',
+    'verify',
+    '--phase',
+    'acceptance',
+    '--run',
+    'missing-run',
+    '--format',
+    'linear-comment',
+    '--json',
+  ], { cwd: tmp });
+
+  assert.notEqual(result.status, 0);
+  assert.equal(result.stderr, '');
+  assert.deepEqual(JSON.parse(result.stdout), {
+    schema_version: 1,
+    task: 'approval-verify',
+    ok: false,
+    status: 'error',
+    code: 'AI_RUN_REQUIRED',
+    error: {
+      message: "AI run 'missing-run' does not exist.",
+      details: {
+        run_id: 'missing-run',
+      },
+    },
+  });
+});
+
+test('ai approval rejects missing or unsupported singular subcommands', () => {
+  for (const [args, expected] of [
+    [['ai', 'approval'], /unsupported ai approval subcommand: \(missing\)\. Supported tasks: show, verify, export/],
+    [['ai', 'approval', 'watch'], /unsupported ai approval subcommand: watch\. Supported tasks: show, verify, export/],
+  ]) {
+    const result = runCliRaw(args);
+
+    assert.notEqual(result.status, 0);
+    assert.equal(result.stdout, '');
+    assert.match(result.stderr, expected);
+  }
+});
+
+test('approval value flags reject a following flag as a missing value', () => {
+  const cases = [
+    { args: ['ai', 'approve', '--decision', '--json'], flag: '--decision' },
+    { args: ['ai', 'approve', '--conditions-file', '--json'], flag: '--conditions-file' },
+    { args: ['ai', 'approve', '--reason-file', '--json'], flag: '--reason-file' },
+    { args: ['ai', 'approval', 'verify', '--phase', '--json'], flag: '--phase' },
+    { args: ['ai', 'approval', 'verify', '--run', '--json'], flag: '--run' },
+    { args: ['ai', 'approval', 'export', '--format', '--json'], flag: '--format' },
+  ];
+
+  for (const { args, flag } of cases) {
+    const result = runCliRaw(args);
+
+    assert.notEqual(result.status, 0);
+    assert.equal(result.stdout, '');
+    assert.match(result.stderr, new RegExp(`create-quiver: missing value for ${flag}`));
+  }
+});
+
+test('ai approve rejects decisions outside the public approval vocabulary', () => {
+  const result = runCliRaw(['ai', 'approve', '--decision', 'rejected']);
+
+  assert.notEqual(result.status, 0);
+  assert.equal(result.stdout, '');
+  assert.match(result.stderr, /invalid approval decision 'rejected'; expected approved or approved-with-conditions/);
 });
 
 test('governance profile flag rejects unknown profile names before command execution', () => {

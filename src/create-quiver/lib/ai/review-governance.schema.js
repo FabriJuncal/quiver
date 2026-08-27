@@ -587,6 +587,89 @@ const decisionSchema = z.object({
   }
 });
 
+const approvalDecisionSchema = z.object({
+  schema_version: z.literal(GOVERNANCE_RECORD_SCHEMA_VERSION),
+  decision_id: z.string().regex(/^A-\d{3,}$/),
+  run_id: nonEmptyStringSchema.max(300),
+  review_id: nonEmptyStringSchema.max(300).nullable(),
+  phase: z.enum(['acceptance', 'technical-plan']),
+  decision: z.enum(['approved', 'approved-with-conditions']),
+  publication_state: z.literal('final'),
+  candidate_id: identifierSchema.nullable(),
+  evaluation_id: identifierSchema.nullable(),
+  version: z.number().int().positive(),
+  artifact_path: repositoryRelativePathSchema,
+  artifact_sha256: sha256DigestSchema,
+  input_path: repositoryRelativePathSchema,
+  input_sha256: sha256DigestSchema,
+  review_sha256: sha256DigestSchema.nullable(),
+  requested_profile: executionProfileSchema,
+  effective_profile: executionProfileSchema,
+  profile_sha256: sha256DigestSchema,
+  policy_version: nonEmptyStringSchema.max(200),
+  policy_digest: sha256DigestSchema,
+  finding_count: z.number().int().nonnegative(),
+  criterion_count: z.number().int().nonnegative(),
+  disposition_ids: z.array(identifierSchema),
+  disposition_sha256: sha256DigestSchema,
+  reason_path: repositoryRelativePathSchema.nullable(),
+  reason_sha256: sha256DigestSchema.nullable(),
+  actor_id: nonEmptyStringSchema.max(300),
+  authorization: authorizationEvidenceSchema,
+  reviewer_recommendation: planReviewRecommendationSchema.nullable(),
+  reviewer_approved: z.literal(false).nullable(),
+  recorded_at: timestampSchema,
+  decision_sha256: sha256DigestSchema,
+}).strict().superRefine((decision, context) => {
+  addUniqueArrayIssue(decision.disposition_ids, context, ['disposition_ids'], 'disposition_ids');
+  const conditioned = decision.decision === 'approved-with-conditions';
+  const expectedAction = conditioned ? 'approve-with-conditions' : 'approve';
+  if (decision.authorization.action !== expectedAction
+      || decision.authorization.actor_id !== decision.actor_id
+      || decision.authorization.policy_version !== decision.policy_version
+      || decision.authorization.policy_digest !== decision.policy_digest) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['authorization'],
+      message: 'approval decision authorization must match its action, actor, and policy bindings',
+    });
+  }
+  if (decision.phase === 'technical-plan' && (!decision.review_id || !decision.review_sha256 || !decision.reviewer_recommendation)) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['review_id'],
+      message: 'technical-plan approval requires current review bindings',
+    });
+  }
+  if (!conditioned) {
+    if (decision.candidate_id !== null
+        || decision.evaluation_id !== null
+        || decision.disposition_ids.length !== 0
+        || decision.reason_path !== null
+        || decision.reason_sha256 !== null
+        || decision.reviewer_approved !== null) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['decision'],
+        message: 'unconditional approval cannot contain conditioned bindings',
+      });
+    }
+    return;
+  }
+  if (!decision.candidate_id
+      || !decision.evaluation_id
+      || decision.disposition_ids.length === 0
+      || !decision.reason_path
+      || !decision.reason_sha256
+      || decision.reviewer_approved !== false) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['decision'],
+      message: 'conditioned approval requires candidate, evaluation, disposition, reason, and reviewer non-approval bindings',
+    });
+  }
+});
+
 const conditionEligibilityResultSchema = z.object({
   eligible: z.boolean(),
   status: conditionEligibilityStatusSchema,
@@ -767,6 +850,7 @@ const runGovernanceStateSchema = z.object({
   dispositions: z.array(canonicalDispositionSchema).default([]),
   condition_evaluations: z.array(conditionEvaluationSchema).default([]),
   conditioned_candidates: z.array(conditionedDecisionCandidateSchema).default([]),
+  decisions: z.array(approvalDecisionSchema).optional(),
   updated_at: timestampSchema.optional(),
 }).strict().superRefine((state, context) => {
   const reviewIds = state.reviews.map((review) => review.review_id);
@@ -774,11 +858,13 @@ const runGovernanceStateSchema = z.object({
   const dispositionIds = state.dispositions.map((disposition) => disposition.disposition_id);
   const evaluationIds = state.condition_evaluations.map((evaluation) => evaluation.evaluation_id);
   const candidateIds = state.conditioned_candidates.map((candidate) => candidate.candidate_id);
+  const decisionIds = (state.decisions || []).map((decision) => decision.decision_id);
   addUniqueArrayIssue(reviewIds, context, ['reviews'], 'review IDs');
   addUniqueArrayIssue(findingIds, context, ['findings'], 'finding IDs');
   addUniqueArrayIssue(dispositionIds, context, ['dispositions'], 'disposition IDs');
   addUniqueArrayIssue(evaluationIds, context, ['condition_evaluations'], 'condition evaluation IDs');
   addUniqueArrayIssue(candidateIds, context, ['conditioned_candidates'], 'conditioned candidate IDs');
+  addUniqueArrayIssue(decisionIds, context, ['decisions'], 'approval decision IDs');
   for (const [index, review] of state.reviews.entries()) {
     if (review.run_id !== state.run_id) {
       context.addIssue({
@@ -934,6 +1020,28 @@ const runGovernanceStateSchema = z.object({
       }
     }
   }
+  for (const [index, decision] of (state.decisions || []).entries()) {
+    const decisionReview = decision.review_id ? reviewById.get(decision.review_id) : null;
+    const decisionCandidate = decision.candidate_id
+      ? state.conditioned_candidates.find((candidate) => candidate.candidate_id === decision.candidate_id)
+      : null;
+    if (decision.run_id !== state.run_id
+        || (decision.review_id && !decisionReview)
+        || (decision.phase === 'technical-plan' && decision.review_id !== state.current_review_id)
+        || (decisionCandidate && (
+          decisionCandidate.run_id !== decision.run_id
+          || decisionCandidate.review_id !== decision.review_id
+          || decisionCandidate.evaluation_id !== decision.evaluation_id
+          || decisionCandidate.decision !== decision.decision
+        ))
+        || (decision.candidate_id && !decisionCandidate)) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['decisions', index],
+        message: 'approval decision correlation is invalid',
+      });
+    }
+  }
   if (state.current_review_id && !reviewIds.includes(state.current_review_id)) {
     context.addIssue({
       code: z.ZodIssueCode.custom,
@@ -995,6 +1103,7 @@ module.exports = {
   RECOMMENDED_DISPOSITIONS,
   REVIEW_EVENT_CLASSES,
   actorIdentitySchema,
+  approvalDecisionSchema,
   authorizationEvidenceSchema,
   authorizationPolicySchema,
   authorizationRuleSchema,

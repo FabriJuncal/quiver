@@ -5,7 +5,25 @@ const path = require('node:path');
 
 const { formatStatus, translatorForHuman } = require('../i18n/read-only-format');
 const { quiverInternalPaths } = require('../init-layout');
-const { runGovernanceStateSchema } = require('./review-governance.schema');
+const {
+  assertNoPendingDigestBoundApproval,
+  plannerApprovalLockName,
+} = require('../approvals');
+const { withLock, withLockSync } = require('../locks');
+const { redactSensitiveLocalValues, redactSensitiveValue } = require('./artifacts');
+const {
+  GovernanceError,
+  buildApprovalDecisionRecord,
+  canonicalSha256,
+  stableStringify,
+  verifyApprovalDecisionRecord,
+} = require('./review-governance');
+const {
+  authorizationEvidenceSchema,
+  runGovernanceStateSchema,
+} = require('./review-governance.schema');
+
+const APPROVAL_COMMIT_SCHEMA_VERSION = 1;
 
 const AI_RUN_PHASES = Object.freeze([
   'created',
@@ -47,6 +65,22 @@ function ensureDir(dirPath) {
 
 function toRelativePosix(root, filePath) {
   return path.relative(root, filePath).split(path.sep).join('/');
+}
+
+function findSymlinkPathComponent(projectRoot, targetPath) {
+  const root = path.resolve(projectRoot);
+  let current = path.resolve(targetPath);
+  while (current !== root) {
+    try {
+      if (fs.lstatSync(current).isSymbolicLink()) return current;
+    } catch (error) {
+      if (error?.code !== 'ENOENT') throw error;
+    }
+    const parent = path.dirname(current);
+    if (parent === current) break;
+    current = parent;
+  }
+  return null;
 }
 
 function normalizeRunId(value) {
@@ -104,6 +138,22 @@ function runReviewCommitPath(projectRoot, runId) {
   return path.join(runDir(projectRoot, runId), 'review-commit-wal.json');
 }
 
+function runApprovalCommitPath(projectRoot, runId) {
+  return path.join(runDir(projectRoot, runId), 'approval-commit-wal.json');
+}
+
+function runApprovalArtifactPath(projectRoot, runId, phase, version) {
+  const normalizedPhase = String(phase || '').trim().toLowerCase();
+  if (!['acceptance', 'technical-plan'].includes(normalizedPhase)) {
+    throw new Error(formatError(`unsupported approval phase '${phase}'`));
+  }
+  const parsedVersion = Number(version);
+  if (!Number.isInteger(parsedVersion) || parsedVersion <= 0) {
+    throw new Error(formatError(`invalid approval artifact version '${version}'`));
+  }
+  return path.join(runDir(projectRoot, runId), 'approvals', normalizedPhase, `v${String(parsedVersion).padStart(3, '0')}.md`);
+}
+
 function runRequirementPath(projectRoot, runId) {
   return path.join(runDir(projectRoot, runId), 'requirement.md');
 }
@@ -149,30 +199,114 @@ function readJsonIfExists(filePath) {
   return JSON.parse(fs.readFileSync(filePath, 'utf8'));
 }
 
-function writeJson(filePath, value) {
+function readStableRunFile(projectRoot, runId, filePath, label) {
+  const symlink = findSymlinkPathComponent(projectRoot, filePath);
+  if (symlink) {
+    throw new GovernanceError(
+      'APPROVAL_BINDING_MISMATCH',
+      `Canonical ${label} cannot use a symlinked run namespace.`,
+      { run_id: runId, symlink: toRelativePosix(projectRoot, symlink) },
+    );
+  }
+  const walPath = runApprovalCommitPath(projectRoot, runId);
+  const assertReadable = () => {
+    if (fs.existsSync(walPath)) {
+      throw approvalCommitError(`Approval commit recovery is required before reading ${label}.`, {
+        run_id: runId,
+        wal_path: toRelativePosix(projectRoot, walPath),
+      });
+    }
+  };
+  const capture = () => (fs.existsSync(filePath) ? fs.readFileSync(filePath) : null);
+  assertReadable();
+  const first = capture();
+  assertReadable();
+  const second = capture();
+  assertReadable();
+  const stable = first === null
+    ? second === null
+    : second !== null && first.equals(second);
+  if (!stable) {
+    throw approvalCommitError(`${label} changed during an approval read.`, {
+      run_id: runId,
+      path: toRelativePosix(projectRoot, filePath),
+    });
+  }
+  return first;
+}
+
+function fsyncDirectory(dirPath) {
+  let handle;
+  try {
+    handle = fs.openSync(dirPath, 'r');
+    fs.fsyncSync(handle);
+  } catch (error) {
+    const unsupported = ['EINVAL', 'ENOTSUP'].includes(error?.code)
+      || (process.platform === 'win32' && error?.code === 'EPERM');
+    if (!unsupported) throw error;
+  } finally {
+    if (typeof handle === 'number') fs.closeSync(handle);
+  }
+}
+
+function writeFileAtomic(filePath, contents) {
   ensureDir(path.dirname(filePath));
   const tempPath = path.join(
     path.dirname(filePath),
     `.tmp-${path.basename(filePath)}-${process.pid}-${crypto.randomBytes(6).toString('hex')}`,
   );
   try {
-    fs.writeFileSync(tempPath, `${JSON.stringify(value, null, 2)}\n`, { flag: 'wx' });
+    const handle = fs.openSync(tempPath, 'wx');
+    try {
+      fs.writeFileSync(handle, contents);
+      fs.fsyncSync(handle);
+    } finally {
+      fs.closeSync(handle);
+    }
     fs.renameSync(tempPath, filePath);
+    fsyncDirectory(path.dirname(filePath));
   } catch (error) {
     if (fs.existsSync(tempPath)) fs.rmSync(tempPath);
     throw error;
   }
 }
 
-function listAiRuns(projectRoot) {
+function writeJson(filePath, value) {
+  writeFileAtomic(filePath, `${JSON.stringify(value, null, 2)}\n`);
+}
+
+function listAiRuns(projectRoot, options = {}) {
   const root = runsDir(projectRoot);
   if (!fs.existsSync(root)) {
     return [];
   }
 
-  return fs.readdirSync(root, { withFileTypes: true })
+  const entries = fs.readdirSync(root, { withFileTypes: true });
+  const symlinkedNamespace = entries.find((entry) => entry.isSymbolicLink());
+  if (symlinkedNamespace) {
+    throw new GovernanceError(
+      'APPROVAL_BINDING_MISMATCH',
+      'AI run listing cannot use a symlinked run namespace.',
+      {
+        run_id: symlinkedNamespace.name,
+        symlink: toRelativePosix(projectRoot, path.join(root, symlinkedNamespace.name)),
+      },
+    );
+  }
+
+  return entries
     .filter((entry) => entry.isDirectory())
-    .map((entry) => readAiRun(projectRoot, entry.name))
+    .map((entry) => {
+      try {
+        return readAiRun(projectRoot, entry.name);
+      } catch (error) {
+        const isOtherRecovery = options.ignoreApprovalRecoveryForOtherRuns === true
+          && error?.code === 'APPROVAL_RECOVERY_REQUIRED'
+          && entry.name !== options.requiredRunId;
+        if (isOtherRecovery) return null;
+        throw error;
+      }
+    })
     .filter(Boolean)
     .sort((a, b) => String(a.updated_at || a.created_at).localeCompare(String(b.updated_at || b.created_at)));
 }
@@ -182,12 +316,49 @@ function latestAiRun(projectRoot) {
   return runs.length > 0 ? runs[runs.length - 1] : null;
 }
 
-function readAiRun(projectRoot, runId) {
-  const statePath = runStatePath(projectRoot, runId);
+function readAiRunRaw(projectRoot, runId) {
+  const normalizedRunId = normalizeRunId(runId);
+  const statePath = runStatePath(projectRoot, normalizedRunId);
+  const symlink = findSymlinkPathComponent(projectRoot, statePath);
+  if (symlink) {
+    throw new GovernanceError(
+      'APPROVAL_BINDING_MISMATCH',
+      'Canonical run state cannot use a symlinked run namespace.',
+      { run_id: normalizedRunId, symlink: toRelativePosix(projectRoot, symlink) },
+    );
+  }
   if (!fs.existsSync(statePath)) {
     return null;
   }
-  return JSON.parse(fs.readFileSync(statePath, 'utf8'));
+  const state = JSON.parse(fs.readFileSync(statePath, 'utf8'));
+  if (state?.run_id !== normalizedRunId) {
+    throw new GovernanceError(
+      'APPROVAL_BINDING_MISMATCH',
+      'Canonical run state does not match its requested run namespace.',
+      { run_id: normalizedRunId, actual_run_id: state?.run_id || null },
+    );
+  }
+  return state;
+}
+
+function readAiRun(projectRoot, runId) {
+  const normalizedRunId = normalizeRunId(runId);
+  const bytes = readStableRunFile(
+    projectRoot,
+    normalizedRunId,
+    runStatePath(projectRoot, normalizedRunId),
+    'run state',
+  );
+  if (!bytes) return null;
+  const state = JSON.parse(bytes.toString('utf8'));
+  if (state?.run_id !== normalizedRunId) {
+    throw new GovernanceError(
+      'APPROVAL_BINDING_MISMATCH',
+      'Canonical run state does not match its requested run namespace.',
+      { run_id: normalizedRunId, actual_run_id: state?.run_id || null },
+    );
+  }
+  return state;
 }
 
 function resolveAiRun(projectRoot, runId = '') {
@@ -307,6 +478,11 @@ function updateAiRunPhase(projectRoot, runId, phase, options = {}) {
         error.code = 'REVIEW_COMMIT_RECOVERY_REQUIRED';
         throw error;
       }
+      if (fs.existsSync(runApprovalCommitPath(projectRoot, current.run_id))) {
+        const error = new Error(formatError(`APPROVAL_RECOVERY_REQUIRED: run '${current.run_id}' has a prepared approval commit that must be recovered before close`));
+        error.code = 'APPROVAL_RECOVERY_REQUIRED';
+        throw error;
+      }
       const { assertNoPendingReviewBudgetReservations } = require('./review-budget');
       assertNoPendingReviewBudgetReservations(projectRoot, current.run_id);
     }
@@ -365,6 +541,532 @@ function recordAiRunApproval(projectRoot, runId, approval) {
   return next;
 }
 
+function approvalCommitError(message, details = {}) {
+  return new GovernanceError('APPROVAL_RECOVERY_REQUIRED', message, details);
+}
+
+function sha256Buffer(value) {
+  return `sha256:${crypto.createHash('sha256').update(value).digest('hex')}`;
+}
+
+function approvalBytesAreSafe(projectRoot, bytes, role = '') {
+  const text = bytes.toString('utf8');
+  if (!Buffer.from(text, 'utf8').equals(bytes)
+      || redactSensitiveLocalValues(text, { projectRoot }) !== text) {
+    return false;
+  }
+  let parsed;
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    return true;
+  }
+  let candidate = parsed;
+  if (role === 'governance') {
+    const validated = runGovernanceStateSchema.safeParse(parsed);
+    if (validated.success) {
+      candidate = JSON.parse(JSON.stringify(validated.data));
+      for (const collection of ['dispositions', 'conditioned_candidates', 'decisions']) {
+        for (const [index, record] of (validated.data[collection] || []).entries()) {
+          if (!record?.authorization) continue;
+          const redactedAuthorization = redactSensitiveValue(record.authorization, { projectRoot });
+          if (stableStringify(record.authorization) !== stableStringify(redactedAuthorization)) {
+            return false;
+          }
+          delete candidate[collection][index].authorization;
+        }
+      }
+    }
+  } else if (role === 'run-approval'
+      && parsed?.schema_version === 1
+      && Array.isArray(parsed?.approvals)) {
+    candidate = JSON.parse(JSON.stringify(parsed));
+    for (const [index, approval] of parsed.approvals.entries()) {
+      const authorization = approval?.governance?.authorization;
+      if (!authorization) continue;
+      const validated = authorizationEvidenceSchema.safeParse(authorization);
+      if (!validated.success
+          || stableStringify(authorization)
+            !== stableStringify(redactSensitiveValue(authorization, { projectRoot }))) {
+        return false;
+      }
+      delete candidate.approvals[index].governance.authorization;
+    }
+  }
+  return stableStringify(candidate)
+    === stableStringify(redactSensitiveValue(candidate, { projectRoot }));
+}
+
+function assertNoApprovalTargetSymlinks(projectRoot, target, relative) {
+  const symlink = findSymlinkPathComponent(projectRoot, target);
+  if (symlink) {
+    throw approvalCommitError('Approval commit target namespace cannot contain symlinks.', {
+      target: relative,
+      symlink: toRelativePosix(projectRoot, symlink),
+    });
+  }
+}
+
+function approvalTargetPath(projectRoot, value) {
+  const root = path.resolve(projectRoot);
+  const target = path.resolve(root, String(value || ''));
+  const relative = path.relative(root, target);
+  if (!relative
+      || relative === '..'
+      || relative.startsWith(`..${path.sep}`)
+      || path.isAbsolute(relative)
+      || !relative.startsWith(`.quiver${path.sep}`)) {
+    throw approvalCommitError('Approval commit target must be a project-local .quiver path.');
+  }
+  assertNoApprovalTargetSymlinks(root, target, relative.split(path.sep).join('/'));
+  const realRoot = fs.realpathSync(root);
+  let existingAncestor = target;
+  while (!fs.existsSync(existingAncestor)) {
+    const parent = path.dirname(existingAncestor);
+    if (parent === existingAncestor) break;
+    existingAncestor = parent;
+  }
+  const realAncestor = fs.realpathSync(existingAncestor);
+  const realRelative = path.relative(realRoot, realAncestor);
+  if (realRelative === '..'
+      || realRelative.startsWith(`..${path.sep}`)
+      || path.isAbsolute(realRelative)) {
+    throw approvalCommitError('Approval commit target resolves outside the project root.', {
+      target: relative.split(path.sep).join('/'),
+    });
+  }
+  return { target, relative: relative.split(path.sep).join('/') };
+}
+
+function captureApprovalTarget(projectRoot, target) {
+  const resolved = approvalTargetPath(projectRoot, target.path);
+  const beforeExists = fs.existsSync(resolved.target);
+  const beforeBytes = beforeExists ? fs.readFileSync(resolved.target) : null;
+  const afterBytes = Buffer.isBuffer(target.contents)
+    ? target.contents
+    : Buffer.from(String(target.contents || ''), 'utf8');
+  const unsafeSnapshot = beforeBytes && !approvalBytesAreSafe(projectRoot, beforeBytes, target.role)
+    ? 'before'
+    : !approvalBytesAreSafe(projectRoot, afterBytes, target.role)
+      ? 'after'
+      : null;
+  if (unsafeSnapshot) {
+    throw new GovernanceError(
+      'APPROVAL_BINDING_MISMATCH',
+      'Approval commit snapshot cannot be persisted safely without changing its exact bytes.',
+      {
+        mismatches: [`${target.role}_${unsafeSnapshot}_sensitive_content`],
+        target: resolved.relative,
+      },
+    );
+  }
+  return {
+    role: target.role,
+    path: resolved.relative,
+    fault_point: target.faultPoint || null,
+    before_exists: beforeExists,
+    before_sha256: beforeBytes ? sha256Buffer(beforeBytes) : null,
+    before_base64: beforeBytes ? beforeBytes.toString('base64') : null,
+    after_sha256: sha256Buffer(afterBytes),
+    after_base64: afterBytes.toString('base64'),
+  };
+}
+
+function approvalMarkerDigest(marker) {
+  const input = JSON.parse(JSON.stringify(marker));
+  delete input.marker_sha256;
+  return canonicalSha256(input);
+}
+
+function expectedApprovalCommitTargets(projectRoot, runId, decision) {
+  const expected = [
+    {
+      role: 'artifact',
+      path: toRelativePosix(projectRoot, runApprovalArtifactPath(
+        projectRoot,
+        runId,
+        decision.phase,
+        decision.version,
+      )),
+      fault_point: 'after-artifact',
+    },
+    {
+      role: 'governance',
+      path: toRelativePosix(projectRoot, runGovernancePath(projectRoot, runId)),
+      fault_point: 'after-governance',
+    },
+    {
+      role: 'run-approval',
+      path: toRelativePosix(projectRoot, runApprovalsPath(projectRoot, runId)),
+      fault_point: 'after-run-approval',
+    },
+  ];
+  if (decision.decision === 'approved') {
+    const legacyRoot = path.join(quiverInternalPaths(projectRoot).root, 'approvals', decision.phase);
+    expected.push(
+      {
+        role: 'legacy-approved',
+        path: toRelativePosix(projectRoot, path.join(legacyRoot, 'approved.md')),
+        fault_point: null,
+      },
+      {
+        role: 'legacy-meta',
+        path: toRelativePosix(projectRoot, path.join(legacyRoot, 'meta.json')),
+        fault_point: 'after-legacy-projection',
+      },
+    );
+  }
+  expected.push({
+    role: 'run-state',
+    path: toRelativePosix(projectRoot, runStatePath(projectRoot, runId)),
+    fault_point: 'after-phase',
+  });
+  return expected;
+}
+
+function assertApprovalCommitMarker(projectRoot, runId, marker) {
+  const targets = Array.isArray(marker?.targets) ? marker.targets : [];
+  let decision;
+  try {
+    decision = verifyApprovalDecisionRecord(marker?.decision);
+  } catch (error) {
+    throw approvalCommitError('Prepared approval commit has an invalid canonical decision.', {
+      run_id: runId,
+      cause: error.code || error.message,
+    });
+  }
+  const expectedTargets = expectedApprovalCommitTargets(projectRoot, runId, decision);
+  const targetsMatch = targets.length === expectedTargets.length
+    && targets.every((target, index) => (
+      target?.role === expectedTargets[index].role
+      && target?.path === expectedTargets[index].path
+      && target?.fault_point === expectedTargets[index].fault_point
+    ));
+  const invalid = marker?.schema_version !== APPROVAL_COMMIT_SCHEMA_VERSION
+    || marker?.kind !== 'digest-bound-approval-commit'
+    || marker?.run_id !== runId
+    || decision.run_id !== runId
+    || Number.isNaN(Date.parse(String(marker?.prepared_at || '')))
+    || decision.artifact_path !== expectedTargets[0].path
+    || !targetsMatch
+    || new Set(targets.map((target) => target.path)).size !== targets.length
+    || marker?.marker_sha256 !== approvalMarkerDigest(marker);
+  if (invalid) {
+    throw approvalCommitError('Prepared approval commit is corrupt or does not match its run.', {
+      run_id: runId,
+      wal_path: toRelativePosix(projectRoot, runApprovalCommitPath(projectRoot, runId)),
+    });
+  }
+  for (const target of targets) {
+    approvalTargetPath(projectRoot, target.path);
+    const after = Buffer.from(String(target.after_base64 || ''), 'base64');
+    const before = target.before_exists ? Buffer.from(String(target.before_base64 || ''), 'base64') : null;
+    if (!target.role
+        || sha256Buffer(after) !== target.after_sha256
+        || (target.before_exists && (!before || sha256Buffer(before) !== target.before_sha256))
+        || (!target.before_exists && (target.before_sha256 !== null || target.before_base64 !== null))) {
+      throw approvalCommitError('Prepared approval commit target snapshot is invalid.', {
+        run_id: runId,
+        target: target.path || null,
+      });
+    }
+    if (!approvalBytesAreSafe(projectRoot, after, target.role)
+        || (before && !approvalBytesAreSafe(projectRoot, before, target.role))) {
+      throw approvalCommitError('Prepared approval commit contains a non-redacted target snapshot.', {
+        run_id: runId,
+        target: target.path || null,
+      });
+    }
+  }
+  return { ...marker, decision };
+}
+
+function readApprovalCommitMarker(projectRoot, runId) {
+  const filePath = runApprovalCommitPath(projectRoot, runId);
+  if (!fs.existsSync(filePath)) return null;
+  let marker;
+  try {
+    marker = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+  } catch (error) {
+    throw approvalCommitError('Prepared approval commit is not valid JSON.', {
+      run_id: runId,
+      cause: error.message,
+    });
+  }
+  return assertApprovalCommitMarker(projectRoot, normalizeRunId(runId), marker);
+}
+
+function removeDurable(filePath) {
+  if (!fs.existsSync(filePath)) return;
+  fs.rmSync(filePath);
+  fsyncDirectory(path.dirname(filePath));
+}
+
+function rollbackApprovalCommitLocked(projectRoot, markerValue) {
+  const marker = assertApprovalCommitMarker(projectRoot, markerValue.run_id, markerValue);
+  for (const target of [...marker.targets].reverse()) {
+    const resolved = approvalTargetPath(projectRoot, target.path).target;
+    const exists = fs.existsSync(resolved);
+    const currentDigest = exists ? sha256Buffer(fs.readFileSync(resolved)) : null;
+    const matchesBefore = target.before_exists
+      ? currentDigest === target.before_sha256
+      : !exists;
+    if (matchesBefore) continue;
+    if (currentDigest !== target.after_sha256) {
+      throw approvalCommitError('Approval rollback found a target that matches neither snapshot.', {
+        run_id: marker.run_id,
+        target: target.path,
+        actual_sha256: currentDigest,
+      });
+    }
+    if (target.before_exists) {
+      writeFileAtomic(resolved, Buffer.from(target.before_base64, 'base64'));
+    } else {
+      removeDurable(resolved);
+    }
+  }
+  removeDurable(runApprovalCommitPath(projectRoot, marker.run_id));
+  return { recovered: true, runId: marker.run_id, decisionId: marker.decision.decision_id };
+}
+
+function recoverDigestBoundApprovalCommit(projectRoot, options = {}) {
+  const run = readAiRunRaw(projectRoot, options.runId);
+  if (!run) return { recovered: false, runId: null };
+  const markerPath = runApprovalCommitPath(projectRoot, run.run_id);
+  if (!fs.existsSync(markerPath)) return { recovered: false, runId: run.run_id };
+  const recoverWithPlannerLock = () => {
+    const marker = readApprovalCommitMarker(projectRoot, run.run_id);
+    if (!marker) return { recovered: false, runId: run.run_id };
+    return withLockSync(
+      projectRoot,
+      plannerApprovalLockName(marker.decision.phase),
+      { command: 'recover digest-bound approval commit' },
+      () => rollbackApprovalCommitLocked(projectRoot, marker),
+    );
+  };
+  return options.locked === true
+    ? recoverWithPlannerLock()
+    : withAiRunLock(projectRoot, run.run_id, { command: 'recover digest-bound approval commit' }, recoverWithPlannerLock);
+}
+
+function nextApprovalDecisionId(decisions = []) {
+  const used = new Set(decisions.map((decision) => decision.decision_id));
+  let number = decisions.length + 1;
+  let decisionId;
+  do {
+    decisionId = `A-${String(number).padStart(3, '0')}`;
+    number += 1;
+  } while (used.has(decisionId));
+  return decisionId;
+}
+
+function readRunApprovalsStrict(projectRoot, runId) {
+  const filePath = runApprovalsPath(projectRoot, runId);
+  let value;
+  try {
+    value = readJsonIfExists(filePath) || { schema_version: 1, run_id: runId, approvals: [] };
+  } catch (error) {
+    throw approvalCommitError('Run approval projection is not valid JSON.', { run_id: runId, cause: error.message });
+  }
+  if (value.schema_version !== 1 || value.run_id !== runId || !Array.isArray(value.approvals)) {
+    throw approvalCommitError('Run approval projection does not match its run.', { run_id: runId });
+  }
+  return value;
+}
+
+function buildRunPhaseState(current, phase, artifact, command, now) {
+  assertKnownPhase(phase);
+  if (current.status === 'closed' || phaseRank(phase) < phaseRank(current.phase)) {
+    throw new GovernanceError('AI_RUN_PHASE_INVALID', `Approval cannot advance run '${current.run_id}' from '${current.phase}' to '${phase}'.`);
+  }
+  return {
+    ...current,
+    phase,
+    status: 'active',
+    updated_at: now,
+    history: (current.history || []).concat({ phase, command, artifact, at: now }),
+  };
+}
+
+async function commitDigestBoundApproval(projectRoot, options = {}) {
+  if (typeof options.prepare !== 'function') {
+    throw new Error(formatError('digest-bound approval commit requires a prepare callback'));
+  }
+  const runId = normalizeRunId(options.runId);
+  return withAiRunLock(projectRoot, runId, { command: options.command || 'commit digest-bound approval' }, async () => {
+    if (fs.existsSync(runApprovalCommitPath(projectRoot, runId))) {
+      recoverDigestBoundApprovalCommit(projectRoot, { runId, locked: true });
+    }
+    const runBeforeLock = readAiRun(projectRoot, runId);
+    const phaseHint = options.phase || 'technical-plan';
+    return withLock(projectRoot, plannerApprovalLockName(phaseHint), {
+      command: options.command || 'commit digest-bound approval',
+      now: options.now,
+    }, async () => {
+      assertNoPendingDigestBoundApproval(projectRoot, phaseHint);
+      const run = readAiRun(projectRoot, runId);
+      if (!run || run.status === 'closed') {
+        throw new GovernanceError('AI_RUN_CLOSED', `Governed approval cannot mutate closed or missing run '${runId}'.`);
+      }
+      if (runBeforeLock?.updated_at !== run.updated_at || runBeforeLock?.phase !== run.phase) {
+        throw new GovernanceError('APPROVAL_BINDING_MISMATCH', 'Run state changed before the approval critical section.', {
+          mismatches: ['run_state'],
+        });
+      }
+      const previousGovernance = readRunGovernance(projectRoot, runId) || {
+        schema_version: 1,
+        run_id: runId,
+        next_finding_number: 1,
+        current_review_id: null,
+        reviews: [],
+        findings: [],
+        dispositions: [],
+        condition_evaluations: [],
+        conditioned_candidates: [],
+      };
+      const prepared = await options.prepare({ run, governanceState: previousGovernance });
+      const nowValue = options.now || new Date();
+      const now = nowValue instanceof Date ? nowValue.toISOString() : new Date(nowValue).toISOString();
+      const artifactPath = runApprovalArtifactPath(projectRoot, runId, prepared.bindings.phase, prepared.bindings.version);
+      const artifactRelative = toRelativePosix(projectRoot, artifactPath);
+      const decisions = previousGovernance.decisions || [];
+      const record = buildApprovalDecisionRecord({
+        schema_version: 1,
+        decision_id: nextApprovalDecisionId(decisions),
+        ...prepared.bindings,
+        artifact_path: artifactRelative,
+        publication_state: 'final',
+        recorded_at: now,
+      });
+      const nextGovernance = runGovernanceStateSchema.parse({
+        ...previousGovernance,
+        decisions: decisions.concat(record),
+        updated_at: now,
+      });
+      const currentApprovals = readRunApprovalsStrict(projectRoot, runId);
+      const nextApprovals = {
+        ...currentApprovals,
+        approvals: currentApprovals.approvals.concat({
+          schema_version: 1,
+          run_id: runId,
+          decision_id: record.decision_id,
+          phase: record.phase,
+          decision: record.decision,
+          artifact: record.artifact_path,
+          artifact_sha256: record.artifact_sha256,
+          input_sha256: record.input_sha256,
+          criterion_count: record.criterion_count,
+          version: record.version,
+          at: now,
+        }),
+      };
+      const targetPhase = record.phase === 'acceptance' ? 'acceptance-approved' : 'technical-plan-approved';
+      const nextRun = buildRunPhaseState(run, targetPhase, artifactRelative, options.command || 'ai approve', now);
+      const legacyTargets = Array.isArray(prepared.legacyProjection?.targets)
+        ? prepared.legacyProjection.targets.map((target, index, list) => ({
+            role: index === list.length - 1 ? 'legacy-meta' : 'legacy-approved',
+            path: target.path,
+            contents: target.contents,
+            faultPoint: index === list.length - 1 ? 'after-legacy-projection' : null,
+          }))
+        : [];
+      const targets = [
+        { role: 'artifact', path: artifactPath, contents: prepared.artifact.bytes, faultPoint: 'after-artifact' },
+        {
+          role: 'governance',
+          path: runGovernancePath(projectRoot, runId),
+          contents: `${JSON.stringify(nextGovernance, null, 2)}\n`,
+          faultPoint: 'after-governance',
+        },
+        {
+          role: 'run-approval',
+          path: runApprovalsPath(projectRoot, runId),
+          contents: `${JSON.stringify(nextApprovals, null, 2)}\n`,
+          faultPoint: 'after-run-approval',
+        },
+        ...legacyTargets,
+        {
+          role: 'run-state',
+          path: runStatePath(projectRoot, runId),
+          contents: `${JSON.stringify(nextRun, null, 2)}\n`,
+          faultPoint: 'after-phase',
+        },
+      ];
+      const marker = {
+        schema_version: APPROVAL_COMMIT_SCHEMA_VERSION,
+        kind: 'digest-bound-approval-commit',
+        run_id: runId,
+        prepared_at: now,
+        decision: record,
+        targets: targets.map((target) => captureApprovalTarget(projectRoot, target)),
+      };
+      marker.marker_sha256 = approvalMarkerDigest(marker);
+      const validatedMarker = assertApprovalCommitMarker(projectRoot, runId, marker);
+      const walPath = runApprovalCommitPath(projectRoot, runId);
+      writeFileAtomic(walPath, `${JSON.stringify(validatedMarker, null, 2)}\n`);
+      try {
+        if (typeof options.faultInjector === 'function') options.faultInjector('after-prepare');
+        for (const target of validatedMarker.targets) {
+          const resolved = approvalTargetPath(projectRoot, target.path).target;
+          writeFileAtomic(resolved, Buffer.from(target.after_base64, 'base64'));
+          if (target.fault_point && typeof options.faultInjector === 'function') {
+            options.faultInjector(target.fault_point);
+          }
+        }
+        if (typeof options.faultInjector === 'function') options.faultInjector('before-wal-cleanup');
+        removeDurable(walPath);
+      } catch (error) {
+        try {
+          rollbackApprovalCommitLocked(projectRoot, validatedMarker);
+        } catch (rollbackError) {
+          throw approvalCommitError('Approval commit failed and rollback could not be completed.', {
+            run_id: runId,
+            cause: error.message,
+            rollback_cause: rollbackError.message,
+          });
+        }
+        error.details = {
+          ...(error.details || {}),
+          final_decision_published: false,
+          phase_advanced: false,
+        };
+        throw error;
+      }
+      return {
+        task: 'approve',
+        run: nextRun,
+        decision: record,
+        approvalProjection: nextApprovals,
+        legacyProjection: prepared.legacyProjection || null,
+      };
+    });
+  });
+}
+
+function readRunApprovalDecisions(projectRoot, runId) {
+  const normalizedRunId = normalizeRunId(runId);
+  if (fs.existsSync(runApprovalCommitPath(projectRoot, normalizedRunId))) {
+    throw approvalCommitError('Approval commit recovery is required before reading decisions.', {
+      run_id: normalizedRunId,
+      wal_path: toRelativePosix(projectRoot, runApprovalCommitPath(projectRoot, normalizedRunId)),
+    });
+  }
+  const state = readRunGovernance(projectRoot, normalizedRunId);
+  return (state?.decisions || []).map(verifyApprovalDecisionRecord);
+}
+
+function readRunApprovalDecision(projectRoot, runId, phase) {
+  const decisions = readRunApprovalDecisions(projectRoot, runId)
+    .filter((decision) => decision.phase === phase);
+  if (decisions.length === 0) {
+    throw new GovernanceError('APPROVAL_NOT_FOUND', `No canonical ${phase} approval exists for run '${runId}'.`, {
+      run_id: runId,
+      phase,
+    });
+  }
+  return decisions.at(-1);
+}
+
 function assertAiRunPhaseAllows(run, requiredPhase, commandName) {
   if (!run) {
     throw new Error(formatError(`cannot run ${commandName}: no AI run exists. Next: npx create-quiver ai run create --input <requirements.md>`));
@@ -398,11 +1100,18 @@ function readAiRunLock(projectRoot, runId, sliceId = '') {
 }
 
 function readRunGovernance(projectRoot, runId) {
-  const state = readJsonIfExists(runGovernancePath(projectRoot, runId));
+  const normalizedRunId = normalizeRunId(runId);
+  const bytes = readStableRunFile(
+    projectRoot,
+    normalizedRunId,
+    runGovernancePath(projectRoot, normalizedRunId),
+    'governance state',
+  );
+  const state = bytes ? JSON.parse(bytes.toString('utf8')) : null;
   if (!state) return null;
   const parsed = runGovernanceStateSchema.safeParse(state);
   if (!parsed.success) {
-    const error = new Error(formatError(`GOVERNANCE_STATE_INVALID: invalid canonical governance state for run '${runId}'`));
+    const error = new Error(formatError(`GOVERNANCE_STATE_INVALID: invalid canonical governance state for run '${normalizedRunId}'`));
     error.code = 'GOVERNANCE_STATE_INVALID';
     error.details = {
       issues: parsed.error.issues.map((issue) => ({
@@ -411,6 +1120,13 @@ function readRunGovernance(projectRoot, runId) {
       })),
     };
     throw error;
+  }
+  if (parsed.data.run_id !== normalizedRunId) {
+    throw new GovernanceError(
+      'APPROVAL_BINDING_MISMATCH',
+      'Canonical governance state does not match its requested run namespace.',
+      { run_id: normalizedRunId, actual_run_id: parsed.data.run_id },
+    );
   }
   return parsed.data;
 }
@@ -565,7 +1281,10 @@ function formatAiRunStatus(projectRoot, run, options = {}) {
     ].join('\n');
   }
 
-  const openRuns = listAiRuns(projectRoot).filter((item) => item.status !== 'closed');
+  const openRuns = listAiRuns(projectRoot, {
+    ignoreApprovalRecoveryForOtherRuns: true,
+    requiredRunId: run.run_id,
+  }).filter((item) => item.status !== 'closed');
   const otherOpenRuns = openRuns.filter((item) => item.run_id !== run.run_id);
   const lines = [
     translator.t('ai.run.status.title'),
@@ -620,6 +1339,7 @@ module.exports = {
   acquireAiRunLock,
   assertAiRunPhaseAllows,
   bindAiRunGovernance,
+  commitDigestBoundApproval,
   createAiRun,
   ensureAiRun,
   formatAiRunResume,
@@ -629,16 +1349,22 @@ module.exports = {
   nextCommandForPhase,
   readAiRun,
   readAiRunLock,
+  readRunApprovalDecision,
+  readRunApprovalDecisions,
   readRunGovernance,
   recordAiRunApproval,
   releaseAiRunLock,
+  recoverDigestBoundApprovalCommit,
   resolveAiRun,
   resolveGovernedAiRun,
   runApprovalsPath,
   runDir,
   runGovernancePath,
+  runApprovalArtifactPath,
+  runApprovalCommitPath,
   runReviewCommitPath,
   runReviewBudgetDir,
+  runRequirementPath,
   runStatePath,
   updateAiRunPhase,
   withAiRunLock,

@@ -2,11 +2,32 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
-const { execFileSync } = require('node:child_process');
+const { execFileSync, spawnSync } = require('node:child_process');
 const test = require('node:test');
 
-const { runPlan, runRepairPlan, runRevise } = require('../../src/create-quiver/commands/ai');
+const {
+  runApprove,
+  runPlan,
+  runRepairPlan,
+  runReviewPlan,
+  runRevise,
+} = require('../../src/create-quiver/commands/ai');
 const { savePlanReview } = require('../../src/create-quiver/lib/ai/plan-review');
+const {
+  buildApprovalDecisionRecord,
+  buildDefaultGovernanceConfig,
+  resolveEffectiveProfile,
+} = require('../../src/create-quiver/lib/ai/review-governance');
+const {
+  createAiRun,
+  readAiRun,
+  readRunApprovalDecision,
+  readRunGovernance,
+  runApprovalCommitPath,
+  runReviewCommitPath,
+  updateAiRunPhase,
+  writeRunGovernance,
+} = require('../../src/create-quiver/lib/ai/run-state');
 const {
   approvePlannerPhase,
   readPhaseApproval,
@@ -49,6 +70,33 @@ function execAiSubcommand(repoRoot, args = [], env = {}) {
   });
 }
 
+function allowApproval(governance, actorId = 'github:github.com:42') {
+  governance.policy.authorization.actor_bindings[actorId] = {
+    actor_id: actorId,
+    roles: ['maintainer'],
+  };
+  governance.policy.authorization.actions.approve = {
+    allowed_actor_ids: [],
+    allowed_roles: ['maintainer'],
+    independence: 'none',
+  };
+  return governance;
+}
+
+function governanceBinding(governance) {
+  const profile = resolveEffectiveProfile({
+    governance,
+    requirementCategories: governance.requirement_categories,
+  });
+  return {
+    requested_profile: profile.requested_profile,
+    effective_profile: profile.effective_profile,
+    policy_version: profile.policy_version,
+    policy_digest: profile.policy_digest,
+    requirement_categories: [...governance.requirement_categories],
+  };
+}
+
 function structuredTechnicalPlanText(slug = 'repairable-spec') {
   return `${JSON.stringify({
     spec: {
@@ -65,6 +113,61 @@ function structuredTechnicalPlanText(slug = 'repairable-spec') {
       ],
     },
   }, null, 2)}\n`;
+}
+
+function conditionedTechnicalPlanText(slug = 'conditioned-spec') {
+  return `${JSON.stringify({
+    spec: {
+      slug,
+      title: 'Conditioned spec',
+      objective: 'Publish a digest-bound conditioned approval.',
+      slices: [
+        {
+          slice_id: 'slice-01-conditioned-plan',
+          title: 'Conditioned plan slice',
+          objective: 'Implement the conditioned technical plan.',
+          files: ['src/app.js'],
+          acceptance: ['AC-TP-01 preserves the transferred finding.'],
+        },
+      ],
+    },
+  }, null, 2)}\n`;
+}
+
+function governedReviewOutput(findings = []) {
+  return `${JSON.stringify({
+    schema_version: 2,
+    kind: 'quiver-plan-review',
+    review: {
+      recommendation: findings.length > 0 ? 'approve-with-risk' : 'approve',
+      blocking: false,
+      findings,
+      plan_required_fixes: [],
+      slice_required_fixes: findings.map((finding) => finding.id),
+      pr_required_fixes: [],
+      follow_ups: [],
+      optional_hardening: [],
+    },
+  })}\n`;
+}
+
+function providerSuccess(repoRoot, stdout) {
+  return {
+    ok: true,
+    dryRun: false,
+    provider: 'codex',
+    command: 'codex',
+    args: ['exec'],
+    cwd: repoRoot,
+    timeoutMs: 0,
+    promptTransport: { mode: 'stdin' },
+    exitCode: 0,
+    stdout,
+    stderr: '',
+    error: null,
+    preflight: { ok: true },
+    payloadReceived: true,
+  };
 }
 
 async function captureProcessOutput(fn) {
@@ -778,6 +881,85 @@ test('ai revise technical-plan includes approved acceptance, current draft, and 
   }
 });
 
+test('governed technical-plan revise keeps acceptance and draft input isolated to the selected run', async () => {
+  const governance = allowApproval(buildDefaultGovernanceConfig());
+  const planA = `${structuredTechnicalPlanText('run-a-plan').trimEnd()}\nPLAN_A_ONLY\n`;
+  const planB = `${structuredTechnicalPlanText('run-b-plan').trimEnd()}\nPLAN_B_ONLY\n`;
+  const repo = makeRepo({
+    'acceptance-a.md': 'ACCEPTANCE_A_ONLY\n',
+    'acceptance-b.md': 'ACCEPTANCE_B_ONLY\n',
+    'plan-feedback.md': '# Feedback\nFIRST_FEEDBACK_ONLY\n',
+    'plan-feedback-2.md': '# Feedback\nSECOND_FEEDBACK_ONLY\n',
+    '.quiver/config.json': `${JSON.stringify({ governance }, null, 2)}\n`,
+  });
+
+  try {
+    for (const runId of ['run-revise-a', 'run-revise-b']) {
+      createAiRun(repo.root, {
+        input: `acceptance-${runId.endsWith('a') ? 'a' : 'b'}.md`,
+        runId,
+        governance: governanceBinding(governance),
+      });
+    }
+    savePlannerDraft(repo.root, 'technical-plan', 'acceptance-a.md', planA, {
+      requireDigestBindings: true,
+    });
+    const draftA = readPhaseApproval(repo.root, 'technical-plan').meta.drafts[0];
+    updateAiRunPhase(repo.root, 'run-revise-a', 'technical-plan-draft', {
+      artifact: draftA.path,
+      command: 'seed run A draft',
+    });
+    savePlannerDraft(repo.root, 'technical-plan', 'acceptance-b.md', planB, {
+      requireDigestBindings: true,
+    });
+    const draftB = readPhaseApproval(repo.root, 'technical-plan').meta.drafts[1];
+    updateAiRunPhase(repo.root, 'run-revise-b', 'technical-plan-draft', {
+      artifact: draftB.path,
+      command: 'seed run B draft',
+    });
+
+    await captureProcessOutput(() => runRevise(repo.root, {
+      input: 'plan-feedback.md',
+      phase: 'technical-plan',
+      runId: 'run-revise-a',
+      runProviderFn: async (provider, options) => {
+        assert.match(options.prompt, /ACCEPTANCE_A_ONLY/);
+        assert.match(options.prompt, /PLAN_A_ONLY/);
+        assert.doesNotMatch(options.prompt, /ACCEPTANCE_B_ONLY/);
+        assert.doesNotMatch(options.prompt, /PLAN_B_ONLY/);
+        return providerSuccess(repo.root, structuredTechnicalPlanText('run-a-revision'));
+      },
+    }));
+
+    const revisedRun = readAiRun(repo.root, 'run-revise-a');
+    assert.equal(revisedRun.phase, 'technical-plan-draft');
+    assert.match(revisedRun.history.at(-1).artifact, /drafts\/003\.md$/);
+    const firstRevision = readPhaseApproval(repo.root, 'technical-plan').meta.drafts[2];
+    assert.equal(firstRevision.input_path, 'acceptance-a.md');
+
+    await captureProcessOutput(() => runRevise(repo.root, {
+      input: 'plan-feedback-2.md',
+      phase: 'technical-plan',
+      runId: 'run-revise-a',
+      runProviderFn: async (provider, options) => {
+        assert.match(options.prompt, /ACCEPTANCE_A_ONLY/);
+        assert.match(options.prompt, /run-a-revision/);
+        assert.match(options.prompt, /SECOND_FEEDBACK_ONLY/);
+        assert.doesNotMatch(options.prompt, /FIRST_FEEDBACK_ONLY/);
+        assert.doesNotMatch(options.prompt, /ACCEPTANCE_B_ONLY/);
+        assert.doesNotMatch(options.prompt, /PLAN_B_ONLY/);
+        return providerSuccess(repo.root, structuredTechnicalPlanText('run-a-revision-2'));
+      },
+    }));
+
+    const secondRevision = readPhaseApproval(repo.root, 'technical-plan').meta.drafts[3];
+    assert.equal(secondRevision.input_path, 'acceptance-a.md');
+    assert.match(readAiRun(repo.root, 'run-revise-a').history.at(-1).artifact, /drafts\/004\.md$/);
+  } finally {
+    repo.cleanup();
+  }
+});
+
 test('ai revise requires an existing draft', async () => {
   const repo = makeRepo({
     'feedback.md': '# feedback\n- Update criteria.',
@@ -973,6 +1155,536 @@ test('ai approve writes an approved acceptance artifact with metadata', async ()
     assert.equal(meta.approved.source_file, '.quiver/approvals/acceptance/drafts/001.md');
     assert.equal(meta.approved.path, '.quiver/approvals/acceptance/approved.md');
     assert.equal(typeof meta.approved.approved_at, 'string');
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('governed ai approve CLI publishes one digest-bound acceptance decision atomically', () => {
+  const governance = allowApproval(buildDefaultGovernanceConfig());
+  const acceptance = `${JSON.stringify({
+    spec: { acceptance: ['AC-01 exact bytes', 'AC-02 atomic publication'] },
+  }, null, 2)}\r\n`;
+  const repo = makeRepo({
+    'requirements.md': '# Requirement\r\n\r\nPreserve exact input bytes.\r\n',
+    '.quiver/config.json': `${JSON.stringify({ governance }, null, 2)}\n`,
+  });
+
+  try {
+    createAiRun(repo.root, {
+      input: 'requirements.md',
+      runId: 'run-digest-acceptance',
+      governance: governanceBinding(governance),
+    });
+    savePlannerDraft(repo.root, 'acceptance', 'requirements.md', acceptance, {
+      requireDigestBindings: true,
+    });
+    const draft = readPhaseApproval(repo.root, 'acceptance').meta.drafts[0];
+    updateAiRunPhase(repo.root, 'run-digest-acceptance', 'acceptance-draft', {
+      artifact: draft.path,
+      command: 'ai plan --phase acceptance',
+    });
+    const fakeBin = path.join(repo.root, 'fake-bin');
+    const fakeGh = path.join(fakeBin, process.platform === 'win32' ? 'gh.cmd' : 'gh');
+    writeFile(fakeGh, process.platform === 'win32'
+      ? '@echo {"id":42,"login":"approver"}\r\n'
+      : '#!/bin/sh\nprintf \'%s\\n\' \'{"id":42,"login":"approver"}\'\n');
+    if (process.platform !== 'win32') fs.chmodSync(fakeGh, 0o755);
+
+    const stdout = execAiSubcommand(repo.root, [
+      'approve', '--phase', 'acceptance', '--version', '1',
+      '--run', 'run-digest-acceptance', '--json',
+    ], {
+      PATH: `${fakeBin}${path.delimiter}${process.env.PATH || ''}`,
+    });
+    const report = JSON.parse(stdout);
+    const decision = readRunApprovalDecision(repo.root, 'run-digest-acceptance', 'acceptance');
+
+    assert.equal(report.ok, true);
+    assert.equal(report.code, 'APPROVAL_COMMITTED');
+    assert.equal(report.approval.decision_id, decision.decision_id);
+    assert.equal(decision.criterion_count, 2);
+    assert.equal(decision.input_path, '.quiver/runs/run-digest-acceptance/requirement.md');
+    assert.equal(fs.readFileSync(path.join(repo.root, decision.artifact_path), 'utf8'), acceptance);
+    assert.equal(readAiRun(repo.root, 'run-digest-acceptance').phase, 'acceptance-approved');
+    assert.equal(readRunGovernance(repo.root, 'run-digest-acceptance').decisions.length, 1);
+    assert.equal(readPhaseApproval(repo.root, 'acceptance').status, 'approved');
+    assert.equal(fs.existsSync(runApprovalCommitPath(repo.root, 'run-digest-acceptance')), false);
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('digest-bound approval blocks secret-bearing artifact and input bytes before WAL publication', async () => {
+  const actor = {
+    actor_id: 'github:github.com:42',
+    provider: 'github-cli',
+    provider_subject: 'github:github.com:42',
+    verified: true,
+  };
+  const cases = [
+    {
+      label: 'artifact',
+      requirement: '# Requirement\n\nSafe input.\n',
+      artifact: `${JSON.stringify({
+        spec: {
+          acceptance: ['AC-01 exact bytes'],
+          metadata: { password: 'hunter2', note: `ghp_${'a'.repeat(24)}` },
+        },
+      }, null, 2)}\n`,
+      mismatch: 'artifact_sensitive_content',
+    },
+    {
+      label: 'input',
+      requirement: `# Requirement\n\nLocal path: ${os.homedir()}\n`,
+      artifact: `${JSON.stringify({ spec: { acceptance: ['AC-01 safe artifact'] } }, null, 2)}\n`,
+      mismatch: 'input_sensitive_content',
+    },
+  ];
+
+  for (const item of cases) {
+    const governance = allowApproval(buildDefaultGovernanceConfig(), actor.provider_subject);
+    const runId = `run-sensitive-${item.label}`;
+    const repo = makeRepo({
+      'requirements.md': item.requirement,
+      '.quiver/config.json': `${JSON.stringify({ governance }, null, 2)}\n`,
+    });
+    try {
+      createAiRun(repo.root, {
+        input: 'requirements.md',
+        runId,
+        governance: governanceBinding(governance),
+      });
+      savePlannerDraft(repo.root, 'acceptance', 'requirements.md', item.artifact, {
+        requireDigestBindings: true,
+      });
+      const draft = readPhaseApproval(repo.root, 'acceptance').meta.drafts[0];
+      updateAiRunPhase(repo.root, runId, 'acceptance-draft', {
+        artifact: draft.path,
+        command: 'ai plan --phase acceptance',
+      });
+
+      await assert.rejects(
+        () => runApprove(repo.root, {
+          actor,
+          digestBound: true,
+          phase: 'acceptance',
+          publishFinal: true,
+          runId,
+          suppressOutput: true,
+          version: 1,
+        }),
+        (error) => error.code === 'APPROVAL_BINDING_MISMATCH'
+          && error.details.mismatches.includes(item.mismatch),
+      );
+      assert.equal(fs.existsSync(runApprovalCommitPath(repo.root, runId)), false);
+      assert.equal(readAiRun(repo.root, runId).phase, 'acceptance-draft');
+      assert.equal(readRunGovernance(repo.root, runId), null);
+    } finally {
+      repo.cleanup();
+    }
+  }
+});
+
+test('digest-bound acceptance rejects a requirement path redirected to another run', async () => {
+  const actor = {
+    actor_id: 'github:github.com:42',
+    provider: 'github-cli',
+    provider_subject: 'github:github.com:42',
+    verified: true,
+  };
+  const governance = allowApproval(buildDefaultGovernanceConfig(), actor.provider_subject);
+  const repo = makeRepo({
+    'requirements.md': '# Requirement\n\nIdentical bytes do not permit cross-run ownership.\n',
+    '.quiver/config.json': `${JSON.stringify({ governance }, null, 2)}\n`,
+  });
+
+  try {
+    for (const runId of ['run-requirement-a', 'run-requirement-b']) {
+      createAiRun(repo.root, {
+        input: 'requirements.md',
+        runId,
+        governance: governanceBinding(governance),
+      });
+    }
+    savePlannerDraft(repo.root, 'acceptance', 'requirements.md', JSON.stringify({
+      spec: { acceptance: ['AC-01 run ownership'] },
+    }), { requireDigestBindings: true });
+    const draft = readPhaseApproval(repo.root, 'acceptance').meta.drafts[0];
+    updateAiRunPhase(repo.root, 'run-requirement-a', 'acceptance-draft', {
+      artifact: draft.path,
+      command: 'ai plan --phase acceptance',
+    });
+    const statePath = path.join(repo.root, '.quiver', 'runs', 'run-requirement-a', 'state.json');
+    const state = JSON.parse(fs.readFileSync(statePath, 'utf8'));
+    state.requirement.path = '.quiver/runs/run-requirement-b/requirement.md';
+    fs.writeFileSync(statePath, `${JSON.stringify(state, null, 2)}\n`);
+
+    await assert.rejects(
+      () => runApprove(repo.root, {
+        actor,
+        digestBound: true,
+        phase: 'acceptance',
+        publishFinal: true,
+        runId: 'run-requirement-a',
+        version: 1,
+      }),
+      (error) => error.code === 'APPROVAL_BINDING_MISMATCH'
+        && error.details.mismatches.includes('input_path'),
+    );
+    assert.equal(fs.existsSync(runApprovalCommitPath(repo.root, 'run-requirement-a')), false);
+    assert.equal(readRunGovernance(repo.root, 'run-requirement-a'), null);
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('governed review WAL rejects secrets hidden in canonical authorization evidence', async () => {
+  const actor = {
+    actor_id: 'github:github.com:42',
+    provider: 'github-cli',
+    provider_subject: 'github:github.com:42',
+    verified: true,
+  };
+  const governance = allowApproval(buildDefaultGovernanceConfig(), actor.provider_subject);
+  const runId = 'run-authorization-redaction';
+  const technicalPlan = structuredTechnicalPlanText('authorization-redaction-spec');
+  const repo = makeRepo({
+    'requirements.md': '# Requirement\n',
+    '.quiver/config.json': `${JSON.stringify({ governance }, null, 2)}\n`,
+  });
+
+  try {
+    createAiRun(repo.root, {
+      input: 'requirements.md',
+      runId,
+      governance: governanceBinding(governance),
+    });
+    savePlannerDraft(repo.root, 'acceptance', 'requirements.md', JSON.stringify({
+      spec: { acceptance: ['AC-01'] },
+    }), { requireDigestBindings: true });
+    const acceptanceDraft = readPhaseApproval(repo.root, 'acceptance').meta.drafts[0];
+    updateAiRunPhase(repo.root, runId, 'acceptance-draft', {
+      artifact: acceptanceDraft.path,
+      command: 'ai plan --phase acceptance',
+    });
+    await captureProcessOutput(() => runApprove(repo.root, {
+      actor,
+      digestBound: true,
+      phase: 'acceptance',
+      publishFinal: true,
+      runId,
+      version: 1,
+    }));
+
+    await captureProcessOutput(() => runPlan(repo.root, {
+      phase: 'technical-plan',
+      runId,
+      runProviderFn: async () => providerSuccess(repo.root, technicalPlan),
+    }));
+    const state = readRunGovernance(repo.root, runId);
+    state.decisions[0] = buildApprovalDecisionRecord({
+      ...state.decisions[0],
+      authorization: {
+        ...state.decisions[0].authorization,
+        provider_subject: `ghp_${'b'.repeat(24)}`,
+      },
+    });
+    writeRunGovernance(repo.root, runId, state);
+
+    await assert.rejects(
+      () => runReviewPlan(repo.root, {
+        runId,
+        runProviderFn: async () => providerSuccess(repo.root, governedReviewOutput([])),
+      }),
+      (error) => error.code === 'REVIEW_COMMIT_RECOVERY_REQUIRED'
+        && /authorization evidence/.test(error.message),
+    );
+    assert.equal(fs.existsSync(runReviewCommitPath(repo.root, runId)), false);
+    assert.equal(readAiRun(repo.root, runId).phase, 'technical-plan-draft');
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('digest-bound approval rechecks policy after asynchronous actor resolution', async () => {
+  const actor = {
+    actor_id: 'github:github.com:42',
+    provider: 'github-cli',
+    provider_subject: 'github:github.com:42',
+    verified: true,
+  };
+  const governance = allowApproval(buildDefaultGovernanceConfig(), actor.provider_subject);
+  const repo = makeRepo({
+    'requirements.md': '# Requirement\n',
+    '.quiver/config.json': `${JSON.stringify({ governance }, null, 2)}\n`,
+  });
+
+  try {
+    createAiRun(repo.root, {
+      input: 'requirements.md',
+      runId: 'run-policy-race',
+      governance: governanceBinding(governance),
+    });
+    savePlannerDraft(repo.root, 'acceptance', 'requirements.md', JSON.stringify({
+      spec: { acceptance: ['AC-01'] },
+    }), { requireDigestBindings: true });
+    const draft = readPhaseApproval(repo.root, 'acceptance').meta.drafts[0];
+    updateAiRunPhase(repo.root, 'run-policy-race', 'acceptance-draft', {
+      artifact: draft.path,
+      command: 'ai plan --phase acceptance',
+    });
+
+    await assert.rejects(() => runApprove(repo.root, {
+      digestBound: true,
+      phase: 'acceptance',
+      publishFinal: true,
+      resolveActorFn: async () => {
+        const revoked = JSON.parse(JSON.stringify(governance));
+        revoked.policy.authorization.actor_bindings = {};
+        writeFile(path.join(repo.root, '.quiver/config.json'), `${JSON.stringify({ governance: revoked }, null, 2)}\n`);
+        return actor;
+      },
+      runId: 'run-policy-race',
+      version: 1,
+    }), (error) => error.code === 'GOVERNANCE_POLICY_MISMATCH');
+    assert.equal(readAiRun(repo.root, 'run-policy-race').phase, 'acceptance-draft');
+    assert.equal(readRunGovernance(repo.root, 'run-policy-race'), null);
+    assert.equal(fs.existsSync(runApprovalCommitPath(repo.root, 'run-policy-race')), false);
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('conditioned digest-bound approval reuses its candidate, rejects drift, and publishes one verifiable final decision', async () => {
+  const actor = {
+    actor_id: 'github:github.com:42',
+    provider: 'github-cli',
+    provider_subject: 'github:github.com:42',
+    verified: true,
+  };
+  const governance = allowApproval(buildDefaultGovernanceConfig(), actor.provider_subject);
+  governance.policy.authorization.actions['approve-with-conditions'] = {
+    allowed_actor_ids: [],
+    allowed_roles: ['maintainer'],
+    independence: 'none',
+  };
+  const runId = 'run-digest-conditioned';
+  const requirement = '# Requirement\n\nPublish a conditioned decision without partial state.\n';
+  const acceptance = `${JSON.stringify({
+    spec: { acceptance: ['AC-01 publish atomically.'] },
+  }, null, 2)}\n`;
+  const technicalPlan = conditionedTechnicalPlanText();
+  const reasonText = 'Carry the remaining implementation finding into the named slice.\n';
+  const repo = makeRepo({
+    'requirements.md': requirement,
+    'condition-reason.md': reasonText,
+    '.quiver/config.json': `${JSON.stringify({ governance }, null, 2)}\n`,
+  });
+
+  try {
+    createAiRun(repo.root, {
+      input: 'requirements.md',
+      runId,
+      governance: governanceBinding(governance),
+    });
+    savePlannerDraft(repo.root, 'acceptance', 'requirements.md', acceptance, {
+      requireDigestBindings: true,
+    });
+    const acceptanceDraft = readPhaseApproval(repo.root, 'acceptance').meta.drafts[0];
+    updateAiRunPhase(repo.root, runId, 'acceptance-draft', {
+      artifact: acceptanceDraft.path,
+      command: 'ai plan --phase acceptance',
+    });
+    await captureProcessOutput(() => runApprove(repo.root, {
+      actor,
+      digestBound: true,
+      phase: 'acceptance',
+      publishFinal: true,
+      runId,
+      version: 1,
+    }));
+    const acceptanceDecision = readRunApprovalDecision(repo.root, runId, 'acceptance');
+
+    await captureProcessOutput(() => runPlan(repo.root, {
+      phase: 'technical-plan',
+      runId,
+      runProviderFn: async () => providerSuccess(repo.root, technicalPlan),
+    }));
+    const technicalDraft = readPhaseApproval(repo.root, 'technical-plan').meta.drafts[0];
+    assert.equal(technicalDraft.input_path, acceptanceDecision.artifact_path);
+    assert.equal(readAiRun(repo.root, runId).phase, 'technical-plan-draft');
+    await captureProcessOutput(() => runReviewPlan(repo.root, {
+      runId,
+      runProviderFn: async () => providerSuccess(repo.root, governedReviewOutput([{
+        id: 'provider-slice-1',
+        title: 'Carry validation into the implementation slice',
+        summary: 'The implementation slice must preserve the directed validation evidence.',
+        severity: 'medium',
+        category: 'implementation-detail',
+        phase_owner: 'slice',
+        phase_blocking: false,
+        evidence: ['technical-plan.md#/validation'],
+        acceptance_refs: ['AC-TP-01'],
+        recommended_disposition: 'transfer-to-slice',
+        confidence: 'high',
+      }])),
+    }));
+
+    const governedState = readRunGovernance(repo.root, runId);
+    const run = readAiRun(repo.root, runId);
+    const disposition = {
+      finding_id: governedState.findings[0].finding_id,
+      action: 'transfer-to-slice',
+      target: 'slice-04-digest-bound-approvals',
+      evidence_obligations: ['Record the directed slice validation result.'],
+    };
+    const conditions = {
+      schema_version: 1,
+      run_id: runId,
+      review_id: governedState.current_review_id,
+      policy_version: run.governance.policy_version,
+      policy_digest: run.governance.policy_digest,
+      dispositions: [disposition],
+    };
+    writeFile(path.join(repo.root, 'conditions.json'), `${JSON.stringify(conditions, null, 2)}\n`);
+
+    const first = await captureProcessOutput(() => runApprove(repo.root, {
+      actor,
+      conditionsFile: 'conditions.json',
+      decision: 'approved-with-conditions',
+      digestBound: true,
+      now: new Date('2099-08-27T12:00:00.000Z'),
+      phase: 'technical-plan',
+      reasonFile: 'condition-reason.md',
+      runId,
+      version: 1,
+    }));
+    assert.equal(first.result.publication_state, 'candidate');
+    assert.equal(first.result.final_decision_published, false);
+    assert.equal(first.result.phase_advanced, false);
+
+    const governancePath = path.join(repo.root, `.quiver/runs/${runId}/review-governance.json`);
+    const candidateSnapshot = fs.readFileSync(governancePath);
+    const retry = await captureProcessOutput(() => runApprove(repo.root, {
+      actor,
+      conditionsFile: 'conditions.json',
+      decision: 'approved-with-conditions',
+      digestBound: true,
+      phase: 'technical-plan',
+      reasonFile: 'condition-reason.md',
+      runId,
+      version: 1,
+    }));
+    assert.equal(retry.result.reused, true);
+    assert.equal(retry.result.candidate_id, first.result.candidate_id);
+    assert.deepEqual(fs.readFileSync(governancePath), candidateSnapshot);
+
+    writeFile(path.join(repo.root, 'condition-reason.md'), 'A different reason must not reuse the candidate.\n');
+    await assert.rejects(() => runApprove(repo.root, {
+      actor,
+      conditionsFile: 'conditions.json',
+      decision: 'approved-with-conditions',
+      digestBound: true,
+      phase: 'technical-plan',
+      publishFinal: true,
+      reasonFile: 'condition-reason.md',
+      runId,
+      version: 1,
+    }), (error) => error.code === 'APPROVAL_CANDIDATE_PENDING');
+    assert.deepEqual(fs.readFileSync(governancePath), candidateSnapshot);
+    assert.equal(readAiRun(repo.root, runId).phase, 'technical-plan-reviewed');
+    assert.equal(readRunGovernance(repo.root, runId).decisions.length, 1);
+
+    writeFile(path.join(repo.root, 'condition-reason.md'), reasonText);
+    writeFile(path.join(repo.root, 'conditions.json'), `${JSON.stringify({
+      ...conditions,
+      dispositions: [{ ...disposition, target: 'slice-99-different-target' }],
+    }, null, 2)}\n`);
+    await assert.rejects(() => runApprove(repo.root, {
+      actor,
+      conditionsFile: 'conditions.json',
+      decision: 'approved-with-conditions',
+      digestBound: true,
+      phase: 'technical-plan',
+      publishFinal: true,
+      reasonFile: 'condition-reason.md',
+      runId,
+      version: 1,
+    }), (error) => error.code === 'APPROVAL_CANDIDATE_PENDING');
+    assert.deepEqual(fs.readFileSync(governancePath), candidateSnapshot);
+    assert.equal(readRunGovernance(repo.root, runId).decisions.length, 1);
+
+    writeFile(path.join(repo.root, 'conditions.json'), `${JSON.stringify(conditions, null, 2)}\n`);
+    const committed = await captureProcessOutput(() => runApprove(repo.root, {
+      actor,
+      conditionsFile: 'conditions.json',
+      decision: 'approved-with-conditions',
+      digestBound: true,
+      now: new Date('2099-08-27T12:01:00.000Z'),
+      phase: 'technical-plan',
+      publishFinal: true,
+      reasonFile: 'condition-reason.md',
+      runId,
+      version: 1,
+    }));
+    const decision = readRunApprovalDecision(repo.root, runId, 'technical-plan');
+    const finalState = readRunGovernance(repo.root, runId);
+
+    assert.equal(committed.result.decision.decision_id, decision.decision_id);
+    assert.equal(decision.decision, 'approved-with-conditions');
+    assert.equal(decision.candidate_id, first.result.candidate_id);
+    assert.equal(decision.evaluation_id, first.result.evaluation_id);
+    assert.equal(decision.input_path, acceptanceDecision.artifact_path);
+    assert.equal(decision.criterion_count, 1);
+    assert.equal(decision.finding_count, 1);
+    assert.equal(decision.disposition_ids.length, 1);
+    assert.equal(decision.reason_path, 'condition-reason.md');
+    assert.equal(decision.reviewer_recommendation, 'approve-with-risk');
+    assert.equal(decision.reviewer_approved, false);
+    assert.equal(finalState.decisions.length, 2);
+    assert.equal(readAiRun(repo.root, runId).phase, 'technical-plan-approved');
+    assert.equal(fs.existsSync(path.join(repo.root, '.quiver/approvals/technical-plan/approved.md')), false);
+    assert.equal(fs.existsSync(runApprovalCommitPath(repo.root, runId)), false);
+
+    const verified = JSON.parse(execAiSubcommand(repo.root, [
+      'approval', 'verify', '--phase', 'technical-plan', '--run', runId, '--json',
+    ]));
+    assert.equal(verified.ok, true);
+    assert.equal(verified.approval.decision_id, decision.decision_id);
+    const exported = execAiSubcommand(repo.root, [
+      'approval', 'export', '--phase', 'technical-plan', '--run', runId,
+      '--format', 'linear-comment',
+    ]);
+    assert.equal(exported, [
+      'TECHNICAL_PLAN_APPROVED_WITH_CONDITIONS:v1',
+      `artifact_sha256=${decision.artifact_sha256}`,
+      `requirement_sha256=${decision.input_sha256}`,
+      'criteria_count=1',
+      'reviewer_recommendation=approve-with-risk',
+      'reviewer_approved=false',
+      '',
+    ].join('\n'));
+
+    writeFile(path.join(repo.root, 'condition-reason.md'), 'Tampered after publication.\n');
+    let raw = spawnSync('node', [
+      BIN_PATH, 'ai', 'approval', 'verify', '--phase', 'technical-plan', '--run', runId, '--json',
+    ], { cwd: repo.root, encoding: 'utf8' });
+    assert.notEqual(raw.status, 0);
+    assert.equal(raw.stderr, '');
+    assert.equal(JSON.parse(raw.stdout).code, 'APPROVAL_BINDING_MISMATCH');
+    writeFile(path.join(repo.root, 'condition-reason.md'), reasonText);
+
+    const canonicalStateText = fs.readFileSync(governancePath, 'utf8');
+    const dispositionTamper = JSON.parse(canonicalStateText);
+    dispositionTamper.dispositions[0].target = 'slice-99-tampered-after-publication';
+    writeFile(governancePath, `${JSON.stringify(dispositionTamper, null, 2)}\n`);
+    raw = spawnSync('node', [
+      BIN_PATH, 'ai', 'approval', 'verify', '--phase', 'technical-plan', '--run', runId, '--json',
+    ], { cwd: repo.root, encoding: 'utf8' });
+    assert.notEqual(raw.status, 0);
+    assert.equal(raw.stderr, '');
+    assert.equal(JSON.parse(raw.stdout).code, 'APPROVAL_BINDING_MISMATCH');
   } finally {
     repo.cleanup();
   }

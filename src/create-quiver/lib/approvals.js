@@ -1,8 +1,10 @@
+const crypto = require('node:crypto');
 const fs = require('node:fs');
 const path = require('node:path');
 
 const { redactSecrets, truncateText } = require('./evidence');
 const { quiverInternalPaths } = require('./init-layout');
+const { withLockSync } = require('./locks');
 
 const PLANNER_APPROVAL_PHASES = Object.freeze(['acceptance', 'technical-plan']);
 const APPROVAL_DEPENDENCIES = Object.freeze({
@@ -48,8 +50,80 @@ function approvalMetaPath(projectRoot, phase) {
   return path.join(approvalRoot(projectRoot, phase), 'meta.json');
 }
 
+function plannerApprovalLockName(phase) {
+  return `planner-approval-${normalizePhase(phase)}`;
+}
+
+function withPlannerApprovalLock(projectRoot, phase, options, callback) {
+  return withLockSync(projectRoot, plannerApprovalLockName(phase), options || {}, callback);
+}
+
 function ensureDir(dirPath) {
   fs.mkdirSync(dirPath, { recursive: true });
+}
+
+function sha256Bytes(value) {
+  return `sha256:${crypto.createHash('sha256').update(value).digest('hex')}`;
+}
+
+function pathIsInside(root, target) {
+  const relative = path.relative(root, target);
+  return relative === '' || (!relative.startsWith(`..${path.sep}`) && relative !== '..' && !path.isAbsolute(relative));
+}
+
+function assertNoSymlinkPathComponents(root, target, label) {
+  let current = target;
+  while (current !== root) {
+    try {
+      if (fs.lstatSync(current).isSymbolicLink()) {
+        throw new Error(formatError(`${label} cannot use a symlinked path component`));
+      }
+    } catch (error) {
+      if (error?.code !== 'ENOENT') throw error;
+    }
+    const parent = path.dirname(current);
+    if (parent === current) break;
+    current = parent;
+  }
+}
+
+function readProjectFileBytes(projectRoot, value, label = 'approval file') {
+  const root = path.resolve(projectRoot);
+  const target = path.resolve(root, String(value || ''));
+  if (!value || !pathIsInside(root, target)) {
+    throw new Error(formatError(`${label} must be inside the project root`));
+  }
+  assertNoSymlinkPathComponents(root, target, label);
+  if (!fs.existsSync(target) || !fs.statSync(target).isFile()) {
+    throw new Error(formatError(`missing ${label}: ${value}`));
+  }
+  const realRoot = fs.realpathSync(root);
+  const realTarget = fs.realpathSync(target);
+  if (!pathIsInside(realRoot, realTarget)) {
+    throw new Error(formatError(`${label} resolves outside the project root`));
+  }
+  const bytes = fs.readFileSync(realTarget);
+  return {
+    bytes,
+    path: toRelativePosix(root, target),
+    realPath: realTarget,
+    sha256: sha256Bytes(bytes),
+  };
+}
+
+function writeFileAtomic(filePath, contents) {
+  ensureDir(path.dirname(filePath));
+  const tempPath = path.join(
+    path.dirname(filePath),
+    `.tmp-${path.basename(filePath)}-${process.pid}-${crypto.randomBytes(6).toString('hex')}`,
+  );
+  try {
+    fs.writeFileSync(tempPath, contents, { flag: 'wx' });
+    fs.renameSync(tempPath, filePath);
+  } catch (error) {
+    if (fs.existsSync(tempPath)) fs.rmSync(tempPath);
+    throw error;
+  }
 }
 
 function toRelativePosix(root, filePath) {
@@ -77,6 +151,31 @@ function readApprovalMeta(projectRoot, phase) {
   }
 }
 
+function assertNoPendingDigestBoundApproval(projectRoot, phase) {
+  const runsRoot = quiverInternalPaths(projectRoot).runsDir;
+  if (!fs.existsSync(runsRoot)) return;
+  const pending = fs.readdirSync(runsRoot, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => path.join(runsRoot, entry.name, 'approval-commit-wal.json'))
+    .filter((filePath) => {
+      if (!fs.existsSync(filePath)) return false;
+      try {
+        const marker = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+        const markerPhase = marker?.decision?.phase;
+        return !PLANNER_APPROVAL_PHASES.includes(markerPhase) || markerPhase === phase;
+      } catch {
+        return true;
+      }
+    });
+  if (pending.length === 0) return;
+  const error = new Error(formatError('APPROVAL_RECOVERY_REQUIRED: a prepared approval commit must be recovered before reading planner approvals'));
+  error.code = 'APPROVAL_RECOVERY_REQUIRED';
+  error.details = {
+    wal_paths: pending.map((filePath) => toRelativePosix(projectRoot, filePath)),
+  };
+  throw error;
+}
+
 function normalizeDrafts(meta) {
   return Array.isArray(meta?.drafts) ? meta.drafts.filter((item) => item && typeof item === 'object') : [];
 }
@@ -93,7 +192,14 @@ function findDraftVersion(meta, version) {
   if (!Number.isInteger(parsed) || parsed <= 0) {
     throw new Error(formatError(`invalid draft version: ${version}`));
   }
-  return normalizeDrafts(meta).find((item) => Number(item.version) === parsed) || null;
+  const matches = normalizeDrafts(meta).filter((item) => Number(item.version) === parsed);
+  if (matches.length > 1) {
+    const error = new Error(formatError(`REPRESENTATION_MISMATCH: draft version ${parsed} appears ${matches.length} times`));
+    error.code = 'REPRESENTATION_MISMATCH';
+    error.details = { version: parsed, draft_count: matches.length };
+    throw error;
+  }
+  return matches[0] || null;
 }
 
 function latestDraftVersion(meta) {
@@ -112,9 +218,33 @@ function readPhaseApproval(projectRoot, phase) {
   const normalizedPhase = normalizePhase(phase);
   const draftPath = approvalDraftPath(projectRoot, normalizedPhase);
   const approvedPath = approvalApprovedPath(projectRoot, normalizedPhase);
-  const meta = readApprovalMeta(projectRoot, normalizedPhase);
+  const metaPath = approvalMetaPath(projectRoot, normalizedPhase);
+  const capture = () => [metaPath, draftPath, approvedPath]
+    .map((filePath) => (fs.existsSync(filePath) ? fs.readFileSync(filePath) : null));
+  assertNoPendingDigestBoundApproval(projectRoot, normalizedPhase);
+  const first = capture();
+  assertNoPendingDigestBoundApproval(projectRoot, normalizedPhase);
+  const second = capture();
+  assertNoPendingDigestBoundApproval(projectRoot, normalizedPhase);
+  const stable = first.every((bytes, index) => (
+    bytes === null ? second[index] === null : second[index] !== null && bytes.equals(second[index])
+  ));
+  if (!stable) {
+    const error = new Error(formatError(`APPROVAL_RECOVERY_REQUIRED: ${normalizedPhase} approval changed while it was being read`));
+    error.code = 'APPROVAL_RECOVERY_REQUIRED';
+    error.details = { phase: normalizedPhase };
+    throw error;
+  }
+  let meta = null;
+  if (first[0]) {
+    try {
+      meta = JSON.parse(first[0].toString('utf8'));
+    } catch (error) {
+      throw new Error(formatError(`invalid approval metadata at ${toRelativePosix(projectRoot, metaPath)}: ${error.message}`));
+    }
+  }
 
-  if (!meta && !fs.existsSync(draftPath) && !fs.existsSync(approvedPath)) {
+  if (!meta && !first[1] && !first[2]) {
     return {
       phase: normalizedPhase,
       status: 'missing',
@@ -124,16 +254,16 @@ function readPhaseApproval(projectRoot, phase) {
     };
   }
 
-  const draft = fs.existsSync(draftPath)
+  const draft = first[1]
     ? {
         path: toRelativePosix(projectRoot, draftPath),
-        contents: fs.readFileSync(draftPath, 'utf8'),
+        contents: first[1].toString('utf8'),
       }
     : null;
-  const approved = fs.existsSync(approvedPath)
+  const approved = first[2]
     ? {
         path: toRelativePosix(projectRoot, approvedPath),
-        contents: fs.readFileSync(approvedPath, 'utf8'),
+        contents: first[2].toString('utf8'),
       }
     : null;
 
@@ -231,6 +361,9 @@ function buildApprovalCandidate(projectRoot, phase, draft, latestVersion, report
     label: version ? `v${version}` : 'unknown version',
     path: draft.path || '',
     source_file: draft.source_file || '',
+    artifact_sha256: draft.artifact_sha256 || null,
+    input_path: draft.input_path || null,
+    input_sha256: draft.input_sha256 || null,
     created_at: draft.created_at || '',
     raw_artifact_path: draft.raw_artifact_path || null,
     output_source: draft.output_source || null,
@@ -287,15 +420,100 @@ function buildPlannerApprovalCandidates(projectRoot, phase) {
   };
 }
 
-function writeApprovalArtifacts(projectRoot, phase, kind, sourceFile, contents, options = {}) {
+function preparePlannerApprovalProjection(projectRoot, phase, version, options = {}) {
   const normalizedPhase = normalizePhase(phase);
   const root = approvalRoot(projectRoot, normalizedPhase);
   ensureDir(root);
+  if (!version) {
+    throw new Error(formatError(`${normalizedPhase} approval requires a concrete draft version. Use --version <n>.`));
+  }
+  const nowValue = options.now || new Date();
+  const now = nowValue instanceof Date ? nowValue.toISOString() : new Date(nowValue).toISOString();
+  const current = readApprovalMeta(projectRoot, normalizedPhase) || {};
+  const latestVersion = latestDraftVersion(current);
+  const selectedDraft = findDraftVersion(current, version);
+  if (!selectedDraft) {
+    throw new Error(formatError(`missing ${normalizedPhase} draft version ${version}`));
+  }
+  if (options.allowHistorical !== true && latestVersion && Number(selectedDraft.version) !== latestVersion) {
+    throw new Error(formatError(`${normalizedPhase} draft version ${version} is not current; latest draft version is ${latestVersion}. Approve the latest version or revise again.`));
+  }
+  const artifact = readProjectFileBytes(projectRoot, selectedDraft.path, `${normalizedPhase} draft artifact`);
+  if (selectedDraft.artifact_sha256 && artifact.sha256 !== selectedDraft.artifact_sha256) {
+    throw new Error(formatError(`${normalizedPhase} draft artifact digest no longer matches version ${version}`));
+  }
+  const inputPath = selectedDraft.input_path || selectedDraft.source_file || '';
+  const input = readProjectFileBytes(projectRoot, inputPath, `${normalizedPhase} approval input`);
+  if (selectedDraft.input_sha256 && input.sha256 !== selectedDraft.input_sha256) {
+    throw new Error(formatError(`${normalizedPhase} approval input digest no longer matches draft version ${version}`));
+  }
+  if (options.requireDigestBindings === true
+      && (!selectedDraft.artifact_sha256 || !selectedDraft.input_path || !selectedDraft.input_sha256)) {
+    throw new Error(formatError(`${normalizedPhase} draft version ${version} lacks immutable v58 digest bindings`));
+  }
+  const filePath = approvalApprovedPath(projectRoot, normalizedPhase);
+  const metaPath = approvalMetaPath(projectRoot, normalizedPhase);
+  const nextMeta = {
+    phase: normalizedPhase,
+    drafts: normalizeDrafts(current),
+    draft: current.draft || null,
+    approved: {
+      phase: normalizedPhase,
+      source_file: selectedDraft.path,
+      path: toRelativePosix(projectRoot, filePath),
+      version: Number(selectedDraft.version),
+      created_at: now,
+      approved_at: now,
+      artifact_sha256: artifact.sha256,
+      input_path: input.path,
+      input_sha256: input.sha256,
+      raw_artifact_path: options.rawArtifactPath || selectedDraft.raw_artifact_path || null,
+      output_source: options.outputSource || selectedDraft.output_source || null,
+      input_compaction: options.inputCompaction || selectedDraft.input_compaction || null,
+    },
+  };
+  return {
+    phase: normalizedPhase,
+    kind: 'approved',
+    version: Number(selectedDraft.version),
+    createdAt: now,
+    filePath,
+    metaPath,
+    artifact,
+    input,
+    selectedDraft,
+    nextMeta,
+    targets: [
+      { path: filePath, contents: artifact.bytes },
+      { path: metaPath, contents: Buffer.from(`${JSON.stringify(nextMeta, null, 2)}\n`, 'utf8') },
+    ],
+  };
+}
 
-  const filePath = kind === 'approved'
-    ? approvalApprovedPath(projectRoot, normalizedPhase)
-    : approvalDraftPath(projectRoot, normalizedPhase);
-  const now = new Date().toISOString();
+function commitPlannerApprovalProjection(projection) {
+  for (const target of projection.targets) {
+    writeFileAtomic(target.path, target.contents);
+  }
+  return projection;
+}
+
+function writeApprovalArtifacts(projectRoot, phase, kind, sourceFile, contents, options = {}) {
+  const normalizedPhase = normalizePhase(phase);
+  assertNoPendingDigestBoundApproval(projectRoot, normalizedPhase);
+  if (kind === 'approved') {
+    return commitPlannerApprovalProjection(preparePlannerApprovalProjection(
+      projectRoot,
+      normalizedPhase,
+      options.version,
+      options,
+    ));
+  }
+
+  const root = approvalRoot(projectRoot, normalizedPhase);
+  ensureDir(root);
+  const filePath = approvalDraftPath(projectRoot, normalizedPhase);
+  const nowValue = options.now || new Date();
+  const now = nowValue instanceof Date ? nowValue.toISOString() : new Date(nowValue).toISOString();
   const current = readApprovalMeta(projectRoot, normalizedPhase) || {};
   const nextMeta = {
     phase: normalizedPhase,
@@ -303,77 +521,38 @@ function writeApprovalArtifacts(projectRoot, phase, kind, sourceFile, contents, 
     draft: current.draft || null,
     approved: current.approved || null,
   };
-  let finalContents = `${contents}`;
-  let version = null;
-  let rawArtifactPath = options.rawArtifactPath || null;
-  let outputSource = options.outputSource || null;
-  let inputCompaction = options.inputCompaction || null;
-
-  if (kind === 'approved' && !options.version) {
-    throw new Error(formatError(`${normalizedPhase} approval requires a concrete draft version. Use --version <n>.`));
+  const finalContents = Buffer.from(`${contents}`, 'utf8');
+  const version = nextDraftVersion(current);
+  const versionPath = approvalDraftVersionPath(projectRoot, normalizedPhase, version);
+  const sourcePath = toRelativePosix(projectRoot, path.resolve(projectRoot, sourceFile));
+  let inputBinding = { path: sourcePath, sha256: null };
+  try {
+    inputBinding = readProjectFileBytes(projectRoot, sourceFile, `${normalizedPhase} planner input`);
+  } catch (error) {
+    if (options.requireDigestBindings === true) throw error;
   }
-
-  if (kind === 'approved' && options.version) {
-    const latestVersion = latestDraftVersion(current);
-    const selectedDraft = findDraftVersion(current, options.version);
-    if (!selectedDraft) {
-      throw new Error(formatError(`missing ${normalizedPhase} draft version ${options.version}`));
-    }
-    if (latestVersion && Number(selectedDraft.version) !== latestVersion) {
-      throw new Error(formatError(`${normalizedPhase} draft version ${options.version} is not current; latest draft version is ${latestVersion}. Approve the latest version or revise again.`));
-    }
-    const draftPath = path.resolve(projectRoot, selectedDraft.path);
-    if (!fs.existsSync(draftPath)) {
-      throw new Error(formatError(`missing ${normalizedPhase} draft artifact: ${selectedDraft.path}`));
-    }
-    finalContents = fs.readFileSync(draftPath, 'utf8');
-    sourceFile = selectedDraft.path;
-    version = Number(selectedDraft.version);
-    rawArtifactPath = rawArtifactPath || selectedDraft.raw_artifact_path || null;
-    outputSource = outputSource || selectedDraft.output_source || null;
-    inputCompaction = inputCompaction || selectedDraft.input_compaction || null;
-  }
-
-  if (kind === 'draft') {
-    version = nextDraftVersion(current);
-    const versionPath = approvalDraftVersionPath(projectRoot, normalizedPhase, version);
-    ensureDir(path.dirname(versionPath));
-    fs.writeFileSync(versionPath, finalContents);
-
-    nextMeta.drafts = nextMeta.drafts.concat({
-      version,
-      phase: normalizedPhase,
-      source_file: toRelativePosix(projectRoot, path.resolve(projectRoot, sourceFile)),
-      path: toRelativePosix(projectRoot, versionPath),
-      created_at: now,
-      raw_artifact_path: rawArtifactPath,
-      output_source: outputSource,
-      input_compaction: inputCompaction,
-    });
-  }
-
-  fs.writeFileSync(filePath, finalContents);
-
-  nextMeta[kind] = {
-    phase: normalizedPhase,
-    source_file: toRelativePosix(projectRoot, path.resolve(projectRoot, sourceFile)),
-    path: toRelativePosix(projectRoot, filePath),
+  const draftRecord = {
     version,
+    phase: normalizedPhase,
+    source_file: sourcePath,
+    input_path: inputBinding.path,
+    input_sha256: inputBinding.sha256,
+    path: toRelativePosix(projectRoot, versionPath),
+    artifact_sha256: sha256Bytes(finalContents),
     created_at: now,
-    raw_artifact_path: rawArtifactPath,
-    output_source: outputSource,
-    input_compaction: inputCompaction,
-    ...(kind === 'approved' ? { approved_at: now } : {}),
+    raw_artifact_path: options.rawArtifactPath || null,
+    output_source: options.outputSource || null,
+    input_compaction: options.inputCompaction || null,
+  };
+  nextMeta.drafts = nextMeta.drafts.concat(draftRecord);
+  nextMeta.draft = {
+    ...draftRecord,
+    path: toRelativePosix(projectRoot, filePath),
   };
 
-  if (kind === 'draft' && nextMeta.approved && nextMeta.approved.approved_at) {
-    nextMeta.approved = {
-      ...nextMeta.approved,
-    };
-  }
-
-  fs.writeFileSync(approvalMetaPath(projectRoot, normalizedPhase), `${JSON.stringify(nextMeta, null, 2)}\n`);
-
+  writeFileAtomic(versionPath, finalContents);
+  writeFileAtomic(filePath, finalContents);
+  writeFileAtomic(approvalMetaPath(projectRoot, normalizedPhase), `${JSON.stringify(nextMeta, null, 2)}\n`);
   return {
     phase: normalizedPhase,
     kind,
@@ -385,14 +564,24 @@ function writeApprovalArtifacts(projectRoot, phase, kind, sourceFile, contents, 
 }
 
 function savePlannerDraft(projectRoot, phase, sourceFile, contents, options = {}) {
-  return writeApprovalArtifacts(projectRoot, phase, 'draft', sourceFile, contents, options);
+  return withPlannerApprovalLock(
+    projectRoot,
+    phase,
+    { command: `save ${phase} planner draft`, now: options.now },
+    () => writeApprovalArtifacts(projectRoot, phase, 'draft', sourceFile, contents, options),
+  );
 }
 
 function approvePlannerPhase(projectRoot, phase, sourceFile, contents, options = {}) {
   if (options.decision === 'approved-with-conditions') {
     throw new Error(formatError('approved-with-conditions must use the canonical run governance store and cannot create legacy approved.md'));
   }
-  return writeApprovalArtifacts(projectRoot, phase, 'approved', sourceFile, contents, options);
+  return withPlannerApprovalLock(
+    projectRoot,
+    phase,
+    { command: `approve ${phase} planner phase`, now: options.now },
+    () => writeApprovalArtifacts(projectRoot, phase, 'approved', sourceFile, contents, options),
+  );
 }
 
 function resolveApprovedPlannerInput(projectRoot, phase, explicitInput) {
@@ -469,19 +658,26 @@ function summarizePlannerApproval(projectRoot, phase) {
 module.exports = {
   APPROVAL_DEPENDENCIES,
   PLANNER_APPROVAL_PHASES,
+  assertNoPendingDigestBoundApproval,
   approvalApprovedPath,
   approvalDraftPath,
   approvalDraftsDir,
   approvalDraftVersionPath,
   approvalMetaPath,
   approvePlannerPhase,
+  commitPlannerApprovalProjection,
   findDraftVersion,
   latestDraftVersion,
   buildPlannerApprovalCandidates,
   normalizePhase,
   readPhaseApproval,
+  readProjectFileBytes,
   renderApprovalStatus,
   resolveApprovedPlannerInput,
   savePlannerDraft,
+  preparePlannerApprovalProjection,
+  plannerApprovalLockName,
+  sha256Bytes,
   summarizePlannerApproval,
+  withPlannerApprovalLock,
 };

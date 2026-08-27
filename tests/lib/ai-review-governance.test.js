@@ -5,6 +5,7 @@ const path = require('node:path');
 const test = require('node:test');
 
 const {
+  APPROVAL_BINDING_MISMATCH,
   CURRENT_PHASE_REVISION_REQUIRED,
   DISPOSITION_DUPLICATE,
   DISPOSITION_MISSING,
@@ -16,9 +17,15 @@ const {
   NON_TRANSFERABLE_BLOCKER,
   PROVIDER_OUTPUT_INVALID,
   PROTECTED_CRITICAL_REQUIRES_BREAK_GLASS,
+  REPRESENTATION_MISMATCH,
+  assertApprovalBindingParity,
   authorizeGovernanceAction,
+  buildApprovalDecisionRecord,
   buildConditionedDecisionProjection,
   buildDefaultGovernanceConfig,
+  computeApprovalDecisionDigest,
+  computeApprovalDispositionDigest,
+  computeApprovalProfileDigest,
   computeFindingFingerprint,
   computePolicyDigest,
   evaluateConditionEligibility,
@@ -31,7 +38,9 @@ const {
   resolveEffectiveProfile,
   stableStringify,
   validateGovernanceConfig,
+  verifyApprovalDecisionRecord,
 } = require('../../src/create-quiver/lib/ai/review-governance');
+const { approvalCriteria } = require('../../src/create-quiver/lib/ai/approval-candidates');
 const {
   canonicalDispositionSchema,
   conditionedDecisionCandidateSchema,
@@ -159,6 +168,69 @@ function makeTempProject() {
   return {
     root,
     cleanup: () => fs.rmSync(root, { recursive: true, force: true }),
+  };
+}
+
+function makeApprovalDecision(overrides = {}) {
+  const governance = buildDefaultGovernanceConfig();
+  const policyDigest = computePolicyDigest(governance);
+  const authorization = {
+    action: 'approve',
+    policy_version: governance.policy.version,
+    policy_digest: policyDigest,
+    actor_id: 'person:alice',
+    provider_actor_id: 'github:github.com:42',
+    provider_subject: 'github:github.com:42',
+    verified: true,
+    binding: 'github:github.com:42',
+    matched_actor_ids: ['person:alice'],
+    matched_roles: ['approver'],
+    independence: 'none',
+    independence_result: 'passed',
+    identity_label: null,
+  };
+  const profile = {
+    requested_profile: 'fast-delivery',
+    effective_profile: 'fast-delivery',
+    policy_version: governance.policy.version,
+    policy_digest: policyDigest,
+    controls: governance.policy.profiles['fast-delivery'],
+  };
+  return {
+    schema_version: 1,
+    decision_id: 'A-001',
+    run_id: 'run-1',
+    review_id: null,
+    phase: 'acceptance',
+    decision: 'approved',
+    publication_state: 'final',
+    candidate_id: null,
+    evaluation_id: null,
+    version: 1,
+    artifact_path: '.quiver/planner/acceptance/v001.md',
+    artifact_sha256: `sha256:${'a'.repeat(64)}`,
+    input_path: 'docs/requirements/requirement.md',
+    input_sha256: `sha256:${'b'.repeat(64)}`,
+    review_sha256: null,
+    requested_profile: profile.requested_profile,
+    effective_profile: profile.effective_profile,
+    profile_sha256: computeApprovalProfileDigest(profile, {
+      requirement_categories: ['security'],
+    }),
+    policy_version: governance.policy.version,
+    policy_digest: policyDigest,
+    finding_count: 0,
+    criterion_count: 2,
+    disposition_ids: [],
+    disposition_sha256: computeApprovalDispositionDigest([]),
+    reason_path: null,
+    reason_sha256: null,
+    actor_id: 'person:alice',
+    authorization,
+    reviewer_recommendation: null,
+    reviewer_approved: null,
+    recorded_at: '2026-08-24T10:00:00.000Z',
+    ...overrides,
   };
 }
 
@@ -311,6 +383,102 @@ test('legacy run governance state reads additively without inventing decisions',
   assert.deepEqual(state.condition_evaluations, []);
   assert.deepEqual(state.conditioned_candidates, []);
   assert.equal(Object.prototype.hasOwnProperty.call(state, 'decisions'), false);
+});
+
+test('canonical approval records bind and verify their complete decision digest', () => {
+  const source = makeApprovalDecision();
+  const record = buildApprovalDecisionRecord(source);
+
+  assert.equal(record.decision_sha256, computeApprovalDecisionDigest(source));
+  assert.deepEqual(verifyApprovalDecisionRecord(record), record);
+  assert.throws(
+    () => verifyApprovalDecisionRecord({ ...record, artifact_sha256: `sha256:${'c'.repeat(64)}` }),
+    expectCode(APPROVAL_BINDING_MISMATCH),
+  );
+});
+
+test('approval parity distinguishes structured-count drift from binding drift', () => {
+  const record = buildApprovalDecisionRecord(makeApprovalDecision());
+
+  assert.equal(assertApprovalBindingParity(record, record), true);
+  assert.throws(
+    () => assertApprovalBindingParity(record, { ...record, criterion_count: 3 }),
+    expectCode(REPRESENTATION_MISMATCH),
+  );
+  assert.throws(
+    () => assertApprovalBindingParity(record, {
+      ...record,
+      artifact_sha256: `sha256:${'d'.repeat(64)}`,
+    }),
+    expectCode(APPROVAL_BINDING_MISMATCH),
+  );
+});
+
+test('profile and disposition approval digests are deterministic across equivalent ordering', () => {
+  const governance = buildDefaultGovernanceConfig();
+  const policyDigest = computePolicyDigest(governance);
+  const firstProfile = {
+    requested_profile: 'high-assurance',
+    effective_profile: 'high-assurance',
+    policy_version: 'v58',
+    policy_digest: policyDigest,
+    controls: {
+      execution: { workspace_isolation: true, per_run_budget: true },
+      spec: { required: true },
+    },
+  };
+  const reorderedProfile = {
+    policy_digest: policyDigest,
+    policy_version: 'v58',
+    effective_profile: 'high-assurance',
+    requested_profile: 'high-assurance',
+    controls: {
+      spec: { required: true },
+      execution: { per_run_budget: true, workspace_isolation: true },
+    },
+  };
+  assert.equal(
+    computeApprovalProfileDigest(firstProfile, {
+      requirement_categories: ['Security', 'data_integrity', 'security'],
+    }),
+    computeApprovalProfileDigest(reorderedProfile, {
+      requirement_categories: ['data-integrity', 'security'],
+    }),
+  );
+
+  const dispositions = [
+    { disposition_id: 'D-002', action: 'transfer-to-pr', finding_id: 'F-002' },
+    { disposition_id: 'D-001', action: 'transfer-to-slice', finding_id: 'F-001' },
+  ];
+  const reorderedDispositions = [
+    { finding_id: 'F-001', disposition_id: 'D-001', action: 'transfer-to-slice' },
+    { finding_id: 'F-002', action: 'transfer-to-pr', disposition_id: 'D-002' },
+  ];
+  assert.equal(
+    computeApprovalDispositionDigest(dispositions),
+    computeApprovalDispositionDigest(reorderedDispositions),
+  );
+});
+
+test('approval criteria preserve the raw acceptance collections used for bound counts', () => {
+  const artifact = {
+    bytes: Buffer.from(JSON.stringify({
+      spec: {
+        acceptance: ['AC-01', 'AC-01', 'AC-02'],
+        slices: [
+          { acceptance: ['S1-AC-01', 'S1-AC-02'] },
+          { acceptance: ['S2-AC-01'] },
+          { acceptance: 'not-a-collection' },
+        ],
+      },
+    }), 'utf8'),
+  };
+
+  assert.deepEqual(approvalCriteria('/unused', 'acceptance', artifact), ['AC-01', 'AC-01', 'AC-02']);
+  assert.deepEqual(
+    approvalCriteria('/unused', 'technical-plan', artifact),
+    ['S1-AC-01', 'S1-AC-02', 'S2-AC-01'],
+  );
 });
 
 test('condition policy is default-deny, uses allow-only union matching, and keeps release denied', () => {

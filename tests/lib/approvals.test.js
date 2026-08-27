@@ -1,4 +1,5 @@
 const assert = require('node:assert/strict');
+const crypto = require('node:crypto');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
@@ -10,7 +11,9 @@ const {
   approvalDraftVersionPath,
   approvalDraftPath,
   buildPlannerApprovalCandidates,
+  preparePlannerApprovalProjection,
   readPhaseApproval,
+  readProjectFileBytes,
   resolveApprovedPlannerInput,
   savePlannerDraft,
   summarizePlannerApproval,
@@ -19,6 +22,10 @@ const {
 function writeFile(filePath, contents) {
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
   fs.writeFileSync(filePath, contents);
+}
+
+function sha256Bytes(contents) {
+  return `sha256:${crypto.createHash('sha256').update(contents).digest('hex')}`;
 }
 
 function makeRepo() {
@@ -172,6 +179,147 @@ test('planner approvals block unapproved or stale inputs before later phases', a
     approvePlannerPhase(repo.root, 'technical-plan', '', '', { version: 1 });
     const resolved = resolveApprovedPlannerInput(repo.root, 'spec');
     assert.equal(resolved.inputPath, '.quiver/approvals/technical-plan/approved.md');
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('planner drafts persist exact artifact and input byte digests', () => {
+  const repo = makeRepo();
+
+  try {
+    const inputBytes = Buffer.from('\uFEFF# Requerimiento\r\n- café y emoji 🧭\r\n', 'utf8');
+    const artifactContents = '# Acceptance\r\n- preserves exact bytes 🧭\nfinal line';
+    const artifactBytes = Buffer.from(artifactContents, 'utf8');
+    writeFile(path.join(repo.root, 'requirements.md'), inputBytes);
+
+    const saved = savePlannerDraft(
+      repo.root,
+      'acceptance',
+      'requirements.md',
+      artifactContents,
+      { requireDigestBindings: true },
+    );
+    const state = readPhaseApproval(repo.root, 'acceptance');
+    const versionRecord = state.meta.drafts[0];
+
+    assert.deepEqual(fs.readFileSync(saved.filePath), artifactBytes);
+    assert.deepEqual(fs.readFileSync(approvalDraftVersionPath(repo.root, 'acceptance', 1)), artifactBytes);
+    assert.equal(versionRecord.artifact_sha256, sha256Bytes(artifactBytes));
+    assert.equal(state.meta.draft.artifact_sha256, sha256Bytes(artifactBytes));
+    assert.equal(versionRecord.input_path, 'requirements.md');
+    assert.equal(versionRecord.input_sha256, sha256Bytes(inputBytes));
+    assert.equal(state.meta.draft.input_sha256, sha256Bytes(inputBytes));
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('digest-bound projection rejects artifact and input tampering without approving', () => {
+  const repo = makeRepo();
+
+  try {
+    const inputPath = path.join(repo.root, 'requirements.md');
+    const inputContents = '# Requirements\n- Original input.\n';
+    const artifactContents = '# Acceptance\n- Original draft.\n';
+    writeFile(inputPath, inputContents);
+    savePlannerDraft(
+      repo.root,
+      'acceptance',
+      'requirements.md',
+      artifactContents,
+      { requireDigestBindings: true },
+    );
+
+    writeFile(approvalDraftVersionPath(repo.root, 'acceptance', 1), '# Acceptance\n- Tampered draft.\n');
+    assert.throws(
+      () => preparePlannerApprovalProjection(repo.root, 'acceptance', 1, { requireDigestBindings: true }),
+      /draft artifact digest no longer matches version 1/,
+    );
+    assert.equal(fs.existsSync(approvalApprovedPath(repo.root, 'acceptance')), false);
+    assert.equal(readPhaseApproval(repo.root, 'acceptance').meta.approved, null);
+
+    writeFile(approvalDraftVersionPath(repo.root, 'acceptance', 1), artifactContents);
+    writeFile(inputPath, '# Requirements\n- Tampered input.\n');
+    assert.throws(
+      () => preparePlannerApprovalProjection(repo.root, 'acceptance', 1, { requireDigestBindings: true }),
+      /approval input digest no longer matches draft version 1/,
+    );
+    assert.equal(fs.existsSync(approvalApprovedPath(repo.root, 'acceptance')), false);
+    assert.equal(readPhaseApproval(repo.root, 'acceptance').status, 'draft');
+    assert.equal(readPhaseApproval(repo.root, 'acceptance').meta.approved, null);
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('project file byte reader rejects path traversal outside the project root', () => {
+  const repo = makeRepo();
+  const externalRoot = fs.mkdtempSync(path.join(path.dirname(repo.root), 'quiver-approvals-outside-'));
+
+  try {
+    const externalPath = path.join(externalRoot, 'outside.md');
+    writeFile(externalPath, '# Outside\n');
+    const escapedPath = path.relative(repo.root, externalPath);
+
+    assert.match(escapedPath, /^\.\.[\\/]/);
+    assert.throws(
+      () => readProjectFileBytes(repo.root, escapedPath, 'approval input'),
+      /approval input must be inside the project root/,
+    );
+  } finally {
+    repo.cleanup();
+    fs.rmSync(externalRoot, { recursive: true, force: true });
+  }
+});
+
+test('project file byte reader rejects symlinks that resolve outside the project root', (t) => {
+  const repo = makeRepo();
+  const externalRoot = fs.mkdtempSync(path.join(path.dirname(repo.root), 'quiver-approvals-outside-'));
+
+  try {
+    const externalPath = path.join(externalRoot, 'outside.md');
+    const symlinkPath = path.join(repo.root, 'linked.md');
+    writeFile(externalPath, '# Outside\n');
+    try {
+      fs.symlinkSync(externalPath, symlinkPath, 'file');
+    } catch (error) {
+      if (['EACCES', 'EPERM', 'ENOTSUP'].includes(error.code)) {
+        t.skip(`symlinks are not supported in this environment: ${error.code}`);
+        return;
+      }
+      throw error;
+    }
+
+    assert.throws(
+      () => readProjectFileBytes(repo.root, 'linked.md', 'approval input'),
+      /approval input (?:cannot use a symlinked path component|resolves outside the project root)/,
+    );
+  } finally {
+    repo.cleanup();
+    fs.rmSync(externalRoot, { recursive: true, force: true });
+  }
+});
+
+test('project file byte reader rejects in-project symlink aliases', (t) => {
+  const repo = makeRepo();
+
+  try {
+    writeFile(path.join(repo.root, 'canonical.md'), '# Canonical\n');
+    try {
+      fs.symlinkSync('canonical.md', path.join(repo.root, 'alias.md'), 'file');
+    } catch (error) {
+      if (['EACCES', 'EPERM', 'ENOTSUP'].includes(error.code)) {
+        t.skip(`symlinks are not supported in this environment: ${error.code}`);
+        return;
+      }
+      throw error;
+    }
+
+    assert.throws(
+      () => readProjectFileBytes(repo.root, 'alias.md', 'approval input'),
+      /approval input cannot use a symlinked path component/,
+    );
   } finally {
     repo.cleanup();
   }

@@ -15,6 +15,7 @@ const {
   PHASE_OWNERS,
   PLAN_REVIEW_RECOMMENDATIONS,
   actorIdentitySchema,
+  approvalDecisionSchema,
   canonicalFindingSchema,
   providerFindingSchema,
   providerReviewSchema,
@@ -34,6 +35,8 @@ const DISPOSITION_UNAUTHORIZED = 'DISPOSITION_UNAUTHORIZED';
 const NON_TRANSFERABLE_BLOCKER = 'NON_TRANSFERABLE_BLOCKER';
 const CURRENT_PHASE_REVISION_REQUIRED = 'CURRENT_PHASE_REVISION_REQUIRED';
 const DISPOSITION_UNRESOLVED = 'DISPOSITION_UNRESOLVED';
+const APPROVAL_BINDING_MISMATCH = 'APPROVAL_BINDING_MISMATCH';
+const REPRESENTATION_MISMATCH = 'REPRESENTATION_MISMATCH';
 
 const PROTECTED_CRITICAL_CATEGORIES = Object.freeze([
   'security',
@@ -342,6 +345,117 @@ function compareCodeUnits(left, right) {
 
 function stableStringify(value) {
   return JSON.stringify(canonicalizeJson(value));
+}
+
+function canonicalSha256(value) {
+  return `sha256:${crypto.createHash('sha256').update(stableStringify(value), 'utf8').digest('hex')}`;
+}
+
+function computeApprovalProfileDigest(profile = {}, binding = {}) {
+  const requirementCategories = [...new Set(
+    (binding.requirement_categories || [])
+      .map(normalizeRequirementCategory)
+      .filter(Boolean),
+  )].sort(compareCodeUnits);
+  return canonicalSha256({
+    requested_profile: profile.requested_profile,
+    effective_profile: profile.effective_profile,
+    requirement_categories: requirementCategories,
+    policy_version: profile.policy_version,
+    policy_digest: profile.policy_digest,
+    controls: cloneJsonValue(profile.controls || {}),
+  });
+}
+
+function computeApprovalDispositionDigest(dispositions = []) {
+  const canonical = [...dispositions]
+    .map((disposition) => cloneJsonValue(disposition))
+    .sort((left, right) => compareCodeUnits(left.disposition_id, right.disposition_id));
+  return canonicalSha256(canonical);
+}
+
+function computeApprovalDecisionDigest(decision) {
+  const digestInput = cloneJsonValue(decision || {});
+  delete digestInput.decision_sha256;
+  return canonicalSha256(digestInput);
+}
+
+function buildApprovalDecisionRecord(value) {
+  const record = {
+    ...cloneJsonValue(value),
+    decision_sha256: computeApprovalDecisionDigest(value),
+  };
+  return approvalDecisionSchema.parse(record);
+}
+
+function verifyApprovalDecisionRecord(value) {
+  const parsed = approvalDecisionSchema.safeParse(value);
+  if (!parsed.success) {
+    throw new GovernanceError(
+      APPROVAL_BINDING_MISMATCH,
+      'The canonical approval decision record is invalid.',
+      { mismatches: parsed.error.issues.map((issue) => issue.path.join('.') || 'record') },
+    );
+  }
+  const actualDigest = computeApprovalDecisionDigest(parsed.data);
+  if (actualDigest !== parsed.data.decision_sha256) {
+    throw new GovernanceError(
+      APPROVAL_BINDING_MISMATCH,
+      'The canonical approval decision digest does not match its record.',
+      { mismatches: ['decision_sha256'], expected: parsed.data.decision_sha256, actual: actualDigest },
+    );
+  }
+  return parsed.data;
+}
+
+function assertApprovalBindingParity(record, actual) {
+  const representationFields = ['finding_count', 'criterion_count'];
+  const representationMismatches = representationFields.filter((field) => (
+    record?.[field] !== actual?.[field]
+  ));
+  if (representationMismatches.length > 0) {
+    throw new GovernanceError(
+      REPRESENTATION_MISMATCH,
+      'Canonical approval counts do not match the structured source collections.',
+      { mismatches: representationMismatches },
+    );
+  }
+  const fields = [
+    'run_id',
+    'review_id',
+    'phase',
+    'decision',
+    'candidate_id',
+    'evaluation_id',
+    'version',
+    'artifact_path',
+    'artifact_sha256',
+    'input_path',
+    'input_sha256',
+    'review_sha256',
+    'requested_profile',
+    'effective_profile',
+    'profile_sha256',
+    'policy_version',
+    'policy_digest',
+    'disposition_ids',
+    'disposition_sha256',
+    'reason_path',
+    'reason_sha256',
+    'actor_id',
+    'authorization',
+    'reviewer_recommendation',
+    'reviewer_approved',
+  ];
+  const mismatches = fields.filter((field) => stableStringify(record?.[field]) !== stableStringify(actual?.[field]));
+  if (mismatches.length > 0) {
+    throw new GovernanceError(
+      APPROVAL_BINDING_MISMATCH,
+      'Canonical approval bindings are stale or have been tampered with.',
+      { mismatches },
+    );
+  }
+  return true;
 }
 
 function computePolicyDigest(policyOrGovernance) {
@@ -1298,6 +1412,7 @@ function reconcileFindings(options = {}) {
 }
 
 module.exports = {
+  APPROVAL_BINDING_MISMATCH,
   CONDITION_ELIGIBILITY_CODES,
   CONDITION_ELIGIBILITY_STATUSES,
   CURRENT_PHASE_REVISION_REQUIRED,
@@ -1314,11 +1429,18 @@ module.exports = {
   NON_TRANSFERABLE_BLOCKER,
   PROVIDER_OUTPUT_INVALID,
   PROTECTED_CRITICAL_REQUIRES_BREAK_GLASS,
+  REPRESENTATION_MISMATCH,
   TECHNICAL_PLAN_BLOCKING_CATEGORIES,
   assertProviderReviewAggregates,
+  assertApprovalBindingParity,
   authorizeGovernanceAction,
   buildDefaultGovernanceConfig,
   buildConditionedDecisionProjection,
+  buildApprovalDecisionRecord,
+  canonicalSha256,
+  computeApprovalDecisionDigest,
+  computeApprovalDispositionDigest,
+  computeApprovalProfileDigest,
   computeFindingFingerprint,
   computePolicyDigest,
   extractProviderReviewJson,
@@ -1332,4 +1454,5 @@ module.exports = {
   resolveEffectiveProfile,
   stableStringify,
   validateGovernanceConfig,
+  verifyApprovalDecisionRecord,
 };

@@ -15,18 +15,25 @@
     "specs/quiver-v58-risk-aware-review-governance/SPEC.md",
     "src/create-quiver/lib/approvals.js",
     "src/create-quiver/lib/ai/review-governance.js",
+    "src/create-quiver/lib/ai/review-governance.schema.js",
     "src/create-quiver/lib/ai/approval-candidates.js",
     "src/create-quiver/lib/ai/run-state.js",
+    "src/create-quiver/lib/ai/plan-review.js",
     "src/create-quiver/lib/locks.js",
     "src/create-quiver/lib/actionable-error.js",
+    "src/create-quiver/lib/cli/command-registry.js",
     "src/create-quiver/commands/ai.js"
   ],
   "files": [
     "src/create-quiver/lib/approvals.js",
     "src/create-quiver/lib/ai/review-governance.js",
+    "src/create-quiver/lib/ai/review-governance.schema.js",
+    "src/create-quiver/lib/ai/approval-candidates.js",
     "src/create-quiver/lib/ai/run-state.js",
+    "src/create-quiver/lib/ai/plan-review.js",
     "src/create-quiver/lib/locks.js",
     "src/create-quiver/lib/actionable-error.js",
+    "src/create-quiver/lib/cli/command-registry.js",
     "src/create-quiver/commands/ai.js",
     "src/create-quiver/index.js",
     "tests/lib/approvals.test.js",
@@ -40,10 +47,13 @@
   "allowed_write_paths": [
     "src/create-quiver/lib/approvals.js",
     "src/create-quiver/lib/ai/review-governance.js",
+    "src/create-quiver/lib/ai/review-governance.schema.js",
     "src/create-quiver/lib/ai/approval-candidates.js",
     "src/create-quiver/lib/ai/run-state.js",
+    "src/create-quiver/lib/ai/plan-review.js",
     "src/create-quiver/lib/locks.js",
     "src/create-quiver/lib/actionable-error.js",
+    "src/create-quiver/lib/cli/command-registry.js",
     "src/create-quiver/commands/ai.js",
     "src/create-quiver/index.js",
     "tests/lib/approvals.test.js",
@@ -88,11 +98,14 @@
     "Two active runs cannot approve, invalidate, or count state for one another."
   ],
   "tests": [
-    "node --test tests/lib/approvals.test.js tests/lib/ai-review-governance.test.js tests/lib/ai-run-state.test.js tests/commands/ai-plan.test.js tests/commands/ai-run-state.test.js tests/commands/cli-contract.test.js",
+    "node --test tests/lib/approvals.test.js tests/lib/ai-review-governance.test.js tests/lib/ai-run-state.test.js tests/commands/ai-plan.test.js tests/commands/ai-review-plan.test.js tests/commands/ai-run-state.test.js tests/commands/cli-contract.test.js",
     "node bin/create-quiver.js slice check --local specs/quiver-v58-risk-aware-review-governance/slices/slice-04-digest-bound-approvals/slice.json",
     "node bin/create-quiver.js spec validate specs/quiver-v58-risk-aware-review-governance --strict",
     "git diff --check"
   ],
   "estimated_hours": 7,
-  "status": "planned"
+  "started_at": "2026-08-25T19:04:03Z",
+  "actual_hours": 48.3,
+  "status": "completed",
+  "completed_at": "2026-08-27T19:20:53Z"
 }

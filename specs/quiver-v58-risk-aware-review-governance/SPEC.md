@@ -1,6 +1,6 @@
 # Quiver v58 — Risk-aware review governance
 
-Status: In Progress — slices 00 through 03 completed; slice-03 implementation PR pending human review and merge
+Status: In Progress — slices 00 through 04 completed; slice-04 implementation PR pending human review and merge
 
 Classification: Level 3 — governance, authorization, integrity, and cross-command runtime contracts
 
@@ -16,6 +16,8 @@ This specification is derived from:
 The acceptance baseline below was reconstructed with explicit user authorization on 2026-08-24. It is a normalized, testable baseline rather than a verbatim copy of the master requirement.
 
 The condition-policy, disposition-lifecycle, reason-code, and reviewer-projection clarifications below were explicitly authorized by the user on 2026-08-25 after slice-02 merged. They close implementation ambiguities without expanding the approved v58 scope.
+
+The canonical approval ledger, digest and count formulas, singular approval CLI namespace, compatible plural listing, and required slice-04 scope additions were explicitly authorized by the user on 2026-08-27.
 
 The master requirement was an external planning input and is intentionally not an execution prerequisite for this package. SPEC.md and the slice contracts contain the frozen implementation baseline.
 
@@ -86,6 +88,10 @@ Provider output is validated evidence input. The provider's aggregate recommenda
 Approval commits are atomic and digest-bound. The canonical decision is distinct from its human and JSON projections. approved-with-conditions is a separate decision kind and must never be represented through the legacy approved.md contract.
 
 Slice-03 may atomically persist canonical dispositions plus an eligibility evaluation and conditioned-decision candidate in the run governance store. It does not publish a final decision, append a run approval projection, create approved.md, or advance the run phase. Slice-04 rereads and revalidates that candidate with the exact artifact bytes and owns the single atomic publication of the final decision plus phase transition.
+
+For slice-04, the run governance store owns the canonical final decision ledger. A decision binds the exact artifact and planner-input bytes, current review, effective governance profile, policy, canonical counts, dispositions, reason, run, and authorized actor. The profile digest is SHA-256 over the stable JSON representation of requested profile, effective profile, normalized requirement categories, policy version, policy digest, and effective controls. finding_count is the size of the complete canonical finding collection; open findings remain a separately derived eligibility projection. criterion_count is the size of the parsed acceptance-criteria collection for acceptance artifacts and the sum of the explicit spec.slices[*].acceptance collections in a structured technical-plan artifact. No provider aggregate participates in these formulas.
+
+The approval commit uses a run-scoped recovery marker and rollback semantics. Until that marker is durably removed, readers fail closed and the operation is not committed. An interrupted or injected failure restores the previous decision, approval projection, legacy unconditional projection, and run phase; approved-with-conditions never creates the legacy projection.
 
 ### Projections
 
@@ -337,6 +343,7 @@ Traceability: RQ-001 through RQ-009; REV-02, REV-03, REV-06, REV-07, REV-11, REV
 7. Approved-with-conditions has its own decision record and cannot reuse the legacy unconditional marker.
 8. Migration is additive and dual-read. Rollback disables v58 writers but retains fail-closed readers and gates.
 9. Repository lifecycle convention makes slice-00 documentary-only. It freezes the finding schema and enums suggested by the v58 roadmap; slice-01 performs their runtime implementation.
+10. Slice-04 canonicalizes approval digests and counts with the formulas in Approvals, persists final decisions in the run governance store, and exposes the RQ-008 `ai approval show|verify|export` surface while retaining plural `ai approvals` as the compatible listing command.
 
 ## Slice roadmap
 
@@ -346,7 +353,7 @@ Traceability: RQ-001 through RQ-009; REV-02, REV-03, REV-06, REV-07, REV-11, REV
 | 01 | slice-01-phase-aware-blocking-policy | Implement config/profile/actor/finding contracts, strict review lifecycle, and phase-aware policy | AC-01 to AC-06, AC-14 |
 | 02 | slice-02-review-budget-circuit-breaker | Run event ledger, classification, atomic reservation, and exhaustion | AC-07, AC-08 |
 | 03 | slice-03-approved-with-conditions | Eligibility, dispositions, and distinct conditioned lifecycle | AC-03, AC-10 |
-| 04 | slice-04-digest-bound-approvals | Atomic actor/run/digest-bound decisions and representation checks | AC-08, AC-09, AC-12 |
+| 04 | slice-04-digest-bound-approvals | Atomic actor/run/digest-bound decisions and representation checks | AC-08, AC-09, AC-12, approval surfaces of AC-13 |
 | 05 | slice-05-finding-disposition-transfer | Canonical transfer through spec, slices, PRs, and gates | AC-11, AC-13, AC-14 |
 | 06 | slice-06-integration-migration-docs | Shared projections, compatibility, rollback, directed tests, and docs | AC-13 to AC-16 |
 
