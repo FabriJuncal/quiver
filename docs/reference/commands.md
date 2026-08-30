@@ -75,6 +75,7 @@ El contenido curado fuera de los marcadores se mantiene manual y no debe ser ree
 | Specs, slices, and validation | `spec status` | Show spec worktree, branch, slice-00 state, and pending slices. |
 | Specs, slices, and validation | `spec validate` | Validate spec docs, slices, briefs, evidence, status, dependencies, and safe paths. |
 | Specs, slices, and validation | `spec close` | Close a merged clean spec worktree and guide local sync. |
+| Specs, slices, and validation | `findings transfer\|disposition` | Transfer one finding or atomically apply a validated disposition batch. |
 | Specs, slices, and validation | `slice start\|check\|pr\|scope\|cleanup\|refresh-active` | Canonical namespace for slice lifecycle, validation, scope, and board commands. |
 | Specs, slices, and validation | `handoff check\|new` | Canonical namespace for validating or scaffolding handoff artifacts. |
 | Specs, slices, and validation | `start-slice` | Start work on one slice and mark it active. |

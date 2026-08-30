@@ -21,6 +21,7 @@ const {
   assertApprovalBindingParity,
   authorizeGovernanceAction,
   buildApprovalDecisionRecord,
+  buildCriterionBinding,
   buildConditionedDecisionProjection,
   buildDefaultGovernanceConfig,
   computeApprovalDecisionDigest,
@@ -31,18 +32,22 @@ const {
   evaluateConditionEligibility,
   hasGovernanceConfig,
   mergeGovernanceConfig,
+  normalizeConditionDispositionInput,
+  normalizeTransferTarget,
   parseProviderReview,
   projectPhaseAwareReview,
   readGovernanceConfig,
   reconcileFindings,
   resolveEffectiveProfile,
   stableStringify,
+  validateTransferDispositionSet,
   validateGovernanceConfig,
   verifyApprovalDecisionRecord,
 } = require('../../src/create-quiver/lib/ai/review-governance');
 const { approvalCriteria } = require('../../src/create-quiver/lib/ai/approval-candidates');
 const {
   canonicalDispositionSchema,
+  criterionBindingSchema,
   conditionedDecisionCandidateSchema,
   conditionDispositionEnvelopeSchema,
   decisionSchema,
@@ -50,6 +55,8 @@ const {
   reviewEventSchema,
   runGovernanceStateSchema,
 } = require('../../src/create-quiver/lib/ai/review-governance.schema');
+
+const EXACT_CRITERION = 'AC-10 — Preserve exact bytes.\r\n';
 
 function makeFinding(overrides = {}) {
   return {
@@ -367,6 +374,78 @@ test('versioned disposition, review-event, and decision envelopes are strict', (
     event_class: 'full',
     inferred_from_prose: true,
   }));
+});
+
+test('criterion bindings preserve exact UTF-8 content and reject digest drift', () => {
+  const binding = buildCriterionBinding({
+    acceptanceRef: 'AC-10',
+    content: EXACT_CRITERION,
+    sourceBytes: Buffer.from(EXACT_CRITERION, 'utf8'),
+    sourcePath: 'docs/criteria/ac-10.md',
+  });
+
+  assert.equal(binding.content, EXACT_CRITERION);
+  assert.equal(criterionBindingSchema.parse(binding).content, EXACT_CRITERION);
+  assert.throws(
+    () => criterionBindingSchema.parse({ ...binding, content: binding.content.trim() }),
+    /criterion_sha256 must match/,
+  );
+});
+
+test('transfer target normalization is canonical and rejects ambiguous short slice ids', () => {
+  assert.equal(
+    normalizeTransferTarget('slice-03', {
+      action: 'transfer-to-slice',
+      sliceIds: ['slice-03-runtime'],
+    }),
+    'slice:slice-03-runtime',
+  );
+  assert.equal(normalizeTransferTarget('spec:legacy', { action: 'transfer-to-spec' }), 'phase:spec');
+  assert.equal(normalizeTransferTarget('pr:pending', { action: 'transfer-to-pr' }), 'phase:pr-review');
+  assert.throws(
+    () => normalizeTransferTarget('slice-03', {
+      action: 'transfer-to-slice',
+      sliceIds: ['slice-03-api', 'slice-03-ui'],
+    }),
+    expectCode(DISPOSITION_UNRESOLVED),
+  );
+});
+
+test('keyed disposition maps normalize to the canonical envelope and transfer validation binds criteria', () => {
+  const governance = buildDefaultGovernanceConfig();
+  const policyDigest = computePolicyDigest(governance);
+  const binding = buildCriterionBinding({
+    acceptanceRef: 'AC-10',
+    content: EXACT_CRITERION,
+    sourcePath: 'docs/criteria/ac-10.md',
+  });
+  const envelope = normalizeConditionDispositionInput({
+    'F-001': {
+      action: 'transfer-to-slice',
+      target: 'slice-03',
+      evidence_obligations: ['Record directed test evidence.'],
+      criterion_binding: binding,
+    },
+  }, {
+    runId: 'run-1',
+    reviewId: 'R-001',
+    policyVersion: governance.policy.version,
+    policyDigest,
+  });
+  const dispositions = validateTransferDispositionSet({
+    dispositions: envelope.dispositions,
+    findings: [makeCanonicalConditionFinding({ acceptance_refs: ['AC-10'] })],
+    governance,
+    policyDigest,
+    policyVersion: governance.policy.version,
+    reviewId: 'R-001',
+    runId: 'run-1',
+    sliceIds: ['slice-03-runtime'],
+  });
+
+  assert.equal(dispositions[0].finding_id, 'F-001');
+  assert.equal(dispositions[0].target, 'slice:slice-03-runtime');
+  assert.deepEqual(dispositions[0].criterion_binding, binding);
 });
 
 test('legacy run governance state reads additively without inventing decisions', () => {
@@ -697,6 +776,62 @@ test('condition disposition replacement is explicit and never becomes current im
   stale.existingDispositions = [existing];
   stale.envelope.dispositions[0].supersedes = 'D-999';
   assert.equal(evaluateConditionEligibility(stale).code, DISPOSITION_STALE);
+});
+
+test('condition eligibility keeps transfer-blocker and final approval authorizations independent', () => {
+  const context = makeConditionContext();
+  const transferAuthorization = {
+    ...context.authorization.evidence,
+    action: 'transfer-blocker',
+    actor_id: 'person:transfer-operator',
+    provider_actor_id: 'github:github.com:77',
+    provider_subject: 'github:github.com:77',
+  };
+  context.envelope.dispositions = [];
+  context.existingDispositions = [{
+    schema_version: 1,
+    disposition_id: 'D-001',
+    run_id: 'run-1',
+    review_id: 'R-001',
+    finding_id: 'F-001',
+    action: 'transfer-to-slice',
+    target: 'slice:slice-04-runtime',
+    evidence_obligations: ['Record directed test evidence.'],
+    state: 'current',
+    supersedes: null,
+    actor_id: 'person:transfer-operator',
+    authorization: transferAuthorization,
+    policy_version: 'v58',
+    policy_digest: context.policyDigest,
+    recorded_at: '2026-08-25T10:00:00.000Z',
+  }];
+
+  assert.equal(evaluateConditionEligibility(context).code, ELIGIBLE_WITH_CONDITIONS);
+
+  context.findings = [makeCanonicalConditionFinding({
+    category: 'optional-hardening',
+    phase_owner: 'slice',
+  })];
+  context.existingDispositions[0] = {
+    ...context.existingDispositions[0],
+    action: 'optional',
+  };
+  delete context.existingDispositions[0].target;
+  assert.equal(evaluateConditionEligibility(context).code, ELIGIBLE_WITH_CONDITIONS);
+
+  context.findings = [makeCanonicalConditionFinding({
+    category: 'tooling',
+    phase_owner: 'follow-up',
+  })];
+  context.existingDispositions[0] = {
+    ...context.existingDispositions[0],
+    action: 'create-follow-up',
+    target_issue: 'QUIVER-99',
+  };
+  assert.equal(evaluateConditionEligibility(context).code, ELIGIBLE_WITH_CONDITIONS);
+
+  context.existingDispositions[0].actor_id = 'person:tampered';
+  assert.equal(evaluateConditionEligibility(context).code, DISPOSITION_UNAUTHORIZED);
 });
 
 test('conditioned candidates are explicitly non-final publication records', () => {

@@ -1,3 +1,4 @@
+const crypto = require('node:crypto');
 const { z } = require('zod');
 const { containsSensitiveText, isCredentialStructuredKey } = require('./artifacts');
 
@@ -157,6 +158,30 @@ const repositoryRelativePathSchema = nonEmptyStringSchema.max(2_000).superRefine
     context.addIssue({
       code: z.ZodIssueCode.custom,
       message: 'path must be a normalized repository-relative POSIX path',
+    });
+  }
+});
+
+const criterionBindingSchema = z.object({
+  acceptance_ref: acceptanceReferenceSchema,
+  content: z.string().min(1).max(8_000).refine((value) => value.trim().length > 0, {
+    message: 'criterion content must not be blank',
+  }),
+  source_path: repositoryRelativePathSchema,
+  criterion_sha256: sha256DigestSchema,
+}).strict().superRefine((binding, context) => {
+  if (containsSensitiveText(binding.content) || containsSensitiveText(binding.source_path)) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'criterion binding must be redacted before persistence',
+    });
+  }
+  const expected = `sha256:${crypto.createHash('sha256').update(binding.content, 'utf8').digest('hex')}`;
+  if (binding.criterion_sha256 !== expected) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['criterion_sha256'],
+      message: 'criterion_sha256 must match the persisted criterion content',
     });
   }
 });
@@ -467,6 +492,7 @@ const proposedConditionDispositionSchema = z.object({
   target: nonEmptyStringSchema.max(500).optional(),
   target_issue: nonEmptyStringSchema.max(500).optional(),
   evidence_obligations: z.array(nonEmptyStringSchema.max(2_000)).default([]),
+  criterion_binding: criterionBindingSchema.optional(),
   supersedes: identifierSchema.nullable().optional(),
 }).strict();
 
@@ -489,6 +515,7 @@ const canonicalDispositionSchema = z.object({
   target: nonEmptyStringSchema.max(500).optional(),
   target_issue: nonEmptyStringSchema.max(500).optional(),
   evidence_obligations: z.array(nonEmptyStringSchema.max(2_000)).min(1),
+  criterion_binding: criterionBindingSchema.optional(),
   state: conditionDispositionStateSchema,
   supersedes: identifierSchema.nullable().default(null),
   actor_id: nonEmptyStringSchema.max(300),
@@ -510,7 +537,7 @@ const canonicalDispositionSchema = z.object({
       message: 'a disposition cannot supersede itself',
     });
   }
-  if (disposition.authorization.action !== 'approve-with-conditions'
+  if (!['approve-with-conditions', 'transfer-blocker'].includes(disposition.authorization.action)
       || disposition.authorization.actor_id !== disposition.actor_id
       || disposition.authorization.policy_version !== disposition.policy_version
       || disposition.authorization.policy_digest !== disposition.policy_digest) {
@@ -518,6 +545,15 @@ const canonicalDispositionSchema = z.object({
       code: z.ZodIssueCode.custom,
       path: ['authorization'],
       message: 'disposition authorization must match its actor and policy bindings',
+    });
+  }
+  if (disposition.authorization.action === 'transfer-blocker'
+      && ['transfer-to-spec', 'transfer-to-slice', 'transfer-to-pr'].includes(disposition.action)
+      && !disposition.criterion_binding) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['criterion_binding'],
+      message: 'transfer-blocker dispositions require a criterion binding',
     });
   }
 });
@@ -974,7 +1010,8 @@ const runGovernanceStateSchema = z.object({
         });
       } else if (disposition.run_id !== evaluation.run_id
           || disposition.review_id !== evaluation.review_id
-          || disposition.actor_id !== evaluation.actor_id
+          || (disposition.authorization.action !== 'transfer-blocker'
+            && disposition.actor_id !== evaluation.actor_id)
           || disposition.policy_version !== evaluation.policy_version
           || disposition.policy_digest !== evaluation.policy_digest) {
         context.addIssue({
@@ -1120,6 +1157,7 @@ module.exports = {
   conditionEligibilityResultSchema,
   conditionEligibilityStatusSchema,
   conditionEvaluationSchema,
+  criterionBindingSchema,
   decisionKindSchema,
   decisionSchema,
   dispositionSchema,

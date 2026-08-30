@@ -1,5 +1,15 @@
 const path = require('node:path');
 
+const {
+  GOVERNANCE_MANIFEST_FILENAME,
+  GOVERNANCE_MARKER_BEGIN,
+  GOVERNANCE_MARKER_END,
+  GOVERNANCE_TRACEABILITY_MARKER_END,
+  governanceEntriesForTarget,
+  governanceTraceabilityMarkerBegin,
+  normalizeApprovedCriterionSemantic,
+} = require('./spec-governance');
+
 const SPEC_FOUNDATION_SLICE_ID = 'slice-00-spec-foundation';
 
 function currentDate() {
@@ -140,7 +150,70 @@ function renderExecutionOrder(manifest) {
   });
 }
 
+function escapeTableCell(value) {
+  return escapeGovernanceMarkdownInline(value)
+    .replace(/\|/g, '&#124;');
+}
+
+function renderGovernanceTraceability(governance, projectedEntries = null) {
+  const entries = projectedEntries || governanceEntriesForTarget(governance);
+  return [
+    governanceTraceabilityMarkerBegin(governance.manifest_sha256),
+    '## Governance Traceability',
+    '',
+    `Manifest: \`${GOVERNANCE_MANIFEST_FILENAME}\` (\`${governance.manifest_sha256}\`)`,
+    '',
+    '| Finding | Disposition | State | Target | Acceptance | Required evidence |',
+    '|---------|-------------|-------|--------|------------|-------------------|',
+    ...(entries.length > 0
+      ? entries.map((entry) => `| ${escapeTableCell(entry.finding.finding_id)} | ${escapeTableCell(`${entry.disposition.disposition_id} (${entry.disposition.action})`)} | ${escapeTableCell(entry.disposition.state)} | ${escapeTableCell(entry.target)} | ${escapeTableCell(entry.criterion_binding?.acceptance_ref)} | ${escapeTableCell(entry.disposition.evidence_obligations.join('; '))} |`)
+      : []),
+    '',
+    GOVERNANCE_TRACEABILITY_MARKER_END,
+    '',
+  ];
+}
+
+function escapeGovernanceMarkdownInline(value) {
+  return String(value ?? '-')
+    .replace(/\r\n?|\n/g, ' ⏎ ')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/\\/g, '&#92;')
+    .replace(/`/g, '&#96;')
+    .replace(/\*/g, '&#42;')
+    .replace(/_/g, '&#95;')
+    .replace(/\[/g, '&#91;')
+    .replace(/\]/g, '&#93;');
+}
+
+function renderPendingGovernanceBlock(entries) {
+  return [
+    GOVERNANCE_MARKER_BEGIN,
+    '## Pending governance findings',
+    '',
+    ...(entries.length > 0
+      ? entries.map((entry) => {
+        const findingId = escapeGovernanceMarkdownInline(entry.finding.finding_id);
+        const dispositionId = escapeGovernanceMarkdownInline(entry.disposition.disposition_id);
+        const action = escapeGovernanceMarkdownInline(entry.disposition.action);
+        const state = escapeGovernanceMarkdownInline(entry.disposition.state);
+        const target = escapeGovernanceMarkdownInline(entry.target || '-');
+        const acceptance = escapeGovernanceMarkdownInline(entry.criterion_binding?.acceptance_ref || '-');
+        const evidence = escapeGovernanceMarkdownInline(entry.disposition.evidence_obligations.join('; '));
+        return `- \`${findingId}\` — disposition \`${dispositionId}\` (${action}, ${state}); target \`${target}\`; acceptance \`${acceptance}\`; required evidence: ${evidence}`;
+      })
+      : ['- None.']),
+    GOVERNANCE_MARKER_END,
+    '',
+  ];
+}
+
 function buildSpecMarkdown(manifest) {
+  const governanceTraceability = manifest.governance
+    ? renderGovernanceTraceability(manifest.governance)
+    : [];
   const lines = [
     `# ${manifest.title}`,
     '',
@@ -162,6 +235,7 @@ function buildSpecMarkdown(manifest) {
     '',
     ...bullets(manifest.acceptance, '- All generated files parse and the spec is safe to review.'),
     '',
+    ...governanceTraceability,
     '## Slices',
     '',
     '| Slice | Title | Status | Spec |',
@@ -270,6 +344,7 @@ function buildExecutionPlanMarkdown(manifest) {
 
 function buildPrMarkdown(manifest) {
   const files = [
+    ...(manifest.governance ? [`specs/${manifest.slug}/${GOVERNANCE_MANIFEST_FILENAME}`] : []),
     `specs/${manifest.slug}/SPEC.md`,
     `specs/${manifest.slug}/STATUS.md`,
     `specs/${manifest.slug}/EVIDENCE_REPORT.md`,
@@ -311,6 +386,7 @@ function buildPrMarkdown(manifest) {
     '## Scope',
     '',
     '- `SPEC.md`',
+    ...(manifest.governance ? [`- \`${GOVERNANCE_MANIFEST_FILENAME}\``] : []),
     '- `STATUS.md`',
     '- `EVIDENCE_REPORT.md`',
     '- `EXECUTION_PLAN.md`',
@@ -364,6 +440,9 @@ function buildPrMarkdown(manifest) {
     '- Spec, status, evidence, execution plan, and slice briefs are present.',
     '- Every generated `slice.json` parses successfully.',
     '',
+    ...(manifest.governance ? renderPendingGovernanceBlock(
+      governanceEntriesForTarget(manifest.governance),
+    ) : []),
     '## Rollback',
     '',
     '1. `git revert <commit-hash>`',
@@ -388,7 +467,7 @@ function buildSliceJson(manifest, slice, index) {
   const allowedWritePaths = resolveAllowedWritePaths(slice);
   const validationHints = resolveValidationHints(slice);
 
-  return {
+  const value = {
     slice_id: slice.slice_id,
     ticket,
     type: slice.type || (isFoundation ? 'docs' : 'feature'),
@@ -427,6 +506,22 @@ function buildSliceJson(manifest, slice, index) {
     started_at: slice.started_at ?? null,
     completed_at: slice.completed_at ?? null,
   };
+  if (manifest.governance) {
+    value.planning_governance = {
+      schema_version: 1,
+      manifest: `../../${GOVERNANCE_MANIFEST_FILENAME}`,
+      manifest_sha256: manifest.governance.manifest_sha256,
+      target: {
+        kind: 'slice',
+        id: slice.slice_id,
+      },
+      pending_finding_ids: governanceEntriesForTarget(
+        manifest.governance,
+        `slice:${slice.slice_id}`,
+      ).map((entry) => entry.finding.finding_id),
+    };
+  }
+  return value;
 }
 
 function buildExecutionBrief(manifest, slice) {
@@ -482,6 +577,10 @@ function buildExecutionBrief(manifest, slice) {
     '',
     ...bullets(slice.not_included, '- No explicit exclusions were declared.'),
     '',
+    ...(manifest.governance ? renderPendingGovernanceBlock(governanceEntriesForTarget(
+      manifest.governance,
+      `slice:${slice.slice_id}`,
+    )) : []),
     '## Riesgos',
     '',
     '- The slice can drift if the implementation expands beyond the approved files or acceptance criteria.',
@@ -517,6 +616,10 @@ function buildClosureBrief(manifest, slice) {
     '',
     'Pendiente.',
     '',
+    ...(manifest.governance ? renderPendingGovernanceBlock(governanceEntriesForTarget(
+      manifest.governance,
+      `slice:${slice.slice_id}`,
+    )) : []),
     '## Riesgos remanentes',
     '',
     'Pendiente.',
@@ -692,7 +795,9 @@ function normalizeSliceManifest(slice, index, fallbackTicket) {
   const files = declaredFiles.length > 0 ? declaredFiles : explicitAllowedWritePaths;
   const must = normalizeStringArray(slice.must);
   const notIncluded = normalizeStringArray(slice.not_included);
-  const acceptance = normalizeStringArray(slice.acceptance);
+  const acceptance = Array.isArray(slice.acceptance)
+    ? slice.acceptance.map(normalizeApprovedCriterionSemantic).filter(Boolean)
+    : [];
   const tests = normalizeStringArray(slice.tests);
   const assumptions = normalizeStringArray(slice.assumptions);
   const expectedReadPaths = normalizeStringArray(slice.expected_read_paths || slice.expectedReadPaths || slice.read_paths || slice.reads);
@@ -858,6 +963,8 @@ module.exports = {
   buildSpecMarkdown,
   buildStatusMarkdown,
   normalizeApprovedSource,
+  renderGovernanceTraceability,
+  renderPendingGovernanceBlock,
   slugify,
   titleizeFromSlug,
 };

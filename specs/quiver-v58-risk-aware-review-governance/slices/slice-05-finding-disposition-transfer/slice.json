@@ -14,12 +14,15 @@
   "expected_read_paths": [
     "specs/quiver-v58-risk-aware-review-governance/SPEC.md",
     "src/create-quiver/lib/ai/review-governance.js",
+    "src/create-quiver/lib/ai/review-governance.schema.js",
+    "src/create-quiver/lib/cli/command-registry.js",
     "src/create-quiver/commands/spec.js",
     "src/create-quiver/lib/ai/spec-generator.js",
     "src/create-quiver/lib/ai/spec-templates.js",
     "src/create-quiver/lib/readiness.js",
     "src/create-quiver/commands/ai.js",
-    "src/create-quiver/index.js"
+    "src/create-quiver/index.js",
+    "docs/reference/commands.md"
   ],
   "files": [
     "src/create-quiver/lib/ai/spec-governance.js",
@@ -32,16 +35,21 @@
     "src/create-quiver/commands/ai.js",
     "src/create-quiver/index.js",
     "tests/lib/ai-spec-generator.test.js",
+    "tests/lib/ai-review-governance.test.js",
     "tests/lib/check-slice.test.js",
     "tests/commands/spec-create.test.js",
     "tests/commands/slice-namespace.test.js",
     "tests/commands/ai-pr.test.js",
     "tests/commands/findings.test.js",
+    "tests/commands/cli-contract.test.js",
+    "docs/reference/commands.md",
     "specs/quiver-v58-risk-aware-review-governance/**"
   ],
   "allowed_write_paths": [
     "src/create-quiver/lib/ai/spec-governance.js",
     "src/create-quiver/lib/ai/review-governance.js",
+    "src/create-quiver/lib/ai/review-governance.schema.js",
+    "src/create-quiver/lib/cli/command-registry.js",
     "src/create-quiver/commands/findings.js",
     "src/create-quiver/commands/spec.js",
     "src/create-quiver/lib/ai/spec-generator.js",
@@ -50,11 +58,14 @@
     "src/create-quiver/commands/ai.js",
     "src/create-quiver/index.js",
     "tests/lib/ai-spec-generator.test.js",
+    "tests/lib/ai-review-governance.test.js",
     "tests/lib/check-slice.test.js",
     "tests/commands/spec-create.test.js",
     "tests/commands/slice-namespace.test.js",
     "tests/commands/ai-pr.test.js",
     "tests/commands/findings.test.js",
+    "tests/commands/cli-contract.test.js",
+    "docs/reference/commands.md",
     "specs/quiver-v58-risk-aware-review-governance/**"
   ],
   "depends_on": [
@@ -72,7 +83,13 @@
     "Render slice briefs, PR evidence, and human or JSON views as projections of the manifest.",
     "Generate a traceability matrix and expose pending findings in destination slices and PR templates.",
     "Make check-slice and check-pr reject omitted, orphaned, unknown, stale, or unresolved conditions.",
-    "Apply common redaction before generation, persistence, rendering, and export."
+    "Apply common redaction before generation, persistence, rendering, and export.",
+    "Use transfer-blocker only for pre-decision transfer mutations, preserve approve-with-conditions for final publication, and reject post-decision mutation.",
+    "Normalize targets to phase:spec, phase:pr-review, or slice:<full-slice-id>; accept slice-NN only when it resolves exactly once.",
+    "Bind every transferred criterion by acceptance reference, redacted content, repository-relative source path, and SHA-256 digest, with explicit evidence obligations.",
+    "Generate specs/quiver-v58-risk-aware-review-governance/GOVERNANCE_MANIFEST.json with kind quiver-planning-governance, schema_version 1, full source digest, final-decision binding, and self-digest.",
+    "Resolve canonical parity from the primary checkout run store for linked worktrees and fail closed when parity is unavailable.",
+    "Accept keyed-map and canonical-envelope batch inputs, validate the complete operation before and inside the run lock, and commit one atomic write."
   ],
   "not_included": [
     "General artifact graph.",
@@ -93,11 +110,14 @@
     "Omitted, orphaned, unknown, stale, or unresolved conditions block the relevant slice or PR gate."
   ],
   "tests": [
-    "node --test tests/lib/ai-spec-generator.test.js tests/lib/check-slice.test.js tests/commands/spec-create.test.js tests/commands/slice-namespace.test.js tests/commands/ai-pr.test.js tests/commands/findings.test.js",
+    "node --test tests/lib/ai-spec-generator.test.js tests/lib/ai-review-governance.test.js tests/lib/check-slice.test.js tests/commands/spec-create.test.js tests/commands/slice-namespace.test.js tests/commands/ai-pr.test.js tests/commands/findings.test.js tests/commands/cli-contract.test.js",
     "node bin/create-quiver.js slice check --local specs/quiver-v58-risk-aware-review-governance/slices/slice-05-finding-disposition-transfer/slice.json",
     "node bin/create-quiver.js spec validate specs/quiver-v58-risk-aware-review-governance --strict",
     "git diff --check"
   ],
   "estimated_hours": 7,
-  "status": "planned"
+  "started_at": "2026-08-27T19:38:11Z",
+  "actual_hours": 1.6,
+  "status": "completed",
+  "completed_at": "2026-08-27T21:16:15Z"
 }

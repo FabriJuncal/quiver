@@ -12,6 +12,7 @@ const {
   containsSensitiveText,
   extractCleanProviderOutput,
   redactSensitiveLocalValues,
+  redactSensitiveValue,
   writeRawProviderArtifact,
 } = require('../lib/ai/artifacts');
 const { buildContextPackMetadata, normalizeRole } = require('../lib/ai/context-packs');
@@ -204,6 +205,7 @@ const { assertPlannerPhaseReady, getPlannerPhaseDetails, normalizePlannerPhase, 
 const { formatStatus, translatorForHuman } = require('../lib/i18n/read-only-format');
 const { collectActiveSliceState, resolveProjectState } = require('../lib/project-state-resolver');
 const { assertPathInsideRoot, validateProjectRelativePath } = require('../lib/paths');
+const { formatGovernanceProjectionHuman, verifyPrGovernanceReadiness } = require('../lib/readiness');
 
 const DEFAULT_ONBOARD_PROVIDER = 'codex';
 const DEFAULT_ONBOARD_ROLE = 'planner';
@@ -7287,6 +7289,63 @@ async function runGitHubTask(repoRoot, options = {}, mode = 'pr') {
   };
 }
 
+function verifyAiPrGovernance(repoRoot, plan, options = {}) {
+  return verifyPrGovernanceReadiness(repoRoot, plan.prBodyPath, {
+    governanceEntriesForTargetFn: options.governanceEntriesForTargetFn,
+    runId: options.runId,
+    verifyGovernanceManifestParityFn: options.verifyGovernanceManifestParityFn,
+  });
+}
+
+function buildAiPrReport({ preflight, plan, governance, result }, options = {}) {
+  const dryRun = options.dryRun === true;
+  const create = options.create === true;
+  const stdout = typeof result?.stdout === 'string' ? result.stdout.trim() : '';
+  return redactSensitiveValue({
+    schema_version: 1,
+    task: 'ai-pr',
+    ok: true,
+    status: dryRun ? 'dry-run' : create ? 'created' : 'preflight',
+    dry_run: dryRun,
+    create,
+    preflight: {
+      remote: preflight.remote,
+      branch_name: preflight.branchName,
+      ssh_host_alias: preflight.sshHostAlias || null,
+    },
+    plan: {
+      base_branch: plan.baseBranch,
+      branch_name: plan.branchName,
+      pr_body: plan.prBodyRelativePath,
+      title: plan.title,
+      command: plan.ghCommand,
+      args: [...plan.args],
+    },
+    governance,
+    result: result
+      ? {
+        status: result.status,
+        url: /^https:\/\/\S+$/m.test(stdout) ? stdout.match(/^https:\/\/\S+$/m)[0] : null,
+      }
+      : null,
+  }, { projectRoot: preflight.repoRoot });
+}
+
+function emitAiPrReport(report, preflight, plan, result, options = {}) {
+  if (options.json === true) {
+    process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
+    return;
+  }
+  process.stdout.write(formatPrCreateReport({ preflight, plan, result }, {
+    dryRun: options.dryRun === true,
+    create: options.create === true,
+    language: options.language,
+  }));
+  if (report.governance?.enabled) {
+    process.stdout.write(`${formatGovernanceProjectionHuman(report.governance, options)}\n`);
+  }
+}
+
 async function runPr(repoRoot, options = {}) {
   const dryRun = options.dryRun === true;
   const create = options.create === true;
@@ -7323,6 +7382,7 @@ async function runPr(repoRoot, options = {}) {
   }
 
   let plan;
+  let governance;
   try {
     plan = buildPrCreatePlan(repoRoot, preflight, {
       baseBranch: options.baseBranch,
@@ -7331,6 +7391,7 @@ async function runPr(repoRoot, options = {}) {
       prBodyPath: options.prBodyPath,
       title: options.title,
     });
+    governance = verifyAiPrGovernance(repoRoot, plan, options);
     if (showProgress) {
       ux.check(translator.t('ai.github.progress.body_ready'));
     }
@@ -7358,19 +7419,23 @@ async function runPr(repoRoot, options = {}) {
         prBodyPath: options.prBodyPath,
         title: options.title,
       });
+      governance = verifyAiPrGovernance(repoRoot, plan, options);
     } catch (error) {
       throw annotateGitHubError(error, 'pr');
     }
   }
 
   if (dryRun || !create) {
-    process.stdout.write(formatPrCreateReport({ preflight, plan }, { dryRun, create, language: options.language }));
+    const report = buildAiPrReport({ preflight, plan, governance }, options);
+    emitAiPrReport(report, preflight, plan, null, options);
     return {
       task: 'pr',
       dryRun,
       create,
       preflight,
       plan,
+      governance,
+      report,
     };
   }
 
@@ -7378,6 +7443,7 @@ async function runPr(repoRoot, options = {}) {
 
   let result;
   try {
+    governance = verifyAiPrGovernance(repoRoot, plan, options);
     result = await runProviderWithProgress({
       ux,
       enabled: showProgress,
@@ -7392,13 +7458,16 @@ async function runPr(repoRoot, options = {}) {
     throw annotateGitHubError(error, 'pr');
   }
 
-  process.stdout.write(formatPrCreateReport({ preflight, plan, result }, { dryRun: false, create: true, language: options.language }));
+  const report = buildAiPrReport({ preflight, plan, governance, result }, options);
+  emitAiPrReport(report, preflight, plan, result, options);
   return {
     task: 'pr',
     dryRun: false,
     create: true,
     preflight,
     plan,
+    governance,
+    report,
     result,
   };
 }

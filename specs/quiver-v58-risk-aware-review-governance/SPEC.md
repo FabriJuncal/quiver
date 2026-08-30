@@ -1,6 +1,6 @@
 # Quiver v58 — Risk-aware review governance
 
-Status: In Progress — slices 00 through 04 completed; slice-04 implementation PR pending human review and merge
+Status: In Progress — slices 00 through 04 completed and merged; slice-05 completed and awaiting human review and merge
 
 Classification: Level 3 — governance, authorization, integrity, and cross-command runtime contracts
 
@@ -18,6 +18,8 @@ The acceptance baseline below was reconstructed with explicit user authorization
 The condition-policy, disposition-lifecycle, reason-code, and reviewer-projection clarifications below were explicitly authorized by the user on 2026-08-25 after slice-02 merged. They close implementation ambiguities without expanding the approved v58 scope.
 
 The canonical approval ledger, digest and count formulas, singular approval CLI namespace, compatible plural listing, and required slice-04 scope additions were explicitly authorized by the user on 2026-08-27.
+
+The slice-05 transfer authorization, target grammar, criterion binding, immutable manifest, canonical parity, batch normalization, and required scope additions were explicitly authorized by the user on 2026-08-27 after slice-04 merged.
 
 The master requirement was an external planning input and is intentionally not an execution prerequisite for this package. SPEC.md and the slice contracts contain the frozen implementation baseline.
 
@@ -147,6 +149,17 @@ The default v58 rules use all contractual severities and categories for the four
 Every eligible disposition has at least one evidence obligation. `transfer-to-spec`, `transfer-to-slice`, and `transfer-to-pr` require exactly one non-empty `target`; `create-follow-up` requires exactly one non-empty `target_issue`; `optional` and explicitly allowed `accept-risk` carry no target. Target shape and cardinality are validated in slice-03; referential destination resolution remains owned by slice-05.
 
 A proposed disposition envelope is correlated to one run, current review, policy version, and policy digest. The canonical store assigns each accepted disposition a stable ID, records actor and authorization evidence, and tracks `current` or `superseded` state with an explicit `supersedes` reference. A replacement never becomes current implicitly. Exactly one current disposition is required for every open finding; duplicate historical records do not count as current.
+
+### Slice-05 transfer and downstream projection contract
+
+- `findings transfer` and `findings disposition` mutate only the canonical run store, under the run lock, before a final technical-plan decision exists. Transfer mutations require the independent `transfer-blocker` authorization action. Final conditioned publication remains authorized through `approve-with-conditions`. A current disposition can be replaced only with an explicit `supersedes` reference; no transfer command mutates a published final decision.
+- The canonical destination forms are `phase:spec`, `phase:pr-review`, and `slice:<full-slice-id>`. The documented `slice-NN` form is accepted only when it resolves to exactly one generated slice and is normalized to the full canonical slice ID. Historical target forms may be read only when they resolve unambiguously to one of these destinations; otherwise validation fails closed.
+- Every transferred criterion is represented by its acceptance reference, redacted content, repository-relative source path, and SHA-256 digest. Individual transfer infers the reference only when the finding has exactly one acceptance reference; otherwise an explicit reference is required. Batch entries carry the reference explicitly. Missing, duplicate, unknown, digest-mismatched, or unsafe criterion content fails before mutation. Every eligible disposition retains at least one explicit evidence obligation.
+- The immutable spec-root projection is `GOVERNANCE_MANIFEST.json` with `kind: quiver-planning-governance`, `schema_version: 1`, the complete canonical run-state source digest, final decision ID and digest, bound findings and dispositions, criterion bindings, and a self-digest computed with only the self-digest field omitted. Briefs, traceability, PR evidence, CLI output, JSON output, and readiness checks derive from this manifest and cannot mutate canonical state.
+- Canonical parity is resolved from the repository's primary checkout `.quiver/runs` when commands execute from a linked worktree. Missing, ambiguous, stale, or digest-mismatched canonical state fails closed, including in CI when a parity gate is invoked without the protected run state. Slice-05 adds no second store or portability mechanism.
+- The historical finding-keyed batch shape and the canonical envelope are accepted as inputs and normalized to one canonical envelope. The complete operation is parsed and validated before mutation, revalidated under the run lock, and committed through one atomic canonical-store write.
+- A downstream condition is accepted when its unique current disposition is bound by the final `approved-with-conditions` decision; an open finding remains visibly pending but does not fail a gate solely because it is open. Slice-05 adds no post-decision lifecycle writer or manifest regeneration. Any later canonical mutation makes the full source digest stale and fails closed; closing or refreshing a published condition requires the deferred amendment lifecycle.
+- Generated slice metadata and briefs project only findings targeted to that exact slice. The spec-root PR projects all conditioned findings for complete traceability, while only `phase:pr-review` is an operational root-PR target; slice and spec targets remain governed by their own destination gates.
 
 At technical-plan decision time:
 
@@ -344,6 +357,7 @@ Traceability: RQ-001 through RQ-009; REV-02, REV-03, REV-06, REV-07, REV-11, REV
 8. Migration is additive and dual-read. Rollback disables v58 writers but retains fail-closed readers and gates.
 9. Repository lifecycle convention makes slice-00 documentary-only. It freezes the finding schema and enums suggested by the v58 roadmap; slice-01 performs their runtime implementation.
 10. Slice-04 canonicalizes approval digests and counts with the formulas in Approvals, persists final decisions in the run governance store, and exposes the RQ-008 `ai approval show|verify|export` surface while retaining plural `ai approvals` as the compatible listing command.
+11. Slice-05 uses `transfer-blocker` for pre-decision transfer mutations, freezes the exact-one target and criterion contracts above, and projects canonical state through `GOVERNANCE_MANIFEST.json`; unavailable canonical parity fails closed.
 
 ## Slice roadmap
 
@@ -380,4 +394,4 @@ Traceability: RQ-001 through RQ-009; REV-02, REV-03, REV-06, REV-07, REV-11, REV
 - The documentary foundation in slice-00 is completed and merged with recorded structural and semantic evidence.
 - slice-01 runtime implementation is completed with executed and independently reviewed evidence.
 - slice-02 is completed and merged; slice-03 implementation is completed with executed and independently reviewed evidence.
-- slice-04 is contract-ready but remains execution-gated by human review and merge of the slice-03 PR; later slices remain planned behind explicit dependencies.
+- slice-04 is completed and merged; slice-05 is authorized, preflighted, and in implementation.

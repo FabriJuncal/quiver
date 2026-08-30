@@ -200,6 +200,45 @@ Covered behavior:
 
 Detailed evidence, scope boundaries, deviations, and pending later-slice work are recorded in `slices/slice-04-digest-bound-approvals/CLOSURE_BRIEF.md`.
 
+## Slice-05 Evidence — finding disposition and transfer
+
+Required validation commands:
+
+```bash
+node --test tests/lib/ai-spec-generator.test.js tests/lib/ai-review-governance.test.js tests/lib/check-slice.test.js tests/commands/spec-create.test.js tests/commands/slice-namespace.test.js tests/commands/ai-pr.test.js tests/commands/findings.test.js tests/commands/cli-contract.test.js
+node --test tests/docs/command-reference.test.js tests/schema/slice-schema.test.js
+npm test
+npm run schema:slice:check
+npm run docs:check
+node bin/create-quiver.js slice check --local specs/quiver-v58-risk-aware-review-governance/slices/slice-05-finding-disposition-transfer/slice.json
+node bin/create-quiver.js spec validate specs/quiver-v58-risk-aware-review-governance --strict
+node bin/create-quiver.js slice pr specs/quiver-v58-risk-aware-review-governance/slices/slice-05-finding-disposition-transfer/slice.json
+git diff --check
+```
+
+Final results:
+
+- The directed slice suite passed 135 tests with no failures.
+- The full portable regression passed 935 tests with no failures.
+- The focused generated-reference and slice-schema regression passed 5 tests with no failures.
+- All changed JavaScript entry points and libraries plus the current slice-schema gate passed.
+- Final local-slice, strict-spec, documentation, Markdown, PR-readiness, scope, and whitespace gates are recorded in the slice closure brief.
+- Independent focused reviews exposed and closed the material integrity, complete-projection, legacy-downgrade, output-redaction, and test-strength gaps before final publication; terminal re-review approved the final amendment and passed 36 focused tests.
+
+Covered behavior:
+
+- Authorized, run-scoped, pre-decision individual transfer and atomic normalized batch disposition with explicit supersession.
+- Exact acceptance reference, safe criterion bytes, repository-relative source path, SHA-256 digest, evidence obligations, target, identity, and lineage preservation.
+- Canonical phase/slice target normalization and exact-one short-alias resolution.
+- Full validation before and inside the run lock, with no partial mutation on invalid, unauthorized, unsafe, ambiguous, stale, or post-decision input.
+- Immutable spec-root governance manifest bound to complete canonical source state, final decision, normalized findings/dispositions, and its own digest.
+- Primary-checkout canonical parity from linked worktrees with fail-closed absence, ambiguity, and staleness.
+- Exact SPEC traceability, destination-slice governance blocks, complete root-PR traceability, and phase-specific operational gating.
+- Rejection of omitted, orphaned, unknown, reordered, stale, unresolved, or structurally malformed projections.
+- Human/JSON parity, stable nonzero failure behavior, and redaction across contractual data, persistence, generation, and output.
+
+Detailed evidence, authorized deviations, and pending slice-06 work are recorded in `slices/slice-05-finding-disposition-transfer/CLOSURE_BRIEF.md`.
+
 ## Evidence required from each slice
 
 - Commit and PR reference.

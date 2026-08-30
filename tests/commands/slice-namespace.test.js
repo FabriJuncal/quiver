@@ -102,7 +102,29 @@ test('legacy slice warning is suppressed when json mode is requested', () => {
 
     assert.equal(legacy.status, 0);
     assert.equal(legacy.stderr, '');
-    assert.match(legacy.stdout, /PASS: Local spec has SPEC\.md/);
+    const report = JSON.parse(legacy.stdout);
+    assert.equal(report.task, 'check-slice');
+    assert.equal(report.ok, true);
+    assert.equal(report.governance.status, 'legacy');
+    assert.doesNotMatch(legacy.stdout, /PASS:/);
+  } finally {
+    project.cleanup();
+  }
+});
+
+test('slice check json failure emits one machine envelope without human prose', () => {
+  const project = makeProject();
+  try {
+    fs.unlinkSync(path.join(project.root, 'specs/demo/slices/slice-01-alpha/EXECUTION_BRIEF.md'));
+    const result = runCli(project.root, ['slice', 'check', '--local', '--json', project.slicePath]);
+
+    assert.notEqual(result.status, 0);
+    assert.equal(result.stderr, '');
+    const report = JSON.parse(result.stdout);
+    assert.equal(report.task, 'check-slice');
+    assert.equal(report.ok, false);
+    assert.equal(report.code, 'SLICE_READINESS_FAILED');
+    assert.doesNotMatch(result.stdout, /PASS:|INFO:|WARN:/);
   } finally {
     project.cleanup();
   }

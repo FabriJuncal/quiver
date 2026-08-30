@@ -7,6 +7,11 @@ const test = require('node:test');
 
 const { runDoctor, runPr } = require('../../src/create-quiver/commands/ai');
 const { DEFAULT_GITFLOW_GUIDE_PATH } = require('../../src/create-quiver/lib/ai/github');
+const { canonicalSha256 } = require('../../src/create-quiver/lib/ai/review-governance');
+const {
+  renderGovernanceTraceability,
+  renderPendingGovernanceBlock,
+} = require('../../src/create-quiver/lib/ai/spec-templates');
 
 const BIN_PATH = path.resolve(__dirname, '../../bin/create-quiver.js');
 
@@ -21,6 +26,21 @@ function git(cwd, args) {
     encoding: 'utf8',
     stdio: ['ignore', 'pipe', 'pipe'],
   }).trim();
+}
+
+async function captureStdout(fn) {
+  const originalWrite = process.stdout.write;
+  let output = '';
+  process.stdout.write = (chunk) => {
+    output += String(chunk);
+    return true;
+  };
+  try {
+    const value = await fn();
+    return { output, value };
+  } finally {
+    process.stdout.write = originalWrite;
+  }
 }
 
 function createRepo(structure = {}) {
@@ -65,6 +85,81 @@ process.exit(1);
 `);
   fs.chmodSync(scriptPath, 0o755);
   return scriptPath;
+}
+
+function governanceManifest() {
+  const manifest = {
+    schema_version: 1,
+    kind: 'quiver-planning-governance',
+    source: { run_id: 'run-pr', path: '.quiver/runs/run-pr/review-governance.json', sha256: `sha256:${'1'.repeat(64)}` },
+    decision: {
+      decision_id: 'DEC-PR',
+      decision_sha256: `sha256:${'3'.repeat(64)}`,
+      phase: 'technical-plan',
+      publication_state: 'final',
+      decision: 'approved-with-conditions',
+      disposition_ids: ['DISP-PR'],
+    },
+    findings: [{ finding_id: 'F-001', state: 'open' }],
+    dispositions: [{
+      disposition_id: 'DISP-PR',
+      finding_id: 'F-001',
+      action: 'transfer-to-pr',
+      target: 'phase:pr-review',
+      evidence_obligations: ['Record PR review evidence.'],
+      state: 'current',
+      criterion_binding: { acceptance_ref: 'AC-11' },
+    }],
+  };
+  return { ...manifest, manifest_sha256: canonicalSha256(manifest) };
+}
+
+function governedSpecBody(manifest) {
+  return `${renderGovernanceTraceability(manifest).join('\n')}\n`;
+}
+
+function governanceEntry(extra = {}) {
+  return {
+    finding: { finding_id: 'F-001', state: extra.resolved ? 'closed' : 'open' },
+    disposition: {
+      disposition_id: 'DISP-PR',
+      action: 'transfer-to-pr',
+      target: 'phase:pr-review',
+      evidence_obligations: ['Record PR review evidence.'],
+      state: 'current',
+      criterion_binding: { acceptance_ref: 'AC-11' },
+    },
+    target: 'phase:pr-review',
+    criterion_binding: { acceptance_ref: 'AC-11' },
+    pending: !extra.resolved,
+    resolved: extra.resolved === true,
+    accepted: extra.accepted !== false,
+  };
+}
+
+function governedPrBody() {
+  return [
+    '## Title',
+    'Governed PR',
+    '',
+    '## Summary',
+    'Body',
+    '',
+    ...renderPendingGovernanceBlock([governanceEntry()]),
+  ].join('\n');
+}
+
+function governanceOptions(manifest, entry, verifyOverride) {
+  return {
+    governanceEntriesForTargetFn: (_value, target) => (
+      target == null || target === entry.disposition.target ? [entry] : []
+    ),
+    verifyGovernanceManifestParityFn: verifyOverride || (({ specRoot }) => ({
+      manifest,
+      manifestPath: path.join(specRoot, 'GOVERNANCE_MANIFEST.json'),
+      specRoot,
+    })),
+  };
 }
 
 test('ai pr dry-run forwards git and ssh options to the GitHub preflight', async () => {
@@ -121,6 +216,60 @@ test('ai doctor annotates GitHub preflight failures', async () => {
       && error.message.includes('missing GitHub CLI')
       && error.code === 'MISSING_GH_CLI',
   );
+});
+
+test('ai pr json emits one machine report without human prose', async () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'quiver-ai-pr-json-'));
+  writeFile(path.join(root, 'specs/demo/pr.md'), '## Title\nDemo PR\n\n## Summary\nBody\n');
+
+  try {
+    const captured = await captureStdout(() => runPr(root, {
+      dryRun: true,
+      input: 'specs/demo/pr.md',
+      json: true,
+      preflightFn: async (repoRoot) => ({
+        ok: true,
+        repoRoot,
+        remote: 'origin',
+        branchName: 'feature/demo',
+        guidePath: `${repoRoot}/docs/GITFLOW_PR_GUIDE.md`,
+      }),
+    }));
+    const report = JSON.parse(captured.output);
+    assert.equal(report.task, 'ai-pr');
+    assert.equal(report.ok, true);
+    assert.equal(report.governance.status, 'legacy');
+    assert.doesNotMatch(captured.output, /GitHub pr dry-run|Command:/);
+    assert.equal(captured.value.report.task, 'ai-pr');
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('ai pr with an explicit run rejects an ungoverned PR surface', async () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'quiver-ai-pr-run-binding-'));
+  writeFile(path.join(root, 'docs/pr.md'), '## Title\nDemo PR\n\n## Summary\nBody\n');
+
+  try {
+    await assert.rejects(
+      runPr(root, {
+        dryRun: true,
+        input: 'docs/pr.md',
+        runId: 'run-pr',
+        preflightFn: async (repoRoot) => ({
+          ok: true,
+          repoRoot,
+          remote: 'origin',
+          branchName: 'feature/demo',
+          guidePath: `${repoRoot}/docs/GITFLOW_PR_GUIDE.md`,
+        }),
+      }),
+      (error) => error.code === 'APPROVAL_BINDING_MISMATCH'
+        && error.details.issue === 'unsupported-governance-surface',
+    );
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
 });
 
 test('ai pr CLI dry-run wires through the new router and avoids opening a PR', () => {
@@ -338,6 +487,124 @@ test('ai pr create shows TTY progress for preflight and gh creation', async () =
       ['start', 'Creating PR in GitHub...'],
       ['stop', 'PR created', undefined],
     ]);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('ai pr revalidates governed PR evidence after editor changes', async () => {
+  const manifest = governanceManifest();
+  const entry = governanceEntry();
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'quiver-ai-pr-governed-review-'));
+  writeFile(path.join(root, 'specs/demo/GOVERNANCE_MANIFEST.json'), `${JSON.stringify(manifest)}\n`);
+  writeFile(path.join(root, 'specs/demo/SPEC.md'), governedSpecBody(manifest));
+  writeFile(path.join(root, 'specs/demo/pr.md'), governedPrBody());
+
+  try {
+    await assert.rejects(
+      runPr(root, {
+        ...governanceOptions(manifest, entry),
+        dryRun: true,
+        input: 'specs/demo/pr.md',
+        review: true,
+        preflightFn: async (repoRoot) => ({
+          ok: true,
+          repoRoot,
+          remote: 'origin',
+          branchName: 'feature/demo',
+          guidePath: `${repoRoot}/docs/GITFLOW_PR_GUIDE.md`,
+        }),
+        openEditorFn: (prBodyPath) => {
+          fs.writeFileSync(prBodyPath, '## Title\nEdited PR\n\n## Summary\nGovernance block removed.\n');
+          return { ok: true, canceled: false };
+        },
+      }),
+      (error) => error.code === 'REPRESENTATION_MISMATCH'
+        && error.details.issue === 'omitted',
+    );
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('ai pr revalidates canonical parity immediately before gh create', async () => {
+  const manifest = governanceManifest();
+  const entry = governanceEntry();
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'quiver-ai-pr-governed-final-'));
+  writeFile(path.join(root, 'specs/demo/GOVERNANCE_MANIFEST.json'), `${JSON.stringify(manifest)}\n`);
+  writeFile(path.join(root, 'specs/demo/SPEC.md'), governedSpecBody(manifest));
+  writeFile(path.join(root, 'specs/demo/pr.md'), governedPrBody());
+  let verifyCount = 0;
+  let ghCalled = false;
+
+  try {
+    const options = governanceOptions(manifest, entry, ({ specRoot }) => {
+      verifyCount += 1;
+      if (verifyCount === 2) {
+        const error = new Error('APPROVAL_BINDING_MISMATCH: canonical source changed');
+        error.code = 'APPROVAL_BINDING_MISMATCH';
+        error.details = { issue: 'stale' };
+        throw error;
+      }
+      return {
+        manifest,
+        manifestPath: path.join(specRoot, 'GOVERNANCE_MANIFEST.json'),
+        specRoot,
+      };
+    });
+    await assert.rejects(
+      runPr(root, {
+        ...options,
+        create: true,
+        input: 'specs/demo/pr.md',
+        preflightFn: async (repoRoot) => ({
+          ok: true,
+          repoRoot,
+          remote: 'origin',
+          branchName: 'feature/demo',
+          guidePath: `${repoRoot}/docs/GITFLOW_PR_GUIDE.md`,
+        }),
+        ghCreateRunner() {
+          ghCalled = true;
+          return { status: 0, stdout: '', stderr: '' };
+        },
+      }),
+      (error) => error.code === 'APPROVAL_BINDING_MISMATCH'
+        && error.details.issue === 'stale',
+    );
+    assert.equal(verifyCount, 2);
+    assert.equal(ghCalled, false);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('ai pr fails closed when a PR-phase finding is neither closed nor accepted', async () => {
+  const manifest = governanceManifest();
+  const entry = governanceEntry({ accepted: false });
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'quiver-ai-pr-governed-unresolved-'));
+  writeFile(path.join(root, 'specs/demo/GOVERNANCE_MANIFEST.json'), `${JSON.stringify(manifest)}\n`);
+  writeFile(path.join(root, 'specs/demo/SPEC.md'), governedSpecBody(manifest));
+  writeFile(path.join(root, 'specs/demo/pr.md'), governedPrBody());
+
+  try {
+    await assert.rejects(
+      runPr(root, {
+        ...governanceOptions(manifest, entry),
+        dryRun: true,
+        input: 'specs/demo/pr.md',
+        preflightFn: async (repoRoot) => ({
+          ok: true,
+          repoRoot,
+          remote: 'origin',
+          branchName: 'feature/demo',
+          guidePath: `${repoRoot}/docs/GITFLOW_PR_GUIDE.md`,
+        }),
+      }),
+      (error) => error.code === 'DISPOSITION_UNRESOLVED'
+        && error.details.issue === 'unresolved'
+        && error.details.finding_ids.includes('F-001'),
+    );
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }

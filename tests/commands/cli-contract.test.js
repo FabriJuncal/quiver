@@ -120,6 +120,7 @@ test('help output documents important public commands', () => {
     'spec status',
     'spec validate',
     'spec close',
+    'findings transfer|disposition',
     'slice start|check|pr|scope|cleanup|refresh-active',
     'handoff check|new',
     'start-slice',
@@ -160,6 +161,11 @@ test('help output documents important public commands', () => {
   assert.match(output, /--decision <name>\s+Approval decision: approved or approved-with-conditions/);
   assert.match(output, /--conditions-file <file>\s+Canonical condition disposition envelope for approved-with-conditions/);
   assert.match(output, /--reason-file <file>\s+Repository-relative reason file for approved-with-conditions/);
+  assert.match(output, /--finding <id>\s+Canonical finding id for findings transfer/);
+  assert.match(output, /--to <target>\s+Canonical phase or exact-one slice target/);
+  assert.match(output, /--criterion-file <file>\s+Repository-relative UTF-8 criterion source/);
+  assert.match(output, /--evidence-obligation <text>\s+Required downstream evidence/);
+  assert.match(output, /--file <file>\s+Repository-relative JSON batch for findings disposition/);
   assert.match(output, /--run <id>\s+AI lifecycle run id/);
   assert.match(output, /--lang <en\|es>\s+Override CLI human output language/);
   assert.match(output, /--global\s+For config language set, write the global user config/);
@@ -233,6 +239,48 @@ test('approval value flags reject a following flag as a missing value', () => {
     assert.equal(result.stdout, '');
     assert.match(result.stderr, new RegExp(`create-quiver: missing value for ${flag}`));
   }
+});
+
+test('findings namespace validates its public subcommands and value flags before mutation', () => {
+  for (const [args, expected] of [
+    [['findings'], /unsupported findings subcommand: \(missing\)\. Supported tasks: transfer, disposition/],
+    [['findings', 'watch'], /unsupported findings subcommand: watch\. Supported tasks: transfer, disposition/],
+    [['findings', 'transfer', '--finding', '--json'], /missing value for --finding/],
+    [['findings', 'transfer', '--to', '--json'], /missing value for --to/],
+    [['findings', 'transfer', '--criterion-file', '--json'], /missing value for --criterion-file/],
+    [['findings', 'transfer', '--evidence-obligation', '--json'], /missing value for --evidence-obligation/],
+    [['findings', 'disposition'], /findings disposition requires --file <file>/],
+  ]) {
+    const result = runCliRaw(args);
+    assert.notEqual(result.status, 0);
+    assert.equal(result.stdout, '');
+    assert.match(result.stderr, expected);
+  }
+});
+
+test('findings JSON runtime failures use one machine envelope and no stderr prose', () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'quiver-findings-contract-'));
+  const result = runCliRaw([
+    'findings',
+    'transfer',
+    '--finding',
+    'F-001',
+    '--to',
+    'slice-03',
+    '--criterion-file',
+    'criterion.md',
+    '--evidence-obligation',
+    'Record evidence.',
+    '--json',
+  ], { cwd: tmp });
+
+  assert.notEqual(result.status, 0);
+  assert.equal(result.stderr, '');
+  const output = JSON.parse(result.stdout);
+  assert.equal(output.task, 'findings-transfer');
+  assert.equal(output.ok, false);
+  assert.equal(output.status, 'error');
+  assert.equal(output.code, 'AI_RUN_REQUIRED');
 });
 
 test('ai approve rejects decisions outside the public approval vocabulary', () => {

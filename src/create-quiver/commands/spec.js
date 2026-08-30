@@ -10,6 +10,11 @@ const { parseJsonWithComments } = require('../lib/json');
 const { assertPathInsideRoot, validateProjectRelativePaths } = require('../lib/paths');
 const { buildApprovalCandidateReport, formatReviewSummary } = require('../lib/ai/approval-candidates');
 const { resolveReviewedTechnicalPlanInput } = require('../lib/ai/plan-review');
+const { hasGovernanceConfig } = require('../lib/ai/review-governance');
+const {
+  resolveCanonicalProjectRoot,
+  resolveVerifiedSpecGovernance,
+} = require('../lib/ai/spec-governance');
 const {
   buildSpecGenerationManifest,
   describeSpecGeneration,
@@ -327,14 +332,29 @@ function runValidateSpec(repoRoot, specInput, options = {}) {
 }
 
 function buildSpecCreatePreview(repoRoot, options = {}) {
-  const resolved = resolveReviewedTechnicalPlanInput(repoRoot, options.input || undefined);
-  const inputPath = resolved.inputPath;
-  const inputText = readInputText(repoRoot, inputPath, options);
+  const canonicalRoot = resolveCanonicalProjectRoot(repoRoot);
+  const governed = Boolean(
+    options.governanceContext
+    || options.resolveGovernanceContextFn
+    || options.runId
+    || options.requireGovernance === true
+    || hasGovernanceConfig(canonicalRoot),
+  );
+  const governanceContext = governed
+    ? options.governanceContext || (options.resolveGovernanceContextFn || resolveVerifiedSpecGovernance)(repoRoot, {
+      runId: options.runId,
+    })
+    : null;
+  const sourceRoot = governanceContext?.canonicalRoot || repoRoot;
+  const resolved = governanceContext || resolveReviewedTechnicalPlanInput(repoRoot, options.input || undefined);
+  const inputPath = governanceContext?.inputPath || resolved.inputPath;
+  const inputText = governanceContext?.inputText ?? readInputText(sourceRoot, inputPath, options);
   const manifest = buildSpecGenerationManifest({
     inputPath,
     inputText,
-    repoRoot,
+    repoRoot: sourceRoot,
     specSlug: options.specSlug,
+    governanceContext,
   });
   const preview = describeSpecGeneration(manifest, repoRoot);
   const relativeSpecDir = toRelativePosix(repoRoot, preview.specDir);
@@ -347,6 +367,8 @@ function buildSpecCreatePreview(repoRoot, options = {}) {
 
   return {
     inputPath,
+    sourceRoot,
+    governanceContext,
     manifest,
     preview,
     relativeSpecDir,
@@ -457,7 +479,7 @@ async function resolveInteractiveSpecCreateOptions(repoRoot, preview, options = 
     stdinIsTTY: options.stdinIsTTY,
     stdoutIsTTY: options.stdoutIsTTY,
   };
-  const technicalPlanCandidates = buildApprovalCandidateReport(repoRoot, 'technical-plan');
+  const technicalPlanCandidates = buildApprovalCandidateReport(preview.sourceRoot || repoRoot, 'technical-plan');
   const approvedVersion = technicalPlanCandidates.approved?.version
     ? `v${technicalPlanCandidates.approved.version}`
     : translator.t('status.approved');
@@ -590,10 +612,10 @@ async function runCreateSpec(repoRoot, options = {}) {
   const reviewPath = await reviewSpecCreatePreview(repoRoot, preview, resolvedOptions);
   await confirmSpecCreate(createTranslator(resolvedOptions.language).t('spec_create.confirm_create', { slug: preview.manifest.slug }), resolvedOptions);
 
-  const result = generateSpecArtifacts(repoRoot, {
-    input: resolvedOptions.input || preview.inputPath,
-    specSlug: resolvedOptions.specSlug,
-  });
+  // Re-run the complete read-only preflight after confirmation so no canonical
+  // approval or disposition can change between preview and publication.
+  const finalPreview = buildSpecCreatePreview(repoRoot, resolvedOptions);
+  const result = generateSpecArtifacts(repoRoot, { manifest: finalPreview.manifest });
   process.stdout.write(formatSpecCreateResult(result, repoRoot, languageOptions));
 
   return {

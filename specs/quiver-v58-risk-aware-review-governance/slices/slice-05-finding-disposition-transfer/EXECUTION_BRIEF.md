@@ -20,6 +20,11 @@ Preserve canonical finding identity and enforce transferred conditions through s
 - Generate the traceability matrix and expose pending findings in destination slices and PR templates.
 - Gate omitted, orphaned, unknown, stale, and unresolved conditions.
 - Apply shared redaction on all new surfaces.
+- Use `transfer-blocker` only before final publication; reject post-decision mutation and require explicit supersession.
+- Normalize exact-one phase and slice targets, preserve digest-bound criterion content, and atomically normalize both supported batch input shapes.
+- Emit `GOVERNANCE_MANIFEST.json` and resolve canonical parity through the primary checkout run store, failing closed when unavailable.
+- Treat a current disposition bound by the final conditioned decision as accepted while keeping an open finding visibly pending; do not add post-decision mutation or manifest refresh.
+- Project exact-slice findings into slice artifacts and all conditioned findings into the spec-root PR, with only `phase:pr-review` acting as that root PR's operational target.
 
 ## Acceptance Criteria
 
@@ -46,6 +51,8 @@ The normative wording and traceability are in ../../SPEC.md.
 
 - src/create-quiver/lib/ai/spec-governance.js
 - src/create-quiver/lib/ai/review-governance.js
+- src/create-quiver/lib/ai/review-governance.schema.js
+- src/create-quiver/lib/cli/command-registry.js
 - src/create-quiver/commands/findings.js
 - src/create-quiver/commands/spec.js
 - src/create-quiver/lib/ai/spec-generator.js
@@ -53,7 +60,9 @@ The normative wording and traceability are in ../../SPEC.md.
 - src/create-quiver/lib/readiness.js
 - src/create-quiver/commands/ai.js
 - src/create-quiver/index.js
+- docs/reference/commands.md
 - Focused tests listed in slice.json.
+- Existing governance-schema and CLI-contract tests listed in slice.json.
 
 ## Restrictions
 
@@ -64,10 +73,13 @@ The normative wording and traceability are in ../../SPEC.md.
 - Do not auto-resolve or auto-accept a condition.
 - Do not broaden RQ-029 beyond conditioned plan propagation.
 - Do not implement a general artifact graph or v59 lifecycle.
+- Do not mutate dispositions after a final technical-plan decision.
+- Do not infer an ambiguous acceptance reference, target, or evidence obligation.
+- Do not treat the generated manifest as sufficient canonical parity when the run store is unavailable.
 
 ## Validation
 
-    node --test tests/lib/ai-spec-generator.test.js tests/lib/check-slice.test.js tests/commands/spec-create.test.js tests/commands/slice-namespace.test.js tests/commands/ai-pr.test.js tests/commands/findings.test.js
+    node --test tests/lib/ai-spec-generator.test.js tests/lib/ai-review-governance.test.js tests/lib/check-slice.test.js tests/commands/spec-create.test.js tests/commands/slice-namespace.test.js tests/commands/ai-pr.test.js tests/commands/findings.test.js tests/commands/cli-contract.test.js
     node bin/create-quiver.js slice check --local specs/quiver-v58-risk-aware-review-governance/slices/slice-05-finding-disposition-transfer/slice.json
     node bin/create-quiver.js spec validate specs/quiver-v58-risk-aware-review-governance --strict
     git diff --check
