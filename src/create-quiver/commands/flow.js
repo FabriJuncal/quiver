@@ -4,6 +4,7 @@ const path = require('path');
 const { readPhaseApproval } = require('../lib/approvals');
 const { approvalCandidateCommand, buildApprovalCandidateReport, formatCandidateSummary } = require('../lib/ai/approval-candidates');
 const { readPlanReview } = require('../lib/ai/plan-review');
+const { buildAiRunGovernanceProjection, resolveAiRun } = require('../lib/ai/run-state');
 const { listAgentProfiles } = require('../lib/agent-profiles');
 const { translatorForHuman } = require('../lib/i18n/read-only-format');
 const { readProjectScanStatus } = require('../lib/project-scan');
@@ -140,7 +141,7 @@ function summarizeAgentProfiles(projectRoot) {
   };
 }
 
-function buildFacts({ initialized, docs, approvals, planReview, agents, packageManager, specSlugs, state, slices = null }) {
+function buildFacts({ initialized, docs, approvals, planReview, agents, governance, packageManager, specSlugs, state, slices = null }) {
   return {
     initialized,
     hasProjectMap: docs.hasProjectMap,
@@ -152,6 +153,7 @@ function buildFacts({ initialized, docs, approvals, planReview, agents, packageM
       planReview: planReview.status,
     },
     agents,
+    governance,
     specSlugs,
     slices,
     contextSource: docs.scanStatus,
@@ -280,7 +282,9 @@ function detectFlowState(projectRoot) {
   const agents = summarizeAgentProfiles(projectRoot);
   const packageManager = detectPackageManager(projectRoot);
   const specSlugs = listSpecSlugs(projectRoot);
-  const facts = buildFacts({ initialized, docs, approvals, planReview, agents, packageManager, specSlugs, state });
+  const activeRun = resolveAiRun(projectRoot, '');
+  const governance = buildAiRunGovernanceProjection(projectRoot, activeRun);
+  const facts = buildFacts({ initialized, docs, approvals, planReview, agents, governance, packageManager, specSlugs, state });
   const acceptanceApprovalCommand = approvalCandidateCommand(
     approvalCandidates.acceptance,
     'npx create-quiver ai approve --phase acceptance --version <n>',
@@ -301,6 +305,33 @@ function detectFlowState(projectRoot) {
         'npx create-quiver analyze',
         'npx create-quiver doctor',
       ],
+      facts,
+    });
+  }
+
+  if (governance.compatibility === 'legacy-unverified'
+      || governance.compatibility === 'rollback-read-only'
+      || ['LEGACY_EVIDENCE_UNVERIFIED', 'GOVERNANCE_READ_ONLY', 'UNSAFE_WRITER_DOWNGRADE'].includes(governance.code)) {
+    return baseReport({
+      stage: 'governance-blocked',
+      label: 'governance compatibility is fail-closed',
+      blockers: [`${governance.code || 'LEGACY_EVIDENCE_UNVERIFIED'}: governed advancement is unavailable.`],
+      nextCommand: 'npx create-quiver doctor --json',
+      suggestedCommands: governance.compatibility === 'legacy-unverified'
+        ? ['npx create-quiver doctor --json', 'npx create-quiver migrate --dry-run']
+        : ['npx create-quiver doctor --json'],
+      facts,
+    });
+  }
+
+  if (governance.run_id
+      && (governance.blocking_finding_ids.length > 0 || governance.budget?.exhausted === true)) {
+    return baseReport({
+      stage: 'governance-blocked',
+      label: 'governance state blocks advancement',
+      blockers: ['Canonical governance findings or review budget block advancement.'],
+      nextCommand: governance.next_command,
+      suggestedCommands: [governance.next_command, 'npx create-quiver ai approvals'],
       facts,
     });
   }
@@ -540,7 +571,7 @@ function detectFlowState(projectRoot) {
   }
 
   const slices = summarizeSlices(projectRoot, specSlugs);
-  const sliceFacts = buildFacts({ initialized, docs, approvals, planReview, agents, packageManager, specSlugs, state, slices: {
+  const sliceFacts = buildFacts({ initialized, docs, approvals, planReview, agents, governance, packageManager, specSlugs, state, slices: {
     completed: slices.completedCount,
     pending: slices.pendingCount,
     ready: slices.ready.map((slice) => slice.ref),

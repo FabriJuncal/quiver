@@ -18,8 +18,12 @@ const {
   summarizeSliceProgress,
 } = require('../project-state-resolver');
 const { detectFileConflicts } = require('../slice-graph');
+const { redactSensitiveValue } = require('./artifacts');
 const { readPlanReview } = require('./plan-review');
-const { listAiRuns, nextCommandForPhase } = require('./run-state');
+const {
+  buildAiRunGovernanceProjection,
+  listAiRuns,
+} = require('./run-state');
 
 const EXPORT_SCHEMA_VERSION = 2;
 
@@ -150,18 +154,22 @@ function normalizeSlice(projectRoot, slice, dependencyMap) {
 }
 
 function normalizeRuns(projectRoot) {
-  return listAiRuns(projectRoot).map((run) => ({
-    run_id: run.run_id,
-    status: run.status,
-    canonical_status: normalizeStatus('run', run.status, 'draft'),
-    phase: run.phase,
-    spec_slug: run.spec_slug || null,
-    requirement_path: run.requirement?.path || null,
-    approvals_path: run.approvals_path || null,
-    state_path: toPosix(path.join('.quiver', 'runs', run.run_id, 'state.json')),
-    next_command: nextCommandForPhase(run.phase),
-    updated_at: run.updated_at || run.created_at || null,
-  }));
+  return listAiRuns(projectRoot).map((run) => {
+    const governance = buildAiRunGovernanceProjection(projectRoot, run);
+    return {
+      run_id: run.run_id,
+      status: run.status,
+      canonical_status: normalizeStatus('run', run.status, 'draft'),
+      phase: governance.phase,
+      spec_slug: run.spec_slug || null,
+      requirement_path: run.requirement?.path || null,
+      approvals_path: run.approvals_path || null,
+      state_path: toPosix(path.join('.quiver', 'runs', run.run_id, 'state.json')),
+      next_command: governance.next_command,
+      updated_at: run.updated_at || run.created_at || null,
+      governance,
+    };
+  });
 }
 
 function safeReadApproval(projectRoot, phase) {
@@ -407,6 +415,9 @@ function collectLifecycleExport(projectRoot, options = {}) {
   });
   const layout = collectLayoutReport(projectRoot);
   const runs = normalizeRuns(projectRoot);
+  const activeRun = [...runs].reverse().find((run) => run.status !== 'closed') || null;
+  const governance = activeRun?.governance
+    || buildAiRunGovernanceProjection(projectRoot, null);
   const agents = normalizeAgents(projectRoot);
   const approvals = normalizeApprovals(projectRoot);
   const progress = summarizeProgress(slices);
@@ -448,13 +459,15 @@ function collectLifecycleExport(projectRoot, options = {}) {
       progress_percent: progress.percent,
       runs: runs.length,
       configured_agents: agents.filter((agent) => agent.configured).length,
-      approvals: approvals.length,
+      approvals: runs.reduce((sum, run) => sum + (run.governance.counts.decisions || 0), 0),
+      approval_surfaces: approvals.length,
       active_slice_sources: activeSlice.sources.length,
       warnings: 0,
     },
     agents,
     approvals,
     runs,
+    governance,
     specs,
     slices: normalizedSlices,
     graph: {
@@ -479,8 +492,8 @@ function collectLifecycleExport(projectRoot, options = {}) {
     blockers,
     next_steps: [],
     lifecycle: {
-      phase: runs.length > 0 ? runs[runs.length - 1].phase : 'no-active-run',
-      active_run_id: (runs.length > 0 ? [...runs].reverse().find((run) => run.status !== 'closed') : null)?.run_id || null,
+      phase: activeRun?.phase || 'no-active-run',
+      active_run_id: activeRun?.run_id || null,
       include_completed: options.includeCompleted === true,
       spec_filter: options.specSlug || null,
       levels: graph.levels,
@@ -490,6 +503,7 @@ function collectLifecycleExport(projectRoot, options = {}) {
       slices_by_status: countByStatus(normalizedSlices),
       runs_by_status: countByStatus(runs),
       approvals_by_status: countByStatus(approvals),
+      governance: governance.counts,
       blockers: blockers.length,
       evidence: evidence.length,
       progress_percent: progress.percent,
@@ -532,7 +546,7 @@ function collectLifecycleExport(projectRoot, options = {}) {
   exportData.next_steps = collectNextSteps(exportData);
   exportData.lifecycle.next_commands = exportData.next_steps.map((step) => step.command);
 
-  return exportData;
+  return redactSensitiveValue(exportData, { projectRoot });
 }
 
 function formatLifecycleInspect(data, options = {}) {

@@ -46,6 +46,23 @@ function makeRepo(structure) {
   for (const [relativePath, contents] of Object.entries(structure)) {
     writeFile(path.join(root, relativePath), contents);
   }
+  const configPath = path.join(root, '.quiver', 'config.json');
+  const statePath = path.join(root, '.quiver', 'state.json');
+  if (fs.existsSync(configPath) && !fs.existsSync(statePath)) {
+    const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+    const writerVersion = config.governance?.compatibility?.minimum_writer_version;
+    if (writerVersion) {
+      writeFile(statePath, `${JSON.stringify({
+        quiver_version: writerVersion,
+        project_name: 'AI plan fixture',
+        initialized_version: writerVersion,
+        migrated_version: null,
+        last_initialized_at: '2026-08-31T00:00:00.000Z',
+        last_migration_at: null,
+        last_analysis_at: null,
+      }, null, 2)}\n`);
+    }
+  }
   return {
     root,
     cleanup() {
@@ -1390,7 +1407,15 @@ test('governed review WAL rejects secrets hidden in canonical authorization evid
         provider_subject: `ghp_${'b'.repeat(24)}`,
       },
     });
-    writeRunGovernance(repo.root, runId, state);
+    assert.throws(
+      () => writeRunGovernance(repo.root, runId, state),
+      (error) => error.code === 'APPROVAL_BINDING_MISMATCH'
+        && error.details.mismatches.includes('governance_sensitive_content'),
+    );
+    fs.writeFileSync(
+      path.join(repo.root, '.quiver', 'runs', runId, 'review-governance.json'),
+      `${JSON.stringify(state, null, 2)}\n`,
+    );
 
     await assert.rejects(
       () => runReviewPlan(repo.root, {

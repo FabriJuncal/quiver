@@ -585,8 +585,12 @@ test('migrate without --yes is safe and actionable in no-TTY automation', async 
     const jsonResult = runCliRaw(['migrate', '--dir', target, '--json', '--skip-install']);
 
     assert.equal(jsonResult.status, 1);
-    assert.equal(jsonResult.stdout, '');
-    assert.match(jsonResult.stderr, /migrate writes require confirmation/);
+    assert.equal(jsonResult.stderr, '');
+    const jsonError = JSON.parse(jsonResult.stdout);
+    assert.equal(jsonError.task, 'migrate');
+    assert.equal(jsonError.ok, false);
+    assert.equal(jsonError.code, 'COMMAND_FAILED');
+    assert.match(jsonError.error.message, /migrate writes require confirmation/);
     assert.deepEqual(snapshotTree(target), before);
 
     await assert.rejects(
@@ -660,6 +664,169 @@ test('migrate --dry-run supports Spanish human output without translating comman
     assert.match(output, /Escrituras: ninguna/);
     assert.match(output, /Proximo comando: npx create-quiver migrate --skip-install/);
     assert.equal(fs.readFileSync(statePath, 'utf8'), beforeState);
+  } finally {
+    cleanup();
+  }
+});
+
+test('migration JSON is no-write on preview, verified on apply, idempotent on reapply, and rollback-safe', () => {
+  const { dir, cleanup } = makeTmpDir();
+  const target = path.join(dir, 'target');
+
+  try {
+    runCli(['init', '--name', 'Migration Contract Project', '--dir', target, '--full', '--skip-install']);
+    const configPath = path.join(target, '.quiver', 'config.json');
+    const legacyConfig = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+    delete legacyConfig.governance.compatibility;
+    fs.writeFileSync(configPath, `${JSON.stringify(legacyConfig, null, 2)}\n`);
+    fs.rmSync(path.join(target, '.quiver', 'state.json'));
+
+    const beforeDryRun = snapshotTree(target);
+    const dryRun = runCliRaw(['migrate', '--dir', target, '--dry-run', '--json', '--skip-install']);
+    assert.equal(dryRun.status, 0);
+    assert.equal(dryRun.stderr, '');
+    const dryRunReport = JSON.parse(dryRun.stdout);
+    assert.equal(dryRunReport.status, 'dry-run');
+    assert.equal(dryRunReport.migration_status, 'apply');
+    assert.equal(dryRunReport.writes, 0);
+    assert.deepEqual(snapshotTree(target), beforeDryRun);
+
+    const apply = runCliRaw(['migrate', '--dir', target, '--yes', '--json', '--skip-install']);
+    assert.equal(apply.status, 0);
+    assert.equal(apply.stderr, '');
+    const applyReport = JSON.parse(apply.stdout);
+    assert.equal(applyReport.status, 'applied');
+    assert.equal(applyReport.post_verification.status, 'passed');
+    assert.equal(applyReport.compatibility.status, 'v58-verified');
+
+    const afterApply = snapshotTree(target);
+    const reapply = runCliRaw(['migrate', '--dir', target, '--yes', '--json', '--skip-install']);
+    assert.equal(reapply.status, 0);
+    assert.equal(reapply.stderr, '');
+    const reapplyReport = JSON.parse(reapply.stdout);
+    assert.equal(reapplyReport.status, 'already-current');
+    assert.equal(reapplyReport.writes, 0);
+    assert.equal(reapplyReport.post_verification.status, 'passed');
+    assert.deepEqual(snapshotTree(target), afterApply);
+
+    const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+    config.governance.compatibility.writer_mode = 'read-only';
+    fs.writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`);
+
+    const rollbackCurrent = snapshotTree(target);
+    const rollbackDoctor = runCliRaw(['doctor', '--json'], { cwd: target });
+    assert.equal(rollbackDoctor.status, 0);
+    assert.equal(rollbackDoctor.stderr, '');
+    const rollbackDoctorReport = JSON.parse(rollbackDoctor.stdout);
+    assert.equal(rollbackDoctorReport.code, 'GOVERNANCE_READ_ONLY');
+    assert.equal(rollbackDoctorReport.compatibility.status, 'rollback-read-only');
+    assert.deepEqual(snapshotTree(target), rollbackCurrent);
+
+    for (const command of [
+      ['ai', 'status', '--json'],
+      ['ai', 'approvals', '--json'],
+    ]) {
+      const reader = runCliRaw(command, { cwd: target });
+      assert.equal(reader.status, 0);
+      assert.equal(reader.stderr, '');
+      const readerReport = JSON.parse(reader.stdout);
+      assert.equal(readerReport.code, 'GOVERNANCE_READ_ONLY');
+      assert.equal(readerReport.projection.next_command, 'npx create-quiver doctor --json');
+    }
+    const rollbackFlow = runCliRaw(['flow', '--json'], { cwd: target });
+    assert.equal(rollbackFlow.status, 0);
+    assert.equal(rollbackFlow.stderr, '');
+    const rollbackFlowReport = JSON.parse(rollbackFlow.stdout);
+    assert.equal(rollbackFlowReport.facts.governance.code, 'GOVERNANCE_READ_ONLY');
+    assert.equal(rollbackFlowReport.next_command, 'npx create-quiver doctor --json');
+
+    const rollbackGate = runCliRaw([
+      'check-slice', '--local', '--json', 'missing-slice.json',
+    ], { cwd: target });
+    assert.equal(rollbackGate.status, 1);
+    assert.equal(rollbackGate.stderr, '');
+    assert.equal(JSON.parse(rollbackGate.stdout).code, 'GOVERNANCE_READ_ONLY');
+    assert.deepEqual(snapshotTree(target), rollbackCurrent);
+
+    const rollbackDryRun = runCliRaw(['migrate', '--dir', target, '--dry-run', '--json', '--skip-install']);
+    assert.equal(rollbackDryRun.status, 0);
+    assert.equal(rollbackDryRun.stderr, '');
+    const rollbackDryRunReport = JSON.parse(rollbackDryRun.stdout);
+    assert.equal(rollbackDryRunReport.status, 'dry-run');
+    assert.equal(rollbackDryRunReport.migration_status, 'already-current');
+    assert.equal(rollbackDryRunReport.writes, 0);
+    assert.deepEqual(snapshotTree(target), rollbackCurrent);
+
+    const rollbackReapply = runCliRaw(['migrate', '--dir', target, '--yes', '--json', '--skip-install']);
+    assert.equal(rollbackReapply.status, 0);
+    assert.equal(rollbackReapply.stderr, '');
+    const rollbackReapplyReport = JSON.parse(rollbackReapply.stdout);
+    assert.equal(rollbackReapplyReport.status, 'already-current');
+    assert.equal(rollbackReapplyReport.writes, 0);
+    assert.equal(rollbackReapplyReport.compatibility.status, 'rollback-read-only');
+    assert.deepEqual(snapshotTree(target), rollbackCurrent);
+
+    fs.rmSync(path.join(target, 'docs', 'COMMANDS.md'));
+    const rollbackWithDelta = snapshotTree(target);
+    const blockedApply = runCliRaw(['migrate', '--dir', target, '--yes', '--json', '--skip-install']);
+    assert.equal(blockedApply.status, 1);
+    assert.equal(blockedApply.stderr, '');
+    const blockedReport = JSON.parse(blockedApply.stdout);
+    assert.equal(blockedReport.code, 'GOVERNANCE_READ_ONLY');
+    assert.deepEqual(snapshotTree(target), rollbackWithDelta);
+
+    const packagePath = path.join(target, 'package.json');
+    const packageData = JSON.parse(fs.readFileSync(packagePath, 'utf8'));
+    packageData.devDependencies = {
+      ...(packageData.devDependencies || {}),
+      'create-quiver': '0.1.0',
+    };
+    fs.writeFileSync(packagePath, `${JSON.stringify(packageData, null, 2)}\n`);
+    const unsafeWriterTree = snapshotTree(target);
+
+    const unsafeDoctor = runCliRaw(['doctor', '--json'], { cwd: target });
+    assert.equal(unsafeDoctor.status, 1);
+    assert.equal(unsafeDoctor.stderr, '');
+    assert.equal(JSON.parse(unsafeDoctor.stdout).code, 'UNSAFE_WRITER_DOWNGRADE');
+
+    const unsafeWriter = runCliRaw([
+      'ai', 'run', 'create', '--input', 'requirements.md', '--json',
+    ], { cwd: target });
+    assert.equal(unsafeWriter.status, 1);
+    assert.equal(unsafeWriter.stderr, '');
+    assert.equal(JSON.parse(unsafeWriter.stdout).code, 'UNSAFE_WRITER_DOWNGRADE');
+
+    const unsafeGate = runCliRaw([
+      'check-slice', '--local', '--json', 'missing-slice.json',
+    ], { cwd: target });
+    assert.equal(unsafeGate.status, 1);
+    assert.equal(unsafeGate.stderr, '');
+    assert.equal(JSON.parse(unsafeGate.stdout).code, 'UNSAFE_WRITER_DOWNGRADE');
+    assert.deepEqual(snapshotTree(target), unsafeWriterTree);
+
+    delete packageData.devDependencies['create-quiver'];
+    fs.writeFileSync(packagePath, `${JSON.stringify(packageData, null, 2)}\n`);
+    config.governance.compatibility.writer_mode = 'read-write';
+    fs.writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`);
+    const statePath = path.join(target, '.quiver', 'state.json');
+    const validState = fs.readFileSync(statePath);
+
+    fs.writeFileSync(statePath, '{invalid-state\n');
+    const invalidStateTree = snapshotTree(target);
+    const invalidState = runCliRaw(['migrate', '--dir', target, '--dry-run', '--json', '--skip-install']);
+    assert.equal(invalidState.status, 1);
+    assert.equal(invalidState.stderr, '');
+    assert.equal(JSON.parse(invalidState.stdout).code, 'MIGRATION_VERIFICATION_FAILED');
+    assert.deepEqual(snapshotTree(target), invalidStateTree);
+
+    fs.writeFileSync(statePath, validState);
+    fs.writeFileSync(packagePath, '{invalid-package\n');
+    const invalidPackageTree = snapshotTree(target);
+    const invalidPackage = runCliRaw(['migrate', '--dir', target, '--dry-run', '--json', '--skip-install']);
+    assert.equal(invalidPackage.status, 1);
+    assert.equal(invalidPackage.stderr, '');
+    assert.equal(JSON.parse(invalidPackage.stdout).code, 'MIGRATION_VERIFICATION_FAILED');
+    assert.deepEqual(snapshotTree(target), invalidPackageTree);
   } finally {
     cleanup();
   }

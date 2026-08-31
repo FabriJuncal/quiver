@@ -6,6 +6,7 @@ const test = require('node:test');
 
 const {
   APPROVAL_BINDING_MISMATCH,
+  CURRENT_WRITER_VERSION,
   CURRENT_PHASE_REVISION_REQUIRED,
   DISPOSITION_DUPLICATE,
   DISPOSITION_MISSING,
@@ -14,10 +15,13 @@ const {
   DISPOSITION_UNRESOLVED,
   ELIGIBLE_WITH_CONDITIONS,
   FINDING_RECONCILIATION_AMBIGUOUS,
+  GOVERNANCE_READ_ONLY,
   NON_TRANSFERABLE_BLOCKER,
   PROVIDER_OUTPUT_INVALID,
   PROTECTED_CRITICAL_REQUIRES_BREAK_GLASS,
   REPRESENTATION_MISMATCH,
+  UNSAFE_WRITER_DOWNGRADE,
+  assertGovernanceWriterAllowed,
   assertApprovalBindingParity,
   authorizeGovernanceAction,
   buildApprovalDecisionRecord,
@@ -29,14 +33,17 @@ const {
   computeApprovalProfileDigest,
   computeFindingFingerprint,
   computePolicyDigest,
+  comparePackageSemver,
   evaluateConditionEligibility,
   hasGovernanceConfig,
   mergeGovernanceConfig,
   normalizeConditionDispositionInput,
   normalizeTransferTarget,
   parseProviderReview,
+  parsePackageSemver,
   projectPhaseAwareReview,
   readGovernanceConfig,
+  raiseMinimumWriterVersion,
   reconcileFindings,
   resolveEffectiveProfile,
   stableStringify,
@@ -276,6 +283,40 @@ test('default governance config is valid, secret-free, and merge preserves compa
   assert.equal(merged.governance.requested_profile, 'high-assurance');
   assert.equal(merged.governance.future_namespace_key, 'preserved');
   assert.deepEqual(merged.governance.policy.future_policy_key, { enabled: true });
+});
+
+test('compatibility metadata is strict, monotonic, and blocks read-only or older writers', () => {
+  const defaults = buildDefaultGovernanceConfig();
+  assert.deepEqual(defaults.compatibility, {
+    schema_version: 1,
+    writer_mode: 'read-write',
+    minimum_writer_version: CURRENT_WRITER_VERSION,
+  });
+  assert.equal(parsePackageSemver('1.2.3-alpha.1')?.raw, '1.2.3-alpha.1');
+  assert.equal(parsePackageSemver('1.2.3-alpha.01'), null);
+  assert.equal(comparePackageSemver('1.2.3', '1.2.3-rc.1'), 1);
+
+  const unknownField = structuredClone(defaults);
+  unknownField.compatibility.future = true;
+  assert.throws(() => validateGovernanceConfig(unknownField), expectCode('GOVERNANCE_CONFIG_INVALID'));
+
+  const raised = raiseMinimumWriterVersion(defaults, '99.0.0');
+  assert.equal(raised.compatibility.minimum_writer_version, '99.0.0');
+  assert.equal(
+    raiseMinimumWriterVersion(raised, CURRENT_WRITER_VERSION).compatibility.minimum_writer_version,
+    '99.0.0',
+  );
+  assert.throws(
+    () => assertGovernanceWriterAllowed(raised, CURRENT_WRITER_VERSION),
+    expectCode(UNSAFE_WRITER_DOWNGRADE),
+  );
+
+  const readOnly = structuredClone(defaults);
+  readOnly.compatibility.writer_mode = 'read-only';
+  assert.throws(
+    () => assertGovernanceWriterAllowed(readOnly, CURRENT_WRITER_VERSION),
+    expectCode(GOVERNANCE_READ_ONLY),
+  );
 });
 
 test('versioned disposition, review-event, and decision envelopes are strict', () => {

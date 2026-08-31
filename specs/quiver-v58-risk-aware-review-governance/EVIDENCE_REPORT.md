@@ -1,6 +1,6 @@
 # Evidence Report — Quiver v58 Risk-aware Review Governance
 
-Status: Runtime foundation validated through slice-04; later-slice evidence pending
+Status: AC-01 through AC-16 validated; slice-06 PR #144 pending human review and merge
 
 ## Documentary foundation evidence
 
@@ -26,11 +26,11 @@ Detailed documentary evidence is recorded in slices/slice-00-governance-contract
 | AC-09 | slice-04 | Exact-byte bindings, current authorization, tampering, seven write-failure boundaries, rollback, recovery, and canonical inspection/export | Passed |
 | AC-12 | slice-02 through slice-04 | Event-derived budget counts, raw acceptance and complete finding counts, decision/projection parity, and representation mismatch blocking | Passed |
 | AC-10 | slice-03 | Condition policy, eligibility precedence, complete dispositions, protected Critical rejection, and explicit non-final candidate | Passed |
-| AC-11 | slice-05 | Spec, slice, PR propagation and gate evidence | Pending |
-| AC-13 | slice-04 and slice-06 | Approval commit/show/verify/export CLI, JSON code/status/exit, and Linear projection passed in slice-04; broader shared-surface convergence remains | Partial |
-| AC-14 | slice-01, slice-03, slice-05, and slice-06 | Review-evidence redaction passed in slice-01 and conditioned reason bounding passed in slice-03; downstream/export surfaces pending | Partial |
-| AC-15 | slice-03 and slice-06 | Additive conditioned-state reads and no false advancement passed in slice-03; migration remains | Partial |
-| AC-16 | slice-06 | Rollback, directed integration, and documentation checks | Pending |
+| AC-11 | slice-05 | Spec, slice, PR propagation and referentially strict gate evidence | Passed |
+| AC-13 | slice-04 and slice-06 | Approval CLI plus shared approval, flow, status, resume, export, generation, gate, JSON, code/status/exit, and i18n projections | Passed |
+| AC-14 | slice-01, slice-03, slice-05, and slice-06 | Common redaction across review, reason, persistence, render, export, generated, and raw-evidence surfaces | Passed |
+| AC-15 | slice-03 and slice-06 | Additive legacy reads, null unavailable counts, no false advancement, verified migration, and no-write idempotence | Passed |
+| AC-16 | slice-06 | Read-only rollback, active/declared downgrade guards, recovery, directed integration, and documentation checks | Passed |
 
 ## Slice-01 Evidence — phase-aware blocking policy
 
@@ -237,7 +237,64 @@ Covered behavior:
 - Rejection of omitted, orphaned, unknown, reordered, stale, unresolved, or structurally malformed projections.
 - Human/JSON parity, stable nonzero failure behavior, and redaction across contractual data, persistence, generation, and output.
 
-Detailed evidence, authorized deviations, and pending slice-06 work are recorded in `slices/slice-05-finding-disposition-transfer/CLOSURE_BRIEF.md`.
+Detailed slice-05 evidence and authorized deviations are recorded in `slices/slice-05-finding-disposition-transfer/CLOSURE_BRIEF.md`.
+
+## Slice-06 Evidence — integration, migration, and documentation
+
+Executed with exit code 0:
+
+```bash
+node --test tests/commands/ai-export.test.js tests/commands/ai-run-state.test.js tests/commands/cli-contract.test.js tests/commands/doctor.test.js tests/commands/flow.test.js tests/commands/init-profiles.test.js tests/commands/i18n-audit-matrix.test.js tests/lib/ai-export-state.test.js tests/lib/ai-run-state.test.js tests/lib/ai-review-governance.test.js tests/lib/doctor.test.js tests/lib/init-docs.test.js tests/lib/init-layout.test.js tests/lib/i18n-catalog.test.js
+node --test tests/lib/ai-review-budget.test.js tests/lib/ai-spec-generator.test.js tests/lib/check-slice.test.js tests/commands/ai-plan.test.js tests/commands/ai-review-plan.test.js tests/commands/ai-pr.test.js tests/commands/analyze.test.js tests/commands/demo.test.js tests/commands/findings.test.js tests/commands/spec-create.test.js
+node scripts/ci/smoke-cross-platform.js
+npm test -- --test-reporter=tap
+node --check src/create-quiver/index.js
+node --check src/create-quiver/commands/flow.js
+node --check src/create-quiver/lib/ai/export-state.js
+node --check src/create-quiver/lib/ai/review-governance.js
+node --check src/create-quiver/lib/ai/review-governance.schema.js
+node --check src/create-quiver/lib/ai/run-state.js
+node --check src/create-quiver/lib/demo.js
+node --check src/create-quiver/lib/i18n/messages/en.js
+node --check src/create-quiver/lib/i18n/messages/es.js
+node --check src/create-quiver/lib/init-docs.js
+node --check src/create-quiver/lib/state.js
+npm run schema:slice:check
+npm run docs:check
+node bin/create-quiver.js slice check --local specs/quiver-v58-risk-aware-review-governance/slices/slice-06-integration-migration-docs/slice.json
+node bin/create-quiver.js spec validate specs/quiver-v58-risk-aware-review-governance --strict
+node bin/create-quiver.js slice scope specs/quiver-v58-risk-aware-review-governance/slices/slice-06-integration-migration-docs/slice.json --base main
+node bin/create-quiver.js slice pr specs/quiver-v58-risk-aware-review-governance/slices/slice-06-integration-migration-docs/slice.json
+git diff --check
+```
+
+Final results:
+
+- The primary slice suite passed 201 tests with no failures.
+- The expanded affected-boundary suite passed 185 tests with no failures.
+- The cross-platform smoke passed locally with the corrected true-legacy migration fixture.
+- The full portable regression passed 944 tests with no failures.
+- All 11 changed JavaScript entry points, libraries, catalogs, and template modules passed syntax validation.
+- Final slice-schema, documentation, local-slice, strict-spec, scope, PR-readiness, and whitespace evidence is recorded in the slice closure brief.
+- Independent command-boundary review reproduced rollback, recovery, migration, tamper, downgrade, and JSON contracts and approved the final implementation without material blockers.
+- Exact directed fixture names plus human, JSON, persisted compatibility, migration, rollback, and downgrade samples are recorded in the slice closure brief.
+- Publication reference: [PR #144](https://github.com/FabriJuncal/quiver/pull/144), sourced from the single slice branch commit; human merge remains pending.
+
+Covered behavior:
+
+- One shared canonical projection across approval, approvals, flow, status, resume, export, spec, slice, and PR boundaries.
+- Stable nonlocalized machine keys, enums, statuses, compatibility codes, exits, and one-document JSON stdout with empty stderr.
+- Schema-valid compatibility metadata with monotonic minimum writer version and the four frozen compatibility codes.
+- Read-only legacy inspection with no writes, null unavailable counts, no invented evidence, and no false phase advancement.
+- No-write migration dry-run, preflighted apply with post-write verification, independent doctor verification, and zero-write `already-current` reapply.
+- Explicit migration is the only writer allowed to consume revalidated `legacy-unverified` preflight evidence; all other governed writers remain blocked.
+- Fail-closed rollback with readers and gates available, all supported writers blocked, and no governed-record downgrade.
+- Active older writer and older declared local dependency rejection, including precedence over read-only mode.
+- Exact prepared-WAL recovery that restores the prior approval state before rejecting the requested new writer.
+- Path/binding tamper rejection and redaction through persisted, rendered, exported, generated, and raw governance evidence.
+- Current-governance demo and direct downstream command fixtures plus operator-facing migration, rollback, recovery, and legacy documentation.
+
+Detailed evidence, scope boundaries, and authorized deviations are recorded in `slices/slice-06-integration-migration-docs/CLOSURE_BRIEF.md`.
 
 ## Evidence required from each slice
 
@@ -288,6 +345,16 @@ Slice-04 integration exposed that the governed review WAL treated schema-valid c
 
 Independent slice-04 atomicity review found that a pending approval WAL did not yet block legacy planner writers and that concurrent recovery could observe an already removed marker. Both paths now fail safely or return idempotently, and the reviewer approved the final lock ordering and seven-boundary rollback evidence.
 
+The slice-06 compatibility metadata, existing-command migration and verification mapping, tracked read-only rollback, four stable compatibility codes, supported downgrade boundary, and minimum direct scope additions were explicitly authorized on 2026-08-31. This amendment resolved implementation ambiguity without adding a new command namespace or destructive data downgrade.
+
+Slice-06 recovery permits only an exact already-prepared approval WAL to be repaired before the read-only writer guard. Recovery restores the prior transaction state; the requested writer still returns `GOVERNANCE_READ_ONLY` and cannot publish a new decision.
+
+The slice-06 full regression exposed stale current-governance fixtures in AI plan/review, analyze, spec-create, and export tests plus demo initialization without compatibility metadata. The authorized direct scope was extended to those tests and `demo.js`; fixtures and initialization were aligned without changing product or acceptance scope.
+
+The first slice-06 full regression otherwise failed only on the documentary status `in-progress`, which is not a valid slice-schema enum. Completion metadata was recorded and the repeated regression passed 944 tests.
+
+Initial PR #144 CI exposed that the historical cross-platform legacy fixture removed `.quiver/state.json` but retained v58 verified compatibility metadata. The fixture now removes both v58 evidence elements. A focused follow-up review then identified preflight-to-write evidence and dependency drift windows; migration now repeats the complete preflight, compares the approved snapshot, and independently rechecks writer and dependency compatibility before its first project write. The two direct drift regressions, migration integration suite, and local cross-platform smoke pass without weakening production verification.
+
 ## Closure rule
 
-Do not change this report to Passed or Complete until all sixteen acceptance criteria have linked evidence, every mandatory slice gate has passed, and unresolved deviations are explicitly accepted.
+The implementation closure rule is satisfied: all sixteen acceptance criteria have linked evidence, every mandatory slice gate has passed, and no mandatory deviation remains unresolved. Human review and merge of the slice-06 PR remain required; release and deployment are not claimed.

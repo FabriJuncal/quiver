@@ -14,6 +14,7 @@ const {
   acquireAiRunLock,
   assertAiRunPhaseAllows,
   bindAiRunGovernance,
+  buildAiRunGovernanceProjection,
   commitDigestBoundApproval,
   createAiRun,
   formatAiRunResume,
@@ -35,7 +36,12 @@ const {
   withAiRunLock,
   writeRunGovernance,
 } = require('../../src/create-quiver/lib/ai/run-state');
-const { canonicalSha256 } = require('../../src/create-quiver/lib/ai/review-governance');
+const {
+  buildDefaultGovernanceConfig,
+  canonicalSha256,
+  computePolicyDigest,
+} = require('../../src/create-quiver/lib/ai/review-governance');
+const packageJson = require('../../package.json');
 
 function sha256(value) {
   return `sha256:${crypto.createHash('sha256').update(value).digest('hex')}`;
@@ -207,6 +213,60 @@ test('AI run phase guard blocks future-phase commands with next-step guidance', 
 
     updateAiRunPhase(repo.root, 'run-guard', 'technical-plan-approved', { command: 'test' });
     assert.equal(assertAiRunPhaseAllows(readAiRun(repo.root, 'run-guard'), 'technical-plan-approved', 'spec create'), true);
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('an advanced unbound legacy run stays unverifiable after migration and cannot advance or rebind', () => {
+  const repo = makeRepo();
+  const runId = 'run-legacy-advanced';
+
+  try {
+    createAiRun(repo.root, { input: 'requirements.md', runId });
+    updateAiRunPhase(repo.root, runId, 'technical-plan-approved', { command: 'legacy pre-v58 flow' });
+
+    const governance = buildDefaultGovernanceConfig();
+    fs.writeFileSync(
+      path.join(repo.root, '.quiver', 'config.json'),
+      `${JSON.stringify({ governance }, null, 2)}\n`,
+    );
+    fs.writeFileSync(
+      path.join(repo.root, '.quiver', 'state.json'),
+      `${JSON.stringify({
+        quiver_version: packageJson.version,
+        project_name: 'Legacy advanced fixture',
+        initialized_version: null,
+        migrated_version: packageJson.version,
+        last_initialized_at: null,
+        last_migration_at: '2026-08-31T00:00:00.000Z',
+        last_analysis_at: null,
+      }, null, 2)}\n`,
+    );
+
+    const before = fs.readFileSync(runStatePath(repo.root, runId));
+    const projection = buildAiRunGovernanceProjection(repo.root, readAiRun(repo.root, runId));
+    assert.equal(projection.compatibility, 'legacy-unverified');
+    assert.equal(projection.code, 'LEGACY_EVIDENCE_UNVERIFIED');
+    assert.equal(projection.status, 'active');
+    assert.equal(projection.next_command, 'npx create-quiver doctor --json');
+    assert.equal(Object.values(projection.counts).every((value) => value === null), true);
+
+    assert.throws(
+      () => updateAiRunPhase(repo.root, runId, 'spec-generated', { command: 'spec create' }),
+      (error) => error.code === 'LEGACY_EVIDENCE_UNVERIFIED',
+    );
+    assert.throws(
+      () => bindAiRunGovernance(repo.root, runId, {
+        requested_profile: 'fast-delivery',
+        effective_profile: 'fast-delivery',
+        policy_version: governance.policy.version,
+        policy_digest: computePolicyDigest(governance),
+        requirement_categories: [],
+      }),
+      (error) => error.code === 'LEGACY_EVIDENCE_UNVERIFIED',
+    );
+    assert.deepEqual(fs.readFileSync(runStatePath(repo.root, runId)), before);
   } finally {
     repo.cleanup();
   }

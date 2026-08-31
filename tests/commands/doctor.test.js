@@ -234,7 +234,7 @@ test('doctor fix migrates a blanket .quiver Git exclusion to granular runtime ru
   }
 });
 
-test('doctor fix merges missing governance defaults and preserves compatible config keys', () => {
+test('doctor diagnoses missing governance and requires explicit migration without rewriting config', () => {
   const { dir, cleanup } = makeTmpDir();
   const target = path.join(dir, 'target');
   try {
@@ -245,15 +245,16 @@ test('doctor fix merges missing governance defaults and preserves compatible con
     config.compatible_project_key = { enabled: true };
     fs.writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`);
 
-    const before = runCli(['doctor'], { cwd: target });
-    const fixed = runCli(['doctor', '--fix'], { cwd: target });
+    const before = runCliResult(['doctor'], { cwd: target });
+    const fixed = runCliResult(['doctor', '--fix'], { cwd: target });
     const saved = JSON.parse(fs.readFileSync(configPath, 'utf8'));
 
-    assert.match(before, /missing v58 governance configuration/);
-    assert.match(fixed, /Updated \.quiver\/config\.json/);
+    assert.equal(before.status, 1);
+    assert.match(before.stdout, /missing v58 governance configuration/);
+    assert.equal(fixed.status, 1);
+    assert.match(fixed.stderr, /Legacy Quiver evidence must be explicitly migrated/);
     assert.equal(saved.compatible_project_key.enabled, true);
-    assert.equal(saved.governance.schema_version, 1);
-    assert.equal(saved.governance.policy.authorization.default_effect, 'deny');
+    assert.equal(saved.governance, undefined);
   } finally {
     cleanup();
   }
@@ -270,11 +271,13 @@ test('doctor reports invalid governance without overwriting authorization policy
     fs.writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`);
     const before = fs.readFileSync(configPath, 'utf8');
 
-    const report = runCli(['doctor'], { cwd: target });
-    const fixed = runCli(['doctor', '--fix'], { cwd: target });
+    const report = runCliResult(['doctor'], { cwd: target });
+    const fixed = runCliResult(['doctor', '--fix'], { cwd: target });
 
-    assert.match(report, /invalid v58 governance configuration \(GOVERNANCE_CONFIG_INVALID\)/);
-    assert.match(fixed, /No safe fixes to apply/);
+    assert.equal(report.status, 1);
+    assert.match(report.stdout, /invalid v58 governance configuration \(GOVERNANCE_CONFIG_INVALID\)/);
+    assert.equal(fixed.status, 1);
+    assert.match(fixed.stderr, /Governance compatibility metadata cannot be verified/);
     assert.equal(fs.readFileSync(configPath, 'utf8'), before);
   } finally {
     cleanup();
@@ -381,11 +384,12 @@ test('doctor reports a legacy layout with migration guidance', () => {
       fs.chmodSync(path.join(target, file), 0o755);
     }
 
-    const output = runCli(['doctor'], { cwd: target });
+    const result = runCliResult(['doctor'], { cwd: target });
 
-    assert.match(output, /Layout: legacy/);
-    assert.match(output, /Legacy layout detected\. Run `npx create-quiver migrate`/);
-    assert.match(output, /Legacy signals:/);
+    assert.equal(result.status, 1);
+    assert.match(result.stdout, /Layout: legacy/);
+    assert.match(result.stdout, /Legacy layout detected\. Run `npx create-quiver migrate`/);
+    assert.match(result.stdout, /Legacy signals:/);
   } finally {
     cleanup();
   }
@@ -507,11 +511,12 @@ test('doctor reports old incomplete .quiver state as migration-needed instead of
     });
     fs.rmSync(path.join(target, 'docs', 'AI_ONBOARDING_PROMPT.md'));
 
-    const output = runCli(['doctor'], { cwd: target });
+    const result = runCliResult(['doctor'], { cwd: target });
 
-    assert.match(output, /Layout: legacy/);
-    assert.match(output, /Legacy layout detected\. Run `npx create-quiver migrate`/);
-    assert.doesNotMatch(output, /Run init first: npx create-quiver --name "Project Name"/);
+    assert.equal(result.status, 1);
+    assert.match(result.stdout, /Layout: legacy/);
+    assert.match(result.stdout, /Legacy layout detected\. Run `npx create-quiver migrate`/);
+    assert.doesNotMatch(result.stdout, /Run init first: npx create-quiver --name "Project Name"/);
   } finally {
     cleanup();
   }

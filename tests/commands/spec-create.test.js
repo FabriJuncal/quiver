@@ -207,6 +207,15 @@ async function seedCanonicalApprovedPlan(repoRoot) {
   };
   writeFile(path.join(repoRoot, 'requirements.md'), '# Requirement\n\nCreate a spec from canonical approvals.\n');
   writeFile(path.join(repoRoot, '.quiver/config.json'), `${JSON.stringify({ governance }, null, 2)}\n`);
+  writeFile(path.join(repoRoot, '.quiver/state.json'), `${JSON.stringify({
+    quiver_version: governance.compatibility.minimum_writer_version,
+    project_name: 'Spec create fixture',
+    initialized_version: governance.compatibility.minimum_writer_version,
+    migrated_version: null,
+    last_initialized_at: '2026-08-31T00:00:00.000Z',
+    last_migration_at: null,
+    last_analysis_at: null,
+  }, null, 2)}\n`);
   createAiRun(repoRoot, { input: 'requirements.md', runId, governance: binding });
 
   savePlannerDraft(repoRoot, 'acceptance', 'requirements.md', `${JSON.stringify({

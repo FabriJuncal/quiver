@@ -52,13 +52,22 @@ const { runCreateSpec, runValidateSpec } = require('./commands/spec');
 const { collectVersionReport, formatHumanVersionReport } = require('./lib/version');
 const { buildInitLayout, formatInitLayoutPlan } = require('./lib/init-layout');
 const {
+  applyProjectMigrationSurface,
   formatInstallSelfCommand,
   initializeProjectDocs,
   installSelfAsDevDep,
+  preflightProjectMigration,
   refreshAiContextDoc,
 } = require('./lib/init-docs');
 const { checkPrReadiness, checkScope, checkSliceReadiness } = require('./lib/readiness');
 const { cleanupSlice, refreshActiveSlicesBoard, startSlice } = require('./lib/lifecycle');
+const {
+  buildAiRunGovernanceProjection,
+  listAiRuns,
+  resolveAiRun,
+  runApprovalCommitPath,
+  runReviewCommitPath,
+} = require('./lib/ai/run-state');
 const { buildSpecStatus, closeSpecWorktree, formatSpecCloseResult, formatSpecStartResult, formatSpecStatus, startSpecWorktree } = require('./lib/spec-worktrees');
 const { getContextPathExclusionReason } = require('./lib/ai/safety');
 const { redactSensitiveValue } = require('./lib/ai/artifacts');
@@ -95,11 +104,13 @@ const {
 } = require('./lib/project-scan');
 const { resolveTemplateRoot } = require('./lib/template-resolver');
 const {
+  assertProjectWriterAllowed,
   hasQuiverInitializationEvidence,
+  inspectCompatibilityState,
   inspectLegacyMigrationLayout,
   readState,
   updateStateForAnalyze,
-  updateStateForMigrate,
+  verifyProjectMigration,
 } = require('./lib/state');
 const cliPackageJson = JSON.parse(fs.readFileSync(path.resolve(__dirname, '../..', 'package.json'), 'utf8'));
 const CLI_VERSION = cliPackageJson.version || '0.0.0';
@@ -152,6 +163,186 @@ function emitJsonFailure(task, error, fallbackCode = 'COMMAND_FAILED') {
 
 function emitAiApprovalJsonFailure(task, error) {
   emitJsonFailure(task, error, 'APPROVAL_COMMAND_FAILED');
+}
+
+function governanceBoundaryForArgs(args) {
+  const previewOnly = args.dryRun === true || args.aiPrintPrompt === true;
+
+  if (args.mode === 'findings' && !previewOnly) {
+    return {
+      action: `findings ${args.findingsCommand || 'disposition'}`,
+      kind: 'writer',
+      task: args.findingsCommand === 'transfer' ? 'findings-transfer' : 'findings-disposition',
+    };
+  }
+  if (args.mode === 'analyze' && !previewOnly) {
+    return { action: 'analyze project', kind: 'writer', task: 'analyze' };
+  }
+  if (args.mode === 'doctor' && args.doctorFix === true && !previewOnly) {
+    return { action: 'doctor fix', kind: 'writer', task: 'doctor' };
+  }
+  if (args.mode === 'next' && args.autoStart === true) {
+    return { action: 'auto-start next slice', kind: 'writer', task: 'next' };
+  }
+  if (args.mode === 'start-slice') {
+    return { action: 'start slice', kind: 'writer', task: 'start-slice' };
+  }
+  if (args.mode === 'cleanup-slice' && !previewOnly) {
+    return { action: 'cleanup slice', kind: 'writer', task: 'cleanup-slice' };
+  }
+  if (args.mode === 'refresh-active-slices') {
+    return { action: 'refresh active slices', kind: 'writer', task: 'refresh-active-slices' };
+  }
+  if (args.mode === 'spec') {
+    if (args.specCommand === 'create' && !previewOnly) {
+      return { action: 'create governed spec', kind: 'writer', task: 'spec-create' };
+    }
+    if (['start', 'close'].includes(args.specCommand) && !previewOnly) {
+      return { action: `spec ${args.specCommand}`, kind: 'writer', task: `spec-${args.specCommand}` };
+    }
+  }
+  if (args.mode !== 'ai') return null;
+
+  if (args.aiCommand === 'pr'
+      && (args.aiCreate === true || args.review === true)
+      && !previewOnly) {
+    return { action: 'publish PR', kind: 'writer', task: 'ai-pr' };
+  }
+  if (args.aiCommand === 'run') {
+    return { action: `ai run ${args.aiRunCommand || 'update'}`, kind: 'writer', task: 'run' };
+  }
+  if (['analyze-project', 'onboard', 'prepare-context', 'plan', 'review-plan', 'repair-plan', 'revise', 'approve'].includes(args.aiCommand)
+      && !previewOnly) {
+    return { action: `ai ${args.aiCommand}`, kind: 'writer', task: args.aiCommand };
+  }
+  if (args.aiCommand === 'execute-slice' && !previewOnly) {
+    return { action: 'ai execute-slice', kind: 'writer', task: 'execute-slice' };
+  }
+  if (args.aiCommand === 'execute-plan' && args.aiExecute === true && !previewOnly) {
+    return { action: 'ai execute-plan', kind: 'writer', task: 'execute-plan' };
+  }
+  return null;
+}
+
+function governanceGateFailure(projectRoot, action) {
+  const compatibility = inspectCompatibilityState(projectRoot, { writerVersion: CLI_VERSION });
+  const code = compatibility.status === 'legacy-unverified'
+    ? 'LEGACY_EVIDENCE_UNVERIFIED'
+    : compatibility.code || null;
+  if (!code) return null;
+  const error = new Error(
+    code === 'GOVERNANCE_READ_ONLY'
+      ? 'Governance gate is fail-closed while compatibility writer_mode is read-only.'
+      : code === 'UNSAFE_WRITER_DOWNGRADE'
+        ? 'Governance gate is fail-closed because the active or declared writer is unsafe.'
+        : 'Governance gate is fail-closed because legacy evidence cannot be verified.',
+  );
+  error.code = code;
+  error.details = {
+    action,
+    compatibility_status: compatibility.status,
+    writer_mode: compatibility.writer_mode,
+    minimum_writer_version: compatibility.minimum_writer_version,
+  };
+  return error;
+}
+
+async function runFailClosedGate(projectRoot, action, callback) {
+  const failure = governanceGateFailure(projectRoot, action);
+  if (!failure) return callback();
+  try {
+    await captureStdout(callback);
+  } catch {
+    // Compatibility is the stable outer fail-closed boundary in rollback,
+    // legacy, and unsafe-writer modes; the underlying gate still ran.
+  }
+  throw failure;
+}
+
+function enforceGovernanceBoundary(args) {
+  const boundary = governanceBoundaryForArgs(args);
+  if (!boundary) return true;
+  const targetRoot = ['analyze', 'doctor'].includes(args.mode)
+    ? resolveTargetRoot(process.cwd(), args.targetDir)
+    : process.cwd();
+  try {
+    assertProjectWriterAllowed(targetRoot, { action: boundary.action });
+    return true;
+  } catch (error) {
+    if (boundary.task === 'approve' && hasPendingApprovalRecovery(targetRoot, args.aiRunId)) {
+      return true;
+    }
+    if (!args.json) throw error;
+    emitJsonFailure(boundary.task, error);
+    return false;
+  }
+}
+
+function hasPendingApprovalRecovery(projectRoot, requestedRunId = '') {
+  const runsRoot = path.join(projectRoot, '.quiver', 'runs');
+  if (!fs.existsSync(runsRoot)) return false;
+  const selectedRunId = String(requestedRunId || '').trim().toLowerCase();
+  return fs.readdirSync(runsRoot, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => entry.name)
+    .filter((runId) => !selectedRunId || runId === selectedRunId)
+    .some((runId) => (
+      fs.existsSync(runApprovalCommitPath(projectRoot, runId))
+      || fs.existsSync(runReviewCommitPath(projectRoot, runId))
+    ));
+}
+
+function formatApprovalStatusJson(projectRoot) {
+  const runs = listAiRuns(projectRoot);
+  const activeRun = resolveAiRun(projectRoot, '');
+  const projections = runs.map((run) => buildAiRunGovernanceProjection(projectRoot, run));
+  const activeProjection = activeRun
+    ? projections.find((projection) => projection.run_id === activeRun.run_id) || null
+    : null;
+  const compatibility = activeProjection
+    || buildAiRunGovernanceProjection(projectRoot, null);
+  return `${JSON.stringify(redactSensitiveValue({
+    schema_version: 1,
+    task: 'approval-status',
+    ok: true,
+    status: compatibility.status,
+    code: compatibility.code,
+    active_run_id: activeRun?.run_id || null,
+    projection: compatibility,
+    runs: projections,
+  }, { projectRoot }), null, 2)}\n`;
+}
+
+function formatApprovalStatusCompatibilityHuman(projectRoot, language) {
+  const translator = createTranslator(language);
+  const run = resolveAiRun(projectRoot, '');
+  const projection = buildAiRunGovernanceProjection(projectRoot, run);
+  return [
+    translator.t('ai.approvals.title'),
+    `${translator.t('ai.label.compatibility')}: ${projection.compatibility}`,
+    `${translator.t('ai.label.code')}: ${projection.code || '-'}`,
+    `${translator.t('ai.run.status')}: ${projection.status}`,
+    `${translator.t('ai.label.governance_counts')}: ${JSON.stringify(projection.counts)}`,
+    `${translator.t('ai.label.next_safe_command')}: ${projection.next_command}`,
+    '',
+  ].join('\n');
+}
+
+async function captureStdout(callback) {
+  const originalWrite = process.stdout.write;
+  const chunks = [];
+  process.stdout.write = function captureWrite(chunk, encoding, done) {
+    chunks.push(Buffer.isBuffer(chunk) ? chunk.toString('utf8') : String(chunk));
+    if (typeof encoding === 'function') encoding();
+    if (typeof done === 'function') done();
+    return true;
+  };
+  try {
+    const result = await callback();
+    return { captured: chunks.join(''), result };
+  } finally {
+    process.stdout.write = originalWrite;
+  }
 }
 
 function helpCatalog(language = DEFAULT_LANGUAGE) {
@@ -1817,6 +2008,7 @@ function packTemplate(packageRoot, tempRoot) {
         ...process.env,
         npm_config_cache: npmCache,
       },
+      stdio: ['ignore', 'pipe', 'pipe'],
     });
 
     const packInfo = JSON.parse(packOutput.trim());
@@ -1858,20 +2050,6 @@ function exportTemplatesToLegacyRoot(templateRoot, targetDir) {
   return copyTemplate(templateRoot, targetDir);
 }
 
-function mergeDirectoryTree(sourceDir, targetDir) {
-  if (!fs.existsSync(sourceDir)) {
-    return;
-  }
-
-  fs.mkdirSync(targetDir, { recursive: true });
-  fs.cpSync(sourceDir, targetDir, {
-    recursive: true,
-    force: false,
-    errorOnExist: false,
-    preserveTimestamps: true,
-  });
-}
-
 function runInitDocs(repoRoot, projectName, options = {}) {
   const templateRoot = options.templateRoot
     ? { path: options.templateRoot }
@@ -1889,6 +2067,7 @@ function runInitDocs(repoRoot, projectName, options = {}) {
     profile: options.profile || 'default',
     templateRoot: templateRoot.path,
     language: options.language || '',
+    existingQuiverProject: options.existingQuiverProject,
   });
 }
 
@@ -2880,67 +3059,169 @@ async function runMigrate(targetDir, options = {}) {
     throw new Error(formatError('migrate requires a project previously initialized by Quiver.\nRun: npx create-quiver --name "Project Name"'));
   }
 
-  const packageJson = loadPackageJson(projectRoot);
+  let packageJson;
+  try {
+    packageJson = loadPackageJson(projectRoot);
+  } catch (error) {
+    const migrationError = new Error('Migration requires a readable package.json.');
+    migrationError.code = 'MIGRATION_VERIFICATION_FAILED';
+    migrationError.details = { cause_code: error?.code || 'PACKAGE_JSON_INVALID' };
+    throw migrationError;
+  }
   const projectName = packageJson.name || path.basename(projectRoot) || 'Quiver Project';
   const packageRoot = path.resolve(__dirname, '../..');
   const legacyLayout = inspectLegacyMigrationLayout(projectRoot);
-
-  if (options.dryRun) {
-    const migrationPlan = buildInitLayout(projectRoot, {
-      dryRun: true,
-      full: true,
-      legacyScripts: true,
-      projectName,
-      skipInstall: options.skipInstall === true,
-    });
-    console.log(translator.t('migrate.dry_run_title'));
-    console.log(`- ${translator.t('migrate.project', { project: projectName })}`);
-    console.log(`- ${translator.t('migrate.target', { path: projectRoot })}`);
-    console.log(`- ${translator.t('migrate.writes_none')}`);
-    console.log(`- ${translator.t('migrate.planned_create', { count: migrationPlan.summary.create })}`);
-    console.log(`- ${translator.t('migrate.planned_update', { count: migrationPlan.summary.update })}`);
-    console.log(`- ${translator.t('migrate.planned_preserve', { count: migrationPlan.summary.preserve })}`);
-    if (legacyLayout.hasLegacyLayout) {
-      console.log(`- ${translator.t('migrate.legacy_preserved', { paths: legacyLayout.legacyPaths.join(', ') })}`);
-    }
-    console.log(`- ${translator.t('migrate.next_command', { command: 'npx create-quiver migrate --skip-install' })}`);
-    console.log('');
-    console.log(formatInitLayoutPlan(migrationPlan));
-    return;
-  }
-
-  await confirmMigrateWrite(projectRoot, options, translator);
-
   const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'quiver-migrate-'));
 
   try {
     const templateRoot = packTemplate(packageRoot, tempRoot);
-    mergeDirectoryTree(templateRoot, path.join(projectRoot, 'docs-template'));
-    initializeProjectDocs({
+    const preflight = preflightProjectMigration({
       projectRoot,
       projectName,
       cliVersion: CLI_VERSION,
-      legacyScripts: true,
-      migrateMode: true,
-      profile: 'full',
+      language: options.language,
+      skipInstall: options.skipInstall === true,
       templateRoot,
     });
-    updateStateForMigrate(projectRoot, projectName, CLI_VERSION);
 
+    if (options.dryRun) {
+      const migrationPlan = buildInitLayout(projectRoot, {
+        dryRun: true,
+        full: true,
+        legacyScripts: true,
+        projectName,
+        skipInstall: options.skipInstall === true,
+      });
+      const result = redactSensitiveValue({
+        schema_version: 1,
+        task: 'migrate',
+        ok: true,
+        status: 'dry-run',
+        code: null,
+        dry_run: true,
+        migration_status: preflight.status,
+        project_name: projectName,
+        writes: 0,
+        compatibility: preflight.compatibility,
+        dependency: preflight.dependency,
+        planned_changes: preflight.delta,
+        summary: preflight.summary,
+        legacy_paths_preserved: legacyLayout.legacyPaths,
+      }, { projectRoot });
+      if (options.json) {
+        process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
+      } else {
+        console.log(translator.t('migrate.dry_run_title'));
+        console.log(`- ${translator.t('migrate.project', { project: projectName })}`);
+        console.log(`- ${translator.t('migrate.target', { path: projectRoot })}`);
+        console.log(`- ${translator.t('migrate.writes_none')}`);
+        console.log(`- ${translator.t('migrate.planned_create', { count: migrationPlan.summary.create })}`);
+        console.log(`- ${translator.t('migrate.planned_update', { count: migrationPlan.summary.update })}`);
+        console.log(`- ${translator.t('migrate.planned_preserve', { count: migrationPlan.summary.preserve })}`);
+        if (legacyLayout.hasLegacyLayout) {
+          console.log(`- ${translator.t('migrate.legacy_preserved', { paths: legacyLayout.legacyPaths.join(', ') })}`);
+        }
+        console.log(`- ${translator.t('migrate.next_command', { command: 'npx create-quiver migrate --skip-install' })}`);
+        console.log('');
+        console.log(formatInitLayoutPlan(migrationPlan));
+      }
+      return result;
+    }
+
+    if (preflight.status === 'already-current') {
+      const verification = verifyProjectMigration(projectRoot, { writerVersion: CLI_VERSION });
+      const result = redactSensitiveValue({
+        schema_version: 1,
+        task: 'migrate',
+        ok: true,
+        status: 'already-current',
+        code: null,
+        dry_run: false,
+        project_name: projectName,
+        writes: 0,
+        compatibility: verification,
+        post_verification: { status: 'passed' },
+      }, { projectRoot });
+      if (options.json) {
+        process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
+      } else {
+        console.log(translator.t('migrate.already_current', { path: projectRoot }));
+        console.log(translator.t('migrate.verification_passed'));
+      }
+      return result;
+    }
+
+    await confirmMigrateWrite(projectRoot, options, translator);
+
+    const migration = applyProjectMigrationSurface({
+      projectRoot,
+      projectName,
+      cliVersion: CLI_VERSION,
+      language: options.language,
+      preflight,
+      skipInstall: options.skipInstall === true,
+      templateRoot,
+    });
+
+    let installResult = 'skipped';
     if (!options.skipInstall) {
-      const installResult = installSelfAsDevDep(projectRoot, CLI_VERSION);
-      if (installResult === 'installed') {
+      installResult = installSelfAsDevDep(projectRoot, CLI_VERSION, {
+        silent: options.json === true,
+      });
+      if (!options.json && installResult === 'installed') {
         console.log(`Added create-quiver@${CLI_VERSION} as dev dependency`);
-      } else if (installResult === 'failed') {
+      } else if (!options.json && installResult === 'failed') {
         console.warn(`Warning: could not install create-quiver automatically. Run: ${formatInstallSelfCommand(projectRoot, CLI_VERSION)}`);
       }
     }
 
-    console.log(translator.t('migrate.completed_for', { path: projectRoot }));
-    console.log(translator.t('migrate.restored_missing'));
-    if (legacyLayout.hasLegacyLayout) {
-      console.log(translator.t('migrate.legacy_preserved', { paths: legacyLayout.legacyPaths.join(', ') }));
+    const verification = verifyProjectMigration(projectRoot, { writerVersion: CLI_VERSION });
+    const postflight = preflightProjectMigration({
+      projectRoot,
+      projectName,
+      cliVersion: CLI_VERSION,
+      language: options.language,
+      skipInstall: options.skipInstall === true,
+      templateRoot,
+    });
+    if (postflight.status !== 'already-current') {
+      const error = new Error('Project migration post-verification found remaining required changes.');
+      error.code = 'MIGRATION_VERIFICATION_FAILED';
+      error.details = {
+        remaining_changes: postflight.delta,
+        install_status: installResult,
+      };
+      throw error;
     }
+
+    const result = redactSensitiveValue({
+      schema_version: 1,
+      task: 'migrate',
+      ok: true,
+      status: migration.status,
+      code: null,
+      dry_run: false,
+      project_name: projectName,
+      writes: migration.surface_writes || ['installed', 'upgraded'].includes(installResult)
+        ? preflight.summary.changes
+        : 0,
+      compatibility: verification,
+      installation: { status: installResult },
+      applied_changes: preflight.delta,
+      legacy_paths_preserved: legacyLayout.legacyPaths,
+      post_verification: { status: 'passed' },
+    }, { projectRoot });
+    if (options.json) {
+      process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
+    } else {
+      console.log(translator.t('migrate.completed_for', { path: projectRoot }));
+      console.log(translator.t('migrate.restored_missing'));
+      console.log(translator.t('migrate.verification_passed'));
+      if (legacyLayout.hasLegacyLayout) {
+        console.log(translator.t('migrate.legacy_preserved', { paths: legacyLayout.legacyPaths.join(', ') }));
+      }
+    }
+    return result;
   } finally {
     fs.rmSync(tempRoot, { recursive: true, force: true });
   }
@@ -2962,6 +3243,13 @@ function uniqueLines(lines) {
 
 function buildDoctorCommandReport(projectRoot) {
   const doctorReport = collectDoctorReport(projectRoot);
+  let compatibility = null;
+  let compatibilityError = null;
+  try {
+    compatibility = inspectCompatibilityState(projectRoot, { writerVersion: CLI_VERSION });
+  } catch (error) {
+    compatibilityError = error;
+  }
   const specSlugs = doctorReport.specSlugs;
   const doctorExampleTarget = doctorReport.exampleTarget || {
     sliceId: '<slice-id>',
@@ -3099,6 +3387,40 @@ function buildDoctorCommandReport(projectRoot) {
     hasQuiverState ? 'Quiver state metadata found' : 'Warning: missing Quiver state metadata: .quiver/state.json',
   );
 
+  let compatibilityCode = compatibilityError?.code || compatibility?.code || null;
+  let compatibilityCheckStatus = 'ok';
+  let compatibilityMessage = `Governance compatibility: ${compatibility?.status || 'none'}`;
+  if (compatibilityError) {
+    compatibilityCode = compatibilityError.code || 'MIGRATION_VERIFICATION_FAILED';
+    compatibilityCheckStatus = 'error';
+    compatibilityMessage = `Governance compatibility verification failed: ${compatibilityError.message}`;
+  } else if (!compatibility || compatibility.status === 'none') {
+    compatibilityCode = 'MIGRATION_VERIFICATION_FAILED';
+    compatibilityCheckStatus = 'error';
+    compatibilityMessage = 'Governance compatibility: none; migration verification is incomplete.';
+  } else if (compatibility.status === 'legacy-unverified') {
+    compatibilityCode = 'LEGACY_EVIDENCE_UNVERIFIED';
+    compatibilityCheckStatus = 'error';
+    compatibilityMessage = 'Governance compatibility: legacy-unverified; legacy evidence cannot satisfy readiness.';
+  } else if (compatibility.code === 'UNSAFE_WRITER_DOWNGRADE'
+      || compatibility.writer_compatible === false
+      || compatibility.declared_dependency?.status === 'older') {
+    compatibilityCode = 'UNSAFE_WRITER_DOWNGRADE';
+    compatibilityCheckStatus = 'error';
+    compatibilityMessage = 'Governance compatibility: the active or declared writer is older than the project minimum.';
+  } else if (compatibility.status === 'rollback-read-only') {
+    compatibilityCode = 'GOVERNANCE_READ_ONLY';
+    compatibilityCheckStatus = 'warning';
+    compatibilityMessage = 'Governance compatibility: rollback-read-only; readers remain available and writers stay disabled.';
+  } else if (compatibility.declared_dependency?.status === 'unverifiable') {
+    compatibilityCheckStatus = 'warning';
+    compatibilityMessage = 'Governance compatibility: v58-verified; the declared local writer range could not be verified automatically.';
+  }
+  addCheck('governance-compatibility', compatibilityCheckStatus, compatibilityMessage, {
+    code: compatibilityCode,
+    compatibility,
+  });
+
   addCheck(
     'project-scan',
     hasScanArtifacts ? 'ok' : 'warning',
@@ -3136,6 +3458,15 @@ function buildDoctorCommandReport(projectRoot) {
 
   const suggestedFixes = [
     ...doctorReport.recommendations,
+    compatibility?.status === 'legacy-unverified'
+      ? 'Preview and apply the explicit migration: npx create-quiver migrate --dry-run, then npx create-quiver migrate --yes'
+      : '',
+    compatibility?.status === 'rollback-read-only'
+      ? 'Keep writers disabled until recovery is reviewed; restore read-write only through the tracked governance config.'
+      : '',
+    compatibilityCode === 'UNSAFE_WRITER_DOWNGRADE'
+      ? `Update the declared create-quiver dependency to ${CLI_VERSION} or newer before retrying a writer.`
+      : '',
     doctorReport.warnings.some((warning) => String(warning).includes('AGENTS.md'))
       ? 'Repair AGENTS.md contract: npx create-quiver doctor --fix --dry-run, then npx create-quiver doctor --fix'
       : '',
@@ -3168,11 +3499,15 @@ function buildDoctorCommandReport(projectRoot) {
 
   return {
     schema_version: 1,
+    task: 'doctor',
     command: 'doctor',
+    ok: errors.length === 0,
+    code: compatibilityCode,
     project_root: projectRoot,
     status,
     exit_code: errors.length > 0 ? 1 : 0,
     layout: doctorReport.layout,
+    compatibility,
     specs: specSlugs,
     legacy_signals: doctorReport.legacySignals,
     checks,
@@ -3690,6 +4025,10 @@ async function run(argv) {
     }
   }
 
+  if (!enforceGovernanceBoundary(args)) {
+    return;
+  }
+
   if (args.mode === 'analyze') {
     await runAnalyze(args.targetDir, {
       dryRun: args.dryRun,
@@ -3704,10 +4043,15 @@ async function run(argv) {
   }
 
   if (args.mode === 'flow') {
-    await runFlow(process.cwd(), {
-      json: args.json,
-      language: args.language,
-    });
+    try {
+      await runFlow(process.cwd(), {
+        json: args.json,
+        language: args.language,
+      });
+    } catch (error) {
+      if (!args.json) throw error;
+      emitJsonFailure('flow', error);
+    }
     return;
   }
 
@@ -3847,13 +4191,33 @@ async function run(argv) {
     }
 
     if (args.aiCommand === 'run') {
-      runAiLifecycleRun(process.cwd(), {
+      const runOptions = {
         command: args.aiRunCommand,
         input: args.aiInput || undefined,
         language: args.language,
         runId: args.aiRunId || undefined,
         specSlug: args.specSlug || undefined,
-      });
+      };
+      if (args.json) {
+        try {
+          const { result } = await captureStdout(() => runAiLifecycleRun(process.cwd(), runOptions));
+          const projection = buildAiRunGovernanceProjection(process.cwd(), result.run);
+          process.stdout.write(`${JSON.stringify(redactSensitiveValue({
+            schema_version: 1,
+            task: 'run',
+            ok: true,
+            status: result.run.status,
+            code: projection.code,
+            command: result.command,
+            run_id: result.run.run_id,
+            projection,
+          }, { projectRoot: process.cwd() }), null, 2)}\n`);
+        } catch (error) {
+          emitJsonFailure('run', error, 'AI_RUN_COMMAND_FAILED');
+        }
+      } else {
+        runAiLifecycleRun(process.cwd(), runOptions);
+      }
       return;
     }
 
@@ -3867,18 +4231,30 @@ async function run(argv) {
     }
 
     if (args.aiCommand === 'status') {
-      runAiLifecycleStatus(process.cwd(), {
-        language: args.language,
-        runId: args.aiRunId || undefined,
-      });
+      try {
+        runAiLifecycleStatus(process.cwd(), {
+          json: args.json,
+          language: args.language,
+          runId: args.aiRunId || undefined,
+        });
+      } catch (error) {
+        if (!args.json) throw error;
+        emitJsonFailure('status', error);
+      }
       return;
     }
 
     if (args.aiCommand === 'resume') {
-      runAiLifecycleResume(process.cwd(), {
-        language: args.language,
-        runId: args.aiRunId || undefined,
-      });
+      try {
+        runAiLifecycleResume(process.cwd(), {
+          json: args.json,
+          language: args.language,
+          runId: args.aiRunId || undefined,
+        });
+      } catch (error) {
+        if (!args.json) throw error;
+        emitJsonFailure('resume', error);
+      }
       return;
     }
 
@@ -3891,11 +4267,18 @@ async function run(argv) {
     }
 
     if (args.aiCommand === 'export') {
-      runAiExport(process.cwd(), {
-        format: args.formatExplicit ? args.format : 'json',
-        includeCompleted: args.includeCompleted,
-        language: args.language,
-      });
+      const exportFormat = args.formatExplicit ? args.format : 'json';
+      try {
+        runAiExport(process.cwd(), {
+          format: exportFormat,
+          includeCompleted: args.includeCompleted,
+          json: args.json,
+          language: args.language,
+        });
+      } catch (error) {
+        if (!args.json && !['json', ''].includes(String(exportFormat || '').trim().toLowerCase())) throw error;
+        emitJsonFailure('export', error);
+      }
       return;
     }
 
@@ -4108,9 +4491,24 @@ async function run(argv) {
     }
 
     if (args.aiCommand === 'approvals' || args.aiCommand === 'approval-status') {
-      await runAiApprovalStatus(process.cwd(), {
-        language: args.language,
-      });
+      if (args.json) {
+        try {
+          process.stdout.write(formatApprovalStatusJson(process.cwd()));
+        } catch (error) {
+          emitJsonFailure('approval-status', error, 'APPROVAL_COMMAND_FAILED');
+        }
+      } else {
+        const activeRun = resolveAiRun(process.cwd(), '');
+        const projection = buildAiRunGovernanceProjection(process.cwd(), activeRun);
+        if (activeRun?.governance
+            || ['LEGACY_EVIDENCE_UNVERIFIED', 'GOVERNANCE_READ_ONLY', 'UNSAFE_WRITER_DOWNGRADE'].includes(projection.code)) {
+          process.stdout.write(formatApprovalStatusCompatibilityHuman(process.cwd(), args.language));
+        } else {
+          await runAiApprovalStatus(process.cwd(), {
+            language: args.language,
+          });
+        }
+      }
       return;
     }
 
@@ -4175,7 +4573,7 @@ async function run(argv) {
 
     if (args.aiCommand === 'pr') {
       try {
-        await runAiPr(process.cwd(), {
+        await runFailClosedGate(process.cwd(), 'check PR governance readiness', () => runAiPr(process.cwd(), {
           baseBranch: args.baseBranchExplicit ? args.aiBaseBranch : '',
           create: args.aiCreate,
           dryRun: args.dryRun,
@@ -4189,7 +4587,7 @@ async function run(argv) {
           sshHostAlias: args.aiSshHostAlias || undefined,
           identityFile: args.aiIdentityFile || undefined,
           title: args.aiTitle || undefined,
-        });
+        }));
       } catch (error) {
         if (!args.json) throw error;
         emitJsonFailure('ai-pr', error, 'PR_READINESS_FAILED');
@@ -4253,29 +4651,39 @@ async function run(argv) {
   }
 
   if (args.mode === 'migrate') {
-    await runMigrate(args.targetDir, {
-      dryRun: args.dryRun,
-      force: args.force,
-      json: args.json,
-      language: args.language,
-      noColor: args.noColor,
-      skipInstall: args.skipInstall,
-      stderrIsTTY: Boolean(process.stderr.isTTY),
-      stdinIsTTY: Boolean(process.stdin.isTTY),
-      stdoutIsTTY: Boolean(process.stdout.isTTY),
-    });
+    try {
+      await runMigrate(args.targetDir, {
+        dryRun: args.dryRun,
+        force: args.force,
+        json: args.json,
+        language: args.language,
+        noColor: args.noColor,
+        skipInstall: args.skipInstall,
+        stderrIsTTY: Boolean(process.stderr.isTTY),
+        stdinIsTTY: Boolean(process.stdin.isTTY),
+        stdoutIsTTY: Boolean(process.stdout.isTTY),
+      });
+    } catch (error) {
+      if (!args.json) throw error;
+      emitJsonFailure('migrate', error);
+    }
     return;
   }
 
   if (args.mode === 'doctor') {
-    runDoctor(args.targetDir, {
-      dryRun: args.dryRun,
-      fix: args.doctorFix,
-      json: args.json,
-      language: args.language,
-      noColor: args.noColor,
-      unicode: args.unicode,
-    });
+    try {
+      runDoctor(args.targetDir, {
+        dryRun: args.dryRun,
+        fix: args.doctorFix,
+        json: args.json,
+        language: args.language,
+        noColor: args.noColor,
+        unicode: args.unicode,
+      });
+    } catch (error) {
+      if (!args.json) throw error;
+      emitJsonFailure('doctor', error, 'MIGRATION_VERIFICATION_FAILED');
+    }
     return;
   }
 
@@ -4289,7 +4697,7 @@ async function run(argv) {
 
   if (args.mode === 'check-slice') {
     try {
-      checkSliceReadiness(args.targetDir, {
+      await runFailClosedGate(process.cwd(), 'check slice governance readiness', () => checkSliceReadiness(args.targetDir, {
         baseBranch: args.baseBranchExplicit ? args.aiBaseBranch : '',
         gate: args.gate,
         json: args.json,
@@ -4298,7 +4706,7 @@ async function run(argv) {
         remote: args.aiRemote,
         runId: args.aiRunId || undefined,
         strictOverlap: args.strictOverlap,
-      });
+      }));
     } catch (error) {
       if (!args.json) throw error;
       emitJsonFailure('check-slice', error, 'SLICE_READINESS_FAILED');
@@ -4308,13 +4716,13 @@ async function run(argv) {
 
   if (args.mode === 'check-pr') {
     try {
-      checkPrReadiness(args.targetDir, {
+      await runFailClosedGate(process.cwd(), 'check PR governance readiness', () => checkPrReadiness(args.targetDir, {
         baseBranch: args.baseBranchExplicit ? args.aiBaseBranch : '',
         json: args.json,
         language: args.language,
         remote: args.aiRemote,
         runId: args.aiRunId || undefined,
-      });
+      }));
     } catch (error) {
       if (!args.json) throw error;
       emitJsonFailure('check-pr', error, 'PR_READINESS_FAILED');
@@ -4375,7 +4783,7 @@ async function run(argv) {
 
   if (args.mode === 'spec') {
     if (args.specCommand === 'create') {
-      await runCreateSpec(process.cwd(), {
+      const createOptions = {
         dryRun: args.dryRun,
         input: args.aiInput || undefined,
         interactive: args.interactive,
@@ -4385,7 +4793,29 @@ async function run(argv) {
         runId: args.aiRunId || undefined,
         specSlug: args.specSlug || undefined,
         withPlanner: args.withPlanner,
-      });
+      };
+      if (args.json) {
+        try {
+          const { result } = await captureStdout(() => runCreateSpec(process.cwd(), createOptions));
+          process.stdout.write(`${JSON.stringify(redactSensitiveValue({
+            schema_version: 1,
+            task: 'spec-create',
+            ok: true,
+            status: result.dryRun ? 'dry-run' : 'created',
+            code: null,
+            dry_run: result.dryRun === true,
+            spec_slug: result.specSlug || result.manifest?.slug || null,
+            spec_dir: result.specDir,
+            files: result.files,
+            manifest: result.manifest,
+            review_path: result.reviewPath || null,
+          }, { projectRoot: process.cwd() }), null, 2)}\n`);
+        } catch (error) {
+          emitJsonFailure('spec-create', error, 'SPEC_CREATE_FAILED');
+        }
+      } else {
+        await runCreateSpec(process.cwd(), createOptions);
+      }
       return;
     }
 
@@ -4463,6 +4893,12 @@ async function run(argv) {
     return;
   }
 
+  const existingQuiverProject = fs.existsSync(targetDir)
+    && hasQuiverInitializationEvidence(targetDir);
+  if (existingQuiverProject) {
+    assertProjectWriterAllowed(targetDir, { action: 'initialize project' });
+  }
+
   const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'quiver-create-'));
   const translator = createTranslator(args.language);
   const progress = createCommandProgressUx({
@@ -4504,6 +4940,7 @@ async function run(argv) {
           legacyScripts: initOptions.legacyScripts,
           profile: initLayout.profile,
           templateRoot,
+          existingQuiverProject,
         });
         languageWrite = persistInitLanguage(targetDir, { language: initLanguage.configLanguage });
         return languageWrite;

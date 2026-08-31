@@ -69,6 +69,47 @@ Para usar la versión fijada por el proyecto:
 npx create-quiver --version
 ```
 
+## Gobernanza v58: migración, rollback y downgrade
+
+La compatibilidad de gobernanza se registra en `governance.compatibility` dentro de `.quiver/config.json`:
+
+- `schema_version` debe ser `1`;
+- `writer_mode` es `read-write` o `read-only`;
+- `minimum_writer_version` es la versión mínima de Quiver que puede escribir el estado verificado y nunca se reduce automáticamente.
+
+Las lecturas compatibles pueden informar `none`, `legacy-unverified`, `v58-verified` o `rollback-read-only`. Un estado `legacy-unverified` sigue visible, pero sus conteos no demostrables son `null`: no satisface readiness ni permite avanzar de fase.
+
+### Secuencia segura de migración
+
+```bash
+npx --yes create-quiver@latest migrate --dry-run
+npx --yes create-quiver@latest migrate
+npx --yes create-quiver@latest doctor --json
+```
+
+Usá `migrate --yes` en automatización. La aplicación ejecuta una verificación posterior antes de informar éxito y `doctor --json` actúa como verificador independiente. Una reaplicación ya vigente devuelve `already-current` y no escribe archivos.
+
+### Códigos estables y recuperación
+
+| Código | Significado | Recuperación segura |
+|---|---|---|
+| `LEGACY_EVIDENCE_UNVERIFIED` | Falta identidad, digest, disposition, condition o approval demostrable en estado legacy. | Ejecutar el preview, migrar y verificar; no completar evidencia a mano ni forzar avance. |
+| `MIGRATION_VERIFICATION_FAILED` | El resultado aplicado no puede releerse como un contrato consistente. | Revisar `doctor --json` y sus fixes antes de reintentar; no interpretar la migración como completada. |
+| `GOVERNANCE_READ_ONLY` | `writer_mode` está en `read-only`; los writers v58 salen con código 1. | Mantener lecturas y gates activos. Restablecer escrituras solo mediante un cambio revisado de configuración y una verificación satisfactoria. |
+| `UNSAFE_WRITER_DOWNGRADE` | El writer o la dependencia local declarada es anterior a `minimum_writer_version`. | Alinear `create-quiver` con esa versión mínima o una posterior y volver a ejecutar `doctor --json`. Nunca reducir el mínimo. |
+
+Los códigos, estados, claves JSON, enums y exit codes no se localizan. Los mensajes humanos sí pueden mostrarse en inglés o español.
+
+### Rollback y límite del guard
+
+El rollback soportado consiste en cambiar de forma revisada `writer_mode` a `read-only`. No convierte ni elimina findings, conditions o decisions: los readers y gates siguen operativos y fallan cerrados ante evidencia incompleta.
+
+Si el rollback se activa con un WAL atómico ya preparado, repetí el comando de aprobación válido para el mismo `--run`. Quiver resuelve únicamente esa transacción interrumpida antes de evaluar el guard; luego el comando termina con `GOVERNANCE_READ_ONLY`, sin iniciar ni publicar una decisión nueva. Verificá la eliminación del WAL con `ai status --run <id> --json` y conservá `writer_mode: read-only` hasta completar la revisión operativa.
+
+El guard bloquea writers antiguos invocados por la ruta soportada de Quiver y diagnostica una dependencia local declarada demasiado antigua. No puede impedir que alguien ejecute deliberadamente un binario anterior a la existencia del guard por fuera de esa ruta; ese caso requiere fijar y revisar la dependencia del proyecto.
+
+El procedimiento completo para proyectos existentes está en [Flujo para proyecto con Quiver anterior](./workflows/legacy-quiver-project.md).
+
 ## `ai analyze-project` falla con JSON inválido del proveedor
 
 ### Síntoma

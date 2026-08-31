@@ -222,6 +222,37 @@ test('ai approval rejects missing or unsupported singular subcommands', () => {
   }
 });
 
+test('ai approvals --json emits one canonical projection without stderr', () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'quiver-approvals-json-'));
+  const result = runCliRaw(['ai', 'approvals', '--json'], { cwd: tmp });
+
+  assert.equal(result.status, 0);
+  assert.equal(result.stderr, '');
+  const payload = JSON.parse(result.stdout);
+  assert.equal(payload.schema_version, 1);
+  assert.equal(payload.task, 'approval-status');
+  assert.equal(payload.ok, true);
+  assert.equal(payload.status, 'no-active-run');
+  assert.equal(payload.projection.kind, 'quiver-run-governance-projection');
+  assert.equal(payload.projection.compatibility, 'none');
+  assert.equal(payload.projection.status, payload.status);
+  assert.deepEqual(payload.runs, []);
+});
+
+test('spec create --json emits one machine error document without stderr', () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'quiver-spec-create-json-'));
+  const result = runCliRaw(['spec', 'create', '--dry-run', '--json'], { cwd: tmp });
+
+  assert.equal(result.status, 1);
+  assert.equal(result.stderr, '');
+  const payload = JSON.parse(result.stdout);
+  assert.equal(payload.schema_version, 1);
+  assert.equal(payload.task, 'spec-create');
+  assert.equal(payload.ok, false);
+  assert.equal(payload.status, 'error');
+  assert.equal(payload.code, 'SPEC_CREATE_FAILED');
+});
+
 test('approval value flags reject a following flag as a missing value', () => {
   const cases = [
     { args: ['ai', 'approve', '--decision', '--json'], flag: '--decision' },

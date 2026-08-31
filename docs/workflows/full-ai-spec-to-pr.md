@@ -4,6 +4,8 @@ Esta guía cubre el flujo completo de Quiver desde un requerimiento hasta un pul
 
 Ejecutá los comandos desde la raíz del proyecto.
 
+Si el proyecto ya fue inicializado por una versión anterior de Quiver, completá primero el [flujo de migración legacy](./legacy-quiver-project.md). No uses una lectura legacy incompleta para avanzar una fase.
+
 ## 1. Confirmar estado del proyecto
 
 ```bash
@@ -125,6 +127,31 @@ Aprobar un plan revisado:
 npx --yes create-quiver@latest ai approve --phase technical-plan --version <n>
 ```
 
+### Resolver findings gobernados cuando corresponda
+
+Con gobernanza v58, `fast-delivery` y `high-assurance` determinan el presupuesto y los controles efectivos; una categoría sensible fuerza `high-assurance`. El agregado del provider no decide aprobación: Quiver conserva findings canónicos y calcula los blockers por fase.
+
+Si el presupuesto devuelve `REVIEW_BUDGET_EXHAUSTED` y `HUMAN_DECISION_REQUIRED`, no repitas el provider fuera del circuito. Revisá las acciones gobernadas que muestra el comando. Para transferencias elegibles, usá un destino canónico y evidencia explícita:
+
+```bash
+npx --yes create-quiver@latest findings transfer --finding <id> --to slice:<full-slice-id> --criterion-file <file> --acceptance-ref <ref> --evidence-obligation <text> --run <run-id>
+```
+
+Un lote validado se aplica con:
+
+```bash
+npx --yes create-quiver@latest findings disposition --file <dispositions.json> --run <run-id>
+```
+
+Después de completar las disposiciones, una decisión final condicionada se publica de forma explícita:
+
+```bash
+npx --yes create-quiver@latest ai approve --phase technical-plan --version <n> --decision approved-with-conditions --conditions-file <file> --reason-file <file> --run <run-id>
+npx --yes create-quiver@latest ai approval verify --phase technical-plan --run <run-id> --json
+```
+
+`approve-with-risk` sigue siendo una recomendación de `ai review-plan`; no es sinónimo de `approved-with-conditions`. La decisión condicionada mantiene visible la no-aprobación del reviewer y no crea el marker legacy `approved.md`.
+
 ## 8. Crear el paquete de spec
 
 ```bash
@@ -145,6 +172,7 @@ Qué hace:
 - crea slices de implementación;
 - crea `EXECUTION_BRIEF.md` y `CLOSURE_BRIEF.md`;
 - crea el plan de ejecución y `pr.md`.
+- cuando existe una decisión condicionada, genera un manifest inmutable y proyecciones de findings para los destinos correspondientes.
 
 Validarlo:
 
@@ -249,6 +277,8 @@ Qué hace:
 - confirma el estado de los slices de la spec;
 - revisa whitespace.
 
+Los gates de spec, slice y PR comparan sus proyecciones con el estado canónico. Un finding omitido, desconocido, stale o unresolved falla cerrado; un finding abierto aceptado por una decisión condicionada válida permanece visible sin bloquear únicamente por seguir abierto.
+
 También corré validaciones propias del proyecto:
 
 ```bash
@@ -258,6 +288,8 @@ npm run lint
 ```
 
 Usá solo los scripts que existan en el proyecto.
+
+Si aparece `LEGACY_EVIDENCE_UNVERIFIED`, `GOVERNANCE_READ_ONLY`, `UNSAFE_WRITER_DOWNGRADE` o `MIGRATION_VERIFICATION_FAILED`, seguí la recuperación documentada en [Troubleshooting](../TROUBLESHOOTING.md#gobernanza-v58-migracion-rollback-y-downgrade). No inventes evidencia, reduzcas `minimum_writer_version` ni reescribas datos gobernados a un formato legacy.
 
 ## 15. Preparar el PR
 

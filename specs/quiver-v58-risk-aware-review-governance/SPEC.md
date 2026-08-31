@@ -1,6 +1,6 @@
 # Quiver v58 — Risk-aware review governance
 
-Status: In Progress — slices 00 through 04 completed and merged; slice-05 completed and awaiting human review and merge
+Status: Implementation Complete — slices 00 through 05 merged; slice-06 PR #144 pending human review and merge
 
 Classification: Level 3 — governance, authorization, integrity, and cross-command runtime contracts
 
@@ -20,6 +20,8 @@ The condition-policy, disposition-lifecycle, reason-code, and reviewer-projectio
 The canonical approval ledger, digest and count formulas, singular approval CLI namespace, compatible plural listing, and required slice-04 scope additions were explicitly authorized by the user on 2026-08-27.
 
 The slice-05 transfer authorization, target grammar, criterion binding, immutable manifest, canonical parity, batch normalization, and required scope additions were explicitly authorized by the user on 2026-08-27 after slice-04 merged.
+
+The slice-06 compatibility metadata, verification mapping, rollback writer mode, stable compatibility codes, enforceable downgrade boundary, and required scope additions were explicitly authorized by the user on 2026-08-31 after slice-05 merged.
 
 The master requirement was an external planning input and is intentionally not an execution prerequisite for this package. SPEC.md and the slice contracts contain the frozen implementation baseline.
 
@@ -93,7 +95,7 @@ Slice-03 may atomically persist canonical dispositions plus an eligibility evalu
 
 For slice-04, the run governance store owns the canonical final decision ledger. A decision binds the exact artifact and planner-input bytes, current review, effective governance profile, policy, canonical counts, dispositions, reason, run, and authorized actor. The profile digest is SHA-256 over the stable JSON representation of requested profile, effective profile, normalized requirement categories, policy version, policy digest, and effective controls. finding_count is the size of the complete canonical finding collection; open findings remain a separately derived eligibility projection. criterion_count is the size of the parsed acceptance-criteria collection for acceptance artifacts and the sum of the explicit spec.slices[*].acceptance collections in a structured technical-plan artifact. No provider aggregate participates in these formulas.
 
-The approval commit uses a run-scoped recovery marker and rollback semantics. Until that marker is durably removed, readers fail closed and the operation is not committed. An interrupted or injected failure restores the previous decision, approval projection, legacy unconditional projection, and run phase; approved-with-conditions never creates the legacy projection.
+The approval commit uses a run-scoped recovery marker and rollback semantics. Until that marker is durably removed, readers fail closed and the operation is not committed. An interrupted or injected failure restores the previous decision, approval projection, legacy unconditional projection, and run phase; approved-with-conditions never creates the legacy projection. Exact recovery of a marker that was already prepared may run before the rollback writer guard; it resolves only that interrupted transaction, after which the requested writer still returns `GOVERNANCE_READ_ONLY` and cannot publish a new decision.
 
 ### Projections
 
@@ -247,6 +249,20 @@ v58 records and projects the release policy contract but does not add release, d
 - Make migration explicit, idempotent, and verifiable; never write merely because a legacy artifact was read.
 - Keep v58 readers and gates available in rollback mode and block unsafe package downgrade while active v58-only conditions or decisions exist.
 
+The repository-visible compatibility contract lives at `governance.compatibility` in `.quiver/config.json` and contains exactly these contractual fields:
+
+- `schema_version: 1`;
+- `writer_mode: read-write | read-only`, defaulting to `read-write` for a new or successfully migrated v58 project;
+- `minimum_writer_version`, a valid package semver set to the package version that completed the verified migration and never lowered by Quiver.
+
+Read-only inspection derives one of `none`, `legacy-unverified`, `v58-verified`, or `rollback-read-only`. Legacy identity, digest, disposition, condition, or approval evidence that cannot be proven remains visible as `legacy-unverified`; its unavailable counts are `null`, and it cannot satisfy readiness or advance a phase.
+
+The supported migration sequence is deliberately command-minimal: `migrate --dry-run` previews without writes, confirmed `migrate` or `migrate --yes` applies and performs post-write verification, and `doctor --json` is the independent verification surface. Reapplying an already current migration returns `already-current` and performs no writes. The explicit migration writer is the only governed writer allowed to consume `legacy-unverified` preflight evidence. Before its first project write it repeats the complete preflight, compares the approved snapshot, and independently rechecks writer and dependency compatibility. Apply reports verification failure instead of success when the evidence changes or the resulting contract is not readable and consistent.
+
+Setting `writer_mode` to `read-only` is the explicit rollback mode. It never rewrites canonical governance data. Compatible readers and gates continue to operate and fail closed, while every supported v58 writer returns `GOVERNANCE_READ_ONLY` with exit code 1. A writer older than `minimum_writer_version`, or a migrated project whose declared local `create-quiver` dependency is older, returns `UNSAFE_WRITER_DOWNGRADE` with exit code 1. This guard covers Quiver's supported command path; deliberately executing a pre-guard binary outside that path is not representable as a guarantee by the current package and must be prevented operationally through the tracked dependency and review controls.
+
+Compatibility failures use the stable nonlocalized codes `LEGACY_EVIDENCE_UNVERIFIED`, `GOVERNANCE_READ_ONLY`, `UNSAFE_WRITER_DOWNGRADE`, and `MIGRATION_VERIFICATION_FAILED`. Human messages may be localized; JSON keys, statuses, enum values, codes, and exit semantics may not be localized.
+
 ## Acceptance criteria
 
 ### AC-01 — Shared versioned governance configuration
@@ -358,6 +374,7 @@ Traceability: RQ-001 through RQ-009; REV-02, REV-03, REV-06, REV-07, REV-11, REV
 9. Repository lifecycle convention makes slice-00 documentary-only. It freezes the finding schema and enums suggested by the v58 roadmap; slice-01 performs their runtime implementation.
 10. Slice-04 canonicalizes approval digests and counts with the formulas in Approvals, persists final decisions in the run governance store, and exposes the RQ-008 `ai approval show|verify|export` surface while retaining plural `ai approvals` as the compatible listing command.
 11. Slice-05 uses `transfer-blocker` for pre-decision transfer mutations, freezes the exact-one target and criterion contracts above, and projects canonical state through `GOVERNANCE_MANIFEST.json`; unavailable canonical parity fails closed.
+12. Slice-06 keeps migration and rollback command-minimal: compatibility metadata is schema-validated in the existing governance config, apply verifies itself, `doctor --json` is the independent verifier, and rollback is the tracked `read-only` writer mode rather than a destructive data downgrade or new command namespace.
 
 ## Slice roadmap
 
@@ -394,4 +411,4 @@ Traceability: RQ-001 through RQ-009; REV-02, REV-03, REV-06, REV-07, REV-11, REV
 - The documentary foundation in slice-00 is completed and merged with recorded structural and semantic evidence.
 - slice-01 runtime implementation is completed with executed and independently reviewed evidence.
 - slice-02 is completed and merged; slice-03 implementation is completed with executed and independently reviewed evidence.
-- slice-04 is completed and merged; slice-05 is authorized, preflighted, and in implementation.
+- slices 00 through 05 are completed and merged; slice-06 implementation and evidence are completed, with human PR review and merge pending.

@@ -10,6 +10,7 @@ const {
   FINDING_SEVERITIES,
   GOVERNANCE_ACTIONS,
   GOVERNANCE_SCHEMA_VERSION,
+  GOVERNANCE_WRITER_MODES,
   INDEPENDENCE_RULES,
   MINIMUM_SENSITIVE_CATEGORIES,
   PHASE_OWNERS,
@@ -39,6 +40,14 @@ const CURRENT_PHASE_REVISION_REQUIRED = 'CURRENT_PHASE_REVISION_REQUIRED';
 const DISPOSITION_UNRESOLVED = 'DISPOSITION_UNRESOLVED';
 const APPROVAL_BINDING_MISMATCH = 'APPROVAL_BINDING_MISMATCH';
 const REPRESENTATION_MISMATCH = 'REPRESENTATION_MISMATCH';
+const LEGACY_EVIDENCE_UNVERIFIED = 'LEGACY_EVIDENCE_UNVERIFIED';
+const GOVERNANCE_READ_ONLY = 'GOVERNANCE_READ_ONLY';
+const UNSAFE_WRITER_DOWNGRADE = 'UNSAFE_WRITER_DOWNGRADE';
+const MIGRATION_VERIFICATION_FAILED = 'MIGRATION_VERIFICATION_FAILED';
+const PACKAGE_VERSION = JSON.parse(
+  fs.readFileSync(path.resolve(__dirname, '../../../../package.json'), 'utf8'),
+).version;
+const CURRENT_WRITER_VERSION = PACKAGE_VERSION;
 const TRANSFER_DISPOSITION_ACTIONS = Object.freeze([
   'transfer-to-spec',
   'transfer-to-slice',
@@ -76,6 +85,60 @@ class GovernanceError extends Error {
     this.code = code;
     this.details = details;
   }
+}
+
+function parsePackageSemver(value) {
+  const text = String(value || '').trim();
+  const match = text.match(
+    /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|[0-9A-Za-z-]*[A-Za-z-][0-9A-Za-z-]*)(?:\.(?:0|[1-9]\d*|[0-9A-Za-z-]*[A-Za-z-][0-9A-Za-z-]*))*))?(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$/,
+  );
+  if (!match) return null;
+  return {
+    major: Number(match[1]),
+    minor: Number(match[2]),
+    patch: Number(match[3]),
+    prerelease: match[4] ? match[4].split('.') : [],
+    raw: text,
+  };
+}
+
+function comparePrerelease(left, right) {
+  if (left.length === 0 && right.length === 0) return 0;
+  if (left.length === 0) return 1;
+  if (right.length === 0) return -1;
+  const length = Math.max(left.length, right.length);
+  for (let index = 0; index < length; index += 1) {
+    if (typeof left[index] === 'undefined') return -1;
+    if (typeof right[index] === 'undefined') return 1;
+    const leftNumeric = /^\d+$/.test(left[index]);
+    const rightNumeric = /^\d+$/.test(right[index]);
+    if (leftNumeric && rightNumeric) {
+      if (left[index].length !== right[index].length) {
+        return left[index].length < right[index].length ? -1 : 1;
+      }
+      if (left[index] !== right[index]) return left[index] < right[index] ? -1 : 1;
+      continue;
+    }
+    if (leftNumeric !== rightNumeric) return leftNumeric ? -1 : 1;
+    if (left[index] !== right[index]) return left[index] < right[index] ? -1 : 1;
+  }
+  return 0;
+}
+
+function comparePackageSemver(leftValue, rightValue) {
+  const left = parsePackageSemver(leftValue);
+  const right = parsePackageSemver(rightValue);
+  if (!left || !right) {
+    throw new GovernanceError(
+      UNSAFE_WRITER_DOWNGRADE,
+      'Writer compatibility requires valid package semver values.',
+      { writer_version: String(leftValue || ''), minimum_writer_version: String(rightValue || '') },
+    );
+  }
+  for (const field of ['major', 'minor', 'patch']) {
+    if (left[field] !== right[field]) return left[field] < right[field] ? -1 : 1;
+  }
+  return comparePrerelease(left.prerelease, right.prerelease);
 }
 
 function defaultAuthorizationActions() {
@@ -148,9 +211,22 @@ function defaultConditionDispositionRules() {
   ];
 }
 
-function buildDefaultGovernanceConfig() {
+function buildDefaultGovernanceConfig(options = {}) {
+  const minimumWriterVersion = String(options.minimumWriterVersion || PACKAGE_VERSION).trim();
+  if (!parsePackageSemver(minimumWriterVersion)) {
+    throw new GovernanceError(
+      'GOVERNANCE_CONFIG_INVALID',
+      'Default governance compatibility requires a valid minimum writer package semver.',
+      { minimum_writer_version: minimumWriterVersion },
+    );
+  }
   return {
     schema_version: GOVERNANCE_SCHEMA_VERSION,
+    compatibility: {
+      schema_version: 1,
+      writer_mode: 'read-write',
+      minimum_writer_version: minimumWriterVersion,
+    },
     requested_profile: DEFAULT_EXECUTION_PROFILE,
     requirement_categories: [],
     policy: {
@@ -281,14 +357,14 @@ function validateGovernanceConfig(governanceValue) {
   return parsed.data;
 }
 
-function mergeGovernanceConfig(rootConfig) {
+function mergeGovernanceConfig(rootConfig, options = {}) {
   const root = isPlainObject(rootConfig) ? cloneJsonValue(rootConfig) : {};
   const hasNamespace = Object.prototype.hasOwnProperty.call(root, 'governance');
   if (hasNamespace && !isPlainObject(root.governance)) {
     validateGovernanceConfig(root.governance);
   }
   const current = isPlainObject(root.governance) ? root.governance : {};
-  const governance = validateGovernanceConfig(mergeDefaults(buildDefaultGovernanceConfig(), current));
+  const governance = validateGovernanceConfig(mergeDefaults(buildDefaultGovernanceConfig(options), current));
   return {
     ...root,
     governance,
@@ -330,9 +406,74 @@ function readGovernanceConfig(projectRoot, options = {}) {
     return null;
   }
   if (!present) {
-    return buildDefaultGovernanceConfig();
+    return buildDefaultGovernanceConfig(options);
   }
-  return mergeGovernanceConfig(root).governance;
+  return mergeGovernanceConfig(root, options).governance;
+}
+
+function readGovernanceCompatibility(projectRoot, options = {}) {
+  const root = readRootConfig(projectRoot);
+  const governance = isPlainObject(root?.governance) ? root.governance : null;
+  const present = Boolean(
+    governance && Object.prototype.hasOwnProperty.call(governance, 'compatibility'),
+  );
+  if (!present && options.allowMissing === true) return null;
+  if (!present) {
+    throw new GovernanceError(
+      LEGACY_EVIDENCE_UNVERIFIED,
+      'The project does not contain verified v58 compatibility metadata.',
+    );
+  }
+  return validateGovernanceConfig(governance).compatibility;
+}
+
+function assertGovernanceWriterAllowed(governanceValue, writerVersion, options = {}) {
+  const governance = validateGovernanceConfig(governanceValue);
+  const compatibility = governance.compatibility;
+  if (compatibility.writer_mode === 'read-only') {
+    throw new GovernanceError(
+      GOVERNANCE_READ_ONLY,
+      'Governance writers are disabled while compatibility writer_mode is read-only.',
+      { action: options.action || null, writer_mode: compatibility.writer_mode },
+    );
+  }
+  if (comparePackageSemver(writerVersion, compatibility.minimum_writer_version) < 0) {
+    throw new GovernanceError(
+      UNSAFE_WRITER_DOWNGRADE,
+      'The active Quiver writer is older than the project minimum writer version.',
+      {
+        action: options.action || null,
+        writer_version: String(writerVersion || ''),
+        minimum_writer_version: compatibility.minimum_writer_version,
+      },
+    );
+  }
+  return cloneJsonValue(compatibility);
+}
+
+function raiseMinimumWriterVersion(governanceValue, writerVersion) {
+  if (!parsePackageSemver(writerVersion)) {
+    throw new GovernanceError(
+      UNSAFE_WRITER_DOWNGRADE,
+      'Cannot persist an invalid minimum writer package version.',
+      { writer_version: String(writerVersion || '') },
+    );
+  }
+  const merged = validateGovernanceConfig(mergeDefaults(
+    buildDefaultGovernanceConfig({ minimumWriterVersion: writerVersion }),
+    isPlainObject(governanceValue) ? governanceValue : {},
+  ));
+  const currentMinimum = merged.compatibility.minimum_writer_version;
+  const minimumWriterVersion = comparePackageSemver(writerVersion, currentMinimum) > 0
+    ? String(writerVersion)
+    : currentMinimum;
+  return validateGovernanceConfig({
+    ...cloneJsonValue(merged),
+    compatibility: {
+      ...cloneJsonValue(merged.compatibility),
+      minimum_writer_version: minimumWriterVersion,
+    },
+  });
 }
 
 function canonicalizeJson(value) {
@@ -1657,6 +1798,7 @@ module.exports = {
   APPROVAL_BINDING_MISMATCH,
   CONDITION_ELIGIBILITY_CODES,
   CONDITION_ELIGIBILITY_STATUSES,
+  CURRENT_WRITER_VERSION,
   CURRENT_PHASE_REVISION_REQUIRED,
   DEFAULT_SENSITIVE_CATEGORIES: MINIMUM_SENSITIVE_CATEGORIES,
   DEFAULT_EXECUTION_PROFILE,
@@ -1667,21 +1809,28 @@ module.exports = {
   DISPOSITION_UNRESOLVED,
   ELIGIBLE_WITH_CONDITIONS,
   FINDING_RECONCILIATION_AMBIGUOUS,
+  GOVERNANCE_READ_ONLY,
+  GOVERNANCE_WRITER_MODES,
   GovernanceError,
+  LEGACY_EVIDENCE_UNVERIFIED,
+  MIGRATION_VERIFICATION_FAILED,
   NON_TRANSFERABLE_BLOCKER,
   PROVIDER_OUTPUT_INVALID,
   PROTECTED_CRITICAL_REQUIRES_BREAK_GLASS,
   REPRESENTATION_MISMATCH,
+  UNSAFE_WRITER_DOWNGRADE,
   TECHNICAL_PLAN_BLOCKING_CATEGORIES,
   TRANSFER_DISPOSITION_ACTIONS,
   assertProviderReviewAggregates,
   assertApprovalBindingParity,
+  assertGovernanceWriterAllowed,
   authorizeGovernanceAction,
   buildCriterionBinding,
   buildDefaultGovernanceConfig,
   buildConditionedDecisionProjection,
   buildApprovalDecisionRecord,
   canonicalSha256,
+  comparePackageSemver,
   computeApprovalDecisionDigest,
   computeApprovalDispositionDigest,
   computeApprovalProfileDigest,
@@ -1693,11 +1842,14 @@ module.exports = {
   mergeGovernanceConfig,
   normalizeConditionDispositionInput,
   normalizeTransferTarget,
+  parsePackageSemver,
   parseProviderReview,
   projectPhaseAwareReview,
   readGovernanceConfig,
+  readGovernanceCompatibility,
   reconcileFindings,
   resolveEffectiveProfile,
+  raiseMinimumWriterVersion,
   stableStringify,
   validateTransferDispositionSet,
   validateGovernanceConfig,
