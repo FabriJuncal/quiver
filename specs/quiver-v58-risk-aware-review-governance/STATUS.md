@@ -1,10 +1,10 @@
 # Status — Quiver v58 Risk-aware Review Governance
 
-Overall status: In Progress
+Overall status: Implementation Complete — Pending Human Review and Merge
 
-Current stage: slice-05 finding disposition and transfer is implemented, validated, and ready for human review.
+Current stage: slice-06 integration, migration, and documentation is implemented, validated, independently reviewed, and published as PR #144 for human review.
 
-Next contract-ready slice: slice-06-integration-migration-docs (execution remains gated by slice-05 human review and merge)
+Next contract-ready slice: none; slice-06 is the final planned v58 slice.
 
 ## Approval and delivery record
 
@@ -22,7 +22,11 @@ Next contract-ready slice: slice-06-integration-migration-docs (execution remain
 - slice-04 implementation PR: human-reviewed and merged on 2026-08-27.
 - slice-05 contract amendment: transfer authorization, exact-one targets, criterion binding, immutable manifest, canonical parity, atomic batch normalization, and required scope additions explicitly authorized on 2026-08-27.
 - slice-05 implementation closure: completed, validated, and independently reviewed on 2026-08-27.
-- Current publication gate: publish the slice-05 PR and wait for human review and merge.
+- slice-05 implementation PR: human-reviewed and merged before slice-06 execution.
+- slice-06 contract amendment: compatibility metadata, verification mapping, rollback writer mode, stable codes, enforceable downgrade boundary, and required scope additions explicitly authorized on 2026-08-31.
+- slice-06 implementation closure: completed, validated, and independently approved on 2026-08-31.
+- slice-06 implementation PR: [#144](https://github.com/FabriJuncal/quiver/pull/144) opened from the single slice commit.
+- Current gate: human review and merge of PR #144 without claiming release or deployment.
 
 Here, `completed` records finished implementation and executed slice evidence; it does not bypass the human PR gate. `ready` records that the next slice contract is executable only after its completed dependency is merged into the base branch.
 
@@ -35,21 +39,19 @@ Here, `completed` records finished implementation and executed slice evidence; i
 | slice-02-review-budget-circuit-breaker | QUIVER-58-02 | completed | slice-01 | Merged dependency |
 | slice-03-approved-with-conditions | QUIVER-58-03 | completed | slice-02 | Merged dependency |
 | slice-04-digest-bound-approvals | QUIVER-58-04 | completed | slice-03 | Merged dependency |
-| slice-05-finding-disposition-transfer | QUIVER-58-05 | completed | slice-04 | Human review and merge |
-| slice-06-integration-migration-docs | QUIVER-58-06 | planned | slice-05 | Dependency completed |
+| slice-05-finding-disposition-transfer | QUIVER-58-05 | completed | slice-04 | Merged dependency |
+| slice-06-integration-migration-docs | QUIVER-58-06 | completed | slice-05 | Human review and merge |
 
 ## Pending work
 
-1. Publish the validated slice-05 PR and wait for human review and merge.
-2. Continue slice 06 only after that merge.
-3. Validate migration, rollback read mode, compatibility, and documentation in slice 06.
-4. Record per-slice validation in each `CLOSURE_BRIEF.md` and `pr.md`.
-5. Close the package only after all acceptance criteria have executed evidence.
+1. Wait for mandatory human review and merge of PR #144.
+2. Record the merge reference after the human gate.
+3. Treat release, package publication, deployment, and OTA as separate, still-unexecuted work.
 
 ## Blockers
 
-No slice-05 implementation blocker remains. Human review and merge are the only gate before slice 06; later compatibility, migration, and rollback capabilities remain intentionally assigned there.
+No implementation blocker remains. Human PR review and merge are the only open repository gate.
 
 ## Guardrail
 
-Do not begin slice-06 before the slice-05 PR is human-reviewed and merged. Do not implement compatibility migration, package rollback, release, deployment, v59, or v60 from the slice-05 branch.
+Do not auto-merge or add destructive downgrade, release, deployment, v59, or v60 behavior from the slice-06 branch.

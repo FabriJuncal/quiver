@@ -532,6 +532,10 @@ function runSmoke() {
   delete legacyPkg.scripts['quiver:refresh-active-slices'];
   legacyPkg.scripts.lint = 'echo lint';
   writeJson(legacyPackage, legacyPkg);
+  const legacyConfigPath = path.join(legacyProject, '.quiver', 'config.json');
+  const legacyConfig = readJson(legacyConfigPath);
+  delete legacyConfig.governance.compatibility;
+  writeJson(legacyConfigPath, legacyConfig);
   fs.rmSync(path.join(legacyProject, '.quiver', 'state.json'));
   fs.rmSync(path.join(legacyProject, 'docs', 'AI_ONBOARDING_PROMPT.md'));
   fs.rmSync(path.join(legacyProject, 'tools', 'scripts', 'migrate-project.sh'));

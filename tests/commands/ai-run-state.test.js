@@ -9,7 +9,9 @@ const {
   createAiRun,
   readAiRun,
   readRunApprovalDecision,
+  readRunGovernance,
   recordAiRunApproval,
+  runApprovalCommitPath,
   updateAiRunPhase,
 } = require('../../src/create-quiver/lib/ai/run-state');
 const {
@@ -25,6 +27,7 @@ const {
 } = require('../../src/create-quiver/lib/ai/review-governance');
 
 const BIN_PATH = path.resolve(__dirname, '../../bin/create-quiver.js');
+const packageJson = require('../../package.json');
 
 function makeRepo() {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'quiver-ai-run-cli-'));
@@ -80,6 +83,14 @@ function configureCanonicalApprovals(repoRoot) {
   fs.writeFileSync(
     path.join(repoRoot, '.quiver', 'config.json'),
     `${JSON.stringify({ governance }, null, 2)}\n`,
+  );
+  fs.writeFileSync(
+    path.join(repoRoot, '.quiver', 'state.json'),
+    `${JSON.stringify({
+      quiver_version: packageJson.version,
+      initialized_version: packageJson.version,
+      last_initialized_at: '2026-05-21T00:00:00.000Z',
+    }, null, 2)}\n`,
   );
   const profile = resolveEffectiveProfile({ governance, requirementCategories: [] });
   return { actor, governance, profile };
@@ -368,6 +379,50 @@ test('ai approvals fails closed when a run projection points at another run', ()
     assert.notEqual(result.status, 0);
     assert.match(result.stderr, /approval projection path is not canonical/);
     assert.equal(result.stdout.includes('run-projection-b'), false);
+
+    for (const command of [
+      ['approvals', '--json'],
+      ['status', '--run', 'run-projection-a', '--json'],
+      ['resume', '--run', 'run-projection-a', '--json'],
+    ]) {
+      const machine = execAiRaw(repo.root, command);
+      assert.equal(machine.status, 1);
+      assert.equal(machine.stderr, '');
+      assert.equal(JSON.parse(machine.stdout).code, 'APPROVAL_BINDING_MISMATCH');
+    }
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('status, resume, approvals, export, and flow share one canonical governance projection', () => {
+  const repo = makeRepo();
+  const runId = 'run-shared-projection';
+
+  try {
+    const { governance, profile } = configureCanonicalApprovals(repo.root);
+    createAiRun(repo.root, {
+      input: 'requirements.md',
+      runId,
+      governance: {
+        requested_profile: profile.requested_profile,
+        effective_profile: profile.effective_profile,
+        policy_version: profile.policy_version,
+        policy_digest: profile.policy_digest,
+        requirement_categories: governance.requirement_categories,
+      },
+    });
+
+    const status = JSON.parse(execAi(repo.root, ['status', '--run', runId, '--json']));
+    const resume = JSON.parse(execAi(repo.root, ['resume', '--run', runId, '--json']));
+    const approvals = JSON.parse(execAi(repo.root, ['approvals', '--json']));
+    const exported = JSON.parse(execAi(repo.root, ['export', '--format', 'json']));
+    const flow = JSON.parse(execCli(repo.root, ['flow', '--json']));
+
+    assert.deepEqual(resume.projection, status.projection);
+    assert.deepEqual(approvals.projection, status.projection);
+    assert.deepEqual(exported.runs.find((run) => run.run_id === runId).governance, status.projection);
+    assert.deepEqual(flow.facts.governance, status.projection);
   } finally {
     repo.cleanup();
   }
@@ -755,6 +810,103 @@ test('a run in approval recovery cannot break explicit status or close for anoth
     const implicit = execAiRaw(repo.root, ['status']);
     assert.notEqual(implicit.status, 0);
     assert.match(implicit.stderr, /Approval commit recovery is required/);
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test('rollback recovers a prepared approval WAL before blocking the requested writer', async () => {
+  const repo = makeRepo();
+  const runId = 'run-rollback-recovery';
+  let capturedWal = null;
+
+  try {
+    const { actor, governance, profile } = configureCanonicalApprovals(repo.root);
+    createAiRun(repo.root, {
+      input: 'requirements.md',
+      runId,
+      governance: {
+        requested_profile: profile.requested_profile,
+        effective_profile: profile.effective_profile,
+        policy_version: profile.policy_version,
+        policy_digest: profile.policy_digest,
+        requirement_categories: [],
+      },
+    });
+    const draft = savePlannerDraft(
+      repo.root,
+      'acceptance',
+      'requirements.md',
+      `${JSON.stringify({ spec: { acceptance: ['AC-01'] } }, null, 2)}\n`,
+      { requireDigestBindings: true },
+    );
+    const draftPath = readPhaseApproval(repo.root, 'acceptance').meta.drafts.at(-1).path;
+    updateAiRunPhase(repo.root, runId, 'acceptance-draft', {
+      artifact: draftPath,
+      command: 'ai plan --phase acceptance',
+    });
+
+    await assert.rejects(
+      () => runApprove(repo.root, {
+        actor,
+        commitFaultInjector(point) {
+          if (point === 'after-prepare') {
+            capturedWal = fs.readFileSync(runApprovalCommitPath(repo.root, runId));
+            throw new Error('capture rollback WAL');
+          }
+        },
+        digestBound: true,
+        phase: 'acceptance',
+        publishFinal: true,
+        runId,
+        suppressOutput: true,
+        version: draft.version,
+      }),
+      /capture rollback WAL/,
+    );
+    assert.ok(capturedWal);
+    fs.writeFileSync(runApprovalCommitPath(repo.root, runId), capturedWal);
+
+    governance.compatibility.writer_mode = 'read-only';
+    fs.writeFileSync(
+      path.join(repo.root, '.quiver', 'config.json'),
+      `${JSON.stringify({ governance }, null, 2)}\n`,
+    );
+    const statePath = path.join(repo.root, '.quiver', 'runs', runId, 'state.json');
+    const approvalMetaPath = path.join(repo.root, '.quiver', 'approvals', 'acceptance', 'meta.json');
+    const beforeState = fs.readFileSync(statePath);
+    const beforeMeta = fs.readFileSync(approvalMetaPath);
+
+    const recovery = execAiRaw(repo.root, [
+      'approve',
+      '--phase', 'acceptance',
+      '--version', String(draft.version),
+      '--run', runId,
+      '--json',
+    ]);
+    assert.equal(recovery.status, 1);
+    assert.equal(recovery.stderr, '');
+    assert.equal(JSON.parse(recovery.stdout).code, 'GOVERNANCE_READ_ONLY');
+    assert.equal(fs.existsSync(runApprovalCommitPath(repo.root, runId)), false);
+    assert.equal(readAiRun(repo.root, runId).phase, 'acceptance-draft');
+    assert.throws(
+      () => readRunApprovalDecision(repo.root, runId, 'acceptance'),
+      (error) => error.code === 'APPROVAL_NOT_FOUND',
+    );
+    assert.equal(readRunGovernance(repo.root, runId), null);
+
+    const withoutWal = execAiRaw(repo.root, [
+      'approve',
+      '--phase', 'acceptance',
+      '--version', String(draft.version),
+      '--run', runId,
+      '--json',
+    ]);
+    assert.equal(withoutWal.status, 1);
+    assert.equal(withoutWal.stderr, '');
+    assert.equal(JSON.parse(withoutWal.stdout).code, 'GOVERNANCE_READ_ONLY');
+    assert.deepEqual(fs.readFileSync(statePath), beforeState);
+    assert.deepEqual(fs.readFileSync(approvalMetaPath), beforeMeta);
   } finally {
     repo.cleanup();
   }

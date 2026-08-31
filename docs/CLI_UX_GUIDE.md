@@ -93,7 +93,7 @@ Reglas:
 | Comando | `--with-planner` | `--interactive` | `--review` | Notas |
 |---|---:|---:|---:|---|
 | `init` | no | si | no | Interactive guia modo de proyecto, metodologia `wdd-sdd`, perfil inicial y proximo paso de perfiles de agentes. |
-| `migrate` | no | no | no | En TTY confirma antes de escribir; en CI/no-TTY requiere `--yes`. `--dry-run` no pide confirmacion ni escribe. |
+| `migrate` | no | no | no | En TTY confirma antes de escribir; en CI/no-TTY requiere `--yes`. `--dry-run` no escribe, apply verifica antes de informar exito y una reaplicacion vigente devuelve `already-current` sin escrituras. |
 | `ai analyze-project` | no | no | si | `--dry-run` es read-only y no ejecuta proveedor; el comando normal con provider aplica docs validados; `--review` queda como modo avanzado de edicion JSON. |
 | `ai prepare-context` | si | si | si | Modo deterministico por defecto; planner opcional con contrato docs-only. |
 | `ai plan` | si | si | si | El planner ya es implicito; `--with-planner` se acepta por consistencia. |
@@ -102,7 +102,9 @@ Reglas:
 | `ai execute-slice` | no | si | no | Interactive puede seleccionar un slice listo y un executor configurado. |
 | `ai execute-plan` | no | si | no | Interactive queda reservado para estrategia/seleccion; JSON sigue limpio. |
 | `ai agent set` | no | si | no | En TTY puede guiar proveedor/modelo; en CI/no-TTY requiere `--provider` y `--model`. |
-| `ai approve` | no | no | no | Si falta `--version` y hay TTY, abre selector de drafts; en CI/no-TTY exige `--version <n>`. |
+| `ai approve` | no | no | no | Si falta `--version` y hay TTY, abre selector de drafts; en CI/no-TTY exige `--version <n>`. La decision gobernada puede ser `approved` o `approved-with-conditions`. |
+| `ai approval show\|verify\|export` | no | no | no | Lee una decision canonica; JSON, codigos, estados y enums permanecen estables y no localizados. |
+| `findings transfer\|disposition` | no | no | no | Escritura gobernada, run-scoped y fail-closed; requiere autorizacion y nunca acepta evidencia contractual insegura. |
 | `ai agent doctor` | no | no | no | Diagnostica perfiles sin escribir; `--json` usa el mismo modelo de hallazgos. |
 | `ai agent repair` | no | no | no | Por ahora solo `--dry-run`; muestra before/after sin escribir. |
 | `ai models list` | no | no | no | Lista el catalogo local conocido por Quiver; no valida acceso de cuenta. |
@@ -214,6 +216,21 @@ Reglas:
 - Las versiones historicas pueden mostrarse como contexto, pero solo el draft current/latest es aprobable.
 - Los snippets o previews de candidatos deben estar truncados y redactados.
 - `ai approvals`, `flow`, `ai status`, `ai resume` y `spec create --interactive` deben usar el mismo modelo de candidatos para no contradecir el proximo paso.
+
+## Gobernanza de revision v58
+
+El perfil efectivo es `fast-delivery` o `high-assurance`. Una categoria sensible fuerza `high-assurance`; un run activo no puede degradarse en silencio. Findings, disposiciones, presupuesto de reviews y decisiones pertenecen al run canonico y todas las superficies deben proyectar los mismos conteos y estados.
+
+No confundir dos contratos:
+
+- `approval_recommendation: approve-with-risk` es metadata de `ai review-plan`;
+- `decision: approved-with-conditions` es una decision final distinta de `approved`, requiere disposiciones completas y nunca se publica como el marker legacy `approved.md`.
+
+Cuando se agota el presupuesto, el CLI no debe invocar nuevamente al provider. Debe exponer `REVIEW_BUDGET_EXHAUSTED`, `HUMAN_DECISION_REQUIRED` y las acciones gobernadas disponibles sin ocultar findings pendientes.
+
+La compatibilidad se proyecta desde `governance.compatibility` con `schema_version`, `writer_mode` y `minimum_writer_version`. Los estados read-only son `none`, `legacy-unverified`, `v58-verified` y `rollback-read-only`. En rollback, readers y gates siguen fail-closed, mientras los writers devuelven `GOVERNANCE_READ_ONLY` con exit code 1.
+
+Los errores de compatibilidad usan cuatro codigos estables: `LEGACY_EVIDENCE_UNVERIFIED`, `GOVERNANCE_READ_ONLY`, `UNSAFE_WRITER_DOWNGRADE` y `MIGRATION_VERIFICATION_FAILED`. Sus claves JSON, status, enums y exits no se traducen. La recuperacion operativa vive en [Troubleshooting](./TROUBLESHOOTING.md#gobernanza-v58-migracion-rollback-y-downgrade).
 
 ## Loaders y prompts
 

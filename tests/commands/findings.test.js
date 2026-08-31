@@ -84,6 +84,15 @@ function makeRepo(options = {}) {
     now: new Date(NOW),
   });
   writeFile(root, '.quiver/config.json', `${JSON.stringify({ governance }, null, 2)}\n`);
+  writeFile(root, '.quiver/state.json', `${JSON.stringify({
+    quiver_version: governance.compatibility.minimum_writer_version,
+    project_name: 'Findings fixture',
+    initialized_version: governance.compatibility.minimum_writer_version,
+    migrated_version: null,
+    last_initialized_at: NOW,
+    last_migration_at: null,
+    last_analysis_at: null,
+  }, null, 2)}\n`);
   writeFile(root, 'technical-plan.json', planWithSlices(options.sliceIds, options.planCriterion));
   writeFile(root, 'docs/criteria/ac-10.md', options.criterion || 'AC-10 — Preserve directed evidence.\r\n');
   const finding = {

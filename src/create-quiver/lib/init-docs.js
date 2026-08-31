@@ -1,4 +1,5 @@
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
 const { execSync } = require('child_process');
 const { isDeepStrictEqual } = require('util');
@@ -7,18 +8,41 @@ const {
   buildQuiverInternalGitignore,
   quiverInternalPaths,
   resolveInitPackageScripts,
+  resolveInitVisibleDirectories,
+  resolveInitVisibleFiles,
 } = require('./init-layout');
 const { resolveLocalizedTemplatePath } = require('./i18n/templates');
 const {
+  CURRENT_WRITER_VERSION,
+  MIGRATION_VERIFICATION_FAILED,
+  UNSAFE_WRITER_DOWNGRADE,
+  GovernanceError,
   mergeGovernanceConfig,
+  raiseMinimumWriterVersion,
   readGovernanceConfig,
   validateGovernanceConfig,
 } = require('./ai/review-governance');
-const { ensureQuiverStateIgnored } = require('./locks');
-const { writeState } = require('./state');
+const { ensureQuiverStateIgnored, inspectQuiverStateIgnore } = require('./locks');
+const {
+  assertProjectWriterAllowed,
+  inspectCompatibilityState,
+  inspectDeclaredWriterDependency,
+  readState,
+  updateStateForMigrate,
+  writeState,
+} = require('./state');
 
 function ensureDir(dirPath) {
   fs.mkdirSync(dirPath, { recursive: true });
+}
+
+function writeTextIfChanged(filePath, content) {
+  if (fs.existsSync(filePath) && fs.readFileSync(filePath, 'utf8') === content) {
+    return false;
+  }
+  ensureDir(path.dirname(filePath));
+  fs.writeFileSync(filePath, content);
+  return true;
 }
 
 function toProjectSlug(projectName) {
@@ -96,14 +120,14 @@ function copyRenderedFile(sourcePath, destinationPath, replacements, skipIfExist
     if (typeof frontMatterFactory === 'function') {
       const existingText = fs.readFileSync(destinationPath, 'utf8');
       const body = stripFrontMatter(existingText);
-      writeFrontMatter(destinationPath, frontMatterFactory({
+      const nextText = writeFrontMatter(destinationPath, frontMatterFactory({
         body,
         existingText,
         renderedText,
         replacements,
         destinationPath,
       }));
-      return 'frontmatter-updated';
+      return nextText === existingText ? 'preserved' : 'frontmatter-updated';
     }
 
     return 'skipped';
@@ -204,6 +228,24 @@ function serializeFrontMatter(fields) {
   ].join('\n');
 }
 
+function readExistingFrontMatterField(text, fieldName) {
+  if (!text.startsWith('---\n')) return undefined;
+  const closing = text.indexOf('\n---\n', 4);
+  if (closing === -1) return undefined;
+  const line = text.slice(4, closing)
+    .split(/\r?\n/)
+    .find((entry) => entry.startsWith(`${fieldName}:`));
+  if (!line) return undefined;
+  const raw = line.slice(line.indexOf(':') + 1).trim();
+  if (raw === 'null') return null;
+  if (/^-?\d+(?:\.\d+)?$/.test(raw)) return Number(raw);
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return raw;
+  }
+}
+
 function buildFrontMatterFields({ purpose, appliesWhen, body, currentDate, supersedes = null }) {
   return {
     purpose,
@@ -217,10 +259,15 @@ function buildFrontMatterFields({ purpose, appliesWhen, body, currentDate, super
 function writeFrontMatter(filePath, fields) {
   const existing = fs.existsSync(filePath) ? fs.readFileSync(filePath, 'utf8') : '';
   const body = stripFrontMatter(existing);
-  const frontMatter = serializeFrontMatter(fields);
+  const existingLastUpdated = readExistingFrontMatterField(existing, 'last_updated');
+  const frontMatter = serializeFrontMatter({
+    ...fields,
+    last_updated: typeof existingLastUpdated === 'undefined'
+      ? fields.last_updated
+      : existingLastUpdated,
+  });
   const nextContent = body.length > 0 ? `${frontMatter}\n\n${body.replace(/\s+$/, '')}\n` : `${frontMatter}\n`;
-  ensureDir(path.dirname(filePath));
-  fs.writeFileSync(filePath, nextContent);
+  writeTextIfChanged(filePath, nextContent);
   return nextContent;
 }
 
@@ -265,9 +312,9 @@ function mergeRootGitignore(projectRoot) {
     ? fs.readFileSync(gitignorePath, 'utf8')
     : '';
 
-  ensureDir(path.dirname(gitignorePath));
-  fs.writeFileSync(gitignorePath, mergeLineList(existingText, ROOT_GITIGNORE_DEFAULTS));
-  return exists ? 'merged' : 'created';
+  const changed = writeTextIfChanged(gitignorePath, mergeLineList(existingText, ROOT_GITIGNORE_DEFAULTS));
+  if (!exists) return 'created';
+  return changed ? 'merged' : 'preserved';
 }
 
 function mergeQuiverInternalGitignore(projectRoot) {
@@ -278,34 +325,47 @@ function mergeQuiverInternalGitignore(projectRoot) {
     : '';
   const defaults = buildQuiverInternalGitignore().split(/\r?\n/).filter(Boolean);
 
-  ensureDir(path.dirname(gitignorePath));
-  fs.writeFileSync(gitignorePath, mergeLineList(existingText, defaults));
-  return exists ? 'merged' : 'created';
+  const changed = writeTextIfChanged(gitignorePath, mergeLineList(existingText, defaults));
+  if (!exists) return 'created';
+  return changed ? 'merged' : 'preserved';
 }
 
-function mergeQuiverConfig(projectRoot) {
+function resolveQuiverConfigMerge(projectRoot, options = {}) {
   const configPath = quiverInternalPaths(projectRoot).configPath;
   const exists = fs.existsSync(configPath);
   let current = buildQuiverConfig();
 
   if (exists) {
     // Validate the existing root and governance namespace before rewriting any bytes.
-    readGovernanceConfig(projectRoot, { allowMissing: true });
+    readGovernanceConfig(projectRoot, {
+      allowMissing: true,
+      minimumWriterVersion: options.minimumWriterVersion,
+    });
     current = JSON.parse(fs.readFileSync(configPath, 'utf8'));
   }
 
-  const next = mergeGovernanceConfig(current);
+  const next = mergeGovernanceConfig(current, {
+    minimumWriterVersion: options.minimumWriterVersion,
+  });
+  if (options.minimumWriterVersion) {
+    next.governance = raiseMinimumWriterVersion(next.governance, options.minimumWriterVersion);
+  }
   validateGovernanceConfig(next.governance);
   const serialized = `${JSON.stringify(next, null, 2)}\n`;
   const changed = !exists || !isDeepStrictEqual(current, next);
 
-  if (changed) {
-    ensureDir(path.dirname(configPath));
-    fs.writeFileSync(configPath, serialized);
+  return { changed, configPath, current, exists, next, serialized };
+}
+
+function mergeQuiverConfig(projectRoot, options = {}) {
+  const resolved = resolveQuiverConfigMerge(projectRoot, options);
+
+  if (resolved.changed) {
+    writeTextIfChanged(resolved.configPath, resolved.serialized);
   }
 
-  if (!exists) return 'created';
-  return changed ? 'merged' : 'preserved';
+  if (!resolved.exists) return 'created';
+  return resolved.changed ? 'merged' : 'preserved';
 }
 
 function resolvePackageName(projectRoot, options = {}) {
@@ -343,7 +403,9 @@ function mergePackageJson(projectRoot, templateRoot, options = {}) {
     ...scripts,
   };
 
-  fs.writeFileSync(packageJsonPath, `${JSON.stringify(existing, null, 2)}\n`);
+  const serialized = `${JSON.stringify(existing, null, 2)}\n`;
+  const changed = writeTextIfChanged(packageJsonPath, serialized);
+  if (!changed) return 'preserved';
   return options.migrateMode ? 'merged' : 'updated';
 }
 
@@ -733,6 +795,406 @@ function buildFullProfileIndexAppendix(projectSlug) {
 `;
 }
 
+const MIGRATION_WRITE_RESULTS = new Set([
+  'created',
+  'created-with-frontmatter',
+  'frontmatter-updated',
+  'merged',
+  'updated',
+]);
+
+function copyExistingMigrationSurface(projectRoot, snapshotRoot, projectSlug) {
+  const relativePaths = [
+    'README.md',
+    'AGENTS.md',
+    '.gitignore',
+    'package.json',
+    'package-lock.json',
+    'pnpm-lock.yaml',
+    'yarn.lock',
+    'bun.lockb',
+    'bun.lock',
+    '.quiver/config.json',
+    '.quiver/.gitignore',
+    '.quiver/state.json',
+    'docs',
+    `specs/${projectSlug}`,
+    'tools/scripts',
+    'LICENSE',
+    'CONTRIBUTING.md',
+    'CODE_OF_CONDUCT.md',
+    'SECURITY.md',
+    'CHANGELOG.md',
+    'ROADMAP.md',
+    '.github',
+  ];
+
+  for (const relativePath of relativePaths) {
+    const sourcePath = path.join(projectRoot, relativePath);
+    if (!fs.existsSync(sourcePath)) continue;
+    const destinationPath = path.join(snapshotRoot, relativePath);
+    ensureDir(path.dirname(destinationPath));
+    fs.cpSync(sourcePath, destinationPath, {
+      recursive: true,
+      preserveTimestamps: true,
+    });
+  }
+}
+
+function inspectTemplateMirrorDelta(templateRoot, projectRoot) {
+  if (!templateRoot || !fs.existsSync(templateRoot)) {
+    return {
+      canProveCurrent: false,
+      missingCount: 0,
+      sample: [],
+    };
+  }
+
+  const mirrorRoot = path.join(projectRoot, 'docs-template');
+  if (path.resolve(templateRoot) === path.resolve(mirrorRoot)) {
+    return {
+      canProveCurrent: false,
+      missingCount: 0,
+      sample: [],
+    };
+  }
+
+  const pending = [''];
+  const missing = [];
+  while (pending.length > 0) {
+    const relativeDirectory = pending.pop();
+    const sourceDirectory = path.join(templateRoot, relativeDirectory);
+    for (const entry of fs.readdirSync(sourceDirectory, { withFileTypes: true })) {
+      const relativePath = path.join(relativeDirectory, entry.name);
+      if (entry.isDirectory()) {
+        pending.push(relativePath);
+      }
+      if (!fs.existsSync(path.join(mirrorRoot, relativePath))) {
+        missing.push(relativePath.split(path.sep).join('/'));
+      }
+    }
+  }
+
+  return {
+    canProveCurrent: true,
+    missingCount: missing.length,
+    sample: missing.slice(0, 25),
+  };
+}
+
+function mergeTemplateMirror(templateRoot, projectRoot) {
+  const mirrorRoot = path.join(projectRoot, 'docs-template');
+  if (!templateRoot
+    || !fs.existsSync(templateRoot)
+    || path.resolve(templateRoot) === path.resolve(mirrorRoot)) {
+    return { changed: false, destination: 'docs-template', missingCount: 0 };
+  }
+  const inspection = inspectTemplateMirrorDelta(templateRoot, projectRoot);
+  if (inspection.missingCount === 0) {
+    return { changed: false, destination: 'docs-template', missingCount: 0 };
+  }
+  ensureDir(mirrorRoot);
+  fs.cpSync(templateRoot, mirrorRoot, {
+    recursive: true,
+    force: false,
+    errorOnExist: false,
+    preserveTimestamps: true,
+  });
+  return {
+    changed: true,
+    destination: 'docs-template',
+    missingCount: inspection.missingCount,
+  };
+}
+
+function migrationStateNeedsUpdate(state, projectName, cliVersion) {
+  return !state
+    || state.quiver_version !== cliVersion
+    || state.migrated_version !== cliVersion
+    || typeof state.last_migration_at !== 'string'
+    || state.last_migration_at.length === 0
+    || (projectName && state.project_name !== projectName);
+}
+
+function migrationPreflightGuardSnapshot(preflight) {
+  return {
+    status: preflight.status,
+    project_name: preflight.project_name,
+    project_slug: preflight.project_slug,
+    writer_version: preflight.writer_version,
+    compatibility: preflight.compatibility,
+    dependency: preflight.dependency,
+    delta: preflight.delta,
+  };
+}
+
+function preflightProjectMigration(options = {}) {
+  const projectRoot = path.resolve(options.projectRoot || process.cwd());
+  const cliVersion = String(options.cliVersion || CURRENT_WRITER_VERSION).trim();
+  const packagePath = path.join(projectRoot, 'package.json');
+  let packageJson = {};
+  if (fs.existsSync(packagePath)) {
+    try {
+      packageJson = JSON.parse(fs.readFileSync(packagePath, 'utf8'));
+    } catch (error) {
+      throw new GovernanceError(
+        MIGRATION_VERIFICATION_FAILED,
+        'package.json is not valid JSON.',
+        { cause_code: error?.code || 'PACKAGE_JSON_INVALID' },
+      );
+    }
+  }
+  const projectName = options.projectName
+    || packageJson.name
+    || path.basename(projectRoot)
+    || 'Quiver Project';
+  const projectSlug = toProjectSlug(projectName);
+  const templateRoot = options.templateRoot || '';
+  const compatibility = inspectCompatibilityState(projectRoot, { writerVersion: cliVersion });
+
+  if (compatibility.status === 'none') {
+    throw new GovernanceError(
+      MIGRATION_VERIFICATION_FAILED,
+      'Migration requires existing Quiver initialization evidence.',
+      { compatibility_status: compatibility.status },
+    );
+  }
+  if (compatibility.writer_compatible === false) {
+    throw new GovernanceError(
+      UNSAFE_WRITER_DOWNGRADE,
+      'The active Quiver writer is older than the project minimum writer version.',
+      {
+        writer_version: cliVersion,
+        minimum_writer_version: compatibility.minimum_writer_version,
+      },
+    );
+  }
+
+  const dependency = inspectDeclaredWriterDependency(projectRoot, cliVersion);
+  if (dependency.status === 'older') {
+    throw new GovernanceError(
+      UNSAFE_WRITER_DOWNGRADE,
+      'The declared local create-quiver dependency is older than the migration writer.',
+      {
+        declared_version: dependency.declared,
+        minimum_writer_version: cliVersion,
+      },
+    );
+  }
+
+  const deltas = new Map();
+  const addDelta = (relativePath, category, reason, details = {}) => {
+    const key = `${category}:${relativePath}`;
+    if (!deltas.has(key)) {
+      deltas.set(key, {
+        path: relativePath,
+        category,
+        reason,
+        ...details,
+      });
+    }
+  };
+
+  const expectedDirectories = [
+    'docs',
+    'docs/ai',
+    '.quiver',
+    '.quiver/scans',
+    'docs/archive',
+    'docs/examples',
+    'docs/tools',
+    `specs/${projectSlug}/slices/slice-template`,
+    'tools/scripts',
+  ];
+  for (const relativePath of expectedDirectories) {
+    if (!fs.existsSync(path.join(projectRoot, relativePath))) {
+      addDelta(relativePath, 'directory', 'missing-directory');
+    }
+  }
+
+  const snapshotRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'quiver-migrate-preflight-'));
+  try {
+    copyExistingMigrationSurface(projectRoot, snapshotRoot, projectSlug);
+    const simulation = initializeProjectDocs({
+      projectRoot: snapshotRoot,
+      projectName,
+      cliVersion,
+      includeTemplates: false,
+      legacyScripts: true,
+      migrateMode: true,
+      profile: 'full',
+      templateRoot: templateRoot || path.join(projectRoot, 'docs-template'),
+      language: options.language || '',
+      skipMigrationPreflight: true,
+    });
+    for (const operation of simulation.operations) {
+      if (!MIGRATION_WRITE_RESULTS.has(operation.result)) continue;
+      addDelta(
+        operation.destination,
+        'surface',
+        operation.result,
+        { source: operation.source },
+      );
+    }
+  } finally {
+    fs.rmSync(snapshotRoot, { recursive: true, force: true });
+  }
+
+  const ignoreInspection = inspectQuiverStateIgnore(projectRoot);
+  if (ignoreInspection.available
+    && (ignoreInspection.blanket || ignoreInspection.missingRuntimePatterns.length > 0)) {
+    addDelta('.git/info/exclude', 'ignore', 'runtime-ignore-update', {
+      blanket: ignoreInspection.blanket,
+      missing_patterns: ignoreInspection.missingRuntimePatterns,
+    });
+  }
+
+  const mirrorInspection = inspectTemplateMirrorDelta(templateRoot, projectRoot);
+  if (!mirrorInspection.canProveCurrent) {
+    addDelta('docs-template/', 'template-mirror', 'template-source-unavailable', {
+      unverifiable: true,
+    });
+  } else if (mirrorInspection.missingCount > 0) {
+    addDelta('docs-template/', 'template-mirror', 'missing-template-entries', {
+      missing_count: mirrorInspection.missingCount,
+      sample: mirrorInspection.sample,
+    });
+  }
+
+  const currentState = readState(projectRoot);
+  if (migrationStateNeedsUpdate(currentState, projectName, cliVersion)) {
+    addDelta('.quiver/state.json', 'state', 'migration-metadata-update');
+  }
+
+  if (options.skipInstall !== true && dependency.status === 'absent') {
+    addDelta('package.json#devDependencies.create-quiver', 'install', 'missing-local-writer');
+  }
+
+  const delta = [...deltas.values()].sort((left, right) => (
+    left.path.localeCompare(right.path) || left.category.localeCompare(right.category)
+  ));
+  const categoryCounts = delta.reduce((counts, entry) => {
+    counts[entry.category] = (counts[entry.category] || 0) + 1;
+    return counts;
+  }, {});
+
+  return {
+    schema_version: 1,
+    status: delta.length === 0 ? 'already-current' : 'apply',
+    project_name: projectName,
+    project_slug: projectSlug,
+    writer_version: cliVersion,
+    compatibility,
+    dependency,
+    delta,
+    summary: {
+      changes: delta.length,
+      categories: categoryCounts,
+      can_prove_current: mirrorInspection.canProveCurrent,
+    },
+  };
+}
+
+function applyProjectMigrationSurface(options = {}) {
+  const preflight = options.preflight || preflightProjectMigration(options);
+  if (preflight.status === 'already-current') {
+    return {
+      status: 'already-current',
+      preflight,
+      operations: [],
+      state: null,
+      surface_writes: false,
+    };
+  }
+
+  const currentPreflight = preflightProjectMigration(options);
+  if (!isDeepStrictEqual(
+    migrationPreflightGuardSnapshot(preflight),
+    migrationPreflightGuardSnapshot(currentPreflight),
+  )) {
+    throw new GovernanceError(
+      MIGRATION_VERIFICATION_FAILED,
+      'Migration evidence changed after preflight.',
+      {
+        preflight_status: preflight.status,
+        current_status: currentPreflight.status,
+        preflight_compatibility: preflight.compatibility.status,
+        current_compatibility: currentPreflight.compatibility.status,
+      },
+    );
+  }
+
+  const writerInspection = assertProjectWriterAllowed(options.projectRoot, {
+    action: 'migrate project',
+    allowLegacy: currentPreflight.compatibility.status === 'legacy-unverified',
+    writerVersion: currentPreflight.writer_version,
+  });
+  if (writerInspection.status !== currentPreflight.compatibility.status
+    || writerInspection.writer_mode !== currentPreflight.compatibility.writer_mode
+    || writerInspection.minimum_writer_version
+      !== currentPreflight.compatibility.minimum_writer_version) {
+    throw new GovernanceError(
+      MIGRATION_VERIFICATION_FAILED,
+      'Migration evidence changed before the first project write.',
+      {
+        preflight_status: currentPreflight.compatibility.status,
+        writer_status: writerInspection.status,
+      },
+    );
+  }
+  const writerDependency = inspectDeclaredWriterDependency(
+    options.projectRoot,
+    currentPreflight.writer_version,
+  );
+  if (writerDependency.status === 'older') {
+    throw new GovernanceError(
+      UNSAFE_WRITER_DOWNGRADE,
+      'The declared local create-quiver dependency is older than the migration writer.',
+      {
+        declared_version: writerDependency.declared,
+        minimum_writer_version: currentPreflight.writer_version,
+      },
+    );
+  }
+  if (!isDeepStrictEqual(writerDependency, currentPreflight.dependency)) {
+    throw new GovernanceError(
+      MIGRATION_VERIFICATION_FAILED,
+      'Migration dependency evidence changed before the first project write.',
+      {
+        preflight_dependency_status: currentPreflight.dependency.status,
+        writer_dependency_status: writerDependency.status,
+      },
+    );
+  }
+
+  const mirror = mergeTemplateMirror(options.templateRoot || '', options.projectRoot);
+  const docs = initializeProjectDocs({
+    ...options,
+    cliVersion: preflight.writer_version,
+    migrateMode: true,
+    profile: 'full',
+    legacyScripts: true,
+    skipMigrationPreflight: true,
+  });
+  const state = updateStateForMigrate(
+    options.projectRoot,
+    options.projectName || preflight.project_name,
+    preflight.writer_version,
+  );
+  const operationWrites = docs.operations.filter((operation) => (
+    MIGRATION_WRITE_RESULTS.has(operation.result)
+  ));
+
+  return {
+    status: 'applied',
+    preflight,
+    operations: docs.operations,
+    state,
+    mirror,
+    surface_writes: mirror.changed || operationWrites.length > 0 || state.wrote,
+  };
+}
+
 function initializeProjectDocs(options) {
   const {
     projectRoot,
@@ -745,6 +1207,36 @@ function initializeProjectDocs(options) {
     templateRoot: providedTemplateRoot = '',
     language = '',
   } = options;
+
+  let migrationPreflight = null;
+  if (migrateMode && options.skipMigrationPreflight !== true) {
+    migrationPreflight = options.migrationPreflight || preflightProjectMigration({
+      ...options,
+      projectRoot,
+      projectName,
+      cliVersion,
+      templateRoot: providedTemplateRoot,
+    });
+    if (migrationPreflight.status === 'already-current') {
+      return {
+        status: 'already-current',
+        projectSlug: migrationPreflight.project_slug,
+        preflight: migrationPreflight,
+        operations: [],
+      };
+    }
+  } else if (!migrateMode) {
+    const compatibility = inspectCompatibilityState(projectRoot, { writerVersion: cliVersion });
+    const existingQuiverProject = typeof options.existingQuiverProject === 'boolean'
+      ? options.existingQuiverProject
+      : compatibility.status !== 'none';
+    if (existingQuiverProject && compatibility.status !== 'none') {
+      assertProjectWriterAllowed(projectRoot, {
+        action: 'initialize project',
+        writerVersion: cliVersion,
+      });
+    }
+  }
 
   const templateRoot = providedTemplateRoot || path.join(projectRoot, 'docs-template');
   const internalPaths = quiverInternalPaths(projectRoot);
@@ -781,7 +1273,7 @@ function initializeProjectDocs(options) {
   }
 
   const operations = [];
-  const configResult = mergeQuiverConfig(projectRoot);
+  const configResult = mergeQuiverConfig(projectRoot, { minimumWriterVersion: cliVersion });
   operations.push({ source: 'Quiver config', destination: '.quiver/config.json', result: configResult });
 
   const internalGitignoreResult = mergeQuiverInternalGitignore(projectRoot);
@@ -1046,31 +1538,26 @@ function initializeProjectDocs(options) {
     operations.push({ source, destination, result });
   }
 
-  const currentState = fs.existsSync(path.join(projectRoot, '.quiver', 'state.json'))
-    ? JSON.parse(fs.readFileSync(path.join(projectRoot, '.quiver', 'state.json'), 'utf8'))
-    : null;
-  const nextState = migrateMode
-    ? {
-        ...(currentState || {}),
-        quiver_version: cliVersion,
-        project_name: projectName || currentState?.project_name || '',
-        initialized_version: currentState?.initialized_version ?? null,
-        migrated_version: cliVersion,
-        last_initialized_at: currentState?.last_initialized_at ?? null,
-        last_migration_at: new Date().toISOString(),
-        last_analysis_at: currentState?.last_analysis_at ?? null,
-      }
-    : {
-        ...(currentState || {}),
-        quiver_version: cliVersion,
-        project_name: projectName || currentState?.project_name || '',
-        initialized_version: currentState?.initialized_version || cliVersion,
-        migrated_version: currentState?.migrated_version ?? null,
-        last_initialized_at: currentState?.last_initialized_at || new Date().toISOString(),
-        last_migration_at: currentState?.last_migration_at ?? null,
-        last_analysis_at: currentState?.last_analysis_at ?? null,
-      };
-  writeState(projectRoot, nextState);
+  const currentState = readState(projectRoot);
+  if (migrateMode) {
+    operations.push({
+      source: 'Quiver state',
+      destination: '.quiver/state.json',
+      result: 'deferred-to-migration-commit',
+    });
+  } else {
+    const nextState = {
+      ...(currentState || {}),
+      quiver_version: cliVersion,
+      project_name: projectName || currentState?.project_name || '',
+      initialized_version: currentState?.initialized_version || cliVersion,
+      migrated_version: currentState?.migrated_version ?? null,
+      last_initialized_at: currentState?.last_initialized_at || new Date().toISOString(),
+      last_migration_at: currentState?.last_migration_at ?? null,
+      last_analysis_at: currentState?.last_analysis_at ?? null,
+    };
+    if (!isDeepStrictEqual(currentState, nextState)) writeState(projectRoot, nextState);
+  }
 
   const searchPath = path.join(projectRoot, 'docs', 'SEARCH.md');
   if (profile !== 'full') {
@@ -1131,7 +1618,11 @@ function initializeProjectDocs(options) {
   }
 
   return {
+    status: operations.some((operation) => MIGRATION_WRITE_RESULTS.has(operation.result))
+      ? 'applied'
+      : 'already-current',
     projectSlug: replacements.projectSlug,
+    preflight: migrationPreflight,
     operations,
   };
 }
@@ -1143,20 +1634,23 @@ function detectPackageManager(projectRoot) {
   return 'npm';
 }
 
-function installSelfAsDevDep(projectRoot, version) {
+function installSelfAsDevDep(projectRoot, version, options = {}) {
   const packageJsonPath = path.join(projectRoot, 'package.json');
   if (!fs.existsSync(packageJsonPath)) {
     return 'skipped-no-package-json';
   }
 
-  const pkg = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
-  if (pkg.devDependencies && pkg.devDependencies['create-quiver']) {
+  const dependency = inspectDeclaredWriterDependency(projectRoot, version);
+  if (dependency.status === 'compatible' || dependency.status === 'unverifiable') {
     return 'skipped-already-present';
   }
 
   try {
-    execSync(formatInstallSelfCommand(projectRoot, version), { cwd: projectRoot, stdio: 'inherit' });
-    return 'installed';
+    execSync(formatInstallSelfCommand(projectRoot, version), {
+      cwd: projectRoot,
+      stdio: options.silent === true ? 'pipe' : options.stdio || 'inherit',
+    });
+    return dependency.status === 'older' ? 'upgraded' : 'installed';
   } catch {
     return 'failed';
   }
@@ -1311,7 +1805,9 @@ function refreshAiContextDoc(projectRoot, scan, options = {}) {
 }
 
 module.exports = {
+  applyProjectMigrationSurface,
   initializeProjectDocs,
+  preflightProjectMigration,
   refreshAiContextDoc,
   renderAiContextDoc,
   summarizeSkippedPaths,

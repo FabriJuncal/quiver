@@ -1,6 +1,6 @@
 # Execution Plan — Quiver v58 Risk-aware Review Governance
 
-Status: In Progress — slices 00 through 04 completed; slice-04 implementation PR pending human review and merge
+Status: Implementation Complete — all seven slices validated; slice-06 PR #144 pending human review and merge
 
 ## Objective
 
@@ -167,12 +167,14 @@ Key work:
 - Stabilize error code, status, exit, JSON stdout, and localization contracts.
 - Add explicit idempotent migration and legacy-unverified behavior.
 - Add read-only fail-closed rollback mode and unsafe-downgrade guard.
+- Persist the authorized `governance.compatibility` metadata, use `doctor --json` as the independent verifier, and keep the existing migrate command namespace.
+- Return `LEGACY_EVIDENCE_UNVERIFIED`, `GOVERNANCE_READ_ONLY`, `UNSAFE_WRITER_DOWNGRADE`, or `MIGRATION_VERIFICATION_FAILED` at their frozen boundaries.
 - Complete directed integration fixtures and public documentation.
 
 Validation:
 
 - Directed CLI end-to-end scenarios from AC-16.
-- Migration dry-run/apply/reapply and no-write-on-read.
+- Migration dry-run/apply/post-verify/reapply, independent `doctor --json` verification, and no-write-on-read.
 - Rollback with active v58-only records.
 - Human/JSON parity, redaction, i18n, and clean stdout.
 
@@ -207,4 +209,4 @@ Rollback is a one-way operational mode, not a data downgrade. Disable v58 writer
 
 ## Completion
 
-v58 is complete only when every slice is completed, all AC-01 through AC-16 have recorded evidence, no mandatory deviation remains open, and STATUS.md plus EVIDENCE_REPORT.md reflect the executed state.
+All seven implementation slices are completed, AC-01 through AC-16 have recorded evidence, no mandatory deviation remains open, and STATUS.md plus EVIDENCE_REPORT.md reflect the executed state. Human review and merge of the slice-06 PR remain mandatory; release and deployment are separate and were not executed.

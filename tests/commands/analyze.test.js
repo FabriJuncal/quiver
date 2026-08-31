@@ -6,6 +6,8 @@ const path = require('node:path');
 const test = require('node:test');
 
 const { runAnalyze } = require('../../src/create-quiver');
+const { buildDefaultGovernanceConfig } = require('../../src/create-quiver/lib/ai/review-governance');
+const packageJson = require('../../package.json');
 
 const cliPath = path.resolve(__dirname, '../../bin/create-quiver.js');
 
@@ -47,7 +49,18 @@ test('analyze writes raw scan under .quiver and keeps project map visible', () =
     fs.mkdirSync(path.join(projectRoot, 'node_modules', 'pkg'), { recursive: true });
     fs.writeFileSync(path.join(projectRoot, 'node_modules', 'pkg', 'index.js'), 'module.exports = 1;\n');
     fs.mkdirSync(path.join(projectRoot, '.quiver'), { recursive: true });
-    fs.writeFileSync(path.join(projectRoot, '.quiver', 'state.json'), '{}\n');
+    fs.writeFileSync(path.join(projectRoot, '.quiver', 'state.json'), `${JSON.stringify({
+      quiver_version: packageJson.version,
+      project_name: 'Analyze fixture',
+      initialized_version: packageJson.version,
+      migrated_version: null,
+      last_initialized_at: '2026-08-31T00:00:00.000Z',
+      last_migration_at: null,
+      last_analysis_at: null,
+    }, null, 2)}\n`);
+    fs.writeFileSync(path.join(projectRoot, '.quiver', 'config.json'), `${JSON.stringify({
+      governance: buildDefaultGovernanceConfig(),
+    }, null, 2)}\n`);
     fs.mkdirSync(path.join(projectRoot, 'docs'), { recursive: true });
     fs.writeFileSync(path.join(projectRoot, 'docs', 'AI_CONTEXT.md'), '# stale context\n');
 

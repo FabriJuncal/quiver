@@ -13,7 +13,9 @@ const {
   formatTraceReport,
 } = require('../../src/create-quiver/lib/ai/export-state');
 const { createAiRun, updateAiRunPhase } = require('../../src/create-quiver/lib/ai/run-state');
+const { buildDefaultGovernanceConfig } = require('../../src/create-quiver/lib/ai/review-governance');
 const { setAgentProfile } = require('../../src/create-quiver/lib/agent-profiles');
+const packageJson = require('../../package.json');
 
 function makeRepo() {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'quiver-ai-export-state-'));
@@ -70,10 +72,17 @@ function seedNewLayout(root) {
   writeFile(root, 'specs/demo/STATUS.md', '# Status\n');
   writeFile(root, 'specs/demo/pr.md', '# PR\n');
   writeJson(root, '.quiver/state.json', {
-    initialized_version: '0.12.0',
+    quiver_version: packageJson.version,
+    initialized_version: packageJson.version,
+    migrated_version: null,
     last_initialized_at: '2026-05-22T00:00:00.000Z',
+    last_migration_at: null,
+    last_analysis_at: null,
   });
-  writeJson(root, '.quiver/config.json', { layout_version: 1 });
+  writeJson(root, '.quiver/config.json', {
+    layout_version: 1,
+    governance: buildDefaultGovernanceConfig(),
+  });
   writeFile(root, '.quiver/.gitignore', 'cache/\nevidence/\nlocks/\nruns/\nworktrees/\n');
 }
 
@@ -91,7 +100,8 @@ test('collectLifecycleExport exposes dashboard-friendly specs, slices, runs, and
     assert.equal(report.summary.specs, 1);
     assert.equal(report.summary.slices, 1);
     assert.equal(report.summary.configured_agents, 1);
-    assert.equal(report.summary.approvals, 3);
+    assert.equal(report.summary.approvals, 0);
+    assert.equal(report.summary.approval_surfaces, 3);
     assert.equal(Array.isArray(report.warnings), true);
     assert.equal(Array.isArray(report.approvals), true);
     assert.equal(Array.isArray(report.evidence), true);

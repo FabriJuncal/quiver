@@ -128,6 +128,11 @@ const CONDITION_ELIGIBILITY_STATUSES = Object.freeze([
   'ELIGIBLE',
 ]);
 
+const GOVERNANCE_WRITER_MODES = Object.freeze([
+  'read-write',
+  'read-only',
+]);
+
 const executionProfileSchema = z.enum(EXECUTION_PROFILES);
 const findingSeveritySchema = z.enum(FINDING_SEVERITIES);
 const findingCategorySchema = z.enum(FINDING_CATEGORIES);
@@ -141,6 +146,7 @@ const decisionKindSchema = z.enum(DECISION_KINDS);
 const conditionDispositionStateSchema = z.enum(CONDITION_DISPOSITION_STATES);
 const conditionEligibilityCodeSchema = z.enum(CONDITION_ELIGIBILITY_CODES);
 const conditionEligibilityStatusSchema = z.enum(CONDITION_ELIGIBILITY_STATUSES);
+const governanceWriterModeSchema = z.enum(GOVERNANCE_WRITER_MODES);
 
 const nonEmptyStringSchema = z.string().trim().min(1);
 const identifierSchema = nonEmptyStringSchema.max(200).regex(/^[A-Za-z0-9][A-Za-z0-9._:-]*$/, 'invalid identifier');
@@ -149,6 +155,10 @@ const evidenceLocationSchema = nonEmptyStringSchema.max(2_000);
 const acceptanceReferenceSchema = nonEmptyStringSchema.max(200);
 const sha256DigestSchema = z.string().regex(/^sha256:[a-f0-9]{64}$/);
 const timestampSchema = z.string().datetime();
+const packageSemverSchema = z.string().regex(
+  /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-(?:0|[1-9]\d*|[0-9A-Za-z-]*[A-Za-z-][0-9A-Za-z-]*)(?:\.(?:0|[1-9]\d*|[0-9A-Za-z-]*[A-Za-z-][0-9A-Za-z-]*))*)?(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$/,
+  'invalid package semver',
+);
 const repositoryRelativePathSchema = nonEmptyStringSchema.max(2_000).superRefine((value, context) => {
   const segments = value.split('/');
   if (value.includes('\\')
@@ -433,8 +443,15 @@ function findSecretConfigPath(value, path = []) {
   return null;
 }
 
+const governanceCompatibilitySchema = z.object({
+  schema_version: z.literal(1),
+  writer_mode: governanceWriterModeSchema,
+  minimum_writer_version: packageSemverSchema,
+}).strict();
+
 const governanceConfigSchema = z.object({
   schema_version: z.literal(GOVERNANCE_SCHEMA_VERSION),
+  compatibility: governanceCompatibilitySchema,
   requested_profile: executionProfileSchema,
   requirement_categories: z.array(nonEmptyStringSchema.max(200)).default([]),
   policy: governancePolicySchema,
@@ -1131,6 +1148,7 @@ module.exports = {
   GOVERNANCE_ACTIONS,
   GOVERNANCE_RECORD_SCHEMA_VERSION,
   GOVERNANCE_SCHEMA_VERSION,
+  GOVERNANCE_WRITER_MODES,
   INDEPENDENCE_RULES,
   MINIMUM_SENSITIVE_CATEGORIES,
   PHASE_OWNERS,
@@ -1167,9 +1185,12 @@ module.exports = {
   findingLifecycleEventSchema,
   governanceActionSchema,
   governanceConfigSchema,
+  governanceCompatibilitySchema,
+  governanceWriterModeSchema,
   governancePolicySchema,
   independenceRuleSchema,
   phaseOwnerSchema,
+  packageSemverSchema,
   planReviewRecommendationSchema,
   providerFindingSchema,
   providerReviewBodySchema,

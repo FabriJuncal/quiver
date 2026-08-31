@@ -6,12 +6,15 @@ const path = require('node:path');
 const test = require('node:test');
 
 const {
+  applyProjectMigrationSurface,
   initializeProjectDocs,
   detectPackageManager,
   formatInstallSelfCommand,
   installSelfAsDevDep,
+  preflightProjectMigration,
 } = require('../../src/create-quiver/lib/init-docs');
 const { buildDefaultGovernanceConfig } = require('../../src/create-quiver/lib/ai/review-governance');
+const packageJson = require('../../package.json');
 
 function makeTmpDir() {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'quiver-init-test-'));
@@ -66,6 +69,89 @@ function makeTemplateRoot() {
     throw error;
   }
 }
+
+test('migration blocks compatibility evidence drift before its first project write', () => {
+  const { dir, cleanup } = makeTmpDir();
+  const templateRoot = makeTemplateRoot();
+  const projectRoot = path.join(dir, 'project');
+  const configPath = path.join(projectRoot, '.quiver', 'config.json');
+  const statePath = path.join(projectRoot, '.quiver', 'state.json');
+
+  try {
+    writeFile(path.join(projectRoot, 'package.json'), `${JSON.stringify({ name: 'migration-drift' }, null, 2)}\n`);
+    writeFile(configPath, `${JSON.stringify({ governance: buildDefaultGovernanceConfig() }, null, 2)}\n`);
+    writeFile(statePath, `${JSON.stringify({
+      initialized_version: packageJson.version,
+      last_initialized_at: '2026-08-31T00:00:00.000Z',
+      quiver_version: packageJson.version,
+    }, null, 2)}\n`);
+    const options = {
+      cliVersion: packageJson.version,
+      projectName: 'Migration Drift',
+      projectRoot,
+      skipInstall: true,
+      templateRoot: templateRoot.dir,
+    };
+    const preflight = preflightProjectMigration(options);
+    assert.equal(preflight.status, 'apply');
+    assert.equal(preflight.compatibility.status, 'v58-verified');
+
+    fs.rmSync(configPath);
+    fs.rmSync(statePath);
+    assert.throws(
+      () => applyProjectMigrationSurface({ ...options, preflight }),
+      (error) => error?.code === 'MIGRATION_VERIFICATION_FAILED',
+    );
+    assert.equal(fs.existsSync(path.join(projectRoot, 'docs')), false);
+    assert.equal(fs.existsSync(configPath), false);
+    assert.equal(fs.existsSync(statePath), false);
+  } finally {
+    templateRoot.cleanup();
+    cleanup();
+  }
+});
+
+test('legacy migration blocks declared older dependency drift before its first project write', () => {
+  const { dir, cleanup } = makeTmpDir();
+  const templateRoot = makeTemplateRoot();
+  const projectRoot = path.join(dir, 'project');
+  const packagePath = path.join(projectRoot, 'package.json');
+  const configPath = path.join(projectRoot, '.quiver', 'config.json');
+
+  try {
+    writeFile(packagePath, `${JSON.stringify({ name: 'legacy-dependency-drift' }, null, 2)}\n`);
+    const legacyGovernance = buildDefaultGovernanceConfig();
+    delete legacyGovernance.compatibility;
+    writeFile(configPath, `${JSON.stringify({ governance: legacyGovernance }, null, 2)}\n`);
+    const options = {
+      cliVersion: packageJson.version,
+      projectName: 'Legacy Dependency Drift',
+      projectRoot,
+      skipInstall: true,
+      templateRoot: templateRoot.dir,
+    };
+    const preflight = preflightProjectMigration(options);
+    assert.equal(preflight.status, 'apply');
+    assert.equal(preflight.compatibility.status, 'legacy-unverified');
+    assert.equal(preflight.dependency.status, 'absent');
+
+    writeFile(packagePath, `${JSON.stringify({
+      name: 'legacy-dependency-drift',
+      devDependencies: { 'create-quiver': '0.1.0' },
+    }, null, 2)}\n`);
+    const beforeConfig = fs.readFileSync(configPath, 'utf8');
+    assert.throws(
+      () => applyProjectMigrationSurface({ ...options, preflight }),
+      (error) => error?.code === 'UNSAFE_WRITER_DOWNGRADE',
+    );
+    assert.equal(fs.existsSync(path.join(projectRoot, 'docs')), false);
+    assert.equal(fs.readFileSync(configPath, 'utf8'), beforeConfig);
+    assert.equal(fs.existsSync(path.join(projectRoot, '.quiver', 'state.json')), false);
+  } finally {
+    templateRoot.cleanup();
+    cleanup();
+  }
+});
 
 test('detectPackageManager returns npm when no lockfile exists', () => {
   const { dir, cleanup } = makeTmpDir();
@@ -154,7 +240,7 @@ test('installSelfAsDevDep returns skipped-already-present when create-quiver in 
       path.join(dir, 'package.json'),
       JSON.stringify({ name: 'test', devDependencies: { 'create-quiver': '^0.7.0' } }),
     );
-    const result = installSelfAsDevDep(dir, '0.8.0');
+    const result = installSelfAsDevDep(dir, '0.7.6');
     assert.equal(result, 'skipped-already-present');
   } finally {
     cleanup();
@@ -234,9 +320,14 @@ test('initializeProjectDocs full migrate mode preserves existing files and keeps
         },
       },
     }, null, 2)}\n`);
+    writeFile(path.join(projectRoot, '.quiver', 'state.json'), `${JSON.stringify({
+      initialized_version: packageJson.version,
+      last_initialized_at: '2026-08-31T00:00:00.000Z',
+      quiver_version: packageJson.version,
+    }, null, 2)}\n`);
 
     initializeProjectDocs({
-      cliVersion: '0.8.0',
+      cliVersion: packageJson.version,
       legacyScripts: true,
       migrateMode: true,
       profile: 'full',
@@ -275,6 +366,11 @@ test('initializeProjectDocs preserves custom internal ignores and migrates blank
     const excludePath = path.join(projectRoot, '.git', 'info', 'exclude');
     fs.appendFileSync(excludePath, 'custom-local.log\n.quiver/\n');
     writeFile(path.join(projectRoot, '.quiver', '.gitignore'), 'custom-runtime/\n');
+    writeFile(path.join(projectRoot, '.quiver', 'state.json'), `${JSON.stringify({
+      initialized_version: '0.7.0',
+      last_initialized_at: '2026-01-01T00:00:00.000Z',
+      quiver_version: '0.7.0',
+    }, null, 2)}\n`);
 
     initializeProjectDocs({
       cliVersion: '0.8.0',
@@ -328,7 +424,7 @@ test('initializeProjectDocs fails closed without overwriting invalid governance 
         projectRoot,
         templateRoot: templateRoot.dir,
       }),
-      (error) => error?.code === 'GOVERNANCE_CONFIG_INVALID',
+      (error) => error?.code === 'MIGRATION_VERIFICATION_FAILED',
     );
     assert.equal(fs.readFileSync(configPath, 'utf8'), before);
   } finally {

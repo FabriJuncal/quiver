@@ -110,12 +110,12 @@ El contenido curado fuera de los marcadores se mantiene manual y no debe ser ree
 | `npx --yes create-quiver@latest config language set en --global` | Guarda `en` como idioma global en `~/.quiver/config.json`. |
 | `npx --yes create-quiver@latest init --name "Proyecto"` | Inicializa Quiver en un proyecto. |
 | `npx --yes create-quiver@latest init --interactive` | Abre una guía interactiva para elegir idioma del proyecto, modo de proyecto, metodología `wdd-sdd`, perfil inicial y próximos pasos de agentes. |
-| `npx --yes create-quiver@latest migrate --dry-run` | Previsualiza migración de un proyecto Quiver anterior sin pedir confirmación ni escribir archivos. |
-| `npx --yes create-quiver@latest migrate` | En TTY pide confirmación antes de escribir; en no-TTY falla con guía para usar `--dry-run` o `--yes`. |
-| `npx --yes create-quiver@latest migrate --yes` | Aplica la migración sin prompt para automatización. |
+| `npx --yes create-quiver@latest migrate --dry-run` | Previsualiza la migración y la compatibilidad de gobernanza sin pedir confirmación ni escribir archivos. |
+| `npx --yes create-quiver@latest migrate` | En TTY pide confirmación, aplica y verifica antes de informar éxito; en no-TTY guía hacia `--dry-run` o `--yes`. |
+| `npx --yes create-quiver@latest migrate --yes` | Aplica y verifica sin prompt; una reaplicación vigente devuelve `already-current` sin escrituras. |
 | `npx --yes create-quiver@latest analyze` | Genera mapa del proyecto y datos de escaneo. |
 | `npx --yes create-quiver@latest doctor` | Valida la salud de Quiver. |
-| `npx --yes create-quiver@latest doctor --json` | Emite el mismo diagnóstico de Doctor como JSON parseable para automatización. |
+| `npx --yes create-quiver@latest doctor --json` | Emite el mismo diagnóstico como JSON parseable y verifica de forma independiente la compatibilidad posterior a una migración. |
 | `npx --yes create-quiver@latest flow` | Muestra el próximo paso seguro. |
 | `npx --yes create-quiver@latest flow --json` | Emite el próximo paso seguro como JSON parseable; incluye `nextCommand` y el alias compatible `next_command` con el mismo valor. |
 | `npx --yes create-quiver@latest dashboard` | Muestra un resumen compacto read-only del proyecto, specs, slices, runs, approvals y agentes. |
@@ -315,6 +315,25 @@ Rollback de release:
 | `npx --yes create-quiver@latest ai approve --phase technical-plan` | En TTY lista drafts con datos de review; `revise` bloquea aprobación y `approve-with-risk` muestra riesgos. |
 | `npx --yes create-quiver@latest ai approve --phase technical-plan --version <n>` | Aprueba el plan técnico revisado en modo explícito/script-safe. |
 | `npx --yes create-quiver@latest ai approvals` | Muestra approvals run-scoped/globales, candidatos actuales, versión recomendada y próximo comando. |
+
+### Gobernanza de revisión v58
+
+El perfil solicitado se pasa con `--governance-profile fast-delivery|high-assurance`; las categorías sensibles fuerzan `high-assurance`. La recomendación `approve-with-risk` de `ai review-plan` es metadata de revisión y no equivale a la decisión final `approved-with-conditions`.
+
+```bash
+npx --yes create-quiver@latest findings transfer --finding <id> --to slice:<full-slice-id> --criterion-file <file> --acceptance-ref <ref> --evidence-obligation <text> --run <run-id>
+npx --yes create-quiver@latest findings disposition --file <dispositions.json> --run <run-id>
+npx --yes create-quiver@latest ai approve --phase technical-plan --version <n> --decision approved-with-conditions --conditions-file <file> --reason-file <file> --run <run-id>
+npx --yes create-quiver@latest ai approval show --phase technical-plan --run <run-id>
+npx --yes create-quiver@latest ai approval verify --phase technical-plan --run <run-id> --json
+npx --yes create-quiver@latest ai approval export --phase technical-plan --run <run-id> --format linear-comment
+```
+
+`ai approvals`, `flow`, `ai status`, `ai resume`, `ai export`, spec creation y los gates de slice/PR consumen la misma proyección canónica. JSON stdout no incluye prosa humana; claves, enums, status, códigos y exit semantics no se localizan.
+
+La migración conserva el namespace existente: preview con `migrate --dry-run`, apply confirmado con verificación posterior y verificación independiente con `doctor --json`. `governance.compatibility.writer_mode: read-only` activa rollback sin reescribir datos. Los códigos `LEGACY_EVIDENCE_UNVERIFIED`, `GOVERNANCE_READ_ONLY`, `UNSAFE_WRITER_DOWNGRADE` y `MIGRATION_VERIFICATION_FAILED` salen con exit code 1 en sus límites bloqueantes.
+
+El guard de downgrade cubre los writers invocados por la ruta soportada de Quiver y una dependencia local declarada anterior a `minimum_writer_version`; no puede garantizar el bloqueo de un binario pre-guard ejecutado deliberadamente por fuera de esa ruta. Consultá [Troubleshooting](../TROUBLESHOOTING.md#gobernanza-v58-migracion-rollback-y-downgrade) para recuperación.
 
 ## Specs y slices
 

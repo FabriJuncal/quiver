@@ -6,15 +6,24 @@ const path = require('node:path');
 const { formatStatus, translatorForHuman } = require('../i18n/read-only-format');
 const { quiverInternalPaths } = require('../init-layout');
 const {
+  assertProjectWriterAllowed,
+  inspectCompatibilityState,
+} = require('../state');
+const {
   assertNoPendingDigestBoundApproval,
   plannerApprovalLockName,
 } = require('../approvals');
 const { withLock, withLockSync } = require('../locks');
 const { redactSensitiveLocalValues, redactSensitiveValue } = require('./artifacts');
 const {
+  GOVERNANCE_READ_ONLY,
+  LEGACY_EVIDENCE_UNVERIFIED,
   GovernanceError,
   buildApprovalDecisionRecord,
   canonicalSha256,
+  computePolicyDigest,
+  readGovernanceConfig,
+  resolveEffectiveProfile,
   stableStringify,
   verifyApprovalDecisionRecord,
 } = require('./review-governance');
@@ -24,6 +33,11 @@ const {
 } = require('./review-governance.schema');
 
 const APPROVAL_COMMIT_SCHEMA_VERSION = 1;
+const RUN_GOVERNANCE_PROJECTION_SCHEMA_VERSION = 1;
+const RECOVERY_LOCK_COMMANDS = new Set([
+  'recover digest-bound approval commit',
+  'recover governed plan review commit',
+]);
 
 const AI_RUN_PHASES = Object.freeze([
   'created',
@@ -397,6 +411,7 @@ function resolveGovernedAiRun(projectRoot, runId = '') {
 }
 
 function createAiRun(projectRoot, options = {}) {
+  assertProjectWriterAllowed(projectRoot, { action: 'ai run create' });
   const sourceInput = options.input ? path.resolve(projectRoot, options.input) : '';
   if (sourceInput && !fs.existsSync(sourceInput)) {
     throw new Error(formatError(`missing run requirement input file: ${options.input}`));
@@ -425,6 +440,26 @@ function createAiRun(projectRoot, options = {}) {
     approvals: [],
   };
 
+  const governanceConfig = readGovernanceConfig(projectRoot, { allowMissing: true });
+  const requirementCategories = Array.isArray(governanceConfig?.requirement_categories)
+    ? [...new Set(governanceConfig.requirement_categories
+      .map((value) => String(value || '').trim())
+      .filter(Boolean))].sort()
+    : [];
+  const profile = governanceConfig && !options.governance
+    ? resolveEffectiveProfile({
+      governance: governanceConfig,
+      requirementCategories,
+    })
+    : null;
+  const governanceBinding = options.governance || (profile ? {
+    requested_profile: profile.requested_profile,
+    effective_profile: profile.effective_profile,
+    policy_version: profile.policy_version,
+    policy_digest: profile.policy_digest,
+    requirement_categories: requirementCategories,
+  } : null);
+
   const state = {
     schema_version: 1,
     run_id: runId,
@@ -439,7 +474,7 @@ function createAiRun(projectRoot, options = {}) {
     },
     approvals_path: toRelativePosix(projectRoot, runApprovalsPath(projectRoot, runId)),
     decisions_path: toRelativePosix(projectRoot, path.join(targetDir, 'decisions.md')),
-    governance: options.governance || null,
+    governance: governanceBinding,
     history: [
       {
         phase: options.phase || 'created',
@@ -465,11 +500,24 @@ function ensureAiRun(projectRoot, options = {}) {
 }
 
 function updateAiRunPhase(projectRoot, runId, phase, options = {}) {
+  assertProjectWriterAllowed(projectRoot, { action: options.command || 'ai run phase update' });
   assertKnownPhase(phase);
   const applyUpdate = () => {
     const current = resolveAiRun(projectRoot, runId);
     if (!current) {
       throw new Error(formatError('missing AI run to update'));
+    }
+
+    const compatibility = inspectCompatibilityState(projectRoot);
+    if (!current.governance
+        && compatibility.status !== 'none'
+        && phase !== 'closed'
+        && phaseRank(phase) > phaseRank('onboarding-ready')) {
+      throw new GovernanceError(
+        LEGACY_EVIDENCE_UNVERIFIED,
+        `Legacy run '${current.run_id}' cannot advance without verifiable governance evidence.`,
+        { run_id: current.run_id, current_phase: current.phase, requested_phase: phase },
+      );
     }
 
     if (phase === 'closed' && current.governance) {
@@ -523,6 +571,7 @@ function updateAiRunPhase(projectRoot, runId, phase, options = {}) {
 }
 
 function recordAiRunApproval(projectRoot, runId, approval) {
+  assertProjectWriterAllowed(projectRoot, { action: 'record AI run approval' });
   const run = resolveAiRun(projectRoot, runId);
   if (!run) {
     throw new Error(formatError('missing AI run for approval metadata'));
@@ -892,6 +941,7 @@ async function commitDigestBoundApproval(projectRoot, options = {}) {
   if (typeof options.prepare !== 'function') {
     throw new Error(formatError('digest-bound approval commit requires a prepare callback'));
   }
+  assertProjectWriterAllowed(projectRoot, { action: options.command || 'commit digest-bound approval' });
   const runId = normalizeRunId(options.runId);
   return withAiRunLock(projectRoot, runId, { command: options.command || 'commit digest-bound approval' }, async () => {
     if (fs.existsSync(runApprovalCommitPath(projectRoot, runId))) {
@@ -1067,6 +1117,278 @@ function readRunApprovalDecision(projectRoot, runId, phase) {
   return decisions.at(-1);
 }
 
+function nullGovernanceCounts() {
+  return {
+    reviews: null,
+    findings: null,
+    open_findings: null,
+    blocking_findings: null,
+    dispositions: null,
+    current_dispositions: null,
+    accepted_conditions: null,
+    decisions: null,
+  };
+}
+
+function projectApprovalDecision(decision) {
+  if (!decision) return null;
+  return {
+    decision_id: decision.decision_id,
+    phase: decision.phase,
+    decision: decision.decision,
+    publication_state: decision.publication_state,
+    version: decision.version,
+    finding_count: decision.finding_count,
+    criterion_count: decision.criterion_count,
+    disposition_ids: [...decision.disposition_ids],
+    reason_path: decision.reason_path,
+    reason_sha256: decision.reason_sha256,
+    recorded_at: decision.recorded_at,
+    decision_sha256: decision.decision_sha256,
+  };
+}
+
+function assertRunProjectionPaths(projectRoot, run) {
+  const expected = {
+    approvals_path: toRelativePosix(projectRoot, runApprovalsPath(projectRoot, run.run_id)),
+    decisions_path: toRelativePosix(projectRoot, path.join(runDir(projectRoot, run.run_id), 'decisions.md')),
+    requirement_path: toRelativePosix(projectRoot, runRequirementPath(projectRoot, run.run_id)),
+  };
+  const mismatches = [];
+  if (run.approvals_path !== expected.approvals_path) mismatches.push('run.approvals_path');
+  if (run.decisions_path !== expected.decisions_path) mismatches.push('run.decisions_path');
+  if (run.requirement?.path !== expected.requirement_path) mismatches.push('run.requirement.path');
+  if (mismatches.length > 0) {
+    throw new GovernanceError(
+      'APPROVAL_BINDING_MISMATCH',
+      `Run '${run.run_id}' contains noncanonical projection paths.`,
+      { run_id: run.run_id, mismatches },
+    );
+  }
+}
+
+function assertRunApprovalProjectionParity(projectRoot, runId, decisions) {
+  const projection = readRunApprovalsStrict(projectRoot, runId);
+  const canonicalRows = projection.approvals.filter((approval) => approval?.decision_id);
+  const expected = decisions.map((decision) => ({
+    schema_version: decision.schema_version,
+    run_id: decision.run_id,
+    decision_id: decision.decision_id,
+    phase: decision.phase,
+    decision: decision.decision,
+    artifact: decision.artifact_path,
+    artifact_sha256: decision.artifact_sha256,
+    input_sha256: decision.input_sha256,
+    criterion_count: decision.criterion_count,
+    version: decision.version,
+  }));
+  const actual = canonicalRows.map((approval) => ({
+    schema_version: approval.schema_version,
+    run_id: approval.run_id,
+    decision_id: approval.decision_id,
+    phase: approval.phase,
+    decision: approval.decision,
+    artifact: approval.artifact,
+    artifact_sha256: approval.artifact_sha256,
+    input_sha256: approval.input_sha256,
+    criterion_count: approval.criterion_count,
+    version: approval.version,
+  }));
+  if (stableStringify(actual) !== stableStringify(expected)) {
+    throw new GovernanceError(
+      'REPRESENTATION_MISMATCH',
+      `Run approval projection does not match canonical decisions for run '${runId}'.`,
+      { run_id: runId, mismatches: ['run_approval_projection'] },
+    );
+  }
+}
+
+function projectReviewBudgetForRun(projectRoot, run, governanceConfig, profile, governanceState) {
+  const {
+    assertReviewBudgetHistoryVerified,
+    projectReviewBudget,
+    readReviewBudgetEvents,
+  } = require('./review-budget');
+  const events = readReviewBudgetEvents(projectRoot, run.run_id);
+  assertReviewBudgetHistoryVerified(projectRoot, run.run_id, events, { governanceState });
+  return projectReviewBudget(events, {
+    governance: governanceConfig,
+    profile,
+    runId: run.run_id,
+  });
+}
+
+function normalizeCompatibilityProjection(projectRoot) {
+  const compatibility = inspectCompatibilityState(projectRoot);
+  return {
+    status: compatibility.status,
+    code: compatibility.code
+      || (compatibility.status === 'rollback-read-only' ? GOVERNANCE_READ_ONLY : null),
+    writer_mode: compatibility.writer_mode || compatibility.writer?.mode || null,
+    minimum_writer_version: compatibility.minimum_writer_version
+      || compatibility.writer?.minimum_version
+      || null,
+  };
+}
+
+function legacyRunProjection(projectRoot, run, compatibility) {
+  const present = compatibility.status === 'legacy-unverified';
+  const readOnly = compatibility.status === 'rollback-read-only';
+  return redactSensitiveValue({
+    schema_version: RUN_GOVERNANCE_PROJECTION_SCHEMA_VERSION,
+    kind: 'quiver-run-governance-projection',
+    compatibility: compatibility.status,
+    code: compatibility.code || (present ? 'LEGACY_EVIDENCE_UNVERIFIED' : null),
+    writer_mode: compatibility.writer_mode,
+    minimum_writer_version: compatibility.minimum_writer_version,
+    run_id: run?.run_id || null,
+    status: run?.status || 'no-active-run',
+    phase: run?.phase || null,
+    next_command: present || readOnly || Boolean(compatibility.code)
+      ? 'npx create-quiver doctor --json'
+      : run
+        ? nextCommandForPhase(run.phase, projectRoot)
+        : 'npx create-quiver ai run create --input <requirements.md>',
+    counts: nullGovernanceCounts(),
+    blocking_finding_ids: [],
+    accepted_condition_ids: [],
+    decision: null,
+    budget: null,
+    machine_codes: compatibility.code ? [compatibility.code] : [],
+  }, { projectRoot });
+}
+
+function buildAiRunGovernanceProjection(projectRoot, run = null) {
+  let compatibility = normalizeCompatibilityProjection(projectRoot);
+  if (!run) {
+    return legacyRunProjection(projectRoot, null, compatibility);
+  }
+
+  assertRunProjectionPaths(projectRoot, run);
+
+  const unboundAdvancedRun = !run.governance
+    && compatibility.status !== 'none'
+    && phaseRank(run.phase) > phaseRank('onboarding-ready');
+  if (unboundAdvancedRun) {
+    compatibility = {
+      ...compatibility,
+      status: 'legacy-unverified',
+      code: 'LEGACY_EVIDENCE_UNVERIFIED',
+    };
+  }
+  if (compatibility.status === 'legacy-unverified' || !run.governance) {
+    return legacyRunProjection(projectRoot, run, compatibility);
+  }
+
+  const governanceConfig = readGovernanceConfig(projectRoot, { allowMissing: true });
+  if (!governanceConfig) {
+    return legacyRunProjection(projectRoot, run, {
+      ...compatibility,
+      status: 'legacy-unverified',
+      code: 'LEGACY_EVIDENCE_UNVERIFIED',
+    });
+  }
+  const expectedPolicyDigest = computePolicyDigest(governanceConfig);
+  if (run.governance.policy_version !== governanceConfig.policy.version
+      || run.governance.policy_digest !== expectedPolicyDigest) {
+    throw new GovernanceError(
+      'GOVERNANCE_STATE_INVALID',
+      `Run governance binding does not match the active policy for run '${run.run_id}'.`,
+      {
+        run_id: run.run_id,
+        expected_policy_version: governanceConfig.policy.version,
+        expected_policy_digest: expectedPolicyDigest,
+        actual_policy_version: run.governance.policy_version,
+        actual_policy_digest: run.governance.policy_digest,
+      },
+    );
+  }
+
+  const profile = resolveEffectiveProfile({
+    activeRunProfile: run.governance,
+    governance: governanceConfig,
+    requestedProfile: run.governance.requested_profile,
+    requirementCategories: run.governance.requirement_categories,
+  });
+  const governanceState = readRunGovernance(projectRoot, run.run_id) || {
+    schema_version: 1,
+    run_id: run.run_id,
+    next_finding_number: 1,
+    current_review_id: null,
+    reviews: [],
+    findings: [],
+    dispositions: [],
+    condition_evaluations: [],
+    conditioned_candidates: [],
+    decisions: [],
+  };
+  const decisions = (governanceState.decisions || []).map(verifyApprovalDecisionRecord);
+  assertRunApprovalProjectionParity(projectRoot, run.run_id, decisions);
+
+  const dispositionById = new Map(governanceState.dispositions
+    .map((item) => [item.disposition_id, item]));
+  const acceptedDispositionIds = new Set(decisions
+    .flatMap((decision) => decision.disposition_ids));
+  const acceptedFindingIds = new Set([...acceptedDispositionIds]
+    .map((dispositionId) => dispositionById.get(dispositionId)?.finding_id)
+    .filter(Boolean));
+  const openFindings = governanceState.findings
+    .filter((finding) => finding.state === 'open');
+  const blockingFindings = openFindings.filter((finding) => (
+    finding.phase_blocking === true && !acceptedFindingIds.has(finding.finding_id)
+  ));
+  const currentDispositions = governanceState.dispositions
+    .filter((item) => item.state === 'current');
+  const latestDecision = decisions.at(-1) || null;
+  const budget = projectReviewBudgetForRun(
+    projectRoot,
+    run,
+    governanceConfig,
+    profile,
+    governanceState,
+  );
+  const writerMode = compatibility.writer_mode || 'read-write';
+  const machineCodes = [
+    ...(compatibility.code ? [compatibility.code] : []),
+    ...(budget.machine_codes || []),
+  ];
+  const blocked = blockingFindings.length > 0 || budget.exhausted === true;
+  const nextCommand = compatibility.code
+    ? 'npx create-quiver doctor --json'
+    : blocked
+      ? 'npx create-quiver ai approvals'
+      : nextCommandForPhase(run.phase, projectRoot);
+  const status = run.status;
+
+  return redactSensitiveValue({
+    schema_version: RUN_GOVERNANCE_PROJECTION_SCHEMA_VERSION,
+    kind: 'quiver-run-governance-projection',
+    compatibility: compatibility.status,
+    code: machineCodes[0] || null,
+    writer_mode: writerMode,
+    minimum_writer_version: compatibility.minimum_writer_version,
+    run_id: run.run_id,
+    status,
+    phase: run.phase,
+    next_command: nextCommand,
+    counts: {
+      reviews: governanceState.reviews.length,
+      findings: governanceState.findings.length,
+      open_findings: openFindings.length,
+      blocking_findings: blockingFindings.length,
+      dispositions: governanceState.dispositions.length,
+      current_dispositions: currentDispositions.length,
+      accepted_conditions: acceptedDispositionIds.size,
+      decisions: decisions.length,
+    },
+    blocking_finding_ids: blockingFindings.map((finding) => finding.finding_id),
+    accepted_condition_ids: [...acceptedDispositionIds],
+    decision: projectApprovalDecision(latestDecision),
+    budget,
+    machine_codes: machineCodes,
+  }, { projectRoot });
+}
+
 function assertAiRunPhaseAllows(run, requiredPhase, commandName) {
   if (!run) {
     throw new Error(formatError(`cannot run ${commandName}: no AI run exists. Next: npx create-quiver ai run create --input <requirements.md>`));
@@ -1132,6 +1454,7 @@ function readRunGovernance(projectRoot, runId) {
 }
 
 function writeRunGovernance(projectRoot, runId, governanceState) {
+  assertProjectWriterAllowed(projectRoot, { action: 'write canonical run governance' });
   const normalizedRunId = normalizeRunId(runId);
   if (!governanceState || typeof governanceState !== 'object' || Array.isArray(governanceState)) {
     throw new Error(formatError('invalid run governance state'));
@@ -1152,7 +1475,15 @@ function writeRunGovernance(projectRoot, runId, governanceState) {
     throw error;
   }
   const filePath = runGovernancePath(projectRoot, normalizedRunId);
-  writeJson(filePath, parsed.data);
+  const bytes = Buffer.from(`${JSON.stringify(parsed.data, null, 2)}\n`, 'utf8');
+  if (!approvalBytesAreSafe(projectRoot, bytes, 'governance')) {
+    throw new GovernanceError(
+      'APPROVAL_BINDING_MISMATCH',
+      'Canonical governance state contains sensitive values and cannot be persisted safely.',
+      { run_id: normalizedRunId, mismatches: ['governance_sensitive_content'] },
+    );
+  }
+  writeFileAtomic(filePath, bytes);
   return filePath;
 }
 
@@ -1205,6 +1536,10 @@ function withAiRunLock(projectRoot, runId, options = {}, callback) {
   if (typeof callback !== 'function') {
     throw new Error(formatError('withAiRunLock requires a callback'));
   }
+  const command = String(options.command || '').trim();
+  if (!RECOVERY_LOCK_COMMANDS.has(command)) {
+    assertProjectWriterAllowed(projectRoot, { action: command || 'mutate AI run' });
+  }
   const handle = acquireAiRunLock(projectRoot, runId, options);
   try {
     const result = callback();
@@ -1222,6 +1557,7 @@ function withAiRunLock(projectRoot, runId, options = {}, callback) {
 }
 
 function bindAiRunGovernance(projectRoot, runId, governance, options = {}) {
+  assertProjectWriterAllowed(projectRoot, { action: options.command || 'bind AI run governance' });
   const normalized = {
     requested_profile: String(governance?.requested_profile || '').trim(),
     effective_profile: String(governance?.effective_profile || '').trim(),
@@ -1242,6 +1578,15 @@ function bindAiRunGovernance(projectRoot, runId, governance, options = {}) {
     }
     if (current.status === 'closed') {
       throw new Error(formatError(`AI_RUN_CLOSED: governed mutation cannot target closed run '${current.run_id}'`));
+    }
+    if (!current.governance
+        && inspectCompatibilityState(projectRoot).status !== 'none'
+        && phaseRank(current.phase) > phaseRank('onboarding-ready')) {
+      throw new GovernanceError(
+        LEGACY_EVIDENCE_UNVERIFIED,
+        `Legacy run '${current.run_id}' cannot be rebound after advancing without verifiable governance evidence.`,
+        { run_id: current.run_id, phase: current.phase },
+      );
     }
     if ((current.governance?.effective_profile === 'high-assurance'
         && normalized.effective_profile === 'fast-delivery')
@@ -1272,11 +1617,23 @@ function bindAiRunGovernance(projectRoot, runId, governance, options = {}) {
 
 function formatAiRunStatus(projectRoot, run, options = {}) {
   const translator = translatorForHuman(options);
+  const projection = buildAiRunGovernanceProjection(projectRoot, run);
   if (!run) {
+    if (options.json === true) {
+      return `${JSON.stringify({
+        schema_version: RUN_GOVERNANCE_PROJECTION_SCHEMA_VERSION,
+        task: 'status',
+        ok: true,
+        status: projection.status,
+        code: projection.code,
+        projection,
+        other_open_runs: [],
+      }, null, 2)}\n`;
+    }
     return [
       translator.t('ai.run.status.title'),
       `${translator.t('ai.run.status')}: ${translator.t('ai.run.status.no_active')}`,
-      `${translator.t('ai.label.next_safe_command')}: npx create-quiver ai run create --input <requirements.md>`,
+      `${translator.t('ai.label.next_safe_command')}: ${projection.next_command}`,
       '',
     ].join('\n');
   }
@@ -1286,11 +1643,26 @@ function formatAiRunStatus(projectRoot, run, options = {}) {
     requiredRunId: run.run_id,
   }).filter((item) => item.status !== 'closed');
   const otherOpenRuns = openRuns.filter((item) => item.run_id !== run.run_id);
+  const otherOpenRunProjections = otherOpenRuns
+    .map((item) => buildAiRunGovernanceProjection(projectRoot, item));
+
+  if (options.json === true) {
+    return `${JSON.stringify({
+      schema_version: RUN_GOVERNANCE_PROJECTION_SCHEMA_VERSION,
+      task: 'status',
+      ok: true,
+      status: projection.status,
+      code: projection.code,
+      projection,
+      other_open_runs: otherOpenRunProjections,
+    }, null, 2)}\n`;
+  }
+
   const lines = [
     translator.t('ai.run.status.title'),
     `${translator.t('ai.run.run')}: ${run.run_id}`,
-    `${translator.t('ai.run.status')}: ${formatStatus(run.status, translator)}`,
-    `${translator.t('ai.run.phase')}: ${run.phase}`,
+    `${translator.t('ai.run.status')}: ${formatStatus(projection.status, translator)}`,
+    `${translator.t('ai.run.phase')}: ${projection.phase}`,
     `${translator.t('ai.run.spec')}: ${run.spec_slug || translator.t('ai.run.spec.not_generated')}`,
     `${translator.t('ai.run.requirement')}: ${run.requirement?.path || translator.t('ai.run.missing')}`,
     `${translator.t('ai.run.state')}: ${toRelativePosix(projectRoot, runStatePath(projectRoot, run.run_id))}`,
@@ -1300,45 +1672,58 @@ function formatAiRunStatus(projectRoot, run, options = {}) {
 
   if (otherOpenRuns.length > 0) {
     lines.push(`${translator.t('ai.run.other_open_runs')}:`);
-    for (const item of otherOpenRuns) {
-      lines.push(`- ${item.run_id}: ${item.phase} (${formatStatus(item.status, translator)}) -> ${nextCommandForPhase(item.phase, projectRoot)}`);
+    for (const item of otherOpenRunProjections) {
+      lines.push(`- ${item.run_id}: ${item.phase} (${formatStatus(item.status, translator)}) -> ${item.next_command}`);
     }
   }
 
   lines.push(
-    `${translator.t('ai.label.next_safe_command')}: ${nextCommandForPhase(run.phase, projectRoot)}`,
+    `${translator.t('ai.label.next_safe_command')}: ${projection.next_command}`,
     '',
   );
 
-  return lines.join('\n');
+  return redactSensitiveLocalValues(lines.join('\n'), { projectRoot });
 }
 
 function formatAiRunResume(projectRoot, run, options = {}) {
   const translator = translatorForHuman(options);
+  const projection = buildAiRunGovernanceProjection(projectRoot, run);
+  if (options.json === true) {
+    return `${JSON.stringify({
+      schema_version: RUN_GOVERNANCE_PROJECTION_SCHEMA_VERSION,
+      task: 'resume',
+      ok: true,
+      status: projection.status,
+      code: projection.code,
+      projection,
+    }, null, 2)}\n`;
+  }
   if (!run) {
     return [
       translator.t('ai.run.resume.title'),
       translator.t('ai.run.resume.no_active'),
-      `${translator.t('ai.label.next_safe_command')}: npx create-quiver ai run create --input <requirements.md>`,
+      `${translator.t('ai.label.next_safe_command')}: ${projection.next_command}`,
       '',
     ].join('\n');
   }
 
-  return [
+  return redactSensitiveLocalValues([
     translator.t('ai.run.resume.title'),
     `${translator.t('ai.run.run')}: ${run.run_id}`,
-    `${translator.t('ai.run.current_phase')}: ${run.phase}`,
-    `${translator.t('ai.label.next_safe_command')}: ${nextCommandForPhase(run.phase, projectRoot)}`,
+    `${translator.t('ai.run.current_phase')}: ${projection.phase}`,
+    `${translator.t('ai.label.next_safe_command')}: ${projection.next_command}`,
     `${translator.t('ai.run.state')}: ${toRelativePosix(projectRoot, runStatePath(projectRoot, run.run_id))}`,
     '',
-  ].join('\n');
+  ].join('\n'), { projectRoot });
 }
 
 module.exports = {
   AI_RUN_PHASES,
+  RUN_GOVERNANCE_PROJECTION_SCHEMA_VERSION,
   acquireAiRunLock,
   assertAiRunPhaseAllows,
   bindAiRunGovernance,
+  buildAiRunGovernanceProjection,
   commitDigestBoundApproval,
   createAiRun,
   ensureAiRun,

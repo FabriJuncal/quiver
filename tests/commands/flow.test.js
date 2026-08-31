@@ -8,6 +8,7 @@ const test = require('node:test');
 const packageJson = require('../../package.json');
 const { approvePlannerPhase, savePlannerDraft } = require('../../src/create-quiver/lib/approvals');
 const { savePlanReview } = require('../../src/create-quiver/lib/ai/plan-review');
+const { buildDefaultGovernanceConfig } = require('../../src/create-quiver/lib/ai/review-governance');
 const { resolveInitPackageScripts } = require('../../src/create-quiver/lib/init-layout');
 
 const BIN_PATH = path.resolve(__dirname, '../../bin/create-quiver.js');
@@ -66,9 +67,12 @@ function runCli(repoRoot, args = []) {
 
 function seedInitializedContext(repoRoot) {
   writeFile(repoRoot, '.quiver/state.json', JSON.stringify({
-    initialized_version: '0.10.0',
+    initialized_version: packageJson.version,
     last_initialized_at: '2026-05-21T00:00:00.000Z',
-    quiver_version: '0.10.0',
+    quiver_version: packageJson.version,
+  }, null, 2));
+  writeFile(repoRoot, '.quiver/config.json', JSON.stringify({
+    governance: buildDefaultGovernanceConfig(),
   }, null, 2));
   writeFile(repoRoot, 'docs/PROJECT_MAP.md', '# Project Map\n');
   writeFile(repoRoot, 'docs/AI_CONTEXT.md', '# AI Context\n');
@@ -144,9 +148,12 @@ test('flow command localizes uninitialized guidance while preserving commands', 
 test('flow command reports analysis guidance when initialized context docs are missing', () => {
   const repo = makeRepo({
     '.quiver/state.json': JSON.stringify({
-      initialized_version: '0.10.0',
+      initialized_version: packageJson.version,
       last_initialized_at: '2026-05-21T00:00:00.000Z',
-      quiver_version: '0.10.0',
+      quiver_version: packageJson.version,
+    }, null, 2),
+    '.quiver/config.json': JSON.stringify({
+      governance: buildDefaultGovernanceConfig(),
     }, null, 2),
   });
 
@@ -320,10 +327,7 @@ test('flow command reports spec create after reviewed and approved technical pla
       inputKind: 'draft',
       inputVersion: 1,
     });
-    execFileSync(process.execPath, [BIN_PATH, 'ai', 'approve', '--phase', 'technical-plan', '--version', '1'], {
-      cwd: repo.root,
-      encoding: 'utf8',
-    });
+    approvePlannerPhase(repo.root, 'technical-plan', '', '', { version: 1 });
 
     const output = runFlow(repo.root);
 

@@ -6,6 +6,7 @@ const {
   resolveInitPackageScripts,
   toProjectSlug,
 } = require('./init-layout');
+const { mergeGovernanceConfig } = require('./ai/review-governance');
 const { createTranslator } = require('./i18n/catalog');
 const cliPackageJson = require('../../../package.json');
 
@@ -56,7 +57,7 @@ function createSpecViewerFiles() {
     },
     {
       path: '.quiver/config.json',
-      content: createJson(buildQuiverConfig()),
+      content: createJson(mergeGovernanceConfig(buildQuiverConfig())),
     },
     {
       path: '.quiver/.gitignore',
