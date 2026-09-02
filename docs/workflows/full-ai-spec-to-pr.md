@@ -23,19 +23,25 @@ Qué hace:
 ## 2. Crear un archivo de requerimiento
 
 ```bash
-mkdir -p requirements
-$EDITOR requirements/mi-requerimiento.md
+mkdir -p docs/requirements docs/plans
+$EDITOR docs/requirements/REQ-MI-FEATURE-001-v1.0.0.md
 ```
 
 Qué hace:
 
 - crea una entrada durable para el planner;
+- asigna un ID y una versión explícitos;
 - evita perder el requerimiento en el historial del chat.
+
+El front matter debe seguir
+[`requirements-and-plans.md`](./requirements-and-plans.md) e incluir estado,
+planes relacionados y una decisión con cambio, motivo e impacto. Si se modifica
+un requerimiento aprobado, creá una versión nueva; no reescribas la anterior.
 
 ## 3. Crear una ejecución de IA
 
 ```bash
-npx --yes create-quiver@latest ai run create --input requirements/mi-requerimiento.md
+npx --yes create-quiver@latest ai run create --input docs/requirements/REQ-MI-FEATURE-001-v1.0.0.md
 npx --yes create-quiver@latest ai status
 ```
 
@@ -47,14 +53,14 @@ Qué hace:
 ## 4. Generar criterios de aceptación
 
 ```bash
-npx --yes create-quiver@latest ai plan --phase acceptance --input requirements/mi-requerimiento.md --dry-run
-npx --yes create-quiver@latest ai plan --phase acceptance --input requirements/mi-requerimiento.md
+npx --yes create-quiver@latest ai plan --phase acceptance --input docs/requirements/REQ-MI-FEATURE-001-v1.0.0.md --dry-run
+npx --yes create-quiver@latest ai plan --phase acceptance --input docs/requirements/REQ-MI-FEATURE-001-v1.0.0.md
 ```
 
 Si querés revisar y confirmar el borrador antes de guardarlo:
 
 ```bash
-npx --yes create-quiver@latest ai plan --phase acceptance --input requirements/mi-requerimiento.md --review --interactive
+npx --yes create-quiver@latest ai plan --phase acceptance --input docs/requirements/REQ-MI-FEATURE-001-v1.0.0.md --review --interactive
 ```
 
 Qué hace:
@@ -151,6 +157,20 @@ npx --yes create-quiver@latest ai approval verify --phase technical-plan --run <
 ```
 
 `approve-with-risk` sigue siendo una recomendación de `ai review-plan`; no es sinónimo de `approved-with-conditions`. La decisión condicionada mantiene visible la no-aprobación del reviewer y no crea el marker legacy `approved.md`.
+
+Después de aprobarlo, materializá la versión durable del plan:
+
+```bash
+$EDITOR docs/plans/PLAN-MI-FEATURE-001-v1.0.0.md
+```
+
+El plan debe fijar `REQ-MI-FEATURE-001@1.0.0`, registrar la decisión que motivó
+esa versión y estar referenciado desde el requerimiento. Los drafts y approvals
+de `.quiver/` siguen siendo estado interno; no reemplazan este documento.
+
+Antes de crear la spec, verificá que ambos artefactos estén relacionados y que
+los índices `docs/requirements/README.md` y `docs/plans/README.md` señalen sus
+versiones actuales.
 
 ## 8. Crear el paquete de spec
 

@@ -1,6 +1,6 @@
 # Quiver Documentation Index
 
-**Last updated:** 2026-06-10
+**Last updated:** 2026-09-02
 
 Use this file as the first documentation map before planning, implementing, reviewing, or opening PRs in this repository. Prefer the smallest set of linked documents that fits the task.
 
@@ -26,8 +26,20 @@ Use this file as the first documentation map before planning, implementing, revi
 
 - **New project:** [`./workflows/new-project.md`](./workflows/new-project.md)
 - **Existing project:** [`./workflows/existing-project.md`](./workflows/existing-project.md)
+- **Existing project with AI setup:** [`./workflows/existing-project-ai-quiver-setup.md`](./workflows/existing-project-ai-quiver-setup.md)
 - **Legacy Quiver project:** [`./workflows/legacy-quiver-project.md`](./workflows/legacy-quiver-project.md)
 - **Full AI spec-to-PR flow:** [`./workflows/full-ai-spec-to-pr.md`](./workflows/full-ai-spec-to-pr.md)
+- **Versioned requirements and plans:** [`./workflows/requirements-and-plans.md`](./workflows/requirements-and-plans.md)
+
+## Requirements
+
+- **Requirements catalog:** [`./requirements/README.md`](./requirements/README.md)
+- **Quiver product requirements v6:** [`./requirements/Quiver_Especificaciones_Requerimientos_v6.md`](./requirements/Quiver_Especificaciones_Requerimientos_v6.md)
+
+## Plans
+
+- **Plans catalog:** [`./plans/README.md`](./plans/README.md)
+- **Quiver master roadmap v6:** [`./plans/Quiver_Roadmap_Maestro_v6.md`](./plans/Quiver_Roadmap_Maestro_v6.md)
 
 ## AI Configuration
 
@@ -78,6 +90,7 @@ These files are templates for generated projects or optional profiles. Do not tr
 ## Task Routing
 
 - **Documentation/index work:** read this index, then the affected docs only.
+- **Requirements or plans:** read [`./workflows/requirements-and-plans.md`](./workflows/requirements-and-plans.md), then the exact requirement and related plan versions only.
 - **CLI UX, output, dashboard, or version work:** read [`./CLI_UX_GUIDE.md`](./CLI_UX_GUIDE.md), [`./reference/commands.md`](./reference/commands.md), and the relevant spec.
 - **Spec or slice execution:** read the relevant [`../specs/`](../specs/) package, especially the target slice files.
 - **PR creation:** read [`./GITFLOW_PR_GUIDE.md`](./GITFLOW_PR_GUIDE.md) and the relevant `pr.md`.
