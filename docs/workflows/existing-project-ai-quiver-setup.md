@@ -264,13 +264,13 @@ Que no deberia incluir:
 ## 8. Crear el archivo del requerimiento
 
 ```bash
-mkdir -p requirements
+mkdir -p docs/requirements docs/plans
 ```
 
 Luego crea este archivo:
 
 ```text
-requirements/feature-001.md
+docs/requirements/REQ-FEATURE-001-v1.0.0.md
 ```
 
 Que poner adentro:
@@ -293,13 +293,18 @@ Inclui:
 Que hace este paso:
 
 - convierte el requerimiento en un artefacto durable;
+- registra ID, versión y motivo de la decisión;
 - evita depender solo del historial del chat;
 - permite que Quiver use siempre la misma entrada para planner, reviewer y spec.
+
+Usá el contrato de
+[`requirements-and-plans.md`](./requirements-and-plans.md). Una modificación de
+un requerimiento aprobado crea una nueva versión; no reescribe el archivo previo.
 
 ## 9. Crear una ejecucion de IA para el requerimiento
 
 ```bash
-npx --yes create-quiver@latest ai run create --input requirements/feature-001.md
+npx --yes create-quiver@latest ai run create --input docs/requirements/REQ-FEATURE-001-v1.0.0.md
 ```
 
 Que hace:
@@ -320,7 +325,7 @@ Que deberia quedar registrado:
 ```bash
 npx --yes create-quiver@latest ai plan \
   --phase acceptance \
-  --input requirements/feature-001.md \
+  --input docs/requirements/REQ-FEATURE-001-v1.0.0.md \
   --review \
   --interactive \
   --provider codex \
@@ -418,6 +423,16 @@ Que hace la aprobacion:
 - habilita la generacion del paquete de spec/slices;
 - evita crear specs desde planes no revisados.
 
+Materializa tambien el plan durable:
+
+```text
+docs/plans/PLAN-FEATURE-001-v1.0.0.md
+```
+
+Debe referenciar `REQ-FEATURE-001@1.0.0`, registrar cambio, motivo e impacto y
+quedar enlazado desde el requerimiento. `.quiver/approvals/` conserva el estado
+interno del planner, pero no reemplaza este plan revisable.
+
 ## 13. Crear spec y slices
 
 ```bash
@@ -513,11 +528,11 @@ npx --yes create-quiver@latest ai prepare-context \
 npx --yes create-quiver@latest ai onboard --provider codex --model gpt-5.5
 git add AGENTS.md docs .quiver .gitignore package.json package-lock.json
 git commit -m "docs: initialize quiver workflow"
-mkdir -p requirements
-npx --yes create-quiver@latest ai run create --input requirements/feature-001.md
+mkdir -p docs/requirements docs/plans
+npx --yes create-quiver@latest ai run create --input docs/requirements/REQ-FEATURE-001-v1.0.0.md
 npx --yes create-quiver@latest ai plan \
   --phase acceptance \
-  --input requirements/feature-001.md \
+  --input docs/requirements/REQ-FEATURE-001-v1.0.0.md \
   --review \
   --interactive \
   --provider codex \
@@ -540,7 +555,7 @@ npx --yes create-quiver@latest next --all-ready --spec <spec-slug>
 ## Notas importantes
 
 - Reemplaza `"Nombre del Proyecto"` por el nombre real.
-- Reemplaza `requirements/feature-001.md` por el archivo de requerimiento real.
+- Reemplaza `docs/requirements/REQ-FEATURE-001-v1.0.0.md` por el archivo de requerimiento real.
 - Reemplaza `<spec-slug>` por el slug generado por `spec create`.
 - Usa `--provider codex --model gpt-5.5` si tu entorno tiene Codex
   disponible con ese modelo.

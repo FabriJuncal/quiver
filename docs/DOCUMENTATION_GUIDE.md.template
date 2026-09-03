@@ -11,14 +11,19 @@
 4. `docs/CONTEXTO.md`
 5. `docs/STATUS.md`
 6. `docs/WORKFLOW.md`
-7. `docs/SUPPORT_MATRIX.md`
-8. `docs/TROUBLESHOOTING.md`
-9. `specs/{{PROJECT_SLUG}}/SPEC.md`
-10. `specs/{{PROJECT_SLUG}}/slices/[slice-id]/slice.json`
+7. Relevant version in `docs/requirements/`
+8. Related approved version in `docs/plans/`
+9. `docs/SUPPORT_MATRIX.md`
+10. `docs/TROUBLESHOOTING.md`
+11. `specs/{{PROJECT_SLUG}}/SPEC.md`
+12. `specs/{{PROJECT_SLUG}}/slices/[slice-id]/slice.json`
 
 ## Update Rules
 
 - Update docs when scope changes.
+- Create a new requirement or plan version instead of rewriting an approved artifact.
+- Record change, reason, impact, and `supersedes` for every new artifact version.
+- Keep requirement-to-plan links bidirectional; plans pin exact requirement versions.
 - Update `STATUS.md` after each completed slice.
 - Keep `pr.md` aligned with the slice.
 
@@ -29,6 +34,8 @@
 - Decisions: `docs/DECISIONS.md`
 - Progress: `docs/STATUS.md`
 - Implementation workflow: `docs/WORKFLOW.md`
+- Versioned requirements: `docs/requirements/`
+- Versioned plans: `docs/plans/`
 - Support contract: `docs/SUPPORT_MATRIX.md`
 - Recovery guidance: `docs/TROUBLESHOOTING.md`
 - Slice contract: `specs/{{PROJECT_SLUG}}/slices/[slice-id]/slice.json`
