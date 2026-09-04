@@ -1,6 +1,6 @@
 # Evidence Report — Quiver v58 Risk-aware Review Governance
 
-Status: AC-01 through AC-16 validated; slice-06 PR #144 pending human review and merge
+Status: Complete — AC-01 through AC-16 validated and slice-06 PR #144 merged
 
 ## Documentary foundation evidence
 
@@ -278,7 +278,7 @@ Final results:
 - Final slice-schema, documentation, local-slice, strict-spec, scope, PR-readiness, and whitespace evidence is recorded in the slice closure brief.
 - Independent command-boundary review reproduced rollback, recovery, migration, tamper, downgrade, and JSON contracts and approved the final implementation without material blockers.
 - Exact directed fixture names plus human, JSON, persisted compatibility, migration, rollback, and downgrade samples are recorded in the slice closure brief.
-- Publication reference: [PR #144](https://github.com/FabriJuncal/quiver/pull/144), sourced from the single slice branch commit; human merge remains pending.
+- Publication reference: [PR #144](https://github.com/FabriJuncal/quiver/pull/144), merged on 2026-08-31 as `2f0afd8cbfdc000faea7747fd7ab8a26c9950d55`.
 
 Covered behavior:
 
@@ -357,4 +357,4 @@ Initial PR #144 CI exposed that the historical cross-platform legacy fixture rem
 
 ## Closure rule
 
-The implementation closure rule is satisfied: all sixteen acceptance criteria have linked evidence, every mandatory slice gate has passed, and no mandatory deviation remains unresolved. Human review and merge of the slice-06 PR remain required; release and deployment are not claimed.
+The implementation closure rule is satisfied: all sixteen acceptance criteria have linked evidence, every mandatory slice gate including human merge has passed, and no mandatory deviation remains unresolved. Release and deployment are not claimed.

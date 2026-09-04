@@ -1,8 +1,8 @@
 # Status — Quiver v58 Risk-aware Review Governance
 
-Overall status: Implementation Complete — Pending Human Review and Merge
+Overall status: Complete — Implementation and Human Merge Recorded
 
-Current stage: slice-06 integration, migration, and documentation is implemented, validated, independently reviewed, and published as PR #144 for human review.
+Current stage: slice-06 integration, migration, and documentation was implemented, validated, independently reviewed, and merged through PR #144.
 
 Next contract-ready slice: none; slice-06 is the final planned v58 slice.
 
@@ -25,10 +25,10 @@ Next contract-ready slice: none; slice-06 is the final planned v58 slice.
 - slice-05 implementation PR: human-reviewed and merged before slice-06 execution.
 - slice-06 contract amendment: compatibility metadata, verification mapping, rollback writer mode, stable codes, enforceable downgrade boundary, and required scope additions explicitly authorized on 2026-08-31.
 - slice-06 implementation closure: completed, validated, and independently approved on 2026-08-31.
-- slice-06 implementation PR: [#144](https://github.com/FabriJuncal/quiver/pull/144) opened from the single slice commit.
-- Current gate: human review and merge of PR #144 without claiming release or deployment.
+- slice-06 implementation PR: [#144](https://github.com/FabriJuncal/quiver/pull/144) merged on 2026-08-31 as `2f0afd8cbfdc000faea7747fd7ab8a26c9950d55`.
+- Current gate: no v58 repository gate remains; release and deployment stay separate and unexecuted.
 
-Here, `completed` records finished implementation and executed slice evidence; it does not bypass the human PR gate. `ready` records that the next slice contract is executable only after its completed dependency is merged into the base branch.
+Here, `completed` records finished implementation, executed slice evidence, and satisfied human merge gates. It does not claim release or deployment.
 
 ## Slice status
 
@@ -40,18 +40,17 @@ Here, `completed` records finished implementation and executed slice evidence; i
 | slice-03-approved-with-conditions | QUIVER-58-03 | completed | slice-02 | Merged dependency |
 | slice-04-digest-bound-approvals | QUIVER-58-04 | completed | slice-03 | Merged dependency |
 | slice-05-finding-disposition-transfer | QUIVER-58-05 | completed | slice-04 | Merged dependency |
-| slice-06-integration-migration-docs | QUIVER-58-06 | completed | slice-05 | Human review and merge |
+| slice-06-integration-migration-docs | QUIVER-58-06 | completed | slice-05 | Merged dependency |
 
 ## Pending work
 
-1. Wait for mandatory human review and merge of PR #144.
-2. Record the merge reference after the human gate.
-3. Treat release, package publication, deployment, and OTA as separate, still-unexecuted work.
+1. Treat release, package publication, deployment, and OTA as separate, still-unexecuted work.
+2. Start v59 or v60 only from updated `main` and through a separately approved spec.
 
 ## Blockers
 
-No implementation blocker remains. Human PR review and merge are the only open repository gate.
+No v58 implementation or repository blocker remains.
 
 ## Guardrail
 
-Do not auto-merge or add destructive downgrade, release, deployment, v59, or v60 behavior from the slice-06 branch.
+Do not add destructive downgrade, release, deployment, v59, or v60 behavior from the historical slice-06 branch.

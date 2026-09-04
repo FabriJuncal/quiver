@@ -1,6 +1,6 @@
 # Quiver v58 — Risk-aware review governance
 
-Status: Implementation Complete — slices 00 through 05 merged; slice-06 PR #144 pending human review and merge
+Status: Complete — slices 00 through 06 implemented, validated, reviewed, and merged
 
 Classification: Level 3 — governance, authorization, integrity, and cross-command runtime contracts
 
@@ -411,4 +411,4 @@ Traceability: RQ-001 through RQ-009; REV-02, REV-03, REV-06, REV-07, REV-11, REV
 - The documentary foundation in slice-00 is completed and merged with recorded structural and semantic evidence.
 - slice-01 runtime implementation is completed with executed and independently reviewed evidence.
 - slice-02 is completed and merged; slice-03 implementation is completed with executed and independently reviewed evidence.
-- slices 00 through 05 are completed and merged; slice-06 implementation and evidence are completed, with human PR review and merge pending.
+- slices 00 through 06 are completed and merged; PR #144 closed the final repository gate on 2026-08-31. Release and deployment remain separate.

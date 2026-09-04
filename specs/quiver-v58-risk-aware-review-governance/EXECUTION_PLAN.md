@@ -1,6 +1,6 @@
 # Execution Plan — Quiver v58 Risk-aware Review Governance
 
-Status: Implementation Complete — all seven slices validated; slice-06 PR #144 pending human review and merge
+Status: Complete — all seven slices validated, reviewed, and merged
 
 ## Objective
 
@@ -209,4 +209,4 @@ Rollback is a one-way operational mode, not a data downgrade. Disable v58 writer
 
 ## Completion
 
-All seven implementation slices are completed, AC-01 through AC-16 have recorded evidence, no mandatory deviation remains open, and STATUS.md plus EVIDENCE_REPORT.md reflect the executed state. Human review and merge of the slice-06 PR remain mandatory; release and deployment are separate and were not executed.
+All seven implementation slices are completed, AC-01 through AC-16 have recorded evidence, no mandatory deviation remains open, and STATUS.md plus EVIDENCE_REPORT.md reflect the executed state. PR #144 was merged on 2026-08-31; release and deployment are separate and were not executed.
