@@ -15,6 +15,7 @@ This document is the canonical implementation workflow for the project.
 - The spec defines the plan; the slice defines the execution.
 - Durable requirements live in `docs/requirements/`; durable plans live in `docs/plans/`.
 - Requirements and plans have stable IDs, explicit versions, bidirectional relations, and a decision record for every change.
+- Large requirement packages use a catalog manifest plus independently versioned initiatives. Read only the exact initiative and pinned plan; keep replaced monoliths for audit.
 - Approved artifact versions are immutable. Create a new version with `supersedes`, reason, and impact instead of editing the old file.
 - `.quiver/approvals/` is internal planner state and does not replace the durable plan under `docs/plans/`.
 - No slice should enter execution until it is `ready`.

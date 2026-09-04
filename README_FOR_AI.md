@@ -93,6 +93,7 @@ Prefer maps, metadata, diffs, and summaries over full file reads when they are e
 - Use `npx create-quiver init` or `npx create-quiver --name "Project Name"` instead of copying templates by hand.
 - Treat `.quiver/` as Quiver internal machinery and `docs/` as the visible project-specific contract.
 - Store durable, versioned requirements in `docs/requirements/` and durable, versioned plans in `docs/plans/`; link them bidirectionally and record change, reason, and impact for every new version.
+- For a composite requirement package, read the catalog front matter/table, then only the exact initiative and pinned plan. Open a replaced monolith or global traceability file only for cross-cutting audit.
 - Treat `.quiver/approvals/` as planner state, not as a substitute for the approved plan document under `docs/plans/`.
 - Not every project needs every optional file.
 - The AI context pack lives in `docs/AI_CONTEXT.md`; `docs/CONTEXTO.md` is the broader project overview; `docs/PROJECT_MAP.md` owns stack and command facts.

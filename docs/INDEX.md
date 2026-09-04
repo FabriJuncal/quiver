@@ -1,6 +1,6 @@
 # Quiver Documentation Index
 
-**Last updated:** 2026-09-02
+**Last updated:** 2026-09-04
 
 Use this file as the first documentation map before planning, implementing, reviewing, or opening PRs in this repository. Prefer the smallest set of linked documents that fits the task.
 
@@ -34,12 +34,19 @@ Use this file as the first documentation map before planning, implementing, revi
 ## Requirements
 
 - **Requirements catalog:** [`./requirements/README.md`](./requirements/README.md)
-- **Quiver product requirements v6:** [`./requirements/Quiver_Especificaciones_Requerimientos_v6.md`](./requirements/Quiver_Especificaciones_Requerimientos_v6.md)
+- **Quiver product requirements catalog v6.0.16:** [`./requirements/REQ-QUIVER-PRODUCT-CATALOG-v6.0.16.md`](./requirements/REQ-QUIVER-PRODUCT-CATALOG-v6.0.16.md)
 
 ## Plans
 
 - **Plans catalog:** [`./plans/README.md`](./plans/README.md)
-- **Quiver master roadmap v6:** [`./plans/Quiver_Roadmap_Maestro_v6.md`](./plans/Quiver_Roadmap_Maestro_v6.md)
+- **Quiver master roadmap v6.0.22:** [`./plans/PLAN-QUIVER-MASTER-v6.0.22.md`](./plans/PLAN-QUIVER-MASTER-v6.0.22.md)
+- **Initiative A plan v1.0.2:** [`./plans/PLAN-QUIVER-INIT-A-ENGINE-TRUST-v1.0.2.md`](./plans/PLAN-QUIVER-INIT-A-ENGINE-TRUST-v1.0.2.md)
+- **Initiative B plan v1.0.2:** [`./plans/PLAN-QUIVER-INIT-B-STUDIO-ALPHA-v1.0.2.md`](./plans/PLAN-QUIVER-INIT-B-STUDIO-ALPHA-v1.0.2.md)
+- **Initiative C plan v1.0.2:** [`./plans/PLAN-QUIVER-INIT-C-OBSERVER-CONTROL-v1.0.2.md`](./plans/PLAN-QUIVER-INIT-C-OBSERVER-CONTROL-v1.0.2.md)
+- **Initiative D plan v1.0.2:** [`./plans/PLAN-QUIVER-INIT-D-EXECUTION-AI-TEAM-v1.0.2.md`](./plans/PLAN-QUIVER-INIT-D-EXECUTION-AI-TEAM-v1.0.2.md)
+- **Initiative E plan v1.0.2:** [`./plans/PLAN-QUIVER-INIT-E-BUILDER-DELIVERY-v1.0.2.md`](./plans/PLAN-QUIVER-INIT-E-BUILDER-DELIVERY-v1.0.2.md)
+- **Initiative F plan v1.0.3:** [`./plans/PLAN-QUIVER-INIT-F-ORCHESTRATION-OPERATIONS-v1.0.3.md`](./plans/PLAN-QUIVER-INIT-F-ORCHESTRATION-OPERATIONS-v1.0.3.md)
+- **Initiative G plan v1.0.2:** [`./plans/PLAN-QUIVER-INIT-G-SCALE-ECOSYSTEM-v1.0.2.md`](./plans/PLAN-QUIVER-INIT-G-SCALE-ECOSYSTEM-v1.0.2.md)
 
 ## AI Configuration
 
@@ -90,7 +97,7 @@ These files are templates for generated projects or optional profiles. Do not tr
 ## Task Routing
 
 - **Documentation/index work:** read this index, then the affected docs only.
-- **Requirements or plans:** read [`./workflows/requirements-and-plans.md`](./workflows/requirements-and-plans.md), then the exact requirement and related plan versions only.
+- **Requirements or plans:** read [`./workflows/requirements-and-plans.md`](./workflows/requirements-and-plans.md), then the catalog manifest, exact initiative and related plan versions only. Use historical monoliths only for audit.
 - **CLI UX, output, dashboard, or version work:** read [`./CLI_UX_GUIDE.md`](./CLI_UX_GUIDE.md), [`./reference/commands.md`](./reference/commands.md), and the relevant spec.
 - **Spec or slice execution:** read the relevant [`../specs/`](../specs/) package, especially the target slice files.
 - **PR creation:** read [`./GITFLOW_PR_GUIDE.md`](./GITFLOW_PR_GUIDE.md) and the relevant `pr.md`.

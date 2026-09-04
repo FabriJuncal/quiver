@@ -37,6 +37,36 @@ docs/plans/PLAN-BILLING-001-v1.0.0.md
 Los documentos maestros importados pueden conservar su nombre histórico si el
 front matter declara un `artifact_id` estable, su versión y sus relaciones.
 
+### 2.1. Paquetes compuestos e iniciativas
+
+Cuando un requerimiento maestro sea demasiado grande para el contexto normal de
+una tarea, se divide sin cambiar su semántica en:
+
+```text
+docs/requirements/REQ-<DOMINIO>-CATALOG-v<VERSION>.md
+docs/requirements/initiatives/REQ-<DOMINIO>-INIT-<ID>-v<VERSION>.md
+docs/requirements/traceability/TRACE-<DOMINIO>-<ID>-v<VERSION>.md
+```
+
+- El catálogo es el manifiesto: enumera iniciativas, versiones exactas, alcance,
+  totales y contratos compartidos.
+- Cada iniciativa tiene `artifact_id` y versión propios, declara su provenance y
+  referencia el catálogo y el ID estable del plan relacionado.
+- La trazabilidad global se separa cuando no sea necesaria para ejecutar una
+  iniciativa y conserva el hash de la sección fuente.
+- El plan fija la versión exacta de cada iniciativa que consume; no alcanza con
+  apuntar solamente al catálogo.
+- Una iniciativa es independiente para versionado y planificación, pero no
+  elimina dependencias, gates ni criterios de aceptación entre specs.
+- La segmentación puramente documental incrementa el patch del catálogo; las
+  iniciativas nuevas comienzan en `1.0.0`. Un cambio semántico posterior
+  versiona la iniciativa afectada y actualiza el binding del plan.
+- El documento monolítico reemplazado permanece inmutable para auditoría.
+
+Orden de lectura para reducir contexto: front matter y tabla del catálogo →
+iniciativa exacta → plan relacionado. Abrir el monolito o la trazabilidad global
+solo cuando la tarea requiera auditoría transversal.
+
 ## 3. Metadata obligatoria
 
 ### Requerimiento
@@ -112,13 +142,17 @@ Para modificar un artefacto:
 6. actualizar el índice del directorio;
 7. actualizar las referencias de versión exacta en los planes afectados.
 
+En paquetes compuestos, actualizar además la membresía/versiones del catálogo y
+verificar que cada spec o unidad de alcance pertenezca a una sola iniciativa.
+
 La relación desde requerimiento hacia plan se mantiene por ID estable y apunta
 al catálogo de planes para evitar un ciclo de versionado cuando cambia solamente
 el plan. El plan siempre fija la versión exacta del requerimiento consumido.
 
 ## 5. Flujo WDD + SDD
 
-1. Crear el requerimiento versionado en `docs/requirements/`.
+1. Crear el requerimiento versionado en `docs/requirements/`; si es compuesto,
+   crear el manifiesto y las iniciativas que componen el alcance aprobado.
 2. Registrar la decisión inicial y cualquier supuesto pendiente.
 3. Generar y aprobar criterios de aceptación mediante el flujo Quiver.
 4. Crear el plan en `docs/plans/`, apuntando a la versión exacta del requerimiento.
@@ -162,6 +196,15 @@ Antes de crear una spec o implementar:
 - no se modificó una versión aprobada anterior;
 - los criterios de aceptación y riesgos siguen vigentes;
 - el cambio no contradice una spec activa.
+
+Para paquetes compuestos, validar además:
+
+- cada iniciativa aparece en el catálogo con versión exacta;
+- el plan fija todas las versiones de iniciativa que consume;
+- no faltan ni se duplican specs o unidades de alcance;
+- los totales y hashes de origen permiten comprobar que la segmentación no
+  alteró contenido;
+- los gates y dependencias conservan una fuente canónica explícita.
 
 ## 8. Migración y documentos históricos
 
