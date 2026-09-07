@@ -299,7 +299,7 @@ test('ai review-plan dry-run uses the latest technical-plan draft', () => {
   });
 
   try {
-    savePlannerDraft(repo.root, 'technical-plan', 'technical-plan.md', '# Technical plan v1\n');
+    savePlannerDraft(repo.root, 'technical-plan', 'technical-plan.md', '# Technical plan v1\n\nslice-01-plan\n');
 
     const output = execAi(repo.root, ['review-plan', '--dry-run']);
 
@@ -321,7 +321,7 @@ test('ai review-plan print-prompt renders review prompt without provider auth', 
   });
 
   try {
-    savePlannerDraft(repo.root, 'technical-plan', 'technical-plan.md', '# Technical plan v1\n');
+    savePlannerDraft(repo.root, 'technical-plan', 'technical-plan.md', '# Technical plan v1\n\nslice-01-plan\n');
 
     const output = execAi(repo.root, ['review-plan', '--print-prompt']);
 
@@ -1075,7 +1075,7 @@ test('governed blocking review can revise to an owned draft and review again', a
   };
 
   try {
-    savePlannerDraft(repo.root, 'acceptance', 'requirements.md', '# Accepted criteria\n');
+    savePlannerDraft(repo.root, 'acceptance', 'requirements.md', '# Accepted criteria\n\nAC-01\n');
     approvePlannerPhase(repo.root, 'acceptance', '', '', { version: 1 });
     savePlannerDraft(repo.root, 'technical-plan', 'technical-plan.md', structuredTechnicalPlanText('review-cycle-plan'));
     seedGovernedTechnicalPlanRun(repo.root, 'run-review-cycle', governance, latestDraftArtifact(repo.root));
@@ -1712,7 +1712,7 @@ test('governed review inherits the active profile and renders the effective poli
   });
 
   try {
-    savePlannerDraft(repo.root, 'acceptance', 'technical-plan.md', '# Accepted criteria\n');
+    savePlannerDraft(repo.root, 'acceptance', 'technical-plan.md', '# Accepted criteria\n\nAC-01\n');
     approvePlannerPhase(repo.root, 'acceptance', '', '', { version: 1 });
     savePlannerDraft(repo.root, 'technical-plan', 'technical-plan.md', structuredTechnicalPlanText('inherited-profile-plan'));
     seedGovernedTechnicalPlanRun(
@@ -2106,8 +2106,8 @@ test('ai approve selects acceptance draft interactively when version is omitted'
   });
 
   try {
-    savePlannerDraft(repo.root, 'acceptance', 'requirements.md', 'acceptance v1\n');
-    savePlannerDraft(repo.root, 'acceptance', 'requirements.md', 'acceptance v2\n');
+    savePlannerDraft(repo.root, 'acceptance', 'requirements.md', 'AC-01 acceptance v1\n');
+    savePlannerDraft(repo.root, 'acceptance', 'requirements.md', 'AC-01 acceptance v2\n');
 
     const result = await runApprove(repo.root, {
       phase: 'acceptance',
@@ -2134,7 +2134,7 @@ test('ai approve without version remains explicit in no-TTY mode', () => {
   });
 
   try {
-    savePlannerDraft(repo.root, 'acceptance', 'requirements.md', 'acceptance v1\n');
+    savePlannerDraft(repo.root, 'acceptance', 'requirements.md', 'AC-01 acceptance v1\n');
 
     assert.throws(
       () => execAi(repo.root, ['approve', '--phase', 'acceptance']),
@@ -2152,8 +2152,8 @@ test('ai approve interactive selection refuses non-current acceptance drafts', a
   });
 
   try {
-    savePlannerDraft(repo.root, 'acceptance', 'requirements.md', 'acceptance v1\n');
-    savePlannerDraft(repo.root, 'acceptance', 'requirements.md', 'acceptance v2\n');
+    savePlannerDraft(repo.root, 'acceptance', 'requirements.md', 'AC-01 acceptance v1\n');
+    savePlannerDraft(repo.root, 'acceptance', 'requirements.md', 'AC-01 acceptance v2\n');
 
     await assert.rejects(
       runApprove(repo.root, {
@@ -2176,7 +2176,7 @@ test('ai review-plan marks review stale when the technical-plan draft changes', 
   });
 
   try {
-    savePlannerDraft(repo.root, 'technical-plan', 'technical-plan.md', '# Technical plan v1\n');
+    savePlannerDraft(repo.root, 'technical-plan', 'technical-plan.md', '# Technical plan v1\n\nslice-01-plan\n');
     await runReviewPlan(repo.root, {
       runProviderFn: async (provider) => ({
         ok: true,
@@ -2194,7 +2194,7 @@ test('ai review-plan marks review stale when the technical-plan draft changes', 
         preflight: { ok: true },
       }),
     });
-    savePlannerDraft(repo.root, 'technical-plan', 'technical-plan.md', '# Technical plan v2\n');
+    savePlannerDraft(repo.root, 'technical-plan', 'technical-plan.md', '# Technical plan v2\n\nslice-01-plan\n');
 
     assert.equal(readPlanReview(repo.root).status, 'stale');
   } finally {
@@ -2208,7 +2208,7 @@ test('ai approve blocks technical-plan approval when the latest review is stale'
   });
 
   try {
-    savePlannerDraft(repo.root, 'technical-plan', 'technical-plan.md', '# Technical plan v1\n');
+    savePlannerDraft(repo.root, 'technical-plan', 'technical-plan.md', '# Technical plan v1\n\nslice-01-plan\n');
     await runReviewPlan(repo.root, {
       runProviderFn: async (provider) => ({
         ok: true,
@@ -2226,7 +2226,7 @@ test('ai approve blocks technical-plan approval when the latest review is stale'
         preflight: { ok: true },
       }),
     });
-    savePlannerDraft(repo.root, 'technical-plan', 'technical-plan.md', '# Technical plan v2\n');
+    savePlannerDraft(repo.root, 'technical-plan', 'technical-plan.md', '# Technical plan v2\n\nslice-01-plan\n');
 
     assert.equal(readPlanReview(repo.root).status, 'stale');
     assert.throws(
@@ -2465,6 +2465,7 @@ test('ai plan spec phase rejects approved technical plans that were not reviewed
         slug: 'unreviewed-plan',
         title: 'Unreviewed plan',
         objective: 'Reject spec generation before review.',
+        requirements: [{ id: 'RQ-001' }],
       },
     }, null, 2),
   });
@@ -2491,7 +2492,7 @@ test('ai review-plan surfaces provider failures with task context', async () => 
   });
 
   try {
-    savePlannerDraft(repo.root, 'technical-plan', 'technical-plan.md', '# Technical plan v1\n');
+    savePlannerDraft(repo.root, 'technical-plan', 'technical-plan.md', '# Technical plan v1\n\nslice-01-plan\n');
 
     await assert.rejects(
       runReviewPlan(repo.root, {

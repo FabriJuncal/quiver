@@ -4315,23 +4315,26 @@ async function runPlan(repoRoot, options = {}) {
     });
     const savedDraft = readPhaseApproval(repoRoot, phase).meta?.drafts
       ?.find((item) => Number(item.version) === Number(draft.version));
-    updateAiRunPhase(repoRoot, lifecycleRun.run_id, phase === 'acceptance' ? 'acceptance-draft' : 'technical-plan-draft', {
-      artifact: savedDraft?.path || path.relative(repoRoot, draft.filePath).split(path.sep).join('/'),
-      command: `ai plan --phase ${phase}`,
-      locked,
-      reviewRevision: options.revise === true && phase === 'technical-plan',
-    });
+    if (draft.selected) {
+      updateAiRunPhase(repoRoot, lifecycleRun.run_id, phase === 'acceptance' ? 'acceptance-draft' : 'technical-plan-draft', {
+        artifact: savedDraft?.path || path.relative(repoRoot, draft.filePath).split(path.sep).join('/'),
+        command: `ai plan --phase ${phase}`,
+        locked,
+        reviewRevision: options.revise === true && phase === 'technical-plan',
+      });
+    }
     return draft;
   };
+  let savedDraft;
   if (governedRun) {
-    withAiRunLock(
+    savedDraft = withAiRunLock(
       repoRoot,
       lifecycleRun.run_id,
       { command: `ai plan --phase ${phase} commit` },
       () => persistDraft(true),
     );
   } else {
-    persistDraft();
+    savedDraft = persistDraft();
   }
 
   return {
@@ -4343,6 +4346,7 @@ async function runPlan(repoRoot, options = {}) {
     invocation,
     result,
     reviewPath,
+    draft: savedDraft,
   };
 }
 
@@ -5059,10 +5063,12 @@ async function runRepairPlan(repoRoot, options = {}) {
     rawArtifactPath: rawArtifact.path,
     outputSource: clean.source,
   });
-  updateAiRunPhase(repoRoot, lifecycleRun.run_id, 'technical-plan-draft', {
-    artifact: path.relative(repoRoot, draft.filePath).split(path.sep).join('/'),
-    command: 'ai repair-plan',
-  });
+  if (draft.selected) {
+    updateAiRunPhase(repoRoot, lifecycleRun.run_id, 'technical-plan-draft', {
+      artifact: path.relative(repoRoot, draft.filePath).split(path.sep).join('/'),
+      command: 'ai repair-plan',
+    });
+  }
   process.stdout.write(formatRepairPlanResult({
     ...draft,
     sourcePath: source.path,

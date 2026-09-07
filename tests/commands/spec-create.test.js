@@ -497,7 +497,7 @@ test('spec create blocks when the approved technical plan was not reviewed', () 
 
 test('spec create fails before writing when approved plan lacks structured slices', () => {
   const repo = makeRepo({
-    'technical-plan.md': '# Technical plan\n\nThis plan has no structured slice block.\n',
+    'technical-plan.md': '# Technical plan\n\nslice-01-invalid-plan\n\nThis plan has no structured slice block.\n',
   });
 
   try {

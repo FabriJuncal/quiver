@@ -166,7 +166,7 @@ test('ai review-plan dry-run renders Spanish wrapper fields without changing dra
   });
 
   try {
-    savePlannerDraft(repo.root, 'technical-plan', 'technical-plan.md', '# Technical plan\n');
+    savePlannerDraft(repo.root, 'technical-plan', 'technical-plan.md', '# Technical plan\n\nslice-01-plan\n');
 
     const output = execCli(repo.root, ['--lang', 'es', 'ai', 'review-plan', '--dry-run']);
     assert.ok(output.includes('Dry-run de IA review-plan'));
@@ -237,7 +237,7 @@ test('ai approve dry-run and missing-version guidance render Spanish wrappers', 
   });
 
   try {
-    savePlannerDraft(repo.root, 'acceptance', 'acceptance.md', '# Draft criteria\n');
+    savePlannerDraft(repo.root, 'acceptance', 'acceptance.md', '# Draft criteria\n\nAC-01\n');
 
     const dryRun = execCli(repo.root, ['--lang', 'es', 'ai', 'approve', '--phase', 'acceptance', '--version', '1', '--dry-run']);
     assert.ok(dryRun.includes('Dry-run de aprobacion IA'));

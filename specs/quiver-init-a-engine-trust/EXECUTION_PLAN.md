@@ -1,6 +1,8 @@
 # Execution plan — Initiative A
 
-State: SPEC_DRAFT. All specs must pass independent cross-review before runtime.
+State: IN_PROGRESS. All seven specs passed independent cross-review before
+runtime. Slice 01 is closed in its logical commit; remaining runtime dependencies
+and whole-plan integration acceptance are still required.
 
 | Slice | Purpose | Depends on |
 |---|---|---|

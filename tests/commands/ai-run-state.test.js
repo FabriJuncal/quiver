@@ -202,8 +202,8 @@ test('ai status and resume use current approval candidate versions', () => {
       input: 'requirements.md',
       runId: 'run-approval-guidance',
     });
-    savePlannerDraft(repo.root, 'acceptance', 'requirements.md', '# Acceptance v1\n');
-    savePlannerDraft(repo.root, 'acceptance', 'requirements.md', '# Acceptance v2\n');
+    savePlannerDraft(repo.root, 'acceptance', 'requirements.md', '# Acceptance v1\n\nAC-01\n');
+    savePlannerDraft(repo.root, 'acceptance', 'requirements.md', '# Acceptance v2\n\nAC-01\n');
     updateAiRunPhase(repo.root, 'run-approval-guidance', 'acceptance-draft', {
       command: 'test acceptance draft',
     });
@@ -214,6 +214,7 @@ test('ai status and resume use current approval candidate versions', () => {
     assert.match(acceptanceStatus, /Next safe command: npx create-quiver ai approve --phase acceptance --version 2/);
     assert.match(acceptanceResume, /Next safe command: npx create-quiver ai approve --phase acceptance --version 2/);
 
+    fs.writeFileSync(path.join(repo.root, 'technical-plan.md'), structuredTechnicalPlanText('run-status-plan'));
     savePlannerDraft(repo.root, 'technical-plan', 'technical-plan.md', structuredTechnicalPlanText('run-status-plan'));
     savePlanReview(repo.root, {
       contents: '```json\n{"review":{"blocking":false,"approvalRecommendation":"approve","requiredFixes":[],"optionalHardening":[],"risks":[]}}\n```\n',
@@ -314,7 +315,7 @@ test('ai approvals separates run-scoped approvals from global planner approvals'
   const repo = makeRepo();
 
   try {
-    savePlannerDraft(repo.root, 'acceptance', 'requirements.md', '# Acceptance\n');
+    savePlannerDraft(repo.root, 'acceptance', 'requirements.md', '# Acceptance\n\nAC-01\n');
     const approved = approvePlannerPhase(repo.root, 'acceptance', '', '', { version: 1 });
 
     createAiRun(repo.root, {
@@ -715,7 +716,7 @@ test('two active runs publish only their own approval candidate and canonical co
       repo.root,
       'acceptance',
       'requirements.md',
-      `${JSON.stringify({ spec: { acceptance: ['A-01'] } }, null, 2)}\n`,
+      `${JSON.stringify({ spec: { acceptance: ['AC-01'] } }, null, 2)}\n`,
       { requireDigestBindings: true },
     );
     const draftAPath = readPhaseApproval(repo.root, 'acceptance').meta.drafts
@@ -734,7 +735,7 @@ test('two active runs publish only their own approval candidate and canonical co
       repo.root,
       'acceptance',
       'requirements.md',
-      `${JSON.stringify({ spec: { acceptance: ['B-01', 'B-02', 'B-03'] } }, null, 2)}\n`,
+      `${JSON.stringify({ spec: { acceptance: ['AC-01', 'AC-02', 'AC-03'] } }, null, 2)}\n`,
       { requireDigestBindings: true },
     );
     const draftBPath = readPhaseApproval(repo.root, 'acceptance').meta.drafts

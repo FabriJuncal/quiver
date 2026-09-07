@@ -1,13 +1,14 @@
 # Status — Initiative A
 
 Program state: IN_PROGRESS. Independent specification review: terminal
-READY_FOR_IMPLEMENTATION. This foundation commits the reviewed documentation;
-no new runtime slice has executed. Runtime dependencies still apply.
+READY_FOR_IMPLEMENTATION. Slice 01 has completed implementation, independent
+review and its frozen-source CI retest; runtime dependencies still apply to the
+remaining slices. Its logical commit records this closure, not whole-plan readiness.
 
 | Slice | State | Evidence |
 |---|---|---|
 | slice-00-foundation | DONE | Documentary checks and independent review; this foundation commit |
-| slice-01-draft-integrity | READY_FOR_IMPLEMENTATION | Runtime dependencies and executed tests pending |
+| slice-01-draft-integrity | DONE | [Independent CI retest: 958/958](./evidence/slice-01-independent-ci-cycle-2.md); independent reviewer approved |
 | slice-02-draft-recovery | READY_FOR_IMPLEMENTATION | Runtime dependencies and executed tests pending |
 | slice-03-effective-amendments | READY_FOR_IMPLEMENTATION | Runtime dependencies and executed tests pending |
 | slice-04-draft-cli | READY_FOR_IMPLEMENTATION | Runtime dependencies and executed tests pending |

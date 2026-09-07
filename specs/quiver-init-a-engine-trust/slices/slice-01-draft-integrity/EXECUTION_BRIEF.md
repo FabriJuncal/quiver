@@ -46,6 +46,7 @@ Preserve draft history and detect structural content loss.
 - `tests/commands/ai-run-state.test.js`
 - `tests/commands/flow.test.js`
 - `tests/commands/ai-plan-spec-phase.test.js`
+- `tests/commands/spec-create.test.js`
 - `specs/quiver-init-a-engine-trust/**`
 
 ## Restrictions
@@ -54,6 +55,10 @@ Implementation decision DEC-A-010, 2026-09-06: read-only call-graph inspection
 found existing writers and plaintext fixtures coupled to automatic selection.
 The above narrow scope makes the integrity change coherent in its own commit;
 it does not reopen reviewed contracts or implement slice-02/04 features early.
+Full-suite cycle 1 found one additional `spec create` invalid-shape fixture that
+depended on automatic selection of unstructured Markdown. Its stable slice ID is
+in scope so the original missing-structured-slices and no-write assertions remain
+reachable without an integrity bypass (coordinator authorization, 2026-09-06).
 
 No authority bypass, secret logging, source history deletion or unrelated changes.
 No unverified claim is promoted to verified. Conflicting parallel writes serialize.

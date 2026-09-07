@@ -296,7 +296,7 @@ test('ai plan --review lets a human edit the provider draft before saving', asyn
       review: true,
       reviewDir,
       openEditorFn: (reviewPath) => {
-        fs.writeFileSync(reviewPath, '# Reviewed acceptance\n- Edited criterion.\n');
+        fs.writeFileSync(reviewPath, '# Reviewed acceptance\n- AC-01 Edited criterion.\n');
         return { ok: true, canceled: false };
       },
       runProviderFn: async (provider) => ({
@@ -309,7 +309,7 @@ test('ai plan --review lets a human edit the provider draft before saving', asyn
         timeoutMs: 0,
         promptTransport: { mode: 'stdin' },
         exitCode: 0,
-        stdout: '# Original acceptance\n- Provider criterion.\n',
+        stdout: '# Original acceptance\n- AC-01 Provider criterion.\n',
         stderr: '',
         error: null,
         preflight: { ok: true },
@@ -318,7 +318,7 @@ test('ai plan --review lets a human edit the provider draft before saving', asyn
 
     const draftPath = path.join(repo.root, '.quiver', 'approvals', 'acceptance', 'draft.md');
     assert.equal(result.reviewPath, path.join(reviewDir, 'ai-plan-acceptance-draft.md'));
-    assert.equal(fs.readFileSync(draftPath, 'utf8'), '# Reviewed acceptance\n- Edited criterion.\n');
+    assert.equal(fs.readFileSync(draftPath, 'utf8'), '# Reviewed acceptance\n- AC-01 Edited criterion.\n');
   } finally {
     fs.rmSync(reviewDir, { recursive: true, force: true });
     repo.cleanup();
@@ -351,7 +351,7 @@ test('ai plan --interactive can decline saving the provider draft', async () => 
           timeoutMs: 0,
           promptTransport: { mode: 'stdin' },
           exitCode: 0,
-          stdout: 'acceptance draft\n',
+          stdout: 'AC-01 acceptance draft\n',
           stderr: '',
           error: null,
           preflight: { ok: true },
@@ -408,7 +408,7 @@ test('ai plan acceptance persists a draft approval state', async () => {
           timeoutMs: 0,
           promptTransport: { mode: 'stdin' },
           exitCode: 0,
-          stdout: 'acceptance draft\n',
+          stdout: 'AC-01 acceptance draft\n',
           stderr: '',
           error: null,
           preflight: { ok: true },
@@ -421,7 +421,7 @@ test('ai plan acceptance persists a draft approval state', async () => {
     const meta = JSON.parse(fs.readFileSync(metaPath, 'utf8'));
 
     assert.equal(fs.existsSync(draftPath), true);
-    assert.equal(fs.readFileSync(draftPath, 'utf8'), 'acceptance draft\n');
+    assert.equal(fs.readFileSync(draftPath, 'utf8'), 'AC-01 acceptance draft\n');
     assert.equal(meta.phase, 'acceptance');
     assert.equal(meta.draft.source_file, 'requirements.md');
     assert.equal(meta.draft.path, '.quiver/approvals/acceptance/draft.md');
@@ -452,7 +452,7 @@ test('ai plan redacts likely secrets before saving provider output drafts', asyn
         timeoutMs: 0,
         promptTransport: { mode: 'stdin' },
         exitCode: 0,
-        stdout: 'token=abc123\ncriteria draft\n',
+        stdout: 'AC-01\ntoken=abc123\ncriteria draft\n',
         stderr: 'authorization: bearer secret-value\n',
         error: null,
         preflight: { ok: true },
@@ -498,7 +498,7 @@ test('ai plan stores clean drafts and separates redacted raw provider logs', asy
         timeoutMs: 0,
         promptTransport: { mode: 'stdin' },
         exitCode: 0,
-        stdout: `${options.prompt}\nINFO provider started\n# Acceptance\n- Clear criterion.\n`,
+        stdout: `${options.prompt}\nINFO provider started\n# Acceptance\n- AC-01 Clear criterion.\n`,
         stderr: `debug token=abc123 cwd=${repo.root}\n`,
         error: null,
         preflight: { ok: true },
@@ -510,7 +510,7 @@ test('ai plan stores clean drafts and separates redacted raw provider logs', asy
     const rawPath = path.join(repo.root, meta.draft.raw_artifact_path);
     const raw = JSON.parse(fs.readFileSync(rawPath, 'utf8'));
 
-    assert.equal(draft, '# Acceptance\n- Clear criterion.\n');
+    assert.equal(draft, '# Acceptance\n- AC-01 Clear criterion.\n');
     assert.equal(meta.draft.output_source, 'stdout');
     assert.ok(meta.draft.raw_artifact_path.startsWith('.quiver/runs/'));
     assert.ok(meta.draft.raw_artifact_path.includes('/raw/'));
@@ -542,14 +542,14 @@ test('ai plan prints clean provider output without raw prompt echo or stderr log
         timeoutMs: 0,
         promptTransport: { mode: 'stdin' },
         exitCode: 0,
-        stdout: `${options.prompt}\nINFO provider started\n# Acceptance\n- Clean criterion.\n`,
+        stdout: `${options.prompt}\nINFO provider started\n# Acceptance\n- AC-01 Clean criterion.\n`,
         stderr: `debug token=abc123 cwd=${repo.root}\n`,
         error: null,
         preflight: { ok: true },
       }),
     }));
 
-    assert.equal(captured.stdout, '# Acceptance\n- Clean criterion.\n');
+    assert.equal(captured.stdout, '# Acceptance\n- AC-01 Clean criterion.\n');
     assert.equal(captured.stderr, '');
     assert.equal(captured.stdout.includes('Keep console output clean'), false);
     assert.equal(captured.stdout.includes('provider started'), false);
@@ -579,7 +579,7 @@ test('ai approve only approves the current draft version', async () => {
         timeoutMs: 0,
         promptTransport: { mode: 'stdin' },
         exitCode: 0,
-        stdout: 'acceptance draft v1\n',
+        stdout: 'AC-01 acceptance draft v1\n',
         stderr: '',
         error: null,
         preflight: { ok: true },
@@ -598,7 +598,7 @@ test('ai approve only approves the current draft version', async () => {
         timeoutMs: 0,
         promptTransport: { mode: 'stdin' },
         exitCode: 0,
-        stdout: 'acceptance draft v2\n',
+        stdout: 'AC-01 acceptance draft v2\n',
         stderr: '',
         error: null,
         preflight: { ok: true },
@@ -616,7 +616,7 @@ test('ai approve only approves the current draft version', async () => {
     const meta = JSON.parse(fs.readFileSync(path.join(repo.root, '.quiver', 'approvals', 'acceptance', 'meta.json'), 'utf8'));
 
     assert.ok(output.includes('Version: v2'));
-    assert.equal(fs.readFileSync(approvedPath, 'utf8'), 'acceptance draft v2\n');
+    assert.equal(fs.readFileSync(approvedPath, 'utf8'), 'AC-01 acceptance draft v2\n');
     assert.equal(meta.approved.version, 2);
     assert.equal(meta.drafts.length, 2);
     assert.ok(status.includes('Draft history:'));
@@ -646,7 +646,7 @@ test('ai approve requires a version and rejects direct input files', async () =>
         timeoutMs: 0,
         promptTransport: { mode: 'stdin' },
         exitCode: 0,
-        stdout: 'acceptance draft v1\n',
+        stdout: 'AC-01 acceptance draft v1\n',
         stderr: '',
         error: null,
         preflight: { ok: true },
@@ -687,7 +687,7 @@ test('ai revise creates a new draft version without approving the phase', async 
         timeoutMs: 0,
         promptTransport: { mode: 'stdin' },
         exitCode: 0,
-        stdout: 'acceptance draft v1\n',
+        stdout: 'AC-01 acceptance draft v1\n',
         stderr: '',
         error: null,
         preflight: { ok: true },
@@ -712,7 +712,7 @@ test('ai revise creates a new draft version without approving the phase', async 
           timeoutMs: 0,
           promptTransport: { mode: 'stdin' },
           exitCode: 0,
-          stdout: 'acceptance draft v2\n',
+          stdout: 'AC-01 acceptance draft v2\n',
           stderr: '',
           error: null,
           preflight: { ok: true },
@@ -726,7 +726,7 @@ test('ai revise creates a new draft version without approving the phase', async 
     assert.equal(meta.draft.version, 2);
     assert.equal(meta.approved, null);
     assert.equal(meta.drafts.length, 2);
-    assert.equal(fs.readFileSync(path.join(repo.root, '.quiver', 'approvals', 'acceptance', 'drafts', '002.md'), 'utf8'), 'acceptance draft v2\n');
+    assert.equal(fs.readFileSync(path.join(repo.root, '.quiver', 'approvals', 'acceptance', 'drafts', '002.md'), 'utf8'), 'AC-01 acceptance draft v2\n');
     assert.ok(status.includes('Status: draft'));
   } finally {
     repo.cleanup();
@@ -761,7 +761,7 @@ test('ai revise compacts oversized feedback before provider execution', async ()
         timeoutMs: 0,
         promptTransport: { mode: 'stdin' },
         exitCode: 0,
-        stdout: 'acceptance draft v1\n',
+        stdout: 'AC-01 acceptance draft v1\n',
         stderr: '',
         error: null,
         preflight: { ok: true },
@@ -791,7 +791,7 @@ test('ai revise compacts oversized feedback before provider execution', async ()
           timeoutMs: 0,
           promptTransport: { mode: 'stdin' },
           exitCode: 0,
-          stdout: 'acceptance draft v2\n',
+          stdout: 'AC-01 acceptance draft v2\n',
           stderr: '',
           error: null,
           preflight: { ok: true },
@@ -834,7 +834,7 @@ test('ai plan rejects oversized prompts before provider execution', async () => 
 
 test('ai revise technical-plan includes approved acceptance, current draft, and feedback', async () => {
   const repo = makeRepo({
-    'acceptance.md': '# Acceptance\n- Approved criteria.',
+    'acceptance.md': '# Acceptance\n- AC-01 Approved criteria.',
     'plan-feedback.md': '# feedback\n- Reduce risk in rollout.',
   });
 
@@ -852,14 +852,14 @@ test('ai revise technical-plan includes approved acceptance, current draft, and 
         timeoutMs: 0,
         promptTransport: { mode: 'stdin' },
         exitCode: 0,
-        stdout: '# Acceptance\n- Approved criteria.',
+        stdout: '# Acceptance\n- AC-01 Approved criteria.',
         stderr: '',
         error: null,
         preflight: { ok: true },
       }),
     });
     execAiSubcommand(repo.root, ['approve', '--phase', 'acceptance', '--version', '1']);
-    savePlannerDraft(repo.root, 'technical-plan', '.quiver/approvals/acceptance/approved.md', '# Technical plan v1\n');
+    savePlannerDraft(repo.root, 'technical-plan', '.quiver/approvals/acceptance/approved.md', '# Technical plan v1\n\nslice-01-plan\n');
 
     await runRevise(repo.root, {
       input: 'plan-feedback.md',
@@ -880,7 +880,7 @@ test('ai revise technical-plan includes approved acceptance, current draft, and 
           timeoutMs: 0,
           promptTransport: { mode: 'stdin' },
           exitCode: 0,
-          stdout: '# Technical plan v2\n',
+          stdout: '# Technical plan v2\n\nslice-01-plan\n',
           stderr: '',
           error: null,
           preflight: { ok: true },
@@ -892,7 +892,7 @@ test('ai revise technical-plan includes approved acceptance, current draft, and 
 
     assert.equal(meta.draft.version, 2);
     assert.equal(meta.approved, null);
-    assert.equal(fs.readFileSync(path.join(repo.root, '.quiver', 'approvals', 'technical-plan', 'drafts', '002.md'), 'utf8'), '# Technical plan v2\n');
+    assert.equal(fs.readFileSync(path.join(repo.root, '.quiver', 'approvals', 'technical-plan', 'drafts', '002.md'), 'utf8'), '# Technical plan v2\n\nslice-01-plan\n');
   } finally {
     repo.cleanup();
   }
@@ -900,8 +900,12 @@ test('ai revise technical-plan includes approved acceptance, current draft, and 
 
 test('governed technical-plan revise keeps acceptance and draft input isolated to the selected run', async () => {
   const governance = allowApproval(buildDefaultGovernanceConfig());
-  const planA = `${structuredTechnicalPlanText('run-a-plan').trimEnd()}\nPLAN_A_ONLY\n`;
-  const planB = `${structuredTechnicalPlanText('run-b-plan').trimEnd()}\nPLAN_B_ONLY\n`;
+  const planAData = JSON.parse(structuredTechnicalPlanText('run-a-plan'));
+  const planBData = JSON.parse(structuredTechnicalPlanText('run-b-plan'));
+  planAData.run_marker = 'PLAN_A_ONLY';
+  planBData.run_marker = 'PLAN_B_ONLY';
+  const planA = `${JSON.stringify(planAData, null, 2)}\n`;
+  const planB = `${JSON.stringify(planBData, null, 2)}\n`;
   const repo = makeRepo({
     'acceptance-a.md': 'ACCEPTANCE_A_ONLY\n',
     'acceptance-b.md': 'ACCEPTANCE_B_ONLY\n',
@@ -1005,7 +1009,7 @@ test('ai revise rejects missing input values for acceptance and technical-plan b
   });
 
   try {
-    savePlannerDraft(repo.root, 'acceptance', 'requirements.md', 'acceptance draft v1\n');
+    savePlannerDraft(repo.root, 'acceptance', 'requirements.md', 'AC-01 acceptance draft v1\n');
     savePlannerDraft(repo.root, 'technical-plan', 'technical-plan.md', structuredTechnicalPlanText('missing-revise-input'));
 
     assert.throws(
@@ -1040,7 +1044,7 @@ test('ai revise rejects nonexistent feedback files and accidental extra argument
   });
 
   try {
-    savePlannerDraft(repo.root, 'acceptance', 'requirements.md', 'acceptance draft v1\n');
+    savePlannerDraft(repo.root, 'acceptance', 'requirements.md', 'AC-01 acceptance draft v1\n');
     savePlannerDraft(repo.root, 'technical-plan', 'technical-plan.md', structuredTechnicalPlanText('guarded-revise-plan'));
 
     assert.throws(
@@ -1085,7 +1089,7 @@ test('ai plan shows human TTY progress during live provider execution', async ()
         timeoutMs: 0,
         promptTransport: { mode: 'stdin' },
         exitCode: 0,
-        stdout: 'acceptance draft\n',
+        stdout: 'AC-01 acceptance draft\n',
         stderr: '',
         error: null,
         preflight: { ok: true },
@@ -1137,7 +1141,7 @@ test('ai plan dry-run does not show provider progress', async () => {
 
 test('ai approve writes an approved acceptance artifact with metadata', async () => {
   const repo = makeRepo({
-    'acceptance.md': '# Acceptance\n- Approved criteria.',
+    'acceptance.md': '# Acceptance\n- AC-01 Approved criteria.',
   });
 
   try {
@@ -1154,7 +1158,7 @@ test('ai approve writes an approved acceptance artifact with metadata', async ()
         timeoutMs: 0,
         promptTransport: { mode: 'stdin' },
         exitCode: 0,
-        stdout: '# Acceptance\n- Approved criteria.',
+        stdout: '# Acceptance\n- AC-01 Approved criteria.',
         stderr: '',
         error: null,
         preflight: { ok: true },
@@ -1167,7 +1171,7 @@ test('ai approve writes an approved acceptance artifact with metadata', async ()
 
     assert.ok(output.includes('AI approval saved'));
     assert.ok(fs.existsSync(approvedPath));
-    assert.equal(fs.readFileSync(approvedPath, 'utf8'), '# Acceptance\n- Approved criteria.');
+    assert.equal(fs.readFileSync(approvedPath, 'utf8'), '# Acceptance\n- AC-01 Approved criteria.');
     assert.equal(meta.phase, 'acceptance');
     assert.equal(meta.approved.source_file, '.quiver/approvals/acceptance/drafts/001.md');
     assert.equal(meta.approved.path, '.quiver/approvals/acceptance/approved.md');
@@ -1717,7 +1721,7 @@ test('conditioned digest-bound approval reuses its candidate, rejects drift, and
 
 test('ai approvals prints draft and approved status', async () => {
   const repo = makeRepo({
-    'acceptance.md': '# Acceptance\n- Approved criteria.',
+    'acceptance.md': '# Acceptance\n- AC-01 Approved criteria.',
   });
 
   try {
@@ -1734,7 +1738,7 @@ test('ai approvals prints draft and approved status', async () => {
         timeoutMs: 0,
         promptTransport: { mode: 'stdin' },
         exitCode: 0,
-        stdout: '# Acceptance\n- Approved criteria.',
+        stdout: '# Acceptance\n- AC-01 Approved criteria.',
         stderr: '',
         error: null,
         preflight: { ok: true },
@@ -1755,7 +1759,7 @@ test('ai approvals prints draft and approved status', async () => {
 
 test('ai approve rejects technical-plan drafts without structured spec slices before writing approved artifacts', () => {
   const repo = makeRepo({
-    'technical-plan.md': '# Technical plan\n\nThis plan has no structured slices.\n',
+    'technical-plan.md': '# Technical plan\n\nslice-01-structured-plan\n\nThis plan has no structured slices.\n',
   });
 
   try {
@@ -1786,7 +1790,7 @@ test('ai approve rejects technical-plan drafts without structured spec slices be
 
 test('ai repair-plan creates a derived structured draft and preserves the legacy approved artifact', async () => {
   const repo = makeRepo({
-    'legacy-plan.md': '# Technical plan\n\nApproved before structured slices were required.\n',
+    'legacy-plan.md': '# Technical plan\n\nslice-01-structured-plan\n\nApproved before structured slices were required.\n',
   });
 
   try {
@@ -1839,7 +1843,7 @@ test('ai repair-plan creates a derived structured draft and preserves the legacy
 
 test('ai repair-plan shows human TTY progress during live provider execution', async () => {
   const repo = makeRepo({
-    'legacy-plan.md': '# Technical plan\n\nApproved before structured slices were required.\n',
+    'legacy-plan.md': '# Technical plan\n\nslice-01-structured-plan\n\nApproved before structured slices were required.\n',
   });
   const progress = createProgressRecorder();
 
@@ -1889,7 +1893,7 @@ test('ai repair-plan shows human TTY progress during live provider execution', a
 
 test('ai repair-plan dry-run previews repair without mutating approval state', () => {
   const repo = makeRepo({
-    'legacy-plan.md': '# Technical plan\n\nApproved before structured slices were required.\n',
+    'legacy-plan.md': '# Technical plan\n\nslice-01-structured-plan\n\nApproved before structured slices were required.\n',
   });
 
   try {
@@ -1913,7 +1917,7 @@ test('ai repair-plan dry-run previews repair without mutating approval state', (
 
 test('ai plan technical-plan uses approved acceptance by default and rejects drafts', async () => {
   const approvedRepo = makeRepo({
-    'acceptance.md': '# Acceptance\n- Approved criteria.',
+    'acceptance.md': '# Acceptance\n- AC-01 Approved criteria.',
   });
 
   try {
@@ -1930,7 +1934,7 @@ test('ai plan technical-plan uses approved acceptance by default and rejects dra
         timeoutMs: 0,
         promptTransport: { mode: 'stdin' },
         exitCode: 0,
-        stdout: '# Acceptance\n- Approved criteria.',
+        stdout: '# Acceptance\n- AC-01 Approved criteria.',
         stderr: '',
         error: null,
         preflight: { ok: true },
@@ -1954,7 +1958,7 @@ test('ai plan technical-plan uses approved acceptance by default and rejects dra
           timeoutMs: 0,
           promptTransport: { mode: 'stdin' },
           exitCode: 0,
-          stdout: 'technical-plan draft\n',
+          stdout: 'slice-01-plan technical-plan draft\n',
           stderr: '',
           error: null,
           preflight: { ok: true },
@@ -1963,7 +1967,7 @@ test('ai plan technical-plan uses approved acceptance by default and rejects dra
     });
 
     assert.equal(output.phase, 'technical-plan');
-    assert.equal(fs.readFileSync(path.join(approvedRepo.root, '.quiver', 'approvals', 'technical-plan', 'draft.md'), 'utf8'), 'technical-plan draft\n');
+    assert.equal(fs.readFileSync(path.join(approvedRepo.root, '.quiver', 'approvals', 'technical-plan', 'draft.md'), 'utf8'), 'slice-01-plan technical-plan draft\n');
   } finally {
     approvedRepo.cleanup();
   }
