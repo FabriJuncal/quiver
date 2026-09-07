@@ -18,7 +18,16 @@ function toRelativePath(relativePath) {
   return relativePath.split(path.sep).join('/');
 }
 
-const CORE_VISIBLE_DIRECTORIES = ['docs', 'docs/ai', '.quiver', '.quiver/scans'];
+const CORE_VISIBLE_DIRECTORIES = [
+  'docs',
+  'docs/ai',
+  '.quiver',
+  '.quiver/scans',
+  '.quiver/brain',
+  '.quiver/brain/records',
+  '.quiver/brain/proposals',
+  '.quiver/brain/operations',
+];
 const MINIMAL_VISIBLE_FILES = [
   'README.md',
   'AGENTS.md',
@@ -33,6 +42,8 @@ const MINIMAL_VISIBLE_FILES = [
   '.quiver/state.json',
   '.quiver/config.json',
   '.quiver/.gitignore',
+  '.quiver/brain/manifest.json',
+  '.quiver/brain/index.json',
 ];
 
 const DEFAULT_VISIBLE_EXTRAS = [
@@ -79,6 +90,9 @@ function quiverInternalPaths(projectRoot) {
 
   return {
     root,
+    brainDir: path.join(root, 'brain'),
+    brainIndexPath: path.join(root, 'brain', 'index.json'),
+    brainManifestPath: path.join(root, 'brain', 'manifest.json'),
     cacheDir: path.join(root, 'cache'),
     configPath: path.join(root, 'config.json'),
     gitignorePath: path.join(root, '.gitignore'),

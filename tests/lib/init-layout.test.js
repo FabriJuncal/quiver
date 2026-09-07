@@ -44,6 +44,9 @@ test('buildInitLayout creates a default AI-first plan without legacy visible roo
     assert(createPaths.includes('.quiver/state.json'));
     assert(createPaths.includes('.quiver/config.json'));
     assert(createPaths.includes('.quiver/.gitignore'));
+    assert(createPaths.includes('.quiver/brain/manifest.json'));
+    assert(createPaths.includes('.quiver/brain/index.json'));
+    assert(createPaths.includes('.quiver/brain/records'));
     assert(!createPaths.includes('docs-template'));
     assert(!createPaths.includes('tools/scripts'));
     assert(!createPaths.includes('specs/mi-proyecto'));

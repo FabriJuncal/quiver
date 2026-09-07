@@ -26,6 +26,7 @@
     "src/create-quiver/lib/init-docs.js",
     "src/create-quiver/index.js",
     "tests/lib/brain-store.test.js",
+    "tests/lib/init-layout.test.js",
     "tests/commands/init-profiles.test.js",
     "specs/quiver-init-a-engine-trust/**"
   ],
@@ -37,6 +38,7 @@
     "src/create-quiver/lib/init-docs.js",
     "src/create-quiver/index.js",
     "tests/lib/brain-store.test.js",
+    "tests/lib/init-layout.test.js",
     "tests/commands/init-profiles.test.js",
     "specs/quiver-init-a-engine-trust/**"
   ],
@@ -74,5 +76,6 @@
     "git diff --check"
   ],
   "estimated_hours": 0,
-  "status": "draft"
+  "status": "completed",
+  "completed_at": "2026-09-07T02:52:01.592Z"
 }

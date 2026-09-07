@@ -50,8 +50,13 @@ Create typed and governed Project Brain records.
 - `src/create-quiver/lib/init-docs.js`
 - `src/create-quiver/index.js`
 - `tests/lib/brain-store.test.js`
+- `tests/lib/init-layout.test.js`
 - `tests/commands/init-profiles.test.js`
 - `specs/quiver-init-a-engine-trust/**`
+
+The direct init-layout inventory test is in scope because Brain manifest, index,
+and record-directory entries became part of the minimal init plan. This verifies
+the same bounded initialization surface without expanding runtime ownership.
 
 ## Restrictions
 

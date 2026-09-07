@@ -45,8 +45,8 @@
   "depends_on": [
     "slice-05-brain-store"
   ],
-  "parallel_safe": "never",
-  "parallel_safe_reason": "Dependency or shared integration surface requires single writer.",
+  "parallel_safe": "conditional",
+  "parallel_safe_reason": "DEC-A-011: after A01+A05 integration, disjoint product ownership permits overlap with slice-02 only; coordinator owns shared spec metadata and slice-04 dispatcher changes remain serialized.",
   "must": [
     "Render deterministic Markdown+YAML records and safe relative links retaining ID, source, lineage, authority and validity.",
     "Export complete canonical snapshot with manifest/digests and reject unsafe existing destinations, secrets and broken refs.",

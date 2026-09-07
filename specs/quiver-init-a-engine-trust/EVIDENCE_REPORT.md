@@ -40,7 +40,8 @@ slice 01 does not claim their acceptance merely by declaring lifecycle states.
 
 - slice-00-foundation: documentary checks passed; runtime cycles 0;
   commit `ad494a0ccd4f61957db22490db3c00bfb8fafd26`.
-- slice-01-draft-integrity: implemented and independently approved; two full-CI
+- slice-01-draft-integrity: commit `46432980759b1941d55d90983fc8797d16407b85`;
+  implemented and independently approved; two full-CI
   verification attempts (initial failed, frozen-source retest passed). Focal
   implementation/review attempts are itemized in its closure, not inferred from
   these two full-suite attempts. Commit is identified by the exact trailer
@@ -48,7 +49,10 @@ slice 01 does not claim their acceptance merely by declaring lifecycle states.
 - slice-02-draft-recovery: not-tested; cycles 0; commit not created.
 - slice-03-effective-amendments: not-tested; cycles 0; commit not created.
 - slice-04-draft-cli: not-tested; cycles 0; commit not created.
-- slice-05-brain-store: not-tested; cycles 0; commit not created.
+- slice-05-brain-store: implemented and independently approved; four author
+  implementation/review cycles, standalone CI 963/963 and combined A01+A05 CI
+  977/977. This logical commit has the exact trailer
+  `Slice: quiver-init-a-engine-trust/slice-05-brain-store`.
 - slice-06-brain-vault: not-tested; cycles 0; commit not created.
 - slice-07-context-selection: not-tested; cycles 0; commit not created.
 - slice-08-context-impact: not-tested; cycles 0; commit not created.
@@ -80,6 +84,30 @@ Token counts: unavailable with current agent telemetry.
 No source requirement, failed assertion or empirical gate was removed. Exact
 slice-to-commit hashes are resolved from Git trailers and consolidated after
 publication in the plan's integration report; no self-referential hash is invented.
+
+## Runtime closure — slice-05-brain-store
+
+The Brain implementation adds typed immutable records, revision/CAS/idempotency,
+governed authority, fresh Cloud receipt checks, a rebuildable index, journal
+recovery and automatic empty initialization. Canonical store paths and inherited
+writer mode are checked before mutation. Migration simulation now copies the
+validated Brain surface, fixing its initially failing postflight checks.
+
+- [Implementation cycles and commands](./evidence/slice-05-implementation-validation.md)
+  record the four author cycles, source fingerprints and explicit fixture limits.
+- [Independent final focal check](./evidence/slice-05-independent-core-cycle-2.md):
+  18/18 passed, zero skips, 1,431 ms, including the additional X03 vectors.
+- [Independent standalone CI](./evidence/slice-05-independent-ci-cycle-1.md):
+  963/963 passed, zero skips, 78,283 ms.
+- [Integration with committed A01](./evidence/slice-05-integration-with-slice-01.md):
+  977/977 passed, zero failures/skips, 82,090 ms. Rebase introduced no conflicts;
+  all five A05 production-file fingerprints remained unchanged.
+- [Independent review](./evidence/slice-05-independent-review.md) closes the
+  unrelated-evidence authority defect and symlink write-before-validation defect.
+
+Cloud receipts in these tests are fixtures, not empirical Cloud adoption or
+commercial evidence. Export/CLI, context, facade and downstream integration are
+still pending with their assigned slices. No whole-plan readiness is claimed.
 
 ## Foundation closure — slice-00-foundation
 

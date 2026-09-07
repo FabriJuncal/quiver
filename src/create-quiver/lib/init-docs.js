@@ -12,6 +12,7 @@ const {
   resolveInitVisibleFiles,
 } = require('./init-layout');
 const { resolveLocalizedTemplatePath } = require('./i18n/templates');
+const { assertCanonicalStoreNamespace, initializeBrainStore } = require('./brain/store');
 const {
   CURRENT_WRITER_VERSION,
   MIGRATION_VERIFICATION_FAILED,
@@ -804,6 +805,9 @@ const MIGRATION_WRITE_RESULTS = new Set([
 ]);
 
 function copyExistingMigrationSurface(projectRoot, snapshotRoot, projectSlug) {
+  if (fs.existsSync(path.join(projectRoot, '.quiver', 'brain'))) {
+    assertCanonicalStoreNamespace(projectRoot);
+  }
   const relativePaths = [
     'README.md',
     'AGENTS.md',
@@ -817,6 +821,7 @@ function copyExistingMigrationSurface(projectRoot, snapshotRoot, projectSlug) {
     '.quiver/config.json',
     '.quiver/.gitignore',
     '.quiver/state.json',
+    '.quiver/brain',
     'docs',
     `specs/${projectSlug}`,
     'tools/scripts',
@@ -1279,6 +1284,13 @@ function initializeProjectDocs(options) {
   const internalGitignoreResult = mergeQuiverInternalGitignore(projectRoot);
   operations.push({ source: 'Quiver internal gitignore', destination: '.quiver/.gitignore', result: internalGitignoreResult });
   ensureQuiverStateIgnored(projectRoot);
+
+  // initializeProjectDocs already performs the v58 compatibility writer gate
+  // before its first write; avoid reclassifying a brand-new partial init as legacy.
+  const brainInitialization = initializeBrainStore(projectRoot, { writerCheck: false });
+  const brainResult = brainInitialization.created ? 'created' : 'preserved';
+  operations.push({ source: 'Project Brain', destination: '.quiver/brain/manifest.json', result: brainResult });
+  operations.push({ source: 'Project Brain index', destination: '.quiver/brain/index.json', result: brainResult });
 
   const rootGitignoreResult = mergeRootGitignore(projectRoot);
   operations.push({ source: 'root gitignore defaults', destination: '.gitignore', result: rootGitignoreResult });

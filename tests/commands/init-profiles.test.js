@@ -63,6 +63,7 @@ test('init --dry-run prints the planned layout and does not write files', () => 
     assert.match(output, /Project: Dry Project/);
     assert.match(output, /Entry point: explicit init command/);
     assert.match(output, /Profile: default/);
+    assert.match(output, /\.quiver\/brain\/manifest\.json/);
     assert.equal(fs.existsSync(target), false);
   } finally {
     cleanup();
@@ -341,6 +342,18 @@ test('init command without dry-run writes the default clean AI-first layout', ()
     assert.equal(fs.existsSync(path.join(target, 'tools', 'scripts')), false);
     assert.equal(fs.existsSync(path.join(target, 'specs', 'real-project')), false);
 
+    const brainManifest = JSON.parse(readText(target, path.join('.quiver', 'brain', 'manifest.json')));
+    const brainIndex = JSON.parse(readText(target, path.join('.quiver', 'brain', 'index.json')));
+    assert.equal(brainManifest.schema_version, 1);
+    assert.match(brainManifest.project_id, /^[0-9a-f-]{36}$/);
+    assert.equal(brainManifest.revision, 0);
+    assert.deepEqual(brainManifest.record_refs, []);
+    assert.deepEqual(brainManifest.operation_refs, []);
+    assert.equal(brainIndex.schema_version, 1);
+    assert.equal(brainIndex.manifest_digest, brainManifest.digest);
+    assert.equal(brainIndex.revision, 0);
+    assert.deepEqual(brainIndex.records, []);
+
     const pkg = readPackageJson(target);
     assert.equal(pkg.name, 'real-project');
     assert.equal(typeof pkg.scripts['quiver:ai:onboard'], 'string');
@@ -365,6 +378,25 @@ test('init command without dry-run writes the default clean AI-first layout', ()
     assert.doesNotMatch(output, /Preparing packaged templates/);
     assert.doesNotMatch(output, /Writing init docs/);
     assert.doesNotMatch(output, /Checking create-quiver package install/);
+  } finally {
+    cleanup();
+  }
+});
+
+test('explicit init preserves an existing empty Brain byte-for-byte', () => {
+  const { dir, cleanup } = makeTmpDir();
+  const target = path.join(dir, 'target');
+  try {
+    runCli(['init', '--name', 'Stable Brain Project', '--dir', target, '--skip-install']);
+    const manifestPath = path.join(target, '.quiver', 'brain', 'manifest.json');
+    const indexPath = path.join(target, '.quiver', 'brain', 'index.json');
+    const beforeManifest = fs.readFileSync(manifestPath);
+    const beforeIndex = fs.readFileSync(indexPath);
+
+    runCli(['init', '--name', 'Stable Brain Project', '--dir', target, '--skip-install']);
+
+    assert.deepEqual(fs.readFileSync(manifestPath), beforeManifest);
+    assert.deepEqual(fs.readFileSync(indexPath), beforeIndex);
   } finally {
     cleanup();
   }
