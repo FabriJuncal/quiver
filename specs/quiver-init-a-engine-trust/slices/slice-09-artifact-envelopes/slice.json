@@ -1,0 +1,65 @@
+{
+  "slice_id": "slice-09-artifact-envelopes",
+  "ticket": "QUIVER-INIT-A",
+  "type": "feature",
+  "title": "Version artifacts, lineage and offline verification",
+  "objective": "Define immutable contractual envelope independent of mutable execution status; schema version, id/type/version/digest, parents, inputs, actor and evidence status mandatory.",
+  "description": "V62: V62-RQ-01, V62-RQ-02, V62-RQ-03, V62-RQ-07, V62-RQ-10. Version artifacts, lineage and offline verification.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "engine-trust",
+    "branch_name": "feature/QUIVER-INIT-A-engine-trust"
+  },
+  "expected_read_paths": [
+    "docs/INDEX.md",
+    "docs/programs/quiver-v6/PROGRAM.md",
+    "specs/quiver-init-a-engine-trust/SPEC.md",
+    "docs/requirements/initiatives/REQ-QUIVER-INIT-A-ENGINE-TRUST-v1.0.3.md",
+    "specs/quiver-init-a-engine-trust/CONTRACTS.md"
+  ],
+  "files": [
+    "src/create-quiver/lib/protocol/envelope.js",
+    "src/create-quiver/lib/protocol/result.js",
+    "src/create-quiver/lib/brain/store.js",
+    "tests/lib/protocol-envelope.test.js",
+    "specs/quiver-init-a-engine-trust/**"
+  ],
+  "allowed_write_paths": [
+    "src/create-quiver/lib/protocol/envelope.js",
+    "src/create-quiver/lib/protocol/result.js",
+    "src/create-quiver/lib/brain/store.js",
+    "tests/lib/protocol-envelope.test.js",
+    "specs/quiver-init-a-engine-trust/**"
+  ],
+  "depends_on": [
+    "slice-04-draft-cli",
+    "slice-08-context-impact"
+  ],
+  "parallel_safe": "never",
+  "parallel_safe_reason": "Dependency or shared integration surface requires single writer.",
+  "must": [
+    "Define immutable contractual envelope independent of mutable execution status; schema version, id/type/version/digest, parents, inputs, actor and evidence status mandatory.",
+    "Canonical JSON digest uses recursive lexicographic key ordering, UTF-8, no whitespace, digest field excluded; arrays preserve order; reject non-JSON and cycles.",
+    "Support derives-from/supersedes/amends/verifies/executes/approves/deploys with explicit source/target IDs and digests; no orphan verification or authority gain from relation name.",
+    "Offline verification checks structural validity, digest and available referenced content; unavailable external parents remain unverified rather than false verified.",
+    "Legacy read projection retains original identity/history and evidence limitations, does not mutate legacy files."
+  ],
+  "not_included": [
+    "Unrelated initiative behavior",
+    "Production deploy or npm publication",
+    "Forged evidence, reduced acceptance or discarded history"
+  ],
+  "acceptance": [
+    "Envelope identical input yields identical digest; tamper fails offline verify.",
+    "Lineage cycle/missing parent/different parent bytes yields explicit failure or unverified per evidence availability.",
+    "Changing execution status cannot change contractual digest.",
+    "Legacy artifact reads with unverified evidence, never elevated by envelope wrapping."
+  ],
+  "tests": [
+    "LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8 node --test tests/lib/protocol-envelope.test.js",
+    "git diff --check"
+  ],
+  "estimated_hours": 0,
+  "status": "draft"
+}

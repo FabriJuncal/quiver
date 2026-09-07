@@ -1,0 +1,21 @@
+{
+  "command": "LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8 npx --yes --package=node@20.12.0 node scripts/ci/run-node-tests.js",
+  "cwd": "/Users/fabrijk/Documents/Work/Proyectos Personales/nika/frameworks/quiver",
+  "node_version": "v20.12.0",
+  "start_utc": "2026-09-07T01:23:04Z",
+  "end_utc": "2026-09-07T01:24:26Z",
+  "duration_seconds": 82,
+  "exit_code": 1,
+  "log": "/private/tmp/quiver-program-baseline.tu3iEs/test-ci-node20.log",
+  "output_bytes": 275536,
+  "tap": {
+    "tests": 944,
+    "pass": 943,
+    "fail": 1,
+    "cancelled": 0,
+    "skipped": 0,
+    "todo": 0,
+    "duration_ms": 81089.409209
+  },
+  "independent_failure": "tests/commands/ux-flags.test.js: existing JSON command output stays parseable when no UX flags are requested (test 475)"
+}

@@ -1,0 +1,64 @@
+{
+  "slice_id": "slice-10-actor-policy",
+  "ticket": "QUIVER-INIT-A",
+  "type": "feature",
+  "title": "Expose verifiable actor authorization and policy explanation",
+  "objective": "Reuse v58 actor resolver/authorization oracle; new decisions bind verified actor ID, action, target/version/digest, policy ID/digest and rule.",
+  "description": "V62: V62-RQ-08, V62-RQ-09. Expose verifiable actor authorization and policy explanation.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "engine-trust",
+    "branch_name": "feature/QUIVER-INIT-A-engine-trust"
+  },
+  "expected_read_paths": [
+    "docs/INDEX.md",
+    "docs/programs/quiver-v6/PROGRAM.md",
+    "specs/quiver-init-a-engine-trust/SPEC.md",
+    "docs/requirements/initiatives/REQ-QUIVER-INIT-A-ENGINE-TRUST-v1.0.3.md",
+    "specs/quiver-init-a-engine-trust/CONTRACTS.md"
+  ],
+  "files": [
+    "src/create-quiver/lib/protocol/policy.js",
+    "src/create-quiver/lib/ai/review-governance.js",
+    "tests/lib/protocol-policy.test.js",
+    "specs/quiver-init-a-engine-trust/**",
+    "src/create-quiver/lib/brain/authority.js"
+  ],
+  "allowed_write_paths": [
+    "src/create-quiver/lib/protocol/policy.js",
+    "src/create-quiver/lib/ai/review-governance.js",
+    "tests/lib/protocol-policy.test.js",
+    "specs/quiver-init-a-engine-trust/**",
+    "src/create-quiver/lib/brain/authority.js"
+  ],
+  "depends_on": [
+    "slice-09-artifact-envelopes"
+  ],
+  "parallel_safe": "never",
+  "parallel_safe_reason": "Dependency or shared integration surface requires single writer.",
+  "must": [
+    "Reuse v58 actor resolver/authorization oracle; new decisions bind verified actor ID, action, target/version/digest, policy ID/digest and rule.",
+    "Default deny missing identity, wrong scope, stale policy or unverified authorization; no client-provided role assertion grants authority.",
+    "Expose explain/dry-run from same decision evaluator with rule/reason/remediation and no mutation.",
+    "Keep high-assurance governance and conditioned findings visible in canonical projection.",
+    "Connect the existing local actor/policy adapter to slice-05 authority without writing a new approval ledger. A Cloud receipt validates the original deciding actor/action/policy separately from the current Brain writer's required grants; policy.authorize alone never creates approved knowledge."
+  ],
+  "not_included": [
+    "Unrelated initiative behavior",
+    "Production deploy or npm publication",
+    "Forged evidence, reduced acceptance or discarded history"
+  ],
+  "acceptance": [
+    "Authorized actor within exact target/policy may act; other org/project/version denied.",
+    "Claimed actor or forged role denied; unavailable resolver explicit capability status.",
+    "Explain and authorize agree; dry-run creates no decision; changed policy digest invalidates cached permission.",
+    "CASE-A-10-X03: A current writer cannot substitute its identity for the receipt's decision-maker, or upgrade an oracle allowed result into an approval; v58 approvals and default-unverified local behavior remain unchanged."
+  ],
+  "tests": [
+    "LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8 node --test tests/lib/protocol-policy.test.js",
+    "git diff --check"
+  ],
+  "estimated_hours": 0,
+  "status": "draft"
+}

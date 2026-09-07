@@ -1,0 +1,66 @@
+{
+  "slice_id": "slice-04-draft-cli",
+  "ticket": "QUIVER-INIT-A",
+  "type": "feature",
+  "title": "Expose complete draft lifecycle through the CLI",
+  "objective": "Expose ai draft list/show/compare/select/reject/restore/addendum/amend with explicit phase/version/input-file and --json/--dry-run.",
+  "description": "V59: integration coverage. Expose complete draft lifecycle through the CLI.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "engine-trust",
+    "branch_name": "feature/QUIVER-INIT-A-engine-trust"
+  },
+  "expected_read_paths": [
+    "docs/INDEX.md",
+    "docs/programs/quiver-v6/PROGRAM.md",
+    "specs/quiver-init-a-engine-trust/SPEC.md",
+    "docs/requirements/initiatives/REQ-QUIVER-INIT-A-ENGINE-TRUST-v1.0.3.md",
+    "specs/quiver-init-a-engine-trust/CONTRACTS.md"
+  ],
+  "files": [
+    "src/create-quiver/commands/ai.js",
+    "src/create-quiver/index.js",
+    "src/create-quiver/lib/cli/command-registry.js",
+    "src/create-quiver/lib/i18n/**",
+    "tests/commands/ai-draft-recovery.test.js",
+    "docs/reference/commands.md",
+    "specs/quiver-init-a-engine-trust/**"
+  ],
+  "allowed_write_paths": [
+    "src/create-quiver/commands/ai.js",
+    "src/create-quiver/index.js",
+    "src/create-quiver/lib/cli/command-registry.js",
+    "src/create-quiver/lib/i18n/**",
+    "tests/commands/ai-draft-recovery.test.js",
+    "docs/reference/commands.md",
+    "specs/quiver-init-a-engine-trust/**"
+  ],
+  "depends_on": [
+    "slice-03-effective-amendments"
+  ],
+  "parallel_safe": "never",
+  "parallel_safe_reason": "Dependency or shared integration surface requires single writer.",
+  "must": [
+    "Expose ai draft list/show/compare/select/reject/restore/addendum/amend with explicit phase/version/input-file and --json/--dry-run.",
+    "Wire existing plan/revise writes through structural integrity; no bypass through provider output.",
+    "Make dry-run read-only and provide selected version plus preserved/removed IDs in human/JSON views.",
+    "Regenerate actual command reference only after registry reflects implemented commands."
+  ],
+  "not_included": [
+    "Unrelated initiative behavior",
+    "Production deploy or npm publication",
+    "Forged evidence, reduced acceptance or discarded history"
+  ],
+  "acceptance": [
+    "CLI create/revise candidate with content loss, inspect it, recover v1, apply addendum and inspect effective contract end to end.",
+    "All supported phases preserve historical approvals and existing compatibility.",
+    "JSON parses without banners; no-TTY prompts absent; dry-run writes nothing."
+  ],
+  "tests": [
+    "LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8 node --test tests/commands/ai-draft-recovery.test.js",
+    "git diff --check"
+  ],
+  "estimated_hours": 0,
+  "status": "draft"
+}

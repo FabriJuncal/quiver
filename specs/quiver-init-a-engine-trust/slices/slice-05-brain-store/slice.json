@@ -1,0 +1,78 @@
+{
+  "slice_id": "slice-05-brain-store",
+  "ticket": "QUIVER-INIT-A",
+  "type": "feature",
+  "title": "Create typed and governed Project Brain records",
+  "objective": "Automatically initialize a usable Brain in newly initialized projects; provide lazy additive setup for existing projects without rewriting user files.",
+  "description": "V60: V60-RQ-01, V60-RQ-02, V60-RQ-03, V60-RQ-04, V60-RQ-05, V60-RQ-09. Create typed and governed Project Brain records.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "engine-trust",
+    "branch_name": "feature/QUIVER-INIT-A-engine-trust"
+  },
+  "expected_read_paths": [
+    "docs/INDEX.md",
+    "docs/programs/quiver-v6/PROGRAM.md",
+    "specs/quiver-init-a-engine-trust/SPEC.md",
+    "docs/requirements/initiatives/REQ-QUIVER-INIT-A-ENGINE-TRUST-v1.0.3.md",
+    "specs/quiver-init-a-engine-trust/CONTRACTS.md"
+  ],
+  "files": [
+    "src/create-quiver/lib/brain/store.js",
+    "src/create-quiver/lib/brain/schema.js",
+    "src/create-quiver/lib/brain/authority.js",
+    "src/create-quiver/lib/init-layout.js",
+    "src/create-quiver/lib/init-docs.js",
+    "src/create-quiver/index.js",
+    "tests/lib/brain-store.test.js",
+    "tests/commands/init-profiles.test.js",
+    "specs/quiver-init-a-engine-trust/**"
+  ],
+  "allowed_write_paths": [
+    "src/create-quiver/lib/brain/store.js",
+    "src/create-quiver/lib/brain/schema.js",
+    "src/create-quiver/lib/brain/authority.js",
+    "src/create-quiver/lib/init-layout.js",
+    "src/create-quiver/lib/init-docs.js",
+    "src/create-quiver/index.js",
+    "tests/lib/brain-store.test.js",
+    "tests/commands/init-profiles.test.js",
+    "specs/quiver-init-a-engine-trust/**"
+  ],
+  "depends_on": [
+    "slice-00-foundation"
+  ],
+  "parallel_safe": "conditional",
+  "parallel_safe_reason": "Disjoint draft/Brain module writes after all-spec audit; coordinator serializes shared registry integration.",
+  "must": [
+    "Automatically initialize a usable Brain in newly initialized projects; provide lazy additive setup for existing projects without rewriting user files.",
+    "Implement canonical append-only typed records with stable IDs, source refs/digests, ISO time, authority, validity, supersedes and provenance.",
+    "Store durable knowledge separately from disposable search index and execution state. One lock-protected writer updates projections atomically.",
+    "Enforce policy > approved decision > requirement > authorized input > agent assumption; replacement never silently changes authority.",
+    "Reject secret-bearing input before any persistence using shared secret checks, structured credential fields and explicit exclusion of operational state; never silently sanitize a contractual record.",
+    "Implement the scoped brain/authority.js adapter using a trusted injected resolver and verified approval evidence. Missing resolver, v58 unverified local identity or unsupported action fails closed before writes, including before slice-10. Init creates an empty store only.",
+    "Implement CloudDecisionReceipt validation and the optional trusted read-only evidenceResolver from CONTRACTS.md alongside the unchanged v58 verifier; bind the exact proposed record digest, subject, actor and policy before authority elevation.",
+    "Revalidate receipt authority for read/export projections and idempotent replays; preserve historical bytes while revoked, expired, stale or unavailable authority cannot remain effectively active."
+  ],
+  "not_included": [
+    "Unrelated initiative behavior",
+    "Production deploy or npm publication",
+    "Forged evidence, reduced acceptance or discarded history"
+  ],
+  "acceptance": [
+    "Init creates Brain without Obsidian and does not overwrite existing knowledge.",
+    "Replacement decision is current; previous record remains historical; broken/cyclic supersedes rejected.",
+    "Credential fixtures, ephemeral leases/tool logs and traversal/symlink targets never persisted.",
+    "Concurrent appends preserve both records or return lock conflict; stale index rebuild never changes authority.",
+    "CASE-A-05-X03-1: A current allowed receipt for the exact record/subject/project/policy permits an append by a separately authorized writer; the stored record retains its approval_ref and original deciding actor provenance.",
+    "CASE-A-05-X03-2: Missing resolver, rejected/revoked/expired receipt, changed payload, foreign scope, forged actor evidence or a valid checksum without canonical source evidence fails before record/journal writes.",
+    "CASE-A-05-X03-3: Revocation after append remains visible through historical reads but cannot appear active; operation replay after authorization refresh does not create a second record."
+  ],
+  "tests": [
+    "LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8 node --test tests/lib/brain-store.test.js tests/commands/init-profiles.test.js",
+    "git diff --check"
+  ],
+  "estimated_hours": 0,
+  "status": "draft"
+}

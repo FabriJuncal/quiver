@@ -1,0 +1,76 @@
+{
+  "slice_id": "slice-01-draft-integrity",
+  "ticket": "QUIVER-INIT-A",
+  "type": "feature",
+  "title": "Preserve draft history and detect structural content loss",
+  "objective": "Extend existing approval metadata additively under the existing phase lock; immutable version files remain authoritative.",
+  "description": "V59: V59-RQ-01, V59-RQ-06, V59-RQ-07. Preserve draft history and detect structural content loss.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "engine-trust",
+    "branch_name": "feature/QUIVER-INIT-A-engine-trust"
+  },
+  "expected_read_paths": [
+    "docs/INDEX.md",
+    "docs/programs/quiver-v6/PROGRAM.md",
+    "specs/quiver-init-a-engine-trust/SPEC.md",
+    "docs/requirements/initiatives/REQ-QUIVER-INIT-A-ENGINE-TRUST-v1.0.3.md",
+    "specs/quiver-init-a-engine-trust/CONTRACTS.md"
+  ],
+  "files": [
+    "src/create-quiver/lib/ai/draft-integrity.js",
+    "src/create-quiver/lib/approvals.js",
+    "tests/lib/draft-integrity.test.js",
+    "tests/lib/approvals.test.js",
+    "specs/quiver-init-a-engine-trust/**",
+    "src/create-quiver/commands/ai.js",
+    "tests/commands/ai-plan.test.js",
+    "tests/commands/ai-review-plan.test.js",
+    "tests/commands/ai-run-state.test.js",
+    "tests/commands/flow.test.js",
+    "tests/commands/ai-plan-spec-phase.test.js"
+  ],
+  "allowed_write_paths": [
+    "src/create-quiver/lib/ai/draft-integrity.js",
+    "src/create-quiver/lib/approvals.js",
+    "tests/lib/draft-integrity.test.js",
+    "tests/lib/approvals.test.js",
+    "specs/quiver-init-a-engine-trust/**",
+    "src/create-quiver/commands/ai.js",
+    "tests/commands/ai-plan.test.js",
+    "tests/commands/ai-review-plan.test.js",
+    "tests/commands/ai-run-state.test.js",
+    "tests/commands/flow.test.js",
+    "tests/commands/ai-plan-spec-phase.test.js"
+  ],
+  "depends_on": [
+    "slice-00-foundation"
+  ],
+  "parallel_safe": "conditional",
+  "parallel_safe_reason": "Disjoint draft/Brain module writes after all-spec audit; coordinator serializes shared registry integration.",
+  "must": [
+    "Extend existing approval metadata additively under the existing phase lock; immutable version files remain authoritative.",
+    "Compute preservation using requirement/acceptance/slice IDs, structured required collections and references. Compare identity, not word-count thresholds.",
+    "Persist defective candidates as corrupted and retain last valid current, with explicit diagnostics and transactional recovery marker for multi-file projection.",
+    "Expose lifecycle draft/current/reviewed/approved/approved-with-conditions/rejected/superseded/corrupted without treating current selection as approval.",
+    "Existing planning writers consume the selected/integrity result: an unselected or corrupted candidate must not advance phase or replace the run's valid current artifact. Scope ai.js to this existing writer boundary; new CLI namespace remains slice-04.",
+    "Update affected legacy plaintext test fixtures to real stable AC/slice IDs while preserving assertion intent and invalid-shape cases; never add a test-only bypass or disable a failing test."
+  ],
+  "not_included": [
+    "Unrelated initiative behavior",
+    "Production deploy or npm publication",
+    "Forged evidence, reduced acceptance or discarded history"
+  ],
+  "acceptance": [
+    "Candidate drops a required ID or structured collection: corrupted, current/history unchanged.",
+    "Valid addition or explicit deletion amendment: no false content-loss claim.",
+    "Crash between writes, corrupt metadata, duplicate version and competing writer fail closed or recover deterministically."
+  ],
+  "tests": [
+    "LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8 node --test tests/lib/draft-integrity.test.js tests/lib/approvals.test.js",
+    "git diff --check"
+  ],
+  "estimated_hours": 0,
+  "status": "draft"
+}

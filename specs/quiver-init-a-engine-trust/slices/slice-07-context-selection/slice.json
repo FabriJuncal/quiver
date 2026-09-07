@@ -1,0 +1,66 @@
+{
+  "slice_id": "slice-07-context-selection",
+  "ticket": "QUIVER-INIT-A",
+  "type": "feature",
+  "title": "Select bounded explainable and trust-separated context",
+  "objective": "Create deterministic Context Manifest with task identity, selected/excluded refs, source digests, authority, confidence, validity and reasons.",
+  "description": "V61: V61-RQ-01, V61-RQ-02, V61-RQ-07, V61-RQ-09, V61-RQ-10. Select bounded explainable and trust-separated context.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "engine-trust",
+    "branch_name": "feature/QUIVER-INIT-A-engine-trust"
+  },
+  "expected_read_paths": [
+    "docs/INDEX.md",
+    "docs/programs/quiver-v6/PROGRAM.md",
+    "specs/quiver-init-a-engine-trust/SPEC.md",
+    "docs/requirements/initiatives/REQ-QUIVER-INIT-A-ENGINE-TRUST-v1.0.3.md",
+    "specs/quiver-init-a-engine-trust/CONTRACTS.md"
+  ],
+  "files": [
+    "src/create-quiver/lib/brain/context.js",
+    "src/create-quiver/lib/ai/context-packs.js",
+    "tests/lib/brain-context.test.js",
+    "tests/lib/ai-context-packs.test.js",
+    "specs/quiver-init-a-engine-trust/**"
+  ],
+  "allowed_write_paths": [
+    "src/create-quiver/lib/brain/context.js",
+    "src/create-quiver/lib/ai/context-packs.js",
+    "tests/lib/brain-context.test.js",
+    "tests/lib/ai-context-packs.test.js",
+    "specs/quiver-init-a-engine-trust/**"
+  ],
+  "depends_on": [
+    "slice-06-brain-vault"
+  ],
+  "parallel_safe": "never",
+  "parallel_safe_reason": "Dependency or shared integration surface requires single writer.",
+  "must": [
+    "Create deterministic Context Manifest with task identity, selected/excluded refs, source digests, authority, confidence, validity and reasons.",
+    "Rank by explicit task requirements/module refs; include mandatory policy and approved contracts first, optional relevant knowledge second.",
+    "Budget bytes as reliably measurable input; token estimate labeled estimate, not telemetry. Mandatory overflow returns blocking code instead of truncation.",
+    "Separate trusted instructions and untrusted source content in distinct structured fields; provider prompts delimit untrusted content and cannot elevate it to instructions.",
+    "Wire existing context-pack building to the bounded manifest while preserving legacy pack behavior where Brain absent.",
+    "Use the slice-05 receipt authority check on each selection, not a cached active flag; noncurrent optional knowledge stays untrusted/excluded and a mandatory approved contract with unavailable or stale authority blocks selection."
+  ],
+  "not_included": [
+    "Unrelated initiative behavior",
+    "Production deploy or npm publication",
+    "Forged evidence, reduced acceptance or discarded history"
+  ],
+  "acceptance": [
+    "Small task excludes unrelated records with explanations; repeat request deterministic.",
+    "Mandatory contract above budget fails, optional record omitted with reason.",
+    "Malicious source text stays untrusted; invalid confidence/authority rejected.",
+    "Legacy project context pack remains compatible and never labeled Brain-verified.",
+    "CASE-A-07-X03: Current receipt-backed authority may enter trusted_instructions; revoke or make its resolver unavailable with content bytes unchanged and selection excludes optional authority or blocks a mandatory contract."
+  ],
+  "tests": [
+    "LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8 node --test tests/lib/brain-context.test.js tests/lib/ai-context-packs.test.js",
+    "git diff --check"
+  ],
+  "estimated_hours": 0,
+  "status": "draft"
+}

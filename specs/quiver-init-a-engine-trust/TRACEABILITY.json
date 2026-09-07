@@ -1,0 +1,375 @@
+{
+  "schema_version": 1,
+  "plan": "PLAN-QUIVER-INIT-A-ENGINE-TRUST@1.0.2",
+  "requirement_version": "1.0.3",
+  "requirements": [
+    {
+      "id": "V58-RQ-01",
+      "primary_slice": "slice-00-foundation",
+      "criterion": "Conservar los perfiles fast-delivery y high-assurance con rigurosidad proporcional al riesgo.",
+      "status": "not-tested",
+      "test_evidence": [],
+      "commit": null
+    },
+    {
+      "id": "V58-RQ-02",
+      "primary_slice": "slice-00-foundation",
+      "criterion": "Mantener findings estructurados con severidad, categoría, fase responsable, evidencia y disposición.",
+      "status": "not-tested",
+      "test_evidence": [],
+      "commit": null
+    },
+    {
+      "id": "V58-RQ-03",
+      "primary_slice": "slice-00-foundation",
+      "criterion": "Bloquear una fase solamente por findings que pertenecen realmente a esa fase según policy.",
+      "status": "not-tested",
+      "test_evidence": [],
+      "commit": null
+    },
+    {
+      "id": "V58-RQ-04",
+      "primary_slice": "slice-00-foundation",
+      "criterion": "Limitar las revisiones semánticas y detener loops con una decisión humana explícita.",
+      "status": "not-tested",
+      "test_evidence": [],
+      "commit": null
+    },
+    {
+      "id": "V58-RQ-05",
+      "primary_slice": "slice-00-foundation",
+      "criterion": "Soportar approved-with-conditions sin presentarlo como aprobación incondicional.",
+      "status": "not-tested",
+      "test_evidence": [],
+      "commit": null
+    },
+    {
+      "id": "V58-RQ-06",
+      "primary_slice": "slice-00-foundation",
+      "criterion": "Vincular decisiones a actor, versión, digest, findings y policy exactos.",
+      "status": "not-tested",
+      "test_evidence": [],
+      "commit": null
+    },
+    {
+      "id": "V58-RQ-07",
+      "primary_slice": "slice-00-foundation",
+      "criterion": "Transferir findings a spec, slice, PR o follow-up sin perder identidad ni trazabilidad.",
+      "status": "not-tested",
+      "test_evidence": [],
+      "commit": null
+    },
+    {
+      "id": "V58-RQ-08",
+      "primary_slice": "slice-00-foundation",
+      "criterion": "Cerrar la migración, compatibilidad, documentación y evidencia de las slices restantes sin iniciar v59 desde la rama de v58.",
+      "status": "not-tested",
+      "test_evidence": [],
+      "commit": null
+    },
+    {
+      "id": "V59-RQ-01",
+      "primary_slice": "slice-01-draft-integrity",
+      "criterion": "Definir estados explícitos de draft: draft, current, reviewed, approved, approved-with-conditions, rejected, superseded y corrupted.",
+      "status": "not-tested",
+      "test_evidence": [],
+      "commit": null
+    },
+    {
+      "id": "V59-RQ-06",
+      "primary_slice": "slice-01-draft-integrity",
+      "criterion": "Detectar content loss mediante IDs, colecciones requeridas, referencias y preservación estructural.",
+      "status": "not-tested",
+      "test_evidence": [],
+      "commit": null
+    },
+    {
+      "id": "V59-RQ-07",
+      "primary_slice": "slice-01-draft-integrity",
+      "criterion": "Marcar una versión defectuosa como corrupted sin invalidar automáticamente la anterior.",
+      "status": "not-tested",
+      "test_evidence": [],
+      "commit": null
+    },
+    {
+      "id": "V59-RQ-02",
+      "primary_slice": "slice-02-draft-recovery",
+      "criterion": "Permitir seleccionar, revisar y aprobar una versión anterior si sus inputs siguen vigentes.",
+      "status": "not-tested",
+      "test_evidence": [],
+      "commit": null
+    },
+    {
+      "id": "V59-RQ-03",
+      "primary_slice": "slice-02-draft-recovery",
+      "criterion": "Permitir rollback del puntero current sin eliminar ninguna versión histórica.",
+      "status": "not-tested",
+      "test_evidence": [],
+      "commit": null
+    },
+    {
+      "id": "V59-RQ-04",
+      "primary_slice": "slice-03-effective-amendments",
+      "criterion": "Crear addendums de primera clase para cambios acotados sin regenerar artefactos extensos.",
+      "status": "not-tested",
+      "test_evidence": [],
+      "commit": null
+    },
+    {
+      "id": "V59-RQ-05",
+      "primary_slice": "slice-03-effective-amendments",
+      "criterion": "Agregar amendments determinísticos para cambios estructurados cuando el formato lo permita.",
+      "status": "not-tested",
+      "test_evidence": [],
+      "commit": null
+    },
+    {
+      "id": "V59-RQ-08",
+      "primary_slice": "slice-03-effective-amendments",
+      "criterion": "Separar retry técnico de nueva revisión semántica y conservar lineage completo.",
+      "status": "not-tested",
+      "test_evidence": [],
+      "commit": null
+    },
+    {
+      "id": "V60-RQ-01",
+      "primary_slice": "slice-05-brain-store",
+      "criterion": "Crear automáticamente un Project Brain para cada proyecto Quiver.",
+      "status": "not-tested",
+      "test_evidence": [],
+      "commit": null
+    },
+    {
+      "id": "V60-RQ-02",
+      "primary_slice": "slice-05-brain-store",
+      "criterion": "Representar conocimiento como registros tipados: hecho verificado, requirement, decisión, supuesto, riesgo, finding, restricción, aprendizaje, release e incidente.",
+      "status": "not-tested",
+      "test_evidence": [],
+      "commit": null
+    },
+    {
+      "id": "V60-RQ-03",
+      "primary_slice": "slice-05-brain-store",
+      "criterion": "Cada registro debe conservar fuente, fecha, estado de vigencia, autoridad, reemplazo y provenance.",
+      "status": "not-tested",
+      "test_evidence": [],
+      "commit": null
+    },
+    {
+      "id": "V60-RQ-04",
+      "primary_slice": "slice-05-brain-store",
+      "criterion": "Definir precedencia explícita: policy > decisión aprobada > requirement > input autorizado > supuesto del agente.",
+      "status": "not-tested",
+      "test_evidence": [],
+      "commit": null
+    },
+    {
+      "id": "V60-RQ-05",
+      "primary_slice": "slice-05-brain-store",
+      "criterion": "Prohibir secretos y estado operativo efímero dentro del Project Brain.",
+      "status": "not-tested",
+      "test_evidence": [],
+      "commit": null
+    },
+    {
+      "id": "V60-RQ-09",
+      "primary_slice": "slice-05-brain-store",
+      "criterion": "Distinguir la fuente canónica de conocimiento del cache o índice usado para búsquedas.",
+      "status": "not-tested",
+      "test_evidence": [],
+      "commit": null
+    },
+    {
+      "id": "V60-RQ-06",
+      "primary_slice": "slice-06-brain-vault",
+      "criterion": "Generar una representación abierta en Markdown + YAML + enlaces, denominada Open Knowledge Vault.",
+      "status": "not-tested",
+      "test_evidence": [],
+      "commit": null
+    },
+    {
+      "id": "V60-RQ-07",
+      "primary_slice": "slice-06-brain-vault",
+      "criterion": "El formato del vault debe poder abrirse con Obsidian, pero Quiver no debe depender de Obsidian, Obsidian Sync ni Obsidian Headless.",
+      "status": "not-tested",
+      "test_evidence": [],
+      "commit": null
+    },
+    {
+      "id": "V60-RQ-08",
+      "primary_slice": "slice-06-brain-vault",
+      "criterion": "Permitir exportar el Project Brain completo sin perder IDs, relaciones, fuentes y vigencia.",
+      "status": "not-tested",
+      "test_evidence": [],
+      "commit": null
+    },
+    {
+      "id": "V60-RQ-10",
+      "primary_slice": "slice-06-brain-vault",
+      "criterion": "Mostrar al usuario qué memoria está activa, qué guarda, qué excluye y cómo eliminarla o exportarla.",
+      "status": "not-tested",
+      "test_evidence": [],
+      "commit": null
+    },
+    {
+      "id": "V61-RQ-01",
+      "primary_slice": "slice-07-context-selection",
+      "criterion": "Crear un Context Manifest por tarea con fuentes, digest, autoridad, confianza, vigencia y razón de inclusión.",
+      "status": "not-tested",
+      "test_evidence": [],
+      "commit": null
+    },
+    {
+      "id": "V61-RQ-02",
+      "primary_slice": "slice-07-context-selection",
+      "criterion": "Seleccionar contexto por tarea en lugar de enviar el Project Brain completo.",
+      "status": "not-tested",
+      "test_evidence": [],
+      "commit": null
+    },
+    {
+      "id": "V61-RQ-07",
+      "primary_slice": "slice-07-context-selection",
+      "criterion": "Aplicar presupuesto de contexto y divulgación progresiva; nunca truncar contratos obligatorios en silencio.",
+      "status": "not-tested",
+      "test_evidence": [],
+      "commit": null
+    },
+    {
+      "id": "V61-RQ-09",
+      "primary_slice": "slice-07-context-selection",
+      "criterion": "Separar instrucciones confiables de contenido no confiable para evitar prompt injection.",
+      "status": "not-tested",
+      "test_evidence": [],
+      "commit": null
+    },
+    {
+      "id": "V61-RQ-10",
+      "primary_slice": "slice-07-context-selection",
+      "criterion": "Permitir consultar por qué una pieza de contexto fue incluida o excluida.",
+      "status": "not-tested",
+      "test_evidence": [],
+      "commit": null
+    },
+    {
+      "id": "V61-RQ-03",
+      "primary_slice": "slice-08-context-impact",
+      "criterion": "Detectar contradicciones entre requirements, decisiones, policy, documentación y comportamiento observado.",
+      "status": "not-tested",
+      "test_evidence": [],
+      "commit": null
+    },
+    {
+      "id": "V61-RQ-04",
+      "primary_slice": "slice-08-context-impact",
+      "criterion": "Elevar contradicciones relevantes en vez de elegir una interpretación silenciosamente.",
+      "status": "not-tested",
+      "test_evidence": [],
+      "commit": null
+    },
+    {
+      "id": "V61-RQ-05",
+      "primary_slice": "slice-08-context-impact",
+      "criterion": "Construir un grafo de impacto que relacione requirements, módulos, datos, permisos, APIs, UI, tests e integraciones.",
+      "status": "not-tested",
+      "test_evidence": [],
+      "commit": null
+    },
+    {
+      "id": "V61-RQ-06",
+      "primary_slice": "slice-08-context-impact",
+      "criterion": "Presentar un resumen comprensible de impacto: qué cambia, qué puede romperse, qué queda fuera y qué debe verificarse.",
+      "status": "not-tested",
+      "test_evidence": [],
+      "commit": null
+    },
+    {
+      "id": "V61-RQ-08",
+      "primary_slice": "slice-08-context-impact",
+      "criterion": "Marcar el contexto como stale cuando cambie una fuente contractual relevante.",
+      "status": "not-tested",
+      "test_evidence": [],
+      "commit": null
+    },
+    {
+      "id": "V62-RQ-01",
+      "primary_slice": "slice-09-artifact-envelopes",
+      "criterion": "Separar artefacto contractual de estado mutable de ejecución.",
+      "status": "not-tested",
+      "test_evidence": [],
+      "commit": null
+    },
+    {
+      "id": "V62-RQ-02",
+      "primary_slice": "slice-09-artifact-envelopes",
+      "criterion": "Definir Artifact Envelope común con ID, tipo, versión, digest, parents, inputs, actor y estado.",
+      "status": "not-tested",
+      "test_evidence": [],
+      "commit": null
+    },
+    {
+      "id": "V62-RQ-03",
+      "primary_slice": "slice-09-artifact-envelopes",
+      "criterion": "Definir relaciones de lineage: derives-from, supersedes, amends, verifies, executes, approves y deploys.",
+      "status": "not-tested",
+      "test_evidence": [],
+      "commit": null
+    },
+    {
+      "id": "V62-RQ-07",
+      "primary_slice": "slice-09-artifact-envelopes",
+      "criterion": "Permitir validación determinística offline cuando el artefacto lo permita.",
+      "status": "not-tested",
+      "test_evidence": [],
+      "commit": null
+    },
+    {
+      "id": "V62-RQ-10",
+      "primary_slice": "slice-09-artifact-envelopes",
+      "criterion": "Mantener compatibilidad de lectura con artifacts legacy sin elevarlos a verified.",
+      "status": "not-tested",
+      "test_evidence": [],
+      "commit": null
+    },
+    {
+      "id": "V62-RQ-08",
+      "primary_slice": "slice-10-actor-policy",
+      "criterion": "Introducir actor ID y autorización verificable para nuevas decisiones de governance.",
+      "status": "not-tested",
+      "test_evidence": [],
+      "commit": null
+    },
+    {
+      "id": "V62-RQ-09",
+      "primary_slice": "slice-10-actor-policy",
+      "criterion": "Incorporar policy explain/dry-run para que todo bloqueo tenga regla, motivo y remediación.",
+      "status": "not-tested",
+      "test_evidence": [],
+      "commit": null
+    },
+    {
+      "id": "V62-RQ-04",
+      "primary_slice": "slice-11-machine-facade",
+      "criterion": "Ofrecer salida JSON estable, versionada y sin banners para comandos P0.",
+      "status": "not-tested",
+      "test_evidence": [],
+      "commit": null
+    },
+    {
+      "id": "V62-RQ-05",
+      "primary_slice": "slice-11-machine-facade",
+      "criterion": "Definir códigos de error y clases de exit estables para validación, policy, capability, runtime, seguridad, conflicto y presupuesto.",
+      "status": "not-tested",
+      "test_evidence": [],
+      "commit": null
+    },
+    {
+      "id": "V62-RQ-06",
+      "primary_slice": "slice-11-machine-facade",
+      "criterion": "Hacer que la salida humana derive del mismo resultado canónico que JSON.",
+      "status": "not-tested",
+      "test_evidence": [],
+      "commit": null
+    }
+  ]
+}

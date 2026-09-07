@@ -1,0 +1,17 @@
+{
+  "command": "LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8 npx --yes --package=node@20.12.0 node scripts/ci/run-node-tests.js --test-concurrency=1",
+  "cwd": "/Users/fabrijk/Documents/Work/Proyectos Personales/nika/frameworks/quiver",
+  "node_version": "v20.12.0",
+  "start_utc": "2026-09-07T01:26:06Z",
+  "end_utc": "2026-09-07T01:29:33Z",
+  "duration_seconds": 207,
+  "exit_code": 0,
+  "log": "/private/tmp/quiver-program-baseline.tu3iEs/test-ci-node20-serial.log",
+  "tap": {
+    "tests": 944,
+    "pass": 944,
+    "fail": 0,
+    "duration_ms": 205812.350833
+  },
+  "diagnosis": "Serial execution passes; prior parallel failure is consistent with a concurrency-sensitive test interaction."
+}

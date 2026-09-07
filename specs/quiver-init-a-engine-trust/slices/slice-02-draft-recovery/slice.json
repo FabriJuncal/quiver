@@ -1,0 +1,76 @@
+{
+  "slice_id": "slice-02-draft-recovery",
+  "ticket": "QUIVER-INIT-A",
+  "type": "feature",
+  "title": "Recover and approve an earlier still-valid draft",
+  "objective": "Provide compare/select/reject/restore operations over exact immutable versions, verifying artifact and input digests under phase lock.",
+  "description": "V59: V59-RQ-02, V59-RQ-03. Recover and approve an earlier still-valid draft.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "engine-trust",
+    "branch_name": "feature/QUIVER-INIT-A-engine-trust"
+  },
+  "expected_read_paths": [
+    "docs/INDEX.md",
+    "docs/programs/quiver-v6/PROGRAM.md",
+    "specs/quiver-init-a-engine-trust/SPEC.md",
+    "docs/requirements/initiatives/REQ-QUIVER-INIT-A-ENGINE-TRUST-v1.0.3.md",
+    "specs/quiver-init-a-engine-trust/CONTRACTS.md"
+  ],
+  "files": [
+    "src/create-quiver/lib/ai/draft-integrity.js",
+    "src/create-quiver/lib/approvals.js",
+    "src/create-quiver/lib/ai/approval-candidates.js",
+    "src/create-quiver/commands/ai.js",
+    "tests/lib/draft-integrity.test.js",
+    "tests/lib/approvals.test.js",
+    "tests/commands/ai-draft-recovery.test.js",
+    "specs/quiver-init-a-engine-trust/**",
+    "src/create-quiver/lib/ai/phase-gates.js",
+    "src/create-quiver/lib/ai/plan-review.js",
+    "src/create-quiver/lib/ai/run-state.js",
+    "tests/commands/ai-run-state.test.js"
+  ],
+  "allowed_write_paths": [
+    "src/create-quiver/lib/ai/draft-integrity.js",
+    "src/create-quiver/lib/approvals.js",
+    "src/create-quiver/lib/ai/approval-candidates.js",
+    "src/create-quiver/commands/ai.js",
+    "tests/lib/draft-integrity.test.js",
+    "tests/lib/approvals.test.js",
+    "tests/commands/ai-draft-recovery.test.js",
+    "specs/quiver-init-a-engine-trust/**",
+    "src/create-quiver/lib/ai/phase-gates.js",
+    "src/create-quiver/lib/ai/plan-review.js",
+    "src/create-quiver/lib/ai/run-state.js",
+    "tests/commands/ai-run-state.test.js"
+  ],
+  "depends_on": [
+    "slice-01-draft-integrity"
+  ],
+  "parallel_safe": "never",
+  "parallel_safe_reason": "Dependency or shared integration surface requires single writer.",
+  "must": [
+    "Provide compare/select/reject/restore operations over exact immutable versions, verifying artifact and input digests under phase lock.",
+    "Make selected current version explicit and ensure candidate guidance, review and approval consume it; do not simply remove existing historical-version guards.",
+    "Preserve v58 actor, findings, conditioned decisions and review budget gates; a historical version with stale inputs cannot be approved.",
+    "Rollback moves only current projection and selection metadata; no version deletion or rewriting approval history."
+  ],
+  "not_included": [
+    "Unrelated initiative behavior",
+    "Production deploy or npm publication",
+    "Forged evidence, reduced acceptance or discarded history"
+  ],
+  "acceptance": [
+    "Create v1 and v2, select v1, review/approve valid v1 and inspect same version.",
+    "Change original input, then restore or approve: stale rejection with no approval write.",
+    "Recover corrupted last version; invalid ID/path cannot escape approval root."
+  ],
+  "tests": [
+    "LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8 node --test tests/lib/draft-integrity.test.js tests/lib/approvals.test.js tests/commands/ai-draft-recovery.test.js",
+    "git diff --check"
+  ],
+  "estimated_hours": 0,
+  "status": "draft"
+}

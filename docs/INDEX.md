@@ -1,6 +1,6 @@
 # Quiver Documentation Index
 
-**Last updated:** 2026-09-04
+**Last updated:** 2026-09-06
 
 Use this file as the first documentation map before planning, implementing, reviewing, or opening PRs in this repository. Prefer the smallest set of linked documents that fits the task.
 
@@ -56,6 +56,8 @@ Use this file as the first documentation map before planning, implementing, revi
 ## Specs
 
 Canonical specs live outside `docs/` in [`../specs/`](../specs/).
+
+- **A–G execution program, dependencies and evidence:** [`./programs/quiver-v6/PROGRAM.md`](./programs/quiver-v6/PROGRAM.md)
 
 Recent specs:
 

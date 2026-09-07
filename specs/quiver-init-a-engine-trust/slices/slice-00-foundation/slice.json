@@ -1,0 +1,56 @@
+{
+  "slice_id": "slice-00-foundation",
+  "ticket": "QUIVER-INIT-A",
+  "type": "documentation",
+  "title": "Executable foundation and inherited V58 verification",
+  "objective": "Freeze all seven specs and review global interfaces before implementation.",
+  "description": "V58: V58-RQ-01, V58-RQ-02, V58-RQ-03, V58-RQ-04, V58-RQ-05, V58-RQ-06, V58-RQ-07, V58-RQ-08. Executable foundation and inherited V58 verification.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "engine-trust",
+    "branch_name": "feature/QUIVER-INIT-A-engine-trust"
+  },
+  "expected_read_paths": [
+    "docs/INDEX.md",
+    "docs/programs/quiver-v6/PROGRAM.md",
+    "specs/quiver-init-a-engine-trust/SPEC.md",
+    "docs/requirements/initiatives/REQ-QUIVER-INIT-A-ENGINE-TRUST-v1.0.3.md",
+    "specs/quiver-init-a-engine-trust/CONTRACTS.md"
+  ],
+  "files": [
+    "docs/INDEX.md",
+    "docs/programs/quiver-v6/**",
+    "specs/quiver-init-a-engine-trust/**"
+  ],
+  "allowed_write_paths": [
+    "docs/INDEX.md",
+    "docs/programs/quiver-v6/**",
+    "specs/quiver-init-a-engine-trust/**"
+  ],
+  "depends_on": [],
+  "parallel_safe": "never",
+  "parallel_safe_reason": "Dependency or shared integration surface requires single writer.",
+  "must": [
+    "Freeze all seven specs and review global interfaces before implementation.",
+    "Verify V58 merged status, seven completed slices and existing governance tests; reference inherited implementation rather than recreate it.",
+    "Produce schema-valid slices, dependency manifest, exact 314-RQ ownership and independent audit."
+  ],
+  "not_included": [
+    "Unrelated initiative behavior",
+    "Production deploy or npm publication",
+    "Forged evidence, reduced acceptance or discarded history"
+  ],
+  "acceptance": [
+    "All RQ IDs have exactly one owner; DAG has no cycle.",
+    "V58 baseline tests actually pass; inherited status never asserts npm publication."
+  ],
+  "tests": [
+    "npm run schema:slice:check",
+    "node bin/create-quiver.js spec validate specs/quiver-init-a-engine-trust --strict",
+    "git diff --check"
+  ],
+  "estimated_hours": 0,
+  "status": "completed",
+  "completed_at": "2026-09-07T02:07:32.880Z"
+}

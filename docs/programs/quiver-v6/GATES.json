@@ -1,0 +1,166 @@
+{
+  "schema_version": 1,
+  "gates": [
+    {
+      "id": "G1",
+      "dependencies": [
+        "V70"
+      ],
+      "criteria": [
+        "At least 5 design partners with real repositories",
+        "At least 3 repeat-delivery teams",
+        "QA/Brain value observed",
+        "Paid pilot or equivalent commitment",
+        "Onboarding without WDD/SDD education",
+        "Known acceptable rescue rate"
+      ],
+      "owner": "B",
+      "kind": "empirical",
+      "state": "unverified",
+      "evidence": [],
+      "decision": null
+    },
+    {
+      "id": "G2",
+      "dependencies": [
+        "V74"
+      ],
+      "criteria": [
+        "Predeclared precision and observation window",
+        "Measured Observer precision",
+        "At least 2 customers requesting enforcement",
+        "Warn false-positive measurements",
+        "Explicit additional GitHub scope consent"
+      ],
+      "owner": "C",
+      "kind": "empirical",
+      "state": "unverified",
+      "evidence": [],
+      "decision": null
+    },
+    {
+      "id": "G3",
+      "dependencies": [
+        "V76"
+      ],
+      "criteria": [
+        "Predeclared minimum cases and period",
+        "Observed execute/resume demand with source/date/use case/scope"
+      ],
+      "owner": "D",
+      "kind": "empirical",
+      "state": "unverified",
+      "evidence": [],
+      "decision": null
+    },
+    {
+      "id": "G4",
+      "dependencies": [
+        "V81"
+      ],
+      "criteria": [
+        "Predeclared sample/window/criteria",
+        "Repeat feature demand and retention",
+        "Bounded rescue rate",
+        "Initial stack segment fit",
+        "Full-team value tied to payment"
+      ],
+      "owner": "E",
+      "kind": "empirical",
+      "state": "unverified",
+      "evidence": [],
+      "decision": null
+    },
+    {
+      "id": "G5",
+      "dependencies": [
+        "V86"
+      ],
+      "criteria": [
+        "Exact evidence-backed ADOPT/ADAPT/EXTEND/FORK/BUILD_NATIVE/DO_NOT_BUILD decision",
+        "BUILD_NATIVE requires paid demand plus unresolvable measured gaps",
+        "DO_NOT_BUILD does not complete V87 and does not waive V89 dependency"
+      ],
+      "owner": "F",
+      "kind": "decision",
+      "state": "unverified",
+      "evidence": [],
+      "decision": null
+    },
+    {
+      "id": "DEMAND-ORCHESTRATION",
+      "dependencies": [],
+      "criteria": [
+        "Concrete orchestration demand and observed shortcomings with source/date/owner"
+      ],
+      "owner": "F",
+      "kind": "empirical",
+      "state": "unverified",
+      "evidence": [],
+      "decision": null
+    },
+    {
+      "id": "DEMAND-COLLABORATION",
+      "dependencies": [],
+      "criteria": [
+        "Real multi-team/multi-repository use cases and ownership"
+      ],
+      "owner": "G",
+      "kind": "empirical",
+      "state": "unverified",
+      "evidence": [],
+      "decision": null
+    },
+    {
+      "id": "CUSTOMER-ENTERPRISE",
+      "dependencies": [],
+      "criteria": [
+        "Concrete enterprise customer and purchase/risk/security/jurisdiction requirements"
+      ],
+      "owner": "G",
+      "kind": "empirical",
+      "state": "unverified",
+      "evidence": [],
+      "decision": null
+    },
+    {
+      "id": "DEMAND-INTEROP",
+      "dependencies": [],
+      "criteria": [
+        "Named integration use cases, real consumer fixtures and owner"
+      ],
+      "owner": "G",
+      "kind": "empirical",
+      "state": "unverified",
+      "evidence": [],
+      "decision": null
+    },
+    {
+      "id": "STABLE-CONTRACTS",
+      "dependencies": [
+        "V62"
+      ],
+      "criteria": [
+        "Actually validated versioned consumer contracts"
+      ],
+      "owner": "G",
+      "kind": "technical",
+      "state": "unverified",
+      "evidence": [],
+      "decision": null
+    },
+    {
+      "id": "DEMAND-ECOSYSTEM",
+      "dependencies": [],
+      "criteria": [
+        "Demand separately demonstrated per adapter/SDK/marketplace and current terms"
+      ],
+      "owner": "G",
+      "kind": "empirical",
+      "state": "unverified",
+      "evidence": [],
+      "decision": null
+    }
+  ],
+  "note": "Technical fixtures cannot satisfy empirical gates; build authorization is not observed customer acceptance."
+}

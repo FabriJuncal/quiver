@@ -1,0 +1,71 @@
+{
+  "slice_id": "slice-12-integration-evidence",
+  "ticket": "QUIVER-INIT-A",
+  "type": "feature",
+  "title": "Verify A as an integrated dependency and prepare its PR",
+  "objective": "Run four directed E2E flows required by PLAN-A: draft recovery, Brain vault export, stale/contradiction context and machine/legacy parity.",
+  "description": "ALL: integration coverage. Verify A as an integrated dependency and prepare its PR.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "engine-trust",
+    "branch_name": "feature/QUIVER-INIT-A-engine-trust"
+  },
+  "expected_read_paths": [
+    "docs/INDEX.md",
+    "docs/programs/quiver-v6/PROGRAM.md",
+    "specs/quiver-init-a-engine-trust/SPEC.md",
+    "docs/requirements/initiatives/REQ-QUIVER-INIT-A-ENGINE-TRUST-v1.0.3.md",
+    "specs/quiver-init-a-engine-trust/CONTRACTS.md"
+  ],
+  "files": [
+    "specs/quiver-init-a-engine-trust/**",
+    "docs/programs/quiver-v6/**",
+    "docs/INDEX.md",
+    "docs/reference/commands.md",
+    "ARCHITECTURE.md",
+    "README_FOR_AI.md",
+    "tests/integration/engine-trust.test.js",
+    ".npmignore",
+    "tests/lib/package-safety.test.js"
+  ],
+  "allowed_write_paths": [
+    "specs/quiver-init-a-engine-trust/**",
+    "docs/programs/quiver-v6/**",
+    "docs/INDEX.md",
+    "docs/reference/commands.md",
+    "ARCHITECTURE.md",
+    "README_FOR_AI.md",
+    "tests/integration/engine-trust.test.js",
+    ".npmignore",
+    "tests/lib/package-safety.test.js"
+  ],
+  "depends_on": [
+    "slice-11-machine-facade"
+  ],
+  "parallel_safe": "never",
+  "parallel_safe_reason": "Dependency or shared integration surface requires single writer.",
+  "must": [
+    "Run four directed E2E flows required by PLAN-A: draft recovery, Brain vault export, stale/contradiction context and machine/legacy parity.",
+    "Run affected v58 governance regressions and complete existing suite on supported Node; docs/schema/package boundaries and direct facade contract tests.",
+    "Link all 46 requirements to actual test/evidence; separate inherited V58 proof and new execution.",
+    "Complete per-plan report with actual slice commits, cycles, commands, pending/manual checks and PR body; later integration auditor checks downstream consumption.",
+    "Exclude Cloud application and program-only evidence from CLI tarball with executable package-boundary checks before any Cloud source is added."
+  ],
+  "not_included": [
+    "Unrelated initiative behavior",
+    "Production deploy or npm publication",
+    "Forged evidence, reduced acceptance or discarded history"
+  ],
+  "acceptance": [
+    "Real CLI flow completes in temp project with evidence hashes and no leaked fixture secrets.",
+    "Tarball contains Engine facade and excludes apps/quiver-cloud, test evidence and local state.",
+    "No known failure, missing requirement or unverified required acceptance is hidden by READY state."
+  ],
+  "tests": [
+    "LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8 node --test tests/integration/engine-trust.test.js tests/lib/package-safety.test.js",
+    "git diff --check"
+  ],
+  "estimated_hours": 0,
+  "status": "draft"
+}

@@ -1,0 +1,823 @@
+{
+  "schema_version": 1,
+  "program_id": "QUIVER-PROGRAM-V6-20260906",
+  "baseline": "75fef298f12c66c6ac3a567a03f3bc41ce897796",
+  "state": "IN_PROGRESS",
+  "plans": [
+    {
+      "id": "A",
+      "artifact_id": "PLAN-QUIVER-INIT-A-ENGINE-TRUST",
+      "version": "1.0.2",
+      "plan_path": "docs/plans/PLAN-QUIVER-INIT-A-ENGINE-TRUST-v1.0.2.md",
+      "requirement_path": "docs/requirements/initiatives/REQ-QUIVER-INIT-A-ENGINE-TRUST-v1.0.3.md",
+      "spec": "quiver-init-a-engine-trust",
+      "state": "IN_PROGRESS",
+      "dependencies": [],
+      "dependents": [
+        "B"
+      ],
+      "branch": "feature/QUIVER-INIT-A-engine-trust",
+      "pr_base": "main",
+      "parallelizable_with": [],
+      "conflict_risk": "high: approvals/dispatcher/core facade",
+      "shared_files": [
+        "src/create-quiver/commands/ai.js",
+        "src/create-quiver/index.js",
+        "src/create-quiver/lib/engine.js",
+        "package.json"
+      ],
+      "integration_points": [
+        "Core facade",
+        "v58 governance"
+      ],
+      "required_rqs": 46,
+      "source_blocks": [
+        "V58",
+        "V59",
+        "V60",
+        "V61",
+        "V62"
+      ],
+      "pr": null
+    },
+    {
+      "id": "B",
+      "artifact_id": "PLAN-QUIVER-INIT-B-STUDIO-ALPHA",
+      "version": "1.0.2",
+      "plan_path": "docs/plans/PLAN-QUIVER-INIT-B-STUDIO-ALPHA-v1.0.2.md",
+      "requirement_path": "docs/requirements/initiatives/REQ-QUIVER-INIT-B-STUDIO-ALPHA-v1.0.2.md",
+      "spec": "quiver-init-b-studio-alpha",
+      "state": "IN_PROGRESS",
+      "dependencies": [
+        "A"
+      ],
+      "dependents": [
+        "C"
+      ],
+      "branch": "feature/QUIVER-INIT-B-studio-alpha",
+      "pr_base": "feature/QUIVER-INIT-A-engine-trust",
+      "parallelizable_with": [],
+      "conflict_risk": "high: app router/store/identity/adapters",
+      "shared_files": [
+        "apps/quiver-cloud/src/http/**",
+        "apps/quiver-cloud/src/platform/**",
+        "apps/quiver-cloud/public/styles.css"
+      ],
+      "integration_points": [
+        "Core facade",
+        "ActorContext",
+        "single writer store",
+        "source SHA/evidence identity"
+      ],
+      "required_rqs": 80,
+      "source_blocks": [
+        "V63",
+        "V64",
+        "V65",
+        "V66",
+        "V67",
+        "V68",
+        "V69",
+        "V70"
+      ],
+      "pr": null
+    },
+    {
+      "id": "C",
+      "artifact_id": "PLAN-QUIVER-INIT-C-OBSERVER-CONTROL",
+      "version": "1.0.2",
+      "plan_path": "docs/plans/PLAN-QUIVER-INIT-C-OBSERVER-CONTROL-v1.0.2.md",
+      "requirement_path": "docs/requirements/initiatives/REQ-QUIVER-INIT-C-OBSERVER-CONTROL-v1.0.2.md",
+      "spec": "quiver-init-c-observer-control",
+      "state": "IN_PROGRESS",
+      "dependencies": [
+        "B"
+      ],
+      "dependents": [
+        "D"
+      ],
+      "branch": "feature/QUIVER-INIT-C-observer-control",
+      "pr_base": "feature/QUIVER-INIT-B-studio-alpha",
+      "parallelizable_with": [],
+      "conflict_risk": "high: app router/store/identity/adapters",
+      "shared_files": [
+        "apps/quiver-cloud/src/http/**",
+        "apps/quiver-cloud/src/platform/**",
+        "apps/quiver-cloud/public/styles.css"
+      ],
+      "integration_points": [
+        "Core facade",
+        "ActorContext",
+        "single writer store",
+        "source SHA/evidence identity"
+      ],
+      "required_rqs": 48,
+      "source_blocks": [
+        "V71",
+        "V72",
+        "V73",
+        "V74",
+        "V75",
+        "V76"
+      ],
+      "pr": null
+    },
+    {
+      "id": "D",
+      "artifact_id": "PLAN-QUIVER-INIT-D-EXECUTION-AI-TEAM",
+      "version": "1.0.2",
+      "plan_path": "docs/plans/PLAN-QUIVER-INIT-D-EXECUTION-AI-TEAM-v1.0.2.md",
+      "requirement_path": "docs/requirements/initiatives/REQ-QUIVER-INIT-D-EXECUTION-AI-TEAM-v1.0.2.md",
+      "spec": "quiver-init-d-execution-ai-team",
+      "state": "IN_PROGRESS",
+      "dependencies": [
+        "C"
+      ],
+      "dependents": [
+        "E"
+      ],
+      "branch": "feature/QUIVER-INIT-D-execution-ai-team",
+      "pr_base": "feature/QUIVER-INIT-C-observer-control",
+      "parallelizable_with": [],
+      "conflict_risk": "high: app router/store/identity/adapters",
+      "shared_files": [
+        "apps/quiver-cloud/src/http/**",
+        "apps/quiver-cloud/src/platform/**",
+        "apps/quiver-cloud/public/styles.css"
+      ],
+      "integration_points": [
+        "Core facade",
+        "ActorContext",
+        "single writer store",
+        "source SHA/evidence identity"
+      ],
+      "required_rqs": 46,
+      "source_blocks": [
+        "V77",
+        "V78",
+        "V79",
+        "V80",
+        "V81"
+      ],
+      "pr": null
+    },
+    {
+      "id": "E",
+      "artifact_id": "PLAN-QUIVER-INIT-E-BUILDER-DELIVERY",
+      "version": "1.0.2",
+      "plan_path": "docs/plans/PLAN-QUIVER-INIT-E-BUILDER-DELIVERY-v1.0.2.md",
+      "requirement_path": "docs/requirements/initiatives/REQ-QUIVER-INIT-E-BUILDER-DELIVERY-v1.0.2.md",
+      "spec": "quiver-init-e-builder-delivery",
+      "state": "IN_PROGRESS",
+      "dependencies": [
+        "D"
+      ],
+      "dependents": [
+        "F"
+      ],
+      "branch": "feature/QUIVER-INIT-E-builder-delivery",
+      "pr_base": "feature/QUIVER-INIT-D-execution-ai-team",
+      "parallelizable_with": [
+        "F:V86"
+      ],
+      "conflict_risk": "high: app router/store/identity/adapters",
+      "shared_files": [
+        "apps/quiver-cloud/src/http/**",
+        "apps/quiver-cloud/src/platform/**",
+        "apps/quiver-cloud/public/styles.css"
+      ],
+      "integration_points": [
+        "Core facade",
+        "ActorContext",
+        "single writer store",
+        "source SHA/evidence identity"
+      ],
+      "required_rqs": 40,
+      "source_blocks": [
+        "V82",
+        "V83",
+        "V84",
+        "V85"
+      ],
+      "pr": null
+    },
+    {
+      "id": "F",
+      "artifact_id": "PLAN-QUIVER-INIT-F-ORCHESTRATION-OPERATIONS",
+      "version": "1.0.3",
+      "plan_path": "docs/plans/PLAN-QUIVER-INIT-F-ORCHESTRATION-OPERATIONS-v1.0.3.md",
+      "requirement_path": "docs/requirements/initiatives/REQ-QUIVER-INIT-F-ORCHESTRATION-OPERATIONS-v1.0.3.md",
+      "spec": "quiver-init-f-orchestration-operations",
+      "state": "IN_PROGRESS",
+      "dependencies": [
+        "E"
+      ],
+      "dependents": [
+        "G"
+      ],
+      "branch": "feature/QUIVER-INIT-F-orchestration-operations",
+      "pr_base": "feature/QUIVER-INIT-E-builder-delivery",
+      "parallelizable_with": [
+        "E:V82-V85"
+      ],
+      "conflict_risk": "high: app router/store/identity/adapters",
+      "shared_files": [
+        "apps/quiver-cloud/src/http/**",
+        "apps/quiver-cloud/src/platform/**",
+        "apps/quiver-cloud/public/styles.css"
+      ],
+      "integration_points": [
+        "Core facade",
+        "ActorContext",
+        "single writer store",
+        "source SHA/evidence identity"
+      ],
+      "required_rqs": 22,
+      "source_blocks": [
+        "V86",
+        "V87",
+        "V88"
+      ],
+      "pr": null
+    },
+    {
+      "id": "G",
+      "artifact_id": "PLAN-QUIVER-INIT-G-SCALE-ECOSYSTEM",
+      "version": "1.0.2",
+      "plan_path": "docs/plans/PLAN-QUIVER-INIT-G-SCALE-ECOSYSTEM-v1.0.2.md",
+      "requirement_path": "docs/requirements/initiatives/REQ-QUIVER-INIT-G-SCALE-ECOSYSTEM-v1.0.2.md",
+      "spec": "quiver-init-g-scale-ecosystem",
+      "state": "IN_PROGRESS",
+      "dependencies": [
+        "F"
+      ],
+      "dependents": [],
+      "branch": "feature/QUIVER-INIT-G-scale-ecosystem",
+      "pr_base": "feature/QUIVER-INIT-F-orchestration-operations",
+      "parallelizable_with": [],
+      "conflict_risk": "high: app router/store/identity/adapters",
+      "shared_files": [
+        "apps/quiver-cloud/src/http/**",
+        "apps/quiver-cloud/src/platform/**",
+        "apps/quiver-cloud/public/styles.css"
+      ],
+      "integration_points": [
+        "Core facade",
+        "ActorContext",
+        "single writer store",
+        "source SHA/evidence identity"
+      ],
+      "required_rqs": 32,
+      "source_blocks": [
+        "V89",
+        "V90",
+        "V91",
+        "V92"
+      ],
+      "pr": null
+    }
+  ],
+  "nodes": [
+    {
+      "id": "V58",
+      "kind": "source-block",
+      "owner": "A",
+      "dependencies": [],
+      "conditional_dependencies": [],
+      "state": "inherited-completed"
+    },
+    {
+      "id": "V59",
+      "kind": "source-block",
+      "owner": "A",
+      "dependencies": [
+        "V58"
+      ],
+      "conditional_dependencies": [],
+      "state": "not-tested"
+    },
+    {
+      "id": "V60",
+      "kind": "source-block",
+      "owner": "A",
+      "dependencies": [
+        "V58"
+      ],
+      "conditional_dependencies": [],
+      "state": "not-tested"
+    },
+    {
+      "id": "V61",
+      "kind": "source-block",
+      "owner": "A",
+      "dependencies": [
+        "V60"
+      ],
+      "conditional_dependencies": [],
+      "state": "not-tested"
+    },
+    {
+      "id": "V62",
+      "kind": "source-block",
+      "owner": "A",
+      "dependencies": [
+        "V59",
+        "V60",
+        "V61"
+      ],
+      "conditional_dependencies": [],
+      "state": "not-tested"
+    },
+    {
+      "id": "V63",
+      "kind": "source-block",
+      "owner": "B",
+      "dependencies": [
+        "V60",
+        "V62"
+      ],
+      "conditional_dependencies": [],
+      "state": "not-tested"
+    },
+    {
+      "id": "V64",
+      "kind": "source-block",
+      "owner": "B",
+      "dependencies": [
+        "V60",
+        "V61",
+        "V63"
+      ],
+      "conditional_dependencies": [],
+      "state": "not-tested"
+    },
+    {
+      "id": "V65",
+      "kind": "source-block",
+      "owner": "B",
+      "dependencies": [
+        "V61",
+        "V63",
+        "V64"
+      ],
+      "conditional_dependencies": [],
+      "state": "not-tested"
+    },
+    {
+      "id": "V66",
+      "kind": "source-block",
+      "owner": "B",
+      "dependencies": [
+        "V65"
+      ],
+      "conditional_dependencies": [],
+      "state": "not-tested"
+    },
+    {
+      "id": "V67",
+      "kind": "source-block",
+      "owner": "B",
+      "dependencies": [
+        "V62",
+        "V65",
+        "V66"
+      ],
+      "conditional_dependencies": [],
+      "state": "not-tested"
+    },
+    {
+      "id": "V68",
+      "kind": "source-block",
+      "owner": "B",
+      "dependencies": [
+        "V65",
+        "V67"
+      ],
+      "conditional_dependencies": [],
+      "state": "not-tested"
+    },
+    {
+      "id": "V69",
+      "kind": "source-block",
+      "owner": "B",
+      "dependencies": [
+        "V62",
+        "V67",
+        "V68"
+      ],
+      "conditional_dependencies": [],
+      "state": "not-tested"
+    },
+    {
+      "id": "V70",
+      "kind": "source-block",
+      "owner": "B",
+      "dependencies": [
+        "V60",
+        "V67",
+        "V68",
+        "V69"
+      ],
+      "conditional_dependencies": [],
+      "state": "not-tested"
+    },
+    {
+      "id": "V71",
+      "kind": "source-block",
+      "owner": "C",
+      "dependencies": [
+        "G1",
+        "V62",
+        "V69"
+      ],
+      "conditional_dependencies": [],
+      "state": "not-tested"
+    },
+    {
+      "id": "V72",
+      "kind": "source-block",
+      "owner": "C",
+      "dependencies": [
+        "G1",
+        "V71"
+      ],
+      "conditional_dependencies": [],
+      "state": "not-tested"
+    },
+    {
+      "id": "V73",
+      "kind": "source-block",
+      "owner": "C",
+      "dependencies": [
+        "V71",
+        "V72"
+      ],
+      "conditional_dependencies": [],
+      "state": "not-tested"
+    },
+    {
+      "id": "V74",
+      "kind": "source-block",
+      "owner": "C",
+      "dependencies": [
+        "G1",
+        "V73"
+      ],
+      "conditional_dependencies": [],
+      "state": "not-tested"
+    },
+    {
+      "id": "V75",
+      "kind": "source-block",
+      "owner": "C",
+      "dependencies": [
+        "G2",
+        "V73",
+        "V74"
+      ],
+      "conditional_dependencies": [],
+      "state": "not-tested"
+    },
+    {
+      "id": "V76",
+      "kind": "source-block",
+      "owner": "C",
+      "dependencies": [
+        "V62",
+        "V68",
+        "V75"
+      ],
+      "conditional_dependencies": [],
+      "state": "not-tested"
+    },
+    {
+      "id": "V77",
+      "kind": "source-block",
+      "owner": "D",
+      "dependencies": [
+        "G3",
+        "V62",
+        "V76"
+      ],
+      "conditional_dependencies": [],
+      "state": "not-tested"
+    },
+    {
+      "id": "V78",
+      "kind": "source-block",
+      "owner": "D",
+      "dependencies": [
+        "V77"
+      ],
+      "conditional_dependencies": [],
+      "state": "not-tested"
+    },
+    {
+      "id": "V79",
+      "kind": "source-block",
+      "owner": "D",
+      "dependencies": [
+        "V65",
+        "V66",
+        "V77",
+        "V78"
+      ],
+      "conditional_dependencies": [],
+      "state": "not-tested"
+    },
+    {
+      "id": "V80",
+      "kind": "source-block",
+      "owner": "D",
+      "dependencies": [
+        "V77",
+        "V79"
+      ],
+      "conditional_dependencies": [],
+      "state": "not-tested"
+    },
+    {
+      "id": "V81",
+      "kind": "source-block",
+      "owner": "D",
+      "dependencies": [
+        "V77",
+        "V79",
+        "V80"
+      ],
+      "conditional_dependencies": [],
+      "state": "not-tested"
+    },
+    {
+      "id": "V82",
+      "kind": "source-block",
+      "owner": "E",
+      "dependencies": [
+        "G4",
+        "V65",
+        "V66",
+        "V67",
+        "V68",
+        "V69",
+        "V70",
+        "V71",
+        "V72",
+        "V73",
+        "V74",
+        "V75",
+        "V76",
+        "V77",
+        "V78",
+        "V79",
+        "V80",
+        "V81"
+      ],
+      "conditional_dependencies": [],
+      "state": "not-tested"
+    },
+    {
+      "id": "V83",
+      "kind": "source-block",
+      "owner": "E",
+      "dependencies": [
+        "V82"
+      ],
+      "conditional_dependencies": [],
+      "state": "not-tested"
+    },
+    {
+      "id": "V84",
+      "kind": "source-block",
+      "owner": "E",
+      "dependencies": [
+        "V66",
+        "V82",
+        "V83"
+      ],
+      "conditional_dependencies": [],
+      "state": "not-tested"
+    },
+    {
+      "id": "V85",
+      "kind": "source-block",
+      "owner": "E",
+      "dependencies": [
+        "V74",
+        "V76",
+        "V78",
+        "V83",
+        "V84"
+      ],
+      "conditional_dependencies": [],
+      "state": "not-tested"
+    },
+    {
+      "id": "V86",
+      "kind": "source-block",
+      "owner": "F",
+      "dependencies": [
+        "V77",
+        "V78",
+        "V79",
+        "V80",
+        "V81",
+        "DEMAND-ORCHESTRATION"
+      ],
+      "conditional_dependencies": [],
+      "state": "not-tested"
+    },
+    {
+      "id": "V87",
+      "kind": "source-block",
+      "owner": "F",
+      "dependencies": [
+        "G5",
+        "V86"
+      ],
+      "conditional_dependencies": [],
+      "state": "not-tested"
+    },
+    {
+      "id": "V88",
+      "kind": "source-block",
+      "owner": "F",
+      "dependencies": [
+        "V74",
+        "V79",
+        "V85"
+      ],
+      "conditional_dependencies": [
+        {
+          "id": "V87",
+          "when": "declares consumption"
+        }
+      ],
+      "state": "not-tested"
+    },
+    {
+      "id": "V89",
+      "kind": "source-block",
+      "owner": "G",
+      "dependencies": [
+        "V75",
+        "V76",
+        "V77",
+        "V78",
+        "V79",
+        "V80",
+        "V81",
+        "V82",
+        "V83",
+        "V84",
+        "V85",
+        "V86",
+        "V87",
+        "V88",
+        "DEMAND-COLLABORATION"
+      ],
+      "conditional_dependencies": [],
+      "state": "not-tested"
+    },
+    {
+      "id": "V90",
+      "kind": "source-block",
+      "owner": "G",
+      "dependencies": [
+        "CUSTOMER-ENTERPRISE"
+      ],
+      "conditional_dependencies": [],
+      "state": "not-tested"
+    },
+    {
+      "id": "V91",
+      "kind": "source-block",
+      "owner": "G",
+      "dependencies": [
+        "DEMAND-INTEROP",
+        "STABLE-CONTRACTS"
+      ],
+      "conditional_dependencies": [],
+      "state": "not-tested"
+    },
+    {
+      "id": "V92",
+      "kind": "source-block",
+      "owner": "G",
+      "dependencies": [
+        "DEMAND-ECOSYSTEM"
+      ],
+      "conditional_dependencies": [],
+      "state": "not-tested"
+    },
+    {
+      "id": "G1",
+      "kind": "empirical",
+      "owner": "B",
+      "dependencies": [
+        "V70"
+      ],
+      "state": "unverified"
+    },
+    {
+      "id": "G2",
+      "kind": "empirical",
+      "owner": "C",
+      "dependencies": [
+        "V74"
+      ],
+      "state": "unverified"
+    },
+    {
+      "id": "G3",
+      "kind": "empirical",
+      "owner": "D",
+      "dependencies": [
+        "V76"
+      ],
+      "state": "unverified"
+    },
+    {
+      "id": "G4",
+      "kind": "empirical",
+      "owner": "E",
+      "dependencies": [
+        "V81"
+      ],
+      "state": "unverified"
+    },
+    {
+      "id": "G5",
+      "kind": "decision",
+      "owner": "F",
+      "dependencies": [
+        "V86"
+      ],
+      "state": "unverified"
+    },
+    {
+      "id": "DEMAND-ORCHESTRATION",
+      "kind": "empirical",
+      "owner": "F",
+      "dependencies": [],
+      "state": "unverified"
+    },
+    {
+      "id": "DEMAND-COLLABORATION",
+      "kind": "empirical",
+      "owner": "G",
+      "dependencies": [],
+      "state": "unverified"
+    },
+    {
+      "id": "CUSTOMER-ENTERPRISE",
+      "kind": "empirical",
+      "owner": "G",
+      "dependencies": [],
+      "state": "unverified"
+    },
+    {
+      "id": "DEMAND-INTEROP",
+      "kind": "empirical",
+      "owner": "G",
+      "dependencies": [],
+      "state": "unverified"
+    },
+    {
+      "id": "STABLE-CONTRACTS",
+      "kind": "technical",
+      "owner": "G",
+      "dependencies": [
+        "V62"
+      ],
+      "state": "unverified"
+    },
+    {
+      "id": "DEMAND-ECOSYSTEM",
+      "kind": "empirical",
+      "owner": "G",
+      "dependencies": [],
+      "state": "unverified"
+    }
+  ],
+  "merge_order": [
+    "A",
+    "B",
+    "C",
+    "D",
+    "E",
+    "F",
+    "G"
+  ],
+  "known_cycle_resolutions": [
+    "Use master6.0.22 corrected G2/G3/G4 positions",
+    "G2 warn evidence comes from bounded Observer path before enforcement",
+    "V88 excludes V87 unless consumed; V89 still requires explicit disposition if V87 DO_NOT_BUILD"
+  ],
+  "policy": {
+    "one_spec_per_plan": true,
+    "one_pr_per_spec": true,
+    "one_commit_per_slice": true,
+    "merge_after_program": true,
+    "public_repository": true
+  }
+}
