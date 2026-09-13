@@ -297,7 +297,8 @@ function assertDraftIntegrityProjection(projectRoot, phase, meta, draftBytes) {
   if (!meta.draft
       || Number(meta.draft.version) !== selectedVersion
       || meta.draft.path !== expectedProjectionPath
-      || meta.draft.artifact_sha256 !== record.artifact_sha256) {
+      || meta.draft.artifact_sha256 !== record.artifact_sha256
+      || meta.draft.lifecycle_state !== record.lifecycle_state) {
     throw draftMetadataError('selected draft metadata does not match its current projection', {
       phase,
       selected_version: selectedVersion,
@@ -368,6 +369,170 @@ function latestDraftVersion(meta) {
   return versions.length > 0 ? Math.max(...versions) : null;
 }
 
+function selectedDraftRecord(meta) {
+  const version = latestDraftVersion(meta);
+  return version ? findDraftVersion(meta, version) : null;
+}
+
+function approvalBindingError(message, details = {}) {
+  const error = new Error(formatError(`APPROVAL_BINDING_MISMATCH: ${message}`));
+  error.code = 'APPROVAL_BINDING_MISMATCH';
+  error.details = details;
+  return error;
+}
+
+function assertDraftArtifactAndInput(projectRoot, phase, draft) {
+  if (!draft?.artifact_sha256 || !draft?.input_path || !draft?.input_sha256) {
+    throw approvalBindingError(`${phase} draft version ${draft?.version || 'unknown'} lacks immutable digest bindings`, {
+      phase,
+      version: Number(draft?.version) || null,
+    });
+  }
+  const artifact = readProjectFileBytes(projectRoot, draft.path, `${phase} draft artifact`);
+  if (artifact.sha256 !== draft.artifact_sha256) {
+    throw approvalBindingError(`${phase} draft artifact digest no longer matches version ${draft.version}`, {
+      phase,
+      version: Number(draft.version),
+      mismatch: 'artifact_sha256',
+    });
+  }
+  const input = readProjectFileBytes(projectRoot, draft.input_path, `${phase} draft input`);
+  if (input.sha256 !== draft.input_sha256) {
+    throw approvalBindingError(`${phase} draft input digest no longer matches version ${draft.version}`, {
+      phase,
+      version: Number(draft.version),
+      mismatch: 'input_sha256',
+    });
+  }
+  return { artifact, input };
+}
+
+function normalizeRunArtifactPath(projectRoot, value) {
+  if (!value) return '';
+  const resolved = path.isAbsolute(value) ? value : path.resolve(projectRoot, value);
+  return toRelativePosix(projectRoot, resolved);
+}
+
+function assertDraftOwnedByRun(projectRoot, phase, draft, runId) {
+  if (!runId) return null;
+  const { readAiRun, readRunApprovalDecision, runRequirementPath } = require('./ai/run-state');
+  const run = readAiRun(projectRoot, runId);
+  if (!run || run.status === 'closed') {
+    throw approvalBindingError(`draft recovery cannot target closed or missing run '${runId}'`, {
+      phase,
+      run_id: runId,
+    });
+  }
+  if (draft.run_id && draft.run_id !== run.run_id) {
+    throw approvalBindingError(`draft version ${draft.version} belongs to a different run`, {
+      phase,
+      run_id: run.run_id,
+      draft_run_id: draft.run_id,
+    });
+  }
+  const artifactPath = normalizeRunArtifactPath(projectRoot, draft.path);
+  const owned = (run.history || []).some((event) => (
+    event?.phase === `${phase}-draft`
+      && normalizeRunArtifactPath(projectRoot, event.artifact) === artifactPath
+  ));
+  if (!owned) {
+    throw approvalBindingError(`draft version ${draft.version} is not owned by run '${run.run_id}'`, {
+      phase,
+      run_id: run.run_id,
+      artifact: artifactPath,
+    });
+  }
+
+  if (phase === 'acceptance') {
+    const canonicalPath = toRelativePosix(projectRoot, runRequirementPath(projectRoot, run.run_id));
+    if (run.requirement?.path !== canonicalPath) {
+      throw approvalBindingError(`run '${run.run_id}' has a noncanonical requirement binding`, {
+        phase,
+        run_id: run.run_id,
+        mismatch: 'run.requirement.path',
+      });
+    }
+    const canonical = readProjectFileBytes(projectRoot, canonicalPath, 'canonical run requirement input');
+    if (normalizeRunArtifactPath(projectRoot, draft.input_path) !== canonicalPath
+        || canonical.sha256 !== draft.input_sha256) {
+      throw approvalBindingError(`draft version ${draft.version} input is not the canonical requirement of run '${run.run_id}'`, {
+        phase,
+        run_id: run.run_id,
+        mismatch: normalizeRunArtifactPath(projectRoot, draft.input_path) !== canonicalPath
+          ? 'input_path'
+          : 'input_sha256',
+      });
+    }
+  } else {
+    const decision = readRunApprovalDecision(projectRoot, run.run_id, 'acceptance');
+    if (!decision || decision.publication_state !== 'final') {
+      throw approvalBindingError(`run '${run.run_id}' has no canonical acceptance input for technical-plan recovery`, {
+        phase,
+        run_id: run.run_id,
+      });
+    }
+    if (normalizeRunArtifactPath(projectRoot, decision.artifact_path)
+          !== normalizeRunArtifactPath(projectRoot, draft.input_path)
+        || decision.artifact_sha256 !== draft.input_sha256) {
+      throw approvalBindingError(`draft version ${draft.version} input is not the canonical acceptance decision of run '${run.run_id}'`, {
+        phase,
+        run_id: run.run_id,
+        mismatch: 'prior_phase_binding',
+      });
+    }
+  }
+  return run;
+}
+
+function assertDraftArtifactOwnedByRun(projectRoot, phase, draft, runId) {
+  if (!runId) return null;
+  const { readAiRun } = require('./ai/run-state');
+  const run = readAiRun(projectRoot, runId);
+  const artifactPath = normalizeRunArtifactPath(projectRoot, draft.path);
+  const owned = run && run.status !== 'closed' && (run.history || []).some((event) => (
+    event?.phase === `${phase}-draft`
+      && normalizeRunArtifactPath(projectRoot, event.artifact) === artifactPath
+  ));
+  if (!owned) {
+    throw approvalBindingError(`draft version ${draft.version} is not owned by active run '${runId}'`, {
+      phase,
+      run_id: runId,
+      artifact: artifactPath,
+    });
+  }
+  return run;
+}
+
+function assertSelectedDraftUsable(projectRoot, phase, meta, options = {}) {
+  const draft = selectedDraftRecord(meta);
+  if (!draft) {
+    throw approvalBindingError(`${phase} has no selected current draft`, { phase });
+  }
+  if (draft.lifecycle_state === 'rejected') {
+    throw approvalBindingError(`${phase} selected draft version ${draft.version} is rejected and requires explicit restore`, {
+      phase,
+      version: Number(draft.version),
+      lifecycle_state: 'rejected',
+    });
+  }
+  if (draft.integrity?.status === 'corrupted') {
+    throw approvalBindingError(`${phase} selected draft version ${draft.version} is corrupted`, {
+      phase,
+      version: Number(draft.version),
+    });
+  }
+  if (draft.selection_verification === 'unverified' || draft.integrity?.status === 'unsupported') {
+    throw approvalBindingError(`${phase} selected draft version ${draft.version} remains unverified and cannot satisfy approval`, {
+      phase,
+      version: Number(draft.version),
+      selection_verification: 'unverified',
+    });
+  }
+  const bound = assertDraftArtifactAndInput(projectRoot, phase, draft);
+  assertDraftOwnedByRun(projectRoot, phase, draft, options.runId);
+  return { draft, ...bound };
+}
+
 function readPhaseApproval(projectRoot, phase) {
   const normalizedPhase = normalizePhase(phase);
   const draftPath = approvalDraftPath(projectRoot, normalizedPhase);
@@ -428,23 +593,30 @@ function readPhaseApproval(projectRoot, phase) {
 
   const approvedSource = meta?.approved || null;
   const draftSource = meta?.draft || null;
+  const selectedRecord = selectedDraftRecord(meta);
+  const rejected = selectedRecord?.lifecycle_state === 'rejected';
+  const conditioned = selectedRecord?.lifecycle_state === 'approved-with-conditions';
+  const selectedUnverified = selectedRecord?.selection_verification === 'unverified'
+    || selectedRecord?.integrity?.status === 'unsupported';
   const stale = Boolean(
     approvedSource
     && approvedSource.source_file
     && !fs.existsSync(path.resolve(projectRoot, approvedSource.source_file))
     && !approvedSource.source_file.startsWith('.quiver/approvals/'),
   ) || Boolean(
-    draftSource?.created_at
-    && approvedSource?.approved_at
-    && new Date(draftSource.created_at).getTime() > new Date(approvedSource.approved_at).getTime(),
-  ) || Boolean(
     draftSource?.version
     && approvedSource?.version
-    && Number(draftSource.version) > Number(approvedSource.version),
+    && Number(draftSource.version) !== Number(approvedSource.version),
   );
 
   let status = 'missing';
-  if (approved) {
+  if (rejected) {
+    status = 'rejected';
+  } else if (selectedUnverified) {
+    status = 'unverified';
+  } else if (conditioned) {
+    status = 'approved-with-conditions';
+  } else if (approved) {
     status = stale ? 'stale' : 'approved';
   } else if (draft || normalizeDrafts(meta).length > 0) {
     status = 'draft';
@@ -470,6 +642,18 @@ function renderApprovalStatus(report) {
 
   if (report.status === 'stale') {
     return `stale ${report.phase} approval`;
+  }
+
+  if (report.status === 'rejected') {
+    return `rejected ${report.phase} draft; explicit restore required`;
+  }
+
+  if (report.status === 'unverified') {
+    return `unverified ${report.phase} draft`;
+  }
+
+  if (report.status === 'approved-with-conditions') {
+    return `approved-with-conditions ${report.phase}`;
   }
 
   return `approved ${report.phase}`;
@@ -512,7 +696,9 @@ function buildApprovalCandidate(projectRoot, phase, draft, latestVersion, report
   const artifactExists = Boolean(draft.path && fs.existsSync(path.resolve(projectRoot, draft.path)));
   const preview = readCandidatePreview(projectRoot, draft);
   const integrityEligible = integrityStatus === 'preserved' || integrityStatus === 'legacy';
-  const approvable = isCurrent && integrityEligible && artifactExists
+  const lifecycleEligible = draft.lifecycle_state !== 'rejected'
+    && draft.selection_verification !== 'unverified';
+  const approvable = isCurrent && integrityEligible && lifecycleEligible && artifactExists
     && (report.status === 'draft' || report.status === 'stale' || report.status === 'approved');
   const nextCommand = version
     ? `npx create-quiver ai approve --phase ${phase} --version ${version}`
@@ -520,6 +706,7 @@ function buildApprovalCandidate(projectRoot, phase, draft, latestVersion, report
 
   return {
     phase,
+    run_id: draft.run_id || null,
     version,
     label: version ? `v${version}` : 'unknown version',
     path: draft.path || '',
@@ -534,6 +721,7 @@ function buildApprovalCandidate(projectRoot, phase, draft, latestVersion, report
     current: isCurrent,
     latest: Boolean(version && version === maxHistoryVersion),
     lifecycle_state: draft.lifecycle_state || (isCurrent ? 'current' : 'draft'),
+    lifecycle: Array.isArray(draft.lifecycle) ? draft.lifecycle : [],
     integrity: draft.integrity || null,
     recommended: approvable,
     approvable,
@@ -542,7 +730,11 @@ function buildApprovalCandidate(projectRoot, phase, draft, latestVersion, report
     reason: approvable
       ? 'selected current draft is eligible for approval'
       : isCurrent
-        ? `selected draft artifact is missing or integrity is ${integrityStatus}`
+        ? draft.lifecycle_state === 'rejected'
+          ? 'selected draft is rejected; explicitly restore a valid version before approval'
+          : draft.selection_verification === 'unverified'
+            ? 'selected draft has only an acknowledgement and remains unverified'
+            : `selected draft artifact is missing or integrity is ${integrityStatus}`
         : `not current; selected draft version is ${latestVersion || 'none'}`,
     preview: preview.text,
     preview_truncated: preview.truncated,
@@ -602,8 +794,16 @@ function preparePlannerApprovalProjection(projectRoot, phase, version, options =
   if (!selectedDraft) {
     throw new Error(formatError(`missing ${normalizedPhase} draft version ${version}`));
   }
+  const hasRunLifecycle = (selectedDraft.lifecycle || []).some((event) => event?.run_id);
+  const legacyRunHistorical = options.allowHistorical === true
+    && options.runId
+    && !selectedDraft.run_id
+    && !hasRunLifecycle;
   if (options.allowHistorical !== true && (!latestVersion || Number(selectedDraft.version) !== latestVersion)) {
     throw new Error(formatError(`${normalizedPhase} draft version ${version} is not current; latest draft version is ${latestVersion}. Approve the latest version or revise again.`));
+  }
+  if ((!latestVersion || Number(selectedDraft.version) !== latestVersion) && !legacyRunHistorical) {
+    throw new Error(formatError(`${normalizedPhase} draft version ${version} is not selected current; explicitly select or restore it before approval.`));
   }
   if (selectedDraft.integrity && selectedDraft.integrity.status !== 'preserved') {
     throw new Error(formatError(`${normalizedPhase} draft version ${version} is not eligible because integrity is ${selectedDraft.integrity.status}`));
@@ -621,11 +821,33 @@ function preparePlannerApprovalProjection(projectRoot, phase, version, options =
       && (!selectedDraft.artifact_sha256 || !selectedDraft.input_path || !selectedDraft.input_sha256)) {
     throw new Error(formatError(`${normalizedPhase} draft version ${version} lacks immutable v58 digest bindings`));
   }
+  if (selectedDraft.lifecycle_state === 'rejected'
+      || selectedDraft.selection_verification === 'unverified') {
+    throw new Error(formatError(`${normalizedPhase} draft version ${version} requires explicit valid restore before approval`));
+  }
+  if (legacyRunHistorical) {
+    assertDraftOwnedByRun(projectRoot, normalizedPhase, selectedDraft, options.runId);
+  } else {
+    assertSelectedDraftUsable(projectRoot, normalizedPhase, current, { runId: options.runId });
+  }
+  const decision = options.decision || 'approved';
+  if (!['approved', 'approved-with-conditions'].includes(decision)) {
+    throw new Error(formatError(`unsupported planner approval lifecycle decision '${decision}'`));
+  }
+  if (options.finalProjection === true
+      && (!options.decisionId || !options.decisionSha256)) {
+    throw new Error(formatError(`${normalizedPhase} final approval lifecycle projection requires exact decision identity`));
+  }
   const filePath = approvalApprovedPath(projectRoot, normalizedPhase);
   const metaPath = approvalMetaPath(projectRoot, normalizedPhase);
   const drafts = normalizeDrafts(current).map((draft) => (
     Number(draft.version) === Number(selectedDraft.version)
-      ? appendLifecycle(draft, 'approved', now, `approve-${normalizedPhase}-${version}`)
+      ? appendLifecycle(draft, decision, now, `approve-${normalizedPhase}-${version}`, {
+          run_id: options.runId || draft.run_id || null,
+          decision_id: options.decisionId || null,
+          decision_sha256: options.decisionSha256 || null,
+          verification: 'verified',
+        })
       : draft
   ));
   const currentDraft = drafts.find((draft) => Number(draft.version) === Number(latestVersion));
@@ -636,24 +858,38 @@ function preparePlannerApprovalProjection(projectRoot, phase, version, options =
     draft: current.draft && currentDraft
       ? { ...currentDraft, path: current.draft.path }
       : null,
-    approved: {
-      phase: normalizedPhase,
-      source_file: selectedDraft.path,
-      path: toRelativePosix(projectRoot, filePath),
+    approved: decision === 'approved'
+      ? {
+          phase: normalizedPhase,
+          source_file: selectedDraft.path,
+          path: toRelativePosix(projectRoot, filePath),
+          version: Number(selectedDraft.version),
+          created_at: now,
+          approved_at: now,
+          artifact_sha256: artifact.sha256,
+          input_path: input.path,
+          input_sha256: input.sha256,
+          raw_artifact_path: options.rawArtifactPath || selectedDraft.raw_artifact_path || null,
+          output_source: options.outputSource || selectedDraft.output_source || null,
+          input_compaction: options.inputCompaction || selectedDraft.input_compaction || null,
+        }
+      : current.approved || null,
+    last_operation: {
+      operation_id: `approve-${normalizedPhase}-${version}`,
+      kind: `project-${decision}`,
       version: Number(selectedDraft.version),
-      created_at: now,
-      approved_at: now,
+      run_id: options.runId || selectedDraft.run_id || null,
+      evidence_id: options.decisionId || null,
+      evidence_sha256: options.decisionSha256 || null,
       artifact_sha256: artifact.sha256,
-      input_path: input.path,
       input_sha256: input.sha256,
-      raw_artifact_path: options.rawArtifactPath || selectedDraft.raw_artifact_path || null,
-      output_source: options.outputSource || selectedDraft.output_source || null,
-      input_compaction: options.inputCompaction || selectedDraft.input_compaction || null,
+      at: now,
+      verification: 'verified',
     },
   };
   return {
     phase: normalizedPhase,
-    kind: 'approved',
+    kind: decision,
     version: Number(selectedDraft.version),
     createdAt: now,
     filePath,
@@ -663,8 +899,10 @@ function preparePlannerApprovalProjection(projectRoot, phase, version, options =
     selectedDraft,
     nextMeta,
     targets: [
-      { path: filePath, contents: artifact.bytes },
-      { path: metaPath, contents: Buffer.from(`${JSON.stringify(nextMeta, null, 2)}\n`, 'utf8') },
+      ...(decision === 'approved'
+        ? [{ role: 'legacy-approved', path: filePath, contents: artifact.bytes }]
+        : []),
+      { role: 'legacy-meta', path: metaPath, contents: Buffer.from(`${JSON.stringify(nextMeta, null, 2)}\n`, 'utf8') },
     ],
   };
 }
@@ -705,7 +943,28 @@ function writeApprovalArtifacts(projectRoot, phase, kind, sourceFile, contents, 
   const version = nextDraftVersion(current);
   const versionPath = approvalDraftVersionPath(projectRoot, normalizedPhase, version);
   const sourcePath = toRelativePosix(projectRoot, path.resolve(projectRoot, sourceFile));
-  const inputBinding = readProjectFileBytes(projectRoot, sourceFile, `${normalizedPhase} planner input`);
+  let inputBinding = readProjectFileBytes(projectRoot, sourceFile, `${normalizedPhase} planner input`);
+  const inputBindingRunId = options.runId || options.bindingRunId;
+  if (inputBindingRunId && normalizedPhase === 'acceptance') {
+    const { readAiRun, runRequirementPath } = require('./ai/run-state');
+    const run = readAiRun(projectRoot, inputBindingRunId);
+    const canonicalPath = toRelativePosix(projectRoot, runRequirementPath(projectRoot, inputBindingRunId));
+    if (!run || run.status === 'closed' || run.requirement?.path !== canonicalPath) {
+      throw approvalBindingError(`acceptance draft cannot bind to closed, missing, or noncanonical run '${inputBindingRunId}'`, {
+        phase: normalizedPhase,
+        run_id: inputBindingRunId,
+      });
+    }
+    const canonicalInput = readProjectFileBytes(projectRoot, canonicalPath, 'canonical run requirement input');
+    if (options.revisionFeedback !== true && canonicalInput.sha256 !== inputBinding.sha256) {
+      throw approvalBindingError(`acceptance planner input does not match canonical run '${inputBindingRunId}' requirement`, {
+        phase: normalizedPhase,
+        run_id: inputBindingRunId,
+        mismatch: 'input_sha256',
+      });
+    }
+    inputBinding = canonicalInput;
+  }
   const operationId = `draft-${crypto.randomUUID()}`;
   const selectedVersion = latestDraftVersion(current);
   const selectedRecord = selectedVersion ? findDraftVersion(current, selectedVersion) : null;
@@ -725,6 +984,7 @@ function writeApprovalArtifacts(projectRoot, phase, kind, sourceFile, contents, 
   const draftRecord = {
     version,
     phase: normalizedPhase,
+    run_id: options.runId || null,
     source_file: sourcePath,
     input_path: inputBinding.path,
     input_sha256: inputBinding.sha256,
@@ -749,9 +1009,9 @@ function writeApprovalArtifacts(projectRoot, phase, kind, sourceFile, contents, 
     },
     lifecycle_state: lifecycleState,
     lifecycle: [
-      { state: 'draft', at: now, operation_id: operationId },
-      ...(selected ? [{ state: 'current', at: now, operation_id: operationId }] : []),
-      ...(comparison.status === 'corrupted' ? [{ state: 'corrupted', at: now, operation_id: operationId }] : []),
+      { state: 'draft', at: now, operation_id: operationId, ...(options.runId ? { run_id: options.runId } : {}) },
+      ...(selected ? [{ state: 'current', at: now, operation_id: operationId, ...(options.runId ? { run_id: options.runId } : {}) }] : []),
+      ...(comparison.status === 'corrupted' ? [{ state: 'corrupted', at: now, operation_id: operationId, ...(options.runId ? { run_id: options.runId } : {}) }] : []),
     ],
   };
   const priorDrafts = selected
@@ -810,18 +1070,316 @@ function writeApprovalArtifacts(projectRoot, phase, kind, sourceFile, contents, 
   };
 }
 
-function appendLifecycle(draft, state, at, operationId) {
+function appendLifecycle(draft, state, at, operationId, details = {}) {
   const lifecycle = Array.isArray(draft.lifecycle) ? draft.lifecycle : [];
-  if (draft.lifecycle_state === state || lifecycle.at(-1)?.state === state) return draft;
+  const last = lifecycle.at(-1);
+  const detailKeys = ['run_id', 'actor_id', 'decision_id', 'decision_sha256', 'evidence_sha256', 'reason', 'verification'];
+  const exactRepeat = detailKeys.every((key) => !details[key] || last?.[key] === details[key]);
+  if (draft.lifecycle_state === state && last?.state === state
+      && exactRepeat && !details.force) return draft;
   return {
     ...draft,
     lifecycle_state: state,
-    lifecycle: lifecycle.concat({ state, at, operation_id: operationId }),
+    lifecycle: lifecycle.concat({
+      state,
+      at,
+      operation_id: operationId,
+      ...(details.run_id ? { run_id: details.run_id } : {}),
+      ...(details.actor_id ? { actor_id: details.actor_id } : {}),
+      ...(details.decision_id ? { decision_id: details.decision_id } : {}),
+      ...(details.decision_sha256 ? { decision_sha256: details.decision_sha256 } : {}),
+      ...(details.evidence_sha256 ? { evidence_sha256: details.evidence_sha256 } : {}),
+      ...(details.reason ? { reason: details.reason } : {}),
+      ...(details.verification ? { verification: details.verification } : {}),
+    }),
   };
+}
+
+function recoveryAuthorization(options, action) {
+  const authorization = options.authorization;
+  const actorId = String(authorization?.evidence?.actor_id || authorization?.actor_id || '').trim();
+  if (authorization?.authorized !== true || !actorId) {
+    const error = new Error(formatError(`POLICY_DENIED: ${action} requires verified authorization`));
+    error.code = 'POLICY_DENIED';
+    error.details = { action, authorized: false };
+    throw error;
+  }
+  return { actorId, authorization };
+}
+
+function lockDate(value) {
+  if (!value) return undefined;
+  return value instanceof Date ? value : new Date(value);
+}
+
+function comparePlannerDraftVersions(projectRoot, phase, leftVersion, rightVersion, options = {}) {
+  const normalizedPhase = normalizePhase(phase);
+  return withPlannerApprovalLock(
+    projectRoot,
+    normalizedPhase,
+    { command: `compare ${normalizedPhase} planner drafts`, now: lockDate(options.now) },
+    () => {
+      assertNoPendingDigestBoundApproval(projectRoot, normalizedPhase);
+      assertNoPendingDraftProjection(projectRoot, normalizedPhase);
+      const meta = readPhaseApproval(projectRoot, normalizedPhase).meta || {};
+      const left = findDraftVersion(meta, leftVersion);
+      const right = findDraftVersion(meta, rightVersion);
+      if (!left || !right) {
+        throw new Error(formatError(`missing ${normalizedPhase} draft version ${!left ? leftVersion : rightVersion}`));
+      }
+      const leftBound = assertDraftArtifactAndInput(projectRoot, normalizedPhase, left);
+      const rightBound = assertDraftArtifactAndInput(projectRoot, normalizedPhase, right);
+      if (options.runId) {
+        assertDraftOwnedByRun(projectRoot, normalizedPhase, left, options.runId);
+        assertDraftOwnedByRun(projectRoot, normalizedPhase, right, options.runId);
+      }
+      return {
+        schema_version: DRAFT_INTEGRITY_VERSION,
+        phase: normalizedPhase,
+        left_version: Number(left.version),
+        right_version: Number(right.version),
+        left_artifact_sha256: leftBound.artifact.sha256,
+        right_artifact_sha256: rightBound.artifact.sha256,
+        left_input_sha256: leftBound.input.sha256,
+        right_input_sha256: rightBound.input.sha256,
+        same_input: leftBound.input.sha256 === rightBound.input.sha256,
+        comparison: compareDraftStructure(
+          leftBound.artifact.bytes.toString('utf8'),
+          rightBound.artifact.bytes.toString('utf8'),
+          { removals: options.removals || [] },
+        ),
+      };
+    },
+  );
+}
+
+function mutatePlannerDraftSelectionLocked(projectRoot, phase, version, operation, options = {}) {
+  assertNoPendingDigestBoundApproval(projectRoot, phase);
+  assertNoPendingDraftProjection(projectRoot, phase);
+  const report = readPhaseApproval(projectRoot, phase);
+  const current = report.meta || {};
+  const target = findDraftVersion(current, version);
+  if (!target) throw new Error(formatError(`missing ${phase} draft version ${version}`));
+  const selectedVersion = latestDraftVersion(current);
+  if (operation === 'reject' && Number(target.version) !== Number(selectedVersion)) {
+    throw new Error(formatError(`${phase} draft version ${version} is not selected current and cannot be rejected`));
+  }
+  if (operation === 'select' && target.lifecycle_state === 'rejected') {
+    throw new Error(formatError(`${phase} draft version ${version} is rejected; use explicit restore after validating its current input`));
+  }
+  if (target.integrity?.status === 'corrupted') {
+    throw new Error(formatError(`${phase} draft version ${version} is corrupted and cannot be ${operation === 'reject' ? 'used' : 'selected'}`));
+  }
+  const { actorId } = recoveryAuthorization(options, `${operation} ${phase} planner draft`);
+  const bound = assertDraftArtifactAndInput(projectRoot, phase, target);
+  assertDraftOwnedByRun(projectRoot, phase, target, options.runId);
+  const unsupported = target.integrity?.status === 'unsupported';
+  if (unsupported && operation !== 'reject') {
+    if (options.acknowledgeUnverified !== true || !String(options.reason || '').trim()) {
+      throw new Error(formatError(`${phase} draft version ${version} has unsupported structure; selection requires acknowledgeUnverified and a reason`));
+    }
+  }
+  const nowValue = options.now || new Date();
+  const now = nowValue instanceof Date ? nowValue.toISOString() : new Date(nowValue).toISOString();
+  const operationId = options.operationId || `draft-${operation}-${crypto.randomUUID()}`;
+  const nextState = operation === 'reject' ? 'rejected' : 'current';
+  const verification = unsupported ? 'unverified' : 'verified';
+  const drafts = normalizeDrafts(current).map((draft) => {
+    if (Number(draft.version) === Number(target.version)) {
+      const next = appendLifecycle(draft, nextState, now, operationId, {
+        actor_id: actorId,
+        force: operation === 'restore',
+        reason: String(options.reason || '').trim() || undefined,
+        run_id: options.runId || draft.run_id || null,
+        verification,
+      });
+      return {
+        ...next,
+        selection_verification: operation === 'reject'
+          ? draft.selection_verification || verification
+          : verification,
+        ...(unsupported && operation !== 'reject' ? {
+          acknowledgement: {
+            actor_id: actorId,
+            reason: String(options.reason).trim(),
+            at: now,
+            operation_id: operationId,
+            verification: 'unverified',
+          },
+        } : {}),
+      };
+    }
+    if (operation !== 'reject' && Number(draft.version) === Number(selectedVersion)) {
+      return appendLifecycle(draft, 'superseded', now, operationId, {
+        actor_id: actorId,
+        run_id: options.runId || draft.run_id || null,
+      });
+    }
+    return draft;
+  });
+  const selected = drafts.find((draft) => Number(draft.version) === Number(target.version));
+  const nextMeta = {
+    ...current,
+    phase,
+    draft_integrity_version: DRAFT_INTEGRITY_VERSION,
+    selected_version: Number(target.version),
+    drafts,
+    draft: {
+      ...selected,
+      path: toRelativePosix(projectRoot, approvalDraftPath(projectRoot, phase)),
+    },
+    approved: current.approved || null,
+    last_operation: {
+      operation_id: operationId,
+      kind: operation,
+      version: Number(target.version),
+      actor_id: actorId,
+      run_id: options.runId || null,
+      at: now,
+      verification,
+      history_preserved: true,
+    },
+  };
+  commitDraftIntegrityProjection({
+    projectRoot,
+    phaseRoot: approvalRoot(projectRoot, phase),
+    phase,
+    selectedVersion: Number(target.version),
+    metadataBytes: Buffer.from(`${JSON.stringify(nextMeta, null, 2)}\n`, 'utf8'),
+    draftBytes: bound.artifact.bytes,
+    operationId,
+    faultInjector: options.faultInjector,
+  });
+  return {
+    schema_version: DRAFT_INTEGRITY_VERSION,
+    phase,
+    operation,
+    operation_id: operationId,
+    selected_version: Number(target.version),
+    lifecycle_state: nextState,
+    verification,
+    history_preserved: true,
+  };
+}
+
+function mutatePlannerDraftSelection(projectRoot, phase, version, operation, options = {}) {
+  const normalizedPhase = normalizePhase(phase);
+  assertProjectWriterAllowed(projectRoot, { action: `${operation} ${normalizedPhase} planner draft` });
+  const apply = () => withPlannerApprovalLock(
+    projectRoot,
+    normalizedPhase,
+    { command: `${operation} ${normalizedPhase} planner draft`, now: lockDate(options.now) },
+    () => {
+      assertProjectWriterAllowed(projectRoot, { action: `${operation} ${normalizedPhase} planner draft` });
+      return mutatePlannerDraftSelectionLocked(projectRoot, normalizedPhase, version, operation, options);
+    },
+  );
+  if (!options.runId) return apply();
+  const { withAiRunLock } = require('./ai/run-state');
+  return withAiRunLock(
+    projectRoot,
+    options.runId,
+    { command: `${operation} ${normalizedPhase} planner draft` },
+    apply,
+  );
+}
+
+function selectPlannerDraftVersion(projectRoot, phase, version, options = {}) {
+  return mutatePlannerDraftSelection(projectRoot, phase, version, 'select', options);
+}
+
+function restorePlannerDraftVersion(projectRoot, phase, version, options = {}) {
+  return mutatePlannerDraftSelection(projectRoot, phase, version, 'restore', options);
+}
+
+function rejectPlannerDraftVersion(projectRoot, phase, version, options = {}) {
+  return mutatePlannerDraftSelection(projectRoot, phase, version, 'reject', options);
+}
+
+function projectPlannerDraftLifecycle(projectRoot, phase, version, state, options = {}) {
+  const normalizedPhase = normalizePhase(phase);
+  if (!['reviewed', 'approved-with-conditions'].includes(state)) {
+    throw new Error(formatError(`unsupported external planner lifecycle projection '${state}'`));
+  }
+  const apply = () => withPlannerApprovalLock(
+    projectRoot,
+    normalizedPhase,
+    { command: `project ${normalizedPhase} ${state}`, now: lockDate(options.now) },
+    () => {
+      assertNoPendingDigestBoundApproval(projectRoot, normalizedPhase);
+      assertNoPendingDraftProjection(projectRoot, normalizedPhase);
+      const current = readPhaseApproval(projectRoot, normalizedPhase).meta || {};
+      const target = findDraftVersion(current, version);
+      if (!target || Number(latestDraftVersion(current)) !== Number(version)) {
+        throw approvalBindingError(`${state} projection must target the selected current ${normalizedPhase} draft`, {
+          phase: normalizedPhase,
+          version: Number(version) || null,
+        });
+      }
+      const bound = assertSelectedDraftUsable(projectRoot, normalizedPhase, current);
+      assertDraftArtifactOwnedByRun(projectRoot, normalizedPhase, target, options.runId);
+      const nowValue = options.now || new Date();
+      const now = nowValue instanceof Date ? nowValue.toISOString() : new Date(nowValue).toISOString();
+      const operationId = options.operationId || `draft-${state}-${crypto.randomUUID()}`;
+      const drafts = normalizeDrafts(current).map((draft) => (
+        Number(draft.version) === Number(version)
+          ? appendLifecycle(draft, state, now, operationId, {
+              run_id: options.runId || draft.run_id || null,
+              decision_id: options.decisionId || options.reviewId || null,
+              decision_sha256: options.decisionSha256 || null,
+              evidence_sha256: options.evidenceSha256 || null,
+              verification: 'verified',
+            })
+          : draft
+      ));
+      const selected = drafts.find((draft) => Number(draft.version) === Number(version));
+      const nextMeta = {
+        ...current,
+        drafts,
+        draft: { ...selected, path: toRelativePosix(projectRoot, approvalDraftPath(projectRoot, normalizedPhase)) },
+        last_operation: {
+          operation_id: operationId,
+          kind: `project-${state}`,
+          version: Number(version),
+          run_id: options.runId || null,
+          evidence_id: options.decisionId || options.reviewId || null,
+          evidence_sha256: options.decisionSha256 || options.evidenceSha256 || null,
+          artifact_sha256: bound.artifact.sha256,
+          input_sha256: bound.input.sha256,
+          at: now,
+          verification: 'verified',
+        },
+      };
+      commitDraftIntegrityProjection({
+        projectRoot,
+        phaseRoot: approvalRoot(projectRoot, normalizedPhase),
+        phase: normalizedPhase,
+        selectedVersion: Number(version),
+        metadataBytes: Buffer.from(`${JSON.stringify(nextMeta, null, 2)}\n`, 'utf8'),
+        draftBytes: bound.artifact.bytes,
+        operationId,
+        faultInjector: options.faultInjector,
+      });
+      return nextMeta;
+    },
+  );
+  if (options.runLocked === true || !options.runId) return apply();
+  const { withAiRunLock } = require('./ai/run-state');
+  return withAiRunLock(projectRoot, options.runId, { command: `project ${normalizedPhase} ${state}` }, apply);
 }
 
 function savePlannerDraft(projectRoot, phase, sourceFile, contents, options = {}) {
   assertProjectWriterAllowed(projectRoot, { action: `save ${phase} planner draft` });
+  if (!options.runId && options.requireDigestBindings === true && normalizePhase(phase) === 'acceptance') {
+    const { listAiRuns } = require('./ai/run-state');
+    const activeRuns = listAiRuns(projectRoot).filter((run) => run.status !== 'closed');
+    if (activeRuns.length > 0) {
+      throw approvalBindingError('digest-bound acceptance draft save requires an explicit run id', {
+        phase: 'acceptance',
+        mismatch: 'run_id',
+      });
+    }
+  }
   return withPlannerApprovalLock(
     projectRoot,
     phase,
@@ -884,6 +1442,7 @@ function resolveApprovedPlannerInput(projectRoot, phase, explicitInput) {
   if (approval.status !== 'approved') {
     throw new Error(formatError(`ai plan phase '${normalizedPhase}' requires approved ${dependencyPhase} input; current status: ${approval.status}. Run \`npx create-quiver ai approve --phase ${dependencyPhase} --version <n>\`.`));
   }
+  assertSelectedDraftUsable(projectRoot, dependencyPhase, approval.meta || {});
 
   const approvedPath = approval.approved?.path ? path.resolve(projectRoot, approval.approved.path) : '';
   const approvedSource = approval.meta?.approved?.source_file ? path.resolve(projectRoot, approval.meta.approved.source_file) : '';
@@ -953,14 +1512,20 @@ module.exports = {
   findDraftVersion,
   latestDraftVersion,
   buildPlannerApprovalCandidates,
+  comparePlannerDraftVersions,
   normalizePhase,
   readPhaseApproval,
   readProjectFileBytes,
+  rejectPlannerDraftVersion,
   recoverDraftIntegrityCommit,
   renderApprovalStatus,
   resolveApprovedPlannerInput,
+  restorePlannerDraftVersion,
   savePlannerDraft,
+  selectPlannerDraftVersion,
+  assertSelectedDraftUsable,
   preparePlannerApprovalProjection,
+  projectPlannerDraftLifecycle,
   plannerApprovalLockName,
   sha256Bytes,
   summarizePlannerApproval,

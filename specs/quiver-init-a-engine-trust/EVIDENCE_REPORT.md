@@ -46,10 +46,15 @@ slice 01 does not claim their acceptance merely by declaring lifecycle states.
   implementation/review attempts are itemized in its closure, not inferred from
   these two full-suite attempts. Commit is identified by the exact trailer
   `Slice: quiver-init-a-engine-trust/slice-01-draft-integrity`.
-- slice-02-draft-recovery: not-tested; cycles 0; commit not created.
+- slice-02-draft-recovery: implemented and independently approved; four author
+  implementation/review cycles plus one integration fixture-fix cycle; affected
+  suites 30 + 37 + 43 + 18 + 15 = 143 tests
+  passed with no skips. This logical commit is identified by trailer
+  `Slice: quiver-init-a-engine-trust/slice-02-draft-recovery`.
 - slice-03-effective-amendments: not-tested; cycles 0; commit not created.
 - slice-04-draft-cli: not-tested; cycles 0; commit not created.
-- slice-05-brain-store: implemented and independently approved; four author
+- slice-05-brain-store: commit `039ffe5ec7682cc70c8d5adb03ff26b11fe3adff`;
+  implemented and independently approved; four author
   implementation/review cycles, standalone CI 963/963 and combined A01+A05 CI
   977/977. This logical commit has the exact trailer
   `Slice: quiver-init-a-engine-trust/slice-05-brain-store`.
@@ -108,6 +113,30 @@ validated Brain surface, fixing its initially failing postflight checks.
 Cloud receipts in these tests are fixtures, not empirical Cloud adoption or
 commercial evidence. Export/CLI, context, facade and downstream integration are
 still pending with their assigned slices. No whole-plan readiness is claimed.
+
+## Runtime closure — slice-02-draft-recovery
+
+Explicit comparison, selection, rejection and restoration retain immutable draft
+and approval history. Selected-current consumers enforce exact canonical input,
+digest and run ownership, preserve v58 review/actor/condition gates and recover
+reviewed/conditioned lifecycle projections through the existing WAL protocol.
+
+- [Author validation and retained failures](./evidence/slice-02-implementation-validation.md)
+  record affected suites: 30/30 core/recovery, 37/37 planner, 43/43 governed review,
+  18/18 run state. The subsequent
+  [spec creation retest](./evidence/slice-02-spec-create-integration-retest.md)
+  passed 15/15 after its existing governed fixture gained explicit run identity.
+  Full initiative integration is separate.
+- [Independent review and focused evidence](./evidence/a02-independent-review.md)
+  close F-A02-01 through F-A02-04: canonical input path identity, exact final
+  conditioned decision, reviewed projection crash recovery and explicit run
+  ownership. No mandatory residue remains; review is terminal APPROVED.
+- [Persistent worktree recovery](./evidence/recovery-20260912.md) explains the
+  missing temporary directories and fresh A01+A05 recovery checks. Prior lost
+  uncommitted A02/A06 work and its unavailable logs are not claimed as delivered.
+
+These tests do not establish later amendment, public CLI/facade, full-initiative,
+Cloud, external-gate or cross-plan acceptance. No source acceptance was reduced.
 
 ## Foundation closure — slice-00-foundation
 

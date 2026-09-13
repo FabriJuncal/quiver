@@ -1199,6 +1199,7 @@ test('governed ai approve CLI publishes one digest-bound acceptance decision ato
     });
     savePlannerDraft(repo.root, 'acceptance', 'requirements.md', acceptance, {
       requireDigestBindings: true,
+      runId: 'run-digest-acceptance',
     });
     const draft = readPhaseApproval(repo.root, 'acceptance').meta.drafts[0];
     updateAiRunPhase(repo.root, 'run-digest-acceptance', 'acceptance-draft', {
@@ -1278,6 +1279,7 @@ test('digest-bound approval blocks secret-bearing artifact and input bytes befor
       });
       savePlannerDraft(repo.root, 'acceptance', 'requirements.md', item.artifact, {
         requireDigestBindings: true,
+        runId,
       });
       const draft = readPhaseApproval(repo.root, 'acceptance').meta.drafts[0];
       updateAiRunPhase(repo.root, runId, 'acceptance-draft', {
@@ -1330,7 +1332,7 @@ test('digest-bound acceptance rejects a requirement path redirected to another r
     }
     savePlannerDraft(repo.root, 'acceptance', 'requirements.md', JSON.stringify({
       spec: { acceptance: ['AC-01 run ownership'] },
-    }), { requireDigestBindings: true });
+    }), { requireDigestBindings: true, runId: 'run-requirement-a' });
     const draft = readPhaseApproval(repo.root, 'acceptance').meta.drafts[0];
     updateAiRunPhase(repo.root, 'run-requirement-a', 'acceptance-draft', {
       artifact: draft.path,
@@ -1383,7 +1385,7 @@ test('governed review WAL rejects secrets hidden in canonical authorization evid
     });
     savePlannerDraft(repo.root, 'acceptance', 'requirements.md', JSON.stringify({
       spec: { acceptance: ['AC-01'] },
-    }), { requireDigestBindings: true });
+    }), { requireDigestBindings: true, runId });
     const acceptanceDraft = readPhaseApproval(repo.root, 'acceptance').meta.drafts[0];
     updateAiRunPhase(repo.root, runId, 'acceptance-draft', {
       artifact: acceptanceDraft.path,
@@ -1457,7 +1459,7 @@ test('digest-bound approval rechecks policy after asynchronous actor resolution'
     });
     savePlannerDraft(repo.root, 'acceptance', 'requirements.md', JSON.stringify({
       spec: { acceptance: ['AC-01'] },
-    }), { requireDigestBindings: true });
+    }), { requireDigestBindings: true, runId: 'run-policy-race' });
     const draft = readPhaseApproval(repo.root, 'acceptance').meta.drafts[0];
     updateAiRunPhase(repo.root, 'run-policy-race', 'acceptance-draft', {
       artifact: draft.path,
@@ -1519,6 +1521,7 @@ test('conditioned digest-bound approval reuses its candidate, rejects drift, and
     });
     savePlannerDraft(repo.root, 'acceptance', 'requirements.md', acceptance, {
       requireDigestBindings: true,
+      runId,
     });
     const acceptanceDraft = readPhaseApproval(repo.root, 'acceptance').meta.drafts[0];
     updateAiRunPhase(repo.root, runId, 'acceptance-draft', {
@@ -1675,6 +1678,14 @@ test('conditioned digest-bound approval reuses its candidate, rejects drift, and
     assert.equal(readAiRun(repo.root, runId).phase, 'technical-plan-approved');
     assert.equal(fs.existsSync(path.join(repo.root, '.quiver/approvals/technical-plan/approved.md')), false);
     assert.equal(fs.existsSync(runApprovalCommitPath(repo.root, runId)), false);
+    const planner = readPhaseApproval(repo.root, 'technical-plan');
+    const conditionedEvent = planner.meta.drafts[0].lifecycle.at(-1);
+    assert.equal(planner.status, 'approved-with-conditions');
+    assert.equal(conditionedEvent.state, 'approved-with-conditions');
+    assert.equal(conditionedEvent.decision_id, decision.decision_id);
+    assert.equal(conditionedEvent.decision_sha256, decision.decision_sha256);
+    assert.equal(planner.meta.last_operation.evidence_id, decision.decision_id);
+    assert.equal(planner.meta.last_operation.evidence_sha256, decision.decision_sha256);
 
     const verified = JSON.parse(execAiSubcommand(repo.root, [
       'approval', 'verify', '--phase', 'technical-plan', '--run', runId, '--json',

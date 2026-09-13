@@ -35,8 +35,8 @@
   "depends_on": [
     "slice-02-draft-recovery"
   ],
-  "parallel_safe": "never",
-  "parallel_safe_reason": "Dependency or shared integration surface requires single writer.",
+  "parallel_safe": "conditional",
+  "parallel_safe_reason": "DEC-A-013: preserve every dependency; the draft and Brain/context tracks may overlap only with disjoint product write sets. Serialize slices 04 and 06 at the CLI/registry/i18n/reference surface; coordinator owns shared spec metadata.",
   "must": [
     "Create immutable addendum records bound to parent digest and required input identity; resolve effective content with ordered lineage.",
     "Accept deterministic structured operations addressed by stable IDs for supported JSON sections only; reject arbitrary source execution and ambiguous Markdown patching.",

@@ -764,6 +764,13 @@ function expectedApprovalCommitTargets(projectRoot, runId, decision) {
         fault_point: 'after-legacy-projection',
       },
     );
+  } else if (decision.decision === 'approved-with-conditions') {
+    const legacyRoot = path.join(quiverInternalPaths(projectRoot).root, 'approvals', decision.phase);
+    expected.push({
+      role: 'legacy-meta',
+      path: toRelativePosix(projectRoot, path.join(legacyRoot, 'meta.json')),
+      fault_point: 'after-legacy-projection',
+    });
   }
   expected.push({
     role: 'run-state',
@@ -1012,9 +1019,12 @@ async function commitDigestBoundApproval(projectRoot, options = {}) {
       };
       const targetPhase = record.phase === 'acceptance' ? 'acceptance-approved' : 'technical-plan-approved';
       const nextRun = buildRunPhaseState(run, targetPhase, artifactRelative, options.command || 'ai approve', now);
-      const legacyTargets = Array.isArray(prepared.legacyProjection?.targets)
-        ? prepared.legacyProjection.targets.map((target, index, list) => ({
-            role: index === list.length - 1 ? 'legacy-meta' : 'legacy-approved',
+      const legacyProjection = typeof prepared.finalizeLegacyProjection === 'function'
+        ? await prepared.finalizeLegacyProjection(record)
+        : prepared.legacyProjection;
+      const legacyTargets = Array.isArray(legacyProjection?.targets)
+        ? legacyProjection.targets.map((target, index, list) => ({
+            role: target.role || (index === list.length - 1 ? 'legacy-meta' : 'legacy-approved'),
             path: target.path,
             contents: target.contents,
             faultPoint: index === list.length - 1 ? 'after-legacy-projection' : null,
@@ -1087,7 +1097,7 @@ async function commitDigestBoundApproval(projectRoot, options = {}) {
         run: nextRun,
         decision: record,
         approvalProjection: nextApprovals,
-        legacyProjection: prepared.legacyProjection || null,
+        legacyProjection: legacyProjection || null,
       };
     });
   });

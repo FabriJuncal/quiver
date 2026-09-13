@@ -2,18 +2,19 @@
 
 Program state: IN_PROGRESS. Independent specification review: terminal
 READY_FOR_IMPLEMENTATION. Slices 01 and 05 have completed implementation,
-independent review and combined CI validation (977/977). Runtime dependencies
+independent review and combined CI validation (977/977). Slice 02 has completed
+implementation, independent review and affected-consumer verification. Runtime dependencies
 still apply to the remaining slices; this is not whole-plan readiness.
 
 | Slice | State | Evidence |
 |---|---|---|
 | slice-00-foundation | DONE | Documentary checks and independent review; this foundation commit |
 | slice-01-draft-integrity | DONE | [Independent CI retest: 958/958](./evidence/slice-01-independent-ci-cycle-2.md); independent reviewer approved |
-| slice-02-draft-recovery | IN_PROGRESS | Separate assigned worktree; not included in this commit |
+| slice-02-draft-recovery | DONE | [Independent review](./evidence/a02-independent-review.md); 143/143 affected tests passed; this logical commit |
 | slice-03-effective-amendments | READY_FOR_IMPLEMENTATION | Runtime dependencies and executed tests pending |
 | slice-04-draft-cli | READY_FOR_IMPLEMENTATION | Runtime dependencies and executed tests pending |
 | slice-05-brain-store | DONE | [Combined A01+A05 CI: 977/977](./evidence/slice-05-integration-with-slice-01.md); independent code review approved |
-| slice-06-brain-vault | READY_FOR_IMPLEMENTATION | Runtime dependencies and executed tests pending |
+| slice-06-brain-vault | IN_PROGRESS | Separate persistent assigned worktree; new validation pending |
 | slice-07-context-selection | READY_FOR_IMPLEMENTATION | Runtime dependencies and executed tests pending |
 | slice-08-context-impact | READY_FOR_IMPLEMENTATION | Runtime dependencies and executed tests pending |
 | slice-09-artifact-envelopes | READY_FOR_IMPLEMENTATION | Runtime dependencies and executed tests pending |
@@ -25,3 +26,8 @@ still apply to the remaining slices; this is not whole-plan readiness.
 [baseline](../../docs/programs/quiver-v6/INVENTORY.md) separate existing verified
 behavior from new work. External gates remain unverified; no plan, PR, release
 or global integration readiness is claimed by a documentary foundation.
+
+[Recovery on 2026-09-12](./evidence/recovery-20260912.md) restored committed
+history into persistent worktrees after the temporary directories disappeared.
+A02 was reconstructed and independently approved with fresh evidence. A06 remains
+on its separately assigned branch pending its own integration and logical commit.

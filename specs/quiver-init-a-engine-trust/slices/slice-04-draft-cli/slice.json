@@ -39,8 +39,8 @@
   "depends_on": [
     "slice-03-effective-amendments"
   ],
-  "parallel_safe": "never",
-  "parallel_safe_reason": "Dependency or shared integration surface requires single writer.",
+  "parallel_safe": "conditional",
+  "parallel_safe_reason": "DEC-A-013: preserve every dependency; the draft and Brain/context tracks may overlap only with disjoint product write sets. Serialize slices 04 and 06 at the CLI/registry/i18n/reference surface; coordinator owns shared spec metadata.",
   "must": [
     "Expose ai draft list/show/compare/select/reject/restore/addendum/amend with explicit phase/version/input-file and --json/--dry-run.",
     "Wire existing plan/revise writes through structural integrity; no bypass through provider output.",

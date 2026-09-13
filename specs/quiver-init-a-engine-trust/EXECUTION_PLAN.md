@@ -33,4 +33,29 @@ shared status/traceability updates. No dependency is removed. Slices 04 and 06
 still serialize their shared dispatcher surface. Reason: verified ownership
 permits safe overlap without treating shared code as artificially independent.
 
+DEC-A-012 (2026-09-12): recover the existing program branches into persistent,
+already excluded project-local worktrees after the former temporary directories
+were observed missing. Preserve the missing worktrees' Git metadata and all
+committed history. Reimplement only the uncommitted A02/A06 work not retained by
+Git, and revalidate committed A01/A05 before integration. Reason: avoid dependence
+on temporary-directory lifetime without changing scope or acceptance.
+See [recovery evidence](./evidence/recovery-20260912.md).
+
+DEC-A-013 (2026-09-12): extend the verified ownership rule to the remaining two
+pre-envelope tracks: draft 02 → 03 → 04 and Brain/context 06 → 07 → 08.
+All declared dependencies remain prerequisites. Comparing their actual
+allowed_write_paths shows that 04/06 share the dispatcher, registry, i18n and
+command reference and must serialize. Other cross-track pairs have disjoint
+product write sets; shared spec files still have one coordinator. This permits
+03 to start after 02 even if 06 is unfinished, and 04 to overlap 07/08 only after
+06 has integrated. Slice 09 remains the synchronization barrier for both tracks.
+Each integrated slice receives directed regression on its actual upstream;
+file disjointness is not a claim of already verified behavioral compatibility.
+Reason: continue the dependency-critical path without waiting on unrelated
+implementation, while retaining the real CLI contention constraint.
+Independent reviewer `draft_recovery_review` checked the modified metadata and
+computed cross-track product allowlist intersections: only 04/06 overlaps at
+the four declared surfaces. Dependencies are unchanged; bounded scheduling
+review approved without reopening the terminal specification review.
+
 PR branch: `feature/QUIVER-INIT-A-engine-trust`, base: `main`. Merge remains human after global validation.

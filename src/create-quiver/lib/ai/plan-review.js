@@ -2,7 +2,12 @@ const crypto = require('node:crypto');
 const fs = require('node:fs');
 const path = require('node:path');
 
-const { buildPlannerApprovalCandidates, readPhaseApproval, resolveApprovedPlannerInput } = require('../approvals');
+const {
+  buildPlannerApprovalCandidates,
+  projectPlannerDraftLifecycle,
+  readPhaseApproval,
+  resolveApprovedPlannerInput,
+} = require('../approvals');
 const { quiverInternalPaths } = require('../init-layout');
 const { redactSensitiveValue } = require('./artifacts');
 const {
@@ -352,6 +357,22 @@ function applyGovernedReviewCommitLocked(projectRoot, markerValue, options = {})
       reservation_id: marker.reservation.reservation_id,
     });
   }
+
+  projectPlannerDraftLifecycle(
+    projectRoot,
+    'technical-plan',
+    marker.meta.source_version,
+    'reviewed',
+    {
+      now: marker.prepared_at,
+      reviewId: marker.review_id,
+      evidenceSha256: marker.review_contents_sha256,
+      operationId: `review-${marker.review_id}`,
+      runId: marker.run_id,
+      runLocked: true,
+    },
+  );
+  invokeReviewCommitFault(options, 'after-draft-lifecycle');
 
   const walPath = runReviewCommitPath(projectRoot, marker.run_id);
   if (fs.existsSync(walPath)) fs.rmSync(walPath);
@@ -768,6 +789,11 @@ function savePlanReview(projectRoot, options = {}) {
     reviewed_at: now,
   };
   fs.writeFileSync(planReviewMetaPath(projectRoot), `${JSON.stringify(meta, null, 2)}\n`);
+  if (options.inputVersion) {
+    projectPlannerDraftLifecycle(projectRoot, 'technical-plan', options.inputVersion, 'reviewed', {
+      now,
+    });
+  }
 
   return {
     filePath: reviewPath,

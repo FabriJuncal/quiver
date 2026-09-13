@@ -640,20 +640,30 @@ function assertGovernedApprovalCandidateCorrelation(repoRoot, run, phase, versio
   }
   const candidate = candidates[0];
   assertGovernedRunOwnsArtifact(repoRoot, run, `${phase}-draft`, candidate.path);
+  const currentLifecycle = candidate.lifecycle_state;
+  const lifecycleRunIds = (candidate.lifecycle || [])
+    .filter((event) => event?.state === currentLifecycle && event?.run_id)
+    .map((event) => event.run_id);
   const latestDraftEvent = [...(run.history || [])].reverse().find((event) => (
     event?.phase === `${phase}-draft`
   ));
-  if (!latestDraftEvent
-      || normalizeRunArtifactPath(repoRoot, latestDraftEvent.artifact)
-        !== normalizeRunArtifactPath(repoRoot, candidate.path)) {
+  const hasExplicitRunIdentity = Boolean(candidate.run_id || lifecycleRunIds.length > 0);
+  const explicitlySelected = candidate.current === true
+    && (!candidate.run_id || candidate.run_id === run.run_id)
+    && (lifecycleRunIds.length === 0 || lifecycleRunIds.at(-1) === run.run_id);
+  const legacyRunSelected = !hasExplicitRunIdentity
+    && normalizeRunArtifactPath(repoRoot, latestDraftEvent?.artifact)
+      === normalizeRunArtifactPath(repoRoot, candidate.path);
+  if (['rejected', 'corrupted'].includes(currentLifecycle)
+      || (!explicitlySelected && !legacyRunSelected)) {
     throw new GovernanceError(
       'APPROVAL_BINDING_MISMATCH',
-      `Approval candidate v${candidate.version} is not the latest ${phase} draft owned by run '${run.run_id}'.`,
+      `Approval candidate v${candidate.version} is not the selected ${phase} draft owned by run '${run.run_id}'.`,
       {
         run_id: run.run_id,
         phase,
         version: candidate.version,
-        mismatches: ['latest_run_draft'],
+        mismatches: ['selected_run_draft'],
       },
     );
   }
@@ -4308,10 +4318,12 @@ async function runPlan(repoRoot, options = {}) {
       }
     }
     const draft = savePlannerDraft(repoRoot, phase, inputPath, cleanOutput, {
+      runId: lifecycleRun.run_id,
       rawArtifactPath: rawArtifact.path,
       outputSource: clean.source,
       inputCompaction,
       reviewPath,
+      revisionFeedback: options.revise === true,
     });
     const savedDraft = readPhaseApproval(repoRoot, phase).meta?.drafts
       ?.find((item) => Number(item.version) === Number(draft.version));
@@ -5060,6 +5072,7 @@ async function runRepairPlan(repoRoot, options = {}) {
 
   writeCleanProviderOutput(clean);
   const draft = savePlannerDraft(repoRoot, 'technical-plan', source.path, clean.cleanOutput, {
+    runId: lifecycleRun.run_id,
     rawArtifactPath: rawArtifact.path,
     outputSource: clean.source,
   });
@@ -5784,28 +5797,43 @@ async function commitGovernedDigestBoundApproval(repoRoot, governedApproval, opt
         });
       }
       let legacyProjection = null;
-      if (!conditionedCandidate) {
-        try {
-          legacyProjection = preparePlannerApprovalProjection(
-            repoRoot,
-            options.phase,
-            options.version,
-            {
-              allowHistorical: true,
-              requireDigestBindings: true,
-              now: options.now,
-            },
-          );
-        } catch (error) {
-          if (error instanceof GovernanceError) throw error;
-          throw new GovernanceError(
-            'APPROVAL_BINDING_MISMATCH',
-            'Legacy approval projection changed during digest-bound commit preparation.',
-            { mismatches: ['legacy_projection'], cause: error.message },
-          );
-        }
+      try {
+        legacyProjection = preparePlannerApprovalProjection(
+          repoRoot,
+          options.phase,
+          options.version,
+          {
+            allowHistorical: true,
+            decision: conditionedCandidate ? 'approved-with-conditions' : 'approved',
+            requireDigestBindings: true,
+            runId,
+            now: options.now,
+          },
+        );
+      } catch (error) {
+        if (error instanceof GovernanceError) throw error;
+        throw new GovernanceError(
+          'APPROVAL_BINDING_MISMATCH',
+          'Planner lifecycle projection changed during digest-bound commit preparation.',
+          { mismatches: ['legacy_projection'], cause: error.message },
+        );
       }
-      return { ...bound, legacyProjection };
+      const finalizeLegacyProjection = (decisionRecord) => preparePlannerApprovalProjection(
+        repoRoot,
+        options.phase,
+        options.version,
+        {
+          allowHistorical: true,
+          decision: conditionedCandidate ? 'approved-with-conditions' : 'approved',
+          requireDigestBindings: true,
+          finalProjection: true,
+          runId,
+          decisionId: decisionRecord.decision_id,
+          decisionSha256: decisionRecord.decision_sha256,
+          now: decisionRecord.recorded_at,
+        },
+      );
+      return { ...bound, legacyProjection, finalizeLegacyProjection };
     },
   });
   if (options.suppressOutput !== true) {

@@ -1408,8 +1408,16 @@ test('canonical reviews without ledger outcomes fail closed before provider or e
   }
 });
 
-test('governed review WAL recovers every interrupted commit point exactly once', async () => {
-  const faultPoints = ['after-wal', 'after-canonical', 'after-outcome', 'after-review', 'after-meta', 'after-phase'];
+test('governed review WAL recovers every interrupted commit point and exact reviewed lifecycle once', async () => {
+  const faultPoints = [
+    'after-wal',
+    'after-canonical',
+    'after-outcome',
+    'after-review',
+    'after-meta',
+    'after-phase',
+    'after-draft-lifecycle',
+  ];
 
   for (const faultPoint of faultPoints) {
     const governance = buildDefaultGovernanceConfig();
@@ -1472,6 +1480,13 @@ test('governed review WAL recovers every interrupted commit point exactly once',
       assert.equal(fs.existsSync(runReviewCommitPath(repo.root, runId)), false);
       assert.equal(readAiRun(repo.root, runId).phase, 'technical-plan-reviewed');
       assert.equal(readRunGovernance(repo.root, runId).current_review_id, 'R-001');
+      const planner = readPhaseApproval(repo.root, 'technical-plan').meta;
+      const reviewedEvents = planner.drafts[0].lifecycle.filter((event) => event.state === 'reviewed');
+      assert.equal(reviewedEvents.length, 1);
+      assert.equal(reviewedEvents[0].decision_id, 'R-001');
+      assert.match(reviewedEvents[0].evidence_sha256, /^sha256:[a-f0-9]{64}$/);
+      assert.equal(planner.last_operation.evidence_id, 'R-001');
+      assert.equal(planner.last_operation.evidence_sha256, reviewedEvents[0].evidence_sha256);
       const events = readReviewBudgetEvents(repo.root, runId);
       assert.deepEqual(events.map((event) => event.kind), ['reservation', 'outcome']);
       assert.equal(events[1].outcome, 'valid');

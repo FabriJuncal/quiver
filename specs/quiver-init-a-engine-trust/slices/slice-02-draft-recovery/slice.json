@@ -26,6 +26,9 @@
     "tests/lib/draft-integrity.test.js",
     "tests/lib/approvals.test.js",
     "tests/commands/ai-draft-recovery.test.js",
+    "tests/commands/ai-plan.test.js",
+    "tests/commands/ai-review-plan.test.js",
+    "tests/commands/spec-create.test.js",
     "specs/quiver-init-a-engine-trust/**",
     "src/create-quiver/lib/ai/phase-gates.js",
     "src/create-quiver/lib/ai/plan-review.js",
@@ -40,6 +43,9 @@
     "tests/lib/draft-integrity.test.js",
     "tests/lib/approvals.test.js",
     "tests/commands/ai-draft-recovery.test.js",
+    "tests/commands/ai-plan.test.js",
+    "tests/commands/ai-review-plan.test.js",
+    "tests/commands/spec-create.test.js",
     "specs/quiver-init-a-engine-trust/**",
     "src/create-quiver/lib/ai/phase-gates.js",
     "src/create-quiver/lib/ai/plan-review.js",
@@ -49,8 +55,8 @@
   "depends_on": [
     "slice-01-draft-integrity"
   ],
-  "parallel_safe": "never",
-  "parallel_safe_reason": "Dependency or shared integration surface requires single writer.",
+  "parallel_safe": "conditional",
+  "parallel_safe_reason": "DEC-A-011: after A01 and A05 integration, A02 may overlap product-disjoint A06; the coordinator owns shared metadata and A04 dispatcher work remains serialized.",
   "must": [
     "Provide compare/select/reject/restore operations over exact immutable versions, verifying artifact and input digests under phase lock.",
     "Make selected current version explicit and ensure candidate guidance, review and approval consume it; do not simply remove existing historical-version guards.",
@@ -69,8 +75,13 @@
   ],
   "tests": [
     "LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8 node --test tests/lib/draft-integrity.test.js tests/lib/approvals.test.js tests/commands/ai-draft-recovery.test.js",
+    "LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8 node --test tests/commands/ai-plan.test.js",
+    "LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8 node --test tests/commands/ai-review-plan.test.js",
+    "LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8 node --test tests/commands/ai-run-state.test.js",
+    "LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8 node --test tests/commands/spec-create.test.js",
     "git diff --check"
   ],
   "estimated_hours": 0,
-  "status": "draft"
+  "status": "completed",
+  "completed_at": "2026-09-13T00:14:57.000Z"
 }

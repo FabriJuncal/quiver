@@ -41,8 +41,8 @@
   "depends_on": [
     "slice-07-context-selection"
   ],
-  "parallel_safe": "never",
-  "parallel_safe_reason": "Dependency or shared integration surface requires single writer.",
+  "parallel_safe": "conditional",
+  "parallel_safe_reason": "DEC-A-013: preserve every dependency; the draft and Brain/context tracks may overlap only with disjoint product write sets. Serialize slices 04 and 06 at the CLI/registry/i18n/reference surface; coordinator owns shared spec metadata.",
   "must": [
     "Represent claims using explicit subject/predicate/value and record authority; compare relevant contract claims and observed facts without pretending deterministic code understands arbitrary prose.",
     "Contradictory relevant requirements/decisions/policy produce unresolved decision with both sources; approved resolution must reference exact claims.",

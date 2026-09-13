@@ -2,8 +2,8 @@
 
 ## Context
 
-Read SPEC.md and the exact source requirements. Program state is SPEC_DRAFT;
-implementation starts only after all-spec audit and dependencies are verified.
+Read SPEC.md and the exact source requirements. The all-spec audit and A01/A05
+dependency integration were verified before implementation.
 
 ## Objective
 
@@ -43,7 +43,10 @@ Recover and approve an earlier still-valid draft.
 - `tests/lib/draft-integrity.test.js`
 - `tests/lib/approvals.test.js`
 - `tests/commands/ai-draft-recovery.test.js`
+- `tests/commands/ai-plan.test.js`
+- `tests/commands/ai-review-plan.test.js`
 - `tests/commands/ai-run-state.test.js`
+- `tests/commands/spec-create.test.js`
 - `specs/quiver-init-a-engine-trust/**`
 
 ## Restrictions
@@ -54,10 +57,14 @@ No unverified claim is promoted to verified. Conflicting parallel writes seriali
 ## Validation
 
 - `LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8 node --test tests/lib/draft-integrity.test.js tests/lib/approvals.test.js tests/commands/ai-draft-recovery.test.js`
+- `LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8 node --test tests/commands/ai-plan.test.js`
+- `LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8 node --test tests/commands/ai-review-plan.test.js`
+- `LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8 node --test tests/commands/ai-run-state.test.js`
+- `LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8 node --test tests/commands/spec-create.test.js`
 - `git diff --check`
 
-New test paths are planned, not commands claimed executable at foundation time.
-The implementer must verify the final command exists before recording a result.
+The final commands exist and their observed results are recorded in the closure
+and slice evidence. Initiative-wide full CI remains coordinator-owned.
 
 ## Completion Checklist
 

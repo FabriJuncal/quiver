@@ -18,6 +18,7 @@ const {
   approvePlannerPhase,
   readPhaseApproval,
   savePlannerDraft,
+  selectPlannerDraftVersion,
 } = require('../../src/create-quiver/lib/approvals');
 const { savePlanReview } = require('../../src/create-quiver/lib/ai/plan-review');
 const { runApprove } = require('../../src/create-quiver/commands/ai');
@@ -114,6 +115,7 @@ async function seedCanonicalAcceptance(repoRoot, runId = 'run-canonical-approval
   }, null, 2)}\n`;
   savePlannerDraft(repoRoot, 'acceptance', 'requirements.md', artifact, {
     requireDigestBindings: true,
+    runId,
   });
   const draft = readPhaseApproval(repoRoot, 'acceptance').meta.drafts.at(-1);
   updateAiRunPhase(repoRoot, runId, 'acceptance-draft', {
@@ -717,7 +719,7 @@ test('two active runs publish only their own approval candidate and canonical co
       'acceptance',
       'requirements.md',
       `${JSON.stringify({ spec: { acceptance: ['AC-01'] } }, null, 2)}\n`,
-      { requireDigestBindings: true },
+      { requireDigestBindings: true, runId: 'run-isolated-a' },
     );
     const draftAPath = readPhaseApproval(repo.root, 'acceptance').meta.drafts
       .find((item) => item.version === draftA.version).path;
@@ -736,7 +738,7 @@ test('two active runs publish only their own approval candidate and canonical co
       'acceptance',
       'requirements.md',
       `${JSON.stringify({ spec: { acceptance: ['AC-01', 'AC-02', 'AC-03'] } }, null, 2)}\n`,
-      { requireDigestBindings: true },
+      { requireDigestBindings: true, runId: 'run-isolated-b' },
     );
     const draftBPath = readPhaseApproval(repo.root, 'acceptance').meta.drafts
       .find((item) => item.version === draftB.version).path;
@@ -745,6 +747,10 @@ test('two active runs publish only their own approval candidate and canonical co
       command: 'test run B draft',
     });
 
+    selectPlannerDraftVersion(repo.root, 'acceptance', draftA.version, {
+      authorization: { authorized: true, evidence: { actor_id: actor.actor_id } },
+      runId: 'run-isolated-a',
+    });
     await runApprove(repo.root, {
       actor,
       digestBound: true,
@@ -753,6 +759,10 @@ test('two active runs publish only their own approval candidate and canonical co
       runId: 'run-isolated-a',
       suppressOutput: true,
       version: draftA.version,
+    });
+    selectPlannerDraftVersion(repo.root, 'acceptance', draftB.version, {
+      authorization: { authorized: true, evidence: { actor_id: actor.actor_id } },
+      runId: 'run-isolated-b',
     });
     await runApprove(repo.root, {
       actor,
@@ -839,7 +849,7 @@ test('rollback recovers a prepared approval WAL before blocking the requested wr
       'acceptance',
       'requirements.md',
       `${JSON.stringify({ spec: { acceptance: ['AC-01'] } }, null, 2)}\n`,
-      { requireDigestBindings: true },
+      { requireDigestBindings: true, runId },
     );
     const draftPath = readPhaseApproval(repo.root, 'acceptance').meta.drafts.at(-1).path;
     updateAiRunPhase(repo.root, runId, 'acceptance-draft', {

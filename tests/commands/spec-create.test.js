@@ -220,7 +220,7 @@ async function seedCanonicalApprovedPlan(repoRoot) {
 
   savePlannerDraft(repoRoot, 'acceptance', 'requirements.md', `${JSON.stringify({
     spec: { acceptance: ['AC-01 creates the approved spec.'] },
-  }, null, 2)}\n`, { requireDigestBindings: true });
+  }, null, 2)}\n`, { requireDigestBindings: true, runId });
   const acceptanceDraft = readPhaseApproval(repoRoot, 'acceptance').meta.drafts[0];
   updateAiRunPhase(repoRoot, runId, 'acceptance-draft', {
     artifact: acceptanceDraft.path,
