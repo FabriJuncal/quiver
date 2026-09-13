@@ -4,7 +4,8 @@ Program state: IN_PROGRESS. Independent specification review: terminal
 READY_FOR_IMPLEMENTATION. Slices 01 and 05 have completed implementation,
 independent review and combined CI validation (977/977). Slice 02 has completed
 implementation, independent review and affected-consumer verification. Slice 06
-is independently approved; combined A01+A02+A05+A06 CI passed 997/997. Runtime dependencies
+is independently approved; combined A01+A02+A05+A06 CI passed 997/997. Slice 03
+is independently approved and its integrated full CI passed 1003/1003. Runtime dependencies
 still apply to the remaining slices; this is not whole-plan readiness.
 
 | Slice | State | Evidence |
@@ -12,7 +13,7 @@ still apply to the remaining slices; this is not whole-plan readiness.
 | slice-00-foundation | DONE | Documentary checks and independent review; this foundation commit |
 | slice-01-draft-integrity | DONE | [Independent CI retest: 958/958](./evidence/slice-01-independent-ci-cycle-2.md); independent reviewer approved |
 | slice-02-draft-recovery | DONE | [Independent review](./evidence/a02-independent-review.md); 143/143 affected tests passed; this logical commit |
-| slice-03-effective-amendments | READY_FOR_IMPLEMENTATION | Runtime dependencies and executed tests pending |
+| slice-03-effective-amendments | DONE | [Independent review](./evidence/a03-independent-review.md); [full CI: 1003/1003](./evidence/slice-03-independent-ci.md); this logical commit |
 | slice-04-draft-cli | READY_FOR_IMPLEMENTATION | Runtime dependencies and executed tests pending |
 | slice-05-brain-store | DONE | [Combined A01+A05 CI: 977/977](./evidence/slice-05-integration-with-slice-01.md); independent code review approved |
 | slice-06-brain-vault | DONE | [Independent review](./evidence/slice-06-independent-review.md); [combined CI retest: 997/997](./evidence/slice-06-integration-with-slice-02-retest.md); this logical commit |

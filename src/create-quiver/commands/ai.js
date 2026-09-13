@@ -16,6 +16,11 @@ const {
   writeRawProviderArtifact,
 } = require('../lib/ai/artifacts');
 const { buildContextPackMetadata, normalizeRole } = require('../lib/ai/context-packs');
+const {
+  deriveEffectiveContractReviewIntent,
+  effectiveContractRecordsDir,
+  resolveEffectiveContract,
+} = require('../lib/ai/effective-contract');
 const { parseContextProposalOutput } = require('../lib/ai/context-proposal');
 const { discoverProjectFiles } = require('../lib/ai/analyze-project-discovery');
 const {
@@ -575,7 +580,9 @@ function assertGovernedPlanReviewCorrelation(repoRoot, review, run, runtime) {
   }
   if (review?.meta?.source_file !== currentReview?.source_file
       || review?.meta?.source_kind !== currentReview?.source_kind
-      || review?.meta?.source_version !== currentReview?.source_version) {
+      || review?.meta?.source_version !== currentReview?.source_version
+      || stableStringify(review?.meta?.effective_contract || null)
+        !== stableStringify(currentReview?.effective_contract || null)) {
     mismatches.push('source_identity');
   }
   if (currentReview) {
@@ -4371,6 +4378,27 @@ function buildReviewBudgetIntent(governedRun, resolved, inputText, options = {})
   const explicit = options.reviewIntent && typeof options.reviewIntent === 'object'
     ? options.reviewIntent
     : {};
+  if (options.effectiveReviewIntent) {
+    const eventClass = String(explicit.event_class || explicit.eventClass || 'targeted').trim();
+    if (eventClass !== 'targeted' || explicit.effective_contract || explicit.effectiveContract) {
+      throw new GovernanceError(
+        'REVIEW_INTENT_INVALID',
+        'Effective-contract review identity is derived from its immutable record and cannot be supplied by the caller.',
+      );
+    }
+    const forbidden = [
+      'candidate_id', 'candidateId', 'base_review_id', 'baseReviewId',
+      'finding_ids', 'findingIds', 'sections',
+    ].filter((key) => Object.prototype.hasOwnProperty.call(explicit, key));
+    if (forbidden.length > 0) {
+      throw new GovernanceError(
+        'REVIEW_INTENT_INVALID',
+        'Effective-contract candidate, base review and affected sections are immutable derived fields.',
+        { fields: forbidden },
+      );
+    }
+    return options.effectiveReviewIntent;
+  }
   const declaredCandidateId = String(explicit.candidate_id || explicit.candidateId || '').trim();
   if (declaredCandidateId && declaredCandidateId !== candidateId) {
     throw new GovernanceError('REVIEW_INTENT_INVALID', 'Review candidate identity is derived from the owned draft and cannot be overridden.');
@@ -4437,8 +4465,19 @@ function buildReviewBudgetRequestEnvelope({
   inputText,
   canonicalFindings,
   prompt,
+  effectiveContract,
+  effectiveResolution,
+  lockOptions,
 }) {
-  const currentInputText = typeof inputText === 'string' ? inputText : readTextFile(inputPath, repoRoot);
+  const currentEffective = effectiveContract
+    ? resolveEffectiveContract(repoRoot, effectiveContract.phase, effectiveContract.record_id, {
+        runId,
+        runLocked: lockOptions?.runLocked === true,
+        phaseLocked: lockOptions?.phaseLocked === true,
+      })
+    : effectiveResolution;
+  const currentInputText = currentEffective?.contents
+    || (typeof inputText === 'string' ? inputText : readTextFile(inputPath, repoRoot));
   const currentFindings = Array.isArray(canonicalFindings)
     ? canonicalFindings
     : readRunGovernance(repoRoot, runId)?.findings || [];
@@ -4472,6 +4511,15 @@ function buildReviewBudgetRequestEnvelope({
     model: runtimeProfile.model || null,
     context: pack.packName,
     prompt_sha256: sha256Digest(currentPrompt),
+    ...(currentEffective ? {
+      effective_contract: {
+        phase: currentEffective.phase,
+        record_id: currentEffective.record.record_id,
+        record_sha256: currentEffective.record.record_sha256,
+        effective_sha256: currentEffective.effective_sha256,
+        input_sha256: currentEffective.record.root.input.sha256,
+      },
+    } : {}),
   };
 }
 
@@ -4559,7 +4607,10 @@ async function runReviewPlan(repoRoot, options = {}) {
   const timeoutMs = normalizeTimeout(options.timeout);
   const resolved = resolveTechnicalPlanReviewInput(repoRoot, options.input || undefined);
   const inputPath = resolved.inputPath;
-  const inputText = readTextFile(inputPath, repoRoot);
+  let inputText = readTextFile(inputPath, repoRoot);
+  let reviewInputPath = inputPath;
+  let reviewInputKind = resolved.kind;
+  let reviewInputVersion = resolved.version;
   const governedRun = prepareGovernedRun(repoRoot, {
     ...options,
     command: 'ai review-plan',
@@ -4576,11 +4627,44 @@ async function runReviewPlan(repoRoot, options = {}) {
   const governanceStateSnapshot = governedRun?.run
     ? readRunGovernance(repoRoot, governedRun.run.run_id)
     : null;
+  let effectiveContract = null;
+  let effectiveResolution = null;
+  let effectiveReviewIntent = null;
+  if (options.effectiveContract) {
+    if (!governedRun?.run) {
+      throw new GovernanceError(
+        'REVIEW_BUDGET_CONTEXT_INVALID',
+        'Effective-contract review requires an active governed run.',
+      );
+    }
+    effectiveContract = {
+      phase: options.effectiveContract.phase,
+      record_id: options.effectiveContract.record_id,
+    };
+    effectiveResolution = resolveEffectiveContract(
+      repoRoot,
+      effectiveContract.phase,
+      effectiveContract.record_id,
+      { runId: governedRun.run.run_id },
+    );
+    inputText = effectiveResolution.contents;
+    reviewInputPath = path.relative(
+      repoRoot,
+      path.join(effectiveContractRecordsDir(repoRoot, effectiveContract.phase), `${effectiveContract.record_id.slice(3)}.json`),
+    ).split(path.sep).join('/');
+    reviewInputKind = 'effective-contract';
+    reviewInputVersion = null;
+    effectiveReviewIntent = deriveEffectiveContractReviewIntent(repoRoot, effectiveContract, {
+      currentReviewId: governanceStateSnapshot?.current_review_id || null,
+      runId: governedRun.run.run_id,
+    });
+  }
   const reviewIntent = governedRun
     ? buildReviewBudgetIntent(governedRun, resolved, inputText, {
       ...options,
       repoRoot,
       governanceState: governanceStateSnapshot,
+      effectiveReviewIntent,
     })
     : null;
   const pack = buildContextPackMetadata({
@@ -4591,7 +4675,7 @@ async function runReviewPlan(repoRoot, options = {}) {
   const built = buildPlanReviewPrompt({
     pack,
     inputText,
-    inputPath,
+    inputPath: reviewInputPath,
     governed: Boolean(governedRun),
     governance: governedRun?.governance || null,
     governanceProfile: governedRun?.profile || null,
@@ -4621,9 +4705,9 @@ async function runReviewPlan(repoRoot, options = {}) {
       contextPack: pack.packName,
       invocation,
       promptSource: built.promptSource,
-      inputPath,
-      inputKind: resolved.kind,
-      inputVersion: resolved.version,
+      inputPath: reviewInputPath,
+      inputKind: reviewInputKind,
+      inputVersion: reviewInputVersion,
       profile: runtimeProfile,
       governance: governedRun?.profile || null,
     };
@@ -4638,10 +4722,10 @@ async function runReviewPlan(repoRoot, options = {}) {
     }));
     const translator = createTranslator(options.language);
     process.stdout.write(`${translator.t('ai_task.prompt_source', { source: built.promptSource })}\n`);
-    process.stdout.write(`${translator.t('ai_task.input_file', { path: inputPath })}\n`);
-    process.stdout.write(`${translator.t('ai_task.input_kind', { kind: resolved.kind })}\n`);
-    if (resolved.version) {
-      process.stdout.write(`${translator.t('ai_task.input_version', { version: resolved.version })}\n`);
+    process.stdout.write(`${translator.t('ai_task.input_file', { path: reviewInputPath })}\n`);
+    process.stdout.write(`${translator.t('ai_task.input_kind', { kind: reviewInputKind })}\n`);
+    if (reviewInputVersion) {
+      process.stdout.write(`${translator.t('ai_task.input_version', { version: reviewInputVersion })}\n`);
     }
     return report;
   }
@@ -4656,9 +4740,9 @@ async function runReviewPlan(repoRoot, options = {}) {
       invocation,
       prompt: built.prompt,
       promptSource: built.promptSource,
-      inputPath,
-      inputKind: resolved.kind,
-      inputVersion: resolved.version,
+      inputPath: reviewInputPath,
+      inputKind: reviewInputKind,
+      inputVersion: reviewInputVersion,
       profile: runtimeProfile,
       governance: governedRun?.profile || null,
     };
@@ -4683,23 +4767,25 @@ async function runReviewPlan(repoRoot, options = {}) {
   let reviewBudgetRequestEnvelope = null;
   let reviewBudgetRequestEnvelopeFactory = null;
   if (governedRun) {
-    reviewBudgetRequestEnvelopeFactory = () => buildReviewBudgetRequestEnvelope({
+    reviewBudgetRequestEnvelopeFactory = (lockOptions = {}) => buildReviewBudgetRequestEnvelope({
       repoRoot,
       runId: governedRun.run.run_id,
-      inputPath,
-      resolved,
+      inputPath: reviewInputPath,
+      resolved: { kind: reviewInputKind, version: reviewInputVersion },
       pack,
       provider,
       runtimeProfile,
       governance: governedRun.governance,
       governanceProfile: governedRun.profile,
       reviewIntent,
+      effectiveContract,
+      lockOptions,
     });
     reviewBudgetRequestEnvelope = buildReviewBudgetRequestEnvelope({
       repoRoot,
       runId: governedRun.run.run_id,
-      inputPath,
-      resolved,
+      inputPath: reviewInputPath,
+      resolved: { kind: reviewInputKind, version: reviewInputVersion },
       pack,
       provider,
       runtimeProfile,
@@ -4709,12 +4795,15 @@ async function runReviewPlan(repoRoot, options = {}) {
       inputText,
       canonicalFindings: governanceStateSnapshot?.findings || [],
       prompt: built.prompt,
+      effectiveContract,
+      effectiveResolution,
     });
     reviewBudgetReservation = reserveReviewBudget(repoRoot, {
       runId: governedRun.run.run_id,
       governance: governedRun.governance,
       profile: governedRun.profile,
       intent: reviewIntent,
+      effectiveContract,
       requestEnvelope: reviewBudgetRequestEnvelope,
       currentRequestEnvelope: reviewBudgetRequestEnvelopeFactory,
     });
@@ -4766,9 +4855,9 @@ async function runReviewPlan(repoRoot, options = {}) {
       rawArtifactPath = writeRawProviderArtifact(repoRoot, governedRun.run.run_id, 'ai-review-plan', result, {
         metadata: {
           phase: 'plan-review',
-          input_path: inputPath,
-          input_kind: resolved.kind,
-          input_version: resolved.version || null,
+          input_path: reviewInputPath,
+          input_kind: reviewInputKind,
+          input_version: reviewInputVersion || null,
           prompt_bytes: invocation.promptLength,
           contractual: false,
           provider_payload_received: true,
@@ -4805,9 +4894,9 @@ async function runReviewPlan(repoRoot, options = {}) {
     const rawArtifact = writeRawProviderArtifact(repoRoot, lifecycleRun.run_id, 'ai-review-plan', result, {
       metadata: {
         phase: 'plan-review',
-        input_path: inputPath,
-        input_kind: resolved.kind,
-        input_version: resolved.version || null,
+        input_path: reviewInputPath,
+        input_kind: reviewInputKind,
+        input_version: reviewInputVersion || null,
         prompt_bytes: invocation.promptLength,
         contractual: false,
         provider_payload_received: false,
@@ -4840,9 +4929,9 @@ async function runReviewPlan(repoRoot, options = {}) {
   const rawArtifact = writeRawProviderArtifact(repoRoot, lifecycleRun.run_id, 'ai-review-plan', result, {
     metadata: {
       phase: 'plan-review',
-      input_path: inputPath,
-      input_kind: resolved.kind,
-      input_version: resolved.version || null,
+      input_path: reviewInputPath,
+      input_kind: reviewInputKind,
+      input_version: reviewInputVersion || null,
       prompt_bytes: invocation.promptLength,
       clean_output_source: clean.source,
       stripped_prompt_echo: clean.strippedPromptEcho,
@@ -4870,9 +4959,9 @@ async function runReviewPlan(repoRoot, options = {}) {
     }
     saved = savePlanReview(repoRoot, {
       contents: contractualClean.cleanOutput,
-      inputPath,
-      inputKind: resolved.kind,
-      inputVersion: resolved.version,
+      inputPath: reviewInputPath,
+      inputKind: reviewInputKind,
+      inputVersion: reviewInputVersion,
       outputSource: governedRun ? contractualClean.source : clean.source,
       rawArtifactPath: rawArtifact.path,
       governance: governedRun?.governance || null,
@@ -4913,9 +5002,15 @@ async function runReviewPlan(repoRoot, options = {}) {
     provider,
     role: 'reviewer',
     contextPack: pack.packName,
-    inputPath,
-    inputKind: resolved.kind,
-    inputVersion: resolved.version,
+    inputPath: reviewInputPath,
+    inputKind: reviewInputKind,
+    inputVersion: reviewInputVersion,
+    effectiveContract: effectiveResolution ? {
+      phase: effectiveResolution.phase,
+      record_id: effectiveResolution.record.record_id,
+      record_sha256: effectiveResolution.record.record_sha256,
+      effective_sha256: effectiveResolution.effective_sha256,
+    } : null,
     filePath: relativePath,
     invocation,
     result,

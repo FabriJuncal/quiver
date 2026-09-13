@@ -19,16 +19,22 @@
     "specs/quiver-init-a-engine-trust/CONTRACTS.md"
   ],
   "files": [
+    "src/create-quiver/commands/ai.js",
     "src/create-quiver/lib/ai/draft-integrity.js",
     "src/create-quiver/lib/ai/effective-contract.js",
+    "src/create-quiver/lib/ai/plan-review.js",
     "src/create-quiver/lib/ai/review-budget.js",
+    "src/create-quiver/lib/ai/review-governance.schema.js",
     "tests/lib/effective-contract.test.js",
     "specs/quiver-init-a-engine-trust/**"
   ],
   "allowed_write_paths": [
+    "src/create-quiver/commands/ai.js",
     "src/create-quiver/lib/ai/draft-integrity.js",
     "src/create-quiver/lib/ai/effective-contract.js",
+    "src/create-quiver/lib/ai/plan-review.js",
     "src/create-quiver/lib/ai/review-budget.js",
+    "src/create-quiver/lib/ai/review-governance.schema.js",
     "tests/lib/effective-contract.test.js",
     "specs/quiver-init-a-engine-trust/**"
   ],
@@ -54,9 +60,10 @@
     "Retry vs new semantic revision preserves distinct ledger identities and budget consumption."
   ],
   "tests": [
-    "LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8 node --test tests/lib/effective-contract.test.js",
+    "LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8 node --test tests/lib/effective-contract.test.js tests/lib/draft-integrity.test.js tests/lib/ai-review-budget.test.js tests/commands/ai-review-plan.test.js",
     "git diff --check"
   ],
   "estimated_hours": 0,
-  "status": "draft"
+  "status": "completed",
+  "completed_at": "2026-09-13T01:00:56.000Z"
 }

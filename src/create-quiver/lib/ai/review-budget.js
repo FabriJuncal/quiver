@@ -4,7 +4,12 @@ const path = require('node:path');
 
 const { z } = require('zod');
 
+const { withPlannerApprovalLock } = require('../approvals');
 const { redactSensitiveValue } = require('./artifacts');
+const {
+  deriveEffectiveContractReviewIntent,
+  verifyEffectiveContractReviewIntent,
+} = require('./effective-contract');
 const {
   GovernanceError,
   authorizeGovernanceAction,
@@ -40,6 +45,13 @@ const reservationIdSchema = z.string().regex(/^BR-\d{6,}$/);
 const reviewIdSchema = z.string().regex(/^R-\d{3,}$/);
 const semanticClassSchema = z.enum(['full', 'targeted']);
 const reviewEventClassSchema = z.enum(REVIEW_EVENT_CLASSES);
+const effectiveContractIntentSchema = z.object({
+  phase: z.literal('technical-plan'),
+  record_id: z.string().regex(/^EC-\d{6,}$/),
+  record_sha256: digestSchema,
+  effective_sha256: digestSchema,
+  input_sha256: digestSchema,
+}).strict();
 
 const fullIntentSchema = z.object({
   event_class: z.literal('full'),
@@ -54,6 +66,7 @@ const targetedIntentSchema = z.object({
   base_review_id: reviewIdSchema,
   finding_ids: z.array(nonEmptyString.max(300)),
   sections: z.array(nonEmptyString.max(500)),
+  effective_contract: effectiveContractIntentSchema.optional(),
 }).strict().superRefine((intent, context) => {
   if (intent.finding_ids.length === 0 && intent.sections.length === 0) {
     context.addIssue({
@@ -209,6 +222,11 @@ function governanceError(code, message, details = {}) {
   return new GovernanceError(code, message, details);
 }
 
+function lockDate(value) {
+  if (!value) return undefined;
+  return value instanceof Date ? value : new Date(value);
+}
+
 function sha256Digest(value) {
   return `sha256:${crypto.createHash('sha256').update(String(value)).digest('hex')}`;
 }
@@ -278,6 +296,7 @@ function classifyReviewIntent(intent = {}, options = {}) {
       base_review_id: baseReviewId,
       finding_ids: uniqueStrings(intentValue(source, 'finding_ids', 'findingIds', [])),
       sections: uniqueStrings(intentValue(source, 'sections', 'sections', [])),
+      ...(source.effective_contract ? { effective_contract: source.effective_contract } : {}),
     });
   }
 
@@ -738,6 +757,14 @@ function assertReviewBudgetReservationLocked(projectRoot, options = {}) {
     let currentIntent;
     try {
       currentIntent = classifyReviewIntent(state.reservation.intent, { currentReviewId });
+      if (currentIntent.effective_contract) {
+        currentIntent = verifyEffectiveContractReviewIntent(projectRoot, currentIntent, {
+          currentReviewId,
+          runId: run.run_id,
+          runLocked: true,
+          phaseLocked: options.phaseLocked === true,
+        });
+      }
       assertTargetedIntentAgainstState(currentIntent, governanceState);
     } catch (error) {
       if (error.code !== 'REVIEW_INTENT_INVALID') throw error;
@@ -750,7 +777,10 @@ function assertReviewBudgetReservationLocked(projectRoot, options = {}) {
       throw governanceError('REVIEW_REQUEST_STALE', 'Review intent changed while the provider was running.');
     }
     const envelope = typeof options.requestEnvelope === 'function'
-      ? options.requestEnvelope()
+      ? options.requestEnvelope({
+          runLocked: true,
+          phaseLocked: options.phaseLocked === true,
+        })
       : options.requestEnvelope;
     const currentDigest = computeReviewRequestEnvelopeDigest(envelope, currentIntent);
     if (currentDigest !== state.reservation.request_envelope_digest) {
@@ -778,99 +808,127 @@ function reserveReviewBudget(projectRoot, options = {}) {
     assertRunBudgetBinding(run, governance, profile);
     const governanceState = readRunGovernance(projectRoot, run.run_id);
     const currentReviewId = governanceState?.current_review_id || null;
-    const intent = classifyReviewIntent(options.intent, { currentReviewId });
-    assertTargetedIntentAgainstState(intent, governanceState);
-    const requestDigest = computeReviewRequestEnvelopeDigest(options.requestEnvelope, intent);
-    if (typeof options.currentRequestEnvelope === 'function') {
-      const currentRequestDigest = computeReviewRequestEnvelopeDigest(options.currentRequestEnvelope(), intent);
-      if (currentRequestDigest !== requestDigest) {
-        throw governanceError('REVIEW_REQUEST_STALE', 'Review request changed before its budget reservation could be committed.', {
-          expected_request_envelope_digest: requestDigest,
-          actual_request_envelope_digest: currentRequestDigest,
-        });
-      }
-    }
-    const intentDigest = sha256Digest(stableStringify(intent));
-    const current = readReviewBudget(projectRoot, run.run_id, { governance, profile });
-    assertReviewBudgetHistoryVerified(projectRoot, run.run_id, current.events, { governanceState });
-    const reduced = reduceReviewBudgetEvents(current.events);
-    const matching = reduced.reservations
-      .filter((state) => state.reservation.request_envelope_digest === requestDigest
-        && state.reservation.intent_digest === intentDigest)
-      .at(-1);
-
-    if (matching && ['reserved', 'valid'].includes(matching.status)) {
-      throw governanceError(
-        matching.status === 'reserved' ? 'REVIEW_REQUEST_IN_PROGRESS' : 'REVIEW_REQUEST_REPLAYED',
-        `Review request envelope already has a ${matching.status} reservation.`,
-        { reservation_id: matching.reservation.reservation_id, request_envelope_digest: requestDigest },
-      );
-    }
-
-    const retryReservation = matching?.status === 'retry' ? matching : null;
-    if (!retryReservation && semanticClassForIntent(intent) === 'full' && currentReviewId) {
-      const priorCandidate = reduced.reservations.find((state) => (
-        state.status === 'valid'
-        &&
-        semanticClassForIntent(state.reservation.intent) === 'full'
-        && state.reservation.intent.candidate_id === intent.candidate_id
-      ));
-      if (priorCandidate) {
+    const suppliedReference = options.effectiveContract || options.intent?.effective_contract || null;
+    const effectiveReference = suppliedReference
+      ? { phase: suppliedReference.phase, record_id: suppliedReference.record_id }
+      : null;
+    const apply = (phaseLocked) => {
+      const intent = effectiveReference
+        ? deriveEffectiveContractReviewIntent(projectRoot, effectiveReference, {
+            currentReviewId,
+            runId: run.run_id,
+            runLocked: true,
+            phaseLocked,
+          })
+        : classifyReviewIntent(options.intent, { currentReviewId });
+      if (effectiveReference && stableStringify(options.intent) !== stableStringify(intent)) {
         throw governanceError(
-          'REVIEW_INTENT_INVALID',
-          'A later full review requires a complete new candidate; the current candidate was already reviewed.',
-          {
-            candidate_id: intent.candidate_id,
-            prior_reservation_id: priorCandidate.reservation.reservation_id,
-            governed_next_action: 'targeted-amendment',
-          },
+          'REVIEW_REQUEST_STALE',
+          'Effective-contract review intent changed before its budget reservation could be committed.',
         );
       }
-    }
+      assertTargetedIntentAgainstState(intent, governanceState);
+      const requestDigest = computeReviewRequestEnvelopeDigest(options.requestEnvelope, intent);
+      if (typeof options.currentRequestEnvelope === 'function') {
+        const currentRequestDigest = computeReviewRequestEnvelopeDigest(options.currentRequestEnvelope({
+          runLocked: true,
+          phaseLocked,
+        }), intent);
+        if (currentRequestDigest !== requestDigest) {
+          throw governanceError('REVIEW_REQUEST_STALE', 'Review request changed before its budget reservation could be committed.', {
+            expected_request_envelope_digest: requestDigest,
+            actual_request_envelope_digest: currentRequestDigest,
+          });
+        }
+      }
+      const intentDigest = sha256Digest(stableStringify(intent));
+      const current = readReviewBudget(projectRoot, run.run_id, { governance, profile });
+      assertReviewBudgetHistoryVerified(projectRoot, run.run_id, current.events, { governanceState });
+      const reduced = reduceReviewBudgetEvents(current.events);
+      const matching = reduced.reservations
+        .filter((state) => state.reservation.request_envelope_digest === requestDigest
+          && state.reservation.intent_digest === intentDigest)
+        .at(-1);
 
-    if (current.projection.remaining.reviews <= 0) {
-      throw exhaustionError(current.projection, 'reviews');
-    }
-    if (countsAsFullRevision(intent) && current.projection.remaining.full_revisions <= 0) {
-      throw exhaustionError(current.projection, 'full-revisions');
-    }
+      if (matching && ['reserved', 'valid'].includes(matching.status)) {
+        throw governanceError(
+          matching.status === 'reserved' ? 'REVIEW_REQUEST_IN_PROGRESS' : 'REVIEW_REQUEST_REPLAYED',
+          `Review request envelope already has a ${matching.status} reservation.`,
+          { reservation_id: matching.reservation.reservation_id, request_envelope_digest: requestDigest },
+        );
+      }
 
-    let event;
-    if (retryReservation) {
-      event = appendReviewBudgetEventLocked(projectRoot, run.run_id, {
-        kind: 'retry-reservation',
-        reservation_id: retryReservation.reservation.reservation_id,
-        attempt: retryReservation.attempt + 1,
-        event_class: 'retry',
-        request_envelope_digest: requestDigest,
-        intent_digest: intentDigest,
-      }, options);
-    } else {
-      const nextReservationNumber = reduced.reservations.length + 1;
-      event = appendReviewBudgetEventLocked(projectRoot, run.run_id, {
-        kind: 'reservation',
-        reservation_id: `BR-${String(nextReservationNumber).padStart(6, '0')}`,
-        attempt: 1,
-        event_class: intent.event_class,
-        semantic_class: semanticClassForIntent(intent),
-        request_envelope_digest: requestDigest,
-        intent_digest: intentDigest,
-        intent,
-      }, options);
-    }
-    const updated = readReviewBudget(projectRoot, run.run_id, { governance, profile });
-    return reservationResult(event, updated.projection);
+      const retryReservation = matching?.status === 'retry' ? matching : null;
+      if (!retryReservation && semanticClassForIntent(intent) === 'full' && currentReviewId) {
+        const priorCandidate = reduced.reservations.find((state) => (
+          state.status === 'valid'
+          &&
+          semanticClassForIntent(state.reservation.intent) === 'full'
+          && state.reservation.intent.candidate_id === intent.candidate_id
+        ));
+        if (priorCandidate) {
+          throw governanceError(
+            'REVIEW_INTENT_INVALID',
+            'A later full review requires a complete new candidate; the current candidate was already reviewed.',
+            {
+              candidate_id: intent.candidate_id,
+              prior_reservation_id: priorCandidate.reservation.reservation_id,
+              governed_next_action: 'targeted-amendment',
+            },
+          );
+        }
+      }
+
+      if (current.projection.remaining.reviews <= 0) {
+        throw exhaustionError(current.projection, 'reviews');
+      }
+      if (countsAsFullRevision(intent) && current.projection.remaining.full_revisions <= 0) {
+        throw exhaustionError(current.projection, 'full-revisions');
+      }
+
+      let event;
+      if (retryReservation) {
+        event = appendReviewBudgetEventLocked(projectRoot, run.run_id, {
+          kind: 'retry-reservation',
+          reservation_id: retryReservation.reservation.reservation_id,
+          attempt: retryReservation.attempt + 1,
+          event_class: 'retry',
+          request_envelope_digest: requestDigest,
+          intent_digest: intentDigest,
+        }, options);
+      } else {
+        const nextReservationNumber = reduced.reservations.length + 1;
+        event = appendReviewBudgetEventLocked(projectRoot, run.run_id, {
+          kind: 'reservation',
+          reservation_id: `BR-${String(nextReservationNumber).padStart(6, '0')}`,
+          attempt: 1,
+          event_class: intent.event_class,
+          semantic_class: semanticClassForIntent(intent),
+          request_envelope_digest: requestDigest,
+          intent_digest: intentDigest,
+          intent,
+        }, options);
+      }
+      const updated = readReviewBudget(projectRoot, run.run_id, { governance, profile });
+      return reservationResult(event, updated.projection);
+    };
+    if (!effectiveReference) return apply(false);
+    return withPlannerApprovalLock(projectRoot, effectiveReference.phase, {
+      command: options.command || 'ai review-plan effective-contract budget reservation',
+      now: lockDate(options.now),
+    }, () => apply(true));
   });
 }
 
 function finalizeReviewBudget(projectRoot, options = {}) {
   const runId = String(options.runId || '').trim();
-  const apply = () => {
+  const apply = (phaseLocked = false) => {
     const outcome = String(options.outcome || '').trim();
     const state = assertReviewBudgetReservationLocked(projectRoot, {
       ...options,
       requireCurrent: outcome === 'valid' && options.prevalidated !== true,
       allowedUnfinalizedReviewId: outcome === 'valid' ? options.reviewId : null,
+      phaseLocked,
     });
     const run = readAiRun(projectRoot, runId);
     if (outcome === 'valid') {
@@ -903,8 +961,24 @@ function finalizeReviewBudget(projectRoot, options = {}) {
     };
   };
 
-  if (options.locked === true) return apply();
-  return withAiRunLock(projectRoot, runId, { command: options.command || 'ai review-plan budget finalization', now: options.now }, apply);
+  const applyWithEffectiveContractLock = () => {
+    const reduced = reduceReviewBudgetEvents(readReviewBudgetEvents(projectRoot, runId));
+    const state = reduced.reservations.find((item) => (
+      item.reservation.reservation_id === options.reservationId
+    ));
+    const reference = state?.reservation.intent?.effective_contract;
+    if (!reference || options.phaseLocked === true) return apply(options.phaseLocked === true);
+    return withPlannerApprovalLock(projectRoot, reference.phase, {
+      command: options.command || 'ai review-plan effective-contract budget finalization',
+      now: lockDate(options.now),
+    }, () => apply(true));
+  };
+
+  if (options.locked === true) return applyWithEffectiveContractLock();
+  return withAiRunLock(projectRoot, runId, {
+    command: options.command || 'ai review-plan budget finalization',
+    now: options.now,
+  }, applyWithEffectiveContractLock);
 }
 
 function extendReviewBudget(projectRoot, options = {}) {

@@ -52,7 +52,10 @@ slice 01 does not claim their acceptance merely by declaring lifecycle states.
   suites 30 + 37 + 43 + 18 + 15 = 143 tests
   passed with no skips. This logical commit is identified by trailer
   `Slice: quiver-init-a-engine-trust/slice-02-draft-recovery`.
-- slice-03-effective-amendments: not-tested; cycles 0; commit not created.
+- slice-03-effective-amendments: implemented and independently approved; seven
+  author implement/test/review/fix cycles, 69/69 final affected tests, 6/6
+  post-rebase focal tests and 1003/1003 coordinator full CI. Logical commit trailer:
+  `Slice: quiver-init-a-engine-trust/slice-03-effective-amendments`.
 - slice-04-draft-cli: not-tested; cycles 0; commit not created.
 - slice-05-brain-store: commit `039ffe5ec7682cc70c8d5adb03ff26b11fe3adff`;
   implemented and independently approved; four author
@@ -169,6 +172,28 @@ The author also observed standalone 991/991 tests, but that command's raw log
 was not captured; it is explicitly distinct from the retained independent logs.
 No provider execution, real Cloud deployment, external commercial gate or later
 context/facade acceptance is inferred from these local fixtures.
+
+## Runtime closure — slice-03-effective-amendments
+
+Immutable addenda/amendments preserve historical bytes and exact parent/input
+lineage. Stable-ID operations validate explicit removals and remaining references.
+The real governed review consumes effective bytes, binds exact effective identity
+through budget/meta/review/WAL and never promotes unchanged root-draft approval.
+
+- [Independent terminal review](./evidence/a03-independent-review.md) closes
+  F-A03-01 through F-A03-04: dangling references, locale-dependent canonical
+  ordering, production review/lock integration and symlink write-before-check.
+- [Author cycles and evidence](./evidence/slice-03-implementation-validation.md)
+  retain product/fixture failures and distinguish a capture-wrapper failure
+  from the underlying passing 68-test run. Final affected suite: 69/69.
+- [Frozen integrated full CI](./evidence/slice-03-independent-ci.md): 1003/1003,
+  zero failed/cancelled/skipped/todo, 115,851 ms; one coordinator CI attempt.
+- [Next-wave coordination](./evidence/wave-2-coordination-20260913.md) retains
+  the actual baseline, disjoint role ownership and six prospective foundation
+  merge-tree checks. Those checks are not downstream runtime acceptance.
+
+A04 owns public CLI operations. Full A and downstream integration remain pending.
+No source criterion, failed assertion or empirical gate was removed.
 
 ## Foundation closure — slice-00-foundation
 

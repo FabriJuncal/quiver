@@ -130,11 +130,21 @@ function analyzeJson(value, format = 'json') {
         }
       }
 
-      if (/^(?:references?|refs?|requirement_ids|acceptance(?:_criteria)?_ids|slice_ids)$/i.test(key)) {
+      const referenceKey = String(key).toLowerCase();
+      const referenceCollection = /^(?:requirement_ids|requirement_refs)$/.test(referenceKey)
+        ? 'requirements'
+        : /^(?:acceptance(?:_criteria)?_ids|acceptance(?:_criteria)?_refs)$/.test(referenceKey)
+          ? 'acceptance_criteria'
+          : /^(?:slice_ids|slice_refs|depends_on)$/.test(referenceKey)
+            ? 'slices'
+            : null;
+      if (referenceCollection || /^(?:references?|refs?)$/i.test(key)) {
         const values = Array.isArray(child) ? child : [child];
         values.forEach((entry, index) => {
           const refValue = entry && typeof entry === 'object' ? (entry.id || entry.slice_id) : entry;
-          collectRecognizedIds(refValue).forEach(({ id }) => addReference(id, `${childLocation}[${index}]`));
+          collectRecognizedIds(refValue)
+            .filter(({ collection }) => !referenceCollection || collection === referenceCollection)
+            .forEach(({ id }) => addReference(id, `${childLocation}[${index}]`));
         });
       }
       visit(child, childLocation);

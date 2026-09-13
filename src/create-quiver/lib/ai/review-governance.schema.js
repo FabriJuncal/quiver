@@ -872,6 +872,14 @@ const reviewProjectionSchema = z.object({
   later_phase_transfers: canonicalFindingListSchema,
 }).strict();
 
+const effectiveContractReviewBindingSchema = z.object({
+  phase: z.literal('technical-plan'),
+  record_id: z.string().regex(/^EC-\d{6,}$/),
+  record_sha256: sha256DigestSchema,
+  effective_sha256: sha256DigestSchema,
+  input_sha256: sha256DigestSchema,
+}).strict();
+
 const canonicalReviewSchema = z.object({
   schema_version: z.literal(GOVERNANCE_RECORD_SCHEMA_VERSION),
   review_id: z.string().regex(/^R-\d{3,}$/),
@@ -879,6 +887,7 @@ const canonicalReviewSchema = z.object({
   source_file: z.string().max(2_000),
   source_kind: nonEmptyStringSchema.max(200).nullable(),
   source_version: z.number().int().positive().nullable(),
+  effective_contract: effectiveContractReviewBindingSchema.optional(),
   raw_artifact_path: nonEmptyStringSchema.max(2_000).nullable(),
   output_source: nonEmptyStringSchema.max(200).nullable(),
   provider_finding_ids: z.array(identifierSchema),

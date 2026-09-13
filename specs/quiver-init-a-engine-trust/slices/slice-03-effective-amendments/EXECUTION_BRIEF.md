@@ -15,6 +15,7 @@ Build deterministic addendum and amendment contracts.
 - Accept deterministic structured operations addressed by stable IDs for supported JSON sections only; reject arbitrary source execution and ambiguous Markdown patching.
 - Require explicit removals and affected identities, verify references after operations, detect cycles/missing parents/tamper.
 - Reuse v58 review-event classification; retry keeps request identity and cannot masquerade as a free semantic revision.
+- Carry the verified effective-contract source and digests through the existing governed review command, budget ledger and recovery WAL without projecting that review onto unchanged root-draft bytes.
 
 ## Acceptance Criteria
 
@@ -35,7 +36,10 @@ Build deterministic addendum and amendment contracts.
 
 - `src/create-quiver/lib/ai/draft-integrity.js`
 - `src/create-quiver/lib/ai/effective-contract.js`
+- `src/create-quiver/commands/ai.js`
+- `src/create-quiver/lib/ai/plan-review.js`
 - `src/create-quiver/lib/ai/review-budget.js`
+- `src/create-quiver/lib/ai/review-governance.schema.js`
 - `tests/lib/effective-contract.test.js`
 - `specs/quiver-init-a-engine-trust/**`
 
@@ -51,6 +55,15 @@ No unverified claim is promoted to verified. Conflicting parallel writes seriali
 
 New test paths are planned, not commands claimed executable at foundation time.
 The implementer must verify the final command exists before recording a result.
+
+## Authorized scope adaptation
+
+The coordinator authorized the four review-path files added above after runtime
+call-graph review showed that a library-only resolver would let `runReviewPlan`
+continue reviewing root-draft bytes. The expansion is limited to deriving the
+immutable effective source, retaining its exact digests in canonical review and
+WAL state, and preserving run-lock then phase-lock ordering. It does not add the
+slice-04 CLI surface or relax v58 governance.
 
 ## Completion Checklist
 

@@ -7,9 +7,11 @@ const {
   projectPlannerDraftLifecycle,
   readPhaseApproval,
   resolveApprovedPlannerInput,
+  withPlannerApprovalLock,
 } = require('../approvals');
 const { quiverInternalPaths } = require('../init-layout');
 const { redactSensitiveValue } = require('./artifacts');
+const { resolveEffectiveContract } = require('./effective-contract');
 const {
   assertReviewBudgetHistoryVerified,
   assertReviewBudgetReservationLocked,
@@ -66,6 +68,26 @@ function planReviewMetaPath(projectRoot) {
 
 function reviewCommitError(message, details = {}) {
   return new GovernanceError('REVIEW_COMMIT_RECOVERY_REQUIRED', message, details);
+}
+
+function effectiveContractSourcePath(binding) {
+  if (!binding) return null;
+  return `.quiver/approvals/${binding.phase}/effective-contracts/records/${binding.record_id.slice(3)}.json`;
+}
+
+function assertEffectiveContractReviewSource(source, binding, errorFactory) {
+  const isEffectiveSource = source?.source_kind === 'effective-contract';
+  if (isEffectiveSource !== Boolean(binding)
+      || (binding && (source.source_version !== null
+        || source.source_file !== effectiveContractSourcePath(binding)))) {
+    throw errorFactory('Effective-contract review source does not match its verified budget reservation.', {
+      source_file: source?.source_file || null,
+      source_kind: source?.source_kind || null,
+      source_version: source?.source_version ?? null,
+      record_id: binding?.record_id || null,
+    });
+  }
+  return binding ? JSON.parse(stableStringify(binding)) : null;
 }
 
 function writeFileAtomic(filePath, contents) {
@@ -142,6 +164,9 @@ function assertReviewCommitMarker(projectRoot, runId, marker) {
     source_file: appendedReview.source_file,
     source_kind: appendedReview.source_kind,
     source_version: appendedReview.source_version,
+    ...(appendedReview.effective_contract ? {
+      effective_contract: appendedReview.effective_contract,
+    } : {}),
     path: expectedArtifactPath,
     raw_artifact_path: appendedReview.raw_artifact_path,
     output_source: appendedReview.output_source,
@@ -184,6 +209,11 @@ function assertReviewCommitMarker(projectRoot, runId, marker) {
     || stableStringify(nextReviews.slice(0, -1)) !== stableStringify(previousReviews)
     || appendedReview?.review_id !== marker.review_id
     || appendedReview?.run_id !== runId
+    || ((appendedReview?.source_kind === 'effective-contract')
+      !== Boolean(appendedReview?.effective_contract))
+    || (appendedReview?.effective_contract
+      && (appendedReview.source_version !== null
+        || appendedReview.source_file !== effectiveContractSourcePath(appendedReview.effective_contract)))
     || marker?.meta?.run_id !== runId
     || marker?.meta?.review_id !== marker.review_id
     || marker?.meta?.path !== expectedArtifactPath
@@ -250,6 +280,18 @@ function invokeReviewCommitFault(options, point) {
 
 function applyGovernedReviewCommitLocked(projectRoot, markerValue, options = {}) {
   const marker = assertReviewCommitMarker(projectRoot, markerValue.run_id, markerValue);
+  const previewState = reduceReviewBudgetEvents(readReviewBudgetEvents(projectRoot, marker.run_id))
+    .reservations.find((state) => state.reservation.reservation_id === marker.reservation.reservation_id);
+  const previewEffectiveContract = previewState?.reservation.intent?.effective_contract || null;
+  if (previewEffectiveContract && options.phaseLocked !== true) {
+    return withPlannerApprovalLock(projectRoot, previewEffectiveContract.phase, {
+      command: 'commit governed effective-contract plan review',
+      now: new Date(marker.prepared_at),
+    }, () => applyGovernedReviewCommitLocked(projectRoot, marker, {
+      ...options,
+      phaseLocked: true,
+    }));
+  }
   const run = readAiRun(projectRoot, marker.run_id);
   if (!run || run.status === 'closed') {
     throw reviewCommitError(`Prepared review commit cannot target closed or missing run '${marker.run_id}'.`);
@@ -290,6 +332,49 @@ function applyGovernedReviewCommitLocked(projectRoot, markerValue, options = {})
       reservation_status: reservationState?.status || 'missing',
     });
   }
+  const reservationEffectiveContract = reservationState.reservation.intent?.effective_contract || null;
+  const committedReview = marker.next_governance_state.reviews.at(-1);
+  assertEffectiveContractReviewSource(
+    committedReview,
+    reservationEffectiveContract,
+    (message, details) => reviewCommitError(message, {
+      ...details,
+      run_id: marker.run_id,
+      reservation_id: marker.reservation.reservation_id,
+    }),
+  );
+  if (stableStringify(committedReview.effective_contract || null)
+      !== stableStringify(marker.meta.effective_contract || null)) {
+    throw reviewCommitError('Effective-contract review evidence differs between canonical governance and metadata.', {
+      run_id: marker.run_id,
+      reservation_id: marker.reservation.reservation_id,
+    });
+  }
+  if (reservationEffectiveContract) {
+    const resolvedEffectiveContract = resolveEffectiveContract(
+      projectRoot,
+      reservationEffectiveContract.phase,
+      reservationEffectiveContract.record_id,
+      {
+        runId: marker.run_id,
+        runLocked: true,
+        phaseLocked: options.phaseLocked === true,
+      },
+    );
+    const actualBinding = {
+      phase: resolvedEffectiveContract.phase,
+      record_id: resolvedEffectiveContract.record.record_id,
+      record_sha256: resolvedEffectiveContract.record.record_sha256,
+      effective_sha256: resolvedEffectiveContract.effective_sha256,
+      input_sha256: resolvedEffectiveContract.record.root.input.sha256,
+    };
+    if (stableStringify(actualBinding) !== stableStringify(reservationEffectiveContract)) {
+      throw reviewCommitError('Effective-contract review evidence no longer matches immutable content.', {
+        run_id: marker.run_id,
+        reservation_id: marker.reservation.reservation_id,
+      });
+    }
+  }
 
   if (currentDigest === marker.previous_governance_sha256) {
     writeRunGovernance(projectRoot, marker.run_id, marker.next_governance_state);
@@ -310,6 +395,7 @@ function applyGovernedReviewCommitLocked(projectRoot, markerValue, options = {})
       reviewId: marker.review_id,
       locked: true,
       prevalidated: true,
+      phaseLocked: options.phaseLocked === true,
       now: marker.prepared_at,
     }).budget;
   } else {
@@ -358,20 +444,22 @@ function applyGovernedReviewCommitLocked(projectRoot, markerValue, options = {})
     });
   }
 
-  projectPlannerDraftLifecycle(
-    projectRoot,
-    'technical-plan',
-    marker.meta.source_version,
-    'reviewed',
-    {
-      now: marker.prepared_at,
-      reviewId: marker.review_id,
-      evidenceSha256: marker.review_contents_sha256,
-      operationId: `review-${marker.review_id}`,
-      runId: marker.run_id,
-      runLocked: true,
-    },
-  );
+  if (!reservationEffectiveContract) {
+    projectPlannerDraftLifecycle(
+      projectRoot,
+      'technical-plan',
+      marker.meta.source_version,
+      'reviewed',
+      {
+        now: marker.prepared_at,
+        reviewId: marker.review_id,
+        evidenceSha256: marker.review_contents_sha256,
+        operationId: `review-${marker.review_id}`,
+        runId: marker.run_id,
+        runLocked: true,
+      },
+    );
+  }
   invokeReviewCommitFault(options, 'after-draft-lifecycle');
 
   const walPath = runReviewCommitPath(projectRoot, marker.run_id);
@@ -964,7 +1052,7 @@ function saveGovernedPlanReview(projectRoot, options = {}) {
         `Governed review '${runId}' requires a budget reservation before provider output can be committed.`,
       );
     }
-    assertReviewBudgetReservationLocked(projectRoot, {
+    const budgetReservationState = assertReviewBudgetReservationLocked(projectRoot, {
       runId,
       governance,
       profile,
@@ -974,6 +1062,13 @@ function saveGovernedPlanReview(projectRoot, options = {}) {
       requestEnvelope: options.reviewBudgetRequestEnvelope,
       requireCurrent: true,
     });
+    const effectiveContract = assertEffectiveContractReviewSource({
+      source_file: options.inputPath || '',
+      source_kind: options.inputKind || null,
+      source_version: options.inputVersion || null,
+    }, budgetReservationState.reservation.intent?.effective_contract || null, (message, details) => (
+      new GovernanceError('REVIEW_REQUEST_STALE', message, details)
+    ));
 
     const reviewId = nextReviewId(current);
     const reconciled = reconcileFindings({
@@ -1006,6 +1101,7 @@ function saveGovernedPlanReview(projectRoot, options = {}) {
       source_file: options.inputPath || '',
       source_kind: options.inputKind || null,
       source_version: options.inputVersion || null,
+      ...(effectiveContract ? { effective_contract: effectiveContract } : {}),
       raw_artifact_path: options.rawArtifactPath || null,
       output_source: options.outputSource || null,
       provider_finding_ids: validated.review.findings.map((finding) => finding.id),
@@ -1041,6 +1137,7 @@ function saveGovernedPlanReview(projectRoot, options = {}) {
       source_file: options.inputPath || '',
       source_kind: options.inputKind || null,
       source_version: options.inputVersion || null,
+      ...(effectiveContract ? { effective_contract: effectiveContract } : {}),
       path: toRelativePosix(projectRoot, reviewPath),
       raw_artifact_path: options.rawArtifactPath || null,
       output_source: options.outputSource || null,
