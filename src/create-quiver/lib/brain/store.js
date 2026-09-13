@@ -10,6 +10,9 @@ const { createBrainAuthority } = require('./authority');
 const {
   AUTHORITIES,
   BrainValidationError,
+  DIGEST_PATTERN,
+  assertNoSensitiveOrOperationalValue,
+  assertRequestBounds,
   canonicalDigest,
   canonicalStringify,
   commitJournalSchema,
@@ -18,7 +21,9 @@ const {
   operationSchema,
   parseSchema,
   querySchema,
+  refSchema,
   storedRecordSchema,
+  timestampSchema,
   validateRecordInput,
 } = require('./schema');
 
@@ -64,7 +69,7 @@ function success(data) {
 
 function failure(error) {
   const code = error?.code || 'STORAGE_FAILED';
-  const status = ['POLICY_DENIED', 'ACTOR_UNVERIFIED', 'CAPABILITY_UNAVAILABLE', 'SECRET_DETECTED', 'UNSAFE_PATH', 'REVISION_CONFLICT', 'IDEMPOTENCY_CONFLICT', 'LOCK_CONFLICT', 'RECOVERY_REQUIRED', 'REFERENCE_INVALID'].includes(code)
+  const status = ['POLICY_DENIED', 'ACTOR_UNVERIFIED', 'CAPABILITY_UNAVAILABLE', 'LEGACY_EVIDENCE_UNVERIFIED', 'GOVERNANCE_READ_ONLY', 'UNSAFE_WRITER_DOWNGRADE', 'SECRET_DETECTED', 'UNSAFE_PATH', 'REVISION_CONFLICT', 'IDEMPOTENCY_CONFLICT', 'LOCK_CONFLICT', 'RECOVERY_REQUIRED', 'REFERENCE_INVALID'].includes(code)
     ? 'blocked'
     : 'failed';
   return result(status, code, null, [{
@@ -290,11 +295,104 @@ function readOperation(projectRoot, ref) {
   } catch {
     throw new BrainStoreError('RECOVERY_REQUIRED', 'An immutable Brain operation is missing or invalid.', { operation_id: ref.id });
   }
-  const operation = parseDigestBound(operationSchema, value, 'Brain operation');
+  const operation = value?.method === 'brain.importProposal'
+    ? parseProposalOperation(value)
+    : parseDigestBound(operationSchema, value, 'Brain operation');
   if (operation.id !== ref.id || operation.digest !== ref.digest) {
     throw new BrainStoreError('DIGEST_MISMATCH', 'Brain operation reference does not match immutable operation bytes.', { operation_id: ref.id });
   }
   return operation;
+}
+
+function assertExactKeys(value, keys, label, code = 'RECOVERY_REQUIRED') {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    throw new BrainStoreError(code, `${label} is invalid.`);
+  }
+  const actual = Object.keys(value).sort();
+  const expected = [...keys].sort();
+  if (actual.length !== expected.length || actual.some((key, index) => key !== expected[index])) {
+    throw new BrainStoreError(code, `${label} contains unsupported fields.`);
+  }
+}
+
+function assertValidId(value, label) {
+  try {
+    parseSchema(mutationContextSchema, { operation_id: value, expected_revision: 0 }, label);
+  } catch {
+    throw new BrainStoreError('RECOVERY_REQUIRED', `${label} contains an invalid ID.`);
+  }
+}
+
+function parseProposalOperation(value) {
+  assertExactKeys(value, [
+    'schema_version', 'id', 'method', 'input_digest', 'proposal_ref',
+    'revision', 'created_at', 'digest',
+  ], 'Brain proposal operation');
+  if (value.schema_version !== 1 || value.method !== 'brain.importProposal'
+      || !Number.isInteger(value.revision) || value.revision <= 0
+      || typeof value.id !== 'string' || !DIGEST_PATTERN.test(value.input_digest)
+      || typeof value.created_at !== 'string') {
+    throw new BrainStoreError('RECOVERY_REQUIRED', 'Brain proposal operation is invalid.');
+  }
+  assertValidId(value.id, 'Brain proposal operation');
+  parseSchema(timestampSchema, value.created_at, 'Brain proposal operation timestamp');
+  parseSchema(refSchema, value.proposal_ref, 'Brain proposal operation ref');
+  if (value.digest !== canonicalDigest(value, 'digest')) {
+    throw new BrainStoreError('DIGEST_MISMATCH', 'Brain proposal operation digest does not match its canonical value.');
+  }
+  return value;
+}
+
+function parseStoredProposal(value) {
+  assertExactKeys(value, [
+    'schema_version', 'id', 'base_revision', 'records', 'source_refs', 'diff',
+    'status', 'created_at', 'provenance', 'digest',
+  ], 'Brain proposal');
+  if (value.schema_version !== 1 || typeof value.id !== 'string'
+      || !Number.isInteger(value.base_revision) || value.base_revision < 0
+      || value.status !== 'proposed' || !Array.isArray(value.records)
+      || !Array.isArray(value.source_refs) || typeof value.created_at !== 'string') {
+    throw new BrainStoreError('RECOVERY_REQUIRED', 'Brain proposal is invalid.');
+  }
+  assertValidId(value.id, 'Brain proposal');
+  parseSchema(timestampSchema, value.created_at, 'Brain proposal timestamp');
+  value.records.forEach(validateRecordInput);
+  value.source_refs.forEach((ref) => parseSchema(refSchema, ref, 'Brain proposal source ref'));
+  if (!value.provenance || typeof value.provenance.actor_id !== 'string'
+      || !Array.isArray(value.provenance.actor_evidence_refs)) {
+    throw new BrainStoreError('RECOVERY_REQUIRED', 'Brain proposal provenance is invalid.');
+  }
+  assertExactKeys(value.provenance, ['actor_id', 'actor_evidence_refs'], 'Brain proposal provenance');
+  assertValidId(value.provenance.actor_id, 'Brain proposal provenance');
+  value.provenance.actor_evidence_refs.forEach((ref) => parseSchema(refSchema, ref, 'Brain proposal actor evidence ref'));
+  if (!value.diff || !['added', 'replaced', 'unchanged'].every((key) => Array.isArray(value.diff[key]))) {
+    throw new BrainStoreError('RECOVERY_REQUIRED', 'Brain proposal diff is invalid.');
+  }
+  assertExactKeys(value.diff, ['added', 'replaced', 'unchanged'], 'Brain proposal diff');
+  const diffIds = [...value.diff.added, ...value.diff.replaced, ...value.diff.unchanged];
+  diffIds.forEach((id) => assertValidId(id, 'Brain proposal diff'));
+  if (new Set(diffIds).size !== diffIds.length) {
+    throw new BrainStoreError('RECOVERY_REQUIRED', 'Brain proposal diff contains duplicate record IDs.');
+  }
+  if (value.digest !== canonicalDigest(value, 'digest')) {
+    throw new BrainStoreError('DIGEST_MISMATCH', 'Brain proposal digest does not match its canonical value.');
+  }
+  return value;
+}
+
+function readStoredProposal(projectRoot, ref) {
+  const filePath = resolveInternalRef(projectRoot, ref, 'proposals');
+  let value;
+  try {
+    value = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+  } catch {
+    throw new BrainStoreError('RECOVERY_REQUIRED', 'An immutable Brain proposal is missing or invalid.', { proposal_id: ref.id });
+  }
+  const proposal = parseStoredProposal(value);
+  if (proposal.id !== ref.id || proposal.digest !== ref.digest) {
+    throw new BrainStoreError('DIGEST_MISMATCH', 'Brain proposal reference does not match immutable proposal bytes.', { proposal_id: ref.id });
+  }
+  return proposal;
 }
 
 function loadRecords(projectRoot, manifest) {
@@ -305,6 +403,28 @@ function loadRecords(projectRoot, manifest) {
     }
     ids.add(ref.id);
     return readStoredRecord(projectRoot, ref);
+  });
+}
+
+function loadProposals(projectRoot, manifest) {
+  const ids = new Set();
+  return manifest.proposal_refs.map((ref) => {
+    if (ids.has(ref.id)) {
+      throw new BrainStoreError('RECOVERY_REQUIRED', 'Brain manifest contains duplicate proposal IDs.', { proposal_id: ref.id });
+    }
+    ids.add(ref.id);
+    return readStoredProposal(projectRoot, ref);
+  });
+}
+
+function loadOperations(projectRoot, manifest) {
+  const ids = new Set();
+  return manifest.operation_refs.map((ref) => {
+    if (ids.has(ref.id)) {
+      throw new BrainStoreError('RECOVERY_REQUIRED', 'Brain manifest contains duplicate operation IDs.', { operation_id: ref.id });
+    }
+    ids.add(ref.id);
+    return readOperation(projectRoot, ref);
   });
 }
 
@@ -421,7 +541,30 @@ function readJournal(projectRoot) {
   } catch {
     throw new BrainStoreError('RECOVERY_REQUIRED', 'Brain recovery journal is not valid JSON.');
   }
-  return parseDigestBound(commitJournalSchema, value, 'Brain recovery journal');
+  if (value?.kind === 'brain-manifest-commit') {
+    return parseDigestBound(commitJournalSchema, value, 'Brain recovery journal');
+  }
+  assertExactKeys(value, [
+    'schema_version', 'kind', 'project_id', 'operation_id', 'prepared_at',
+    'before', 'after', 'proposal_ref', 'operation_ref', 'digest',
+  ], 'Brain proposal recovery journal');
+  if (value.schema_version !== 1 || value.kind !== 'brain-proposal-commit'
+      || typeof value.project_id !== 'string' || typeof value.operation_id !== 'string'
+      || typeof value.prepared_at !== 'string') {
+    throw new BrainStoreError('RECOVERY_REQUIRED', 'Brain proposal recovery journal is invalid.');
+  }
+  parseSchema(refSchema, value.proposal_ref, 'Brain proposal recovery ref');
+  parseSchema(refSchema, value.operation_ref, 'Brain proposal recovery operation ref');
+  for (const snapshot of [value.before, value.after]) {
+    assertExactKeys(snapshot, ['digest', 'base64'], 'Brain proposal recovery snapshot');
+    if (typeof snapshot.digest !== 'string' || typeof snapshot.base64 !== 'string') {
+      throw new BrainStoreError('RECOVERY_REQUIRED', 'Brain proposal recovery snapshot is invalid.');
+    }
+  }
+  if (value.digest !== canonicalDigest(value, 'digest')) {
+    throw new BrainStoreError('DIGEST_MISMATCH', 'Brain proposal recovery journal digest does not match its canonical value.');
+  }
+  return value;
 }
 
 function decodeManifestSnapshot(snapshot, label) {
@@ -452,9 +595,14 @@ function recoverBrainStore(projectRoot) {
           || after.manifest.revision !== before.manifest.revision + 1) {
         throw new BrainStoreError('RECOVERY_REQUIRED', 'Brain recovery journal has a foreign or invalid project transition.');
       }
-      const record = readStoredRecord(projectRoot, journal.record_ref);
       const operation = readOperation(projectRoot, journal.operation_ref);
-      if (!after.manifest.record_refs.some((ref) => ref.id === record.id && ref.digest === record.digest)
+      const artifact = journal.kind === 'brain-proposal-commit'
+        ? readStoredProposal(projectRoot, journal.proposal_ref)
+        : readStoredRecord(projectRoot, journal.record_ref);
+      const artifactRefs = journal.kind === 'brain-proposal-commit'
+        ? after.manifest.proposal_refs
+        : after.manifest.record_refs;
+      if (!artifactRefs.some((ref) => ref.id === artifact.id && ref.digest === artifact.digest)
           || !after.manifest.operation_refs.some((ref) => ref.id === operation.id && ref.digest === operation.digest)) {
         throw new BrainStoreError('RECOVERY_REQUIRED', 'Brain recovery journal references are not present in the after manifest.');
       }
@@ -509,6 +657,44 @@ function makeRecord(recordInput, authorization, createdAt) {
   });
 }
 
+function validateProposalInput(value) {
+  assertRequestBounds(value);
+  assertNoSensitiveOrOperationalValue(value);
+  assertExactKeys(value, ['base_revision', 'records', 'source_refs'], 'Brain proposal input', 'VALIDATION_FAILED');
+  if (!Number.isInteger(value.base_revision) || value.base_revision < 0
+      || !Array.isArray(value.records) || value.records.length === 0
+      || value.records.length > 10_000 || !Array.isArray(value.source_refs)
+      || value.source_refs.length > 10_000) {
+    throw new BrainValidationError('VALIDATION_FAILED', 'Brain proposal input is invalid.');
+  }
+  const records = value.records.map(validateRecordInput);
+  const ids = records.map((record) => record.id);
+  if (new Set(ids).size !== ids.length) {
+    throw new BrainValidationError('REFERENCE_INVALID', 'Brain proposal record IDs must be unique.');
+  }
+  const sourceRefs = value.source_refs.map((ref) => parseSchema(refSchema, ref, 'Brain proposal source ref'));
+  return { base_revision: value.base_revision, records, source_refs: sourceRefs };
+}
+
+function collectTreeFiles(projectRoot, rootPath) {
+  const files = [];
+  const visit = (directory) => {
+    for (const entry of fs.readdirSync(directory, { withFileTypes: true }).sort((left, right) => left.name.localeCompare(right.name))) {
+      const target = path.join(directory, entry.name);
+      if (entry.isSymbolicLink()) {
+        throw new BrainStoreError('UNSAFE_PATH', 'Brain deletion refuses symlinked store entries.', {
+          path: path.relative(projectRoot, target).split(path.sep).join('/'),
+        });
+      }
+      if (entry.isDirectory()) visit(target);
+      else if (entry.isFile()) files.push(path.relative(projectRoot, target).split(path.sep).join('/'));
+      else throw new BrainStoreError('UNSAFE_PATH', 'Brain deletion refuses non-regular store entries.');
+    }
+  };
+  visit(rootPath);
+  return files;
+}
+
 function createBrainStore(options = {}) {
   const projectRoot = path.resolve(options.projectRoot || '');
   const clock = options.clock;
@@ -519,6 +705,28 @@ function createBrainStore(options = {}) {
     clock,
   });
   const faultInjector = typeof options.faultInjector === 'function' ? options.faultInjector : () => {};
+
+  async function refreshProjections(manifest, actor) {
+    const projections = baseRecordProjections(loadRecords(projectRoot, manifest));
+    const refreshed = [];
+    for (const projection of projections) {
+      const authorityCheck = await authority.refreshRecordAuthority(manifest.project_id, actor.actor_id, projection);
+      let validity = projection.validity;
+      if (authorityCheck && authorityCheck.state !== 'current') {
+        validity = authorityCheck.state === 'expired'
+          ? 'expired'
+          : authorityCheck.state === 'superseded'
+            ? 'superseded'
+            : 'unknown';
+      }
+      refreshed.push({
+        ...projection,
+        validity,
+        ...(authorityCheck ? { authority_check: authorityCheck } : {}),
+      });
+    }
+    return refreshed;
+  }
 
   async function append(recordValue, mutationValue) {
     try {
@@ -631,29 +839,78 @@ function createBrainStore(options = {}) {
     }
   }
 
+  async function previewAppend(recordValue, mutationValue) {
+    try {
+      const canonicalInput = validateRecordInput(recordValue);
+      const recordInput = { ...canonicalInput, supersedes: canonicalInput.supersedes || [] };
+      const mutation = parseSchema(mutationContextSchema, mutationValue, 'Brain mutation context');
+      assertReferencePaths(projectRoot, [...recordInput.source_refs, ...recordInput.evidence_refs]);
+      assertWriterAllowed(projectRoot, 'preview append project brain record');
+      const initialManifest = readManifest(projectRoot);
+      const authorization = await authority.authorizeAppend(initialManifest.project_id, canonicalInput);
+      const manifest = readManifest(projectRoot);
+      if (manifest.project_id !== initialManifest.project_id) {
+        throw new BrainStoreError('RECOVERY_REQUIRED', 'Brain project identity changed during append preview.');
+      }
+      const inputDigest = canonicalDigest({ method: 'brain.append', input: canonicalInput });
+      const existingOperationRef = manifest.operation_refs.find((ref) => ref.id === mutation.operation_id);
+      if (existingOperationRef) {
+        const operation = readOperation(projectRoot, existingOperationRef);
+        if (operation.method !== 'brain.append' || operation.input_digest !== inputDigest) {
+          throw new BrainStoreError('IDEMPOTENCY_CONFLICT', 'Operation ID was already committed with different input.', { operation_id: mutation.operation_id });
+        }
+        return success({
+          record: readStoredRecord(projectRoot, operation.record_ref),
+          revision: operation.revision,
+          would_revision: operation.revision,
+          replayed: true,
+          dry_run: true,
+          writes: [],
+        });
+      }
+      if (mutation.expected_revision !== manifest.revision) {
+        throw new BrainStoreError('REVISION_CONFLICT', 'Expected Brain revision does not match current revision.', {
+          expected_revision: mutation.expected_revision,
+          current_revision: manifest.revision,
+        });
+      }
+      const records = loadRecords(projectRoot, manifest);
+      if (records.some((record) => record.id === recordInput.id)) {
+        throw new BrainStoreError('REFERENCE_INVALID', 'Brain record ID already exists.', { record_id: recordInput.id });
+      }
+      const byId = new Map(records.map((record) => [record.id, record]));
+      for (const targetId of recordInput.supersedes) {
+        const target = byId.get(targetId);
+        if (!target) throw new BrainStoreError('REFERENCE_INVALID', 'Brain supersedes target does not exist.', { target_id: targetId });
+        if (AUTHORITIES.indexOf(recordInput.authority_request) > AUTHORITIES.indexOf(target.authority)) {
+          throw new BrainStoreError('POLICY_DENIED', 'A weaker authority cannot supersede stronger knowledge.', { target_id: targetId });
+        }
+      }
+      const record = makeRecord(recordInput, authorization, nowIso(clock));
+      parseDigestBound(storedRecordSchema, record, 'Brain record');
+      assertAcyclic([...records, record]);
+      if (readManifest(projectRoot).digest !== manifest.digest) {
+        throw new BrainStoreError('REVISION_CONFLICT', 'Brain changed while append preview was being resolved.');
+      }
+      return success({
+        record: authorization.approvalCheck ? { ...record, authority_check: authorization.approvalCheck } : record,
+        revision: manifest.revision,
+        would_revision: manifest.revision + 1,
+        replayed: false,
+        dry_run: true,
+        writes: [],
+      });
+    } catch (error) {
+      return failure(normalizeStoreError(error));
+    }
+  }
+
   async function query(filterValue = {}) {
     try {
       const filter = parseSchema(querySchema, filterValue, 'Brain query');
       const manifest = readManifest(projectRoot);
       const actor = await authority.authorizeRead(manifest.project_id);
-      const projections = baseRecordProjections(loadRecords(projectRoot, manifest));
-      const refreshed = [];
-      for (const projection of projections) {
-        const authorityCheck = await authority.refreshRecordAuthority(manifest.project_id, actor.actor_id, projection);
-        let validity = projection.validity;
-        if (authorityCheck && authorityCheck.state !== 'current') {
-          validity = authorityCheck.state === 'expired'
-            ? 'expired'
-            : authorityCheck.state === 'superseded'
-              ? 'superseded'
-              : 'unknown';
-        }
-        refreshed.push({
-          ...projection,
-          validity,
-          ...(authorityCheck ? { authority_check: authorityCheck } : {}),
-        });
-      }
+      const refreshed = await refreshProjections(manifest, actor);
       const validity = filter.validity || 'active';
       const filtered = refreshed.filter((record) => (
         (!filter.ids || filter.ids.includes(record.id))
@@ -673,6 +930,242 @@ function createBrainStore(options = {}) {
     }
   }
 
+  async function completeAuthorizedSnapshot(action = 'brain.read') {
+    try {
+      const initialManifest = readManifest(projectRoot);
+      const actor = await authority.authorizeRead(initialManifest.project_id, action);
+      const manifest = readManifest(projectRoot);
+      if (manifest.project_id !== initialManifest.project_id) {
+        throw new BrainStoreError('RECOVERY_REQUIRED', 'Brain project identity changed during authorization.');
+      }
+      const records = await refreshProjections(manifest, actor);
+      const proposals = loadProposals(projectRoot, manifest);
+      const operations = loadOperations(projectRoot, manifest);
+      for (const record of records) {
+        assertReferencePaths(projectRoot, [...record.source_refs, ...record.evidence_refs]);
+      }
+      for (const proposal of proposals) {
+        assertReferencePaths(projectRoot, [
+          ...proposal.source_refs,
+          ...proposal.records.flatMap((record) => [...record.source_refs, ...record.evidence_refs]),
+        ]);
+      }
+      const finalManifest = readManifest(projectRoot);
+      if (finalManifest.digest !== manifest.digest) {
+        throw new BrainStoreError('REVISION_CONFLICT', 'Brain changed while the complete snapshot was being resolved.');
+      }
+      return success({ manifest, records, proposals, operations, actor_id: actor.actor_id });
+    } catch (error) {
+      return failure(normalizeStoreError(error));
+    }
+  }
+
+  async function importProposal(proposalValue, mutationValue) {
+    try {
+      const proposalInput = validateProposalInput(proposalValue);
+      const mutation = parseSchema(mutationContextSchema, mutationValue, 'Brain mutation context');
+      assertReferencePaths(projectRoot, [
+        ...proposalInput.source_refs,
+        ...proposalInput.records.flatMap((record) => [...record.source_refs, ...record.evidence_refs]),
+      ]);
+      assertWriterAllowed(projectRoot, 'import project brain proposal');
+      assertBrainInitialized(projectRoot);
+      return await withLock(projectRoot, BRAIN_LOCK, { command: 'import project brain proposal' }, async () => {
+        assertWriterAllowed(projectRoot, 'import project brain proposal');
+        assertCanonicalStoreNamespace(projectRoot);
+        const manifest = readManifest(projectRoot);
+        const actor = await authority.authorizeRead(manifest.project_id, 'brain.propose');
+        const authorizedManifest = readManifest(projectRoot);
+        if (authorizedManifest.digest !== manifest.digest) {
+          throw new BrainStoreError('REVISION_CONFLICT', 'Brain changed during proposal authorization.');
+        }
+        assertCanonicalStoreNamespace(projectRoot);
+        assertReferencePaths(projectRoot, [
+          ...proposalInput.source_refs,
+          ...proposalInput.records.flatMap((record) => [...record.source_refs, ...record.evidence_refs]),
+        ]);
+        const inputDigest = canonicalDigest({ method: 'brain.importProposal', input: proposalInput });
+        const existingOperationRef = manifest.operation_refs.find((ref) => ref.id === mutation.operation_id);
+        if (existingOperationRef) {
+          const operation = readOperation(projectRoot, existingOperationRef);
+          if (operation.method !== 'brain.importProposal' || operation.input_digest !== inputDigest) {
+            throw new BrainStoreError('IDEMPOTENCY_CONFLICT', 'Operation ID was already committed with different input.', { operation_id: mutation.operation_id });
+          }
+          const proposalRef = manifest.proposal_refs.find((ref) => ref.id === operation.proposal_ref.id && ref.digest === operation.proposal_ref.digest);
+          if (!proposalRef) throw new BrainStoreError('RECOVERY_REQUIRED', 'Committed operation has no canonical proposal.');
+          const proposal = readStoredProposal(projectRoot, proposalRef);
+          return success({ proposal_id: proposal.id, diff: proposal.diff, status: proposal.status, revision: operation.revision, replayed: true });
+        }
+        if (mutation.expected_revision !== manifest.revision || proposalInput.base_revision !== manifest.revision) {
+          throw new BrainStoreError('REVISION_CONFLICT', 'Proposal base revision does not match current Brain revision.', {
+            base_revision: proposalInput.base_revision,
+            expected_revision: mutation.expected_revision,
+            current_revision: manifest.revision,
+          });
+        }
+        const currentById = new Map(loadRecords(projectRoot, manifest).map((record) => [record.id, record]));
+        const diff = { added: [], replaced: [], unchanged: [] };
+        for (const record of proposalInput.records) {
+          const current = currentById.get(record.id);
+          if (!current) diff.added.push(record.id);
+          else {
+            const comparable = {
+              id: current.id,
+              type: current.type,
+              payload: current.payload,
+              source_refs: current.source_refs,
+              authority_request: current.authority,
+              supersedes: current.supersedes,
+              ...(current.claim ? { claim: current.claim } : {}),
+              evidence_refs: current.evidence_refs,
+              ...(current.approval_ref ? { approval_ref: current.approval_ref } : {}),
+            };
+            (canonicalDigest(comparable) === canonicalDigest({ ...record, supersedes: record.supersedes || [] })
+              ? diff.unchanged
+              : diff.replaced).push(record.id);
+          }
+        }
+        Object.values(diff).forEach((ids) => ids.sort());
+        const createdAt = nowIso(clock);
+        const proposalUuid = crypto.randomUUID();
+        const proposalBase = {
+          schema_version: 1,
+          id: `proposal:${proposalUuid}`,
+          base_revision: proposalInput.base_revision,
+          records: proposalInput.records.map((record) => ({ ...record, supersedes: record.supersedes || [] })),
+          source_refs: proposalInput.source_refs,
+          diff,
+          status: 'proposed',
+          created_at: createdAt,
+          provenance: { actor_id: actor.actor_id, actor_evidence_refs: actor.evidence_refs },
+        };
+        const proposal = withDigest(proposalBase);
+        parseStoredProposal(proposal);
+        const proposalRef = { id: proposal.id, digest: proposal.digest, path: internalRefPath('proposals', proposalUuid) };
+        const operationUuid = crypto.randomUUID();
+        const operation = withDigest({
+          schema_version: 1,
+          id: mutation.operation_id,
+          method: 'brain.importProposal',
+          input_digest: inputDigest,
+          proposal_ref: proposalRef,
+          revision: manifest.revision + 1,
+          created_at: createdAt,
+        });
+        parseProposalOperation(operation);
+        const operationRef = { id: operation.id, digest: operation.digest, path: internalRefPath('operations', operationUuid) };
+        const nextManifest = withDigest({
+          schema_version: 1,
+          project_id: manifest.project_id,
+          revision: manifest.revision + 1,
+          record_refs: manifest.record_refs,
+          proposal_refs: [...manifest.proposal_refs, proposalRef],
+          operation_refs: [...manifest.operation_refs, operationRef],
+        });
+        parseDigestBound(manifestSchema, nextManifest, 'Brain manifest');
+        const paths = brainPaths(projectRoot);
+        writeJsonAtomic(assertSafeNamespace(projectRoot, path.join(paths.root, proposalRef.path), 'Brain immutable proposal path'), proposal);
+        writeJsonAtomic(assertSafeNamespace(projectRoot, path.join(paths.root, operationRef.path), 'Brain immutable operation path'), operation);
+        faultInjector('after-immutable-proposal');
+        const beforeBytes = manifestBytes(manifest);
+        const afterBytes = manifestBytes(nextManifest);
+        const journal = withDigest({
+          schema_version: 1,
+          kind: 'brain-proposal-commit',
+          project_id: manifest.project_id,
+          operation_id: mutation.operation_id,
+          prepared_at: createdAt,
+          before: { digest: manifest.digest, base64: beforeBytes.toString('base64') },
+          after: { digest: nextManifest.digest, base64: afterBytes.toString('base64') },
+          proposal_ref: proposalRef,
+          operation_ref: operationRef,
+        });
+        writeJsonAtomic(paths.journalPath, journal);
+        faultInjector('after-proposal-journal');
+        writeFileAtomic(paths.manifestPath, afterBytes);
+        rebuildIndexLocked(projectRoot, nextManifest);
+        removeDurable(paths.journalPath);
+        return success({ proposal_id: proposal.id, diff, status: 'proposed', revision: nextManifest.revision, replayed: false });
+      });
+    } catch (error) {
+      return failure(normalizeStoreError(error));
+    }
+  }
+
+  async function quarantine(input = {}) {
+    try {
+      assertExactKeys(input, ['confirm_delete', 'dry_run', 'expected_revision', 'operation_id'], 'Brain delete input', 'VALIDATION_FAILED');
+      const mutation = parseSchema(mutationContextSchema, {
+        operation_id: input.operation_id,
+        expected_revision: input.expected_revision,
+      }, 'Brain delete context');
+      if (typeof input.dry_run !== 'boolean' || (input.confirm_delete !== null && typeof input.confirm_delete !== 'string')) {
+        throw new BrainValidationError('VALIDATION_FAILED', 'Brain delete input is invalid.');
+      }
+      const manifest = readManifest(projectRoot);
+      await authority.authorizeRead(manifest.project_id, 'brain.delete');
+      if (mutation.expected_revision !== manifest.revision) {
+        throw new BrainStoreError('REVISION_CONFLICT', 'Expected Brain revision does not match current revision.', {
+          expected_revision: mutation.expected_revision,
+          current_revision: manifest.revision,
+        });
+      }
+      if (!input.dry_run && input.confirm_delete !== manifest.project_id) {
+        throw new BrainStoreError('POLICY_DENIED', 'Brain deletion requires exact project UUID confirmation.', { reason: 'project-confirmation-mismatch' });
+      }
+      const paths = assertCanonicalStoreNamespace(projectRoot);
+      const files = collectTreeFiles(projectRoot, paths.root);
+      const trashRoot = path.join(quiverInternalPaths(projectRoot).root, 'brain-trash');
+      const quarantinePath = path.join(trashRoot, `${manifest.project_id}-${encodeURIComponent(mutation.operation_id)}`);
+      assertSafeNamespace(projectRoot, trashRoot, 'Brain trash directory');
+      assertSafeNamespace(projectRoot, quarantinePath, 'Brain quarantine path');
+      if (fs.existsSync(trashRoot) && !fs.statSync(trashRoot).isDirectory()) {
+        throw new BrainStoreError('UNSAFE_PATH', 'Brain trash path is not a directory.');
+      }
+      if (fs.existsSync(quarantinePath)) {
+        throw new BrainStoreError('REVISION_CONFLICT', 'Brain quarantine destination already exists.', {
+          quarantine_path: path.relative(projectRoot, quarantinePath).split(path.sep).join('/'),
+        });
+      }
+      const data = {
+        active: true,
+        project_id: manifest.project_id,
+        revision: manifest.revision,
+        dry_run: input.dry_run,
+        files,
+        excluded: [
+          '.quiver/brain-trash/**',
+          'vault exports outside .quiver/brain/**',
+          'all project state outside .quiver/brain/**',
+        ],
+        quarantine_path: path.relative(projectRoot, quarantinePath).split(path.sep).join('/'),
+        recoverable: true,
+      };
+      if (input.dry_run) return success(data);
+      assertWriterAllowed(projectRoot, 'delete project brain');
+      return await withLock(projectRoot, BRAIN_LOCK, { command: 'delete project brain' }, async () => {
+        assertWriterAllowed(projectRoot, 'delete project brain');
+        const lockedManifest = readManifest(projectRoot);
+        await authority.authorizeRead(lockedManifest.project_id, 'brain.delete');
+        if (lockedManifest.digest !== manifest.digest) {
+          throw new BrainStoreError('REVISION_CONFLICT', 'Brain changed after deletion validation.');
+        }
+        assertCanonicalStoreNamespace(projectRoot);
+        assertSafeNamespace(projectRoot, trashRoot, 'Brain trash directory');
+        assertSafeNamespace(projectRoot, quarantinePath, 'Brain quarantine path');
+        if (fs.existsSync(quarantinePath)) throw new BrainStoreError('REVISION_CONFLICT', 'Brain quarantine destination already exists.');
+        const lockedFiles = collectTreeFiles(projectRoot, paths.root);
+        fs.mkdirSync(trashRoot, { recursive: true });
+        fs.renameSync(paths.root, quarantinePath);
+        fsyncDirectory(trashRoot);
+        fsyncDirectory(path.dirname(paths.root));
+        return success({ ...data, files: lockedFiles, dry_run: false, active: false });
+      });
+    } catch (error) {
+      return failure(normalizeStoreError(error));
+    }
+  }
+
   async function initialize() {
     try {
       const initialized = initializeBrainStore(projectRoot, options);
@@ -684,7 +1177,11 @@ function createBrainStore(options = {}) {
 
   return {
     append,
+    completeAuthorizedSnapshot,
+    importProposal,
     initialize,
+    previewAppend,
+    quarantine,
     query,
     recover: async () => recoverBrainStore(projectRoot),
     readManifest: () => readManifest(projectRoot),
@@ -715,5 +1212,6 @@ module.exports = {
   createBrainStore,
   initializeBrainStore,
   readManifest,
+  readStoredProposal,
   recoverBrainStore,
 };

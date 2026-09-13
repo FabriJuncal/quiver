@@ -70,6 +70,7 @@ El contenido curado fuera de los marcadores se mantiene manual y no debe ser ree
 | Inspection and export | `ai specs list` | List specs with status, progress, slice counts, and paths. |
 | Inspection and export | `ai slices list` | List slices with status, dependencies, blockers, and optional JSON. |
 | Inspection and export | `ai trace report` | Report AI runs, execution waves, and migration guidance. |
+| Inspection and export | `brain status\|list\|show\|add\|export\|delete` | Inspect and manage the authorized Project Brain and portable Open Knowledge Vault. |
 | Specs, slices, and validation | `spec create` | Create the real spec tree from a reviewed approved technical plan. |
 | Specs, slices, and validation | `spec start` | Create or reuse the dedicated worktree and branch for one spec. |
 | Specs, slices, and validation | `spec status` | Show spec worktree, branch, slice-00 state, and pending slices. |
@@ -95,6 +96,36 @@ El contenido curado fuera de los marcadores se mantiene manual y no debe ser ree
 | Shortcuts and compatibility | `--help / help` | Show this command reference. |
 | Shortcuts and compatibility | `quiver` | Local installed alias to the same CLI; use npx create-quiver for bootstrap. |
 <!-- quiver:generated-cli-reference:end -->
+
+## Project Brain y Open Knowledge Vault
+
+Los comandos nuevos de Brain devuelven el contrato `Result v1`. Con `--json`,
+stdout contiene solo ese objeto canónico y los errores usan las clases de salida
+estables (`2` validación, `3` policy/actor, `4` capability, `5` storage,
+`6` seguridad, `7` conflicto y `8` presupuesto). Sin un adaptador de identidad
+confiable inyectado por el consumidor, las operaciones protegidas fallan cerradas;
+el cuerpo de un registro o una edición Markdown nunca aporta grants.
+
+| Comando | Para qué sirve |
+|---|---|
+| `npx create-quiver brain status [--json]` | Informa si la memoria está activa, revision y conteos; explica qué persiste, qué se excluye y cómo exportar o eliminar. Requiere `brain.read`. |
+| `npx create-quiver brain list [--validity active\|superseded\|all] [--type <type>] [--json]` | Lista la proyección autorizada. Si el límite interno acota la salida, el resultado declara `truncated` y `total`; nunca simula una lista completa. |
+| `npx create-quiver brain show <record-id> [--json]` | Muestra un registro por ID con source, lineage, authority, validity y control de autoridad actualizado. |
+| `npx create-quiver brain add --input <record.json> --operation-id <id> --expected-revision <n> [--dry-run] [--json]` | Valida secreto, referencias, identidad, grants, CAS, supersession e idempotencia antes de append. `--dry-run` ejecuta las mismas validaciones sin crear record, journal, operación ni lock. |
+| `npx create-quiver brain export --destination <relative-path> [--no-history] [--dry-run] [--json]` | Por defecto exporta el snapshot completo a Markdown+YAML y JSON canónico, con manifest y digests. El destino debe ser nuevo o vacío, relativo al proyecto y externo a `.git`/`.quiver`; symlinks, secretos, refs rotas y drift bloquean antes de escribir. `--no-history` es la única omisión de records y queda explícita en el manifest. |
+| `npx create-quiver brain delete --operation-id <id> --expected-revision <n> --dry-run [--json]` | Lista los archivos exactos que se pondrían en cuarentena y las exclusiones sin modificar bytes. |
+| `npx create-quiver brain delete --operation-id <id> --expected-revision <n> --confirm-delete <project-uuid> [--json]` | Con grant `brain.delete` y confirmación UUID exacta, mueve atómicamente solo `.quiver/brain` a `.quiver/brain-trash/<project>-<operation>` bajo el lock Brain. No purga, no elimina exports ni toca otro estado. |
+
+El vault usa UTF-8, front matter YAML, notas Markdown y enlaces relativos seguros;
+puede abrirse como carpeta ordinaria u Obsidian sin instalar Obsidian, Sync ni
+Headless. Incluye manifest canónico, todos los records, proposals y operaciones
+referenciados por defecto, incluso historia superseded. Los cambios en el bloque
+editable de una nota se importan por la API `brain.importProposal` como proposal
+`proposed`; no sustituyen records activos ni autoridad revisada. Después de una
+eliminación, queries devuelven memoria inactiva/capability unavailable y nunca
+reinicializan el Brain en silencio. La recuperación conserva el directorio de
+cuarentena hasta que el usuario ejecute un futuro flujo explícito; este slice no
+incluye purge automático.
 
 ## Configuración inicial
 

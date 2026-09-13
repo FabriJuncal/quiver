@@ -3,7 +3,8 @@
 Program state: IN_PROGRESS. Independent specification review: terminal
 READY_FOR_IMPLEMENTATION. Slices 01 and 05 have completed implementation,
 independent review and combined CI validation (977/977). Slice 02 has completed
-implementation, independent review and affected-consumer verification. Runtime dependencies
+implementation, independent review and affected-consumer verification. Slice 06
+is independently approved; combined A01+A02+A05+A06 CI passed 997/997. Runtime dependencies
 still apply to the remaining slices; this is not whole-plan readiness.
 
 | Slice | State | Evidence |
@@ -14,7 +15,7 @@ still apply to the remaining slices; this is not whole-plan readiness.
 | slice-03-effective-amendments | READY_FOR_IMPLEMENTATION | Runtime dependencies and executed tests pending |
 | slice-04-draft-cli | READY_FOR_IMPLEMENTATION | Runtime dependencies and executed tests pending |
 | slice-05-brain-store | DONE | [Combined A01+A05 CI: 977/977](./evidence/slice-05-integration-with-slice-01.md); independent code review approved |
-| slice-06-brain-vault | IN_PROGRESS | Separate persistent assigned worktree; new validation pending |
+| slice-06-brain-vault | DONE | [Independent review](./evidence/slice-06-independent-review.md); [combined CI retest: 997/997](./evidence/slice-06-integration-with-slice-02-retest.md); this logical commit |
 | slice-07-context-selection | READY_FOR_IMPLEMENTATION | Runtime dependencies and executed tests pending |
 | slice-08-context-impact | READY_FOR_IMPLEMENTATION | Runtime dependencies and executed tests pending |
 | slice-09-artifact-envelopes | READY_FOR_IMPLEMENTATION | Runtime dependencies and executed tests pending |
@@ -29,5 +30,6 @@ or global integration readiness is claimed by a documentary foundation.
 
 [Recovery on 2026-09-12](./evidence/recovery-20260912.md) restored committed
 history into persistent worktrees after the temporary directories disappeared.
-A02 was reconstructed and independently approved with fresh evidence. A06 remains
-on its separately assigned branch pending its own integration and logical commit.
+A02 and A06 were reconstructed and independently approved with fresh evidence.
+Their first combined CI failure was corrected in A02's existing-run fixture;
+the complete frozen-source retest passed. No whole-plan readiness is claimed.

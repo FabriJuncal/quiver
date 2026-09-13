@@ -27,6 +27,7 @@ const SUPPORTED_COMMAND_MODES = new Set([
   'findings',
   'demo',
   'ai',
+  'brain',
 ]);
 
 const SUPPORTED_AI_COMMANDS = new Set([
@@ -64,9 +65,11 @@ const SUPPORTED_FINDINGS_COMMANDS = new Set(['disposition', 'transfer']);
 const SUPPORTED_DEMO_COMMANDS = new Set(['create']);
 const SUPPORTED_CONFIG_SECTIONS = new Set(['language']);
 const SUPPORTED_CONFIG_LANGUAGE_COMMANDS = new Set(['show', 'set']);
+const SUPPORTED_BRAIN_COMMANDS = new Set(['status', 'list', 'show', 'add', 'export', 'delete']);
 
 module.exports = {
   SUPPORTED_AI_COMMANDS,
+  SUPPORTED_BRAIN_COMMANDS,
   SUPPORTED_COMMAND_MODES,
   SUPPORTED_CONFIG_LANGUAGE_COMMANDS,
   SUPPORTED_CONFIG_SECTIONS,

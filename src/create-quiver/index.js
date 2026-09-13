@@ -38,6 +38,7 @@ const {
   runTraceReport: runAiTraceReport,
 } = require('./commands/ai');
 const { runChangelog } = require('./commands/changelog');
+const { runBrain } = require('./commands/brain');
 const { runConfig } = require('./commands/config');
 const { runDashboard } = require('./commands/dashboard');
 const { runDemo } = require('./commands/demo');
@@ -74,6 +75,7 @@ const { redactSensitiveValue } = require('./lib/ai/artifacts');
 const { selectOption } = require('./lib/cli/selectors');
 const {
   SUPPORTED_AI_COMMANDS,
+  SUPPORTED_BRAIN_COMMANDS,
   SUPPORTED_COMMAND_MODES,
   SUPPORTED_CONFIG_LANGUAGE_COMMANDS,
   SUPPORTED_CONFIG_SECTIONS,
@@ -471,6 +473,7 @@ const COMMAND_HELP_GROUPS = [
       ['ai specs list', 'List specs with status, progress, slice counts, and paths.'],
       ['ai slices list', 'List slices with status, dependencies, blockers, and optional JSON.'],
       ['ai trace report', 'Report AI runs, execution waves, and migration guidance.'],
+      ['brain status|list|show|add|export|delete', 'Inspect and manage the authorized Project Brain and portable Open Knowledge Vault.'],
     ],
   },
   {
@@ -536,6 +539,7 @@ function printUsage(language = DEFAULT_LANGUAGE) {
   npx create-quiver dashboard [options]
   npx create-quiver version [--json]
   npx create-quiver changelog [--json]
+  npx create-quiver brain <status|list|show|add|export|delete> [options]
   npx create-quiver config language show [--json]
   npx create-quiver config language set <en|es> [--global]
   npx create-quiver plan [options]
@@ -592,6 +596,14 @@ ${helpText(help, 'headings', 'options', 'Options:')}
       --show-conflicts        ${optionDescription(help, 'Show shared file paths in graph output')}
       --level <n>             ${optionDescription(help, 'Restrict graph output to one level')}
       --json                  ${optionDescription(help, 'Emit machine-readable JSON')}
+      --contract-version <1>  ${optionDescription(help, 'Select the Brain Result contract version (currently 1)')}
+      --destination <path>    ${optionDescription(help, 'New or empty project-relative destination for brain export')}
+      --no-history            ${optionDescription(help, 'Explicitly omit superseded or noncurrent records from brain export')}
+      --validity <name>       ${optionDescription(help, 'Filter brain list by active, superseded, or all')}
+      --type <record-type>    ${optionDescription(help, 'Filter brain list by record type; repeat for multiple types')}
+      --operation-id <id>     ${optionDescription(help, 'Idempotency ID for brain add or delete')}
+      --expected-revision <n> ${optionDescription(help, 'Expected Brain revision for add or delete')}
+      --confirm-delete <uuid> ${optionDescription(help, 'Exact project UUID confirmation for recoverable Brain deletion')}
       --lang <en|es>          ${optionDescription(help, 'Override CLI human output language')}
       --global                ${optionDescription(help, 'For config language set, write the global user config')}
       --include-completed     ${optionDescription(help, 'Include completed slices in dashboard, plan, graph, or next history output')}
@@ -608,7 +620,7 @@ ${helpText(help, 'headings', 'options', 'Options:')}
       --full                  ${optionDescription(help, 'Plan or run the full compatibility init profile')}
       --legacy-scripts        ${optionDescription(help, 'Include legacy Bash wrappers in init profile')}
       --include-templates     ${optionDescription(help, 'Export packaged templates in init profile')}
-      --dry-run               ${optionDescription(help, 'Preview init, analyze, migrate, prepare, spec create/start/close, demo, ai agent set, ai analyze-project, or AI work without executing writes/providers')}
+      --dry-run               ${optionDescription(help, 'Preview init, analyze, migrate, prepare, Brain add/export/delete, spec create/start/close, demo, ai agent set, ai analyze-project, or AI work without executing writes/providers')}
       --deep                  ${optionDescription(help, 'For ai analyze-project, include source and DB files in the read-only sample')}
       --max-files <n>         ${optionDescription(help, 'For ai analyze-project, maximum files in the semantic sample')}
       --max-bytes <n>         ${optionDescription(help, 'For ai analyze-project, maximum selected bytes in the semantic sample')}
@@ -677,6 +689,12 @@ ${helpText(help, 'headings', 'examples', 'Examples:')}
   cd ./my-project && npx create-quiver version --json
   cd ./my-project && npx create-quiver changelog
   cd ./my-project && npx create-quiver changelog --json
+  cd ./my-project && npx create-quiver brain status
+  cd ./my-project && npx create-quiver brain list --validity all --json
+  cd ./my-project && npx create-quiver brain show <record-id> --json
+  cd ./my-project && npx create-quiver brain add --input record.json --operation-id <id> --expected-revision <n> --dry-run
+  cd ./my-project && npx create-quiver brain export --destination knowledge-vault --dry-run
+  cd ./my-project && npx create-quiver brain delete --operation-id <id> --expected-revision <n> --dry-run
   cd ./my-project && npx create-quiver config language show
   cd ./my-project && npx create-quiver config language set es
   npx create-quiver config language set en --global
@@ -867,6 +885,17 @@ function parseArgs(argv, options = {}) {
     evidenceOutput: '',
     evidenceMaxOutput: null,
     evidenceTarget: '',
+    brainCommand: '',
+    brainRecordId: '',
+    brainDestination: '',
+    brainIncludeHistory: true,
+    brainConfirmDelete: '',
+    brainOperationId: '',
+    brainExpectedRevision: null,
+    brainValidity: '',
+    brainTypes: [],
+    contractVersion: 1,
+    contractVersionExplicit: false,
   };
 
   const args = [...argv];
@@ -893,6 +922,9 @@ function parseArgs(argv, options = {}) {
     if (result.mode === 'demo') {
       result.demoCommand = args.shift() || '';
       result.demoName = args.shift() || '';
+    }
+    if (result.mode === 'brain') {
+      result.brainCommand = args.shift() || '';
     }
   } else if (args[0] === '--analyze') {
     result.mode = 'analyze';
@@ -997,6 +1029,64 @@ function parseArgs(argv, options = {}) {
 
     if (arg === '--dry-run') {
       result.dryRun = true;
+      continue;
+    }
+
+    if (arg === '--no-history') {
+      result.brainIncludeHistory = false;
+      continue;
+    }
+
+    if (arg === '--destination') {
+      const value = args[++index];
+      if (!value || String(value).startsWith('--')) throw new Error(formatError('missing value for --destination'));
+      result.brainDestination = value;
+      continue;
+    }
+
+    if (arg === '--confirm-delete') {
+      const value = args[++index];
+      if (!value || String(value).startsWith('--')) throw new Error(formatError('missing value for --confirm-delete'));
+      result.brainConfirmDelete = value;
+      continue;
+    }
+
+    if (arg === '--operation-id') {
+      const value = args[++index];
+      if (!value || String(value).startsWith('--')) throw new Error(formatError('missing value for --operation-id'));
+      result.brainOperationId = value;
+      continue;
+    }
+
+    if (arg === '--expected-revision') {
+      const value = args[++index];
+      const parsed = Number.parseInt(value, 10);
+      if (!Number.isInteger(parsed) || parsed < 0 || String(parsed) !== value) {
+        throw new Error(formatError('invalid value for --expected-revision'));
+      }
+      result.brainExpectedRevision = parsed;
+      continue;
+    }
+
+    if (arg === '--validity') {
+      const value = args[++index];
+      if (!['active', 'superseded', 'all'].includes(value)) throw new Error(formatError('invalid value for --validity'));
+      result.brainValidity = value;
+      continue;
+    }
+
+    if (arg === '--type') {
+      const value = args[++index];
+      if (!value || String(value).startsWith('--')) throw new Error(formatError('missing value for --type'));
+      result.brainTypes.push(value);
+      continue;
+    }
+
+    if (arg === '--contract-version') {
+      const value = args[++index];
+      if (value !== '1') throw new Error(formatError('unsupported contract version; expected 1'));
+      result.contractVersion = 1;
+      result.contractVersionExplicit = true;
       continue;
     }
 
@@ -1882,6 +1972,31 @@ function parseArgs(argv, options = {}) {
     if (positional.length > 0) {
       throw new Error(formatError('demo create spec-viewer does not accept positional target paths; use --dir <target-dir>'));
     }
+  } else if (result.mode === 'brain') {
+    if (!SUPPORTED_BRAIN_COMMANDS.has(result.brainCommand)) {
+      throw new Error(formatError(`unsupported brain subcommand: ${result.brainCommand || '(missing)'}. Supported tasks: status, list, show, add, export, delete`));
+    }
+    if (result.brainCommand === 'show') result.brainRecordId = positional.shift() || '';
+    if (result.brainCommand === 'show' && !result.brainRecordId) {
+      throw new Error(formatError('brain show requires one record ID'));
+    }
+    if (positional.length > 0) throw new Error(formatError(`brain ${result.brainCommand} does not accept additional positional arguments`));
+    if (result.brainCommand === 'add') {
+      if (!result.aiInput || !result.brainOperationId || result.brainExpectedRevision === null) {
+        throw new Error(formatError('brain add requires --input, --operation-id, and --expected-revision'));
+      }
+    }
+    if (result.brainCommand === 'export' && !result.brainDestination) {
+      throw new Error(formatError('brain export requires --destination <relative-path>'));
+    }
+    if (result.brainCommand === 'delete') {
+      if (!result.brainOperationId || result.brainExpectedRevision === null) {
+        throw new Error(formatError('brain delete requires --operation-id and --expected-revision'));
+      }
+      if (!result.dryRun && !result.brainConfirmDelete) {
+        throw new Error(formatError('brain delete requires --confirm-delete <project-uuid>, or use --dry-run'));
+      }
+    }
   } else {
     if (positional.length > 0) {
       result.targetDir = positional.shift();
@@ -1902,6 +2017,9 @@ function parseArgs(argv, options = {}) {
 
   if (result.mode !== 'config' && result.configGlobal) {
     throw new Error(formatError('--global is only supported by config language set. Use: npx create-quiver config language set <en|es> --global'));
+  }
+  if (result.mode !== 'brain' && result.contractVersionExplicit) {
+    throw new Error(formatError('--contract-version is currently supported by brain commands'));
   }
 
   if (result.mode === 'config' && result.configGlobal && result.configCommand !== 'set') {
@@ -3997,10 +4115,31 @@ async function run(argv) {
     return;
   }
 
-  const args = parseCliArgs(normalizedArgv, {
-    language: languageArgs.language,
-    legacyParseArgs: parseArgs,
-  });
+  let args;
+  try {
+    args = parseCliArgs(normalizedArgv, {
+      language: languageArgs.language,
+      legacyParseArgs: parseArgs,
+    });
+  } catch (error) {
+    if (normalizedArgv[0] === 'brain' && normalizedArgv.includes('--json')) {
+      const response = {
+        schema_version: 1,
+        status: 'blocked',
+        code: 'VALIDATION_FAILED',
+        data: null,
+        errors: [{
+          code: 'VALIDATION_FAILED',
+          message: 'Brain command arguments are invalid.',
+        }],
+        evidence_status: 'failed',
+      };
+      process.stdout.write(`${JSON.stringify(response, null, 2)}\n`);
+      process.exitCode = 2;
+      return;
+    }
+    throw error;
+  }
   args.languageResolution = languageResolution;
   args.language = args.languageResolution.language;
 
@@ -4151,6 +4290,26 @@ async function run(argv) {
         'DISPOSITION_UNRESOLVED',
       );
     }
+    return;
+  }
+
+  if (args.mode === 'brain') {
+    await runBrain(process.cwd(), {
+      command: args.brainCommand,
+      confirmDelete: args.brainConfirmDelete || undefined,
+      contractVersion: args.contractVersion,
+      destination: args.brainDestination || undefined,
+      dryRun: args.dryRun,
+      expectedRevision: args.brainExpectedRevision,
+      id: args.brainRecordId || undefined,
+      includeHistory: args.brainIncludeHistory,
+      input: args.aiInput || undefined,
+      json: args.json,
+      language: args.language,
+      operationId: args.brainOperationId || undefined,
+      types: args.brainTypes,
+      validity: args.brainValidity || undefined,
+    });
     return;
   }
 

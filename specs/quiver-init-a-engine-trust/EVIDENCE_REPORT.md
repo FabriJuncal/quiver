@@ -46,7 +46,8 @@ slice 01 does not claim their acceptance merely by declaring lifecycle states.
   implementation/review attempts are itemized in its closure, not inferred from
   these two full-suite attempts. Commit is identified by the exact trailer
   `Slice: quiver-init-a-engine-trust/slice-01-draft-integrity`.
-- slice-02-draft-recovery: implemented and independently approved; four author
+- slice-02-draft-recovery: commit `29c5298d166c5f28fd046f24c5f20f4659f2e586`;
+  implemented and independently approved; four author
   implementation/review cycles plus one integration fixture-fix cycle; affected
   suites 30 + 37 + 43 + 18 + 15 = 143 tests
   passed with no skips. This logical commit is identified by trailer
@@ -58,7 +59,11 @@ slice 01 does not claim their acceptance merely by declaring lifecycle states.
   implementation/review cycles, standalone CI 963/963 and combined A01+A05 CI
   977/977. This logical commit has the exact trailer
   `Slice: quiver-init-a-engine-trust/slice-05-brain-store`.
-- slice-06-brain-vault: not-tested; cycles 0; commit not created.
+- slice-06-brain-vault: implemented and independently approved; four author
+  implementation/review cycles, 68/68 independent focal/consumer tests and two
+  combined CI attempts (996/997 then 997/997 after the A02 fixture correction).
+  This logical commit is identified by trailer
+  `Slice: quiver-init-a-engine-trust/slice-06-brain-vault`.
 - slice-07-context-selection: not-tested; cycles 0; commit not created.
 - slice-08-context-impact: not-tested; cycles 0; commit not created.
 - slice-09-artifact-envelopes: not-tested; cycles 0; commit not created.
@@ -137,6 +142,33 @@ reviewed/conditioned lifecycle projections through the existing WAL protocol.
 
 These tests do not establish later amendment, public CLI/facade, full-initiative,
 Cloud, external-gate or cross-plan acceptance. No source acceptance was reduced.
+
+## Runtime closure — slice-06-brain-vault
+
+The vault exports complete digest-bound canonical history and portable Markdown,
+rejects unsafe destinations/secrets, imports edits only as governed non-effective
+proposals, and quarantines explicitly confirmed Brain deletion recoverably.
+Brain status/list/show/add/export/delete use Result v1, canonical exit classes
+and validated non-writing previews. Missing trusted actor resolution fails closed.
+
+- [Independent review](./evidence/slice-06-independent-review.md) closes four
+  material findings: protected/symlink destinations, concurrent snapshot drift,
+  dry-run writes and JSON argument error envelopes. The last writer-compatibility
+  delta retains the store guard and was checked by a real CLI test.
+- [Independent frozen tests](./evidence/slice-06-independent-final-tests.md):
+  68/68 passed, zero failures/skips, 6,443 ms.
+- [Combined CI attempt 1](./evidence/slice-06-integration-with-slice-02.md):
+  996/997 passed, one failure, zero skips, 100,471 ms. The spec-create canonical
+  ledger fixture omitted its already-created run ID; the fix was independently
+  checked and kept in A02's amended unpublished logical commit.
+- [Combined frozen CI retest](./evidence/slice-06-integration-with-slice-02-retest.md):
+  997/997 passed, zero failures/skips, 97,653 ms. Both rebases were conflict-free;
+  all nine A06 source/test fingerprints were unchanged.
+
+The author also observed standalone 991/991 tests, but that command's raw log
+was not captured; it is explicitly distinct from the retained independent logs.
+No provider execution, real Cloud deployment, external commercial gate or later
+context/facade acceptance is inferred from these local fixtures.
 
 ## Foundation closure — slice-00-foundation
 
