@@ -1,7 +1,7 @@
 # Execution plan — Initiative A
 
 State: IN_PROGRESS. All seven specs passed independent cross-review before
-runtime. Slices 01, 02, 03, 05 and 06 are closed in their logical commits; remaining runtime dependencies
+runtime. Slices 01, 02, 03, 05, 06 and 07 are closed in their logical commits; remaining runtime dependencies
 and whole-plan integration acceptance are still required.
 
 | Slice | Purpose | Depends on |

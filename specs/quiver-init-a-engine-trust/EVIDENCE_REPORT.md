@@ -52,11 +52,12 @@ slice 01 does not claim their acceptance merely by declaring lifecycle states.
   suites 30 + 37 + 43 + 18 + 15 = 143 tests
   passed with no skips. This logical commit is identified by trailer
   `Slice: quiver-init-a-engine-trust/slice-02-draft-recovery`.
-- slice-03-effective-amendments: implemented and independently approved; seven
+- slice-03-effective-amendments: commit `add46189eb97e53fdbee6d42d1bf21d331bfd25d`;
+  implemented and independently approved; seven
   author implement/test/review/fix cycles, 69/69 final affected tests, 6/6
   post-rebase focal tests and 1003/1003 coordinator full CI. Logical commit trailer:
   `Slice: quiver-init-a-engine-trust/slice-03-effective-amendments`.
-- slice-04-draft-cli: not-tested; cycles 0; commit not created.
+- slice-04-draft-cli: implementation assigned after A03/A06; tests and commit pending.
 - slice-05-brain-store: commit `039ffe5ec7682cc70c8d5adb03ff26b11fe3adff`;
   implemented and independently approved; four author
   implementation/review cycles, standalone CI 963/963 and combined A01+A05 CI
@@ -67,7 +68,9 @@ slice 01 does not claim their acceptance merely by declaring lifecycle states.
   combined CI attempts (996/997 then 997/997 after the A02 fixture correction).
   This logical commit is identified by trailer
   `Slice: quiver-init-a-engine-trust/slice-06-brain-vault`.
-- slice-07-context-selection: not-tested; cycles 0; commit not created.
+- slice-07-context-selection: independently approved; three author cycles,
+  105/105 final independent focal/consumer tests and 1014/1014 combined full CI.
+  Logical commit trailer: `Slice: quiver-init-a-engine-trust/slice-07-context-selection`.
 - slice-08-context-impact: not-tested; cycles 0; commit not created.
 - slice-09-artifact-envelopes: not-tested; cycles 0; commit not created.
 - slice-10-actor-policy: not-tested; cycles 0; commit not created.
@@ -194,6 +197,30 @@ through budget/meta/review/WAL and never promotes unchanged root-draft approval.
 
 A04 owns public CLI operations. Full A and downstream integration remain pending.
 No source criterion, failed assertion or empirical gate was removed.
+
+## Runtime closure — slice-07-context-selection
+
+The Context Manifest selects exact task-relevant Brain records under current
+project authorization, explains every inclusion/exclusion and budgets canonical
+payload bytes without silently truncating mandatory contracts. Trusted and
+untrusted contents stay distinct in the real context-pack builder and delimited
+prompt. Absent-only legacy fallback does not hide corrupted or unauthorized Brain.
+
+- [Independent terminal review](./evidence/slice-07-independent-review.md) closes
+  two static findings (raw builder authority and lost private identity) and one
+  reproduced cross-project trusted-pack failure. The retained asserted retest
+  returns POLICY_DENIED, null data and no trusted records.
+- [Independent focal/consumer QA](./evidence/slice-07-independent-final.md):
+  105/105, no failures/skips, 8,882 ms.
+- [Combined full CI with committed A03](./evidence/slice-07-integration-with-slice-03.md):
+  1014/1014, no failures/cancellations/skips/todo, 100,232 ms. One attempt;
+  conflict-free rebase preserved all four source/test fingerprints.
+- [Author decisions](./evidence/slice-07-author-decisions.md) record three cycles
+  and five passing commands (15, 15, 16 focal tests; two 89-test consumer runs).
+
+A08 owns contradiction/impact analysis and fresh checks in the real executor.
+Fixture receipt transitions are not live Cloud or commercial-gate evidence.
+Whole-plan and cross-plan readiness are not implied by this slice closure.
 
 ## Foundation closure — slice-00-foundation
 

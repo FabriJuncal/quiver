@@ -5,7 +5,8 @@ READY_FOR_IMPLEMENTATION. Slices 01 and 05 have completed implementation,
 independent review and combined CI validation (977/977). Slice 02 has completed
 implementation, independent review and affected-consumer verification. Slice 06
 is independently approved; combined A01+A02+A05+A06 CI passed 997/997. Slice 03
-is independently approved and its integrated full CI passed 1003/1003. Runtime dependencies
+is independently approved and its integrated full CI passed 1003/1003. Slice 07
+is independently approved; combined A01/A02/A03/A05/A06/A07 CI passed 1014/1014. Runtime dependencies
 still apply to the remaining slices; this is not whole-plan readiness.
 
 | Slice | State | Evidence |
@@ -14,10 +15,10 @@ still apply to the remaining slices; this is not whole-plan readiness.
 | slice-01-draft-integrity | DONE | [Independent CI retest: 958/958](./evidence/slice-01-independent-ci-cycle-2.md); independent reviewer approved |
 | slice-02-draft-recovery | DONE | [Independent review](./evidence/a02-independent-review.md); 143/143 affected tests passed; this logical commit |
 | slice-03-effective-amendments | DONE | [Independent review](./evidence/a03-independent-review.md); [full CI: 1003/1003](./evidence/slice-03-independent-ci.md); this logical commit |
-| slice-04-draft-cli | READY_FOR_IMPLEMENTATION | Runtime dependencies and executed tests pending |
+| slice-04-draft-cli | IN_PROGRESS | Implementation assigned after committed A03 and A06; isolated A04 worktree |
 | slice-05-brain-store | DONE | [Combined A01+A05 CI: 977/977](./evidence/slice-05-integration-with-slice-01.md); independent code review approved |
 | slice-06-brain-vault | DONE | [Independent review](./evidence/slice-06-independent-review.md); [combined CI retest: 997/997](./evidence/slice-06-integration-with-slice-02-retest.md); this logical commit |
-| slice-07-context-selection | READY_FOR_IMPLEMENTATION | Runtime dependencies and executed tests pending |
+| slice-07-context-selection | DONE | [Independent review](./evidence/slice-07-independent-review.md); [combined CI: 1014/1014](./evidence/slice-07-integration-with-slice-03.md); this logical commit |
 | slice-08-context-impact | READY_FOR_IMPLEMENTATION | Runtime dependencies and executed tests pending |
 | slice-09-artifact-envelopes | READY_FOR_IMPLEMENTATION | Runtime dependencies and executed tests pending |
 | slice-10-actor-policy | READY_FOR_IMPLEMENTATION | Runtime dependencies and executed tests pending |
