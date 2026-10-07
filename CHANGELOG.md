@@ -6,6 +6,8 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- Experimental headless Development/Research dry-run planner with a strict versioned contract, closed adapters, action-level risk/permission decisions, and deterministic content bindings. It performs no execution or state writes and keeps execution/acceptance flags false.
+
 - Quiver v57 — Evidence Budget Recovery UX, with safe missing-evidence classification, deterministic budget recommendations, recovery command construction, CLI/JSON/i18n integration, and associated fixtures and documentation.
 - v55 analyze-project doc apply UX under `specs/quiver-v55-analyze-project-doc-apply-ux/`.
 - `ai analyze-project --apply-docs`, `--save-proposal`, `--diff`, `--allow-dirty-docs`, and `ai analyze-project apply --run <run-id>` for a safer reviewed docs-apply workflow.
