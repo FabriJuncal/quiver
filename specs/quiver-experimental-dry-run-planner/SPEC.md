@@ -34,7 +34,9 @@ Task fields: `schema_version`, `task_id`, `run_id`, `revision`, `domain`,
 `objective`, `criteria`, `inputs`, `actions`, and `budgets`. Each action contains
 `action_id`, `capability`, `resource_id`, `input_ids`, `criterion_ids`, `phase`,
 and `claimed_risk`. Criteria have `id` and `text`; input references have `id`,
-`resource_id`, and `sha256`. Arrays have unique IDs and valid internal references.
+`resource_id`, and `sha256`. Arrays have unique IDs and valid internal references. Every task input and
+criterion must be referenced by at least one action; unused declarations fail
+closed.
 
 Trusted context fields: `schema_version`, `policy_id`, `policy_revision`,
 `task_id`, `run_id`, `task_revision`, `resources`, `allowed_capabilities`,

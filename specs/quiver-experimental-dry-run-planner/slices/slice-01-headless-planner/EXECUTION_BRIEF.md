@@ -15,7 +15,7 @@ Satisfy AC-01 through AC-09 with actual test evidence and independent review.
 
 ## Completion Checklist
 
-- [ ] Stay within slice write paths
-- [ ] Run the declared validation and record exact results
-- [ ] Obtain required review without inventing human acceptance
+- [x] Stay within slice write paths
+- [x] Run the declared validation and record exact results
+- [x] Obtain required review without inventing human acceptance
 - [ ] Publish one separate draft PR for this slice
