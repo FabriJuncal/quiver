@@ -1,4 +1,7 @@
-const { statusPorcelain } = require('./git');
+const fs = require('node:fs');
+const path = require('node:path');
+const crypto = require('node:crypto');
+const { execFileSync } = require('node:child_process');
 const { normalizeContextPath } = require('./ai/safety');
 const { checkScope } = require('./readiness');
 const { validateProjectRelativePaths } = require('./paths');
@@ -87,32 +90,120 @@ function parseStatusPorcelain(text) {
     .filter(Boolean);
 }
 
-function captureWorktreeSnapshot(repoRoot, options = {}) {
-  const raw = typeof options.rawStatus === 'string' ? options.rawStatus : statusPorcelain(repoRoot);
-  const files = parseStatusPorcelain(raw);
+function readGitPaths(repoRoot, args) {
+  // Preserve whitespace and NUL delimiters: runGit trims its output.
+  const output = execFileSync('git', args, {
+    cwd: repoRoot,
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
+  const text = output.toString('utf8');
+  if (!Buffer.from(text, 'utf8').equals(output)) {
+    throw new ScopeValidationError('SCOPE_SNAPSHOT_UNSUPPORTED_PATH',
+      formatError('cannot snapshot a Git path that is not valid UTF-8'));
+  }
+  return text;
+}
 
-  return {
-    repoRoot,
-    raw,
-    files,
-  };
+function fingerprintWorktreePath(repoRoot, file) {
+  const segments = file.split('/');
+  let absolute = repoRoot;
+  for (let index = 0; index < segments.length; index += 1) {
+    absolute = path.join(absolute, segments[index]);
+    let stat;
+    try {
+      stat = fs.lstatSync(absolute);
+    } catch (error) {
+      if (error.code === 'ENOENT' || error.code === 'ENOTDIR') {
+        return 'missing';
+      }
+      throw error;
+    }
+    // Never follow a symlink, including one replacing a tracked parent directory.
+    if (stat.isSymbolicLink()) {
+      const target = fs.readlinkSync(absolute, { encoding: 'buffer' });
+      return `symlink:${index}:${crypto.createHash('sha256').update(target).digest('hex')}`;
+    }
+    if (index < segments.length - 1 && stat.isDirectory()) {
+      continue;
+    }
+    if (!stat.isFile()) {
+      throw new ScopeValidationError('SCOPE_SNAPSHOT_UNSUPPORTED_FILE',
+        formatError(`cannot snapshot non-regular worktree path: ${file}`));
+    }
+    const digest = crypto.createHash('sha256').update(fs.readFileSync(absolute)).digest('hex');
+    return `file:${stat.mode & 0o777}:${digest}`;
+  }
+}
+
+function captureWorktreeSnapshot(repoRoot, options = {}) {
+  // Retain the injected status-only format used by callers without a real worktree.
+  if (typeof options.rawStatus === 'string') {
+    return { repoRoot, raw: options.rawStatus, files: parseStatusPorcelain(options.rawStatus) };
+  }
+  const raw = readGitPaths(repoRoot, ['status', '--porcelain=v1', '-z', '--untracked-files=all']);
+  const entries = raw.split('\0');
+  const files = [];
+  for (let index = 0; index < entries.length; index += 1) {
+    const entry = entries[index];
+    if (!entry) continue;
+    files.push(entry.slice(3));
+    if (/^[RC]|^.[RC]/.test(entry.slice(0, 2))) {
+      // Porcelain -z emits destination first, then source; both belong to the change.
+      files.push(entries[++index]);
+    }
+  }
+  // Fingerprint only Git-reported changes. Comparing the union of both snapshots
+  // also catches pre-existing dirty paths that disappear (deletion or restoration).
+  // Clean files and clean submodules need no content reads.
+  const paths = Array.from(new Set(files.filter(Boolean)));
+  for (const file of paths) {
+    // Scope matching normalizes user-declared patterns; reject Git names that
+    // would alias a different path under those legacy normalization rules.
+    if (normalizeScopePath(file) !== file) {
+      throw new ScopeValidationError('SCOPE_SNAPSHOT_UNSUPPORTED_PATH',
+        formatError(`cannot snapshot a path whose normalization changes its identity: ${JSON.stringify(file)}`));
+    }
+  }
+  const indexEntries = Object.create(null);
+  // Query only dirty paths, in bounded literal batches (filenames are not pathspecs).
+  for (let offset = 0; offset < paths.length; offset += 128) {
+    const entries = readGitPaths(repoRoot, [
+      '--literal-pathspecs', 'ls-files', '--stage', '-z', '--', ...paths.slice(offset, offset + 128),
+    ]);
+    for (const entry of entries.split('\0').filter(Boolean)) {
+      const separator = entry.indexOf('\t');
+      const file = entry.slice(separator + 1);
+      indexEntries[file] = `${indexEntries[file] || ''}${entry.slice(0, separator)};`;
+    }
+  }
+  const fingerprints = Object.create(null);
+  for (const file of paths) {
+    fingerprints[file] = `${indexEntries[file] || ''}|${fingerprintWorktreePath(repoRoot, file)}`;
+  }
+  return { repoRoot, raw, files: paths, fingerprints };
 }
 
 function diffWorktreeSnapshots(beforeSnapshot, afterSnapshot) {
+  const before = beforeSnapshot && beforeSnapshot.fingerprints;
+  const after = afterSnapshot && afterSnapshot.fingerprints;
+  if (before && after) {
+    return Array.from(new Set([...Object.keys(before), ...Object.keys(after)]))
+      .filter((file) => (before[file] || 'missing') !== (after[file] || 'missing'));
+  }
+  if (before || after) {
+    throw new ScopeValidationError('SCOPE_SNAPSHOT_MISMATCH',
+      formatError('cannot compare content-aware and status-only worktree snapshots'));
+  }
+  // Backward compatibility for callers that supply legacy status-only snapshots.
   const beforeFiles = new Set((beforeSnapshot && Array.isArray(beforeSnapshot.files) ? beforeSnapshot.files : []).map(normalizeScopePath));
   const seen = new Set();
   const changedFiles = [];
-
   for (const file of afterSnapshot && Array.isArray(afterSnapshot.files) ? afterSnapshot.files : []) {
     const normalized = normalizeScopePath(file);
-    if (!normalized || beforeFiles.has(normalized) || seen.has(normalized)) {
-      continue;
-    }
-
+    if (!normalized || beforeFiles.has(normalized) || seen.has(normalized)) continue;
     seen.add(normalized);
     changedFiles.push(normalized);
   }
-
   return changedFiles;
 }
 

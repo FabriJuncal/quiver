@@ -8,6 +8,7 @@ const test = require('node:test');
 const {
   allowedPathMatches,
   checkScope,
+  captureWorktreeSnapshot,
   diffWorktreeSnapshots,
   parseStatusPorcelain,
   validateScopeSnapshot,
@@ -208,3 +209,173 @@ test('checkScope respects an explicit base branch before slice git.base_branch',
     repo.cleanup();
   }
 });
+
+function withSnapshotRepo(fn) {
+  const repo = makeGitRepo();
+  try {
+    writeFile(path.join(repo.root, 'tracked.txt'), 'base\n');
+    writeFile(path.join(repo.root, 'nested/child.txt'), 'child\n');
+    writeFile(path.join(repo.root, '.gitignore'), 'ignored/\n');
+    commitAll(repo.root, 'seed snapshot files');
+    fn(repo.root);
+  } finally {
+    repo.cleanup();
+  }
+}
+
+const snapshotCases = [
+  ['unchanged dirty tracked and untracked files', (root) => {
+    writeFile(path.join(root, 'tracked.txt'), 'user\n');
+    writeFile(path.join(root, 'new/note.txt'), 'user\n');
+  }, () => {}, []],
+  ['same-size dirty edit with restored timestamps', (root) => {
+    writeFile(path.join(root, 'tracked.txt'), 'user\n');
+  }, (root) => {
+    const file = path.join(root, 'tracked.txt');
+    const stat = fs.statSync(file);
+    fs.writeFileSync(file, 'next\n');
+    fs.utimesSync(file, stat.atime, stat.mtime);
+  }, ['tracked.txt']],
+  ['dirty tracked file restored to HEAD', (root) => {
+    writeFile(path.join(root, 'tracked.txt'), 'user\n');
+  }, (root) => writeFile(path.join(root, 'tracked.txt'), 'base\n'), ['tracked.txt']],
+  ['dirty tracked file deleted', (root) => {
+    writeFile(path.join(root, 'tracked.txt'), 'user\n');
+  }, (root) => fs.unlinkSync(path.join(root, 'tracked.txt')), ['tracked.txt']],
+  ['already-deleted tracked file recreated', (root) => {
+    fs.unlinkSync(path.join(root, 'tracked.txt'));
+  }, (root) => writeFile(path.join(root, 'tracked.txt'), 'base\n'), ['tracked.txt']],
+  ['existing untracked file deleted', (root) => {
+    writeFile(path.join(root, 'new/note.txt'), 'user\n');
+  }, (root) => fs.unlinkSync(path.join(root, 'new/note.txt')), ['new/note.txt']],
+  ['existing untracked directory child edited', (root) => {
+    writeFile(path.join(root, 'new/note.txt'), 'user\n');
+  }, (root) => writeFile(path.join(root, 'new/note.txt'), 'next\n'), ['new/note.txt']],
+  ['new untracked directory child', () => {}, (root) => {
+    writeFile(path.join(root, 'new/note.txt'), 'next\n');
+  }, ['new/note.txt']],
+  ['both endpoints of a staged rename', () => {}, (root) => {
+    cp.execFileSync('git', ['mv', 'tracked.txt', 'renamed.txt'], { cwd: root });
+  }, ['renamed.txt', 'tracked.txt']],
+  ['staging a pre-existing worktree edit', (root) => {
+    writeFile(path.join(root, 'tracked.txt'), 'user\n');
+  }, (root) => cp.execFileSync('git', ['add', 'tracked.txt'], { cwd: root }), ['tracked.txt']],
+  ['ignored files remain outside the Git snapshot', () => {}, (root) => {
+    writeFile(path.join(root, 'ignored/cache.txt'), 'cache\n');
+  }, []],
+  ['untracked paths with quotes, Unicode and newlines', (root) => {
+    writeFile(path.join(root, 'odd "ñ\nname.txt'), 'user\n');
+  }, (root) => writeFile(path.join(root, 'odd "ñ\nname.txt'), 'next\n'), ['odd "ñ\nname.txt']],
+];
+
+for (const [name, prepare, mutate, expected] of snapshotCases) {
+  test(`content-aware snapshots detect ${name}`, {
+    skip: process.platform === 'win32' && name.includes('newlines') && 'Windows disallows these filename characters',
+  }, () => withSnapshotRepo((root) => {
+    prepare(root);
+    const before = captureWorktreeSnapshot(root);
+    mutate(root);
+    const after = captureWorktreeSnapshot(root);
+    assert.deepEqual(diffWorktreeSnapshots(before, after).sort(), expected.slice().sort());
+  }));
+}
+
+test('content-aware snapshots detect permission changes on dirty files', {
+  skip: process.platform === 'win32' && 'Windows does not support POSIX executable permissions',
+}, () => withSnapshotRepo((root) => {
+  const file = path.join(root, 'tracked.txt');
+  writeFile(file, 'user\n');
+  fs.chmodSync(file, 0o644);
+  const before = captureWorktreeSnapshot(root);
+  fs.chmodSync(file, 0o755);
+  assert.deepEqual(diffWorktreeSnapshots(before, captureWorktreeSnapshot(root)), ['tracked.txt']);
+}));
+
+test('content-aware snapshots inspect symlink targets without following them', {
+  skip: process.platform === 'win32' && 'Symlink creation may require Windows privileges',
+}, () => withSnapshotRepo((root) => {
+  const target = fs.mkdtempSync(path.join(os.tmpdir(), 'quiver-scope-target-'));
+  try {
+    writeFile(path.join(target, 'one'), 'outside\n');
+    const link = path.join(root, 'link');
+    fs.symlinkSync(path.join(target, 'one'), link);
+    const before = captureWorktreeSnapshot(root);
+    writeFile(path.join(target, 'one'), 'external edit\n');
+    assert.deepEqual(diffWorktreeSnapshots(before, captureWorktreeSnapshot(root)), []);
+    fs.unlinkSync(link);
+    fs.symlinkSync(path.join(target, 'two'), link);
+    assert.deepEqual(diffWorktreeSnapshots(before, captureWorktreeSnapshot(root)), ['link']);
+    // Replacing a tracked parent with a symlink must not read the external child.
+    const beforeParent = captureWorktreeSnapshot(root);
+    fs.rmSync(path.join(root, 'nested'), { recursive: true });
+    fs.symlinkSync(target, path.join(root, 'nested'));
+    const afterParent = captureWorktreeSnapshot(root);
+    assert.ok(diffWorktreeSnapshots(beforeParent, afterParent).includes('nested/child.txt'));
+  } finally {
+    fs.rmSync(target, { recursive: true, force: true });
+  }
+}));
+
+test('content-aware snapshots fail closed when mixed with legacy snapshots', () => {
+  assert.throws(() => diffWorktreeSnapshots({ files: [] }, { fingerprints: {} }),
+    (error) => error.code === 'SCOPE_SNAPSHOT_MISMATCH');
+});
+
+
+test('clean worktrees, including tracked submodules, need no content fingerprints', () => withSnapshotRepo((root) => {
+  const commit = cp.execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' }).trim();
+  const submodule = path.join(root, 'module');
+  cp.execFileSync('git', ['-c', 'protocol.file.allow=always', 'clone', '-q', root, submodule]);
+  cp.execFileSync('git', ['update-index', '--add', '--cacheinfo', `160000,${commit},module`], { cwd: root });
+  cp.execFileSync('git', ['commit', '-qm', 'seed clean gitlink'], { cwd: root });
+  const snapshot = captureWorktreeSnapshot(root);
+  assert.deepEqual(snapshot.files, []);
+  assert.deepEqual(Object.keys(snapshot.fingerprints), []);
+}));
+
+test('dirty submodule snapshots fail closed with an actionable unsupported-path error', () => withSnapshotRepo((root) => {
+  const commit = cp.execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' }).trim();
+  const submodule = path.join(root, 'module');
+  cp.execFileSync('git', ['-c', 'protocol.file.allow=always', 'clone', '-q', root, submodule]);
+  cp.execFileSync('git', ['update-index', '--add', '--cacheinfo', `160000,${commit},module`], { cwd: root });
+  cp.execFileSync('git', ['commit', '-qm', 'seed gitlink'], { cwd: root });
+  writeFile(path.join(submodule, 'tracked.txt'), 'changed\n');
+  assert.throws(() => captureWorktreeSnapshot(root),
+    (error) => error.code === 'SCOPE_SNAPSHOT_UNSUPPORTED_FILE' && error.message.includes('module'));
+}));
+
+
+test('snapshots reject Git path names that would alias a declared allowed path', {
+  skip: process.platform === 'win32' && 'These literal filenames are POSIX-specific',
+}, () => {
+  for (const name of [' allowed.txt ', 'dir\\allowed.txt']) {
+    withSnapshotRepo((root) => {
+      writeFile(path.join(root, name), 'before\n');
+      assert.throws(() => captureWorktreeSnapshot(root),
+        (error) => error.code === 'SCOPE_SNAPSHOT_UNSUPPORTED_PATH');
+    });
+  }
+});
+
+test('snapshots reject non-UTF-8 Git names instead of comparing lossy missing paths', {
+  skip: process.platform === 'win32' && 'Arbitrary filename bytes are POSIX-specific',
+}, () => withSnapshotRepo((root) => {
+  const file = Buffer.concat([Buffer.from(`${root}/invalid-`), Buffer.from([0xff])]);
+  fs.writeFileSync(file, 'before');
+  assert.throws(() => captureWorktreeSnapshot(root),
+    (error) => error.code === 'SCOPE_SNAPSHOT_UNSUPPORTED_PATH');
+  fs.writeFileSync(file, 'after!');
+  assert.throws(() => captureWorktreeSnapshot(root),
+    (error) => error.code === 'SCOPE_SNAPSHOT_UNSUPPORTED_PATH');
+}));
+
+test('snapshots compare symlink target bytes without lossy decoding', {
+  skip: process.platform === 'win32' && 'Arbitrary symlink target bytes are POSIX-specific',
+}, () => withSnapshotRepo((root) => {
+  const link = path.join(root, 'link');
+  fs.symlinkSync(Buffer.from([0x61, 0xff]), link);
+  const before = captureWorktreeSnapshot(root);
+  fs.unlinkSync(link);
+  fs.symlinkSync(Buffer.from([0x61, 0xfe]), link);
+  assert.deepEqual(diffWorktreeSnapshots(before, captureWorktreeSnapshot(root)), ['link']);
+}));
