@@ -50,6 +50,8 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 
+- Executor scope validation now compares worktree content and index snapshots, detecting additional changes to already-dirty paths when `allowDirty` is enabled, including deletions and renames. Default clean-worktree preflight remains unchanged.
+
 - `ai analyze-project` now replaces visible Quiver scaffold placeholders and old template `context-prep` blocks when a valid project proposal is available, with nika-erp style regression coverage for `NIKA_ERP`/`stockflow`/`StockFlow` naming conflicts.
 - `ai analyze-project --deep` now repairs common safe provider schema drift, retries with compact schema feedback, records redacted raw artifacts, and fails closed without final doc writes when JSON remains invalid.
 - `doctor --fix` now gives an actionable repair path for existing `AGENTS.md` files that are missing Quiver contract sections while preserving manual content.

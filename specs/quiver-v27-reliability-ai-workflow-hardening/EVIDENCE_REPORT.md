@@ -177,3 +177,46 @@
 | slice-07 | Completed: read-only analyze dry-run, React/Vite stack detection, scan source/freshness reporting, flow context source output, active/generic doctor examples, and prepare-context evidence coverage. |
 | slice-08 | Completed: agent profile dry-run, grouped help sync, cross-platform path guidance, GitHub account/scope/alias diagnostics, package-manager-aware flow guidance, install fallback messages, and focused command/library tests. |
 | slice-09 | Completed: sanitized fixture matrix coverage, fixture coverage validator, stale-doc and old-state doctor regressions, source and packaged CLI smokes, full test suite, package smoke, and docs/release readiness sync. |
+
+## Scope Snapshot Regression Follow-up - 2026-10-07
+
+This bounded follow-up addresses the already-dirty-path audit finding in the
+executor scope guard associated with slice-06. Historical slice status and
+completion metadata above are unchanged. Baseline: `75fef298f12c66c6ac3a567a03f3bc41ce897796`.
+
+- Reproduced the bug before editing runtime code: two new actual-executor tests
+  failed because additional out-of-scope writes to already-dirty tracked and
+  untracked files were accepted with `allowDirty: true`.
+- Snapshot comparison now fingerprints only Git-reported dirty paths using
+  SHA-256 content, file permissions, raw symlink-target bytes and Git index
+  identities. It compares both snapshots' path sets, including disappearing
+  dirty paths, and records both rename endpoints.
+- NUL-delimited Git output preserves supported filenames. Invalid UTF-8 names
+  and names whose legacy scope normalization changes path identity fail closed.
+- Existing clean-worktree and commit-mode preflight remain unchanged. Unchanged
+  dirty user files are preserved and do not count as provider changes. The guard
+  reports violations after execution; it never silently overwrites user edits.
+- Clean tracked submodules require no content reads. Dirty submodules and other
+  unsupported non-regular dirty paths fail closed with an explicit error.
+- Environment: Linux, Node v24.19.0, npm 11.9.0, Git 2.52.0. Dependencies installed
+  from the committed npm lockfile with lifecycle scripts disabled.
+- `node --test tests/lib/scope.test.js tests/lib/ai-executor.test.js`: exit 0,
+  49 passed, 0 failed. Coverage includes same-size edits with restored timestamps,
+  content restoration, deletion/recreation, nested untracked files, staging,
+  renames, permissions, symlinks, unusual filenames, legacy snapshots and
+  preservation of unchanged user edits.
+- `npm run test:ci`: exit 0, 967 passed, 0 failed, 0 skipped after the final runtime
+  and regression-test edits.
+- Independent review reran the focused suite and adversarial invalid-filename,
+  path-alias and raw-symlink-target probes; no blocking findings remain within
+  the bounded dirty-snapshot contract.
+- Existing limits remain: this is not filesystem isolation or rollback. Ignored
+  untracked files, transient/net-zero changes, writes through symlinks to external
+  targets, provider commits that remove all dirty status, and concurrent writers
+  are outside the guarantee. Dirty-file hashing is synchronous and reads each
+  file into memory; large dirty files can increase latency and memory use.
+- Local scope-capture sample on four dirty files: ten runs took 12.6–20.5 ms.
+  This is a smoke measurement, not a cross-platform or large-file benchmark.
+- No provider/model calls, production changes, merge, deployment or package
+  publication were performed for these tests. macOS/Windows execution and
+  package-install smoke were not run in this Linux environment.

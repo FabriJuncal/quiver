@@ -689,3 +689,57 @@ test('runExecuteSlice refuses commit mode with pre-existing dirty files even whe
     repo.cleanup();
   }
 });
+
+for (const tracked of [true, false]) {
+  test(`runExecuteSlice detects further edits to an already-dirty ${tracked ? 'tracked' : 'untracked'} out-of-scope file`, async () => {
+    const repo = createRepo();
+    const outside = 'docs/outside.md';
+    try {
+      writeFile(path.join(repo.root, outside), 'committed content\n');
+      if (tracked) {
+        git(repo.root, ['add', outside]);
+        git(repo.root, ['commit', '-m', 'seed outside file']);
+      }
+      writeFile(path.join(repo.root, outside), 'existing user edits\n');
+      await assert.rejects(runExecuteSlice(repo.root, {
+        allowDirty: true,
+        provider: 'codex',
+        slice: repo.slicePath,
+        runProviderFn: async () => {
+          writeFile(path.join(repo.root, outside), 'provider changed it\n');
+          writeFile(path.join(repo.root, repo.allowedFile), 'module.exports = 2;\n');
+          return { ok: true, stdout: '', stderr: '' };
+        },
+      }), (error) => error.code === 'SCOPE_VIOLATION'
+        && error.details.outOfScopeFiles.includes(outside));
+      assert.equal(JSON.parse(fs.readFileSync(repo.slicePath, 'utf8')).status, 'draft');
+      // Scope validation reports the write; it does not silently restore old user bytes.
+      assert.equal(fs.readFileSync(path.join(repo.root, outside), 'utf8'), 'provider changed it\n');
+    } finally {
+      repo.cleanup();
+    }
+  });
+}
+
+
+test('runExecuteSlice allows in-scope edits while preserving unchanged dirty user files', async () => {
+  const repo = createRepo();
+  try {
+    const outside = path.join(repo.root, 'docs/user-notes.md');
+    writeFile(outside, 'existing user notes\n');
+    const result = await runExecuteSlice(repo.root, {
+      allowDirty: true,
+      provider: 'codex',
+      slice: repo.slicePath,
+      runProviderFn: async () => {
+        writeFile(path.join(repo.root, repo.allowedFile), 'module.exports = 2;\n');
+        return { ok: true, stdout: '', stderr: '' };
+      },
+    });
+    assert.equal(result.scopeResult.ok, true);
+    assert.ok(!result.scopeResult.changedFiles.includes('docs/user-notes.md'));
+    assert.equal(fs.readFileSync(outside, 'utf8'), 'existing user notes\n');
+  } finally {
+    repo.cleanup();
+  }
+});
