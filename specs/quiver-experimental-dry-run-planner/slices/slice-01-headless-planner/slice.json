@@ -1,0 +1,74 @@
+{
+  "slice_id": "slice-01-headless-planner",
+  "ticket": "QUIVER-EXP-01",
+  "type": "feature",
+  "title": "Experimental Headless Planner",
+  "objective": "Implement the reviewed pure controller, closed adapters, and adversarial tests.",
+  "description": "Implement the reviewed pure controller, closed adapters, and adversarial tests.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "feature/QUIVER-EXP-00-planning-contract",
+    "branch_slug": "headless-planner",
+    "branch_name": "feature/QUIVER-EXP-01-headless-planner"
+  },
+  "expected_read_paths": [
+    "CONTRIBUTING.md",
+    "README_FOR_AI.md",
+    "specs/quiver-experimental-dry-run-planner/SPEC.md",
+    "specs/quiver-experimental-dry-run-planner/EXECUTION_PLAN.md",
+    "src/create-quiver/lib/ai/safety.js"
+  ],
+  "files": [
+    "src/create-quiver/lib/planning/dry-run.js",
+    "tests/lib/planning-dry-run.test.js",
+    "examples/planning-dry-run/*.json",
+    "docs/reference/experimental-dry-run-planner.md",
+    "CHANGELOG.md",
+    "specs/quiver-experimental-dry-run-planner/**"
+  ],
+  "allowed_write_paths": [
+    "src/create-quiver/lib/planning/dry-run.js",
+    "tests/lib/planning-dry-run.test.js",
+    "examples/planning-dry-run/*.json",
+    "docs/reference/experimental-dry-run-planner.md",
+    "CHANGELOG.md",
+    "specs/quiver-experimental-dry-run-planner/**"
+  ],
+  "depends_on": [
+    "slice-00-planning-contract"
+  ],
+  "parallel_safe": "never",
+  "parallel_safe_reason": "Contract review precedes dependent implementation.",
+  "must": [
+    "Preserve the pure plan-only boundary.",
+    "Do not invent human approval or executed evidence."
+  ],
+  "not_included": [
+    "Real execution, new providers, state, UI, framework, merge, release, and deployment."
+  ],
+  "acceptance": [
+    "AC-01 in SPEC.md is verified by recorded tests or disclosed as blocked.",
+    "AC-02 in SPEC.md is verified by recorded tests or disclosed as blocked.",
+    "AC-03 in SPEC.md is verified by recorded tests or disclosed as blocked.",
+    "AC-04 in SPEC.md is verified by recorded tests or disclosed as blocked.",
+    "AC-05 in SPEC.md is verified by recorded tests or disclosed as blocked.",
+    "AC-06 in SPEC.md is verified by recorded tests or disclosed as blocked.",
+    "AC-07 in SPEC.md is verified by recorded tests or disclosed as blocked.",
+    "AC-08 in SPEC.md is verified by recorded tests or disclosed as blocked.",
+    "AC-09 in SPEC.md is verified by recorded tests or disclosed as blocked."
+  ],
+  "tests": [
+    "node --test tests/lib/planning-dry-run.test.js",
+    "npm run test:ci",
+    "npm run docs:check",
+    "npm run changelog:check",
+    "npm run package:quiver",
+    "node bin/create-quiver.js spec validate specs/quiver-experimental-dry-run-planner --strict",
+    "node bin/create-quiver.js slice check --local specs/quiver-experimental-dry-run-planner/slices/slice-01-headless-planner/slice.json",
+    "npm run schema:slice:check",
+    "git diff --check"
+  ],
+  "estimated_hours": 3,
+  "status": "ready",
+  "ready_at": "2026-10-07T13:30:00Z"
+}

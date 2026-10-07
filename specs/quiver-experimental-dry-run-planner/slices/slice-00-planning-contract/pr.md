@@ -1,0 +1,40 @@
+## Title
+
+Experimental Planning Contract
+
+## Summary
+
+Define the two-domain, pure planning boundary and acceptance criteria.
+
+## PR Policy
+
+One slice per draft PR. No merge, execution, deployment, release, or human
+acceptance is authorized by this PR.
+
+## Scope
+
+See [slice contract](slice.json).
+
+## Files
+
+Only the declared slice write paths.
+
+## How to Test (DETAILED - REQUIRED)
+
+Run `node bin/create-quiver.js spec validate specs/quiver-experimental-dry-run-planner --strict`
+and the commands declared in the slice contract. Check `git diff --check`.
+Implementation also requires focused/full tests, docs, and package checks.
+
+## Evidence
+
+See [evidence report](../../EVIDENCE_REPORT.md). Pending stages are not passes.
+
+## Rollback
+
+Revert the additive slice commit. There are no persistent migrations or runtime
+state changes to reverse.
+
+## Risks / Notes
+
+Experimental plan-only API. Trusted snapshot provenance is a caller obligation.
+All execution and acceptance flags stay false. Human merge remains separate.
