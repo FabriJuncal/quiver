@@ -6,9 +6,8 @@ const { collectDocsScope } = require('./docs-scope');
 
 const repoRoot = path.resolve(__dirname, '..', '..');
 const files = collectDocsScope(repoRoot);
-const bin = process.platform === 'win32'
-  ? path.join(repoRoot, 'node_modules', '.bin', 'markdown-link-check.cmd')
-  : path.join(repoRoot, 'node_modules', '.bin', 'markdown-link-check');
+// Run the package's JavaScript CLI without relying on platform-specific shims.
+const bin = require.resolve('markdown-link-check/markdown-link-check');
 
 if (files.length === 0) {
   console.error('No markdown files found in the configured docs link scope.');
@@ -19,7 +18,7 @@ console.log(`Markdown link scope: ${files.length} files`);
 
 const failed = [];
 for (const file of files) {
-  const result = cp.spawnSync(bin, ['-q', '-c', '.markdown-link-check.json', file], {
+  const result = cp.spawnSync(process.execPath, [bin, '-q', '-c', '.markdown-link-check.json', file], {
     cwd: repoRoot,
     shell: false,
     stdio: 'inherit',

@@ -1,3 +1,4 @@
+const { requiredSymlink } = require('../helpers/required-symlink');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const os = require('node:os');
@@ -115,7 +116,7 @@ test('evidence path policy rejects symlink output and read escapes', () => {
   const outside = fs.mkdtempSync(path.join(os.tmpdir(), 'quiver-evidence-outside-'));
   try {
     const linkDir = path.join(dir, 'linked');
-    fs.symlinkSync(outside, linkDir, 'dir');
+    requiredSymlink(outside, linkDir, 'dir');
     assert.throws(
       () => resolveEvidenceOutputPath(dir, path.join('linked', 'escape.md')),
       /must stay inside the project root/,
@@ -124,7 +125,7 @@ test('evidence path policy rejects symlink output and read escapes', () => {
     const outsideFile = path.join(outside, 'outside.md');
     fs.writeFileSync(outsideFile, '# outside\n');
     const linkFile = path.join(dir, 'linked-file.md');
-    fs.symlinkSync(outsideFile, linkFile);
+    requiredSymlink(outsideFile, linkFile);
     assert.throws(
       () => resolveEvidenceReadPath(dir, 'linked-file.md'),
       /must stay inside the project root/,

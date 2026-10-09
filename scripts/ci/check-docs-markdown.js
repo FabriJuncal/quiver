@@ -6,9 +6,8 @@ const { collectDocsScope } = require('./docs-scope');
 
 const repoRoot = path.resolve(__dirname, '..', '..');
 const files = collectDocsScope(repoRoot);
-const bin = process.platform === 'win32'
-  ? path.join(repoRoot, 'node_modules', '.bin', 'markdownlint-cli2.cmd')
-  : path.join(repoRoot, 'node_modules', '.bin', 'markdownlint-cli2');
+// Invoke the JavaScript entrypoint directly; Windows .cmd shims need a shell.
+const bin = path.join(path.dirname(require.resolve('markdownlint-cli2')), 'markdownlint-cli2-bin.mjs');
 
 if (files.length === 0) {
   console.error('No markdown files found in the configured docs lint scope.');
@@ -16,7 +15,7 @@ if (files.length === 0) {
 }
 
 console.log(`Markdown lint scope: ${files.length} files`);
-const result = cp.spawnSync(bin, files, {
+const result = cp.spawnSync(process.execPath, [bin, ...files], {
   cwd: repoRoot,
   shell: false,
   stdio: 'inherit',

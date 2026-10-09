@@ -80,6 +80,7 @@ function makeGitProject() {
   writeFile(path.join(project.root, 'src/alpha.js'), 'module.exports = "base-alpha";\n');
   writeFile(path.join(project.root, 'src/beta.js'), 'module.exports = "base-beta";\n');
   git(project.root, ['init']);
+  git(project.root, ['config', 'core.autocrlf', 'false']);
   git(project.root, ['config', 'user.email', 'test@example.com']);
   git(project.root, ['config', 'user.name', 'Test User']);
   git(project.root, ['checkout', '-b', 'feature/execute-plan']);

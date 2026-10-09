@@ -1,3 +1,4 @@
+const { requiredSymlink } = require('../helpers/required-symlink');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const os = require('node:os');
@@ -135,7 +136,7 @@ test('project discovery handles unknown stack, no package manager, symlinks, and
   });
 
   try {
-    fs.symlinkSync(path.join(repo.root, 'README.md'), path.join(repo.root, 'linked-readme.md'));
+    requiredSymlink(path.join(repo.root, 'README.md'), path.join(repo.root, 'linked-readme.md'));
     for (let index = 0; index < 120; index += 1) {
       writeFile(path.join(repo.root, 'src/services', `service-${index}.ts`), `export const service${index} = ${index};\n`);
     }

@@ -395,7 +395,7 @@ function collectLifecycleExport(projectRoot, options = {}) {
   const normalizedSlices = slices.map((slice) => normalizeSlice(projectRoot, slice, dependencyMap));
   const specs = groupSlicesBySpec(slices).map((spec) => {
     const progress = summarizeProgress(spec.slices);
-    const specPath = path.join(spec.specFamily, spec.specSlug);
+    const specPath = toPosix(path.join(spec.specFamily, spec.specSlug));
     return {
       slug: spec.specSlug,
       family: spec.specFamily,

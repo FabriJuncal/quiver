@@ -4,8 +4,9 @@ const path = require('path');
 
 const DEFAULT_LANGUAGE = 'en';
 const SUPPORTED_LANGUAGES = Object.freeze(['en', 'es']);
-const PROJECT_CONFIG_RELATIVE_PATH = path.join('.quiver', 'config.json');
-const GLOBAL_CONFIG_RELATIVE_PATH = path.join('.quiver', 'config.json');
+// These values are public source labels as well as relative filesystem paths.
+const PROJECT_CONFIG_RELATIVE_PATH = '.quiver/config.json';
+const GLOBAL_CONFIG_RELATIVE_PATH = '.quiver/config.json';
 
 function isSupportedLanguage(language) {
   return SUPPORTED_LANGUAGES.includes(language);

@@ -54,6 +54,8 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 
+- Windows validation compatibility: stable language/export path labels, portable CLI test fixtures, deterministic Git fixture line endings, and direct Node execution of Markdown validation tools. Real symlink security tests remain required and report missing Windows privileges explicitly.
+
 - Executor scope validation now compares worktree content and index snapshots, detecting additional changes to already-dirty paths when `allowDirty` is enabled, including deletions and renames. Default clean-worktree preflight remains unchanged.
 
 - `ai analyze-project` now replaces visible Quiver scaffold placeholders and old template `context-prep` blocks when a valid project proposal is available, with nika-erp style regression coverage for `NIKA_ERP`/`stockflow`/`StockFlow` naming conflicts.
