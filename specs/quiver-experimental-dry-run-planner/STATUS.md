@@ -10,5 +10,14 @@ release, or deployment. Publication is through separate dependent draft PRs.
 
 Documentary draft PR: [#148](https://github.com/FabriJuncal/quiver/pull/148).
 
-Implementation is prepared for a separate dependent draft PR. Remote CI and
-human merge are separate publication gates, not implied by local completion.
+El PR [#149](https://github.com/FabriJuncal/quiver/pull/149) se integró únicamente
+en la rama de #148. Main permanece separado; CI y merge humano no se infieren
+de la terminación local.
+
+
+## Extensión Development
+
+- slice-02-development-proposal: completed; implementación y revisión independiente completas
+- 277 pruebas focalizadas y 1.244 de suite completa aprobadas; gates locales correctos
+- Publicación del PR draft dependiente y CI exacto: se registran en el PR
+- Sin aceptación humana ni autorización de aplicación, merge o deploy

@@ -257,3 +257,169 @@ sustituyen esas pruebas. Ningún resultado acepta la tarea ni autoriza ejecutarl
 - Prueba sin ejecución o dry-run: preparación de un plan sin realizar sus acciones
 - PR: solicitud de integración de cambios; un PR abierto o una aprobación local
   no equivalen a integrar cambios en `main`
+
+## Preparar una propuesta Development revisable
+
+La API adicional `prepareDevelopmentProposal(task, trustedContext, proposalInput)`
+convierte un parche aportado por quien llama en un objeto listo para revisar.
+No genera el parche con un modelo ni lo aplica. `planDryRun` conserva su salida,
+su revisión y sus vínculos anteriores. La nueva semántica se identifica como
+`development-proposal-v1` mediante `proposal_revision`.
+
+Antes de llamar, obtené el `binding` de `planDryRun` para esos mismos argumentos.
+Pasalo como `expected_plan_binding` dentro de `proposalInput`. La nueva función
+vuelve a calcular el plan; un objeto de plan externo, un hash o un texto de
+aprobación no sustituyen al contexto confiable ni otorgan permisos.
+
+El esquema cerrado de `proposalInput` contiene:
+
+- `schema_version`: `1`
+- `expected_plan_binding`: vínculo del plan que se espera revisar
+- `patches`: de uno a diez objetos con `action_id` y `unified_diff`
+- `proposed_tests`: de una a cien entradas con `test_id`, `action_id`,
+  `criterion_ids` y `description`; son descripciones, nunca comandos ejecutables
+- `evidence_references`: hasta cien entradas con `evidence_id`, `input_id` y
+  `criterion_ids`; puede ser un array vacío y no incluye resultados de pruebas
+
+Solo se admiten tareas Development compuestas exclusivamente por acciones
+`development.propose-change`, en fase `prepare`, con decisión recalculada
+`prepare-only`. La revisión sigue siendo necesaria antes de aplicar. Cualquier
+acción denegada, de otro dominio o capacidad, en fase `apply`, crítica o incierta
+impide preparar toda la propuesta.
+
+### Alcance y relación con las fuentes
+
+Hay exactamente un parche y un archivo por acción, de uno a diez archivos en
+total. No puede faltar una acción ni sobrar un parche. El recurso de destino
+debe aparecer también entre las entradas de su propia acción con la misma huella
+confiable. Se rechazan los recursos repetidos y las rutas repetidas, incluso si
+solo difieren por mayúsculas y minúsculas.
+
+Cada criterio de cada acción necesita al menos una prueba propuesta asociada a
+esa acción. Una prueba no puede usar los criterios de otra acción. Una referencia
+de evidencia solo puede asociar una entrada y criterios que compartan una acción;
+no se abre ni se verifica el recurso indicado. Los identificadores de pruebas y
+evidencias son únicos dentro de cada colección, y los criterios no se repiten
+dentro de una entrada.
+
+### Subconjunto de diff admitido
+
+Se aceptan modificaciones de archivos existentes. El formato tiene cabeceras
+`--- a/ruta` y `+++ b/ruta` para la misma ruta exacta, con una cabecera opcional
+`diff --git a/ruta b/ruta`. No se admite `index` ni metadatos adicionales de Git.
+No es un reemplazo general de `git apply`.
+
+Las rutas solo usan letras ASCII, números, punto, guion, guion bajo y `/`, además
+de respetar las exclusiones de seguridad anteriores. No se admiten espacios,
+comillas, escapes ni rutas no canónicas. El contenido puede incluir Unicode
+válido; se rechazan sustitutos UTF-16 aislados. Los saltos son LF y debe existir
+un LF final; CR y NUL se rechazan, sin normalizarlos.
+
+Cada hunk usa `@@ -inicio[,cantidad] +inicio[,cantidad] @@`, sin texto final.
+Omitir una cantidad significa una línea. Una cantidad cero representa una
+inserción o eliminación sin líneas en ese lado; ambas cantidades no pueden ser
+cero. Las posiciones y sumas deben ser enteros seguros. Ambos lados avanzan sin
+solapamientos ni posiciones iniciales repetidas. Los tramos sin cambios entre
+hunks deben tener igual longitud en ambos lados, incluido el tramo inicial.
+El cuerpo debe consumir exactamente las cantidades declaradas y contener al
+menos una adición o eliminación en el conjunto del parche.
+
+Las líneas de contenido comienzan por espacio, `-` o `+`. Una cabecera aparente
+que tenga ese prefijo sigue siendo contenido del hunk. Todo el texto debe
+consumirse: no se permiten hunks truncados, líneas sobrantes o basura final.
+Se rechazan `/dev/null`, creación, borrado, renombrado, copias, modos, binarios,
+diffs combinados y el marcador `\ No newline at end of file`.
+
+Se mantienen las cadenas de hasta 8.000 unidades UTF-16, el preflight JSON
+endurecido y sus límites de profundidad y recorrido. El total de los parches
+no puede superar 64 KiB UTF-8, y los tres argumentos juntos no pueden superar
+1 MiB en JSON canónico. Estos límites son independientes de los presupuestos
+de acciones y bytes de entrada que ya aplica el controlador. El rechazo de
+referencias compartidas se aplica dentro de cada argumento JSON. Compartir un
+objeto entre argumentos no se rechaza por sí solo; la salida contiene copias
+y no conserva esas referencias.
+
+### Qué devuelve y qué falta verificar
+
+`status` vale `prepared`, `denied` o `invalid`. Un rechazo devuelve todos los
+arrays vacíos, alcance y vínculos nulos, y un código estable en `issues`; no se
+entrega una propuesta parcial.
+
+Una propuesta preparada contiene:
+
+- `task`: identificadores de tarea y ejecución, y revisión
+- `plan_binding`: vínculo del plan recalculado
+- `files`: acción y su binding, recurso, ruta, `before_sha256`, `patch_sha256`,
+  parche original y referencias de entrada con ruta y hash
+- `scope`: IDs exactos de acciones y recursos, y rutas afectadas
+- `proposed_tests`: pruebas propuestas con `status: not-performed`
+- `evidence_references`: referencias con `status: not-verified`
+- `proposal_binding`: huella de la propuesta completa, incluida la revisión
+  semántica, el plan, alcance, parches, pruebas y referencias
+
+`patch_sha256` resume los bytes UTF-8 del parche; no es una huella del archivo
+resultante. Sin los bytes base, el módulo no comprueba que las líneas eliminadas
+existan ni que el parche pueda aplicarse: `patch_applicability` siempre vale
+`not-checked`. No devuelve `after_sha256`. Las rutas y snapshots tampoco prueban
+que el archivo real exista, sea regular o siga igual.
+
+`review` siempre exige revisión `before-apply` y mantiene `satisfied: false`.
+`execution_authorized`, `executed` y `accepted` permanecen en `false`, incluso en
+rechazos. La verificación permanece `not-performed`, con criterios
+`not-verified`. El vínculo de contenido cambia al cambiar datos protegidos o el
+orden de arrays, pero no por reordenar claves. No autentica ni autoriza.
+
+### Probar una propuesta y tres rechazos
+
+Este incremento vive en la rama
+`feature/QUIVER-EXP-02-development-proposals`, dependiente de la rama del PR #148
+mientras siga abierto. No está publicado en npm. Para probarlo, cloná esa rama
+en una carpeta nueva, con Git, Node.js 20.12 o posterior, npm y acceso al repo:
+
+```bash
+git clone --branch feature/QUIVER-EXP-02-development-proposals --single-branch https://github.com/FabriJuncal/quiver.git quiver-proposal-demo
+cd quiver-proposal-demo
+git rev-parse HEAD
+npm ci --ignore-scripts
+node --test tests/lib/planning-dry-run.test.js tests/lib/planning-development-proposal.test.js
+```
+
+El SHA debe coincidir con el PR revisado. La preparación escribe esa copia,
+dependencias y caché de npm. El comando siguiente solo carga el ejemplo sintético,
+modifica copias en memoria e imprime resultados; no aplica los parches ni corre
+las pruebas propuestas:
+
+```bash
+node -e '
+const {prepareDevelopmentProposal} = require("./src/create-quiver/lib/planning/dry-run");
+const example = require("./examples/planning-dry-run/development-proposal.json");
+for (const name of ["prepared", "stale-binding", "extra-path", "missing-permission"]) {
+  const x = structuredClone(example);
+  if (name === "stale-binding") x.proposal_input.expected_plan_binding = "sha256:" + "f".repeat(64);
+  if (name === "extra-path") x.proposal_input.patches[0].unified_diff =
+    x.proposal_input.patches[0].unified_diff.replace("+++ b/src/example.js", "+++ b/src/other.js");
+  if (name === "missing-permission") x.trusted_context.permissions.grants = [];
+  const r = prepareDevelopmentProposal(x.task, x.trusted_context, x.proposal_input);
+  console.log(JSON.stringify({
+    case: name, status: r.status, files: r.files.length,
+    issue: r.issues[0]?.code || null, patch_applicability: r.patch_applicability,
+    verification: r.verification.status, execution_authorized: r.execution_authorized,
+    executed: r.executed, accepted: r.accepted
+  }));
+}
+'
+```
+
+Salida esperada:
+
+```json
+{"case":"prepared","status":"prepared","files":1,"issue":null,"patch_applicability":"not-checked","verification":"not-performed","execution_authorized":false,"executed":false,"accepted":false}
+{"case":"stale-binding","status":"denied","files":0,"issue":"PLAN_BINDING_MISMATCH","patch_applicability":"not-checked","verification":"not-performed","execution_authorized":false,"executed":false,"accepted":false}
+{"case":"extra-path","status":"invalid","files":0,"issue":"UNIFIED_DIFF_INVALID","patch_applicability":"not-checked","verification":"not-performed","execution_authorized":false,"executed":false,"accepted":false}
+{"case":"missing-permission","status":"denied","files":0,"issue":"PLAN_DENIED","patch_applicability":"not-checked","verification":"not-performed","execution_authorized":false,"executed":false,"accepted":false}
+```
+
+El caso preparado deja un cambio concreto para leer junto a sus fuentes y
+criterios. La prueba descrita en el ejemplo todavía debe ejecutarse mediante
+un flujo autorizado aparte. Esta API no instala un ejecutor, no resuelve
+aprobaciones y no modifica el comportamiento del CLI ni de Research.

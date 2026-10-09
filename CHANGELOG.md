@@ -6,6 +6,8 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- Propuestas Development experimentales: preparación pura de parches aportados, con alcance exacto, diff unificado acotado, pruebas propuestas y referencias no verificadas. Recalcula el plan y conserva ejecución, aceptación y revisión sin satisfacer; no aplica parches ni añade comandos o dependencias.
+
 - Experimental headless Development/Research dry-run planner with a strict versioned contract, closed adapters, action-level risk/permission decisions, and deterministic content bindings. It performs no execution or state writes and keeps execution/acceptance flags false.
 
 - Quiver v57 — Evidence Budget Recovery UX, with safe missing-evidence classification, deterministic budget recommendations, recovery command construction, CLI/JSON/i18n integration, and associated fixtures and documentation.
