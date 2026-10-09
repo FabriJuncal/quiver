@@ -172,3 +172,67 @@ La revisión es técnica, no aceptación del Director. El consumidor conserva la
 responsabilidad por procedencia y vigencia de snapshots; no se inspeccionan bytes
 base, symlinks o tipos del recurso. No hay nuevos modelos, proveedores, FS,
 comandos, configuraciones, dependencias, merge, release ni deploy.
+
+
+## Slice-03 local validation (2026-10-09)
+
+Base: main 1c47ccdd1ed0f126024163895c4d6ac986e515f2.
+Initial focused run: sandbox spawn EPERM, no test bodies executed.
+Normal non-admin subprocess retry: 23/23 passed, zero skips.
+Pre-review focused run: 306/306 pass, zero fail/cancel/skip, exit 0 (1101.988 ms).
+Final reviewed run: 309/309 pass, zero fail/cancel/skip, exit 0 (1245.5412 ms).
+Command: node --test --test-concurrency=1 tests/lib/planning-supervised-workspace.test.js
+tests/lib/planning-dry-run.test.js tests/lib/planning-development-proposal.test.js.
+This is 277 existing planner/proposal cases plus 32 adapter cases, not a full suite.
+Tests cover real file application/readback and evidence hashes; all declared
+inputs rechecked after approval; stale hashes/sizes; exact context and hunk bounds;
+empty/insertion/deletion/multiple hunks; missing/incorrect/replayed authorization;
+different roots; getters/proxies; real hardlinks/junction escapes; unsupported
+bytes; immutable snapshots; and no evaluation of supplied code.
+
+Final gates: docs:check, changelog:check, schema:slice:check, strict spec validation,
+local slice check and package:quiver (including installed CLI smoke) all exit 0.
+Initial schema/spec exit 1 findings were documentary: unsupported `in-progress`
+status and a case-sensitive slice reference. Corrected to `ready` and the exact
+slice ID; reruns passed. Initial failure logs remain retained outside the repo.
+Dependency tree reused from the verified same-lockfile Windows checkout; no new
+runtime/dependency/credential installation. Core and lockfile diffs are empty.
+
+Base main CI was separately verified: run 37985078803, exact main SHA above,
+completed success with all seven jobs. This is baseline evidence, not CI for the
+new slice. The Windows full suite ran with Node 24.19.0, ordinary non-admin
+permissions, via node scripts/ci/run-node-tests.js (npm run test:ci entrypoint).
+It ran 2026-10-09 20:25:21 to 20:37:45 UTC, duration 743890.4349 ms, exit 1:
+1,275 total, 1,262 passed, 3 failed, 10 skipped, zero cancelled.
+The tested tree was 9f3d271c749a1e79530fc40ec90459d38761976f, before the final
+root normalization and three additive regression cases. It is not a full pass
+or a full-suite result for that final refinement. Logs are retained externally.
+
+The three failures are unchanged real-symlink EPERM limitations:
+- tests/commands/ai-review-plan.test.js:683, conditioned approval candidate;
+- tests/lib/ai-analyze-project-discovery.test.js:132, discovery symlink coverage;
+- tests/lib/evidence.test.js:114, evidence symlink output/read escapes.
+The ten existing platform/capability skips remain in existing tests. This slice
+adds no skips and changes no existing assertions. No privilege elevation was used.
+Final focused coverage includes the refinement; exact-SHA remote CI must be
+reported separately in the draft PR, not inferred from baseline CI.
+
+MASTER MultiHarness V3 vision/MVP sections were read from Library
+libfile_9bb70c1f7d508191921c402934900fde, alongside the v6.0.22 plan and current spec.
+They support a small functional increment, not activation of Studio/Cloud/V59.
+Local self-review found and fixed the case where the temp directory would lie
+inside the source root. Independent read-only review covered all twelve scoped
+paths and the final module/test delta. It found no concrete remaining defect
+within the cooperative-host contract. A possible root-link trailing-separator
+case was tested with three real junction variants: all three already rejected
+on Windows before refinement (exit 0, zero skips). Root paths are now normalized
+before lstat in both review and execute, with three additive regression cases.
+This is preventive cross-platform hardening, not a Windows-reproduced bug.
+
+No source-project tests or proposed commands are executed by the new adapter.
+The API validates patch application and output bytes; evidence explicitly keeps
+project tests, criteria verification and acceptance unperformed. Source roots are
+host-controlled/cooperative, not an OS isolation boundary against concurrent
+malicious filesystem processes. Host approval authenticity and freshness remain
+host duties. Separate authorization permits this slice draft PR and CI only;
+merge, deployment, project execution and human acceptance remain unapproved.

@@ -24,3 +24,21 @@ review; the older v58 spec's particular human-merge gate is not imported here.
 Base verificada el 2026-10-07: #148 draft abierto en
 `569a6690649237a6b9b71b711a8dbfa4d1907d22`; main en
 `ea95409f151310f7496d99cefa2ffd9a72dd515f`. Sin merge ni deploy.
+
+
+## Slice-03: supervised workspace
+
+1. Pin current main and inspect its new CI, preserving previous checkouts.
+2. Read MASTER MultiHarness V3 vision and the v6 plan status.
+3. Add an optional bounded IO adapter, keeping Core unchanged.
+4. Validate real bytes, exact patch context, host approval and input freshness.
+5. Write only a new temporary copy with evidence and explicit verification limits.
+6. Run focused adversarial tests and relevant gates; present scope for publication.
+
+MASTER V3 (Library libfile_9bb70c1f7d508191921c402934900fde, opening vision/MVP
+sections) prioritizes functional Development plus a second Research harness and
+chat-first orchestration, while marking its architecture as a hypothesis. The
+repo's PLAN-QUIVER-MASTER-v6.0.22 is a broader initiative roadmap; neither that
+plan nor this continuation activates Studio, Cloud or V59. Reuse remains the
+existing task/policy/proposal Core and V2's separation of verification/acceptance;
+no new OSS runtime is adopted for this bounded file operation.
