@@ -42,3 +42,12 @@ repo's PLAN-QUIVER-MASTER-v6.0.22 is a broader initiative roadmap; neither that
 plan nor this continuation activates Studio, Cloud or V59. Reuse remains the
 existing task/policy/proposal Core and V2's separation of verification/acceptance;
 no new OSS runtime is adopted for this bounded file operation.
+
+
+## Independent Research continuation
+
+1. Use a fresh local checkout of main 688ae68c, inheriting merged PR152 unchanged.
+2. Reuse the unchanged planner and validate supplied corpus bytes and queries.
+3. Produce source-cited literal matches with explicit limits.
+4. Exercise an authored corpus and hostile data; run relevant gates sequentially.
+5. Report local evidence and remaining MVP work, without publication.

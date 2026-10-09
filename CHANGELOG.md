@@ -6,6 +6,8 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- Optional bounded Research corpus retrieval with verified source bytes, literal line citations and explicit unverified criteria; no source acquisition, providers or external execution.
+
 - Experimental supervised workspace adapter: verify actual proposal inputs and exact patch applicability, then write a private temporary copy after host authorization with content-hash evidence. Source files and the pure planning Core remain unchanged; project tests and acceptance are not inferred.
 
 - Propuestas Development experimentales: preparación pura de parches aportados, con alcance exacto, diff unificado acotado, pruebas propuestas y referencias no verificadas. Recalcula el plan y conserva ejecución, aceptación y revisión sin satisfacer; no aplica parches ni añade comandos o dependencias.

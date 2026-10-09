@@ -31,3 +31,10 @@ merged by the human; main is 1c47ccdd1ed0f126024163895c4d6ac986e515f2.
 Separate authorization now permits this slice draft PR and exact-SHA CI.
 Windows full-suite limits and final focused validation are in EVIDENCE_REPORT.md.
 Merge and deployment remain unauthorized; human acceptance is not inferred.
+
+
+## Independent local Research continuation: 2026-10-09
+
+- slice-04-research-corpus: ready; 351 focused tests and independent review complete; Windows full-suite limits recorded; unpublished.
+- Base main 688ae68c69b1a31cb70cee0af85a20fa1f5a80cc. PR152 is inherited unchanged from main.
+- No publication, merge, deployment or complete MVP acceptance is authorized.

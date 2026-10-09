@@ -215,3 +215,25 @@ See [supervised workspace contract](../../docs/reference/supervised-workspace.md
 - SW-05: Evidence records task/scope/approval and before/after hashes; project tests and human acceptance remain unperformed.
 - SW-06: Real hardlinks/junctions and unsafe paths are rejected; byte budgets and UTF-8/LF restrictions are enforced.
 - SW-07: Existing planner/proposal results remain unchanged; no provider, shell, model or proposed command execution is introduced.
+
+
+## Bounded Research corpus retrieval (slice-04)
+
+An optional pure adapter consumes explicitly supplied UTF-8 text, validates its
+actual hashes/sizes against an eligible Research plan, and compares literal terms
+with source/line citations. It performs no source acquisition or code execution.
+Criteria remain unverified; literal presence is not semantic truth or support.
+The standalone authored-corpus example reads its own known files only.
+
+The default returns citation locations and source hashes, never source quotes.
+Verbatim quotes require explicit host-owned `include_quotes: true` outside the
+corpus input and are bound into the result. This is not redaction or a secret
+detector: query/metadata fields remain visible; the host authorizes disclosure.
+
+- RC-01: Recompute the unchanged planner and require an exact binding, research.compare, prepare phase and low-risk eligible actions.
+- RC-02: Verify the exact supplied source set, actual UTF-8 hashes and sizes before retrieval; reject hostile data and budget excess atomically.
+- RC-03: Return deterministic case-sensitive literal line matches for every query/source pair in its authorized action, with source hashes and line citations.
+- RC-04: Mark absent matches only as not-found-in-supplied-source; disclose bounded excerpts and total matching-line counts.
+- RC-05: Preserve unverified criteria, false external execution/acceptance flags and explicit caller-supplied provenance; do not infer truth or semantic support.
+- RC-06: Keep Core unchanged and acquire no filesystem, network, process, provider, model or caller callbacks in the library.
+- RC-07: Demonstrate actual retrieval from two authored corpus documents and adversarial tests, without claiming a complete Research harness or MVP.
