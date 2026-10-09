@@ -92,11 +92,11 @@ test('writeRawProviderArtifact stores redacted and size-controlled provider stre
     assert.equal(artifact.stdout.includes('a'.repeat(32)), false);
     assert.match(artifact.stdout, /\[REDACTED\]/);
     assert.match(artifact.stdout, /TAIL/);
-    assert.equal(artifact.command, '[PROJECT_ROOT]/bin/provider');
+    assert.equal(artifact.command, path.join('[PROJECT_ROOT]', 'bin', 'provider'));
     assert.deepEqual(artifact.args, ['exec', '--token=[REDACTED]', '[PROJECT_ROOT]']);
     assert.deepEqual(artifact.prompt_transport, {
       mode: 'temp-file',
-      filePath: '[PROJECT_ROOT]/token=[REDACTED]',
+      filePath: path.join('[PROJECT_ROOT]', 'token=[REDACTED]'),
     });
     assert.deepEqual(artifact.metadata, {
       access_token: '[REDACTED]',

@@ -1,3 +1,4 @@
+const { requiredSymlink } = require('../helpers/required-symlink');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const os = require('node:os');
@@ -831,7 +832,7 @@ test('conditioned approval persists only an eligible non-final candidate and kee
 
     const outsideReasonPath = path.join(os.tmpdir(), `quiver-condition-reason-${process.pid}-${Date.now()}.md`);
     writeFile(outsideReasonPath, '# Outside reason\n');
-    fs.symlinkSync(outsideReasonPath, path.join(repo.root, 'condition-reason-link.md'));
+    requiredSymlink(outsideReasonPath, path.join(repo.root, 'condition-reason-link.md'));
     writeFile(path.join(repo.root, 'conditions-existing.json'), `${JSON.stringify(conditionEnvelope(repo.root, runId, []), null, 2)}\n`);
     try {
       await assert.rejects(

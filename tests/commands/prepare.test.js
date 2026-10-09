@@ -4,6 +4,7 @@ const os = require('node:os');
 const path = require('node:path');
 const { execFileSync } = require('node:child_process');
 const test = require('node:test');
+const { writeCliFixture, cliFixtureEnv } = require('../helpers/cli-fixtures');
 
 const BIN_PATH = path.resolve(__dirname, '../../bin/create-quiver.js');
 
@@ -44,11 +45,7 @@ function snapshotFiles(root) {
   return files.sort();
 }
 
-function createFakeCli(binDir, name, contents) {
-  const scriptPath = path.join(binDir, name);
-  fs.writeFileSync(scriptPath, contents);
-  fs.chmodSync(scriptPath, 0o755);
-}
+
 
 function seedPrepareReadyRepo(root) {
   writeFile(root, 'README.md', '# Project\n');
@@ -70,17 +67,11 @@ test('prepare dry-run reports checks and does not write files', () => {
 
   try {
     seedPrepareReadyRepo(repo.root);
-    createFakeCli(binDir, 'gh', `#!/bin/sh
-case "$1 $2" in
-  "--version "*) printf '%s\n' 'gh version 2.0.0'; exit 0 ;;
-  "auth status") printf '%s\n' 'Logged in to github.com as octocat'; exit 0 ;;
-esac
-exit 1
-`);
-    createFakeCli(binDir, 'codex', `#!/bin/sh
-printf '%s\n' 'codex 1.0.0'
-exit 0
-`);
+    writeCliFixture(binDir, 'gh', `const args = process.argv.slice(2);
+if (args[0] === '--version') { console.log('gh version 2.0.0'); process.exit(0); }
+if (args[0] === 'auth' && args[1] === 'status') { console.log('Logged in to github.com as octocat'); process.exit(0); }
+process.exit(1);`);
+    writeCliFixture(binDir, 'codex', `console.log('codex 1.0.0');`);
     writeFile(repo.root, 'ssh/github-work', 'identity-file\n');
 
     const before = snapshotFiles(repo.root);
@@ -90,6 +81,7 @@ exit 0
       env: {
         ...process.env,
         PATH: binDir,
+        ...cliFixtureEnv(binDir),
       },
     });
     const after = snapshotFiles(repo.root);
@@ -125,6 +117,7 @@ test('prepare reports missing gh with cross-platform guidance', () => {
       env: {
         ...process.env,
         PATH: binDir,
+        ...cliFixtureEnv(binDir),
       },
     });
 
@@ -145,13 +138,10 @@ test('prepare reports a missing provider CLI with actionable guidance', () => {
 
   try {
     seedPrepareReadyRepo(repo.root);
-    createFakeCli(binDir, 'gh', `#!/bin/sh
-case "$1 $2" in
-  "--version "*) printf '%s\n' 'gh version 2.0.0'; exit 0 ;;
-  "auth status") printf '%s\n' 'Logged in to github.com as octocat'; exit 0 ;;
-esac
-exit 1
-`);
+    writeCliFixture(binDir, 'gh', `const args = process.argv.slice(2);
+if (args[0] === '--version') { console.log('gh version 2.0.0'); process.exit(0); }
+if (args[0] === 'auth' && args[1] === 'status') { console.log('Logged in to github.com as octocat'); process.exit(0); }
+process.exit(1);`);
 
     const output = execFileSync(process.execPath, [BIN_PATH, 'prepare', '--dry-run', '--provider', 'codex'], {
       cwd: repo.root,
@@ -159,6 +149,7 @@ exit 1
       env: {
         ...process.env,
         PATH: binDir,
+        ...cliFixtureEnv(binDir),
       },
     });
 
@@ -177,13 +168,10 @@ test('prepare reports SSH identity and auth recovery steps', () => {
 
   try {
     seedPrepareReadyRepo(repo.root);
-    createFakeCli(binDir, 'gh', `#!/bin/sh
-case "$1 $2" in
-  "--version "*) printf '%s\n' 'gh version 2.0.0'; exit 0 ;;
-  "auth status") printf '%s\n' 'You are not logged into any GitHub hosts.' >&2; exit 1 ;;
-esac
-exit 1
-`);
+    writeCliFixture(binDir, 'gh', `const args = process.argv.slice(2);
+if (args[0] === '--version') { console.log('gh version 2.0.0'); process.exit(0); }
+if (args[0] === 'auth' && args[1] === 'status') { console.error('You are not logged into any GitHub hosts.'); process.exit(1); }
+process.exit(1);`);
 
     const output = execFileSync(process.execPath, [BIN_PATH, 'prepare', '--dry-run', '--ssh-host-alias', 'github-work', '--identity-file', 'ssh/missing-key'], {
       cwd: repo.root,
@@ -191,6 +179,7 @@ exit 1
       env: {
         ...process.env,
         PATH: binDir,
+        ...cliFixtureEnv(binDir),
       },
     });
 
@@ -210,17 +199,11 @@ test('prepare success recommends the next safe command', () => {
 
   try {
     seedPrepareReadyRepo(repo.root);
-    createFakeCli(binDir, 'gh', `#!/bin/sh
-case "$1 $2" in
-  "--version "*) printf '%s\n' 'gh version 2.0.0'; exit 0 ;;
-  "auth status") printf '%s\n' 'Logged in to github.com as octocat'; exit 0 ;;
-esac
-exit 1
-`);
-    createFakeCli(binDir, 'codex', `#!/bin/sh
-printf '%s\n' 'codex 1.0.0'
-exit 0
-`);
+    writeCliFixture(binDir, 'gh', `const args = process.argv.slice(2);
+if (args[0] === '--version') { console.log('gh version 2.0.0'); process.exit(0); }
+if (args[0] === 'auth' && args[1] === 'status') { console.log('Logged in to github.com as octocat'); process.exit(0); }
+process.exit(1);`);
+    writeCliFixture(binDir, 'codex', `console.log('codex 1.0.0');`);
     writeFile(repo.root, 'ssh/github-work', 'identity-file\n');
 
     const output = execFileSync(process.execPath, [BIN_PATH, 'prepare', '--provider', 'codex', '--ssh-host-alias', 'github-work', '--identity-file', 'ssh/github-work'], {
@@ -229,6 +212,7 @@ exit 0
       env: {
         ...process.env,
         PATH: binDir,
+        ...cliFixtureEnv(binDir),
       },
     });
 
@@ -256,13 +240,10 @@ test('prepare treats missing README_FOR_AI.md as framework guidance, not project
     writeFile(repo.root, 'docs/WORKFLOW.md', '# Workflow\n');
     writeFile(repo.root, 'package.json', JSON.stringify({ name: 'project' }, null, 2));
 
-    createFakeCli(binDir, 'gh', `#!/bin/sh
-case "$1 $2" in
-  "--version "*) printf '%s\n' 'gh version 2.0.0'; exit 0 ;;
-  "auth status") printf '%s\n' 'Logged in to github.com as octocat'; exit 0 ;;
-esac
-exit 1
-`);
+    writeCliFixture(binDir, 'gh', `const args = process.argv.slice(2);
+if (args[0] === '--version') { console.log('gh version 2.0.0'); process.exit(0); }
+if (args[0] === 'auth' && args[1] === 'status') { console.log('Logged in to github.com as octocat'); process.exit(0); }
+process.exit(1);`);
 
     const output = execFileSync(process.execPath, [BIN_PATH, 'prepare', '--dry-run'], {
       cwd: repo.root,
@@ -270,6 +251,7 @@ exit 1
       env: {
         ...process.env,
         PATH: binDir,
+        ...cliFixtureEnv(binDir),
       },
     });
 
