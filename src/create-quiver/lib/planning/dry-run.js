@@ -306,4 +306,155 @@ function planDryRun(taskInput, trustedContext) {
   };
 }
 
-module.exports = { PLANNER_SCHEMA_VERSION, CONTROLLER_REVISION, planDryRun };
+
+const PROPOSAL_REVISION = 'development-proposal-v1';
+const proposalSchema = z.object({
+  schema_version: z.literal(PLANNER_SCHEMA_VERSION),
+  expected_plan_binding: digest,
+  patches: z.array(z.object({ action_id: id, unified_diff: text }).strict()).min(1).max(10),
+  proposed_tests: z.array(z.object({
+    test_id: id, action_id: id, criterion_ids: ids, description: text,
+  }).strict()).min(1).max(100),
+  evidence_references: z.array(z.object({
+    evidence_id: id, input_id: id, criterion_ids: ids,
+  }).strict()).max(100),
+}).strict();
+
+function proposalFailure(status, code, path = []) {
+  return {
+    schema_version: PLANNER_SCHEMA_VERSION,
+    proposal_revision: PROPOSAL_REVISION,
+    mode: 'prepare-only',
+    status,
+    task: null,
+    plan_binding: null,
+    proposal_binding: null,
+    files: [],
+    scope: null,
+    proposed_tests: [],
+    evidence_references: [],
+    issues: [{ code, path }],
+    patch_applicability: 'not-checked',
+    review: { required: true, scope: 'before-apply', satisfied: false },
+    execution_authorized: false,
+    executed: false,
+    accepted: false,
+    verification: { status: 'not-performed', criteria: [] },
+  };
+}
+
+// A deliberately small modification-only format, not a git-apply implementation.
+// Coordinates describe boundaries: count=0 uses start; other ranges start at
+// start-1. Equal untouched gaps on both sides preserve consistent line offsets.
+function validUnifiedDiff(diff, targetPath) {
+  if (!safePath(targetPath) || !/^[A-Za-z0-9._/-]+$/.test(targetPath)
+      || /[\r\u0000]/.test(diff) || !diff.isWellFormed() || !diff.endsWith('\n')) return false;
+  const lines = diff.slice(0, -1).split('\n');
+  let cursor = 0;
+  if (lines[cursor] === `diff --git a/${targetPath} b/${targetPath}`) cursor += 1;
+  if (lines[cursor++] !== `--- a/${targetPath}` || lines[cursor++] !== `+++ b/${targetPath}`) return false;
+  let previous = null;
+  let changes = 0;
+  while (cursor < lines.length) {
+    const header = /^@@ -(0|[1-9][0-9]*)(?:,(0|[1-9][0-9]*))? \+(0|[1-9][0-9]*)(?:,(0|[1-9][0-9]*))? @@$/.exec(lines[cursor++]);
+    if (!header) return false;
+    const [oldStart, oldCount, newStart, newCount] = [header[1], header[2] ?? '1', header[3], header[4] ?? '1'].map(Number);
+    if (![oldStart, oldCount, newStart, newCount].every(Number.isSafeInteger)
+        || (oldCount > 0 && oldStart === 0) || (newCount > 0 && newStart === 0)
+        || (oldCount === 0 && newCount === 0)) return false;
+    const oldOffset = oldCount === 0 ? oldStart : oldStart - 1;
+    const newOffset = newCount === 0 ? newStart : newStart - 1;
+    const oldEnd = oldOffset + oldCount;
+    const newEnd = newOffset + newCount;
+    if (!Number.isSafeInteger(oldEnd) || !Number.isSafeInteger(newEnd)) return false;
+    if (previous ? (oldOffset <= previous.oldOffset || newOffset <= previous.newOffset
+      || oldOffset < previous.oldEnd || newOffset < previous.newEnd
+      || oldOffset - previous.oldEnd !== newOffset - previous.newEnd) : oldOffset !== newOffset) return false;
+    let oldLines = 0;
+    let newLines = 0;
+    while (oldLines < oldCount || newLines < newCount) {
+      const line = lines[cursor++];
+      if (line === undefined) return false;
+      if (line.startsWith(' ')) { oldLines += 1; newLines += 1; }
+      else if (line.startsWith('-')) { oldLines += 1; changes += 1; }
+      else if (line.startsWith('+')) { newLines += 1; changes += 1; }
+      else return false;
+      if (oldLines > oldCount || newLines > newCount) return false;
+    }
+    previous = { oldOffset, newOffset, oldEnd, newEnd };
+  }
+  return previous !== null && changes > 0;
+}
+
+function prepareDevelopmentProposal(taskInput, trustedContext, proposalInput) {
+  const fail = (code, path) => proposalFailure('invalid', code, path);
+  const deny = (code, path) => proposalFailure('denied', code, path);
+  if (!isJsonData(taskInput) || !isJsonData(trustedContext) || !isJsonData(proposalInput)) return fail('JSON_DATA_REQUIRED');
+  if (Buffer.byteLength(canonicalJson([taskInput, trustedContext, proposalInput]), 'utf8') > 1024 * 1024) return fail('CONTRACT_TOO_LARGE');
+  const parsed = proposalSchema.safeParse(proposalInput);
+  if (!parsed.success) return fail('PROPOSAL_INVALID', parsed.error.issues[0].path);
+  const input = parsed.data;
+  const plan = planDryRun(taskInput, trustedContext);
+  if (plan.status === 'invalid') return fail('PLAN_INVALID', plan.issues[0].path);
+  if (plan.status !== 'planned') return deny('PLAN_DENIED');
+  if (plan.binding !== input.expected_plan_binding) return deny('PLAN_BINDING_MISMATCH');
+  if (plan.contract.domain !== 'development' || plan.actions.some((action) =>
+    action.capability !== 'development.propose-change' || action.phase !== 'prepare'
+      || action.decision !== 'prepare-only')) return deny('PLAN_NOT_PREPARABLE');
+  if (plan.actions.length > 10) return deny('TARGET_LIMIT_EXCEEDED');
+  if (input.patches.reduce((sum, patch) => sum + Buffer.byteLength(patch.unified_diff, 'utf8'), 0) > 64 * 1024) return fail('PATCH_BUDGET_EXCEEDED');
+  if (!unique(input.patches.map((patch) => patch.action_id))
+      || input.patches.length !== plan.actions.length
+      || input.patches.some((patch) => !plan.actions.some((action) => action.action_id === patch.action_id))) return deny('PATCH_COVERAGE_MISMATCH');
+  if (!unique(plan.actions.map((action) => action.resource_id))
+      || !unique(plan.actions.map((action) => action.outline.target_path.toLowerCase()))) return deny('DUPLICATE_TARGET');
+  const files = [];
+  for (const patch of input.patches) {
+    const action = plan.actions.find((item) => item.action_id === patch.action_id);
+    const target = trustedContext.resources.find((resource) => resource.resource_id === action.resource_id);
+    if (!action.outline.sources.some((source) => source.resource_id === target.resource_id && source.sha256 === target.sha256)) return deny('TARGET_INPUT_REQUIRED', ['patches', patch.action_id]);
+    if (!validUnifiedDiff(patch.unified_diff, target.path)) return fail('UNIFIED_DIFF_INVALID', ['patches', patch.action_id]);
+    files.push({
+      action_id: action.action_id,
+      action_binding: action.binding,
+      resource_id: target.resource_id,
+      path: target.path,
+      before_sha256: target.sha256,
+      patch_sha256: `sha256:${crypto.createHash('sha256').update(patch.unified_diff, 'utf8').digest('hex')}`,
+      unified_diff: patch.unified_diff,
+      inputs: action.outline.sources.map((source) => ({ ...source })),
+      patch_applicability: 'not-checked',
+      execution_authorized: false,
+      executed: false,
+      accepted: false,
+    });
+  }
+  if (!unique(input.proposed_tests.map((item) => item.test_id))) return fail('DUPLICATE_TEST_ID');
+  for (const proposedTest of input.proposed_tests) {
+    const action = plan.actions.find((item) => item.action_id === proposedTest.action_id);
+    if (!action || !unique(proposedTest.criterion_ids)
+        || proposedTest.criterion_ids.some((criterionId) => !action.criterion_ids.includes(criterionId))) return fail('INVALID_TEST_REFERENCES', ['proposed_tests', proposedTest.test_id]);
+  }
+  if (plan.actions.some((action) => action.criterion_ids.some((criterionId) => !input.proposed_tests.some((item) =>
+    item.action_id === action.action_id && item.criterion_ids.includes(criterionId))))) return deny('TEST_COVERAGE_MISSING');
+  if (!unique(input.evidence_references.map((item) => item.evidence_id))) return fail('DUPLICATE_EVIDENCE_ID');
+  for (const reference of input.evidence_references) {
+    if (!unique(reference.criterion_ids) || reference.criterion_ids.some((criterionId) => !plan.actions.some((action) =>
+      action.input_ids.includes(reference.input_id) && action.criterion_ids.includes(criterionId)))) return fail('INVALID_EVIDENCE_REFERENCES', ['evidence_references', reference.evidence_id]);
+  }
+  const result = {
+    ...proposalFailure('prepared', ''),
+    task: { task_id: plan.contract.task_id, run_id: plan.contract.run_id, revision: plan.contract.revision },
+    plan_binding: plan.binding,
+    files,
+    scope: { action_ids: plan.actions.map((action) => action.action_id), resource_ids: files.map((file) => file.resource_id), paths: files.map((file) => file.path) },
+    proposed_tests: input.proposed_tests.map((item) => ({ ...item, status: 'not-performed' })),
+    evidence_references: input.evidence_references.map((item) => ({ ...item, status: 'not-verified' })),
+    issues: [],
+    verification: plan.verification,
+  };
+  result.proposal_binding = hash(result);
+  return result;
+}
+
+module.exports = { PLANNER_SCHEMA_VERSION, CONTROLLER_REVISION, PROPOSAL_REVISION, planDryRun, prepareDevelopmentProposal };

@@ -127,3 +127,75 @@ retry, reconciliation, concurrency, cancellation, or exactly-once claim.
 One commit and draft PR per slice. Slice 01 depends on the reviewed documentary
 foundation. Repository merge, Director approval, and product acceptance are not
 asserted by local validation or operational review.
+
+
+## Propuestas Development: extensión DP v1
+
+Plan acotado revisado operacionalmente el 2026-10-07 antes de implementar.
+API: `prepareDevelopmentProposal(task, trustedContext, proposalInput)`. Recalcula
+`planDryRun` y contrasta `expected_plan_binding`; no acepta un plan externo como
+autoridad. La semántica nueva tiene revisión propia y no altera planDryRun.
+
+`proposalInput` es JSON cerrado: `schema_version: 1`, `expected_plan_binding`,
+`patches` (`action_id`, `unified_diff`), `proposed_tests` (`test_id`, `action_id`,
+`criterion_ids`, `description`) y `evidence_references` (`evidence_id`,
+`input_id`, `criterion_ids`). Las referencias pueden estar vacías. Cada criterio
+de cada acción requiere una prueba propuesta; ninguna prueba o referencia
+constituye evidencia ejecutada o verificada.
+
+Solo Development, exclusivamente acciones `development.propose-change` en fase
+`prepare` cuya decisión recalculada sea `prepare-only`. Un parche por acción,
+un destino existente por acción, entre uno y diez destinos exactos. El destino
+debe estar entre las entradas de esa acción con hash coincidente. Sin acciones,
+recursos o parches extra, destinos duplicados ni colisiones case-insensitive.
+
+El formato admite cabeceras `--- a/ruta` y `+++ b/ruta` idénticas y cabecera
+opcional `diff --git a/ruta b/ruta`. No admite `index` ni otras cabeceras Git.
+Rutas compuestas por letras ASCII, números, punto, guion, guion bajo y `/`,
+además de las exclusiones existentes; no espacios, escapes ni comillas.
+Saltos LF, con LF final obligatorio. Hunks `@@ -inicio[,cantidad]
++inicio[,cantidad] @@` sin sufijo: enteros seguros, recuentos exactos, posiciones
+ordenadas y sin solapamientos en ambos lados. Los huecos entre hunks deben
+coincidir en ambos lados. Se exige al menos una adición o eliminación y consumo
+completo; cabeceras aparentes con prefijo de contenido no se reinterpretan.
+No se admite el marcador de falta de salto final, NUL, CR ni sustitutos UTF-16 aislados. No hay creación,
+borrado, renombrado, copia, modos, enlaces, binarios o diff combinado.
+
+Se conservan el preflight JSON endurecido y sus límites: 8.000 unidades UTF-16
+por cadena, 20 niveles, 20.000 nodos por argumento, 1 MiB canónico agregado para
+los tres argumentos y hasta 64 KiB UTF-8 agregados de parches.
+
+`status` puede ser `prepared`, `denied` o `invalid`. Una propuesta preparada
+incluye identidad/revisión de tarea, binding recalculado del plan y sus acciones,
+archivos exactos con `before_sha256`, `patch_sha256` y parche original, fuentes,
+alcance, pruebas propuestas y referencias no verificadas. Su `proposal_binding`
+incluye revisión semántica, plan, alcance, parches, pruebas y referencias.
+El orden de objetos no importa; el de arrays sí. Todo rechazo es atómico.
+
+Sin bytes base no se verifica aplicabilidad: `patch_applicability: not-checked`.
+No se calcula `after_sha256`. La revisión antes de aplicar siempre está
+insatisfecha; ejecución/autorización/aceptación son falsas y verificación sigue
+`not-performed`, con criterios `not-verified`. No hay IO, CLI, dispatch, Git,
+proveedores, modelos ni cambios de dependencias. Los snapshots siguen siendo
+responsabilidad del consumidor; el parser no comprueba filesystem ni tipo real.
+
+### Criterios de aceptación de la extensión
+
+- DP-01: Una propuesta válida devuelve exactamente los archivos y parches suministrados, sin mutar argumentos.
+- DP-02: Binding desactualizado, plan denegado, Research, inspección, apply y riesgo crítico o desconocido impiden preparar.
+- DP-03: Permisos ausentes, destino sin entrada base y diferencias de hash mantienen el rechazo del controlador.
+- DP-04: Rutas extra, destinos duplicados, escapes, /dev/null, cambios de modo y formatos no soportados fallan cerrados.
+- DP-05: Hunks truncados, recuentos falsos, solapamientos, desbordamientos y basura final se rechazan.
+- DP-06: Referencias inexistentes o ajenas a una acción y criterios sin pruebas propuestas se rechazan.
+- DP-07: Cambios en revisión, contexto, alcance, parche, pruebas o evidencia cambian el binding.
+- DP-08: JSON hostil, getters, proxies, ciclos, aliases dentro de cada argumento y presupuestos excesivos se rechazan sin callbacks.
+- DP-09: Importar y llamar a ambas APIs no adquiere FS, red, procesos, timers, proveedores ni ejecutores.
+- DP-10: Todas las salidas mantienen ejecución y aceptación falsas; revisión insatisfecha y verificación no realizada.
+- DP-11: Los ejemplos Development/Research y sus bindings previos permanecen idénticos.
+- DP-12: La guía española incluye un caso preparado y tres rechazados, distinguiendo pruebas propuestas de resultados.
+
+### Secuencia de la extensión
+
+`slice-02-development-proposal` depende del slice 01. Se documenta primero,
+se implementa dentro del alcance exacto, se valida congelado, se revisa de forma
+independiente y se publica en un PR draft separado. No autoriza merge ni deploy.
