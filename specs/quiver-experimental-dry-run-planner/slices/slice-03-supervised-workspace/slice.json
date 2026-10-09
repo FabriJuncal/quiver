@@ -1,0 +1,81 @@
+{
+  "slice_id": "slice-03-supervised-workspace",
+  "ticket": "QUIVER-EXP-03",
+  "type": "feature",
+  "title": "Supervised application in a temporary workspace",
+  "objective": "Close the real-byte applicability and supervised temporary-write gap without executing supplied code.",
+  "description": "Optional IO adapter around the unchanged pure Development proposal.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "supervised-workspace",
+    "branch_name": "feature/QUIVER-EXP-03-supervised-workspace"
+  },
+  "expected_read_paths": [
+    "README_FOR_AI.md",
+    "CONTRIBUTING.md",
+    "src/create-quiver/lib/planning/dry-run.js",
+    "examples/planning-dry-run/development-proposal.json"
+  ],
+  "files": [
+    "src/create-quiver/lib/planning/supervised-workspace.js",
+    "tests/lib/planning-supervised-workspace.test.js",
+    "docs/reference/supervised-workspace.md",
+    "CHANGELOG.md",
+    "specs/quiver-experimental-dry-run-planner/SPEC.md",
+    "specs/quiver-experimental-dry-run-planner/STATUS.md",
+    "specs/quiver-experimental-dry-run-planner/EXECUTION_PLAN.md",
+    "specs/quiver-experimental-dry-run-planner/EVIDENCE_REPORT.md",
+    "specs/quiver-experimental-dry-run-planner/slices/slice-03-supervised-workspace/slice.json",
+    "specs/quiver-experimental-dry-run-planner/slices/slice-03-supervised-workspace/EXECUTION_BRIEF.md",
+    "specs/quiver-experimental-dry-run-planner/slices/slice-03-supervised-workspace/CLOSURE_BRIEF.md",
+    "specs/quiver-experimental-dry-run-planner/slices/slice-03-supervised-workspace/pr.md"
+  ],
+  "allowed_write_paths": [
+    "src/create-quiver/lib/planning/supervised-workspace.js",
+    "tests/lib/planning-supervised-workspace.test.js",
+    "docs/reference/supervised-workspace.md",
+    "CHANGELOG.md",
+    "specs/quiver-experimental-dry-run-planner/SPEC.md",
+    "specs/quiver-experimental-dry-run-planner/STATUS.md",
+    "specs/quiver-experimental-dry-run-planner/EXECUTION_PLAN.md",
+    "specs/quiver-experimental-dry-run-planner/EVIDENCE_REPORT.md",
+    "specs/quiver-experimental-dry-run-planner/slices/slice-03-supervised-workspace/slice.json",
+    "specs/quiver-experimental-dry-run-planner/slices/slice-03-supervised-workspace/EXECUTION_BRIEF.md",
+    "specs/quiver-experimental-dry-run-planner/slices/slice-03-supervised-workspace/CLOSURE_BRIEF.md",
+    "specs/quiver-experimental-dry-run-planner/slices/slice-03-supervised-workspace/pr.md"
+  ],
+  "depends_on": [
+    "slice-02-development-proposal"
+  ],
+  "parallel_safe": "never",
+  "parallel_safe_reason": "One bounded IO contract and its evidence are validated sequentially.",
+  "must": [
+    "Keep pure Core unchanged.",
+    "Require host-owned authorization and preserve source files."
+  ],
+  "not_included": [
+    "Project test execution, Research execution, chat UI, Studio/Cloud, providers, paid models, merge and deployment."
+  ],
+  "acceptance": [
+    "SW-01: Review recomputes the existing pure proposal and reads exact declared inputs without writes.",
+    "SW-02: Actual hashes/sizes and exact diff context/offsets are checked; malformed, stale or non-applicable inputs fail closed.",
+    "SW-03: A synchronous trusted-host approval must match the reviewed binding; sessions are single-use and inputs are rechecked after approval.",
+    "SW-04: Application writes only a fresh private temporary workspace, verifies readback and never changes source files.",
+    "SW-05: Evidence records task/scope/approval and before/after hashes; project tests and human acceptance remain unperformed.",
+    "SW-06: Real hardlinks/junctions and unsafe paths are rejected; byte budgets and UTF-8/LF restrictions are enforced.",
+    "SW-07: Existing planner/proposal results remain unchanged; no provider, shell, model or proposed command execution is introduced."
+  ],
+  "tests": [
+    "node --test tests/lib/planning-supervised-workspace.test.js tests/lib/planning-dry-run.test.js tests/lib/planning-development-proposal.test.js",
+    "npm run docs:check",
+    "npm run changelog:check",
+    "npm run schema:slice:check",
+    "node bin/create-quiver.js spec validate specs/quiver-experimental-dry-run-planner --strict",
+    "node bin/create-quiver.js slice check --local specs/quiver-experimental-dry-run-planner/slices/slice-03-supervised-workspace/slice.json",
+    "npm run package:quiver",
+    "git diff --check"
+  ],
+  "estimated_hours": 4,
+  "status": "ready"
+}

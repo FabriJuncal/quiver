@@ -21,3 +21,13 @@ de la terminación local.
 - 277 pruebas focalizadas y 1.244 de suite completa aprobadas; gates locales correctos
 - Publicación del PR draft dependiente y CI exacto: se registran en el PR
 - Sin aceptación humana ni autorización de aplicación, merge o deploy
+
+
+## Current continuation: 2026-10-09
+
+Historical branch descriptions above are superseded: #148, #150 and #151 were
+merged by the human; main is 1c47ccdd1ed0f126024163895c4d6ac986e515f2.
+- slice-03-supervised-workspace: ready for review; local implementation and focused validation complete.
+Separate authorization now permits this slice draft PR and exact-SHA CI.
+Windows full-suite limits and final focused validation are in EVIDENCE_REPORT.md.
+Merge and deployment remain unauthorized; human acceptance is not inferred.

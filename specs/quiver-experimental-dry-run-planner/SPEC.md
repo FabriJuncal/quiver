@@ -199,3 +199,19 @@ responsabilidad del consumidor; el parser no comprueba filesystem ni tipo real.
 `slice-02-development-proposal` depende del slice 01. Se documenta primero,
 se implementa dentro del alcance exacto, se valida congelado, se revisa de forma
 independiente y se publica en un PR draft separado. No autoriza merge ni deploy.
+
+
+## Optional supervised IO adapter (slice-03)
+
+The existing planner and proposal APIs retain their pure, non-executing contract.
+A separate optional module reads real bytes and applies approved modification-only
+patches to a new private temporary workspace. This is not a change to Core flags.
+See [supervised workspace contract](../../docs/reference/supervised-workspace.md).
+
+- SW-01: Review recomputes the existing pure proposal and reads exact declared inputs without writes.
+- SW-02: Actual hashes/sizes and exact diff context/offsets are checked; malformed, stale or non-applicable inputs fail closed.
+- SW-03: A synchronous trusted-host approval must match the reviewed binding; sessions are single-use and inputs are rechecked after approval.
+- SW-04: Application writes only a fresh private temporary workspace, verifies readback and never changes source files.
+- SW-05: Evidence records task/scope/approval and before/after hashes; project tests and human acceptance remain unperformed.
+- SW-06: Real hardlinks/junctions and unsafe paths are rejected; byte budgets and UTF-8/LF restrictions are enforced.
+- SW-07: Existing planner/proposal results remain unchanged; no provider, shell, model or proposed command execution is introduced.
