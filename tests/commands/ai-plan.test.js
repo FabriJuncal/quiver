@@ -4,6 +4,7 @@ const os = require('node:os');
 const path = require('node:path');
 const { execFileSync, spawnSync } = require('node:child_process');
 const test = require('node:test');
+const { writeCliFixture, cliFixtureEnv } = require('../helpers/cli-fixtures');
 
 const {
   runApprove,
@@ -1202,17 +1203,18 @@ test('governed ai approve CLI publishes one digest-bound acceptance decision ato
       command: 'ai plan --phase acceptance',
     });
     const fakeBin = path.join(repo.root, 'fake-bin');
-    const fakeGh = path.join(fakeBin, process.platform === 'win32' ? 'gh.cmd' : 'gh');
-    writeFile(fakeGh, process.platform === 'win32'
-      ? '@echo {"id":42,"login":"approver"}\r\n'
-      : '#!/bin/sh\nprintf \'%s\\n\' \'{"id":42,"login":"approver"}\'\n');
-    if (process.platform !== 'win32') fs.chmodSync(fakeGh, 0o755);
+    writeCliFixture(fakeBin, 'gh', `
+const args = process.argv.slice(2);
+if (args.join(' ') !== 'api user --hostname github.com') process.exit(1);
+console.log(JSON.stringify({ id: 42, login: 'approver' }));
+`);
 
     const stdout = execAiSubcommand(repo.root, [
       'approve', '--phase', 'acceptance', '--version', '1',
       '--run', 'run-digest-acceptance', '--json',
     ], {
       PATH: `${fakeBin}${path.delimiter}${process.env.PATH || ''}`,
+      ...cliFixtureEnv(fakeBin),
     });
     const report = JSON.parse(stdout);
     const decision = readRunApprovalDecision(repo.root, 'run-digest-acceptance', 'acceptance');

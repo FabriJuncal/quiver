@@ -1,0 +1,76 @@
+{
+  "task": {
+    "schema_version": 1,
+    "task_id": "task-example",
+    "run_id": "run-example",
+    "revision": 1,
+    "domain": "research",
+    "objective": "Plan a bounded research review",
+    "criteria": [
+      {
+        "id": "AC-01",
+        "text": "Account for every supplied input and describe the evidence needed"
+      }
+    ],
+    "inputs": [
+      {
+        "id": "input-1",
+        "resource_id": "resource-1",
+        "sha256": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      }
+    ],
+    "actions": [
+      {
+        "action_id": "action-1",
+        "capability": "research.compare",
+        "resource_id": "resource-1",
+        "input_ids": [
+          "input-1"
+        ],
+        "criterion_ids": [
+          "AC-01"
+        ],
+        "phase": "prepare",
+        "claimed_risk": "low"
+      }
+    ],
+    "budgets": {
+      "max_actions": 2,
+      "max_input_bytes": 2048
+    }
+  },
+  "trusted_context": {
+    "schema_version": 1,
+    "policy_id": "policy-example",
+    "policy_revision": 1,
+    "task_id": "task-example",
+    "run_id": "run-example",
+    "task_revision": 1,
+    "resources": [
+      {
+        "resource_id": "resource-1",
+        "path": "inputs/source.json",
+        "classification": "ordinary",
+        "sha256": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "size_bytes": 1024
+      }
+    ],
+    "allowed_capabilities": [
+      "research.compare"
+    ],
+    "permissions": {
+      "snapshot_id": "permission-example",
+      "revision": 1,
+      "grants": [
+        {
+          "capability": "research.compare",
+          "resource_id": "resource-1"
+        }
+      ]
+    },
+    "budgets": {
+      "max_actions": 2,
+      "max_input_bytes": 2048
+    }
+  }
+}

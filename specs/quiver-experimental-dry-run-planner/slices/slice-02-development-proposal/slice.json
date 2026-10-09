@@ -1,0 +1,95 @@
+{
+  "slice_id": "slice-02-development-proposal",
+  "ticket": "QUIVER-EXP-02",
+  "type": "feature",
+  "title": "Propuestas Development revisables",
+  "objective": "Preparar un cambio concreto revisable sin aplicar parches ni ejecutar pruebas.",
+  "description": "Extensión pura, acotada y determinista del controlador experimental.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "feature/QUIVER-EXP-00-planning-contract",
+    "branch_slug": "development-proposals",
+    "branch_name": "feature/QUIVER-EXP-02-development-proposals"
+  },
+  "expected_read_paths": [
+    "CONTRIBUTING.md",
+    "README_FOR_AI.md",
+    "specs/quiver-experimental-dry-run-planner/SPEC.md",
+    "specs/quiver-experimental-dry-run-planner/EXECUTION_PLAN.md",
+    "tests/lib/planning-dry-run.test.js",
+    "src/create-quiver/lib/ai/safety.js"
+  ],
+  "files": [
+    "src/create-quiver/lib/planning/dry-run.js",
+    "tests/lib/planning-development-proposal.test.js",
+    "examples/planning-dry-run/development-proposal.json",
+    "docs/reference/experimental-dry-run-planner.md",
+    "CHANGELOG.md",
+    "specs/quiver-experimental-dry-run-planner/SPEC.md",
+    "specs/quiver-experimental-dry-run-planner/EXECUTION_PLAN.md",
+    "specs/quiver-experimental-dry-run-planner/STATUS.md",
+    "specs/quiver-experimental-dry-run-planner/EVIDENCE_REPORT.md",
+    "specs/quiver-experimental-dry-run-planner/slices/slice-02-development-proposal/slice.json",
+    "specs/quiver-experimental-dry-run-planner/slices/slice-02-development-proposal/EXECUTION_BRIEF.md",
+    "specs/quiver-experimental-dry-run-planner/slices/slice-02-development-proposal/CLOSURE_BRIEF.md",
+    "specs/quiver-experimental-dry-run-planner/slices/slice-02-development-proposal/pr.md"
+  ],
+  "allowed_write_paths": [
+    "src/create-quiver/lib/planning/dry-run.js",
+    "tests/lib/planning-development-proposal.test.js",
+    "examples/planning-dry-run/development-proposal.json",
+    "docs/reference/experimental-dry-run-planner.md",
+    "CHANGELOG.md",
+    "specs/quiver-experimental-dry-run-planner/SPEC.md",
+    "specs/quiver-experimental-dry-run-planner/EXECUTION_PLAN.md",
+    "specs/quiver-experimental-dry-run-planner/STATUS.md",
+    "specs/quiver-experimental-dry-run-planner/EVIDENCE_REPORT.md",
+    "specs/quiver-experimental-dry-run-planner/slices/slice-02-development-proposal/slice.json",
+    "specs/quiver-experimental-dry-run-planner/slices/slice-02-development-proposal/EXECUTION_BRIEF.md",
+    "specs/quiver-experimental-dry-run-planner/slices/slice-02-development-proposal/CLOSURE_BRIEF.md",
+    "specs/quiver-experimental-dry-run-planner/slices/slice-02-development-proposal/pr.md"
+  ],
+  "depends_on": [
+    "slice-01-headless-planner"
+  ],
+  "parallel_safe": "never",
+  "parallel_safe_reason": "La propuesta depende de los contratos del controlador y del slice documental revisado.",
+  "must": [
+    "Recalcular el plan y conservar intacta la salida de planDryRun.",
+    "Mantener el límite puro y todos los estados de ejecución y aceptación falsos."
+  ],
+  "not_included": [
+    "CLI, FS, estado, providers, modelos, aplicación, pruebas propuestas ejecutadas, dependencias, merge, release y deploy."
+  ],
+  "acceptance": [
+    "DP-01: Una propuesta válida devuelve exactamente los archivos y parches suministrados, sin mutar argumentos.",
+    "DP-02: Binding desactualizado, plan denegado, Research, inspección, apply y riesgo crítico o desconocido impiden preparar.",
+    "DP-03: Permisos ausentes, destino sin entrada base y diferencias de hash mantienen el rechazo del controlador.",
+    "DP-04: Rutas extra, destinos duplicados, escapes, /dev/null, cambios de modo y formatos no soportados fallan cerrados.",
+    "DP-05: Hunks truncados, recuentos falsos, solapamientos, desbordamientos y basura final se rechazan.",
+    "DP-06: Referencias inexistentes o ajenas a una acción y criterios sin pruebas propuestas se rechazan.",
+    "DP-07: Cambios en revisión, contexto, alcance, parche, pruebas o evidencia cambian el binding.",
+    "DP-08: JSON hostil, getters, proxies, ciclos, aliases dentro de cada argumento y presupuestos excesivos se rechazan sin callbacks.",
+    "DP-09: Importar y llamar a ambas APIs no adquiere FS, red, procesos, timers, proveedores ni ejecutores.",
+    "DP-10: Todas las salidas mantienen ejecución y aceptación falsas; revisión insatisfecha y verificación no realizada.",
+    "DP-11: Los ejemplos Development/Research y sus bindings previos permanecen idénticos.",
+    "DP-12: La guía española incluye un caso preparado y tres rechazados, distinguiendo pruebas propuestas de resultados."
+  ],
+  "tests": [
+    "node --test tests/lib/planning-dry-run.test.js tests/lib/planning-development-proposal.test.js",
+    "npm run test:ci",
+    "npm run docs:check",
+    "npm run changelog:check",
+    "npm run schema:slice:check",
+    "node bin/create-quiver.js spec validate specs/quiver-experimental-dry-run-planner --strict",
+    "node bin/create-quiver.js slice check --local specs/quiver-experimental-dry-run-planner/slices/slice-02-development-proposal/slice.json",
+    "node bin/create-quiver.js slice scope specs/quiver-experimental-dry-run-planner/slices/slice-02-development-proposal/slice.json --base feature/QUIVER-EXP-00-planning-contract --strict",
+    "npm run package:quiver",
+    "git diff --check"
+  ],
+  "estimated_hours": 4,
+  "status": "completed",
+  "ready_at": "2026-10-07T16:08:00Z",
+  "started_at": "2026-10-07T16:08:00Z",
+  "completed_at": "2026-10-07T16:24:00Z"
+}

@@ -4,6 +4,7 @@ const path = require('node:path');
 const { execFileSync } = require('node:child_process');
 const assert = require('node:assert/strict');
 const test = require('node:test');
+const { writeCliFixture, cliFixtureEnv } = require('../helpers/cli-fixtures');
 
 const { runDoctor, runPr } = require('../../src/create-quiver/commands/ai');
 const { DEFAULT_GITFLOW_GUIDE_PATH } = require('../../src/create-quiver/lib/ai/github');
@@ -69,24 +70,14 @@ function createRepo(structure = {}) {
 }
 
 function createFakeGh(binDir) {
-  const scriptPath = path.join(binDir, 'gh');
-  writeFile(scriptPath, `#!/usr/bin/env node
+  writeCliFixture(binDir, 'gh', `
 const args = process.argv.slice(2);
-if (args[0] === '--version') {
-  process.stdout.write('gh version 2.0.0\\n');
-  process.exit(0);
-}
-if (args[0] === 'auth' && args[1] === 'status') {
-  process.stdout.write('Logged in to github.com as octocat\\n');
-  process.exit(0);
-}
-process.stderr.write('unexpected gh args: ' + args.join(' ') + '\\n');
+if (args[0] === '--version') { console.log('gh version 2.0.0'); process.exit(0); }
+if (args[0] === 'auth' && args[1] === 'status') { console.log('Logged in to github.com as octocat'); process.exit(0); }
+console.error('unexpected gh args: ' + args.join(' '));
 process.exit(1);
 `);
-  fs.chmodSync(scriptPath, 0o755);
-  return scriptPath;
 }
-
 function governanceManifest() {
   const manifest = {
     schema_version: 1,
@@ -288,6 +279,7 @@ test('ai pr CLI dry-run wires through the new router and avoids opening a PR', (
       env: {
         ...process.env,
         PATH: `${binDir}${path.delimiter}${process.env.PATH}`,
+        ...cliFixtureEnv(binDir),
       },
     });
 
@@ -317,6 +309,7 @@ test('ai pr CLI dry-run renders Spanish wrappers while preserving gh command', (
       env: {
         ...process.env,
         PATH: `${binDir}${path.delimiter}${process.env.PATH}`,
+        ...cliFixtureEnv(binDir),
       },
     });
 

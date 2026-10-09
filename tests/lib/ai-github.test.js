@@ -140,8 +140,8 @@ test('preflightGitHubPr stops when the GitFlow guide is missing', () => {
         ghAuthProbe: ghOk,
       }),
       (error) => error.code === 'MISSING_GITFLOW_GUIDE'
-        && error.message.includes(DEFAULT_GITFLOW_GUIDE_PATH)
-        && error.details.guidePath.endsWith(DEFAULT_GITFLOW_GUIDE_PATH),
+        && error.message.includes(path.join(repo.root, DEFAULT_GITFLOW_GUIDE_PATH))
+        && error.details.guidePath === path.join(repo.root, DEFAULT_GITFLOW_GUIDE_PATH),
     );
   } finally {
     repo.cleanup();
@@ -248,8 +248,8 @@ test('preflightGitHubPr keeps sshHostAlias and identityFile as separate inputs',
 
     assert.equal(result.ok, true);
     assert.equal(result.sshHostAlias, 'github-work');
-    assert.ok(result.identityFile.endsWith('ssh/github-work'));
-    assert.ok(result.guidePath.endsWith(DEFAULT_GITFLOW_GUIDE_PATH));
+    assert.equal(result.identityFile, path.join(repo.root, 'ssh', 'github-work'));
+    assert.equal(result.guidePath, path.join(repo.root, DEFAULT_GITFLOW_GUIDE_PATH));
   } finally {
     repo.cleanup();
   }
@@ -361,7 +361,7 @@ test('formatPrCreateReport prints shell-specific command examples for paths with
   assert.match(output, /macOS\/Linux\/Git Bash\/WSL: gh pr create/);
   assert.match(output, /Windows PowerShell: gh pr create/);
   assert.match(output, /'Demo PR'/);
-  assert.match(output, /'\/.+quiver repo with spaces\/specs\/demo\/pr\.md'/);
+  assert.ok(output.includes(`'${path.join(repoRoot, 'specs', 'demo', 'pr.md')}'`));
 });
 
 test('buildPrCreatePlan refuses PR creation while spec slices are open', () => {

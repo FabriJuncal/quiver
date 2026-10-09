@@ -1,0 +1,49 @@
+{
+  "slice_id": "slice-00-planning-contract",
+  "ticket": "QUIVER-EXP-00",
+  "type": "documentation",
+  "title": "Experimental Planning Contract",
+  "objective": "Define the two-domain, pure planning boundary and acceptance criteria.",
+  "description": "Define the two-domain, pure planning boundary and acceptance criteria.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "planning-contract",
+    "branch_name": "feature/QUIVER-EXP-00-planning-contract"
+  },
+  "expected_read_paths": [
+    "CONTRIBUTING.md",
+    "README_FOR_AI.md",
+    "specs/quiver-experimental-dry-run-planner/SPEC.md",
+    "specs/quiver-experimental-dry-run-planner/EXECUTION_PLAN.md",
+    "src/create-quiver/lib/ai/safety.js"
+  ],
+  "files": [
+    "specs/quiver-experimental-dry-run-planner/**"
+  ],
+  "allowed_write_paths": [
+    "specs/quiver-experimental-dry-run-planner/**"
+  ],
+  "depends_on": [],
+  "parallel_safe": "never",
+  "parallel_safe_reason": "Contract review precedes dependent implementation.",
+  "must": [
+    "Preserve the pure plan-only boundary.",
+    "Do not invent human approval or executed evidence."
+  ],
+  "not_included": [
+    "Real execution, new providers, state, UI, framework, merge, release, and deployment."
+  ],
+  "acceptance": [
+    "Document AC-01 through AC-09 and preserve explicit authority and limits."
+  ],
+  "tests": [
+    "node bin/create-quiver.js spec validate specs/quiver-experimental-dry-run-planner --strict",
+    "node bin/create-quiver.js slice check --local specs/quiver-experimental-dry-run-planner/slices/slice-00-planning-contract/slice.json",
+    "npm run schema:slice:check",
+    "git diff --check"
+  ],
+  "estimated_hours": 1,
+  "status": "completed",
+  "completed_at": "2026-10-07T13:30:00Z"
+}

@@ -1,0 +1,105 @@
+{
+  "task": {
+    "schema_version": 1,
+    "task_id": "task-example",
+    "run_id": "run-example",
+    "revision": 1,
+    "domain": "development",
+    "objective": "Proponer un cambio revisable en un archivo sintético",
+    "criteria": [
+      {
+        "id": "AC-01",
+        "text": "El ejemplo declara la versión dos"
+      }
+    ],
+    "inputs": [
+      {
+        "id": "input-1",
+        "resource_id": "resource-1",
+        "sha256": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      }
+    ],
+    "actions": [
+      {
+        "action_id": "action-1",
+        "capability": "development.propose-change",
+        "resource_id": "resource-1",
+        "input_ids": [
+          "input-1"
+        ],
+        "criterion_ids": [
+          "AC-01"
+        ],
+        "phase": "prepare",
+        "claimed_risk": "low"
+      }
+    ],
+    "budgets": {
+      "max_actions": 2,
+      "max_input_bytes": 2048
+    }
+  },
+  "trusted_context": {
+    "schema_version": 1,
+    "policy_id": "policy-example",
+    "policy_revision": 1,
+    "task_id": "task-example",
+    "run_id": "run-example",
+    "task_revision": 1,
+    "resources": [
+      {
+        "resource_id": "resource-1",
+        "path": "src/example.js",
+        "classification": "ordinary",
+        "sha256": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "size_bytes": 1024
+      }
+    ],
+    "allowed_capabilities": [
+      "development.propose-change"
+    ],
+    "permissions": {
+      "snapshot_id": "permission-example",
+      "revision": 1,
+      "grants": [
+        {
+          "capability": "development.propose-change",
+          "resource_id": "resource-1"
+        }
+      ]
+    },
+    "budgets": {
+      "max_actions": 2,
+      "max_input_bytes": 2048
+    }
+  },
+  "proposal_input": {
+    "schema_version": 1,
+    "expected_plan_binding": "sha256:55ab819ec724064418f9efe20ac64c4924522821cd0c19824c0801531133bad7",
+    "patches": [
+      {
+        "action_id": "action-1",
+        "unified_diff": "--- a/src/example.js\n+++ b/src/example.js\n@@ -1 +1 @@\n-const version = 1;\n+const version = 2;\n"
+      }
+    ],
+    "proposed_tests": [
+      {
+        "test_id": "test-version",
+        "action_id": "action-1",
+        "criterion_ids": [
+          "AC-01"
+        ],
+        "description": "Comprobar que el ejemplo declara la versión dos"
+      }
+    ],
+    "evidence_references": [
+      {
+        "evidence_id": "ref-base",
+        "input_id": "input-1",
+        "criterion_ids": [
+          "AC-01"
+        ]
+      }
+    ]
+  }
+}

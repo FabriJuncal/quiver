@@ -6,6 +6,10 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- Propuestas Development experimentales: preparación pura de parches aportados, con alcance exacto, diff unificado acotado, pruebas propuestas y referencias no verificadas. Recalcula el plan y conserva ejecución, aceptación y revisión sin satisfacer; no aplica parches ni añade comandos o dependencias.
+
+- Experimental headless Development/Research dry-run planner with a strict versioned contract, closed adapters, action-level risk/permission decisions, and deterministic content bindings. It performs no execution or state writes and keeps execution/acceptance flags false.
+
 - Quiver v57 — Evidence Budget Recovery UX, with safe missing-evidence classification, deterministic budget recommendations, recovery command construction, CLI/JSON/i18n integration, and associated fixtures and documentation.
 - v55 analyze-project doc apply UX under `specs/quiver-v55-analyze-project-doc-apply-ux/`.
 - `ai analyze-project --apply-docs`, `--save-proposal`, `--diff`, `--allow-dirty-docs`, and `ai analyze-project apply --run <run-id>` for a safer reviewed docs-apply workflow.
@@ -49,6 +53,8 @@ All notable changes to this project will be documented in this file.
 - Command docs now cover human-vs-machine output, selectors, Doctor output, and cross-platform usage.
 
 ### Fixed
+
+- Windows validation compatibility: stable language/export path labels, portable CLI test fixtures, deterministic Git fixture line endings, and direct Node execution of Markdown validation tools. Real symlink security tests remain required and report missing Windows privileges explicitly.
 
 - Executor scope validation now compares worktree content and index snapshots, detecting additional changes to already-dirty paths when `allowDirty` is enabled, including deletions and renames. Default clean-worktree preflight remains unchanged.
 

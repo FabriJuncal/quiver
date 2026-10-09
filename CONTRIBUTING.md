@@ -14,6 +14,19 @@ by teams adopting WDD + SDD.
 
 ## Setup
 
+### Windows validation
+
+Use Node and npm with Git Bash available for the package smoke. Tests use local
+CLI fixtures, never a real authenticated GitHub or AI-provider session. Tests
+that create file symlinks require a Windows account/process allowed to create
+them. An `EPERM` result is a missing validation capability, not a passing test.
+Do not skip the security assertions or replace symlinks with copied files.
+Obtain explicit authorization before changing Windows privileges or Developer
+Mode, or run that coverage in an already authorized symlink-capable environment.
+
+Temporary Git fixtures that compare exact file bytes set their own
+`core.autocrlf=false`; this must not change a user's global Git configuration.
+
 ```bash
 git clone git@github.com:FabriJuncal/quiver.git
 cd quiver
