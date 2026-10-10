@@ -6,6 +6,8 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- Optional local Continue with ChatGPT preparation and bounded Research reports: consent, memory-only OAuth credentials, streamed Responses, source-citation checks and a default offline simulation. Live eligibility remains untested.
+
 - Optional bounded Research corpus retrieval with verified source bytes, literal line citations and explicit unverified criteria; no source acquisition, providers or external execution.
 
 - Controlled Development demo: apply an authored name-search patch in a temporary copy, run fixed host tests before/after, and record approvals, hashes and actual results. Incorrect patches, stale bytes, timeout and cancellation never imply acceptance; not an arbitrary-project executor.

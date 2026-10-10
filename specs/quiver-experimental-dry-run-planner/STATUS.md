@@ -56,3 +56,9 @@ PR153 remains the existing draft Research PR. Its authorized continuation integr
 that main commit without rewriting either parent; combined validation is recorded in EVIDENCE_REPORT.md, including Windows limits.
 Both slices retain their original contracts. No merge of PR153, deployment or complete
 MVP acceptance is authorized or inferred. No functional code is changed by conflict resolution.
+
+
+## Local ChatGPT preparation: 2026-10-10
+
+PR153 and PR154 are merged; base main c4ca2ebeb20e7308e160f88450f2817c962cebb0.
+slice-06-local-chatgpt-research is local-only; focused and auxiliary gates pass; full Windows suite has three existing symlink permission failures. No real connection or inference.

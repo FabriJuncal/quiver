@@ -1,0 +1,95 @@
+{
+  "slice_id": "slice-06-local-chatgpt-research",
+  "ticket": "QUIVER-EXP-06",
+  "type": "feature",
+  "title": "Local ChatGPT consent and bounded Research report",
+  "objective": "Prepare a local OSS ChatGPT-plan connection and mechanically cited Research report, validated with doubles.",
+  "description": "Optional session and report adapters; existing pure Core unchanged.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "local-chatgpt-research",
+    "branch_name": "feature/QUIVER-EXP-06-local-chatgpt-research"
+  },
+  "expected_read_paths": [
+    "README_FOR_AI.md",
+    "CONTRIBUTING.md",
+    "docs/reference/research-corpus.md",
+    "src/create-quiver/lib/ai/providers.js"
+  ],
+  "files": [
+    "src/create-quiver/lib/ai/chatgpt-session.js",
+    "src/create-quiver/lib/planning/chatgpt-research.js",
+    "examples/chatgpt-research/fixture.cjs",
+    "examples/chatgpt-research/run.cjs",
+    "tests/lib/chatgpt-session.test.js",
+    "tests/lib/chatgpt-research.test.js",
+    "docs/reference/chatgpt-research.md",
+    "package.json",
+    "package-lock.json",
+    "CHANGELOG.md",
+    "specs/quiver-experimental-dry-run-planner/SPEC.md",
+    "specs/quiver-experimental-dry-run-planner/STATUS.md",
+    "specs/quiver-experimental-dry-run-planner/EXECUTION_PLAN.md",
+    "specs/quiver-experimental-dry-run-planner/EVIDENCE_REPORT.md",
+    "specs/quiver-experimental-dry-run-planner/slices/slice-06-local-chatgpt-research/slice.json",
+    "specs/quiver-experimental-dry-run-planner/slices/slice-06-local-chatgpt-research/EXECUTION_BRIEF.md",
+    "specs/quiver-experimental-dry-run-planner/slices/slice-06-local-chatgpt-research/CLOSURE_BRIEF.md",
+    "specs/quiver-experimental-dry-run-planner/slices/slice-06-local-chatgpt-research/pr.md"
+  ],
+  "allowed_write_paths": [
+    "src/create-quiver/lib/ai/chatgpt-session.js",
+    "src/create-quiver/lib/planning/chatgpt-research.js",
+    "examples/chatgpt-research/fixture.cjs",
+    "examples/chatgpt-research/run.cjs",
+    "tests/lib/chatgpt-session.test.js",
+    "tests/lib/chatgpt-research.test.js",
+    "docs/reference/chatgpt-research.md",
+    "package.json",
+    "package-lock.json",
+    "CHANGELOG.md",
+    "specs/quiver-experimental-dry-run-planner/SPEC.md",
+    "specs/quiver-experimental-dry-run-planner/STATUS.md",
+    "specs/quiver-experimental-dry-run-planner/EXECUTION_PLAN.md",
+    "specs/quiver-experimental-dry-run-planner/EVIDENCE_REPORT.md",
+    "specs/quiver-experimental-dry-run-planner/slices/slice-06-local-chatgpt-research/slice.json",
+    "specs/quiver-experimental-dry-run-planner/slices/slice-06-local-chatgpt-research/EXECUTION_BRIEF.md",
+    "specs/quiver-experimental-dry-run-planner/slices/slice-06-local-chatgpt-research/CLOSURE_BRIEF.md",
+    "specs/quiver-experimental-dry-run-planner/slices/slice-06-local-chatgpt-research/pr.md"
+  ],
+  "depends_on": [
+    "slice-04-research-corpus"
+  ],
+  "parallel_safe": "never",
+  "parallel_safe_reason": "Sequential local validation; no live OAuth or inference.",
+  "must": [
+    "Preserve Core and existing Research permissions.",
+    "Keep simulations distinct from real connection and semantic verification."
+  ],
+  "not_included": [
+    "Push, PR, deploy, real OAuth, real inference, general agent, arbitrary projects, credential persistence or credits activation."
+  ],
+  "acceptance": [
+    "CG-01: Default simulation performs no network, OAuth registration or inference.",
+    "CG-02: OAuth consent, PKCE, state, nonce, exact callback and signed identity enforce per-registration separation.",
+    "CG-03: Tokens remain process-local; cancellation and signout cannot install late credentials.",
+    "CG-04: Explicit corpus/account/model review precedes public Responses streaming, with no billing fallback or automatic retry.",
+    "CG-05: Errors, incomplete streams, quota and invalid citations never produce accepted reports.",
+    "CG-06: Exact source hashes and line quotations are verified; semantic review and human acceptance remain separate.",
+    "CG-07: Tests use fictitious data and transports; no real account or inference is used in development."
+  ],
+  "tests": [
+    "node --test --test-concurrency=1 tests/lib/chatgpt-session.test.js tests/lib/chatgpt-research.test.js tests/lib/planning-research-corpus.test.js",
+    "node examples/chatgpt-research/run.cjs",
+    "npm run test:ci",
+    "npm run docs:check",
+    "npm run changelog:check",
+    "npm run schema:slice:check",
+    "node bin/create-quiver.js spec validate specs/quiver-experimental-dry-run-planner --strict",
+    "node bin/create-quiver.js slice check --local specs/quiver-experimental-dry-run-planner/slices/slice-06-local-chatgpt-research/slice.json",
+    "npm run package:quiver",
+    "git diff --check"
+  ],
+  "estimated_hours": 4,
+  "status": "ready"
+}

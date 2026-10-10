@@ -382,3 +382,51 @@ an identical-lockfile checkout. Logs and receipts: ../research-integration-evide
 Only evidence documentation changed after the tested tree; relevant documentary
 gates are rerun before publication. Exact-head remote CI is required after updating
 the existing branch; historical CI does not establish the new commit's result.
+
+
+## Slice-06 local ChatGPT preparation
+
+Base c4ca2ebeb20e7308e160f88450f2817c962cebb0. Official SIWC documentation verified 2026-10-10.
+Focused first pass: 430/430, zero skips/cancelled/failures, exit 0 (59 new plus371 existing).
+Default demo returned simulated inference with exact citations and accepted:false.
+Installed only jose6.2.12 locally with ignore-scripts; no account or token operations.
+Final validation and limitations are recorded below. No real OAuth/inference or remote changes.
+
+
+## Slice-06 final local validation: 2026-10-10
+
+Base: c4ca2ebeb20e7308e160f88450f2817c962cebb0.
+Functional/test tree: 850a41691130bd77282c7f6928c31ddb00d3d710.
+Node 24.19.0 on non-admin Windows. Full suite command:
+`node scripts/ci/run-node-tests.js` (the package test:ci script).
+Started 2026-10-10T21:51:28.2464026Z; finished 2026-10-10T22:02:53.0074903Z.
+
+- Focused seven-file suite: 433/433 passed, zero failures/skips/cancellations,
+  exit 0; 62 new tests plus 371 existing planning tests.
+- Full suite: 1402 total, 1389 passed, 3 existing symlink EPERM failures,
+  10 existing skips, zero cancelled, exit 1. This is not a full-suite pass.
+- Failing cases: tests/commands/ai-review-plan.test.js:683,
+  tests/lib/ai-analyze-project-discovery.test.js:132 and tests/lib/evidence.test.js:114.
+- Default simulation, dependency inspection, docs:check, changelog:check,
+  schema:slice:check, strict spec validation, local slice check and package:quiver
+  including installed CLI smoke: exit 0.
+- Node syntax checks for all six new JavaScript/CommonJS files: exit 0.
+- Independent read-only review found two P2 races: immediate cancellation before
+  transmission and an extra callback aborting an active exchange. Both fixed,
+  covered by three new regression tests, and re-reviewed with no remaining findings.
+
+No tests disabled or weakened. The same three Windows permission failures were
+already observed before this slice. No administrator access or system changes.
+Node 20.12 and Linux were not run for this new tree; prior main CI does not prove it.
+This repository has no applicable TypeScript or separate application build gate;
+Node syntax, package construction and installed CLI smoke were checked instead.
+Initial strict-spec and slice checks exposed missing status/branch metadata;
+these were corrected and all applicable auxiliary gates rerun successfully.
+
+Receipts and logs: ../siwc-evidence (outside the repository). Only documentation
+is changed after the full-suite tree; final documentary/package gates are rerun.
+Local commit only. No push, PR, real OAuth, existing-token access, inference,
+quota consumption, deployment or account creation. Only jose 6.2.12 was installed
+locally with install scripts disabled. Credits require user-side settings;
+there is no API-enforced monetary cap or promise of additional quota.
+Mechanical citation checks establish source/quote integrity, not semantic truth.

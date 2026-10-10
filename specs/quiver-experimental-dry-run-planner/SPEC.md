@@ -252,3 +252,17 @@ See [controlled demo contract](../../docs/reference/controlled-development-verif
 - DV-04: Changed reviewed source, baseline, test or candidate bytes block execution or further verification.
 - DV-05: Evidence records hashes, approval, commands, environment, duration, exit codes and results; timeout/cancellation never imply success.
 - DV-06: Original files and Core remain unchanged; verification of authored-demo criteria never implies human acceptance or arbitrary-project isolation.
+
+
+## Local ChatGPT Research (slice-06)
+
+Optional OSS OAuth and bounded report layers around the unchanged pure Core.
+See [local ChatGPT contract](../../docs/reference/chatgpt-research.md).
+
+- CG-01: Default simulation performs no network, OAuth registration or inference.
+- CG-02: OAuth consent, PKCE, state, nonce, exact callback and signed identity enforce per-registration separation.
+- CG-03: Tokens remain process-local; cancellation and signout cannot install late credentials.
+- CG-04: Explicit corpus/account/model review precedes public Responses streaming, with no billing fallback or automatic retry.
+- CG-05: Errors, incomplete streams, quota and invalid citations never produce accepted reports.
+- CG-06: Exact source hashes and line quotations are verified; semantic review and human acceptance remain separate.
+- CG-07: Tests use fictitious data and transports; no real account or inference is used in development.
