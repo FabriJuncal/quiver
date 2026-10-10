@@ -236,3 +236,32 @@ host-controlled/cooperative, not an OS isolation boundary against concurrent
 malicious filesystem processes. Host approval authenticity and freshness remain
 host duties. Separate authorization permits this slice draft PR and CI only;
 merge, deployment, project execution and human acceptance remain unapproved.
+
+
+## Slice-05 local verification evidence
+
+Initial new integration suite: 20/20, zero skips, exit 0. Final results follow.
+
+
+## Slice-05 final local validation
+
+Base: 688ae68c69b1a31cb70cee0af85a20fa1f5a80cc. Full-suite tested tree: 366ad14df18f480b283d7a31978c79e3841fa364.
+Command: node scripts/ci/run-node-tests.js (npm test:ci entrypoint), Node 24.19.0, non-admin Windows.
+Started 2026-10-09T23:19:43.8529184Z; finished 2026-10-09T23:30:49.2292617Z.
+
+- Focused: 329/329, zero failures/skips, exit 0 (20 new + 309 existing).
+- Correct demo: baseline exit 1 (4/6 pass), modified exit 0 (6/6 pass).
+- Incorrect demo: baseline exit 1, modified exit 1 (5/6 pass); search criterion fails, regressions pass.
+- Documentation, changelog, schema, strict spec, local slice and package/installed CLI gates: exit 0.
+- Independent implementation and documentary review: no blocking findings within authored-fixture scope.
+- Full Windows suite: 1298 total, 1285 passed, 3 existing real-symlink EPERM failures, 10 existing skips, zero cancelled; exit 1. This is not a full-suite pass.
+
+Windows failures: tests/commands/ai-review-plan.test.js:683, tests/lib/ai-analyze-project-discovery.test.js:132,
+tests/lib/evidence.test.js:114. All fail creating actual symlinks (EPERM). No new skips or privileged tests.
+Initial docs gate failed on Windows checkout CRLF; unchanged tracked files were restored to exact Git bytes.
+Initial schema gate rejected in_progress; changed to supported ready and rechecked. Initial logs retained.
+Dependencies were copied from the existing identical-lockfile checkout (line endings aside); no installation.
+Local logs and JSON receipts: ../development-tests-evidence relative to this checkout.
+Only documentary evidence/closure changes follow the tested tree; functional code remains identical.
+No remote CI or publication for this slice. PR153 remained open/unmerged at the latest read.
+No complete MVP, arbitrary-project sandbox, provider, human acceptance, merge or deployment claimed.

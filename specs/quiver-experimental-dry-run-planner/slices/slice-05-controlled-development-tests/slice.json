@@ -1,0 +1,95 @@
+{
+  "slice_id": "slice-05-controlled-development-tests",
+  "ticket": "QUIVER-EXP-05",
+  "type": "feature",
+  "title": "Controlled Development change, real tests and evidence",
+  "objective": "Demonstrate a real red-green Development cycle on an authored catalog without arbitrary code execution.",
+  "description": "Small optional demo host around the unchanged supervised adapter; fixed tests outside proposed patch.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "controlled-development-tests",
+    "branch_name": "feature/QUIVER-EXP-05-controlled-development-tests"
+  },
+  "expected_read_paths": [
+    "README_FOR_AI.md",
+    "CONTRIBUTING.md",
+    "src/create-quiver/lib/planning/supervised-workspace.js",
+    "src/create-quiver/lib/evidence.js"
+  ],
+  "files": [
+    "examples/development-verification/.gitattributes",
+    "examples/development-verification/app/catalog.cjs",
+    "examples/development-verification/fixtures/search.cjs",
+    "examples/development-verification/fixtures/wrong.cjs",
+    "examples/development-verification/host-tests.cjs",
+    "examples/development-verification/host.cjs",
+    "examples/development-verification/run.cjs",
+    "tests/lib/planning-controlled-development.test.js",
+    "docs/reference/controlled-development-verification.md",
+    "CHANGELOG.md",
+    "specs/quiver-experimental-dry-run-planner/SPEC.md",
+    "specs/quiver-experimental-dry-run-planner/STATUS.md",
+    "specs/quiver-experimental-dry-run-planner/EXECUTION_PLAN.md",
+    "specs/quiver-experimental-dry-run-planner/EVIDENCE_REPORT.md",
+    "specs/quiver-experimental-dry-run-planner/slices/slice-05-controlled-development-tests/slice.json",
+    "specs/quiver-experimental-dry-run-planner/slices/slice-05-controlled-development-tests/EXECUTION_BRIEF.md",
+    "specs/quiver-experimental-dry-run-planner/slices/slice-05-controlled-development-tests/CLOSURE_BRIEF.md",
+    "specs/quiver-experimental-dry-run-planner/slices/slice-05-controlled-development-tests/pr.md"
+  ],
+  "allowed_write_paths": [
+    "examples/development-verification/.gitattributes",
+    "examples/development-verification/app/catalog.cjs",
+    "examples/development-verification/fixtures/search.cjs",
+    "examples/development-verification/fixtures/wrong.cjs",
+    "examples/development-verification/host-tests.cjs",
+    "examples/development-verification/host.cjs",
+    "examples/development-verification/run.cjs",
+    "tests/lib/planning-controlled-development.test.js",
+    "docs/reference/controlled-development-verification.md",
+    "CHANGELOG.md",
+    "specs/quiver-experimental-dry-run-planner/SPEC.md",
+    "specs/quiver-experimental-dry-run-planner/STATUS.md",
+    "specs/quiver-experimental-dry-run-planner/EXECUTION_PLAN.md",
+    "specs/quiver-experimental-dry-run-planner/EVIDENCE_REPORT.md",
+    "specs/quiver-experimental-dry-run-planner/slices/slice-05-controlled-development-tests/slice.json",
+    "specs/quiver-experimental-dry-run-planner/slices/slice-05-controlled-development-tests/EXECUTION_BRIEF.md",
+    "specs/quiver-experimental-dry-run-planner/slices/slice-05-controlled-development-tests/CLOSURE_BRIEF.md",
+    "specs/quiver-experimental-dry-run-planner/slices/slice-05-controlled-development-tests/pr.md"
+  ],
+  "depends_on": [
+    "slice-03-supervised-workspace"
+  ],
+  "parallel_safe": "never",
+  "parallel_safe_reason": "Sequential execution and validation of a bounded process host.",
+  "must": [
+    "Keep Core and supervised adapter unchanged.",
+    "Use only authored hash-pinned fixtures; retain separate human acceptance."
+  ],
+  "not_included": [
+    "Arbitrary projects, OS sandbox, providers, chat, Research changes, publication, merge or deployment."
+  ],
+  "acceptance": [
+    "DV-01: Only the exact authored catalog and fixed host test assets can execute; supplied commands are never dispatch authority.",
+    "DV-02: Approval binds the exact source, patch, candidate, test suite, command, runtime, environment and limits; sessions are single-use.",
+    "DV-03: Real baseline search failures become six passing checks after the correct patch; the incorrect patch remains failed while regressions pass.",
+    "DV-04: Changed reviewed source, baseline, test or candidate bytes block execution or further verification.",
+    "DV-05: Evidence records hashes, approval, commands, environment, duration, exit codes and results; timeout/cancellation never imply success.",
+    "DV-06: Original files and Core remain unchanged; verification of authored-demo criteria never implies human acceptance or arbitrary-project isolation."
+  ],
+  "tests": [
+    "node --test --test-concurrency=1 tests/lib/planning-controlled-development.test.js tests/lib/planning-supervised-workspace.test.js tests/lib/planning-development-proposal.test.js tests/lib/planning-dry-run.test.js",
+    "node examples/development-verification/run.cjs search",
+    "node examples/development-verification/run.cjs wrong (expected exit 1)",
+    "npm run test:ci",
+    "npm run docs:check",
+    "npm run changelog:check",
+    "npm run schema:slice:check",
+    "node bin/create-quiver.js spec validate specs/quiver-experimental-dry-run-planner --strict",
+    "node bin/create-quiver.js slice check --local specs/quiver-experimental-dry-run-planner/slices/slice-05-controlled-development-tests/slice.json",
+    "npm run package:quiver",
+    "git diff --check"
+  ],
+  "estimated_hours": 4,
+  "status": "ready"
+}
