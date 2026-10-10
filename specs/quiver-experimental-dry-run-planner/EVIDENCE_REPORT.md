@@ -309,3 +309,76 @@ execution. The remaining Windows symlink coverage needs an already capable
 environment; no elevation was attempted. Source acquisition, semantic evaluation,
 synthesis and chat orchestration remain open MVP work. A temporary copy is not
 an OS sandbox; executing proposed project code requires a separate safe contract.
+
+## Slice-05 local verification evidence
+
+Initial new integration suite: 20/20, zero skips, exit 0. Final results follow.
+
+
+## Slice-05 final local validation
+
+Base: 688ae68c69b1a31cb70cee0af85a20fa1f5a80cc. Full-suite tested tree: 366ad14df18f480b283d7a31978c79e3841fa364.
+Command: node scripts/ci/run-node-tests.js (npm test:ci entrypoint), Node 24.19.0, non-admin Windows.
+Started 2026-10-09T23:19:43.8529184Z; finished 2026-10-09T23:30:49.2292617Z.
+
+- Focused: 329/329, zero failures/skips, exit 0 (20 new + 309 existing).
+- Correct demo: baseline exit 1 (4/6 pass), modified exit 0 (6/6 pass).
+- Incorrect demo: baseline exit 1, modified exit 1 (5/6 pass); search criterion fails, regressions pass.
+- Documentation, changelog, schema, strict spec, local slice and package/installed CLI gates: exit 0.
+- Independent implementation and documentary review: no blocking findings within authored-fixture scope.
+- Full Windows suite: 1298 total, 1285 passed, 3 existing real-symlink EPERM failures, 10 existing skips, zero cancelled; exit 1. This is not a full-suite pass.
+
+Windows failures: tests/commands/ai-review-plan.test.js:683, tests/lib/ai-analyze-project-discovery.test.js:132,
+tests/lib/evidence.test.js:114. All fail creating actual symlinks (EPERM). No new skips or privileged tests.
+Initial docs gate failed on Windows checkout CRLF; unchanged tracked files were restored to exact Git bytes.
+Initial schema gate rejected in_progress; changed to supported ready and rechecked. Initial logs retained.
+Dependencies were copied from the existing identical-lockfile checkout (line endings aside); no installation.
+Local logs and JSON receipts: ../development-tests-evidence relative to this checkout.
+Only documentary evidence/closure changes follow the tested tree; functional code remains identical.
+No remote CI or publication for this slice. PR153 remained open/unmerged at the latest read.
+No complete MVP, arbitrary-project sandbox, provider, human acceptance, merge or deployment claimed.
+
+
+## PR153 integration with merged PR154: 2026-10-10
+
+Earlier local sections describe their respective pre-publication snapshots.
+PR153 original head a5ca94bd9e6555cd29c81325f916e748528ac970 passed CI run37996017591.
+PR154 was human-merged as main 01c5dc2c2a8a298f05007fb0cd490c116e635b31;
+main CI run38011851076 passed seven jobs, with 1298/1298 on each full Linux suite.
+
+Five content conflicts were confined to CHANGELOG.md, SPEC.md, EXECUTION_PLAN.md,
+STATUS.md and this evidence report. Both appended slice sections and changelog
+entries are retained. Source, tests, examples, per-slice contracts, Core and
+package metadata are inherited unchanged. No product decision or expanded
+capability is introduced. Combined local validation and independent review are recorded below;
+prior CI is not evidence for the new merged tree. Existing Windows EPERM limits
+remain explicit. No force push, PR153 merge or deployment.
+
+
+## PR153 combined local validation before branch update
+
+Full-suite tested tree: 5a38159f3a347cb582e4e804d38a4dd6866f93a3.
+Parents: Research a5ca94bd9e6555cd29c81325f916e748528ac970 and main
+01c5dc2c2a8a298f05007fb0cd490c116e635b31. Node 24.19.0, non-admin Windows.
+Command: node scripts/ci/run-node-tests.js. Started 2026-10-10T01:20:13.6465009Z;
+finished 2026-10-10T01:31:24.3780213Z.
+
+- Focused combined suite: 371/371 passed, no failures/cancellations/skips, exit 0.
+- Full Windows suite: 1340 total, 1327 passed, 3 existing symlink EPERM failures,
+  10 existing skips, zero cancelled, exit 1. This is not a full-suite pass.
+- Failures remain tests/commands/ai-review-plan.test.js:683,
+  tests/lib/ai-analyze-project-discovery.test.js:132 and tests/lib/evidence.test.js:114.
+- Research example and both slice checks, docs, changelog, schema, strict spec,
+  package and installed CLI smoke: exit 0.
+- Correct Development demo: exit 0; deliberately incorrect demo: expected exit 1.
+- Independent read-only integration review: no findings. All 1627 paths form the
+  union of both parents; all functional blobs and per-slice contracts are unchanged.
+  Only five shared Markdown files required conflict resolution. The PR delta from
+  main remains the original 15 Research paths.
+
+No tests were disabled or weakened. No software installation, administrator session,
+new provider, merge of PR153 or deployment. Existing dependencies were copied from
+an identical-lockfile checkout. Logs and receipts: ../research-integration-evidence.
+Only evidence documentation changed after the tested tree; relevant documentary
+gates are rerun before publication. Exact-head remote CI is required after updating
+the existing branch; historical CI does not establish the new commit's result.

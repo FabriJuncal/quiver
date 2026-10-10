@@ -38,3 +38,21 @@ Merge and deployment remain unauthorized; human acceptance is not inferred.
 - slice-04-research-corpus: ready; 351 focused tests and independent review complete; Windows full-suite limits recorded; unpublished.
 - Base main 688ae68c69b1a31cb70cee0af85a20fa1f5a80cc. PR152 is inherited unchanged from main.
 - No publication, merge, deployment or complete MVP acceptance is authorized.
+
+## Current local Development verification: 2026-10-09
+
+- Main pinned at 688ae68c69b1a31cb70cee0af85a20fa1f5a80cc; PR152 inherited.
+- PR153 unmerged when inspected; its branch and files remain untouched.
+- slice-05-controlled-development-tests: ready; 329 focused checks and independent review complete; full Windows suite limits recorded.
+- Human authorized implementation and tests only. No publication, merge or deployment.
+
+
+## Current integration status: 2026-10-10
+
+The preceding local-validation sections are historical snapshots, not current publication states.
+PR154 was human-merged into main 01c5dc2c2a8a298f05007fb0cd490c116e635b31;
+its reviewed tree is unchanged and main CI run 38011851076 passed all seven jobs.
+PR153 remains the existing draft Research PR. Its authorized continuation integrates
+that main commit without rewriting either parent; combined validation is recorded in EVIDENCE_REPORT.md, including Windows limits.
+Both slices retain their original contracts. No merge of PR153, deployment or complete
+MVP acceptance is authorized or inferred. No functional code is changed by conflict resolution.

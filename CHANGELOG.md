@@ -8,6 +8,8 @@ All notable changes to this project will be documented in this file.
 
 - Optional bounded Research corpus retrieval with verified source bytes, literal line citations and explicit unverified criteria; no source acquisition, providers or external execution.
 
+- Controlled Development demo: apply an authored name-search patch in a temporary copy, run fixed host tests before/after, and record approvals, hashes and actual results. Incorrect patches, stale bytes, timeout and cancellation never imply acceptance; not an arbitrary-project executor.
+
 - Experimental supervised workspace adapter: verify actual proposal inputs and exact patch applicability, then write a private temporary copy after host authorization with content-hash evidence. Source files and the pure planning Core remain unchanged; project tests and acceptance are not inferred.
 
 - Propuestas Development experimentales: preparación pura de parches aportados, con alcance exacto, diff unificado acotado, pruebas propuestas y referencias no verificadas. Recalcula el plan y conserva ejecución, aceptación y revisión sin satisfacer; no aplica parches ni añade comandos o dependencias.

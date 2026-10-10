@@ -51,3 +51,25 @@ no new OSS runtime is adopted for this bounded file operation.
 3. Produce source-cited literal matches with explicit limits.
 4. Exercise an authored corpus and hostile data; run relevant gates sequentially.
 5. Report local evidence and remaining MVP work, without publication.
+
+## Slice-05: controlled Development verification
+
+1. Pin current main 688ae68c69b1a31cb70cee0af85a20fa1f5a80cc in a new branch; PR153 remains unmerged at start and is untouched.
+2. Reuse supervised application; bind fixed authored app/tests and host command to review.
+3. Prove actual baseline failure, corrected success and incorrect-patch rejection.
+4. Exercise stale approval/bytes, cancellation, timeout and original preservation.
+5. Run sequential gates, full-suite evidence and independent read-only review.
+6. Report local results. Publication requires separate specific authorization.
+
+Existing evidence command was inspected for reuse; it accepts general commands
+and is not a closed authored-fixture host. No new general execution capability
+or dependency is introduced. Hash-pinned fixtures require LF across checkouts.
+
+
+## PR153 integration continuation: 2026-10-10
+
+1. Preserve Research head a5ca94bd9e6555cd29c81325f916e748528ac970 and main 01c5dc2c2a8a298f05007fb0cd490c116e635b31 as merge parents.
+2. Resolve the five shared Markdown conflicts by retaining both slices; keep every functional file byte-identical to its owning parent.
+3. Review independently and run combined focused tests, applicable full suite and auxiliary gates sequentially.
+4. Update the existing PR153 branch with a non-forced fast-forward merge commit; follow exact-head CI to completion.
+5. Report mergeability and explicit Windows limits. Do not merge PR153 or deploy.

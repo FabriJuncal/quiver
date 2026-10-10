@@ -237,3 +237,18 @@ detector: query/metadata fields remain visible; the host authorizes disclosure.
 - RC-05: Preserve unverified criteria, false external execution/acceptance flags and explicit caller-supplied provenance; do not infer truth or semantic support.
 - RC-06: Keep Core unchanged and acquire no filesystem, network, process, provider, model or caller callbacks in the library.
 - RC-07: Demonstrate actual retrieval from two authored corpus documents and adversarial tests, without claiming a complete Research harness or MVP.
+
+## Controlled Development verification demo (slice-05)
+
+Separate demo host around the unchanged supervised adapter. Exact authored
+catalog variants and fixed host tests demonstrate real red/green verification.
+The tests cannot be changed by the proposed application patch. This is not
+an arbitrary-project executor, sandbox or human-acceptance authority.
+See [controlled demo contract](../../docs/reference/controlled-development-verification.md).
+
+- DV-01: Only the exact authored catalog and fixed host test assets can execute; supplied commands are never dispatch authority.
+- DV-02: Approval binds the exact source, patch, candidate, test suite, command, runtime, environment and limits; sessions are single-use.
+- DV-03: Real baseline search failures become six passing checks after the correct patch; the incorrect patch remains failed while regressions pass.
+- DV-04: Changed reviewed source, baseline, test or candidate bytes block execution or further verification.
+- DV-05: Evidence records hashes, approval, commands, environment, duration, exit codes and results; timeout/cancellation never imply success.
+- DV-06: Original files and Core remain unchanged; verification of authored-demo criteria never implies human acceptance or arbitrary-project isolation.
