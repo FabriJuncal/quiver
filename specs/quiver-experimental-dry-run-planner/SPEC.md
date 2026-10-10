@@ -215,3 +215,19 @@ See [supervised workspace contract](../../docs/reference/supervised-workspace.md
 - SW-05: Evidence records task/scope/approval and before/after hashes; project tests and human acceptance remain unperformed.
 - SW-06: Real hardlinks/junctions and unsafe paths are rejected; byte budgets and UTF-8/LF restrictions are enforced.
 - SW-07: Existing planner/proposal results remain unchanged; no provider, shell, model or proposed command execution is introduced.
+
+
+## Controlled Development verification demo (slice-05)
+
+Separate demo host around the unchanged supervised adapter. Exact authored
+catalog variants and fixed host tests demonstrate real red/green verification.
+The tests cannot be changed by the proposed application patch. This is not
+an arbitrary-project executor, sandbox or human-acceptance authority.
+See [controlled demo contract](../../docs/reference/controlled-development-verification.md).
+
+- DV-01: Only the exact authored catalog and fixed host test assets can execute; supplied commands are never dispatch authority.
+- DV-02: Approval binds the exact source, patch, candidate, test suite, command, runtime, environment and limits; sessions are single-use.
+- DV-03: Real baseline search failures become six passing checks after the correct patch; the incorrect patch remains failed while regressions pass.
+- DV-04: Changed reviewed source, baseline, test or candidate bytes block execution or further verification.
+- DV-05: Evidence records hashes, approval, commands, environment, duration, exit codes and results; timeout/cancellation never imply success.
+- DV-06: Original files and Core remain unchanged; verification of authored-demo criteria never implies human acceptance or arbitrary-project isolation.
