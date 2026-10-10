@@ -1,0 +1,89 @@
+{
+  "slice_id": "slice-04-research-corpus",
+  "ticket": "QUIVER-EXP-04",
+  "type": "feature",
+  "title": "Bounded literal research over supplied sources",
+  "objective": "Produce reproducible source-cited comparisons without running proposed code or acquiring external sources.",
+  "description": "Optional pure corpus retrieval adapter using unchanged Research planning contracts.",
+  "git": {
+    "branch_type": "feature",
+    "base_branch": "main",
+    "branch_slug": "research-corpus",
+    "branch_name": "feature/QUIVER-EXP-04-research-corpus"
+  },
+  "expected_read_paths": [
+    "CONTRIBUTING.md",
+    "README_FOR_AI.md",
+    "specs/quiver-experimental-dry-run-planner/SPEC.md",
+    "src/create-quiver/lib/planning/dry-run.js",
+    "examples/planning-dry-run/research.json"
+  ],
+  "files": [
+    "src/create-quiver/lib/planning/research-corpus.js",
+    "tests/lib/planning-research-corpus.test.js",
+    "docs/reference/research-corpus.md",
+    "examples/research-corpus/run.js",
+    "examples/research-corpus/source-alpha.md",
+    "examples/research-corpus/source-beta.md",
+    "CHANGELOG.md",
+    "specs/quiver-experimental-dry-run-planner/SPEC.md",
+    "specs/quiver-experimental-dry-run-planner/STATUS.md",
+    "specs/quiver-experimental-dry-run-planner/EXECUTION_PLAN.md",
+    "specs/quiver-experimental-dry-run-planner/EVIDENCE_REPORT.md",
+    "specs/quiver-experimental-dry-run-planner/slices/slice-04-research-corpus/slice.json",
+    "specs/quiver-experimental-dry-run-planner/slices/slice-04-research-corpus/EXECUTION_BRIEF.md",
+    "specs/quiver-experimental-dry-run-planner/slices/slice-04-research-corpus/CLOSURE_BRIEF.md",
+    "specs/quiver-experimental-dry-run-planner/slices/slice-04-research-corpus/pr.md"
+  ],
+  "allowed_write_paths": [
+    "src/create-quiver/lib/planning/research-corpus.js",
+    "tests/lib/planning-research-corpus.test.js",
+    "docs/reference/research-corpus.md",
+    "examples/research-corpus/run.js",
+    "examples/research-corpus/source-alpha.md",
+    "examples/research-corpus/source-beta.md",
+    "CHANGELOG.md",
+    "specs/quiver-experimental-dry-run-planner/SPEC.md",
+    "specs/quiver-experimental-dry-run-planner/STATUS.md",
+    "specs/quiver-experimental-dry-run-planner/EXECUTION_PLAN.md",
+    "specs/quiver-experimental-dry-run-planner/EVIDENCE_REPORT.md",
+    "specs/quiver-experimental-dry-run-planner/slices/slice-04-research-corpus/slice.json",
+    "specs/quiver-experimental-dry-run-planner/slices/slice-04-research-corpus/EXECUTION_BRIEF.md",
+    "specs/quiver-experimental-dry-run-planner/slices/slice-04-research-corpus/CLOSURE_BRIEF.md",
+    "specs/quiver-experimental-dry-run-planner/slices/slice-04-research-corpus/pr.md"
+  ],
+  "depends_on": [
+    "slice-01-headless-planner"
+  ],
+  "parallel_safe": "never",
+  "parallel_safe_reason": "One bounded contract, executed and validated sequentially.",
+  "must": [
+    "Preserve Core byte-for-byte.",
+    "Separate literal retrieval from semantic verification and human acceptance."
+  ],
+  "not_included": [
+    "Web acquisition, semantic synthesis, Research report approval/publication, shell/project execution, OS sandbox, providers/models, PR publication, merge and deployment."
+  ],
+  "acceptance": [
+    "RC-01: Recompute the unchanged planner and require an exact binding, research.compare, prepare phase and low-risk eligible actions.",
+    "RC-02: Verify the exact supplied source set, actual UTF-8 hashes and sizes before retrieval; reject hostile data and budget excess atomically.",
+    "RC-03: Return deterministic case-sensitive literal line matches for every query/source pair in its authorized action, with source hashes and line citations.",
+    "RC-04: Mark absent matches only as not-found-in-supplied-source; disclose bounded excerpts and total matching-line counts.",
+    "RC-05: Preserve unverified criteria, false external execution/acceptance flags and explicit caller-supplied provenance; do not infer truth or semantic support.",
+    "RC-06: Keep Core unchanged and acquire no filesystem, network, process, provider, model or caller callbacks in the library.",
+    "RC-07: Demonstrate actual retrieval from two authored corpus documents and adversarial tests, without claiming a complete Research harness or MVP."
+  ],
+  "tests": [
+    "node --test --test-concurrency=1 tests/lib/planning-research-corpus.test.js tests/lib/planning-dry-run.test.js tests/lib/planning-development-proposal.test.js tests/lib/planning-supervised-workspace.test.js",
+    "node examples/research-corpus/run.js",
+    "npm run docs:check",
+    "npm run changelog:check",
+    "npm run schema:slice:check",
+    "node bin/create-quiver.js spec validate specs/quiver-experimental-dry-run-planner --strict",
+    "node bin/create-quiver.js slice check --local specs/quiver-experimental-dry-run-planner/slices/slice-04-research-corpus/slice.json",
+    "npm run package:quiver",
+    "git diff --cached --check"
+  ],
+  "estimated_hours": 4,
+  "status": "ready"
+}

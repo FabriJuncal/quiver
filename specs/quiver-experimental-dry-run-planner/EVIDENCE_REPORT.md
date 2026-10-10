@@ -238,6 +238,78 @@ host duties. Separate authorization permits this slice draft PR and CI only;
 merge, deployment, project execution and human acceptance remain unapproved.
 
 
+## Slice-04 Research corpus: reviewed local result
+
+Base main 688ae68c69b1a31cb70cee0af85a20fa1f5a80cc includes the human merge of
+PR152. Its CI run 37990502284 completed success, seven jobs; that validates only
+the base. The first Research checkout/tree/patch are preserved; the new copy
+inherits PR152 unchanged and adds only fifteen declared Research paths.
+
+The name and contract describe literal comparisons with hash/line citations,
+not semantic research, truth verification or a complete MVP. Sources are supplied
+UTF-8 snapshots. Quotes are omitted by default; explicit separate hostOptions
+include_quotes true is required to disclose source text. Query/metadata fields
+remain visible; hashes/counts are not anonymization or authorization.
+
+## Slice-04 independent review and corrections
+
+Independent read-only review found a P1: full-line default quotes could expose a
+credential embedded in an ordinary source. A synthetic canary regression failed
+before correction (exit 1). Default matches now contain only line locations.
+Strict host options are separate from corpus input and included in both bindings;
+tests check absence of the canary from the entire default JSON, option injection,
+getters/proxies and sensitive paths. The example explicitly opts in for its two
+authored public fixtures. The required PR Title heading was also corrected.
+Reviewer rechecked the implementation and contract on tree cd4b31ffbfd4ef703b89f39f696c5b4a59a061cd,
+reporting no concrete remaining functional defect. A minor Execution Brief
+sentence was aligned afterward with the same default. Reviewer ran no tests.
+
+## Slice-04 validation commands and outcomes
+
+node --test --test-concurrency=1 tests/lib/planning-research-corpus.test.js
+tests/lib/planning-dry-run.test.js tests/lib/planning-development-proposal.test.js
+tests/lib/planning-supervised-workspace.test.js
+
+351/351 pass, zero fail/cancel/skip, exit 0 (1675.1168 ms): 42 Research tests plus
+309 existing cases. Coverage includes real example source citations, LF/CRLF
+preserving hashes, Unicode, missing/extra/stale data, size/output limits, literal
+case semantics, source/criterion scope, truncation, stable bindings, hostile JSON,
+dependency isolation and the default disclosure policy. Core stays byte-identical.
+
+Full repository command: node scripts/ci/run-node-tests.js (npm run test:ci entrypoint).
+Final full Windows execution used Node 24.19.0, local existing dependencies and
+ordinary non-admin permissions; NODE_PATH unset. Start 2026-10-09T21:17:29.1905266Z; finish
+2026-10-09T21:31:09.3343307Z. Tested tree cd4b31ffbfd4ef703b89f39f696c5b4a59a061cd.
+Result: 1,320 tests; 1,307 pass; 3 fail; 10 existing skips; zero cancelled; exit 1.
+This is a complete suite execution, not a passing suite. Exact failing locations:
+- tests\commands\ai-review-plan.test.js:683:1
+- tests\lib\ai-analyze-project-discovery.test.js:132:1
+- tests\lib\evidence.test.js:114:1
+
+All three failed at real symlink creation with EPERM, matching existing Windows
+capability limitations. No new skips, privileges, weaker assertions or test
+substitutions. Final evidence-only documentation updates do not alter tested code.
+
+An initial full run with borrowed NODE_PATH dependencies had 1,297 pass, 13 fail,
+10 skips (exit 1): ten ESM @clack/prompts resolution failures plus the same three
+symlink failures. Existing node_modules were copied into the isolated checkout
+with identical lockfile SHA256 AA2D04B58401016559A00E44DA02D61C4C71CF146E7B324266D396EAD281539F.
+No package/software installation occurred. The full suite was repeated on the
+identical tree; both logs/metadata remain preserved outside the repo.
+
+The earlier 33-case fixture failure and strict brief-heading validation failure
+were corrected without weakening Core rules or assertions. Their logs remain.
+Final example/docs/changelog/schema/spec/slice/package reruns are recorded in
+research-evidence/reviewed-gates.json. The example performs actual reads of two
+authored fictional documents, 370 bytes total: TypeScript [1,0], Node.js [1,1],
+PostgreSQL [0,0]. Counts are matching lines in Alpha/Beta, not semantic findings.
+
+No CI for this local delta, publication, merge, deployment or project-code
+execution. The remaining Windows symlink coverage needs an already capable
+environment; no elevation was attempted. Source acquisition, semantic evaluation,
+synthesis and chat orchestration remain open MVP work. A temporary copy is not
+an OS sandbox; executing proposed project code requires a separate safe contract.
+
 ## Slice-05 local verification evidence
 
 Initial new integration suite: 20/20, zero skips, exit 0. Final results follow.
@@ -265,3 +337,48 @@ Local logs and JSON receipts: ../development-tests-evidence relative to this che
 Only documentary evidence/closure changes follow the tested tree; functional code remains identical.
 No remote CI or publication for this slice. PR153 remained open/unmerged at the latest read.
 No complete MVP, arbitrary-project sandbox, provider, human acceptance, merge or deployment claimed.
+
+
+## PR153 integration with merged PR154: 2026-10-10
+
+Earlier local sections describe their respective pre-publication snapshots.
+PR153 original head a5ca94bd9e6555cd29c81325f916e748528ac970 passed CI run37996017591.
+PR154 was human-merged as main 01c5dc2c2a8a298f05007fb0cd490c116e635b31;
+main CI run38011851076 passed seven jobs, with 1298/1298 on each full Linux suite.
+
+Five content conflicts were confined to CHANGELOG.md, SPEC.md, EXECUTION_PLAN.md,
+STATUS.md and this evidence report. Both appended slice sections and changelog
+entries are retained. Source, tests, examples, per-slice contracts, Core and
+package metadata are inherited unchanged. No product decision or expanded
+capability is introduced. Combined local validation and independent review are recorded below;
+prior CI is not evidence for the new merged tree. Existing Windows EPERM limits
+remain explicit. No force push, PR153 merge or deployment.
+
+
+## PR153 combined local validation before branch update
+
+Full-suite tested tree: 5a38159f3a347cb582e4e804d38a4dd6866f93a3.
+Parents: Research a5ca94bd9e6555cd29c81325f916e748528ac970 and main
+01c5dc2c2a8a298f05007fb0cd490c116e635b31. Node 24.19.0, non-admin Windows.
+Command: node scripts/ci/run-node-tests.js. Started 2026-10-10T01:20:13.6465009Z;
+finished 2026-10-10T01:31:24.3780213Z.
+
+- Focused combined suite: 371/371 passed, no failures/cancellations/skips, exit 0.
+- Full Windows suite: 1340 total, 1327 passed, 3 existing symlink EPERM failures,
+  10 existing skips, zero cancelled, exit 1. This is not a full-suite pass.
+- Failures remain tests/commands/ai-review-plan.test.js:683,
+  tests/lib/ai-analyze-project-discovery.test.js:132 and tests/lib/evidence.test.js:114.
+- Research example and both slice checks, docs, changelog, schema, strict spec,
+  package and installed CLI smoke: exit 0.
+- Correct Development demo: exit 0; deliberately incorrect demo: expected exit 1.
+- Independent read-only integration review: no findings. All 1627 paths form the
+  union of both parents; all functional blobs and per-slice contracts are unchanged.
+  Only five shared Markdown files required conflict resolution. The PR delta from
+  main remains the original 15 Research paths.
+
+No tests were disabled or weakened. No software installation, administrator session,
+new provider, merge of PR153 or deployment. Existing dependencies were copied from
+an identical-lockfile checkout. Logs and receipts: ../research-integration-evidence.
+Only evidence documentation changed after the tested tree; relevant documentary
+gates are rerun before publication. Exact-head remote CI is required after updating
+the existing branch; historical CI does not establish the new commit's result.
