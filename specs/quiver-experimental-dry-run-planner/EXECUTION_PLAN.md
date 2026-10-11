@@ -73,3 +73,11 @@ or dependency is introduced. Hash-pinned fixtures require LF across checkouts.
 3. Review independently and run combined focused tests, applicable full suite and auxiliary gates sequentially.
 4. Update the existing PR153 branch with a non-forced fast-forward merge commit; follow exact-head CI to completion.
 5. Report mergeability and explicit Windows limits. Do not merge PR153 or deploy.
+
+
+## Slice-06 local ChatGPT continuation
+
+1. Verify official OSS SIWC contract and main; preserve prior checkouts.
+2. Add consent/session and bounded report layers; use fictitious transports.
+3. Run focused, full and documentary/package gates sequentially.
+4. Record limitations and create one local commit; no push or PR.
